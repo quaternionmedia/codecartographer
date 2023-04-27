@@ -1,8 +1,7 @@
 import os
 import ast
 import networkx as nx
-from .utils.utils import get_main_file_base_name, get_package_dir
-from .json.json_utils import load_json_data
+from .utils.dirs import get_package_dir
 
 code_objects = [
     "code_analyzer",
@@ -26,7 +25,7 @@ class CodeParser(ast.NodeVisitor):
             The path to the file to parse.
         """
         # parameters
-        self.graph:nx.DiGraph = nx.DiGraph()
+        self.graph: nx.DiGraph = nx.DiGraph()
         self.current_class = None
         self.current_function = None
 
@@ -41,15 +40,14 @@ class CodeParser(ast.NodeVisitor):
 
         # parse code
         tree = self.parse_code(file_path)
-        self.visit(tree) 
-
+        self.visit(tree)
 
         # TODO: this should be the graph_json.json file
-        #code = load_json_data(file_path)
- 
+        # code = load_json_data(file_path)
+
         # graph
         _graph = self.graph
-        _graph.add_node(self.module_name, node_type="module", parent=None) 
+        _graph.add_node(self.module_name, node_type="module", parent=None)
         self.graph = self.add_python_node(_graph)
 
     def find_module_path(self, module_name: str) -> str:
@@ -84,19 +82,19 @@ class CodeParser(ast.NodeVisitor):
 
         Returns:
         --------
-        ast.AST 
+        ast.AST
             The parsed code.
         """
-        try: 
+        try:
             with open(file_path, "r") as f:
                 code = f.read()
                 tree = ast.parse(code)
                 return tree
         except SyntaxError as e:
             raise ValueError(f"Invalid code syntax: {e}") from e
-        
-    def parse_json_file(self, json_code_data):
-        """Parse code from a json file.
+
+    def parse_json_data(self, json_code_data):
+        """Parse code from a json data.
 
         Parameters:
         -----------
@@ -256,7 +254,7 @@ class CodeParser(ast.NodeVisitor):
             )
             self.graph = nx.compose(self.graph, analyzer.graph)
 
-    #def visit_Import(self, node, parent = None):
+    # def visit_Import(self, node, parent = None):
     def visit_Import(self, node):
         """Visit an import node and add it to the graph.
 
@@ -302,8 +300,6 @@ class CodeParser(ast.NodeVisitor):
         #         )
         #         self.graph = nx.compose(self.graph, analyzer.graph)
         # self.generic_visit(node)
-
-
 
         # parent = (
         #     self.current_function
@@ -358,8 +354,6 @@ class CodeParser(ast.NodeVisitor):
         #     )
         #     self.graph = nx.compose(self.graph, analyzer.graph)
         # self.generic_visit(node)
-
-
 
         # parent = (
         #     self.current_function

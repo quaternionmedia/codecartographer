@@ -1,11 +1,7 @@
 from __future__ import annotations
 import click
 from importlib_metadata import version
-from ..themes.themes import Theme
 from ..errors import BaseNotFoundError, ThemeCreationError, MissingParameterError
-from ..utils.utils import get_main_file_path
-
-theme = Theme()
 
 
 @click.group()
@@ -44,12 +40,24 @@ def run_app(import_name: str) -> None:
     CodeCartographer(file_path=import_name).main()
 
 
+# TODO: this is debug code, remove later, or make dev an optional install argument?
+# if it's intended for developer use, then should we just package this in?
+@run.command("dir")
+def dir():
+    """Print the package directories."""
+    from ..utils.dirs import print_all_directories
+
+    print_all_directories()
+
+
 @run.command("demo")
 def demo():
     """Run the demo command."""
     from ..code_cartographer import CodeCartographer
-    main_file = get_main_file_path()
-    CodeCartographer(main_file).main()
+    from ..utils.dirs import MAIN_DIRECTORIES
+
+    main_file_path = MAIN_DIRECTORIES["path"]
+    CodeCartographer(main_file_path).main()
 
 
 @run.command("new")
@@ -75,6 +83,8 @@ def new(node_type, base, label, shape, size, color, alpha):
     Example usage:
         codecarto new ClassDef datatype.class Cl o 10 red 10
     """
+    from ..themes.themes import Theme
+
     theme = Theme()
 
     # check if all parameters are present
@@ -100,11 +110,14 @@ def new(node_type, base, label, shape, size, color, alpha):
 
 @run.command("types")
 def print_node_types():
-    """Print the available node types and their corresponding properties.
+    """Print the available node type themes.
 
     This function loads the theme data and prints each node type along with its corresponding properties,
     formatted with appropriate spacing.
     """
+    from ..themes.themes import Theme
+
+    theme = Theme()
     # Load theme data
     theme_data = {
         "bases": theme.bases,
@@ -156,7 +169,7 @@ Information:
     help="Export package themes.json to a directory.",
 )
 def print_themes_dir(import_path: str, export_dir: str) -> None:
-    """Print the available base themes and their corresponding properties.
+    """Print the available base themes.
 
     This function retrieves the path of the 'themes.json' file and prints its corresponding properties.
     If the file is in the current working directory, the output will indicate so.
@@ -166,23 +179,19 @@ def print_themes_dir(import_path: str, export_dir: str) -> None:
         import_path (str): The filepath of the JSON file to import themes from.
         export_dir (str): The directory to export the current themes to.
     """
+    from ..themes.themes import Theme
+
+    theme = Theme()
     # Handle import/export options
     if import_path:
-        theme.import_theme_file(import_path)
+        theme.import_theme(import_path)
         print(f"Themes imported from '{import_path}'.")
         return
     elif export_dir:
-        theme.export_theme_file(export_dir)
+        theme.export_theme(export_dir)
         print(f"Themes exported to '{export_dir}'.")
         return
 
-    # Get the path of themes.json file from the working directory
-    themes_dir = theme.get_file_path()
-
-    # Check if themes_dir is None
-    if not themes_dir:
-        themes_dir = "No themes.json exists in the directory."
- 
     # Load theme data
     theme_data = {
         "bases": theme.bases,
@@ -210,7 +219,7 @@ def print_themes_dir(import_path: str, export_dir: str) -> None:
                 print(f"  {prop:{max_width}}: {theme_data[prop][base]}")
         print("")
     print(
-        f"\nBase themes and properties can be found in 'themes.json': {theme.get_file_path()}\n"
+        f"\nBase themes and properties can be found in 'themes.json': {theme._theme_app_dir['path']}\n"
     )
 
 

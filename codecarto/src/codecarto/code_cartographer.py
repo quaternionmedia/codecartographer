@@ -2,7 +2,7 @@ from .themes.themes import Theme
 from .code_parser import CodeParser
 from .graph_plotter import GraphPlotter
 from .json.json_converter import JsonConverter
-from .utils.utils import set_up_directories
+from .utils.dirs import setup_output_directory
 
 
 class CodeCartographer:
@@ -17,36 +17,38 @@ class CodeCartographer:
             The path to the file to parse.
         """
         print("\nCode Cartographer: ", file_path, "\n")
+
         Theme().__init__()
         self.file_path = file_path
         self.args = args
-    
+
     def main(self):
         """The main function of the code cartographer."""
         # Analyze the code
         analyzer = CodeParser(self.file_path)
         print("Visited Tree")
+
         # Process the graph
         if analyzer.graph:
-            # Get the iteration number and iteration directory
-            directory_info = set_up_directories()
-            print("Directories Made")
+            # Create the output directory
+            setup_output_directory()
+
+            # Create the graph plotter, needs to be same
+            # plotter for both to handle seed correctly
+            plotter = GraphPlotter()
+
             # Plot the graph made from code
-            GraphPlotter().plot(G=analyzer.graph, 
-                              file_path=directory_info["code_graph_dir"])
+            print("\nPlot Code Graph")
+            plotter.plot(G=analyzer.graph)
             print("Code Plots Saved")
-            # Save the graph as json
-            json_converter = JsonConverter(
-                analyzer.graph, directory_info["json_file_path"]
-            )
-            print("JSON Saved")
+
             # Plot the graph made from json
-            GraphPlotter().plot(
-                G=json_converter.json_graph, 
-                file_path=directory_info["json_graph_dir"], 
-                json=True
+            print("\nPlot JSON Graph")
+            plotter.plot(
+                G=JsonConverter(analyzer.graph).json_graph,
+                json=True,
             )
-            print("JSON Plots Saved")
+            print("JSON Plots Saved\n")
         else:
             # No graph to plot
             print("No graph to plot")

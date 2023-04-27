@@ -1,28 +1,33 @@
+import os
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import networkx as nx
 import random
 import inspect
 from .themes.themes import Theme
+from .utils.dirs import OUTPUT_DIRECTORY as output_dir
 
 
 class GraphPlotter:
     def __init__(self):
         self.seed: dict[str, int] = {}
 
-    def plot(self, G, file_path: str, json: bool = False):
+    def plot(self, G, json: bool = False):
         """Plots a graph using matplotlib.
 
         Parameters:
         -----------
             G (networkx.classes.graph.Graph):
                 The graph to plot.
-            file_path (str):
-                The path to save the plot to.
             json (bool) Default = True:
                 Whether the graph is in JSON format.
         """
         if G:
+            if json == False:
+                graph_dir = output_dir["graph_code_dir"]
+            else:
+                graph_dir = output_dir["graph_json_dir"]
+
             # Get all layout functions
             layouts = [
                 nx.layout.spring_layout,
@@ -63,6 +68,7 @@ class GraphPlotter:
                 try:
                     if "seed" in inspect.signature(layout).parameters:
                         if json:
+                            # Use the same seed for the same layout
                             seed = self.seed[layout.__name__]
                         else:
                             seed = random.randint(0, 1000)
@@ -147,16 +153,19 @@ class GraphPlotter:
                 else:
                     plot_name = f"{seed}_{layout.__name__}.png"
 
-                path = f"{file_path}{plot_name}"
+                file_path = os.path.join(graph_dir, plot_name)
                 plt.tight_layout()
-                plt.savefig(path)
+                plt.savefig(file_path)
+
+                # TODO: DEBUG, remove later
                 print(f"Saved {layout.__name__}, seed: {seed}")
                 # plt.show()
-                if (
-                    layout.__name__ == "spiral_layout"
-                    or layout.__name__ == "spectral_layout"
-                ):
-                    plt.show()
+                # if (
+                #     layout.__name__ == "spiral_layout"
+                #     or layout.__name__ == "spectral_layout"
+                # ):
+                #     plt.show()
+
                 plt.close()
 
 

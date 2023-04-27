@@ -1,34 +1,18 @@
 import os
 import shutil
-from ..utils.utils import (
-    get_appdata_dir,
-    get_package_dir,
-    CODE_CARTO_PACKAGE_NAME,
-)
+from ..utils.dirs import THEMES_DIRECTORY
+from ..utils.utils import get_date_time_file_format
 from ..errors import ThemeNotFoundError
 from ..json.json_utils import save_json_data, load_json_data
 
-DEFAULT_THEMES_FILE = "themes\default_themes.json"
-
 
 class Theme:
-    """A class representing a theme."""
+    """A class to handle themes."""
 
     def __init__(self):
-        """Initialize a Theme object."""
-        self.theme_file_name = "themes.json"
-        self.package_dir = get_package_dir()
-        print("package_dir: "+self.package_dir)
-        self.package_themes_dir = self.package_dir+"\\"+"themes"
-        print("package_themes_dir: "+self.package_themes_dir)
-        self.theme_package_file_path = os.path.join(self.package_themes_dir, self.theme_file_name)
-        print("package_themes_file_path: "+self.theme_package_file_path)
-        self.appdata_dir = get_appdata_dir()
-        print("appdata_dir: "+self.appdata_dir)
-        self.theme_appdata_file_path = self.get_file_path()
-        print("appdata_path: "+self.theme_appdata_file_path)
-        self.theme_file_base_name = os.path.basename(self.theme_appdata_file_path)
-        print("base_name: "+self.theme_file_base_name) 
+        """Initialize a theme handler."""
+        self._theme_app_dir = THEMES_DIRECTORY["appdata"]
+        self._theme_pack_dir = THEMES_DIRECTORY["package"]
         self._alphas = [round(0.1 * i, ndigits=1) for i in range(11)]
         self._sizes = [(100 * i) for i in range(1, 11)]
         self._theme = {
@@ -41,32 +25,6 @@ class Theme:
         }
         self.load()
 
-    def get_file_path(self):
-        """Get the path to the APPDATA themes file.
-
-        Returns:
-        --------
-        str
-            The path to the themes file.
-        """ 
-        # check if appdata_dir and package_dir are not None
-        if self.appdata_dir is None or self.package_dir is None:
-            raise RuntimeError(
-                "Unsupported operating system or package directory not found."
-            )
-        # create themes directory if it doesn't exist
-        themes_dir = os.path.join(self.appdata_dir, CODE_CARTO_PACKAGE_NAME)
-        os.makedirs(themes_dir, exist_ok=True) 
-        # check if themes file exists
-        themes_file_path = os.path.join(themes_dir, "themes.json")
-        if not os.path.exists(themes_file_path):
-            # copy default themes file
-            shutil.copy2(
-                os.path.join(self.package_dir, DEFAULT_THEMES_FILE), themes_file_path
-            )
-        # return path to themes file
-        return themes_file_path
-    
     def save(self):
         """Save the current theme to the theme json file."""
         # create dictionary with current theme data
@@ -79,23 +37,21 @@ class Theme:
             "colors": self.colors,
         }
         # write theme data to file
-        save_json_data(self.theme_appdata_file_path, theme_data)
+        save_json_data(self._theme_app_dir["path"], theme_data)
 
     def load(self):
         """Load the themes from the theme json file."""
         # load theme data from file
         theme_data: dict = {}
         try:
-            theme_data = load_json_data(self.theme_appdata_file_path)
+            theme_data = load_json_data(self._theme_app_dir["path"])
             # check if theme data is none
             if theme_data is None:
-                # raise ThemeNotFoundError(
-                #     f"\n\nTheme not found: {self.theme_appdata_file_path} \nCreate new themes using 'codecarto new ...' \nOr import themes with 'codecarto import FILE_PATH'.\n"
-                # )
-                theme_data = load_json_data(self.theme_package_file_path)
+                # load the default theme
+                theme_data = load_json_data(self._theme_pack_dir["path"])
             if theme_data is None:
                 raise ThemeNotFoundError(
-                    f"\n\nTheme not found: {self.theme_package_file_path} \nCreate new themes using 'codecarto new ...' \nOr import themes with 'codecarto import FILE_PATH'.\n"
+                    "No theme data found. Package may be corrupted."
                 )
             # check if theme data was loaded
             if len(theme_data.keys()) > 0:
@@ -107,11 +63,9 @@ class Theme:
                 self.colors: dict = theme_data["colors"]
                 self.alphas: dict = theme_data["alphas"]
         except FileNotFoundError:
-            raise ThemeNotFoundError(
-                f"Theme not found: {self.theme_appdata_file_path} \n Create new themes using 'codecarto new ...' \nOr import themes with 'codecarto import FILE_PATH'."
-            )
+            raise ThemeNotFoundError("No theme data found. Package may be corrupted.")
 
-    def import_theme_file(self, file_path: str):
+    def import_theme(self, file_path: str):
         """Import a theme file from the specified file path.
 
         Parameters:
@@ -119,38 +73,58 @@ class Theme:
         file_path : str
             The path to the theme file to import.
         """
-        # check if file exists
+        # check if import file exists
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Theme file not found: {file_path}")
-        # check if file is a json file
+        # check if import file is a json file
         if not file_path.endswith(".json"):
             raise TypeError(f"Theme file must be a json file: {file_path}")
-        # check if file is a theme file
-        if not os.path.basename(file_path) == self.theme_file_name:
+        # check if import file is a theme file
+        if not os.path.basename(file_path) == self._theme_app_dir["name"]:
             raise TypeError(f"Theme file must be named 'themes.json': {file_path}")
-        # copy theme file to themes directory
-        shutil.copy(file_path, self.theme_appdata_file_path)
+        # overwrite theme file in appdata directory
+        shutil.copy(file_path, self._theme_app_dir["path"])
         # load theme file
         self.load()
 
-    def export_theme_file(self, dir_path: str):
+    def export_theme(self, export_path: str):
         """Export the current theme file to the specified directory.
 
         Parameters:
         -----------
-        dir_path : str
-            The path to the directory to export the theme file to.
+        export_path : str
+            The path to the directory to which to export the theme file.
+
+        Returns:
+        --------
+        str
+            The path to the exported theme file path.
         """
         # check if directory exists
-        if not os.path.exists(dir_path):
-            raise FileNotFoundError(f"Directory not found: {dir_path}")
+        if not os.path.exists(export_path):
+            raise FileNotFoundError(f"Directory not found: {export_path}")
         # check if directory is a directory
-        if not os.path.isdir(dir_path):
-            raise TypeError(f"Path must be a directory: {dir_path}")
-        # copy theme file to themes directory
-        shutil.copy(self.theme_appdata_file_path, dir_path)
-        # return path to exported theme file
-        return os.path.join(dir_path, self.theme_file_base_name)
+        if not os.path.isdir(export_path):
+            raise TypeError(f"Path must be a directory: {export_path}")
+        # check if theme file exists and is not empty
+        theme_file = self._theme_app_dir["path"]
+        if not os.path.exists(theme_file) or os.path.getsize(theme_file) == 0:
+            theme_file = self._theme_pack_dir["path"]
+            if not os.path.exists(theme_file) or os.path.getsize(theme_file) == 0:
+                raise ThemeNotFoundError(
+                    "No theme file found. Package may be corrupted."
+                )
+        # create export file
+        export_date = get_date_time_file_format()
+        export_name = os.path.basename(theme_file).split(".")[0]
+        export_name = f"{export_name}_{export_date}.json"
+        export_file = os.path.join(export_path, export_name)
+        shutil.copy(theme_file, export_file)
+        # check if export file exists
+        if not os.path.exists(export_file):
+            raise FileNotFoundError(f"Export failed.")
+        # return export file path
+        return export_file
 
     def create_new_theme(
         self,
