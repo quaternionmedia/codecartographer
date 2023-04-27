@@ -1,6 +1,6 @@
 ### TODO: This was taken from a random repo. Update it to be more relevant to this project.
 # debug
-output/*
+output/
 
 # General
 *.ipynb

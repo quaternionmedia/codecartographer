@@ -2,6 +2,7 @@ from __future__ import annotations
 import click
 from importlib_metadata import version
 from ..errors import BaseNotFoundError, ThemeCreationError, MissingParameterError
+from ..utils.dirs import MAIN_DIRECTORIES
 
 
 @click.group()
@@ -44,7 +45,7 @@ def run_app(import_name: str) -> None:
 # if it's intended for developer use, then should we just package this in?
 @run.command("dir")
 def dir():
-    """Print the package directories."""
+    """Print the available directories."""
     from ..utils.dirs import print_all_directories
 
     print_all_directories()
@@ -54,7 +55,6 @@ def dir():
 def demo():
     """Run the demo command."""
     from ..code_cartographer import CodeCartographer
-    from ..utils.dirs import MAIN_DIRECTORIES
 
     main_file_path = MAIN_DIRECTORIES["path"]
     CodeCartographer(main_file_path).main()
@@ -110,7 +110,7 @@ def new(node_type, base, label, shape, size, color, alpha):
 
 @run.command("types")
 def print_node_types():
-    """Print the available node type themes.
+    """Print the available node types and their corresponding properties.
 
     This function loads the theme data and prints each node type along with its corresponding properties,
     formatted with appropriate spacing.
@@ -168,14 +168,14 @@ Information:
     metavar="DIRECTORY",
     help="Export package themes.json to a directory.",
 )
-def print_themes_dir(import_path: str, export_dir: str) -> None:
-    """Print the available base themes.
+def themes(import_path: str, export_dir: str) -> None:
+    """Print the available base themes and their corresponding properties.
 
     This function retrieves the path of the 'themes.json' file and prints its corresponding properties.
     If the file is in the current working directory, the output will indicate so.
     Additionally, this function can be used to import and export themes from/to a JSON file.
 
-    Args:
+    Optional Args:
         import_path (str): The filepath of the JSON file to import themes from.
         export_dir (str): The directory to export the current themes to.
     """
@@ -210,14 +210,14 @@ def print_themes_dir(import_path: str, export_dir: str) -> None:
             base_themes[base] = []
         base_themes[base].append(node_type)
 
-    # Print themes_dir
+    # print themes by base
     for base, node_types in base_themes.items():
         print(f"Base: {base}")
         max_width = max(len(prop) for prop in theme_data.keys()) + 1
         for prop in theme_data.keys():
             if prop != "bases":
                 print(f"  {prop:{max_width}}: {theme_data[prop][base]}")
-        print("")
+        print()
     print(
         f"\nBase themes and properties can be found in 'themes.json': {theme._theme_app_dir['path']}\n"
     )
@@ -228,34 +228,44 @@ def print_help():
     """Print the usage information for the command-line interface.
 
     This function displays the usage information, examples, command list, and links to documentation
-    for valid node types, colors, and shapes.
+    for valid types, colors, and shapes.
     """
     # Print help text
     help_text = """
 Usage:
     codecarto FILE | FILE:APP 
     codecarto demo
-    codecarto new NODE_TYPE BASE LABEL SHAPE SIZE COLOR ALPHA 
-    codecarto types
-    codecarto themes [--import | -i] [--export | -e]
+    codecarto dir
+    codecarto themes [--types | -t | --new | -n | --import | -i | --export | -e]
+    codecarto themes -n TYPE BASE LABEL SHAPE SIZE COLOR ALPHA 
     codecarto help
 
-Example:
-    codecarto new ClassDef datatype.class Cl o 10 red 10
-
-Information:
-    For a list of valid node types : https://docs.python.org/3/library/ast.html#abstract-grammar
-    For a list of valid colors     : https://matplotlib.org/stable/gallery/color/named_colors.html
-    For a list of valid shapes     : https://matplotlib.org/stable/api/markers_api.html
-
-Commands:
-    FILE | FILE:APP : The path of the Python file to visualize
-    demo             : Run the demo
-    new              : Create a new theme with the specified parameters 
-    types            : Display a list of current node types
+Command Description:
+    FILE | FILE:APP  : The path of the Python file to visualize
+    demo             : Runs the package on itself. 
+    dir              : Show the various directories used by package.
     themes           : Show the directory of themes.json and shows current themes.
+        -t TYPE      : Display the styles for all types or for a specific type.
+        -n PARAMS    : Create a new theme with the specified parameters
         -i FILE_PATH : Import themes from a JSON file.
         -e DIRECOTRY : Export package themes.json to a directory.
     help             : Display usage information
+
+File Examples:
+    codecarto foo.py
+    codecarto foo.py:MyApp
+    codecarto module.foo
+    codecarto module.foo:MyApp
+
+New Theme Example:
+    codecarto new ClassDef datatype.class Cl o 10 red 10
+
+New Theme Information:
+    For a list of valid types      : https://docs.python.org/3/library/ast.html#abstract-grammar
+    For a list of valid colors     : https://matplotlib.org/stable/gallery/color/named_colors.html
+    For a list of valid shapes     : https://matplotlib.org/stable/api/markers_api.html
+    Alpha must be an integer between 0 and 10.
+    Size must be an integer between 0 and 10.
+
     """
     print(help_text)

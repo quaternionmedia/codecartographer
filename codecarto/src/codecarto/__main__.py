@@ -1,4 +1,4 @@
-from .demo import Demo
+from .code_cartographer import CodeCartographer
 
 if __name__ == "__main__":
-    Demo().run()
+    CodeCartographer().main()
