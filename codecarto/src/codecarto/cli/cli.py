@@ -3,6 +3,7 @@ import click
 from importlib_metadata import version
 from ..themes.themes import Theme
 from ..errors import BaseNotFoundError, ThemeCreationError, MissingParameterError
+from ..utils.utils import get_main_file_path
 
 theme = Theme()
 
@@ -47,8 +48,8 @@ def run_app(import_name: str) -> None:
 def demo():
     """Run the demo command."""
     from ..code_cartographer import CodeCartographer
-
-    CodeCartographer().main()
+    main_file = get_main_file_path()
+    CodeCartographer(main_file).main()
 
 
 @run.command("new")
@@ -181,10 +182,7 @@ def print_themes_dir(import_path: str, export_dir: str) -> None:
     # Check if themes_dir is None
     if not themes_dir:
         themes_dir = "No themes.json exists in the directory."
-
-    # Print themes_dir
-    print(f"\nThe 'themes.json' Path:\n     {themes_dir}\n")
-
+ 
     # Load theme data
     theme_data = {
         "bases": theme.bases,
@@ -228,8 +226,7 @@ def print_help():
 Usage:
     codecarto FILE | FILE:APP 
     codecarto demo
-    codecarto new NODE_TYPE BASE LABEL SHAPE SIZE COLOR ALPHA
-    codecarto bases
+    codecarto new NODE_TYPE BASE LABEL SHAPE SIZE COLOR ALPHA 
     codecarto types
     codecarto themes [--import | -i] [--export | -e]
     codecarto help
@@ -245,8 +242,7 @@ Information:
 Commands:
     FILE | FILE:APP : The path of the Python file to visualize
     demo             : Run the demo
-    new              : Create a new theme with the specified parameters
-    bases            : Display a list of current base themes
+    new              : Create a new theme with the specified parameters 
     types            : Display a list of current node types
     themes           : Show the directory of themes.json and shows current themes.
         -i FILE_PATH : Import themes from a JSON file.

@@ -48,7 +48,7 @@ class GraphPlotter:
                 ax.axis("off")
 
                 # Collect nodes and their attributes
-                node_styles = Theme.get_node_styles()
+                node_styles = Theme().get_node_styles()
                 node_data: dict(str, list) = {
                     node_type: [] for node_type in node_styles.keys()
                 }

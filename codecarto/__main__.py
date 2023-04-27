@@ -1,7 +1,7 @@
 import sys
-from src.cli import parse_args
+from src.codecarto.cli import run
 from pprint import pprint
 
 if __name__ == "__main__":
-    pprint("codecarto start")
-    parse_args(sys.argv[1:])
+    pprint("codecarto start from top level")
+    run(sys.argv[1:])

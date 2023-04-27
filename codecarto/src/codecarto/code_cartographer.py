@@ -16,10 +16,11 @@ class CodeCartographer:
         file_path : str
             The path to the file to parse.
         """
+        print("\nCode Cartographer: ", file_path, "\n")
         Theme().__init__()
         self.file_path = file_path
         self.args = args
-
+    
     def main(self):
         """The main function of the code cartographer."""
         # Analyze the code
@@ -31,7 +32,8 @@ class CodeCartographer:
             directory_info = set_up_directories()
             print("Directories Made")
             # Plot the graph made from code
-            GraphPlotter.plot(analyzer.graph, directory_info["code_graph_dir"])
+            GraphPlotter().plot(G=analyzer.graph, 
+                              file_path=directory_info["code_graph_dir"])
             print("Code Plots Saved")
             # Save the graph as json
             json_converter = JsonConverter(
@@ -39,8 +41,10 @@ class CodeCartographer:
             )
             print("JSON Saved")
             # Plot the graph made from json
-            GraphPlotter.plot(
-                json_converter.json_graph, directory_info["json_graph_dir"], True
+            GraphPlotter().plot(
+                G=json_converter.json_graph, 
+                file_path=directory_info["json_graph_dir"], 
+                json=True
             )
             print("JSON Plots Saved")
         else:

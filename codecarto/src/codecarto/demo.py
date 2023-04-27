@@ -1,3 +1,5 @@
 class Demo:
     def run():
-        pass
+        from .code_cartographer import CodeCartographer
+
+        CodeCartographer().main()

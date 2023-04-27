@@ -1,4 +1,4 @@
-from json_utils import save_json_data
+from .json_utils import save_json_data
 
 
 class JsonConverter:

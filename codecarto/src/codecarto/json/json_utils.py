@@ -17,17 +17,14 @@ def load_json_data(file_path) -> dict:
     """
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
-    with open(file_path, "r") as f:
-        # check if file is empty
-        if len(f.read()) > 0:
-            # reset file pointer to beginning of file
-            f.seek(0)
-            return json.load(f)
-        else:
-            # file is empty
-            file_name = os.path.basename(file_path)
-            raise ValueError(f"JSON File Empty: {file_name}")
-
+    try: 
+        with open(file_path, "r") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON data in file '{file_path}': {str(e)}") from e 
+    if not isinstance(data, dict):
+        raise ValueError(f"Invalid JSON data in file '{file_path}': expected dictionary")
+    return data
 
 def save_json_data(file_path, data):
     """Save data to a json file.

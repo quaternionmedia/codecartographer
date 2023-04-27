@@ -26,24 +26,31 @@ class CodeParser(ast.NodeVisitor):
             The path to the file to parse.
         """
         # parameters
+        self.graph:nx.DiGraph = nx.DiGraph()
         self.current_class = None
         self.current_function = None
+
         # directory and file names
         if file_path:
             self.file_path = file_path
         else:
-            self.file_path = get_main_file_base_name()
+            self.file_path = self.find_module_path(file_path)
         self.src_dir = get_package_dir()
         self.module_name = os.path.splitext(os.path.basename(file_path))[0]
         self.project_root = self.src_dir
+
         # parse code
-        code = load_json_data(file_path)
-        tree = self.parse_code(code)
-        self.visit(tree)
+        tree = self.parse_code(file_path)
+        self.visit(tree) 
+
+
+        # TODO: this should be the graph_json.json file
+        #code = load_json_data(file_path)
+ 
         # graph
-        graph = nx.DiGraph()
-        graph.add_node(self.module_name, node_type="module", parent=None)
-        self.graph = self.add_python_node(graph)
+        _graph = self.graph
+        _graph.add_node(self.module_name, node_type="module", parent=None) 
+        self.graph = self.add_python_node(_graph)
 
     def find_module_path(self, module_name: str) -> str:
         """Find the path to a module.
@@ -67,7 +74,28 @@ class CodeParser(ast.NodeVisitor):
             f"Module '{module_name}' not found in project root directory: {self.project_root}"
         )
 
-    def parse_code(self, json_code_data):
+    def parse_code(self, file_path: str) -> ast.AST:
+        """Parse code from a file.
+
+        Parameters:
+        -----------
+        file_path : str
+            The path to the file to parse.
+
+        Returns:
+        --------
+        ast.AST 
+            The parsed code.
+        """
+        try: 
+            with open(file_path, "r") as f:
+                code = f.read()
+                tree = ast.parse(code)
+                return tree
+        except SyntaxError as e:
+            raise ValueError(f"Invalid code syntax: {e}") from e
+        
+    def parse_json_file(self, json_code_data):
         """Parse code from a json file.
 
         Parameters:
@@ -228,7 +256,8 @@ class CodeParser(ast.NodeVisitor):
             )
             self.graph = nx.compose(self.graph, analyzer.graph)
 
-    def visit_Import(self, node, parent):
+    #def visit_Import(self, node, parent = None):
+    def visit_Import(self, node):
         """Visit an import node and add it to the graph.
 
         Parameters:
@@ -236,13 +265,13 @@ class CodeParser(ast.NodeVisitor):
         node : ast.Import
             The import node to visit.
         """
-        # for alias in node.names:
-        #     self.graph.add_node(alias.name, node_type="import", label=alias.name)
-        #     if self.current_function:
-        #         self.graph.add_edge(self.current_function, alias.name)
-        #     elif self.current_class:
-        #         self.graph.add_edge(self.current_class, alias.name)
-        # self.generic_visit(node)
+        for alias in node.names:
+            self.graph.add_node(alias.name, node_type="import", label=alias.name)
+            if self.current_function:
+                self.graph.add_edge(self.current_function, alias.name)
+            elif self.current_class:
+                self.graph.add_edge(self.current_class, alias.name)
+        self.generic_visit(node)
 
         # parent = (
         #     self.current_function
@@ -274,14 +303,16 @@ class CodeParser(ast.NodeVisitor):
         #         self.graph = nx.compose(self.graph, analyzer.graph)
         # self.generic_visit(node)
 
-        parent = (
-            self.current_function
-            if self.current_function
-            else (self.current_class if self.current_class else self.module_name)
-        )
-        for alias in node.names:
-            self.visit_import_common(alias, parent)
-        self.generic_visit(node)
+
+
+        # parent = (
+        #     self.current_function
+        #     if self.current_function
+        #     else (self.current_class if self.current_class else self.module_name)
+        # )
+        # for alias in node.names:
+        #     self.visit_import_common(node=alias, parent=parent)
+        # self.generic_visit(node)
 
     def visit_ImportFrom(self, node):
         """Visit an import_from node and add it to the graph.
@@ -291,13 +322,13 @@ class CodeParser(ast.NodeVisitor):
         node : ast.ImportFrom
             The import_from node to visit.
         """
-        # module_name = node.module
-        # self.graph.add_node(module_name, node_type="import_from", label=module_name)
-        # if self.current_function:
-        #     self.graph.add_edge(self.current_function, module_name)
-        # elif self.current_class:
-        #     self.graph.add_edge(self.current_class, module_name)
-        # self.generic_visit(node)
+        module_name = node.module
+        self.graph.add_node(module_name, node_type="import_from", label=module_name)
+        if self.current_function:
+            self.graph.add_edge(self.current_function, module_name)
+        elif self.current_class:
+            self.graph.add_edge(self.current_class, module_name)
+        self.generic_visit(node)
 
         # parent = (
         #     self.current_function
@@ -328,10 +359,12 @@ class CodeParser(ast.NodeVisitor):
         #     self.graph = nx.compose(self.graph, analyzer.graph)
         # self.generic_visit(node)
 
-        parent = (
-            self.current_function
-            if self.current_function
-            else (self.current_class if self.current_class else self.module_name)
-        )
-        self.visit_import_common(node, parent)
-        self.generic_visit(node)
+
+
+        # parent = (
+        #     self.current_function
+        #     if self.current_function
+        #     else (self.current_class if self.current_class else self.module_name)
+        # )
+        # self.visit_import_common(node=node, parent=parent)
+        # self.generic_visit(node)

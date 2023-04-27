@@ -94,9 +94,9 @@ def get_main_file_path() -> str:
     str
         The path to the main file.
     """
-    from .. import code_cartographer as main
+    from .. import code_cartographer  
 
-    return main.__file__
+    return code_cartographer.__file__
 
 
 # TODO: need to get directories for the passed FILE_PATH to be parsed
