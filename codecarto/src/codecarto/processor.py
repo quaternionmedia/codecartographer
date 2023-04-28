@@ -1,7 +1,7 @@
 from .parser import SourceParser
 from .plotter import GraphPlot
 from .json.json_graph import JsonGraph
-from .utils.directories import setup_output_directory
+from .utils.directories import setup_output_directory, get_all_source_files
 
 
 class Processor:
@@ -23,7 +23,10 @@ class Processor:
     def main(self):
         """The main function of the code cartographer."""
         # Analyze the code
-        graph = SourceParser(self.file_path).graph
+        graph = SourceParser(
+            self.file_path,
+            get_all_source_files(self.file_path),
+        ).graph
         print("Visited Tree")
 
         # Process the graph

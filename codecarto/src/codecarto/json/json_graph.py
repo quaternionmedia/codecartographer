@@ -79,11 +79,10 @@ class JsonGraph:
             graph_data["edges"][edge_id] = edge_obj
             source_node["edges"].append(edge_obj)
 
-        # Clean out any graph_data["nodes"] that have parents
-        # TODO: why though? Was this to handle python objects originally, before parser change?
-        for node_id, node_obj in list(graph_data["nodes"].items()):
-            if node_obj["parent"]:
-                del graph_data["nodes"][node_id]
+        # # Clean out any graph_data["nodes"] that have parents
+        # for node_id, node_obj in list(graph_data["nodes"].items()):
+        #     if node_obj["parent"]:
+        #         del graph_data["nodes"][node_id]
 
         return graph_data
 
