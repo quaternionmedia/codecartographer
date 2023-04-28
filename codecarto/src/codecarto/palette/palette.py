@@ -116,7 +116,7 @@ class Palette:
                 )
         # create export file
         export_date = get_date_time_file_format()
-        export_name = os.path.basename(palette_file).split(".")[0]
+        export_name = str(os.path.basename(palette_file)).split(".")[0]
         export_name = f"{export_name}_{export_date}.json"
         export_file = os.path.join(export_path, export_name)
         shutil.copy(palette_file, export_file)

@@ -21,7 +21,7 @@ class JsonGraph:
         save_json_data(self.json_file_path, self.json_data)
         self.json_graph = self.json_to_graph(self.json_data)
 
-    def json_to_graph(self, json_data):
+    def json_to_graph(self, json_data: dict[str, dict]):
         """Converts a JSON object to a networkx graph.\n
         Args:\n
             json_data (dict): The JSON object to convert.\n
@@ -68,10 +68,10 @@ class JsonGraph:
             raise TypeError("G must be a networkx graph")
 
         # Create the JSON object
-        graph_data = {"nodes": {}, "edges": {}}
+        graph_data : dict[str, dict[str, dict[str, list]]] = {"nodes": {}, "edges": {}}
 
         # Create all node objects
-        for node_id, data in graph.nodes(data=True):
+        for node_id, data in graph.nodes.data(True):
             if "node_type" not in data:
                 data["node_type"] = "Unknown"
 
@@ -94,8 +94,8 @@ class JsonGraph:
         for edge_id, (source, target) in enumerate(graph.edges()):
             if source not in graph_data["nodes"] or target not in graph_data["nodes"]:
                 continue
-            source_node = graph_data["nodes"][source]
-            target_node = graph_data["nodes"][target]
+            source_node : dict[str,list] = graph_data["nodes"][source]
+            target_node : dict[str,list] = graph_data["nodes"][target]
 
             edge_obj = {
                 "id": edge_id,

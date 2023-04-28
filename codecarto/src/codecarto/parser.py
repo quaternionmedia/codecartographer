@@ -112,7 +112,7 @@ class SourceParser(ast.NodeVisitor):
         except SyntaxError as e:
             raise ValueError(f"Invalid code syntax: {e}") from e
 
-    def add_python_node(self, graph):
+    def add_python_node(self, graph: nx.classes.graph.Graph):
         """Add the python node to the graph and set the parent of all nodes without a parent to the python node.
 
         Parameters:
@@ -224,7 +224,7 @@ class SourceParser(ast.NodeVisitor):
             self.graph.add_edge(parent, function_name)
         self.generic_visit(node)
 
-    def visit_import_common(self, node, parent):
+    def visit_import_common(self, node:ast.ImportFrom, parent):
         """Visit an import node and add it to the graph.
 
         Parameters:
@@ -252,7 +252,7 @@ class SourceParser(ast.NodeVisitor):
             analyzer.visit(
                 ast.parse(open(imported_module_path, "r", encoding="utf-8").read())
             )
-            self.graph = nx.compose(self.graph, analyzer.graph)
+            self.graph = nx.algorithms.operators.compose(self.graph, analyzer.graph)
 
     # def visit_Import(self, node, parent = None):
     def visit_Import(self, node):

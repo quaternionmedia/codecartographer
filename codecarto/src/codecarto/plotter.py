@@ -22,7 +22,7 @@ class GraphPlot:
             json (bool) Default = True:
                 Whether the graph is in JSON format.
         """
-        if _graph:
+        if _graph and isinstance(_graph, nx.classes.graph.Graph):
             if json == False:
                 graph_dir = output_dir["graph_code_dir"]
             else:
@@ -42,19 +42,19 @@ class GraphPlot:
 
             # Loop through all layouts
             for idx, layout in enumerate(layouts):
-                # Initialize figure and axes
+                # Initialize figure and axes 
                 fig, ax = plt.subplots(figsize=(15, 7.5))
 
                 # placement of show on monitor
                 fig.canvas.manager.window.wm_geometry("+0+0")
                 ax.set_title(
-                    f"{layout.__name__.replace('_layout', '').capitalize()} Layout"
+                    f"{str(layout.__name__).replace('_layout', '').capitalize()} Layout"
                 )
                 ax.axis("off")
 
                 # Collect nodes and their attributes
                 node_styles = Palette().get_node_styles()
-                node_data: dict(str, list) = {
+                node_data: dict[str, list] = {
                     node_type: [] for node_type in node_styles.keys()
                 }
                 for n, a in _graph.nodes(data=True):
@@ -76,7 +76,7 @@ class GraphPlot:
                         pos = layout(_graph, seed=seed)
                     elif layout.__name__ == "shell_layout":
                         # Group nodes by parent
-                        grouped_nodes = {}
+                        grouped_nodes : dict[str,list] = {}
                         for node, data in _graph.nodes(data=True):
                             parent = data.get("parent", "Unknown")
                             if parent not in grouped_nodes:
@@ -96,7 +96,7 @@ class GraphPlot:
 
                 # Draw nodes with different shapes
                 for node_type, nodes in node_data.items():
-                    nx.draw_networkx_nodes(
+                    nx.drawing.draw_networkx_nodes(
                         _graph,
                         pos,
                         nodelist=nodes,
@@ -107,11 +107,11 @@ class GraphPlot:
                     )
 
                 # Draw edges and labels
-                nx.draw_networkx_edges(_graph, pos, alpha=0.2)
-                nx.draw_networkx_labels(
+                nx.drawing.draw_networkx_edges(_graph, pos, alpha=0.2)
+                nx.drawing.draw_networkx_labels(
                     _graph,
                     pos,
-                    labels=nx.get_node_attributes(_graph, "label"),
+                    labels=nx.classes.get_node_attributes(_graph, "label"),
                     font_size=10,
                     font_family="sans-serif",
                 )
