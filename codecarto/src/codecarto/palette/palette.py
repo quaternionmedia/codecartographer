@@ -65,6 +65,19 @@ class Palette:
         except FileNotFoundError:
             raise ThemeNotFoundError("No palette data found. Package may be corrupted.")
 
+    def reset_palette(self):
+        """Reset the palette to the default palette."""
+        # load the default palette
+        palette_data = load_json_data(self._palette_pack_dir["path"])
+        # check if palette data was loaded
+        if len(palette_data.keys()) > 0:
+            # overwrite palette file in appdata directory
+            shutil.copy(self._palette_pack_dir["path"], self._palette_app_dir["path"])
+        else:
+            raise ThemeNotFoundError(
+                "No default palette data found. Package may be corrupted."
+            )
+
     def import_palette(self, file_path: str):
         """Import a palette file from the specified file path.
 
@@ -195,7 +208,7 @@ class Palette:
         """
         base = self.bases[node_type]
         return {
-            "node_type": node_type,
+            "type": node_type,
             "base": self.bases[node_type],
             "size": self.sizes[base],
             "alpha": self.alphas[base],

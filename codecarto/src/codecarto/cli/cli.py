@@ -61,7 +61,7 @@ def demo():
 
 
 @run.command("new")
-@click.argument("node_type")
+@click.argument("type")
 @click.argument("base")
 @click.argument("label")
 @click.argument("shape")
@@ -72,7 +72,7 @@ def new(node_type, base, label, shape, size, color, alpha):
     """
     Create a new theme with the specified parameters.
 
-    Node type (str) : node type (e.g., str, For, ClassDef, FunctionDef)
+    Type (str)      : The node type (e.g., str, For, ClassDef, FunctionDef)
     Base (str)      : base theme (e.g., basic.str, control.loop.for, datatype.class, datatype.function, etc.)
     Label (str)     : label for plot, will also be node_type (e.g., str, f, Cl, F, etc.)
     Shape (str)     : shape of plot
@@ -168,7 +168,14 @@ Information:
     metavar="DIRECTORY",
     help="Export package palette.json to a directory.",
 )
-def palette(import_path: str, export_dir: str) -> None:
+@click.option(
+    "--reset",
+    "-r",
+    "reset",
+    is_flag=True,
+    help="Reset the palette.json to the default_palette.json.",
+)
+def palette(import_path: str, export_dir: str, reset: bool) -> None:
     """Print the available base themes and their corresponding properties.
 
     This function retrieves the path of the 'palette.json' file and prints its corresponding properties.
@@ -182,14 +189,28 @@ def palette(import_path: str, export_dir: str) -> None:
     from ..palette.palette import Palette
 
     palette = Palette()
-    # Handle import/export options
+    # Handle import/export/reset options
     if import_path:
+        # ask the user to confirm import action
+        if not click.confirm(
+            "Are you sure you want to import a palette file? This will overwrite the current palette."
+        ):
+            return
         palette.import_palette(import_path)
         print(f"Palette imported from '{import_path}'.")
         return
     elif export_dir:
         palette.export_palette(export_dir)
         print(f"Palette exported to '{export_dir}'.")
+        return
+    elif reset:
+        # ask the user to confirm reset action
+        if not click.confirm(
+            "Are you sure you want to reset the palette to the default palette?"
+        ):
+            return
+        palette.reset_palette()
+        print(f"Palette reset to default.")
         return
 
     # Load palette data

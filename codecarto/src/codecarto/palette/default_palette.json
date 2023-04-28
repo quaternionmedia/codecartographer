@@ -5,6 +5,7 @@
     "Name": "basic",
     "Method": "basic",
     "variable": "basic",
+    "var": "basic",
     "Unknown": "basic.unknown",
     "If": "control.conditional.if",
     "IfExp": "control.conditional",

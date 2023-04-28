@@ -1,4 +1,3 @@
-from .palette.palette import Palette
 from .parser import SourceParser
 from .plotter import GraphPlot
 from .json.json_graph import JsonGraph
@@ -18,7 +17,6 @@ class Processor:
         """
         print("\nCode Cartographer: ", file_path, "\n")
 
-        Palette().__init__()
         self.file_path = file_path
         self.args = args
 

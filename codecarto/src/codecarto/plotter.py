@@ -42,7 +42,7 @@ class GraphPlot:
 
             # Loop through all layouts
             for idx, layout in enumerate(layouts):
-                # Initialize figure and axes 
+                # Initialize figure and axes
                 fig, ax = plt.subplots(figsize=(15, 7.5))
 
                 # placement of show on monitor
@@ -58,7 +58,7 @@ class GraphPlot:
                     node_type: [] for node_type in node_styles.keys()
                 }
                 for n, a in _graph.nodes(data=True):
-                    node_type = a.get("node_type", "Unknown")
+                    node_type = a.get("type", "Unknown")
                     if node_type not in node_styles.keys():
                         node_type = "Unknown"
                     node_data[node_type].append(n)
@@ -76,7 +76,7 @@ class GraphPlot:
                         pos = layout(_graph, seed=seed)
                     elif layout.__name__ == "shell_layout":
                         # Group nodes by parent
-                        grouped_nodes : dict[str,list] = {}
+                        grouped_nodes: dict[str, list] = {}
                         for node, data in _graph.nodes(data=True):
                             parent = data.get("parent", "Unknown")
                             if parent not in grouped_nodes:
@@ -119,7 +119,7 @@ class GraphPlot:
                 # Draw legend
                 unique_node_types = set(
                     node_type
-                    for _, node_type in _graph.nodes(data="node_type")
+                    for _, node_type in _graph.nodes(data="type")
                     if node_type is not None
                 )
                 _colors = {
