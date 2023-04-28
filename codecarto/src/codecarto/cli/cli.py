@@ -2,7 +2,7 @@ from __future__ import annotations
 import click
 from importlib_metadata import version
 from ..errors import BaseNotFoundError, ThemeCreationError, MissingParameterError
-from ..utils.dirs import MAIN_DIRECTORIES
+from ..utils.directories import MAIN_DIRECTORIES
 
 
 @click.group()
@@ -46,7 +46,7 @@ def run_app(import_name: str) -> None:
 @run.command("dir")
 def dir():
     """Print the available directories."""
-    from ..utils.dirs import print_all_directories
+    from ..utils.directories import print_all_directories
 
     print_all_directories()
 
@@ -83,21 +83,21 @@ def new(node_type, base, label, shape, size, color, alpha):
     Example usage:
         codecarto new ClassDef datatype.class Cl o 10 red 10
     """
-    from ..themes.theme_manager import ThemeManager
+    from ..palette.palette import Palette
 
-    theme = ThemeManager()
+    palette = Palette()
 
     # check if all parameters are present
     if not all([node_type, base, label, shape, size, color, alpha]):
         raise MissingParameterError("New command requires all parameters.")
-    node_type = theme.create_new_theme(
+    node_type = palette.create_new_theme(
         node_type,
         base,
         label,
         shape,
-        theme._sizes[size - 1],
+        palette._sizes[size - 1],
         color,
-        theme._alphas[alpha - 1],
+        palette._alphas[alpha - 1],
     )
 
     # check if node_type is None
@@ -112,36 +112,36 @@ def new(node_type, base, label, shape, size, color, alpha):
 def print_node_types():
     """Print the available node types and their corresponding properties.
 
-    This function loads the theme data and prints each node type along with its corresponding properties,
+    This function loads the palette data and prints each node type along with its corresponding properties,
     formatted with appropriate spacing.
     """
-    from ..themes.theme_manager import ThemeManager
+    from ..palette.palette import Palette
 
-    theme = ThemeManager()
-    # Load theme data
-    theme_data = {
-        "bases": theme.bases,
-        "labels": theme.labels,
-        "shapes": theme.shapes,
-        "sizes": theme.sizes,
-        "colors": theme.colors,
-        "alphas": theme.alphas,
+    palette = Palette()
+    # Load palette data
+    palette_data = {
+        "bases": palette.bases,
+        "labels": palette.labels,
+        "shapes": palette.shapes,
+        "sizes": palette.sizes,
+        "colors": palette.colors,
+        "alphas": palette.alphas,
     }
 
-    # Check if theme_data is not empty
-    if not theme_data:
+    # Check if palette_data is not empty
+    if not palette_data:
         BaseNotFoundError("No node type data.")
 
     # Print node types
     print("\nNode types and properties:\n")
-    for node_type in sorted(theme_data["bases"].keys()):
-        base = theme_data["bases"][node_type]
-        max_width = max(len(prop) for prop in theme_data.keys()) + 1
+    for node_type in sorted(palette_data["bases"].keys()):
+        base = palette_data["bases"][node_type]
+        max_width = max(len(prop) for prop in palette_data.keys()) + 1
         print(f"{'Node_Type':{max_width}}  : {node_type}")
         print(f"    {'base':{max_width}}: {base}")
-        for prop in theme_data.keys():
+        for prop in palette_data.keys():
             if prop != "bases":
-                print(f"    {prop:{max_width}}: {theme_data[prop][base]}")
+                print(f"    {prop:{max_width}}: {palette_data[prop][base]}")
         print("")
     print(
         """
@@ -153,59 +153,59 @@ Information:
     )
 
 
-@run.command("themes")
+@run.command("palette")
 @click.option(
     "--import",
     "-i",
     "import_path",
     metavar="FILEPATH",
-    help="Import themes from a JSON file.",
+    help="Import palette from a JSON file.",
 )
 @click.option(
     "--export",
     "-e",
     "export_dir",
     metavar="DIRECTORY",
-    help="Export package themes.json to a directory.",
+    help="Export package palette.json to a directory.",
 )
-def themes(import_path: str, export_dir: str) -> None:
+def palette(import_path: str, export_dir: str) -> None:
     """Print the available base themes and their corresponding properties.
 
-    This function retrieves the path of the 'themes.json' file and prints its corresponding properties.
+    This function retrieves the path of the 'palette.json' file and prints its corresponding properties.
     If the file is in the current working directory, the output will indicate so.
-    Additionally, this function can be used to import and export themes from/to a JSON file.
+    Additionally, this function can be used to import and export a palette from/to a JSON file.
 
     Optional Args:
-        import_path (str): The filepath of the JSON file to import themes from.
-        export_dir (str): The directory to export the current themes to.
+        import_path (str): The filepath of the JSON file to import a palette from.
+        export_dir (str): The directory to export the current palette to.
     """
-    from ..themes.theme_manager import ThemeManager
+    from ..palette.palette import Palette
 
-    theme = ThemeManager()
+    palette = Palette()
     # Handle import/export options
     if import_path:
-        theme.import_theme(import_path)
-        print(f"Themes imported from '{import_path}'.")
+        palette.import_palette(import_path)
+        print(f"Palette imported from '{import_path}'.")
         return
     elif export_dir:
-        theme.export_theme(export_dir)
-        print(f"Themes exported to '{export_dir}'.")
+        palette.export_palette(export_dir)
+        print(f"Palette exported to '{export_dir}'.")
         return
 
-    # Load theme data
-    theme_data = {
-        "bases": theme.bases,
-        "labels": theme.labels,
-        "shapes": theme.shapes,
-        "sizes": theme.sizes,
-        "colors": theme.colors,
-        "alphas": theme.alphas,
+    # Load palette data
+    palette_data = {
+        "bases": palette.bases,
+        "labels": palette.labels,
+        "shapes": palette.shapes,
+        "sizes": palette.sizes,
+        "colors": palette.colors,
+        "alphas": palette.alphas,
     }
 
     # Group the themes by base
     base_themes: dict[str, list] = {}
-    for node_type in theme_data["bases"].keys():
-        base = theme_data["bases"][node_type]
+    for node_type in palette_data["bases"].keys():
+        base = palette_data["bases"][node_type]
         if base not in base_themes:
             base_themes[base] = []
         base_themes[base].append(node_type)
@@ -213,13 +213,13 @@ def themes(import_path: str, export_dir: str) -> None:
     # print themes by base
     for base, node_types in base_themes.items():
         print(f"Base: {base}")
-        max_width = max(len(prop) for prop in theme_data.keys()) + 1
-        for prop in theme_data.keys():
+        max_width = max(len(prop) for prop in palette_data.keys()) + 1
+        for prop in palette_data.keys():
             if prop != "bases":
-                print(f"  {prop:{max_width}}: {theme_data[prop][base]}")
+                print(f"  {prop:{max_width}}: {palette_data[prop][base]}")
         print()
     print(
-        f"\nBase themes and properties can be found in 'themes.json': {theme._theme_app_dir['path']}\n"
+        f"\nBase themes and properties can be found in 'palette.json': {palette._palette_app_dir['path']}\n"
     )
 
 
@@ -236,19 +236,19 @@ Usage:
     codecarto FILE | FILE:APP 
     codecarto demo
     codecarto dir
-    codecarto themes [--types | -t | --new | -n | --import | -i | --export | -e]
-    codecarto themes -n TYPE BASE LABEL SHAPE SIZE COLOR ALPHA 
+    codecarto palette [--types | -t | --new | -n | --import | -i | --export | -e]
+    codecarto palette -n TYPE BASE LABEL SHAPE SIZE COLOR ALPHA 
     codecarto help
 
 Command Description:
     FILE | FILE:APP  : The path of the Python file to visualize
     demo             : Runs the package on itself. 
     dir              : Show the various directories used by package.
-    themes           : Show the directory of themes.json and shows current themes.
+    palette          : Show the directory of palette.json and shows current themes.
         -t TYPE      : Display the styles for all types or for a specific type.
         -n PARAMS    : Create a new theme with the specified parameters
-        -i FILE_PATH : Import themes from a JSON file.
-        -e DIRECOTRY : Export package themes.json to a directory.
+        -i FILE_PATH : Import palette from a JSON file.
+        -e DIRECOTRY : Export package palette.json to a directory.
     help             : Display usage information
 
 File Examples:

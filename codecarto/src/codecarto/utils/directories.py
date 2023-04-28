@@ -42,7 +42,7 @@ def get_package_dir() -> str:
 
 # region Main
 ############  CodeCartographer's __main__ DIRECTORIES ############
-CODE_CARTO_MAIN_FILE = "code_cartographer.py"
+CODE_CARTO_MAIN_FILE = "processor.py"
 
 
 def get_main_path() -> str:
@@ -245,65 +245,65 @@ OUTPUT_DIRECTORY = setup_output_directory()
 # endregion
 
 
-# region Theme
-############  CodeCartographer's THEME ############
-DEFAULT_THEMES_FILE = "default_themes.json"
-THEMES_FILE = "themes.json"
+# region palette
+############  CodeCartographer's PALETTE ############
+DEFAULT_PALETTE_FILE = "default_palette.json"
+PALETTE_FILE = "palette.json"
 
 
-# the package default theme will be in src/themes/default_themes.json
-# but when packaged, themes.json will be in appdata/CodeCartographer/themes.json
-# when users edit their own themes, they will be edited on the appdata/Roaming/CodeCartographer/themes.json file
-# when the package loads the themes, it checks if appdata/Roaming/CodeCartographer/themes.json exists
+# the package default palette will be in src/palette/default_palette.json
+# but when packaged, palette.json will be in appdata/CodeCartographer/palette.json
+# when users edit their own palette, they will be edited on the appdata/Roaming/CodeCartographer/palette.json file
+# when the package loads the palette, it checks if appdata/Roaming/CodeCartographer/palette.json exists
 # if it does, it will load file from there
-# if it doesn't, it will copy/load default themes file to
-# appdata/Roaming/CodeCartographer/themes.json
+# if it doesn't, it will copy/load default palette file to
+# appdata/Roaming/CodeCartographer/palette.json
 
 
-def get_theme_package_dir() -> str:
-    """Get the path to the package\\themes directory.
+def get_palette_package_dir() -> str:
+    """Get the path to the package\\palette directory.
 
     Returns:
     --------
     str
-        The path to the package\\themes directory.
+        The path to the package\\palette directory.
     """
-    # the package themes will actually be default themes file in the src/codecarto/themes directory.
-    # when packaged, the default themes file will be copied to appdata/CodeCartographer/themes.json
-    # this is so that users can edit their own themes and not overwrite the default themes file
+    # the package palette will actually be default palette file in the src/codecarto/palette directory.
+    # when packaged, the default palette file will be copied to appdata/CodeCartographer/palette.json
+    # this is so that users can edit their own palette and not overwrite the default palette file
 
     # TODO:
-    # when package is updated and the default themes file is updated,
-    # the user's themes file will not be overwritten. If the user needs to update their themes file,
-    # we can make a function to attempt to merge the default themes file with the user's themes file.
+    # when package is updated and the default palette file is updated,
+    # the user's palette file will not be overwritten. If the user needs to update their palette file,
+    # we can make a function to attempt to merge the default palette file with the user's palette file.
 
     # update function will be interesting if the user is updating from a really old version.
-    # do we make a merge file that keeps track of the changes made to the default themes file?
+    # do we make a merge file that keeps track of the changes made to the default palette file?
     # then we get the version of user's package and then canonically go through update functions
-    # to update the user's themes file to the latest version? Seems like it could be a big file.
-    # Maybe it would be better to go through user's themes and change names and add new themes as needed.
+    # to update the user's palette file to the latest version? Seems like it could be a big file.
+    # Maybe it would be better to go through user's palette and change names and add new palette as needed.
 
-    themes_dir = os.path.join(get_package_dir(), "themes")
-    if not os.path.exists(themes_dir):
-        raise RuntimeError("Themes directory not found. Package may be corrupted.")
-    return os.path.join(get_package_dir(), "themes")
+    palette_dir = os.path.join(get_package_dir(), "palette")
+    if not os.path.exists(palette_dir):
+        raise RuntimeError("Palette directory not found. Package may be corrupted.")
+    return os.path.join(get_package_dir(), "palette")
 
 
-def get_theme_package_file_path() -> str | None:
-    """Get the path to the package\\themes\\default_themes.json file.
+def get_palette_package_file_path() -> str | None:
+    """Get the path to the package\\palette\\default_palette.json file.
 
     Returns:
     --------
     str
-        The path to the package\\themes\\default_themes.json file.
+        The path to the package\\palette\\default_palette.json file.
     """
-    default_theme_file = os.path.join(get_theme_package_dir(), DEFAULT_THEMES_FILE)
-    if not os.path.exists(default_theme_file):
-        raise RuntimeError("Default themes file not found. Package may be corrupted.")
-    return default_theme_file
+    default_palette_file = os.path.join(get_palette_package_dir(), DEFAULT_PALETTE_FILE)
+    if not os.path.exists(default_palette_file):
+        raise RuntimeError("Default palette file not found. Package may be corrupted.")
+    return default_palette_file
 
 
-def get_theme_appdata_dir() -> str:
+def get_palette_appdata_dir() -> str:
     """Get the path to the APPDATA\Roaming\CodeCartographer directory.
 
     Returns:
@@ -314,54 +314,54 @@ def get_theme_appdata_dir() -> str:
     return get_codecarto_appdata_dir()
 
 
-def get_theme_appdata_file_path() -> str:
-    """Get the path to the APPDATA\Roaming\CodeCartographer\\themes.json file.
+def get_palette_appdata_file_path() -> str:
+    """Get the path to the APPDATA\Roaming\CodeCartographer\\palette.json file.
 
     Returns:
     --------
     str
-        The path to the APPDATA\Roaming\CodeCartographer\\themes.json file.
+        The path to the APPDATA\Roaming\CodeCartographer\\palette.json file.
     """
-    themes_file_path = os.path.join(get_theme_appdata_dir(), THEMES_FILE)
-    if not os.path.exists(themes_file_path):
-        # copy the default themes file to the appdata directory
-        default_themes_file = get_theme_package_file_path()
-        shutil.copy2(default_themes_file, themes_file_path)
+    palette_file_path = os.path.join(get_palette_appdata_dir(), PALETTE_FILE)
+    if not os.path.exists(palette_file_path):
+        # copy the default palette file to the appdata directory
+        default_palette_file = get_palette_package_file_path()
+        shutil.copy2(default_palette_file, palette_file_path)
         # check if the file was copied successfully
-        if not os.path.exists(themes_file_path):
+        if not os.path.exists(palette_file_path):
             raise RuntimeError(
-                "Unable to copy default themes. Package may be corrupted."
+                "Unable to copy default palette. Package may be corrupted."
             )
-    return themes_file_path
+    return palette_file_path
 
 
-THEMES_APPDATA_DIRECTORY = {
-    "name": THEMES_FILE,
-    "dir": get_theme_appdata_dir(),
-    "path": get_theme_appdata_file_path(),
+PALETTE_APPDATA_DIRECTORY = {
+    "name": PALETTE_FILE,
+    "dir": get_palette_appdata_dir(),
+    "path": get_palette_appdata_file_path(),
 }
-THEMES_PACKAGE_DIRECTORY = {
-    "name": DEFAULT_THEMES_FILE,
-    "dir": get_theme_package_dir(),
-    "path": get_theme_package_file_path(),
+PALETTE_PACKAGE_DIRECTORY = {
+    "name": DEFAULT_PALETTE_FILE,
+    "dir": get_palette_package_dir(),
+    "path": get_palette_package_file_path(),
 }
 
 
-def setup_theme_directory() -> dict:
-    """Setup the theme directories.
+def setup_palette_directory() -> dict:
+    """Setup the palette directories.
 
     Returns:
     --------
     dict
-        The theme directories.
+        The palette directories.
     """
     return {
-        "appdata": THEMES_APPDATA_DIRECTORY,
-        "package": THEMES_PACKAGE_DIRECTORY,
+        "appdata": PALETTE_APPDATA_DIRECTORY,
+        "package": PALETTE_PACKAGE_DIRECTORY,
     }
 
 
-THEMES_DIRECTORY = setup_theme_directory()
+PALETTE_DIRECTORY = setup_palette_directory()
 # endregion
 
 
@@ -378,7 +378,7 @@ def get_all_directories() -> dict:
         "codecarto_appdata_dir": get_codecarto_appdata_dir(),
         "package_dir": get_package_dir(),
         "main_dirs": MAIN_DIRECTORIES,
-        "theme_dirs": THEMES_DIRECTORY,
+        "palette_dirs": PALETTE_DIRECTORY,
         "output_dirs": OUTPUT_DIRECTORY,
     }
 

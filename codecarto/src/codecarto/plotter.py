@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import random
 import inspect
-from .themes.theme_manager import Theme
-from .utils.dirs import OUTPUT_DIRECTORY as output_dir
+from .palette.palette import Palette
+from .utils.directories import OUTPUT_DIRECTORY as output_dir
 
 
 class GraphPlot:
@@ -53,7 +53,7 @@ class GraphPlot:
                 ax.axis("off")
 
                 # Collect nodes and their attributes
-                node_styles = Theme().get_node_styles()
+                node_styles = Palette().get_node_styles()
                 node_data: dict(str, list) = {
                     node_type: [] for node_type in node_styles.keys()
                 }
@@ -122,11 +122,11 @@ class GraphPlot:
                     for _, node_type in _graph.nodes(data="node_type")
                     if node_type is not None
                 )
-                t_colors = {
+                _colors = {
                     node_type: node_styles[node_type]["color"]
                     for node_type in unique_node_types
                 }
-                t_shapes = {
+                _shapes = {
                     node_type: node_styles[node_type]["shape"]
                     for node_type in unique_node_types
                 }
@@ -141,7 +141,7 @@ class GraphPlot:
                         label=theme,
                     )
                     for theme, color, shape in zip(
-                        t_colors, t_colors.values(), t_shapes.values()
+                        _colors, _colors.values(), _shapes.values()
                     )
                 ]
                 ax.legend(handles=legend_elements, loc="upper right", fontsize=10)

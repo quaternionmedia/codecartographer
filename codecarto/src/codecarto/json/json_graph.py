@@ -1,6 +1,11 @@
 from .json_utils import save_json_data
-from ..utils.dirs import OUTPUT_DIRECTORY as output_dir
+from ..utils.directories import OUTPUT_DIRECTORY as output_dir
 
+#TODO: We have a 'P' theme going on here, plotter, parser, palette, processor. 
+#      We should try to make this follow the same convention.
+#      It should be descriptive, short, not too many syllables, and easy to type. 
+#      GPT suggested PolyGrapher, if we changed this to take in any data type, 
+#      not just JSON, then this could work. 
 
 class JsonGraph:
     """Converts a networkx graph to a JSON object and vice versa."""

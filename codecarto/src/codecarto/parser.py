@@ -1,8 +1,9 @@
 import os
 import ast
 import networkx as nx
-from .utils.dirs import get_package_dir
+from .utils.directories import get_package_dir
 
+# TODO : what was this for ?
 code_objects = [
     "code_analyzer",
     "code_graph",

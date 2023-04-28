@@ -1,8 +1,8 @@
-from .themes.theme_manager import ThemeManager
+from .palette.palette import Palette
 from .parser import SourceParser
 from .plotter import GraphPlot
 from .json.json_graph import JsonGraph
-from .utils.dirs import setup_output_directory
+from .utils.directories import setup_output_directory
 
 
 class Processor:
@@ -18,7 +18,7 @@ class Processor:
         """
         print("\nCode Cartographer: ", file_path, "\n")
 
-        ThemeManager().__init__()
+        Palette().__init__()
         self.file_path = file_path
         self.args = args
 
@@ -69,7 +69,7 @@ class Processor:
 
 # class CodeCartographerApp:
 #     def __init__(self):
-#         self.theme = None
+#         self.palette = None
 #         # ...
 
 #     def read_input_file(self, file_path):
