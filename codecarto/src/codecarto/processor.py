@@ -1,11 +1,11 @@
-from .themes.themes import Theme
-from .code_parser import CodeParser
-from .graph_plotter import GraphPlotter
-from .json.json_converter import JsonConverter
+from .themes.theme_manager import ThemeManager
+from .parser import SourceParser
+from .plotter import GraphPlot
+from .json.json_graph import JsonGraph
 from .utils.dirs import setup_output_directory
 
 
-class CodeCartographer:
+class Processor:
     """The code cartographer."""
 
     def __init__(self, file_path: str = __file__, args=None):
@@ -18,34 +18,34 @@ class CodeCartographer:
         """
         print("\nCode Cartographer: ", file_path, "\n")
 
-        Theme().__init__()
+        ThemeManager().__init__()
         self.file_path = file_path
         self.args = args
 
     def main(self):
         """The main function of the code cartographer."""
         # Analyze the code
-        analyzer = CodeParser(self.file_path)
+        graph = SourceParser(self.file_path).graph
         print("Visited Tree")
 
         # Process the graph
-        if analyzer.graph:
+        if graph:
             # Create the output directory
             setup_output_directory()
 
             # Create the graph plotter, needs to be same
             # plotter for both to handle seed correctly
-            plotter = GraphPlotter()
+            plotter = GraphPlot()
 
             # Plot the graph made from code
             print("\nPlot Code Graph")
-            plotter.plot(G=analyzer.graph)
+            plotter.plot(_graph=graph)
             print("Code Plots Saved")
 
             # Plot the graph made from json
             print("\nPlot JSON Graph")
             plotter.plot(
-                G=JsonConverter(analyzer.graph).json_graph,
+                _graph=JsonGraph(_graph=graph).json_graph,
                 json=True,
             )
             print("JSON Plots Saved\n")

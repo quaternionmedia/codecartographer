@@ -2,17 +2,17 @@ from .json_utils import save_json_data
 from ..utils.dirs import OUTPUT_DIRECTORY as output_dir
 
 
-class JsonConverter:
+class JsonGraph:
     """Converts a networkx graph to a JSON object and vice versa."""
 
-    def __init__(self, graph):
+    def __init__(self, _graph):
         """Constructor.\n
         Args:\n
             graph (networkx.classes.graph.Graph): The graph to convert.\n
             json_file_path (str): The path to the JSON file to save.\n
         """
         self.json_file_path = output_dir["json_graph_file_path"]
-        self.json_data = self.graph_to_json(graph)
+        self.json_data = self.graph_to_json(_graph)
         save_json_data(self.json_file_path, self.json_data)
         self.json_graph = self.json_to_graph(self.json_data)
 

@@ -4,25 +4,25 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import random
 import inspect
-from .themes.themes import Theme
+from .themes.theme_manager import Theme
 from .utils.dirs import OUTPUT_DIRECTORY as output_dir
 
 
-class GraphPlotter:
+class GraphPlot:
     def __init__(self):
         self.seed: dict[str, int] = {}
 
-    def plot(self, G, json: bool = False):
+    def plot(self, _graph, json: bool = False):
         """Plots a graph using matplotlib.
 
         Parameters:
         -----------
-            G (networkx.classes.graph.Graph):
+            _graph (networkx.classes.graph.Graph):
                 The graph to plot.
             json (bool) Default = True:
                 Whether the graph is in JSON format.
         """
-        if G:
+        if _graph:
             if json == False:
                 graph_dir = output_dir["graph_code_dir"]
             else:
@@ -57,7 +57,7 @@ class GraphPlotter:
                 node_data: dict(str, list) = {
                     node_type: [] for node_type in node_styles.keys()
                 }
-                for n, a in G.nodes(data=True):
+                for n, a in _graph.nodes(data=True):
                     node_type = a.get("node_type", "Unknown")
                     if node_type not in node_styles.keys():
                         node_type = "Unknown"
@@ -73,11 +73,11 @@ class GraphPlotter:
                         else:
                             seed = random.randint(0, 1000)
                             self.seed[layout.__name__] = seed
-                        pos = layout(G, seed=seed)
+                        pos = layout(_graph, seed=seed)
                     elif layout.__name__ == "shell_layout":
                         # Group nodes by parent
                         grouped_nodes = {}
-                        for node, data in G.nodes(data=True):
+                        for node, data in _graph.nodes(data=True):
                             parent = data.get("parent", "Unknown")
                             if parent not in grouped_nodes:
                                 grouped_nodes[parent] = []
@@ -87,9 +87,9 @@ class GraphPlotter:
                         shells = list(grouped_nodes.values())
 
                         # Apply shell layout
-                        pos = nx.layout.shell_layout(G, nlist=shells)
+                        pos = nx.layout.shell_layout(_graph, nlist=shells)
                     else:
-                        pos = layout(G)
+                        pos = layout(_graph)
                 except Exception as e:
                     print(e)
                     continue
@@ -97,7 +97,7 @@ class GraphPlotter:
                 # Draw nodes with different shapes
                 for node_type, nodes in node_data.items():
                     nx.draw_networkx_nodes(
-                        G,
+                        _graph,
                         pos,
                         nodelist=nodes,
                         node_color=node_styles[node_type]["color"],
@@ -107,11 +107,11 @@ class GraphPlotter:
                     )
 
                 # Draw edges and labels
-                nx.draw_networkx_edges(G, pos, alpha=0.2)
+                nx.draw_networkx_edges(_graph, pos, alpha=0.2)
                 nx.draw_networkx_labels(
-                    G,
+                    _graph,
                     pos,
-                    labels=nx.get_node_attributes(G, "label"),
+                    labels=nx.get_node_attributes(_graph, "label"),
                     font_size=10,
                     font_family="sans-serif",
                 )
@@ -119,7 +119,7 @@ class GraphPlotter:
                 # Draw legend
                 unique_node_types = set(
                     node_type
-                    for _, node_type in G.nodes(data="node_type")
+                    for _, node_type in _graph.nodes(data="node_type")
                     if node_type is not None
                 )
                 t_colors = {
@@ -156,16 +156,6 @@ class GraphPlotter:
                 file_path = os.path.join(graph_dir, plot_name)
                 plt.tight_layout()
                 plt.savefig(file_path)
-
-                # TODO: DEBUG, remove later
-                print(f"Saved {layout.__name__}, seed: {seed}")
-                # plt.show()
-                # if (
-                #     layout.__name__ == "spiral_layout"
-                #     or layout.__name__ == "spectral_layout"
-                # ):
-                #     plt.show()
-
                 plt.close()
 
 

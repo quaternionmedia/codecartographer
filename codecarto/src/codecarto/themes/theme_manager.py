@@ -6,8 +6,8 @@ from ..errors import ThemeNotFoundError
 from ..json.json_utils import save_json_data, load_json_data
 
 
-class Theme:
-    """A class to handle themes."""
+class ThemeManager:
+    """A class to manage the graph plot themes."""
 
     def __init__(self):
         """Initialize a theme handler."""

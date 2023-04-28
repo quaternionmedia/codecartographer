@@ -36,9 +36,9 @@ def run_app(import_name: str) -> None:
         codecarto "foo.py arg --option"
 
     """
-    from ..code_cartographer import CodeCartographer
+    from ..processor import Processor
 
-    CodeCartographer(file_path=import_name).main()
+    Processor(file_path=import_name).main()
 
 
 # TODO: this is debug code, remove later, or make dev an optional install argument?
@@ -54,10 +54,10 @@ def dir():
 @run.command("demo")
 def demo():
     """Run the demo command."""
-    from ..code_cartographer import CodeCartographer
+    from ..processor import Processor
 
     main_file_path = MAIN_DIRECTORIES["path"]
-    CodeCartographer(main_file_path).main()
+    Processor(main_file_path).main()
 
 
 @run.command("new")
@@ -83,9 +83,9 @@ def new(node_type, base, label, shape, size, color, alpha):
     Example usage:
         codecarto new ClassDef datatype.class Cl o 10 red 10
     """
-    from ..themes.themes import Theme
+    from ..themes.theme_manager import ThemeManager
 
-    theme = Theme()
+    theme = ThemeManager()
 
     # check if all parameters are present
     if not all([node_type, base, label, shape, size, color, alpha]):
@@ -115,9 +115,9 @@ def print_node_types():
     This function loads the theme data and prints each node type along with its corresponding properties,
     formatted with appropriate spacing.
     """
-    from ..themes.themes import Theme
+    from ..themes.theme_manager import ThemeManager
 
-    theme = Theme()
+    theme = ThemeManager()
     # Load theme data
     theme_data = {
         "bases": theme.bases,
@@ -179,9 +179,9 @@ def themes(import_path: str, export_dir: str) -> None:
         import_path (str): The filepath of the JSON file to import themes from.
         export_dir (str): The directory to export the current themes to.
     """
-    from ..themes.themes import Theme
+    from ..themes.theme_manager import ThemeManager
 
-    theme = Theme()
+    theme = ThemeManager()
     # Handle import/export options
     if import_path:
         theme.import_theme(import_path)

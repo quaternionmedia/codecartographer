@@ -13,7 +13,7 @@ code_objects = [
 ]
 
 
-class CodeParser(ast.NodeVisitor):
+class SourceParser(ast.NodeVisitor):
     """A class to parse code and create a graph from it."""
 
     def __init__(self, file_path: str = None):
@@ -31,19 +31,18 @@ class CodeParser(ast.NodeVisitor):
 
         # directory and file names
         if file_path:
-            self.file_path = file_path
+            self.parse_file_path = file_path
         else:
-            self.file_path = self.find_module_path(file_path)
-        self.src_dir = get_package_dir()
-        self.module_name = os.path.splitext(os.path.basename(file_path))[0]
+            self.parse_file_path = self.find_module_path(file_path)
+        self.module_name = os.path.basename(self.parse_file_path).split(".")[0]
+        self.src_dir = (
+            get_package_dir()
+        )  # TODO: this should be the project root of parse_file
         self.project_root = self.src_dir
 
         # parse code
         tree = self.parse_code(file_path)
         self.visit(tree)
-
-        # TODO: this should be the graph_json.json file
-        # code = load_json_data(file_path)
 
         # graph
         _graph = self.graph
@@ -248,7 +247,7 @@ class CodeParser(ast.NodeVisitor):
         self.graph.add_edge(parent, import_node_name)
         if os.path.isfile(imported_module_path):
             # Analyze the imported module and add its nodes and edges to the graph
-            analyzer = CodeParser(imported_module_path)
+            analyzer = SourceParser(imported_module_path)
             analyzer.visit(
                 ast.parse(open(imported_module_path, "r", encoding="utf-8").read())
             )
