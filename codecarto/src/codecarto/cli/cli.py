@@ -46,9 +46,16 @@ def run_app(import_name: str) -> None:
 @run.command("dir")
 def dir():
     """Print the available directories."""
-    from ..utils.directories import print_all_directories
+    from ..utils.directories import print_all_directories, get_all_source_files 
 
     print_all_directories()
+    print("Package Source Files:")
+    main_file_path = MAIN_DIRECTORIES["path"]
+    for path in (get_all_source_files(main_file_path)):
+        # print every thing in the path after \dev\
+        _path = path.split('\codecarto\\')[2]
+        print(f"...carto\\{_path}")
+    print()
 
 
 @run.command("demo")

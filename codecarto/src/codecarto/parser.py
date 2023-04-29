@@ -119,7 +119,7 @@ class SourceParser(ast.NodeVisitor):
     # 3. visits with multiple aliases
     # 4. visits with multiple targets
 
-    def visit_Module(self, node):
+    def visit_Module(self, node: ast.Module):
         """Visit the module node.
 
         Parameters:
@@ -135,7 +135,7 @@ class SourceParser(ast.NodeVisitor):
         self.current_parent = id(node)
         self.generic_visit(node)
 
-    def visit_ClassDef(self, node):
+    def visit_ClassDef(self, node: ast.ClassDef):
         """Visit the class definition node.
 
         Parameters:
@@ -149,7 +149,7 @@ class SourceParser(ast.NodeVisitor):
         self.generic_visit(node)
         self.current_parent = old_parent
 
-    def visit_FunctionDef(self, node):
+    def visit_FunctionDef(self, node : ast.FunctionDef):
         """Visit the function definition node.
 
         Parameters:
@@ -163,7 +163,7 @@ class SourceParser(ast.NodeVisitor):
         self.generic_visit(node)
         self.current_parent = old_parent
 
-    def visit_Import(self, node):
+    def visit_Import(self, node : ast.Import):
         """Visit the import node.
 
         Parameters:
@@ -187,7 +187,7 @@ class SourceParser(ast.NodeVisitor):
             self.create_node(node, "Import", alias.name, "import")
             self.graph.add_edge(id(self.current_parent), id(node))
 
-    def visit_ImportFrom(self, node):
+    def visit_ImportFrom(self, node : ast.ImportFrom):
         """Visit the import from node.
 
         Parameters:
@@ -211,7 +211,7 @@ class SourceParser(ast.NodeVisitor):
             self.create_node(node, "ImportFrom", alias.name, "import_from")
             self.graph.add_edge(id(self.current_parent), id(node))
 
-    def visit_Assign(self, node):
+    def visit_Assign(self, node : ast.Assign):
         """Visit the assignment node.
 
         Parameters:
@@ -224,12 +224,12 @@ class SourceParser(ast.NodeVisitor):
                 self.create_node(node, "var", target.id, "var")
                 self.graph.add_edge(id(self.current_parent), id(node))
 
-    def generic_visit(self, node):
+    def generic_visit(self, node: ast.AST):
         """Visit a node generically.
 
         Parameters:
         -----------
         node : ast.AST
             The node to visit.
-        """
+        """ 
         super(SourceParser, self).generic_visit(node)

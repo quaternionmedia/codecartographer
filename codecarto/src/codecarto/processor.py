@@ -1,4 +1,4 @@
-from .parser import SourceParser
+from .test import SourceParser
 from .plotter import GraphPlot
 from .json.json_graph import JsonGraph
 from .utils.directories import setup_output_directory, get_all_source_files
