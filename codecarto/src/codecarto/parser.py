@@ -174,6 +174,7 @@ class SourceParser(ast.NodeVisitor):
         # for alias in node.names:
         #     self.create_node(node, "Import", alias.name, "import")
         #     self.graph.add_edge(id(self.current_parent), id(node))
+ 
         for alias in node.names:
             imported_file_path = self.get_imported_file_path(alias.name)
             if (
@@ -199,6 +200,7 @@ class SourceParser(ast.NodeVisitor):
         #     self.create_node(node, "ImportFrom", alias.name, "import_from")
         #     self.graph.add_edge(id(self.current_parent), id(node))
         for alias in node.names:
+            # alias' are the imported object
             imported_file_path = self.get_imported_file_path(node.module)
             if (
                 imported_file_path
