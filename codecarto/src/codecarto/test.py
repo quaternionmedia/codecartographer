@@ -12,30 +12,35 @@ class SourceParser(ast.NodeVisitor):
         ----------- 
         source_files : set
             A set of source files to parse.
-        """ 
-        self.graph : nx.DiGraph = nx.DiGraph()  # The graph to populate
-        self.current_node : nx.DiGraph = None  # To track the current node
-        self.current_class : nx.DiGraph = None  # To track the current class node
-        self.current_parent : nx.DiGraph = None  # To track the current parent node
-        self.current_file : str = None  # To track the current file
+        """
+        # The graph to populate
+        self.source_files: list = source_files
+        self.graph : nx.DiGraph = nx.DiGraph()
+        # To track current elements
+        self.current_file     : str = None        # file
+        self.current_node     : nx.DiGraph = None # node
+        self.current_module   : nx.DiGraph = None # module 
+        self.current_class    : nx.DiGraph = None # class 
+        self.current_function : nx.DiGraph = None # function
+        self.current_parent   : nx.DiGraph = None # for, while, if, etc.
+        # Create root and python nodes
+        self.root   : nx.DiGraph = nx.DiGraph(name="root") 
+        self.python : nx.DiGraph = nx.DiGraph(name="python")
+        self.add_start_nodes()
+        # Parse the source code
+        self.parsed_files : list = []
+        self.parse_list(source_files)
 
-        # Create root and python graphs
-        self.root: nx.DiGraph = nx.DiGraph(name="root")
-        self.python: nx.DiGraph = nx.DiGraph(name="python")
+    def add_start_nodes(self):
+        """Add root and python node to the graph."""
+        # Add the python node
         self.graph.add_node(
             id(self.root), type="Module", label="root", base="module", parent=None
         )
         self.graph.add_node(
-            id(self.python), type="Module", label="python", base="module", parent="root"
+            id(self.python), type="Module", label="python", base="module", parent=id(self.root)
         )
         self.graph.add_edge(id(self.python), id(self.root))
-
-        # Keep track of parsed files
-        self.parsed_files: list = []
-        self.source_files: list = source_files
-
-        # Parse the code & package files
-        self.parse_list(source_files)
 
     def parse_list(self, source_files:list) -> nx.DiGraph:
         """Parse the codes in the list.
@@ -97,7 +102,7 @@ class SourceParser(ast.NodeVisitor):
         else:
             print('  ' * indent + repr(node))
             
-    def create_new_node(self, node_id:int, node_type:str, node_label:str, node_base:str, node_parent:int) -> nx.DiGraph:
+    def create_new_node(self, node_id:int, node_type:str, node_label:str, node_parent_id:int) -> nx.DiGraph:
         """Create new node.
         
         Parameters:
@@ -108,17 +113,17 @@ class SourceParser(ast.NodeVisitor):
             The type of the new node.
         node_label : str
             The label of the new node.
-        node_base : str
-            The base of the new node.
-        node_parent : int
-            The parent of the new node.
-        """ 
+        node_parent_id : int
+            The id of the parent new node.
+        """
+        if not node_label:
+            node_label = f"{node_type} (u)" 
         _node = self.graph.add_node(
-            id(node_id), type=node_type, label=node_label, base=node_base, parent=id(node_parent)
+            node_id, type=node_type, label=node_label, parent=node_parent_id
         )
-        self.graph.add_edge(id(node_id), id(node_parent))
+        self.graph.add_edge(node_id, node_parent_id)
         return _node
-  
+
 # Walk through the steps 
 # 1. loop through source files
 #   -  each file is a module 
@@ -157,12 +162,12 @@ class SourceParser(ast.NodeVisitor):
         -----------
         node : ast.Module
             The module node to visit.
-        """
-        self.current_parent = self.root
+        """  
         # Add the module node to the graph
-        self.create_new_node(node_id=id(node), node_type="Module", node_label=os.path.basename(self.current_file), node_base="module", node_parent=self.root)
+        self.create_new_node(node_id=id(node), node_type="Module", node_label=os.path.basename(self.current_file), node_parent_id=id(self.root))
         # Set the current parent to the module node
         self.current_parent = node
+        self.current_module = node
         # Visit the children
         self.generic_visit(node)
  
@@ -204,7 +209,7 @@ class SourceParser(ast.NodeVisitor):
             The dict node to visit.
         """
         # Add the dict node to the graph
-        self.create_new_node(node_id=id(node), node_type="Dict", node_label="dict", node_base="datatype", node_parent=self.current_parent)
+        self.create_new_node(node_id=id(node), node_type="Dict", node_label="dict", node_parent_id=id(self.current_parent))
         # Set the current parent to the dict node
         self.current_parent = node
         # Visit the children
@@ -220,7 +225,7 @@ class SourceParser(ast.NodeVisitor):
             The list node to visit.
         """
         # Add the list node to the graph
-        self.create_new_node(node_id=id(node), node_type="List", node_label="list", node_base="datatype", node_parent=self.current_parent)
+        self.create_new_node(node_id=id(node), node_type="List", node_label="list", node_parent_id=id(self.current_parent))
         # Set the current parent to the list node
         self.current_parent = node
         # Visit the children
@@ -234,7 +239,7 @@ class SourceParser(ast.NodeVisitor):
             The set node to visit.
         """
         # Add the set node to the graph
-        self.create_new_node( node_id=id(node), node_type="Set", node_label="set", node_base="datatype", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="Set", node_label="set", node_parent_id=id(self.current_parent))
         # Set the current parent to the set node
         self.current_parent = node
         # Visit the children
@@ -248,7 +253,7 @@ class SourceParser(ast.NodeVisitor):
             The tuple node to visit.
         """
         # Add the tuple node to the graph
-        self.create_new_node( node_id=id(node), node_type="Tuple", node_label="tuple", node_base="datatype", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="Tuple", node_label="tuple", node_parent_id=id(self.current_parent))
         # Set the current parent to the tuple node
         self.current_parent = node
         # Visit the children
@@ -264,7 +269,7 @@ class SourceParser(ast.NodeVisitor):
             The name node to visit.
         """
         # Add the name node to the graph
-        self.create_new_node( node_id=id(node), node_type="Variable", node_label=node.id, node_base="basic", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="Variable", node_label=node.id, node_parent_id=id(self.current_parent))
         # Set the current parent to the name node
         self.current_parent = node
         # Visit the children
@@ -280,7 +285,7 @@ class SourceParser(ast.NodeVisitor):
             The param node to visit.
         """  
         # Add the param node to the graph
-        self.create_new_node( node_id=id(node), node_type="Param", node_label=node.arg, node_base="basic", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="Param", node_label=node.arg, node_parent_id=id(self.current_parent))
         # Set the current parent to the param node
         self.current_parent = node
         # Visit the children
@@ -298,7 +303,7 @@ class SourceParser(ast.NodeVisitor):
         return
         # Add the attribute node to the graph
         self.graph.add_node(
-            id(node), type="Attribute", label=node.attr, base="basic", parent=id(self.current_parent)
+            id(node), type="Attribute", label=node.attr, parent=id(self.current_parent)
         )
         # Add an edge from the current parent to the attribute node
         self.graph.add_edge(id(self.current_parent), id(node))
@@ -315,7 +320,7 @@ class SourceParser(ast.NodeVisitor):
             The binop node to visit.
         """ 
         # Add the binop node to the graph
-        self.create_new_node( node_id=id(node), node_type="BinOp", node_label="BinOp", node_base="basic", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="BinOp", node_label="BinOp", node_parent_id=id(self.current_parent))
         # Set the current parent to the binop node
         self.current_parent = node
         # Visit the children
@@ -329,7 +334,7 @@ class SourceParser(ast.NodeVisitor):
             The boolop node to visit.
         """ 
         # Add the boolop node to the graph
-        self.create_new_node( node_id=id(node), node_type="BoolOp", node_label="BoolOp", node_base="basic", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="BoolOp", node_label="BoolOp", node_parent_id=id(self.current_parent))
         # Set the current parent to the boolop node
         self.current_parent = node
         # Visit the children
@@ -345,7 +350,7 @@ class SourceParser(ast.NodeVisitor):
         return
         # Add the call node to the graph
         self.graph.add_node(
-            id(node), type="Call", label="Call", base="call", parent=id(self.current_parent)
+            id(node), type="Call", label="Call", parent=id(self.current_parent)
         )
         # Add an edge from the current parent to the call node
         self.graph.add_edge(id(self.current_parent), id(node))
@@ -366,7 +371,7 @@ class SourceParser(ast.NodeVisitor):
             The compare node to visit.
         """ 
         # Add the compare node to the graph
-        self.create_new_node( node_id=id(node), node_type="Compare", node_label="Compare", node_base="basic", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="Compare", node_label="Compare", node_parent_id=id(self.current_parent))
         # Set the current parent to the compare node
         self.current_parent = node
         # Visit the children
@@ -382,7 +387,7 @@ class SourceParser(ast.NodeVisitor):
         return
         # Add the expression node to the graph
         self.graph.add_node(
-            id(node), type="Expr", label="Expr", base="expr", parent=id(self.current_parent)
+            id(node), type="Expr", label="Expr", parent=id(self.current_parent)
         )
         # Add an edge from the current parent to the expression node
         self.graph.add_edge(id(self.current_parent), id(node))
@@ -403,7 +408,7 @@ class SourceParser(ast.NodeVisitor):
             The ifexp node to visit.
         """ 
         # Add the ifexp node to the graph
-        self.create_new_node( node_id=id(node), node_type="IfExp", node_label="IfExp", node_base="basic", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="IfExp", node_label="IfExp", node_parent_id=id(self.current_parent))
         # Set the current parent to the ifexp node
         self.current_parent = node
         # Visit the children
@@ -418,7 +423,7 @@ class SourceParser(ast.NodeVisitor):
             The unaryop node to visit.
         """
         # Add the unaryop node to the graph
-        self.create_new_node( node_id=id(node), node_type="UnaryOp", node_label="UnaryOp", node_base="basic", node_parent=self.current_parent) 
+        self.create_new_node( node_id=id(node), node_type="UnaryOp", node_label="UnaryOp", node_parent_id=id(self.current_parent))
         # Set the current parent to the unaryop node
         self.current_parent = node
         # Visit the children
@@ -433,7 +438,7 @@ class SourceParser(ast.NodeVisitor):
             The dictcomp node to visit.
         """
         # Add the dictcomp node to the graph
-        self.create_new_node( node_id=id(node), node_type="DictComp", node_label="DictComp", node_base="comp", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="DictComp", node_label="DictComp", node_parent_id=id(self.current_parent))
         # Set the current parent to the dictcomp node
         self.current_parent = node
         # Visit the children
@@ -447,7 +452,7 @@ class SourceParser(ast.NodeVisitor):
             The generatorexp node to visit.
         """
         # Add the generatorexp node to the graph
-        self.create_new_node( node_id=id(node), node_type="GeneratorExp", node_label="GenExp", node_base="comp", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="GeneratorExp", node_label="GenExp", node_parent_id=id(self.current_parent))
         # Set the current parent to the generatorexp node
         self.current_parent = node
         # Visit the children
@@ -461,7 +466,7 @@ class SourceParser(ast.NodeVisitor):
             The listcomp node to visit.
         """
         # Add the listcomp node to the graph
-        self.create_new_node( node_id=id(node), node_type="ListComp", node_label="ListComp", node_base="comp", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="ListComp", node_label="ListComp", node_parent_id=id(self.current_parent))
         # Set the current parent to the listcomp node
         self.current_parent = node
         # Visit the children
@@ -475,7 +480,7 @@ class SourceParser(ast.NodeVisitor):
             The setcomp node to visit.
         """
         # Add the setcomp node to the graph
-        self.create_new_node( node_id=id(node), node_type="SetComp", node_label="SetComp", node_base="comp", node_parent=self.current_parent)
+        self.create_new_node( node_id=id(node), node_type="SetComp", node_label="SetComp", node_parent_id=id(self.current_parent))
         # Set the current parent to the setcomp node
         self.current_parent = node
         # Visit the children
@@ -497,7 +502,7 @@ class SourceParser(ast.NodeVisitor):
         return
         # Add the annotated assignment node to the graph
         self.graph.add_node(
-            id(node), type="AnnAssign", label="AnnAssign", base="assign", parent=id(self.current_parent)
+            id(node), type="AnnAssign", label="AnnAssign", parent=id(self.current_parent)
         )
         # Add an edge from the current parent to the annotated assignment node
         self.graph.add_edge(id(self.current_parent), id(node))
@@ -553,13 +558,12 @@ class SourceParser(ast.NodeVisitor):
 
         # Now you can create a node with the label as the variable name and base as the inferred type
         self.create_new_node(node_id=node, node_type='Variable',
-                            node_label=_name, node_base=var_type,
-                            node_parent=self.current_parent)
+                            node_label=_name, node_parent_id=id(self.current_parent))
 
         return
         # Add the assignment node to the graph
         self.graph.add_node(
-            id(node), type="Assign", label="Assign", base="assign", parent=id(self.current_parent)
+            id(node), type="Assign", label="Assign", parent=id(self.current_parent)
         )
         # Add an edge from the current parent to the assignment node
         self.graph.add_edge(id(self.current_parent), id(node))
@@ -583,7 +587,7 @@ class SourceParser(ast.NodeVisitor):
         return
         # Add the augmented assignment node to the graph
         self.graph.add_node(
-            id(node), type="AugAssign", label="AugAssign", base="assign", parent=id(self.current_parent)
+            id(node), type="AugAssign", label="AugAssign", parent=id(self.current_parent)
         )
         # Add an edge from the current parent to the augmented assignment node
         self.graph.add_edge(id(self.current_parent), id(node))
@@ -615,7 +619,7 @@ class SourceParser(ast.NodeVisitor):
             The for node to visit.
         """ 
         # Add the for node to the graph
-        self.create_new_node(node_id=node, node_type='For', node_label='for', node_base='control.loop.for', node_parent=self.current_parent)  
+        self.create_new_node(node_id=node, node_type='For', node_label='for', node_parent_id=id(self.current_parent))
         # Set the old parent to the current parent
         old_parent = self.current_parent
         # Set the current parent to the for node
@@ -633,7 +637,7 @@ class SourceParser(ast.NodeVisitor):
             The if node to visit.
         """ 
         # Add the if node to the graph
-        self.create_new_node( node_id=node, node_type='If', node_label='if', node_base='control.conditional.if', node_parent=self.current_parent)
+        self.create_new_node( node_id=node, node_type='If', node_label='if', node_parent_id=id(self.current_parent))
         # Set the old parent to the current parent
         old_parent = self.current_parent
         # Set the current parent to the if node
@@ -651,7 +655,7 @@ class SourceParser(ast.NodeVisitor):
             The try node to visit.
         """ 
         # Add the try node to the graph
-        self.create_new_node( node_id=node, node_type='Try', node_label='try', node_base='control.conditional.try', node_parent=self.current_parent)
+        self.create_new_node( node_id=node, node_type='Try', node_label='try', node_parent_id=id(self.current_parent))
         # Set the old parent to the current parent
         old_parent = self.current_parent
         # Set the current parent to the try node
@@ -670,7 +674,7 @@ class SourceParser(ast.NodeVisitor):
             The while node to visit.
         """ 
         # Add the while node to the graph
-        self.create_new_node( node_id=node, node_type='While', node_label='while', node_base='control.loop.while', node_parent=self.current_parent)
+        self.create_new_node( node_id=node, node_type='While', node_label='while', node_parent_id=id(self.current_parent))
         # Set the old parent to the current parent
         old_parent = self.current_parent
         # Set the current parent to the while node
@@ -688,7 +692,7 @@ class SourceParser(ast.NodeVisitor):
             The with node to visit.
         """ 
         # Add the with node to the graph
-        self.create_new_node( node_id=node, node_type='With', node_label='with', node_base='control.conditional.with', node_parent=self.current_parent)
+        self.create_new_node( node_id=node, node_type='With', node_label='with', node_parent_id=id(self.current_parent))
         # Set the old parent to the current parent
         old_parent = self.current_parent
         # Set the current parent to the with node
@@ -719,7 +723,7 @@ class SourceParser(ast.NodeVisitor):
             The class node to visit.
         """
         # Add the class node to the graph
-        self.create_new_node( node_id=node, node_type='ClassDef', node_label=node.name, node_base='class', node_parent=self.current_parent)
+        self.create_new_node( node_id=node, node_type='ClassDef', node_label=node.name, node_parent_id=id(self.current_module))
         # Set the old parent to the current parent
         old_parent = self.current_parent
         # Set the current parent to the class node
@@ -741,17 +745,32 @@ class SourceParser(ast.NodeVisitor):
         -----------
         node : ast.FunctionDef
             The function node to visit.
-        """
+        """ 
+        function_parent:nx.DiGraph 
+        if self.current_class:
+            function_parent = self.current_class 
+        else:
+            if self.current_module:
+                function_parent = self.current_module 
+            else: 
+                function_parent = self.current_parent  
         # Add the function node to the graph
-        self.create_new_node( node_id=node, node_type='FunctionDef', node_label=node.name, node_base='function', node_parent=self.current_parent)
+        self.create_new_node(node_id=id(node), node_type='FunctionDef', node_label=node.name, 
+                             node_parent_id=id(function_parent)) 
         # Set the old parent to the current parent
-        old_parent = self.current_parent
+        old_parent = self.current_parent 
         # Set the current parent to the function node
-        self.current_parent = node
+        self.current_parent = node 
+        # Save the previous current_function
+        previous_function = self.current_function 
+        # Set the current_function
+        self.current_function = node 
         # Visit the function's children
-        self.generic_visit(node)
+        self.generic_visit(node) 
         # Set the current parent back to the function's parent
-        self.current_parent = old_parent
+        self.current_parent = old_parent 
+        # Restore the previous current_function
+        self.current_function = previous_function 
     def visit_Global(self, node : ast.Global):
         """Visit the global node.
 
@@ -761,7 +780,7 @@ class SourceParser(ast.NodeVisitor):
             The global node to visit.
         """
         # Add the global node to the graph
-        self.create_new_node( node_id=node, node_type='Global', node_label='global', node_base='control.global', node_parent=self.current_parent)
+        self.create_new_node( node_id=node, node_type='Global', node_label='global', node_parent_id=id(self.current_parent))
 
     # def visit_Lambda(self, node : ast.Lambda): 
     def visit_Nonlocal(self, node : ast.Nonlocal):
@@ -773,7 +792,7 @@ class SourceParser(ast.NodeVisitor):
             The nonlocal node to visit.
         """
         # Add the nonlocal node to the graph
-        self.create_new_node( node_id=node, node_type='Nonlocal', node_label='nonlocal', node_base='control.nonlocal', node_parent=self.current_parent)
+        self.create_new_node( node_id=node, node_type='Nonlocal', node_label='nonlocal', node_parent_id=id(self.current_parent))
     # def visit_Return(self, node : ast.Return): 
     # def visit_Yield(self, node : ast.Yield): 
     # def visit_YieldFrom(self, node : ast.YieldFrom): 
@@ -788,7 +807,7 @@ class SourceParser(ast.NodeVisitor):
             The async for node to visit.
         """
         # Add the async for node to the graph
-        self.create_new_node( node_id=node, node_type='AsyncFor', node_label='async for', node_base='control.loop.for', node_parent=self.current_parent)
+        self.create_new_node( node_id=node, node_type='AsyncFor', node_label='async for', node_parent_id=id(self.current_parent))
         # Set the old parent to the current parent
         old_parent = self.current_parent
         # Set the current parent to the async for node
@@ -806,7 +825,7 @@ class SourceParser(ast.NodeVisitor):
             The async function node to visit.
         """
         # Add the async function node to the graph
-        self.create_new_node( node_id=node, node_type='AsyncFunctionDef', node_label=node.name, node_base='function', node_parent=self.current_parent)
+        self.create_new_node( node_id=node, node_type='AsyncFunctionDef', node_label=node.name, node_parent_id=id(self.current_parent))
         # Set the old parent to the current parent
         old_parent = self.current_parent
         # Set the current parent to the async function node
@@ -824,7 +843,7 @@ class SourceParser(ast.NodeVisitor):
             The async with node to visit.
         """
         # Add the async with node to the graph
-        self.create_new_node( node_id=node, node_type='AsyncWith', node_label='async with', node_base='control.with', node_parent=self.current_parent)
+        self.create_new_node( node_id=node, node_type='AsyncWith', node_label='async with', node_parent_id=id(self.current_parent))
         # Set the old parent to the current parent
         old_parent = self.current_parent
         # Set the current parent to the async with node

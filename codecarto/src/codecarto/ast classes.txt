@@ -1,0 +1,98 @@
+# Deprecated
+    visit_Bytes 
+    visit_Ellipsis 
+    visit_ExtSlice 
+    visit_Index 
+    visit_NameConstant 
+    visit_Num
+    visit_Str
+    
+# Mode
+    visit_Expression 
+    visit_FunctionType 
+    visit_Interactive 
+    visit_Module 
+ 
+# Literals
+    visit_Constant 
+    visit_Dict 
+    visit_FormattedValue 
+    visit_JoinedStr 
+    visit_List 
+    visit_Set 
+    visit_Tuple 
+ 
+# Variables
+    visit_Name 
+    visit_Store 
+    visit_Starred
+    visit_Param 
+ 
+# Expressions 
+    visit_Attribute  
+    visit_BinOp 
+    visit_BoolOp 
+    visit_Call 
+    visit_Compare 
+    visit_Expr  
+    visit_IfExp 
+    visit_NamedExpr 
+    visit_UnaryOp 
+#   Subscripting
+        visit_Slice 
+        visit_Subscript 
+#   Comprehensions
+        visit_DictComp 
+        visit_GeneratorExp 
+        visit_ListComp 
+        visit_SetComp  
+ 
+# Statements
+    visit_AnnAssign 
+    visit_Assert 
+    visit_Assign  
+    visit_AugAssign  
+    visit_Delete 
+    visit_Pass   
+    visit_Raise  
+#   Imports
+        visit_Import 
+        visit_ImportFrom 
+ 
+# Control Flow
+    visit_Break 
+    visit_Continue 
+    visit_ExceptHandler 
+    visit_For  
+    visit_If 
+    visit_Try 
+    visit_TryStar 
+    visit_While  
+    visit_With  
+ 
+# Pattern Matching
+    visit_Match 
+    visit_MatchAs 
+    visit_MatchClass  
+    visit_MatchMapping 
+    visit_MatchOr 
+    visit_MatchSequence  
+    visit_MatchSingleton 
+    visit_MatchStar  
+    visit_MatchValue 
+ 
+# Functions and Class Definitions
+    visit_ClassDef  
+    visit_FunctionDef 
+    visit_Global 
+    visit_Lambda 
+    visit_Nonlocal 
+    visit_Return   
+    visit_Yield    
+    visit_YieldFrom 
+ 
+# Async and Await
+    visit_AsyncFor 
+    visit_AsyncFunction 
+    visit_AsyncWith 
+    visit_Await 

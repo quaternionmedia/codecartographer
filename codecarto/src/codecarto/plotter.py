@@ -154,6 +154,10 @@ class GraphPlot:
                     plot_name = f"{seed}_{layout.__name__}.png"
 
                 file_path = os.path.join(graph_dir, plot_name)
+
+                if layout.__name__ == "shell_layout": 
+                    plt.show()
+
                 plt.tight_layout()
                 plt.savefig(file_path)
                 plt.close()
