@@ -24,7 +24,7 @@ class Processor:
         """The main function of the code cartographer."""
         # Analyze the code
         graph = SourceParser(
-            source_files = get_all_source_files(self.file_path),
+            source_files=get_all_source_files(self.file_path),
         ).graph
         print("Visited Tree")
 

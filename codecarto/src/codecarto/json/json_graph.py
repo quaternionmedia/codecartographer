@@ -50,7 +50,7 @@ class JsonGraph:
                 "id": node_id,
                 "type": node_type,
                 "label": data.get("label", node_id),
-                "base": data.get("base", "basic.unknown"),
+                "base": data.get("base", "unknown"),
                 "parent": data.get("parent"),
                 "children": [],
                 "edges": [],
