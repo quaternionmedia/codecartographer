@@ -70,22 +70,24 @@ class GraphPlot:
                     node_shapes = []
                     node_labels = {}
 
-                    for n, a in self.G.nodes(data=True):
-                        node_type = a.get("node_type", "Unknown")
-                        if node_type not in self.display_schema.keys():
+                    node_styles = Palette().get_node_styles()
+
+                    for n, a in _graph.nodes(data=True):
+                        node_type = a.get("type", "Unknown")
+                        if node_type not in node_styles.keys():
                             node_type = "Unknown"
 
                         node_list.append(n)
-                        node_sizes.append(self.display_schema[node_type]["size"])
-                        node_alphas.append(self.display_schema[node_type]["alpha"])
-                        node_colors.append(self.display_schema[node_type]["color"])
-                        node_shapes.append(self.display_schema[node_type]["shape"])
-                        node_labels[n] = self.display_schema[node_type]["label"]
+                        node_sizes.append( node_styles[node_type]["size"])
+                        node_alphas.append( node_styles[node_type]["alpha"])
+                        node_colors.append( node_styles[node_type]["color"])
+                        node_shapes.append( node_styles[node_type]["shape"])
+                        node_labels[n] = node_styles[node_type]["label"]
 
                     # Draw nodes
                     for node_shape in set(node_shapes):
                         nx.draw_networkx_nodes(
-                            self.G,
+                            _graph,
                             pos,
                             nodelist=[
                                 n
@@ -111,7 +113,7 @@ class GraphPlot:
 
                     # Draw labels
                     nx.draw_networkx_labels(
-                        self.G,
+                        _graph,
                         pos,
                         font_size=10,
                         font_family="sans-serif",
@@ -120,21 +122,21 @@ class GraphPlot:
                     )
 
                     # Draw edges
-                    nx.draw_networkx_edges(self.G, pos, alpha=0.2, ax=ax)
+                    nx.draw_networkx_edges(_graph, pos, alpha=0.2, ax=ax)
 
                     unique_node_types = set(
                         node_type
-                        for _, node_type in self.G.nodes(data="node_type")
+                        for _, node_type in _graph.nodes(data="type")
                         if node_type is not None
                     )
 
                     # Create legend
                     t_colors = {
-                        node_type: self.display_schema[node_type]["color"]
+                        node_type: node_styles[node_type]["color"]
                         for node_type in unique_node_types
                     }
                     t_shapes = {
-                        node_type: self.display_schema[node_type]["shape"]
+                        node_type: node_styles[node_type]["shape"]
                         for node_type in unique_node_types
                     }
 
@@ -158,8 +160,9 @@ class GraphPlot:
                     for idx in range(num_layouts, grid_size * grid_size):
                         fig.delaxes(axes[idx // grid_size, idx % grid_size])
 
+                    file_path = os.path.join(graph_dir, "grid.png")
                     plt.tight_layout()
-                    plt.savefig(self.file_path)
+                    plt.savefig(file_path)
                     # plt.show()
                 else:
                     # Initialize figure and axes
@@ -275,7 +278,7 @@ class GraphPlot:
 
                     file_path = os.path.join(graph_dir, plot_name)
 
-                    if layout.__name__ == "shell_layout":
+                    if layout.__name__ == "planar_layout":
                         plt.show()
 
                     plt.tight_layout()

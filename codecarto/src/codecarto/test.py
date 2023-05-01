@@ -45,7 +45,7 @@ class SourceParser(ast.NodeVisitor):
             base="module",
             parent=id(self.root),
         )
-        self.graph.add_edge(id(self.python), id(self.root))
+        self.graph.add_edge(id(self.root), id(self.python))
 
     def parse_list(self, source_files: list) -> nx.DiGraph:
         """Parse the codes in the list.
@@ -128,7 +128,7 @@ class SourceParser(ast.NodeVisitor):
         _node = self.graph.add_node(
             node_id, type=node_type, label=node_label, parent=node_parent_id
         )
-        self.graph.add_edge(node_id, node_parent_id)
+        self.graph.add_edge(node_parent_id, node_id)
         return _node
 
     # Walk through the steps
@@ -187,6 +187,7 @@ class SourceParser(ast.NodeVisitor):
     # def visit_NameConstant(self, node : ast.NameConstant):
     # def visit_Num(self, node : ast.Num):
     # def visit_Str(self, node : ast.Str):
+    # def visit_Param(self, node: ast.Param):
 
     # Literals
     def visit_Constant(self, node: ast.Constant):
@@ -196,7 +197,7 @@ class SourceParser(ast.NodeVisitor):
         -----------
         node : ast.Constant
             The constant node to visit.
-        """
+        """ 
         return
         # Add the constant node to the graph
         self.graph.add_node(
@@ -317,26 +318,29 @@ class SourceParser(ast.NodeVisitor):
         self.generic_visit(node)
 
     # def visit_Store(self, node : ast.Store):
-    # def visit_Starred(self, node : ast.Starred):
-    def visit_Param(self, node: ast.Param):
-        """Visit the param node.
+    # def visit_Starred(self, node : ast.Starred): 
+
+    def visit_arg(self, node: ast.arg):
+        """Visit the arg node.
 
         Parameters:
         -----------
-        node : ast.Param
-            The param node to visit.
+        node : ast.arg
+            The arg node to visit.
         """
-        # Add the param node to the graph
+        # Add the arg node to the graph
         self.create_new_node(
             node_id=id(node),
-            node_type="Param",
+            node_type="Variable",
             node_label=node.arg,
             node_parent_id=id(self.current_parent),
         )
-        # Set the current parent to the param node
-        self.current_parent = node
+        # Set the current parent to the arg node
+        self.current_parent = node 
+
+        # TODO: This will add the typing to the arg names in the graph
         # Visit the children
-        self.generic_visit(node)
+        #self.generic_visit(node)
 
     # Expressions
     def visit_Attribute(self, node: ast.Attribute):
@@ -346,14 +350,16 @@ class SourceParser(ast.NodeVisitor):
         -----------
         node : ast.Attribute
             The attribute node to visit.
-        """
+        """ 
+        # possibly for comment nodes
         return
         # Add the attribute node to the graph
-        self.graph.add_node(
-            id(node), type="Attribute", label=node.attr, parent=id(self.current_parent)
+        self.create_new_node(
+            node_id=id(node),
+            node_type="Attribute",
+            node_label=node.attr,
+            node_parent_id=id(self.current_parent),
         )
-        # Add an edge from the current parent to the attribute node
-        self.graph.add_edge(id(self.current_parent), id(node))
         # Set the current parent to the attribute node
         self.current_parent = node
         # Visit the children
@@ -367,6 +373,7 @@ class SourceParser(ast.NodeVisitor):
         node : ast.BinOp
             The binop node to visit.
         """
+        return
         # Add the binop node to the graph
         self.create_new_node(
             node_id=id(node),
@@ -387,6 +394,7 @@ class SourceParser(ast.NodeVisitor):
         node : ast.BoolOp
             The boolop node to visit.
         """
+        return
         # Add the boolop node to the graph
         self.create_new_node(
             node_id=id(node),
@@ -406,7 +414,7 @@ class SourceParser(ast.NodeVisitor):
         -----------
         node : ast.Call
             The call node to visit.
-        """
+        """ 
         return
         # Add the call node to the graph
         self.graph.add_node(
@@ -431,6 +439,7 @@ class SourceParser(ast.NodeVisitor):
         node : ast.Compare
             The compare node to visit.
         """
+        return
         # Add the compare node to the graph
         self.create_new_node(
             node_id=id(node),
@@ -450,7 +459,8 @@ class SourceParser(ast.NodeVisitor):
         -----------
         node : ast.Expr
             The expression node to visit.
-        """
+        """ 
+        # possibly for comment nodes
         return
         # Add the expression node to the graph
         self.graph.add_node(
@@ -496,6 +506,7 @@ class SourceParser(ast.NodeVisitor):
         node : ast.UnaryOp
             The unaryop node to visit.
         """
+        return
         # Add the unaryop node to the graph
         self.create_new_node(
             node_id=id(node),
@@ -537,6 +548,8 @@ class SourceParser(ast.NodeVisitor):
         node : ast.GeneratorExp
             The generatorexp node to visit.
         """
+        # possibly for comment nodes
+        return
         # Add the generatorexp node to the graph
         self.create_new_node(
             node_id=id(node),
@@ -601,7 +614,7 @@ class SourceParser(ast.NodeVisitor):
         -----------
         node : ast.AnnAssign
             The annotated assignment node to visit.
-        """
+        """ 
         self.generic_visit(node)
         return
         # Add the annotated assignment node to the graph
@@ -624,17 +637,17 @@ class SourceParser(ast.NodeVisitor):
 
     # def visit_Assert(self, node : ast.Assert):
 
-    def infer_type(self, node):
-        if isinstance(node, ast.Constant):
-            # For Python 3.8+
-            return type(node.value).__name__
-        elif isinstance(node, ast.Num):
-            return type(node.n).__name__
-        elif isinstance(node, ast.Str):
-            return "str"
-        # Add other cases if needed
-        else:
-            return "var"
+    # def infer_type(self, node):
+    #     if isinstance(node, ast.Constant):
+    #         # For Python 3.8+
+    #         return type(node.value).__name__
+    #     elif isinstance(node, ast.Num):
+    #         return type(node.n).__name__
+    #     elif isinstance(node, ast.Str):
+    #         return "str"
+    #     # Add other cases if needed
+    #     else:
+    #         return "var"
 
     def visit_Assign(self, node: ast.Assign):
         """Visit the assignment node.
@@ -646,6 +659,8 @@ class SourceParser(ast.NodeVisitor):
         """
         # Assuming the target is a single variable
         # check if the target has an id attribute
+        self.generic_visit(node)
+        return
         _name = ""
         parent_id = id(self.current_parent)
 
@@ -664,8 +679,8 @@ class SourceParser(ast.NodeVisitor):
         else:
             _name = node.value
 
-        # Infer the type of the assigned value
-        var_type = self.infer_type(node.value)
+        # # Infer the type of the assigned value
+        # var_type = self.infer_type(node.value)
 
         # Now you can create a node with the label as the variable name and base as the inferred type
         self.create_new_node(
@@ -673,23 +688,7 @@ class SourceParser(ast.NodeVisitor):
             node_type="Variable",
             node_label=_name,
             node_parent_id=id(self.current_parent),
-        )
-
-        return
-        # Add the assignment node to the graph
-        self.graph.add_node(
-            id(node), type="Assign", label="Assign", parent=id(self.current_parent)
-        )
-        # Add an edge from the current parent to the assignment node
-        self.graph.add_edge(id(self.current_parent), id(node))
-        # Set the old parent to the current parent
-        old_parent = self.current_parent
-        # Set the current parent to the assignment node
-        self.current_parent = node
-        # Visit the assignment's children
-        self.generic_visit(node)
-        # Set the current parent back to the assignment's parent
-        self.current_parent = old_parent
+        ) 
 
     def visit_AugAssign(self, node: ast.AugAssign):
         """Visit the augmented assignment node.
@@ -698,7 +697,7 @@ class SourceParser(ast.NodeVisitor):
         -----------
         node : ast.AugAssign
             The augmented assignment node to visit.
-        """
+        """ 
         self.generic_visit(node)
         return
         # Add the augmented assignment node to the graph
@@ -740,7 +739,7 @@ class SourceParser(ast.NodeVisitor):
         """
         # Add the for node to the graph
         self.create_new_node(
-            node_id=node,
+            node_id=id(node),
             node_type="For",
             node_label="for",
             node_parent_id=id(self.current_parent),
@@ -764,7 +763,7 @@ class SourceParser(ast.NodeVisitor):
         """
         # Add the if node to the graph
         self.create_new_node(
-            node_id=node,
+            node_id=id(node),
             node_type="If",
             node_label="if",
             node_parent_id=id(self.current_parent),
@@ -788,7 +787,7 @@ class SourceParser(ast.NodeVisitor):
         """
         # Add the try node to the graph
         self.create_new_node(
-            node_id=node,
+            node_id=id(node),
             node_type="Try",
             node_label="try",
             node_parent_id=id(self.current_parent),
@@ -813,7 +812,7 @@ class SourceParser(ast.NodeVisitor):
         """
         # Add the while node to the graph
         self.create_new_node(
-            node_id=node,
+            node_id=id(node),
             node_type="While",
             node_label="while",
             node_parent_id=id(self.current_parent),
@@ -837,7 +836,7 @@ class SourceParser(ast.NodeVisitor):
         """
         # Add the with node to the graph
         self.create_new_node(
-            node_id=node,
+            node_id=id(node),
             node_type="With",
             node_label="with",
             node_parent_id=id(self.current_parent),
@@ -941,7 +940,7 @@ class SourceParser(ast.NodeVisitor):
         """
         # Add the global node to the graph
         self.create_new_node(
-            node_id=node,
+            node_id=id(node),
             node_type="Global",
             node_label="global",
             node_parent_id=id(self.current_parent),
@@ -958,7 +957,7 @@ class SourceParser(ast.NodeVisitor):
         """
         # Add the nonlocal node to the graph
         self.create_new_node(
-            node_id=node,
+            node_id=id(node),
             node_type="Nonlocal",
             node_label="nonlocal",
             node_parent_id=id(self.current_parent),
@@ -979,7 +978,7 @@ class SourceParser(ast.NodeVisitor):
         """
         # Add the async for node to the graph
         self.create_new_node(
-            node_id=node,
+            node_id=id(node),
             node_type="AsyncFor",
             node_label="async for",
             node_parent_id=id(self.current_parent),
@@ -1003,7 +1002,7 @@ class SourceParser(ast.NodeVisitor):
         """
         # Add the async function node to the graph
         self.create_new_node(
-            node_id=node,
+            node_id=id(node),
             node_type="AsyncFunctionDef",
             node_label=node.name,
             node_parent_id=id(self.current_parent),
@@ -1027,7 +1026,7 @@ class SourceParser(ast.NodeVisitor):
         """
         # Add the async with node to the graph
         self.create_new_node(
-            node_id=node,
+            node_id=id(node),
             node_type="AsyncWith",
             node_label="async with",
             node_parent_id=id(self.current_parent),
