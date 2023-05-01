@@ -1,2 +1,2 @@
-# dev
-A catchall for code projects
+# CodeCartographer
+Dev project for mapping code
