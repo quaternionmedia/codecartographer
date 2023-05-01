@@ -149,7 +149,7 @@ class SourceParser(ast.NodeVisitor):
         self.generic_visit(node)
         self.current_parent = old_parent
 
-    def visit_FunctionDef(self, node : ast.FunctionDef):
+    def visit_FunctionDef(self, node: ast.FunctionDef):
         """Visit the function definition node.
 
         Parameters:
@@ -163,7 +163,7 @@ class SourceParser(ast.NodeVisitor):
         self.generic_visit(node)
         self.current_parent = old_parent
 
-    def visit_Import(self, node : ast.Import):
+    def visit_Import(self, node: ast.Import):
         """Visit the import node.
 
         Parameters:
@@ -174,7 +174,7 @@ class SourceParser(ast.NodeVisitor):
         # for alias in node.names:
         #     self.create_node(node, "Import", alias.name, "import")
         #     self.graph.add_edge(id(self.current_parent), id(node))
- 
+
         for alias in node.names:
             imported_file_path = self.get_imported_file_path(alias.name)
             if (
@@ -188,7 +188,7 @@ class SourceParser(ast.NodeVisitor):
             self.create_node(node, "Import", alias.name, "import")
             self.graph.add_edge(id(self.current_parent), id(node))
 
-    def visit_ImportFrom(self, node : ast.ImportFrom):
+    def visit_ImportFrom(self, node: ast.ImportFrom):
         """Visit the import from node.
 
         Parameters:
@@ -213,7 +213,7 @@ class SourceParser(ast.NodeVisitor):
             self.create_node(node, "ImportFrom", alias.name, "import_from")
             self.graph.add_edge(id(self.current_parent), id(node))
 
-    def visit_Assign(self, node : ast.Assign):
+    def visit_Assign(self, node: ast.Assign):
         """Visit the assignment node.
 
         Parameters:
@@ -233,5 +233,5 @@ class SourceParser(ast.NodeVisitor):
         -----------
         node : ast.AST
             The node to visit.
-        """ 
+        """
         super(SourceParser, self).generic_visit(node)

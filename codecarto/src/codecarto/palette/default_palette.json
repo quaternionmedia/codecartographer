@@ -9,6 +9,7 @@
     "Conditional": "control.cond",
     "Break": "control.break",
     "Continue": "control.continue",
+    "ExceptHandler": "control",
     "For": "control.loop.for",
     "If": "control.cond.if",
     "Try": "control.try",

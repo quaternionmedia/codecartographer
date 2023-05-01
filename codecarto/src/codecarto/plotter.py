@@ -78,10 +78,10 @@ class GraphPlot:
                             node_type = "Unknown"
 
                         node_list.append(n)
-                        node_sizes.append( node_styles[node_type]["size"])
-                        node_alphas.append( node_styles[node_type]["alpha"])
-                        node_colors.append( node_styles[node_type]["color"])
-                        node_shapes.append( node_styles[node_type]["shape"])
+                        node_sizes.append(node_styles[node_type]["size"])
+                        node_alphas.append(node_styles[node_type]["alpha"])
+                        node_colors.append(node_styles[node_type]["color"])
+                        node_shapes.append(node_styles[node_type]["shape"])
                         node_labels[n] = node_styles[node_type]["label"]
 
                     # Draw nodes
@@ -277,9 +277,6 @@ class GraphPlot:
                         plot_name = f"{seed}_{layout.__name__}.png"
 
                     file_path = os.path.join(graph_dir, plot_name)
-
-                    if layout.__name__ == "planar_layout":
-                        plt.show()
 
                     plt.tight_layout()
                     plt.savefig(file_path)
