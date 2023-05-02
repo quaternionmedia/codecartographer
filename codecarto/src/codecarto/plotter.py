@@ -6,12 +6,19 @@ import networkx as nx
 import random
 import inspect
 from .palette.palette import Palette
-from .utils.directories import OUTPUT_DIRECTORY as output_dir
 
 
 class GraphPlot:
-    def __init__(self):
+    def __init__(self, _dirs: dict[str, str] = None):
+        """Constructor.
+
+        Parameters:
+        -----------
+            _dirs (dict[str, str]) Default = None:
+                The directories to use.
+        """
         self.seed: dict[str, int] = {}
+        self.dirs: dict[str, str] = _dirs
 
     def plot(self, _graph, json: bool = False):
         """Plots a graph using matplotlib.
@@ -26,9 +33,9 @@ class GraphPlot:
         grid: bool = False
         if _graph and isinstance(_graph, nx.classes.graph.Graph):
             if json == False:
-                graph_dir = output_dir["graph_code_dir"]
+                graph_dir = self.dirs["graph_code_dir"]
             else:
-                graph_dir = output_dir["graph_json_dir"]
+                graph_dir = self.dirs["graph_json_dir"]
 
             # Get all layout functions
             layouts = [

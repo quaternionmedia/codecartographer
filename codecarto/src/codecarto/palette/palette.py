@@ -1,6 +1,6 @@
 import os
 import shutil
-from ..utils.directories import PALETTE_DIRECTORY
+from ..utils.directory.palette_dir import PALETTE_DIRECTORY
 from ..utils.utils import get_date_time_file_format
 from ..errors import ThemeNotFoundError
 from ..json.json_utils import save_json_data, load_json_data
@@ -171,6 +171,7 @@ class Palette:
         str
             The name of the new theme.
         """
+        chose_yes: bool = False
         # check if node type already exists
         if node_type in self.bases.keys():
             # ask user if they want to overwrite
@@ -179,19 +180,26 @@ class Palette:
                 f"{node_type} already exists. \n {node} \n Overwrite? Y/N "
             )
             if overwrite.upper() == "N":
-                return None
+                return "User cancelled."
+            elif overwrite.upper() == "Y":
+                chose_yes = True
+        if chose_yes:
+            # create new node type
+            self.bases[node_type] = base
+            self.labels[base] = label
+            self.shapes[base] = shape
+            self.sizes[base] = size
+            self.colors[base] = color
+            self.alphas[base] = alpha
 
-        # create new node type
-        self.bases[node_type] = base
-        self.labels[base] = label
-        self.shapes[base] = shape
-        self.sizes[base] = size
-        self.colors[base] = color
-        self.alphas[base] = alpha
-
-        # save themes to palette file
-        self.save()
-        return node_type
+            # save themes to palette file
+            self.save()
+            print(f"New theme added to palette: {self._palette_app_dir['path']}")
+            print(
+                f"New theme '{node_type}' created with parameters: base={base}, label={label}, shape={shape}, size={size}, color={color}, alpha={alpha}"
+            )
+            return node_type
+        return None
 
     def get_node_style(self, node_type: str) -> dict:
         """Get the style for a node type.
