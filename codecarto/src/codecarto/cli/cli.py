@@ -1,19 +1,15 @@
 from __future__ import annotations
 import click
+import functools
 from ..errors import BaseNotFoundError, ThemeCreationError, MissingParameterError
 
 
-# def init_config():
-#     """Initialize the config file if it doesn't exist."""
-#     import os
-#     from ..utils.directory.config_dir import get_config_path
+################### DEFAULTS 
 
-#     # initialize config file if it doesn't exist
-#     config_path = get_config_path()
-#     if not os.path.exists(config_path):
-#         config_path = get_config_path()
-#         if not os.path.exists(config_path):
-#             raise RuntimeError("Config file not found. Package may be corrupted.")
+def run_codecarto(import_name: str, json:bool, labels: bool, grid: bool, show:bool) -> None:
+    from ..processor import Processor
+
+    Processor(file_path=import_name, do_json=json, do_labels=labels, do_grid=grid, do_show=show).main()
 
 
 def get_version():
@@ -31,29 +27,42 @@ def print_help():
     """
     help_text = """
 Usage:
-    codecarto demo
+    codecarto demo 
+                 -l | --labels (default True)
+                 -g | --grid  (default False)
+                 -s | --show  (default False)
+                 -j | --json  (default False)
     codecarto dir
     codecarto help | -h | --help
     codecarto output -s | --set DIR
     codecarto FILE | FILE:APP 
+                 -l | --labels (default False)
+                 -g | --grid  (default False)
+                 -s | --show  (default False)
+                 -j | --json  (default False)
     codecarto palette 
-    codecarto palette -i | --import FILE
-    codecarto palette -e | --export DIR
-    codecarto palette -t | --types 
-    codecarto palette -n | --new PARAMS
+                 -i | --import FILE
+                 -e | --export DIR
+                 -t | --types 
+                 -n | --new PARAMS
 
 Command Description:
-    demo   : Runs the package on itself. 
     dir    : Show the various directories used by package.
     help   : Display this information
     output : Show the output directory.
         --set   | -s : Set the output directory to the provided directory.
         --reset | -r : Reset the output directory to the default directory.
+    demo   : Runs the package on itself.  
     FILE   : The path of the Python file to visualize
+        FILE & demo Options: 
+           --labels | -l : Display labels on the graph. Default is False.
+           --grid   | -g : Display a grid on the graph. Default is False.
+           --show   | -s : Show the graph plot. Default is False.
+           --json   | -j : Converts json data to graph and plots. Default is False.
         Examples:
-           codecarto foo.py
-           codecarto foo.py:MyApp
-           codecarto module.foo
+           codecarto foo.py -l -g
+           codecarto foo.py:MyApp -g
+           codecarto module.foo -l
            codecarto module.foo:MyApp
     palette : Show the directory of palette.json and shows current themes.
         --import | -i  : Import palette from a provided JSON file path.
@@ -74,6 +83,9 @@ New Theme Information:
     print(help_text)
 
 
+################### SETUP HELP GROUP
+
+
 class CustomHelpGroup(click.Group):
     def get_help(self, ctx):
         return print_help()
@@ -86,10 +98,52 @@ class CustomHelpGroup(click.Group):
         super().parse_args(ctx, args)
 
 
+################### RUN COMMAND
+
+
 @click.group(cls=CustomHelpGroup)
 @click.version_option(get_version())
 def run() -> None:
     pass
+
+
+################### SET UP SHARED COMMANDS
+
+
+def shared_options(func):
+    """Shared options for the run command."""
+    @click.option(
+        "--json",
+        "-j",
+        is_flag=True,
+        help="Whether to convert json back to graph and plot.",
+    )
+    @click.option(
+        "--labels",
+        "-l",
+        is_flag=True,
+        help="Whether to show labels on plots.",
+    )
+    @click.option(
+        "--grid",
+        "-g",
+        is_flag=True,
+        help="Whether to have all plots in a grid layout.",
+    )
+    @click.option(
+        "--show",
+        "-s",
+        is_flag=True,
+        help="Whether to show plots.",
+    )
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+################### RUN APP COMMAND
 
 
 @run.command(
@@ -98,7 +152,8 @@ def run() -> None:
     },
 )
 @click.argument("import_name", metavar="FILE or FILE:APP")
-def run_app(import_name: str) -> None:
+@shared_options
+def run_app(import_name: str, json: bool, labels: bool, grid: bool, show:bool) -> None:
     """Run CodeCartographer application.
 
     The code to run may be given as a path (ending with .py) or as a Python
@@ -117,15 +172,21 @@ def run_app(import_name: str) -> None:
         codecarto "foo.py arg --option"
 
     """
-    from ..processor import Processor
-
-    Processor(file_path=import_name).main()
+    run_codecarto(import_name, json, labels, grid, show)
 
 
-@run.command("help")
-def run_help():
-    """Display usage information."""
-    print_help()
+@run.command("demo")
+@shared_options
+def demo(json:bool, labels: bool, grid: bool, show:bool):
+    """Run the demo command."""
+    from ..utils.directory.main_dir import MAIN_DIRECTORY
+
+    main_file_path = MAIN_DIRECTORY["path"]
+    # Call the run_app function with the main_file_path and labels/grid options
+    run_codecarto(main_file_path, json, labels, grid, show)
+
+
+################### DIR & HELP COMMAND
 
 
 # TODO: this is debug code, remove later, or make dev an optional install argument?
@@ -148,16 +209,16 @@ def dir():
         _path = path.split("\codecarto\\")[2]
         print(f"...carto\\{_path}")
     print()
+ 
+
+@run.command("help")
+def run_help():
+    """Display usage information."""
+    print_help()
 
 
-@run.command("demo")
-def demo():
-    """Run the demo command."""
-    from ..processor import Processor
-    from ..utils.directory.main_dir import MAIN_DIRECTORY
 
-    main_file_path = MAIN_DIRECTORY["path"]
-    Processor(main_file_path).main()
+################### OUTPUT COMMAND
 
 
 @run.command("output")
@@ -191,6 +252,10 @@ def output(set: str, reset: bool):
 
         current_output_dir = get_output_dir()
         print(f"Current output directory: '{current_output_dir}'.")
+
+
+################### PALETTE COMMAND
+
 
 
 @run.command("palette")
@@ -272,6 +337,65 @@ def palette(
         )
     else:
         palette_print(palette)
+
+
+
+################### PALETTE NEW COMMAND
+
+
+@click.option(
+    "--node_type", help="The node type (e.g., str, For, ClassDef, FunctionDef)."
+)
+@click.option(
+    "--base",
+    help="Base theme (e.g., basic.str, control.loop.for, datatype.class, datatype.function, etc.).",
+)
+@click.option(
+    "--label",
+    help="Label for plot, will also be node_type (e.g., str, f, Cl, F, etc.).",
+)
+@click.option("--shape", help="Shape of plot.")
+@click.option("--size", type=int, help="Size of plot.")
+@click.option("--color", help="Color of plot.")
+@click.option("--alpha", type=int, help="Transparency of plot.")
+def palette_new(node_type, base, label, shape, size, color, alpha):
+    """
+    Create a new theme with the specified parameters.
+
+    Type (str)      : The node type (e.g., str, For, ClassDef, FunctionDef)
+    Base (str)      : base theme (e.g., basic.str, control.loop.for, datatype.class, datatype.function, etc.)
+    Label (str)     : label for plot, will also be node_type (e.g., str, f, Cl, F, etc.)
+    Shape (str)     : shape of plot
+    Size (int)      : size of plot
+    Color (str)     : color of plot
+    Alpha (int)     : transparency of plot
+
+    Example usage:
+        codecarto new ClassDef datatype.class Cl o 10 red 10
+    """
+    from ..palette.palette import Palette
+
+    palette = Palette()
+
+    # check if all parameters are present
+    if not all([node_type, base, label, shape, size, color, alpha]):
+        raise MissingParameterError("New command requires all parameters.")
+    node_type = palette.create_new_theme(
+        node_type,
+        base,
+        label,
+        shape,
+        palette._sizes[size - 1],
+        color,
+        palette._alphas[alpha - 1],
+    )
+
+    # check if node_type is None
+    if node_type == None:
+        raise ThemeCreationError("New theme could not be created.")
+
+
+################### PALETTE COMMAND HELPERS
 
 
 def palette_print(palette):
@@ -395,55 +519,3 @@ Information:
     For a list of valid shapes     : https://matplotlib.org/stable/api/markers_api.html
     """
     )
-
-
-@click.option(
-    "--node_type", help="The node type (e.g., str, For, ClassDef, FunctionDef)."
-)
-@click.option(
-    "--base",
-    help="Base theme (e.g., basic.str, control.loop.for, datatype.class, datatype.function, etc.).",
-)
-@click.option(
-    "--label",
-    help="Label for plot, will also be node_type (e.g., str, f, Cl, F, etc.).",
-)
-@click.option("--shape", help="Shape of plot.")
-@click.option("--size", type=int, help="Size of plot.")
-@click.option("--color", help="Color of plot.")
-@click.option("--alpha", type=int, help="Transparency of plot.")
-def palette_new(node_type, base, label, shape, size, color, alpha):
-    """
-    Create a new theme with the specified parameters.
-
-    Type (str)      : The node type (e.g., str, For, ClassDef, FunctionDef)
-    Base (str)      : base theme (e.g., basic.str, control.loop.for, datatype.class, datatype.function, etc.)
-    Label (str)     : label for plot, will also be node_type (e.g., str, f, Cl, F, etc.)
-    Shape (str)     : shape of plot
-    Size (int)      : size of plot
-    Color (str)     : color of plot
-    Alpha (int)     : transparency of plot
-
-    Example usage:
-        codecarto new ClassDef datatype.class Cl o 10 red 10
-    """
-    from ..palette.palette import Palette
-
-    palette = Palette()
-
-    # check if all parameters are present
-    if not all([node_type, base, label, shape, size, color, alpha]):
-        raise MissingParameterError("New command requires all parameters.")
-    node_type = palette.create_new_theme(
-        node_type,
-        base,
-        label,
-        shape,
-        palette._sizes[size - 1],
-        color,
-        palette._alphas[alpha - 1],
-    )
-
-    # check if node_type is None
-    if node_type == None:
-        raise ThemeCreationError("New theme could not be created.")

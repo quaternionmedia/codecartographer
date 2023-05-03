@@ -11,7 +11,7 @@ from ..palette.palette import Palette
 class JsonGraph:
     """Converts a networkx graph to a JSON object and vice versa."""
 
-    def __init__(self, _path, _graph):
+    def __init__(self, _path, _graph, _convert_back: bool = False):
         """Constructor.\n
         Args:\n
             graph (networkx.classes.graph.Graph): The graph to convert.\n
@@ -20,7 +20,10 @@ class JsonGraph:
         self.json_file_path = _path
         self.json_data = self.graph_to_json(_graph)
         save_json_data(self.json_file_path, self.json_data)
-        self.json_graph = self.json_to_graph(self.json_data)
+        if _convert_back:
+            self.json_graph = self.json_to_graph(self.json_data)
+        else:
+            self.json_graph = None
 
     def graph_to_json(self, graph):
         """Converts a networkx graph to a JSON object.\n

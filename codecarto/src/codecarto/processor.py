@@ -1,7 +1,7 @@
 class Processor:
     """The code cartographer."""
 
-    def __init__(self, file_path: str = __file__, args=None):
+    def __init__(self, file_path: str = __file__, do_json:bool = False, do_labels:bool = False, do_grid:bool = False, do_show:bool = False):
         """Initialize the CodeCartographer class.
 
         Parameters:
@@ -9,10 +9,13 @@ class Processor:
         file_path : str
             The path to the file to parse.
         """
-        print("\nCode Cartographer: ", file_path, "\n")
+        print(f"\nCode Cartographer:\nProcessing File:\n{file_path}\n")
 
-        self.file_path = file_path
-        self.args = args
+        self.file_path = file_path 
+        self.do_json = do_json
+        self.do_labels = do_labels
+        self.do_grid = do_grid
+        self.do_show = do_show
 
     def main(self):
         """The main function of the code cartographer."""
@@ -36,23 +39,31 @@ class Processor:
 
             # Create the graph plotter, needs to be same
             # plotter for both to handle seed correctly
-            plotter: GraphPlot = GraphPlot(_dirs=paths)
+            plotter: GraphPlot = GraphPlot(
+                _dirs=paths, 
+                do_labels = self.do_labels, 
+                do_grid = self.do_grid, 
+                do_show = self.do_show
+            )
 
             # Plot the graph made from code
-            print("\nPlot Code Graph")
+            print("Plotting Code Graph")
             plotter.plot(_graph=graph)
-            print("Code Plots Saved")
+            print("Code Plots Saved\n")
 
             # Plot the graph made from json
-            print("\nPlot JSON Graph")
             json_grapher: JsonGraph = JsonGraph(
-                _path=paths["json_graph_file_path"], _graph=graph
+                _path=paths["json_graph_file_path"], 
+                _graph=graph, 
+                _convert_back=self.do_json
             )
-            plotter.plot(
-                _graph=json_grapher.json_graph,
-                json=True,
-            )
-            print("JSON Plots Saved\n")
+            if self.do_json:
+                print("Plotting JSON Graph")
+                plotter.plot(
+                    _graph=json_grapher.json_graph,
+                    _json=True,
+                )
+                print("JSON Plots Saved\n")
         else:
             # No graph to plot
             print("No graph to plot")
