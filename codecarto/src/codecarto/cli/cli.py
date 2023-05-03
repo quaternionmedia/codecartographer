@@ -240,18 +240,18 @@ def output(set: str, reset: bool):
         from ..utils.directory.output_dir import set_output_dir
 
         set_output_dir(set)
-        print(f"Output directory changed to '{set}'.")
+        print(f"Output directory changed to '{set}'")
 
     elif reset:
         from ..utils.directory.output_dir import reset_output_dir
 
         _path = reset_output_dir()
-        print(f"Output directory reset to '{_path}'.")
+        print(f"Output directory reset to '{_path}'")
     else:
         from ..utils.directory.output_dir import get_output_dir
 
         current_output_dir = get_output_dir()
-        print(f"Current output directory: '{current_output_dir}'.")
+        print(f"Current output directory: '{current_output_dir}'")
 
 
 ################### PALETTE COMMAND

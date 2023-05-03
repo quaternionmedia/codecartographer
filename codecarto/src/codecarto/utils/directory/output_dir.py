@@ -47,13 +47,22 @@ def set_output_dir(new_dir: str):
     """
     # check if the new dir exists
     if not os.path.exists(new_dir):
-        raise ValueError("The new output directory does not exist.")
+        # ask user if they'd like to make it 
+        make_dir = input(f"The new output directory does not exist. Would you like to make it? (y/n) ")
+        if make_dir.lower() == "y":
+            os.makedirs(new_dir, exist_ok=True)
+        else:
+            import sys
+            print("Exiting...\n")
+            sys.exit(0)
     # check if the new dir is a directory
     if not os.path.isdir(new_dir):
         raise ValueError("The new output directory is not a directory.")
-    # check if the new dir has output in its path
-    if "output" not in new_dir:
-        raise ValueError("The new output directory does not have output in its path.")
+    
+    #TODO: do we want it to be an 'output' directory specifically?
+    # # check if the new dir has output in its path
+    # if "output" not in new_dir:
+    #     raise ValueError("The new output directory does not have output in its path.")
 
     # get the config file
     from ..config import Config
@@ -96,7 +105,7 @@ def get_output_dir() -> str:
     config = Config()
     output_dir = config.config_data["output_dir"]
     if (not output_dir) or (not os.path.exists(output_dir)):
-        raise ValueError("The output directory does not exist.")
+        output_dir = reset_output_dir()
 
     return output_dir
 

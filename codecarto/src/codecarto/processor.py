@@ -64,6 +64,9 @@ class Processor:
                     _json=True,
                 )
                 print("JSON Plots Saved\n")
+            
+            print("Finished\n")
+            print(f"Output Directory:\n{paths['output_dir']}\n")
         else:
             # No graph to plot
             print("No graph to plot")
