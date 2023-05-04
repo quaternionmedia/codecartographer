@@ -211,7 +211,7 @@ class Palette:
 
         Returns:
         --------
-        dict
+        dict[type, base, size, alpha, color, shape, label]
             A dictionary containing the style information for the node type.
         """
         base = self.bases[node_type]
@@ -230,22 +230,12 @@ class Palette:
 
         Returns:
         --------
-        dict[str, dict]
+        dict[node_type(str), styles(dict)]
             A dictionary containing the styles for all node types.
         """
         return {
             node_type: self.get_node_style(node_type) for node_type in self.bases.keys()
         }
-
-    def get_bases(self):
-        """Get the bases of the current palette.
-
-        Returns:
-        --------
-        dict
-            A dictionary containing the bases of the current palette.
-        """
-        return self.bases
 
     def get_node_types(self):
         """Get the node types of the current palette.
@@ -256,6 +246,16 @@ class Palette:
             A list containing the node types of the current palette.
         """
         return list(self.bases.keys())
+
+    def get_bases(self):
+        """Get the bases of the current palette.
+
+        Returns:
+        --------
+        dict[node_type(str), base(str)]
+            A dictionary containing the bases of the current palette.
+        """
+        return self.bases
 
     def get_palette_data(self) -> dict:
         """Get the data of the current palette.

@@ -26,8 +26,21 @@ def get_all_directories() -> dict:
 
 def print_all_directories(
     directory: dict = get_all_directories(), indent: str = ""
-) -> None:
-    """Print all the directories."""
+) -> dict:
+    """Print all the directories.
+
+    Parameters:
+    -----------
+    directory: dict
+        The directory to print.
+    indent: str
+        The indent to use.
+
+    Returns:
+    --------
+    dict
+        The directories.
+    """
     # get directories and the max width of the keys
     max_width = max([len(key) for key in directory.keys()]) + 1
     # print the directories
@@ -42,3 +55,5 @@ def print_all_directories(
             print(f"{indent}{key:<{max_width}}: {value}")
     if indent == "":
         print()
+
+    return directory

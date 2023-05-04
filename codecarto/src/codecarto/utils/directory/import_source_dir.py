@@ -1,7 +1,19 @@
 import os
 
 
-def find_starting_file(source_files: list):
+def find_starting_file(source_files: list) -> str:
+    """Find the starting file.
+
+    Parameters:
+    -----------
+    source_files : list
+        List of source files.
+
+    Returns:
+    --------
+    str
+        The starting file.
+    """
     # Prioritize user-specified starting file
     user_specified_file = os.environ.get("STARTING_FILE")
     if user_specified_file:
@@ -31,7 +43,19 @@ def find_starting_file(source_files: list):
     return None
 
 
-def find_top_level_directory(file_path):
+def find_top_level_directory(file_path) -> str:
+    """Returns the top level directory of the starting file.
+
+    Parameters
+    ----------
+    file_path : str
+        The path to the starting file.
+
+    Returns
+    -------
+    str
+        The top level directory of the starting file.
+    """
     current_dir = os.path.dirname(file_path)
     last_dir_with_init = None
 
@@ -46,6 +70,18 @@ def find_top_level_directory(file_path):
 
 
 def get_all_source_files(starting_file_path) -> list:
+    """Returns a list of all Python source files in the directory of the starting file.
+
+    Parameters
+    ----------
+    starting_file_path : str
+        The path to the starting file.
+
+    Returns
+    -------
+    list
+        A list of all Python source files in the directory of the starting file.
+    """
     top_level_directory = find_top_level_directory(starting_file_path)
     source_files: list = []
     for root, _, files in os.walk(top_level_directory):

@@ -7,11 +7,15 @@ import random
 import inspect
 from .palette.palette import Palette
 
-#TODO: add grid option
-#TODO: add label option
 
 class GraphPlot:
-    def __init__(self, _dirs: dict[str, str] = None, do_labels: bool = False, do_grid: bool = False, do_show: bool = False):
+    def __init__(
+        self,
+        _dirs: dict[str, str] = None,
+        do_labels: bool = False,
+        do_grid: bool = False,
+        do_show: bool = False,
+    ):
         """Constructor.
 
         Parameters:
@@ -53,26 +57,30 @@ class GraphPlot:
                 nx.layout.shell_layout,
                 nx.layout.spectral_layout,
                 nx.layout.planar_layout,
-            ] 
+            ]
 
             # compute grid
             num_layouts = len(layouts)
-            grid_size = math.ceil(math.sqrt(num_layouts)) 
+            grid_size = math.ceil(math.sqrt(num_layouts))
 
             # setup for grids
             if self.do_grid:
-                print("Plotting grid...") 
+                print("Plotting grid...")
 
                 # Set the figure size
                 figsize = (5, 5)
-                fig, axes = plt.subplots(grid_size, grid_size, figsize=(figsize[0]*grid_size, figsize[1]*grid_size))
+                fig, axes = plt.subplots(
+                    grid_size,
+                    grid_size,
+                    figsize=(figsize[0] * grid_size, figsize[1] * grid_size),
+                )
                 fig.set_size_inches(18.5, 9.5)
 
                 # Set the figure position to the top-left corner of the screen plus the margin
                 mng = plt.get_current_fig_manager()
-                mng.window.wm_geometry("+0+0") 
-            
-            # Loop through all layouts 
+                mng.window.wm_geometry("+0+0")
+
+            # Loop through all layouts
             empty_axes_indices = []
             for idx, layout in enumerate(layouts):
                 if self.do_grid:
@@ -83,13 +91,13 @@ class GraphPlot:
                         else axes
                     )
                     ax.set_title(f"{layout.__name__}")
-                    ax.axis("off")  
+                    ax.axis("off")
 
                     # Collect nodes and their attributes
                     node_styles = Palette().get_node_styles()
                     node_data: dict[str, list] = {
                         node_type: [] for node_type in node_styles.keys()
-                    } 
+                    }
                     for n, a in _graph.nodes(data=True):
                         node_type = a.get("type", "Unknown")
                         if node_type not in node_styles.keys():
@@ -124,11 +132,11 @@ class GraphPlot:
                         else:
                             pos = layout(_graph)
                     except Exception as e:
-                        print(f"Skipping {layout.__name__} due to an error: {e}") 
-                        empty_axes_indices.append(idx) 
-                        
-                        continue 
-                    
+                        print(f"Skipping {layout.__name__} due to an error: {e}")
+                        empty_axes_indices.append(idx)
+
+                        continue
+
                     # Draw nodes with different shapes
                     for node_type, nodes in node_data.items():
                         nx.drawing.draw_networkx_nodes(
@@ -140,7 +148,7 @@ class GraphPlot:
                             node_size=node_styles[node_type]["size"],
                             alpha=node_styles[node_type]["alpha"],
                             ax=ax,
-                        ) 
+                        )
 
                     # Draw edges and labels
                     nx.drawing.draw_networkx_edges(_graph, pos, alpha=0.2, ax=ax)
@@ -152,7 +160,7 @@ class GraphPlot:
                             font_size=10,
                             ax=ax,
                             font_family="sans-serif",
-                        ) 
+                        )
 
                     # Create legend
                     unique_node_types = set(
@@ -167,7 +175,7 @@ class GraphPlot:
                     _shapes = {
                         node_type: node_styles[node_type]["shape"]
                         for node_type in unique_node_types
-                    } 
+                    }
                     legend_elements = [
                         mlines.Line2D(
                             [0],
@@ -311,20 +319,18 @@ class GraphPlot:
                         plt.show()
                     plt.close()
 
-            if self.do_grid: 
-
+            if self.do_grid:
                 # Remove extra subplots if the grid is not fully filled
                 for idx in reversed(empty_axes_indices):
                     fig.delaxes(fig.axes[idx])
-        
 
                 # TODO: attempting to recreate the figure with the correct grid size, but not working out yet
-                # import copy 
+                # import copy
                 # # Remove titles of empty plots
                 # for ax in fig.axes:
                 #     if ax not in empty_axes_indices:
                 #         ax.set_title("")
-                        
+
                 # # Get new grid size
                 # new_grid_size = (math.ceil(num_layouts / math.floor(math.sqrt(num_layouts - len(empty_axes_indices)))), math.floor(math.sqrt(num_layouts - len(empty_axes_indices))))
 
@@ -340,7 +346,7 @@ class GraphPlot:
                 #     if new_ax_index in empty_axes_indices:
                 #         # This axis is empty, skip it
                 #         continue
- 
+
                 #     # Copy the contents of the old axis to the new axis
                 #     old_ax = fig.axes[old_ax_index]
                 #     old_ax_title = old_ax.get_title()
@@ -374,16 +380,16 @@ class GraphPlot:
                 #     # Move to the next non-empty axis in the old figure
                 #     old_ax_index += 1
 
-
-                # Save the file to the interations folder 
-                if _json: 
-                    file_path = os.path.join(graph_dir, "JSON_grid.png") 
-                else: 
-                    file_path = os.path.join(graph_dir, "CODE_grid.png")  
-                plt.savefig(file_path) 
+                # Save the file to the interations folder
+                if _json:
+                    file_path = os.path.join(graph_dir, "JSON_grid.png")
+                else:
+                    file_path = os.path.join(graph_dir, "CODE_grid.png")
+                plt.savefig(file_path)
                 if self.do_show:
                     plt.show()
                 plt.close()
+
 
 ########## OPTIONAL ##########
 # in the plot() function after creating pos, can use this to center the main and plot nodes
