@@ -3,6 +3,28 @@ import os
 JSON_GRAPH_FILE = "graph_data.json"
 
 
+def set_config_property(name: str, value: str) -> str:
+    """Set the value of a property in the config file.
+
+    Parameters:
+    -----------
+    property_name: str
+        The name of the property to set.
+    property_value: str
+        The value of the property to set.
+
+    Returns:
+    --------
+    str
+        The value of the property that was set.
+    """
+    from ...config.config import Config
+
+    config = Config()
+    config.set_config_property(name, value)
+    return config.config_data[name]
+
+
 def get_run_version() -> str:
     """Get the version number of the run.
 
@@ -19,7 +41,7 @@ def get_run_version() -> str:
 RUN_TIME = get_run_version()
 
 
-def get_default_output_dir() -> str:
+def get_output_package_dir() -> str:
     """Get the default output directory.
 
     Returns:
@@ -37,40 +59,49 @@ def get_default_output_dir() -> str:
     return default_output_dir
 
 
-def set_output_dir(new_dir: str, ask_user: bool = True):
+def set_output_dir(new_dir: str, ask_user: bool = True, makedir: bool = False) -> str:
     """Set the output directory to a new directory.
+
+    If new directory does not exist:
+        If running from CLI, user asked if they'd like to make the new directory.\n
+        If running from library, makes the new directory.
 
     Parameters:
     -----------
     new_dir : str
         The new output directory.
+    ask_user : bool
+        Whether or not to ask the user if they'd like to make the new directory.
+    makedir : bool
+        Whether or not to make the new directory.
+
+    Returns:
+    --------
+    str
+        The new output directory.
     """
     # check if the new dir exists
     if not os.path.exists(new_dir):
-        if ask_user:
-            # ask user if they'd like to make it  
-            make_dir = input(f"The new output directory does not exist. Would you like to make it? (y/n) ")
+        if ask_user and not makedir:
+            # ask user if they'd like to make it
+            make_dir = input(
+                f"The new output directory does not exist. Would you like to make it? (y/n) "
+            )
             if make_dir.lower() == "y":
                 os.makedirs(new_dir, exist_ok=True)
             else:
                 import sys
+
                 print("Exiting...\n")
                 sys.exit(0)
-        else:
+        elif makedir:
             # make the dir, used in library and testing
             os.makedirs(new_dir, exist_ok=True)
+        else:
+            raise ValueError("The new output directory does not exist.")
 
-    # check if the new dir is a directory
-    if not os.path.isdir(new_dir):
-        raise ValueError("The new output directory is not a directory.")
-     
-    # get the config file
-    from ..config import Config
-
-    config = Config()
-    config.load_config_data()
-    config.config_data["output_dir"] = new_dir
-    config.save_config_data()
+    # Save to the config file
+    return set_config_property("output_dir", new_dir)
 
 
 def reset_output_dir() -> str:
@@ -81,31 +112,46 @@ def reset_output_dir() -> str:
     str
         The default output directory.
     """
-    # get the config file
-    from ..config import Config
-
-    config = Config()
-    config.load_config_data()
-    config.config_data["output_dir"] = get_default_output_dir()
-    config.save_config_data()
-    return config.config_data["output_dir"]
+    return set_config_property("output_dir", get_output_package_dir())
 
 
-def get_output_dir() -> str:
+def get_output_dir(ask_user: bool = False) -> str:
     """Get the path to the output directory.
+
+    If output directory does not exist:
+        If running from CLI, user prompted to reset output directory.\n
+        If running from library, output directory is reset to default.
+            Default: codecarto\output
+
+    Parameters:
+    -----------
+    ask_user : bool
+        Whether or not to ask the user if they'd like to reset the output directory.
 
     Returns:
     --------
     str
         The path to the output directory.
     """
-    from ..config import Config
+    from ...config.config import Config
 
     # get the output dir
     config = Config()
     output_dir = config.config_data["output_dir"]
     if (not output_dir) or (not os.path.exists(output_dir)):
-        output_dir = reset_output_dir()
+        if ask_user:  # cli
+            # ask user if they'd like to make it
+            make_dir = input(
+                f"The output directory does not exist. Would you like to reset it to default output location? (y/n) "
+            )
+            if make_dir.lower() == "y":
+                output_dir = reset_output_dir()
+            else:
+                # raise error
+                raise ValueError("The output directory does not exist.")
+        else:  # library
+            # reset the output dir
+            output_dir = reset_output_dir()
 
     return output_dir
 
@@ -139,17 +185,6 @@ def get_output_json_dir(make_dir: bool = False) -> str:
     if make_dir and not os.path.exists(output_json_dir):
         os.makedirs(output_json_dir, exist_ok=True)
     return output_json_dir
-
-
-def get_json_graph_file_path(make_dir: bool = False) -> str:
-    """Get the path to the output/json/graph_data.json file.
-
-    Returns:
-    --------
-    str
-        The path to the output/json/graph_data.json file.
-    """
-    return os.path.join(get_output_json_dir(make_dir), JSON_GRAPH_FILE)
 
 
 def get_output_graph_dir(make_dir: bool = False) -> str:
@@ -196,6 +231,17 @@ def get_output_graph_from_json_dir(make_dir: bool = False) -> str:
     if make_dir and not os.path.exists(output_graph_from_json_dir):
         os.makedirs(output_graph_from_json_dir, exist_ok=True)
     return output_graph_from_json_dir
+
+
+def get_json_graph_file_path(make_dir: bool = False) -> str:
+    """Get the path to the output/json/graph_data.json file.
+
+    Returns:
+    --------
+    str
+        The path to the output/json/graph_data.json file.
+    """
+    return os.path.join(get_output_json_dir(make_dir), JSON_GRAPH_FILE)
 
 
 def setup_output_directory(make_dir: bool = False) -> dict:

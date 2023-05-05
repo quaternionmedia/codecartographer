@@ -1,15 +1,15 @@
 import tempfile
 from pathlib import Path
 
-from ..src.codecarto.palette.palette import Palette
-from ..src.codecarto.errors import ThemeNotFoundError
-from ..src.codecarto.utils.directory.output_dir import set_output_dir
+from codecarto.src.codecarto.palette.palette import Palette
+from codecarto.src.codecarto.errors import ThemeNotFoundError
+from codecarto.src.codecarto.utils.directory.output_dir import set_output_dir
 
 
 def test_palette():
     """Test Palette class functions."""
     try:
-        # Create temporary directory 
+        # Create temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
             # Initialize a new Palette object
             palette = Palette()
@@ -27,28 +27,20 @@ def test_palette():
                 base="basic",
                 label="Custom Label",
                 shape="o",
-                size=5,
                 color="white",
+                size=5,
                 alpha=5,
             )
             assert new_theme == new_node_type
 
             # Test get_node_style method
-            node_style = palette.get_node_style(new_node_type)
+            node_style = palette.get_node_styles(new_node_type)
             assert node_style is not None
 
             # Test get_node_styles method
             node_styles = palette.get_node_styles()
             assert node_styles is not None
             assert new_node_type in node_styles
-
-            # Test get_node_types method
-            node_types = palette.get_node_types()
-            assert new_node_type in node_types
-
-            # Test get_bases method
-            bases = palette.get_bases()
-            assert new_node_type in bases
 
             # Test reset_palette method
             palette.reset_palette()
@@ -57,10 +49,14 @@ def test_palette():
             assert new_node_type not in reset_palette_data["bases"]
 
             # Test import_palette and export_palette methods
-            with tempfile.NamedTemporaryFile(dir=temp_dir, suffix=".json", delete=False) as temp_file:
+            with tempfile.NamedTemporaryFile(
+                dir=temp_dir, suffix=".json", delete=False
+            ) as temp_file:
                 palette_file = Path(temp_file.name)
-                with palette_file.open("w") as dest, open(palette._palette_pack_dir["path"], "r") as src:
-                    dest.write(src.read()) 
+                with palette_file.open("w") as dest, open(
+                    palette._palette_pack_dir["path"], "r"
+                ) as src:
+                    dest.write(src.read())
             palette.import_palette(palette_file)
             exported_file = palette.export_palette(temp_dir)
             assert exported_file.exists()
@@ -74,11 +70,11 @@ def test_palette():
 
             # Test ThemeNotFoundError
             try:
-                palette.get_node_style("nonexistent_node_type")
+                palette.get_node_styles("nonexistent_node_type")
             except ThemeNotFoundError:
                 pass
             else:
                 raise Exception("ThemeNotFoundError not raised")
     except Exception as e:
         # Raise exception
-        raise e 
+        raise e

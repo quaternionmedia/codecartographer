@@ -8,16 +8,16 @@ def get_all_directories() -> dict:
     """
     from .directory.appdata_dir import get_codecarto_appdata_dir, get_appdata_dir
     from .directory.package_dir import get_package_dir
-    from .directory.config_dir import get_config_path
     from .directory.palette_dir import PALETTE_DIRECTORY
     from .directory.output_dir import OUTPUT_DIRECTORY
+    from .directory.config_dir import CONFIG_DIRECTORY
     from .directory.main_dir import MAIN_DIRECTORY
 
     return {
         "appdata_dir": get_appdata_dir(),
         "codecarto_appdata_dir": get_codecarto_appdata_dir(),
         "package_dir": get_package_dir(),
-        "config_path": get_config_path(),
+        "config_dirs": CONFIG_DIRECTORY,
         "main_dirs": MAIN_DIRECTORY,
         "palette_dirs": PALETTE_DIRECTORY,
         "output_dirs": OUTPUT_DIRECTORY,

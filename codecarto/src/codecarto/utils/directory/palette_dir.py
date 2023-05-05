@@ -15,6 +15,18 @@ PALETTE_FILE = "palette.json"
 # if it doesn't, it will copy/load default palette file to
 # appdata/Roaming/CodeCartographer/palette.json
 
+# TODO: figure out how to update palette file
+# when package is updated, the default palette file will be updated
+# but the user's palette file will not be overwritten
+# the user will be asked if they want to attempt to merge the default palette file with their palette file
+# if they say yes, we can make a function to attempt to merge the default palette file with the user's palette file
+#         Update function will be interesting if the user is updating from a really old version
+#         Do we make a merge file that keeps track of the changes made to the default palette file?
+#       Then we get the version of user's package and then canonically go through update functions
+#       to update the user's palette file to the latest version? Seems like it could be a big file
+#         Maybe it would be better to go through user's palette and change names and add new palette as needed
+# if they say no, notify them that they'll have to manually update their palette file
+
 
 def get_palette_package_dir() -> str:
     """Get the path to the package\\palette directory.
@@ -24,24 +36,10 @@ def get_palette_package_dir() -> str:
     str
         The path to the package\\palette directory.
     """
-    # the package palette will actually be default palette file in the src/codecarto/palette directory.
-    # when packaged, the default palette file will be copied to appdata/CodeCartographer/palette.json
-    # this is so that users can edit their own palette and not overwrite the default palette file
-
-    # TODO:
-    # when package is updated and the default palette file is updated,
-    # the user's palette file will not be overwritten. If the user needs to update their palette file,
-    # we can make a function to attempt to merge the default palette file with the user's palette file.
-    #     update function will be interesting if the user is updating from a really old version.
-    # do we make a merge file that keeps track of the changes made to the default palette file?
-    # then we get the version of user's package and then canonically go through update functions
-    # to update the user's palette file to the latest version? Seems like it could be a big file.
-    #     Maybe it would be better to go through user's palette and change names and add new palette as needed.
-
     palette_dir = os.path.join(get_package_dir(), "palette")
     if not os.path.exists(palette_dir):
         raise RuntimeError("Palette directory not found. Package may be corrupted.")
-    return os.path.join(get_package_dir(), "palette")
+    return palette_dir
 
 
 def get_palette_package_file_path() -> str | None:
@@ -56,6 +54,24 @@ def get_palette_package_file_path() -> str | None:
     if not os.path.exists(default_palette_file):
         raise RuntimeError("Default palette file not found. Package may be corrupted.")
     return default_palette_file
+
+
+def get_palette_appdata_file_name() -> str:
+    """Get the name of the palette file in the appdata directory.
+
+    Returns:
+    --------
+    str
+        The name of the palette file in the appdata directory.
+    """
+    from ...config.config import Config
+
+    config: Config = Config()
+    if "palette_file_name" not in config.config_data:
+        # add the palette file name to the config file
+        config.set_config_property("palette_file_name", PALETTE_FILE)
+
+    return config.config_data["palette_file_name"]
 
 
 def get_palette_appdata_dir() -> str:
@@ -91,7 +107,7 @@ def get_palette_appdata_file_path() -> str:
 
 
 PALETTE_APPDATA_DIRECTORY = {
-    "name": PALETTE_FILE,
+    "name": get_palette_appdata_file_name(),
     "dir": get_palette_appdata_dir(),
     "path": get_palette_appdata_file_path(),
 }

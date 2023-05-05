@@ -16,12 +16,12 @@ class Palette:
         self._alphas = [round(0.1 * i, ndigits=1) for i in range(11)]
         self._sizes = [(100 * i) for i in range(1, 11)]
         self._theme = {
-            "colors": {},
-            "shapes": {},
-            "labels": {},
-            "alphas": {},
-            "sizes": {},
             "bases": {},
+            "labels": {},
+            "shapes": {},
+            "colors": {},
+            "sizes": {},
+            "alphas": {},
         }
         self.load()
 
@@ -31,10 +31,10 @@ class Palette:
         palette_data = {
             "bases": self.bases,
             "labels": self.labels,
-            "alphas": self.alphas,
-            "sizes": self.sizes,
             "shapes": self.shapes,
             "colors": self.colors,
+            "sizes": self.sizes,
+            "alphas": self.alphas,
         }
         # write palette data to file
         save_json_data(self._palette_app_dir["path"], palette_data)
@@ -59,14 +59,22 @@ class Palette:
                 self.bases: dict = palette_data["bases"]
                 self.labels: dict = palette_data["labels"]
                 self.shapes: dict = palette_data["shapes"]
-                self.sizes: dict = palette_data["sizes"]
                 self.colors: dict = palette_data["colors"]
+                self.sizes: dict = palette_data["sizes"]
                 self.alphas: dict = palette_data["alphas"]
+                self.types: list = list(self.bases.keys())
         except FileNotFoundError:
             raise ThemeNotFoundError("No palette data found. Package may be corrupted.")
 
-    def reset_palette(self):
+    def reset_palette(self, ask_user: bool = False):
         """Reset the palette to the default palette."""
+        if ask_user:
+            # check if user wants to overwrite existing palette
+            overwrite = input(
+                f"\nAre you sure you want to reset the palette to the default palette?\nOverwrite? Y/N "
+            )
+            if overwrite.upper() == "N":
+                return
         # load the default palette
         palette_data = load_json_data(self._palette_pack_dir["path"])
         # check if palette data was loaded
@@ -77,28 +85,36 @@ class Palette:
             raise ThemeNotFoundError(
                 "No default palette data found. Package may be corrupted."
             )
+        if ask_user:
+            print(f"Palette reset to default.\n")
 
-    def import_palette(self, file_path: str):
+    def import_palette(self, import_path: str, ask_user: bool = False):
         """Import a palette file from the specified file path.
 
         Parameters:
         -----------
-        file_path : str
+        import_path : str
             The path to the palette file to import.
         """
         # check if import file exists
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"Palette file not found: {file_path}")
+        if not os.path.exists(import_path):
+            raise FileNotFoundError(f"Palette file not found: {import_path}")
         # check if import file is a json file
-        if not file_path.endswith(".json"):
-            raise TypeError(f"Palette file must be a json file: {file_path}")
-        # check if import file is a palette file
-        if not os.path.basename(file_path) == self._palette_app_dir["name"]:
-            raise TypeError(f"Palette file must be named 'palettes.json': {file_path}")
+        if not import_path.endswith(".json"):
+            raise TypeError(f"Palette file must be a json file: {import_path}")
+        if ask_user:
+            # check if user wants to overwrite existing palette
+            overwrite = input(
+                f"\nAre you sure you want to import a palette file? This will overwrite the current palette.\nOverwrite? Y/N "
+            )
+            if overwrite.upper() == "N":
+                return
         # overwrite palette file in appdata directory
-        shutil.copy(file_path, self._palette_app_dir["path"])
+        shutil.copy(import_path, self._palette_app_dir["path"])
         # load palette file
         self.load()
+        if ask_user:
+            print(f"Palette imported from '{import_path}'.\n")
 
     def export_palette(self, export_path: str):
         """Export the current palette file to the specified directory.
@@ -145,9 +161,10 @@ class Palette:
         base: str,
         label: str,
         shape: str,
-        size: float,
         color: str,
+        size: float,
         alpha: float,
+        ask_user: bool = False,
     ) -> str:
         """Create a new theme with the specified parameters.
 
@@ -159,10 +176,10 @@ class Palette:
             The label of the nodes in the new theme.
         shape : str
             The shape of the nodes in the new theme.
-        size : float
-            The size of the nodes in the new theme.
         color : str
             The color of the nodes in the new theme.
+        size : float
+            The size of the nodes in the new theme.
         alpha : float
             The alpha (transparency) value of the nodes in the new theme.
 
@@ -171,91 +188,69 @@ class Palette:
         str
             The name of the new theme.
         """
-        chose_yes: bool = False
-        # check if node type already exists
-        if node_type in self.bases.keys():
-            # ask user if they want to overwrite
-            node = self.get_node_style(node_type)
-            overwrite = input(
-                f"{node_type} already exists. \n {node} \n Overwrite? Y/N "
-            )
-            if overwrite.upper() == "N":
-                return "User cancelled."
-            elif overwrite.upper() == "Y":
-                chose_yes = True
-        if chose_yes:
-            # create new node type
-            self.bases[node_type] = base
-            self.labels[base] = label
-            self.shapes[base] = shape
-            self.sizes[base] = size
-            self.colors[base] = color
-            self.alphas[base] = alpha
+        if ask_user:
+            # check if node type already exists
+            if node_type in self.bases.keys():
+                # ask user if they want to overwrite
+                node = self.get_node_styles(node_type)
+                overwrite = input(
+                    f"\n{node_type} already exists. \n {node} \n\nOverwrite? Y/N "
+                )
+                if overwrite.upper() == "N":
+                    return "User cancelled."
+        # create new node type
+        self.bases[node_type] = base
+        self.labels[base] = label
+        self.shapes[base] = shape
+        self.colors[base] = color
+        self.sizes[base] = size
+        self.alphas[base] = alpha
 
-            # save themes to palette file
-            self.save()
-            print(f"New theme added to palette: {self._palette_app_dir['path']}")
+        # save themes to palette file
+        self.save()
+        if ask_user:
+            print(f"\nNew theme added to palette: {self._palette_app_dir['path']}")
             print(
-                f"New theme '{node_type}' created with parameters: base={base}, label={label}, shape={shape}, size={size}, color={color}, alpha={alpha}"
+                f"New theme '{node_type}' created with parameters: base={base}, label={label}, shape={shape}, color={color}, size={size}, alpha={alpha}\n"
             )
-            return node_type
-        return None
+        return node_type
 
-    def get_node_style(self, node_type: str) -> dict:
-        """Get the style for a node type.
+    def get_node_styles(self, type: str = None) -> dict:
+        """Get the styles for all node types.
 
         Parameters:
         -----------
-        node_type : str
-            The type of node for which to get the style.
-
-        Returns:
-        --------
-        dict[type, base, size, alpha, color, shape, label]
-            A dictionary containing the style information for the node type.
-        """
-        base = self.bases[node_type]
-        return {
-            "type": node_type,
-            "base": self.bases[node_type],
-            "size": self.sizes[base],
-            "alpha": self.alphas[base],
-            "color": self.colors[base],
-            "shape": self.shapes[base],
-            "label": self.labels[base],
-        }
-
-    def get_node_styles(self) -> dict:
-        """Get the styles for all node types.
+        type : str (optional) (default=None)
+            If specified, only the style for the specified node type will be returned.
 
         Returns:
         --------
         dict[node_type(str), styles(dict)]
             A dictionary containing the styles for all node types.
         """
-        return {
-            node_type: self.get_node_style(node_type) for node_type in self.bases.keys()
-        }
-
-    def get_node_types(self):
-        """Get the node types of the current palette.
-
-        Returns:
-        --------
-        list
-            A list containing the node types of the current palette.
-        """
-        return list(self.bases.keys())
-
-    def get_bases(self):
-        """Get the bases of the current palette.
-
-        Returns:
-        --------
-        dict[node_type(str), base(str)]
-            A dictionary containing the bases of the current palette.
-        """
-        return self.bases
+        if type:
+            return {
+                type: {
+                    "base": self.bases[type],
+                    "size": self.sizes[self.bases[type]],
+                    "alpha": self.alphas[self.bases[type]],
+                    "color": self.colors[self.bases[type]],
+                    "shape": self.shapes[self.bases[type]],
+                    "label": self.labels[self.bases[type]],
+                }
+            }
+        else:
+            styles = {}
+            for type in self.bases.keys():
+                styles[type] = {
+                    "base": self.bases[type],
+                    "size": self.sizes[self.bases[type]],
+                    "alpha": self.alphas[self.bases[type]],
+                    "color": self.colors[self.bases[type]],
+                    "shape": self.shapes[self.bases[type]],
+                    "label": self.labels[self.bases[type]],
+                }
+            return styles
 
     def get_palette_data(self) -> dict:
         """Get the data of the current palette.
@@ -268,8 +263,8 @@ class Palette:
         return {
             "bases": self.bases,
             "labels": self.labels,
-            "alphas": self.alphas,
-            "sizes": self.sizes,
             "shapes": self.shapes,
             "colors": self.colors,
+            "sizes": self.sizes,
+            "alphas": self.alphas,
         }

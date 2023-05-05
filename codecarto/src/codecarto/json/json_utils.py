@@ -39,7 +39,7 @@ def save_json_data(file_path, data):
     data : dict
         The data to save to the file.
     """
-    if not os.path.exists(file_path):
+    if not os.path.exists(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, "w") as f:
         json.dump(data, f, indent=4)

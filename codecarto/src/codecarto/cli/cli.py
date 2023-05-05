@@ -1,7 +1,7 @@
 from __future__ import annotations
 import click
 import functools
-from ..errors import BaseNotFoundError, ThemeCreationError, MissingParameterError
+from ..errors import BaseNotFoundError, ThemeCreationError
 
 
 ################### DEFAULTS
@@ -97,18 +97,18 @@ Command Description:
         --export | -e  : Export package palette.json to a provided directory. 
         --types  | -t  : Display the styles for all types or for a specific type.
         --new    | -n  : Create a new theme with the specified parameters.
-                         PARAMS must be in the format: TYPE NAME SHAPE ALPHA COLOR SIZE
+                         PARAMS must be in the format: TYPE NAME SHAPE COLOR SIZE ALPHA
         Examples: 
-            codecarto palette -n ClassDef def.class Cl o 10 red 10 
+            codecarto palette -n ClassDef def.class Cl o red 5 10 
             codecarto palette --export EXPORT_DIR
             codecarto palette -i IMPORT_FILE
          
 New Theme Information:
     For a list of valid types      : https://docs.python.org/3/library/ast.html#abstract-grammar
-    For a list of valid colors     : https://matplotlib.org/stable/gallery/color/named_colors.html
     For a list of valid shapes     : https://matplotlib.org/stable/api/markers_api.html
-    Alpha must be an integer between 0 and 10. Represents [0.0, 0.1, 0.2., ... , 1.0] transparency.
+    For a list of valid colors     : https://matplotlib.org/stable/gallery/color/named_colors.html
     Size must be an integer between 0 and 10. Represents [100, 200, 300, ... , 1000] size.
+    Alpha must be an integer between 0 and 10. Represents [0.0, 0.1, 0.2., ... , 1.0] transparency.
     """
     print(help_text)
 
@@ -262,8 +262,6 @@ def demo(json: bool, labels: bool, grid: bool, show: bool) -> dict | None:
 ################### DIR COMMAND
 
 
-# TODO: this is debug code, remove later, or make dev an optional install argument?
-# if it's intended for developer use, then should we just package this in by default?
 @run.command("dir")
 def dir() -> dict:
     """Print the available directories.
@@ -277,8 +275,7 @@ def dir() -> dict:
 
     all_dirs: dict = print_all_directories()
 
-    # TODO: this is debug code, remove later, or make dev an optional install argument?
-    print("Package Source Files:")
+    print("Package Source Python Files:")
     from ..utils.directory.main_dir import MAIN_DIRECTORY
     from ..utils.directory.import_source_dir import get_all_source_files
 
@@ -366,13 +363,12 @@ def output(set: str, reset: bool):
     "--new",
     "-n",
     nargs=7,
-    type=(str, str, str, str, int, str, int),
+    type=(str, str, str, str, str, int, int),
     help="Create a new theme with the specified parameters. 'codecarto -help' for more info.",
-    metavar="TYPE BASE LABEL SHAPE SIZE COLOR ALPHA",
+    metavar="TYPE BASE LABEL SHAPE COLOR SIZE ALPHA",
 )
-@click.pass_context
 def palette(
-    ctx, import_path: str, export_dir: str, reset: bool, new: bool, types: bool
+    import_path: str, export_dir: str, reset: bool, new: bool, types: bool
 ) -> None:
     """Prints information about the package palette.\n
     Additionally, this function can be used to import and export a palette from/to a JSON file.\n
@@ -390,83 +386,30 @@ def palette(
 
     palette = Palette()
     if import_path:
-        palette_import(palette, import_path)
+        palette.import_palette(import_path, True)
     elif export_dir:
-        palette_export(palette, export_dir)
+        palette.export_palette(export_dir)
+        print(f"Palette exported to '{export_dir}'.\n")
     elif reset:
-        palette_reset(palette)
+        palette.reset_palette(True)
     elif types:
         palette_types(palette)
     elif new:
-        palette_new_cmd = click.Command("palette_new", callback=palette_new)
-        ctx.invoke(
-            palette_new_cmd,
-            **dict(
-                zip(
-                    ["node_type", "base", "label", "shape", "size", "color", "alpha"],
-                    new,
-                )
-            ),
+        node_type, base, label, shape, color, size, alpha = new
+        node_type = palette.create_new_theme(
+            node_type,
+            base,
+            label,
+            shape,
+            color,
+            palette._sizes[size - 1],
+            palette._alphas[alpha - 1],
+            True,
         )
+        if node_type == None:
+            raise ThemeCreationError("New theme could not be created.")
     else:
         palette_print(palette)
-
-
-################### PALETTE NEW COMMAND
-
-
-@click.option(
-    "--node_type", help="The node type (e.g., str, For, ClassDef, FunctionDef)."
-)
-@click.option(
-    "--base",
-    help="Base theme (e.g., basic.str, control.loop.for, datatype.class, datatype.function, etc.).",
-)
-@click.option(
-    "--label",
-    help="Label for plot, will also be node_type (e.g., str, f, Cl, F, etc.).",
-)
-@click.option("--shape", help="Shape of plot.")
-@click.option("--size", type=int, help="Size of plot.")
-@click.option("--color", help="Color of plot.")
-@click.option("--alpha", type=int, help="Transparency of plot.")
-def palette_new(node_type, base, label, shape, size, color, alpha):
-    """Create a new theme with the specified parameters.
-
-    Args:
-    -----
-        Type (str)      : The node type (e.g., str, For, ClassDef, FunctionDef)\n
-        Base (str)      : base theme (e.g., basic.str, control.loop.for, datatype.class, datatype.function, etc.)\n
-        Label (str)     : label for plot, will also be node_type (e.g., str, f, Cl, F, etc.)\n
-        Shape (str)     : shape of plot\n
-        Size (int)      : size of plot\n
-        Color (str)     : color of plot\n
-        Alpha (int)     : transparency of plot
-
-    Example:
-    --------
-        codecarto new ClassDef datatype.class Cl o 10 red 10
-    """
-    from ..palette.palette import Palette
-
-    palette = Palette()
-
-    # check if all parameters are present
-    if not all([node_type, base, label, shape, size, color, alpha]):
-        raise MissingParameterError("New command requires all parameters.")
-    node_type = palette.create_new_theme(
-        node_type,
-        base,
-        label,
-        shape,
-        palette._sizes[size - 1],
-        color,
-        palette._alphas[alpha - 1],
-    )
-
-    # check if node_type is None
-    if node_type == None:
-        raise ThemeCreationError("New theme could not be created.")
 
 
 ################### PALETTE COMMAND HELPERS
@@ -501,44 +444,6 @@ def palette_print(palette):
     )
 
 
-def palette_import(palette, import_path):
-    """Import a palette from a JSON file and overwrites the current palette.
-
-    Args:
-    -----
-        import_path (str): The filepath of the JSON file to import a palette from.
-    """
-    # ask the user to confirm import action
-    if not click.confirm(
-        "Are you sure you want to import a palette file? This will overwrite the current palette."
-    ):
-        return
-    palette.import_palette(import_path)
-    print(f"Palette imported from '{import_path}'.")
-
-
-def palette_export(palette, export_dir):
-    """Export the current palette to a JSON file in the specified directory.\n
-    Args:
-    -----
-        export_dir (str): The directory to export the current palette to.
-    """
-    palette.export_palette(export_dir)
-    print(f"Palette exported to '{export_dir}'.")
-
-
-def palette_reset(palette):
-    """Reset the palette to the package's default palette."""
-    # ask the user to confirm reset action
-    if not click.confirm(
-        "Are you sure you want to reset the palette to the default palette?"
-    ):
-        return
-    palette.reset_palette()
-    print(f"Palette reset to default.")
-    return
-
-
 def palette_types(palette):
     """Print the available node types and their corresponding properties.\n
     And some information for valid node type options."""
@@ -561,8 +466,7 @@ def palette_types(palette):
                 print(f"    {prop:{max_width}}: {palette_data[prop][base]}")
         print("")
     print(
-        """
-Information:
+        """Information:
     For a list of valid node types : https://docs.python.org/3/library/ast.html#abstract-grammar
     For a list of valid colors     : https://matplotlib.org/stable/gallery/color/named_colors.html
     For a list of valid shapes     : https://matplotlib.org/stable/api/markers_api.html

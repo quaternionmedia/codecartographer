@@ -1,24 +1,23 @@
 import os
 import tempfile
-from pathlib import Path
 import itertools
 import matplotlib.pyplot as plt
 import matplotlib._pylab_helpers as pylab_helpers
- 
-from ..src.codecarto.utils.directory.main_dir import MAIN_DIRECTORY
-from ..src.codecarto.utils.directory.output_dir import set_output_dir
-from ..src.codecarto.processor import Processor 
+from pathlib import Path
+
+from codecarto.src.codecarto.utils.directory.main_dir import MAIN_DIRECTORY
+from codecarto.src.codecarto.utils.directory.output_dir import set_output_dir
+from codecarto.src.codecarto.processor import Processor
 
 
 def test_processor():
-    """Test Processor's outputs exist with all options.""" 
+    """Test Processor's outputs exist with all options."""
     try:
-        # Create temporary directory 
+        # Create temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
             for json, labels, grid, show in itertools.product([False, True], repeat=4):
-                if show:
-                    # Turn off interactive mode so plt.show() doesn't block the test
-                    plt.ioff()
+                # Turn off interactive mode so plt.show() doesn't block the test
+                plt.ioff()
 
                 # Run demo command
                 set_output_dir(Path(temp_dir), ask_user=False)
@@ -33,9 +32,8 @@ def test_processor():
                 # Check if demo closed the plot
                 closed_plots = len(pylab_helpers.Gcf.get_all_fig_managers()) == 0
 
-                if show:
-                    # Turn interactive mode back on so the test can continue
-                    plt.ion()
+                # Turn interactive mode back on so the test can continue
+                plt.ion()
 
                 # Check if the plot was closed
                 assert closed_plots
@@ -60,7 +58,7 @@ def test_processor():
                 assert len(plot_files) > 0
 
                 # Check if only one plot file is created in the graph_code_dir when grid is True
-                if grid:
+                if grid == True:
                     assert len(plot_files) == 1
                 else:
                     assert (
@@ -68,7 +66,7 @@ def test_processor():
                     )  # should get at least 2 plots when grid is False
 
                 # Check if at least one plot file is created in the graph_json_dir
-                if json:
+                if json == True:
                     plot_files = [
                         f
                         for f in os.listdir(output_dirs["graph_json_dir"])
@@ -77,7 +75,7 @@ def test_processor():
                     assert len(plot_files) > 0
 
                     # Check if only one plot file is created in the graph_code_dir when grid is True
-                    if grid:
+                    if grid == True:
                         assert len(plot_files) == 1
                     else:
                         assert (
@@ -85,4 +83,4 @@ def test_processor():
                         )  # should get at least 2 plots when grid is False
     except Exception as e:
         # Raise the exception
-        raise e 
+        raise e

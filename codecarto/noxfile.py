@@ -1,21 +1,24 @@
+import os
 import nox
+import json
+import shutil
 import tempfile
 import itertools
+import subprocess
 
-# TODO: we need to check config files after output changed
-
-# TODO: set output to temp directories so that we don't rely on making changes to the user's computer
-# or do we? cause nox sets up environments right?
+# TODO: make checks when user says no to prmopts
 
 
-def get_palette_data(item: str) -> dict | str:
+def get_palette_data(item: str, appdata: bool = True) -> dict | str:
     """Load the palette data from the Palette class."""
-    from .src.codecarto.palette.palette import Palette
+    from src.codecarto.palette.palette import Palette
 
     if item == "bases":
         return Palette().get_palette_data()
-    elif item == "path":
+    elif item == "path" and appdata is True:
         return Palette()._palette_app_dir[item]
+    elif item == "path" and appdata is False:
+        return Palette()._palette_pack_dir[item]
 
 
 # tests if package can be installed on python 3.8, 3.9 and 3.11
@@ -32,21 +35,16 @@ def unit_tests(session):
 def test_dir(session):
     """Test that expected print statements are printed when running the dir command."""
     session.install(".")
-    result = session.run(["codecarto", "dir"], capture=True, text=True)
+    result = subprocess.run(["codecarto", "dir"], capture_output=True, text=True)
 
     # Check if certain strings are in the directory section
     expected_strings = [
         "appdata_dir",
         "codecarto_appdata_dir",
         "package_dir",
-        "config_path",
+        "config_dirs",
         "main_dirs",
-        "name",
-        "dir",
-        "path",
         "palette_dirs",
-        "appdata",
-        "package",
         "output_dirs",
         "version",
         "output_dir",
@@ -56,39 +54,33 @@ def test_dir(session):
         "graph_json_dir",
         "json_dir",
         "json_graph_file_path",
-        "Package Source Files:",
+        "Package Source Python Files:",
     ]
     for string in expected_strings:
         assert string in result.stdout
 
-    # Check if certain strings are in the package source files section
-    # TODO: needed? or is it too brittle? cause it will break if we add/remove files
-    expected_strings = [
-        "...carto\\errors.py",
-        "...carto\\parser.py",
-        "...carto\\plotter.py",
-        "...carto\\processor.py",
-        "...carto\\__init__.py",
-        "...carto\\cli\\cli.py",
-        "...carto\\cli\\__init__.py",
-        "...carto\\json\\json_graph.py",
-        "...carto\\json\\json_utils.py",
-        "...carto\\json\\__init__.py",
-        "...carto\\palette\\palette.py",
-        "...carto\\palette\\__init__.py",
-        "...carto\\utils\\config.py",
-        "...carto\\utils\\directories.py",
-        "...carto\\utils\\utils.py",
-        "...carto\\utils\\__init__.py",
-        "...carto\\utils\\directory\\appdata_dir.py",
-        "...carto\\utils\\directory\\config_dir.py",
-        "...carto\\utils\\directory\\import_source_dir.py",
-        "...carto\\utils\\directory\\main_dir.py",
-        "...carto\\utils\\directory\\output_dir.py",
-        "...carto\\utils\\directory\\package_dir.py",
-        "...carto\\utils\\directory\\palette_dir.py",
+    # Check if key files are in the package source files section
+    key_files = [
+        "errors.py",
+        "parser.py",
+        "plotter.py",
+        "processor.py",
+        "palette.py",
+        "json_graph.py",
+        "json_utils.py",
+        "cli.py",
+        "config.py",
+        "directories.py",
+        "utils.py",
+        "appdata_dir.py",
+        "config_dir.py",
+        "import_source_dir.py",
+        "main_dir.py",
+        "output_dir.py",
+        "package_dir.py",
+        "palette_dir.py",
     ]
-    for string in expected_strings:
+    for string in key_files:
         assert string in result.stdout
 
 
@@ -104,7 +96,7 @@ def test_help(session):
     ]
 
     for command in commands:
-        result = session.run(*command, capture=True, text=True)
+        result = subprocess.run(*command, capture_output=True, text=True)
 
         expected_strings = [
             "Usage:",
@@ -163,37 +155,104 @@ def test_help(session):
 def test_output(session):
     session.install(".")
 
-    commands = [
-        ["codecarto", "output"],
-        ["codecarto", "-s", "test_output_dir"],
-        ["codecarto", "--set", "test_output_dir"],
-        ["codecarto", "-r"],
-        ["codecarto", "--reset"],
-    ]
+    with tempfile.TemporaryDirectory() as temp_dir:
+        commands = [
+            ["codecarto", "output"],
+            ["codecarto", "-s", temp_dir],
+            ["codecarto", "--set", temp_dir],
+            ["codecarto", "-r"],
+            ["codecarto", "--reset"],
+        ]
 
-    for command in commands:
-        result = session.run(*command, capture=True, text=True)
+        for command in commands:
+            result = subprocess.run(
+                *command, input="y\n", capture_output=True, text=True
+            )
 
-        if command == ["codecarto", "output"]:
-            # output directory
-            assert "Current output directory: " in result.stdout
-        elif command == ["codecarto", "-s", "test_output_dir"] or command == [
-            "codecarto",
-            "--set",
-            "test_output_dir",
-        ]:
-            # set output directory
-            assert "Output directory changed to " in result.stdout
-        elif command == ["codecarto", "-r"] or command == ["codecarto", "--reset"]:
-            # reset output directory
-            assert "Output directory reset to " in result.stdout
+            if command == ["codecarto", "output"]:
+                # output directory
+                assert "Current output directory: " in result.stdout
+                # check if the path exists
+                path = result.stdout.split("Current output directory: ")[1]
+                assert os.path.exists(path)
+            elif command == ["codecarto", "-s", temp_dir] or command == [
+                "codecarto",
+                "--set",
+                temp_dir,
+            ]:
+                # set output directory
+                assert "Output directory changed to " in result.stdout
+                # check if the path exists
+                path = result.stdout.split("Output directory changed to ")[1]
+                assert os.path.exists(path)
+            elif command == ["codecarto", "-r"] or command == ["codecarto", "--reset"]:
+                # reset output directory
+                assert "Output directory reset to " in result.stdout
+                # check if the path exists
+                path = result.stdout.split("Output directory reset to ")[1]
+                assert os.path.exists(path)
+
+            # check the config file
+            # get the config file in the \src\codecarto\ directory
+            config_file = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "src\\codecarto\\config.json",
+            )
+            with open(config_file, "r") as f:
+                config = json.load(f)
+            # check if the output directory is the same as the one in the config file
+            assert config["output_dir"] == path
+
+
+# tests package command output (yes):
+@nox.session()
+def test_output_dir_yes(session):
+    session.install(".")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        non_existent_dir = os.path.join(temp_dir, "not_here")
+        command = f"codecarto output -s {non_existent_dir}"
+
+        # Run the command and send the input "y\n"
+        result = subprocess.run(
+            command, input="y\n", text=True, capture_output=True, shell=True
+        )
+
+        # Check if the output contains the expected prompt question and response
+        assert (
+            "The new output directory does not exist. Would you like to make it? (y/n)"
+            in result.stdout
+        )
+        assert f"Output directory changed to '{non_existent_dir}'" in result.stdout
+
+
+# tests package command output (no):
+@nox.session()
+def test_output_dir_no(session):
+    session.install(".")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        non_existent_dir = os.path.join(temp_dir, "not_here")
+        command = f"codecarto output -s {non_existent_dir}"
+
+        # Run the command and send the input "n\n"
+        result = subprocess.run(
+            command, input="n\n", text=True, capture_output=True, shell=True
+        )
+
+        # Check if the output contains the expected prompt question and response
+        assert (
+            "The new output directory does not exist. Would you like to make it? (y/n)"
+            in result.stdout
+        )
+        assert "Exiting" in result.stdout
 
 
 # tests package command palette:
 @nox.session
 def test_palette(session):
     session.install(".")
-    result = session.run("codecarto", "palette", capture=True, text=True)
+    result = subprocess.run("codecarto", "palette", capture_output=True, text=True)
 
     # define the expected strings
     palette_path = get_palette_data("path")
@@ -234,14 +293,33 @@ def test_palette(session):
 def test_palette_import(session):
     session.install(".")
 
-    commands = [
-        ["codecarto", "palette", "-i", "test_palette_import.json"],
-        ["codecarto", "palette", "--import", "test_palette_import.json"],
-    ]
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # create a temporary file
+        temp_file = os.path.join(temp_dir, "test_palette_import.json")
 
-    for command in commands:
-        result = session.run(*command, capture=True, text=True)
-        assert "Palette imported from " in result.stdout
+        # get the default palette
+        palette_path = get_palette_data("path", False)
+
+        # copy the default palette to the temporary directory
+        shutil.copy(palette_path, temp_file)
+
+        # define commands
+        commands = [
+            ["codecarto", "palette", "-i", temp_file],
+            ["codecarto", "palette", "--import", temp_file],
+        ]
+
+        # run commands
+        for command in commands:
+            result = subprocess.run(*command, capture_output=True, text=True)
+            assert "Palette imported from " in result.stdout
+
+        # check if the palette file is the same as the default palette
+        with open(palette_path, "r") as f:
+            default_palette = json.load(f)
+        with open(temp_file, "r") as f:
+            imported_palette = json.load(f)
+        assert default_palette == imported_palette
 
 
 # tests package command palette with export option:
@@ -249,14 +327,30 @@ def test_palette_import(session):
 def test_palette_export(session):
     session.install(".")
 
-    commands = [
-        ["codecarto", "palette", "-e", "test_palette_export"],
-        ["codecarto", "palette", "--export", "test_palette_export"],
-    ]
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # create a temporary file
+        temp_file = os.path.join(temp_dir, "test_palette_export.json")
 
-    for command in commands:
-        result = session.run(*command, capture=True, text=True)
-        assert "Palette exported to " in result.stdout
+        # define commands
+        commands = [
+            ["codecarto", "palette", "-e", temp_file],
+            ["codecarto", "palette", "--export", temp_file],
+        ]
+
+        # run commands
+        for command in commands:
+            result = subprocess.run(*command, capture_output=True, text=True)
+            assert "Palette exported to " in result.stdout
+
+        # get the default palette
+        palette_path = get_palette_data("path", False)
+
+        # check if the palette file is the same as the default palette
+        with open(palette_path, "r") as f:
+            default_palette = json.load(f)
+        with open(temp_file, "r") as f:
+            exported_palette = json.load(f)
+        assert default_palette == exported_palette
 
 
 # tests package command palette with reset option:
@@ -264,14 +358,30 @@ def test_palette_export(session):
 def test_palette_reset(session):
     session.install(".")
 
-    commands = [
-        ["codecarto", "palette", "-r"],
-        ["codecarto", "palette", "--reset"],
-    ]
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # define commands
+        commands = [
+            ["codecarto", "palette", "-r"],
+            ["codecarto", "palette", "--reset"],
+        ]
 
-    for command in commands:
-        result = session.run(*command, capture=True, text=True)
-        assert "Palette reset to default." in result.stdout
+        # run commands
+        for command in commands:
+            result = subprocess.run(*command, capture_output=True, text=True)
+            assert "Palette reset to default." in result.stdout
+
+        # get the default palette
+        default_palette_path = get_palette_data("path", False)
+
+        # get the appdata palette
+        appdata_palette_path = get_palette_data("path")
+
+        # check if the palette file is the same as the default palette
+        with open(default_palette_path, "r") as f:
+            default_palette = json.load(f)
+        with open(appdata_palette_path, "r") as f:
+            appdata_palette = json.load(f)
+        assert default_palette == appdata_palette
 
 
 # tests package command palette with types option:
@@ -296,7 +406,7 @@ def test_palette_types(session):
 
     # run commands
     for command in commands:
-        result = session.run(*command, capture=True, text=True)
+        result = subprocess.run(*command, capture_output=True, text=True)
         for string in expected_strings:
             assert string in result.stdout
 
@@ -323,75 +433,79 @@ def test_palette_types(session):
 def test_palette_new(session):
     session.install(".")
 
-    # define commands
-    commands = [
-        [
-            "codecarto",
-            "palette",
-            "-n",
-            "Type_Test_Short",
-            "basic",
-            "Label_Test_Short",
-            "o",
-            "1",
-            "red",
-            "1",
-        ],
-        [
-            "codecarto",
-            "palette",
-            "--new",
-            "Type_Test_Long",
-            "basic",
-            "Label_Test_Long",
-            "s",
-            "2",
-            "blue",
-            "2",
-        ],
-    ]
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # create a temporary file
+        temp_file = os.path.join(temp_dir, "test_palette_new.json")
 
-    # run commands
-    run_commands_and_check_output(commands)
+        # define commands
+        commands = [
+            [
+                "codecarto",
+                "palette",
+                "-n",
+                "Type_Test_Short",
+                "basic",
+                "Label_Test_Short",
+                "o",
+                "red",
+                "3",
+                "1",
+            ],
+            [
+                "codecarto",
+                "palette",
+                "--new",
+                "Type_Test_Long",
+                "basic",
+                "Label_Test_Long",
+                "s",
+                "blue",
+                "4",
+                "2",
+            ],
+        ]
 
-    # check that the new themes are in the palette
-    check_palette_data(commands)
+        # run commands
+        run_commands_and_check_output(commands)
 
-    # reset palette
-    session.run("codecarto", "palette", "-r", silent=True)
+        # check that the new themes are in the palette
+        check_palette_data(commands)
 
-    # check that the new themes are not in the palette anymore
-    check_palette_data(commands, presence=False)
+        # reset palette
+        subprocess.run("codecarto", "palette", "-r", silent=True)
 
-    def run_commands_and_check_output(commands):
-        for command in commands:
-            result = session.run(*command, capture=True, text=True)
-            expected_strings = [
-                f"New theme added to palette: ",
-                (
-                    f"New theme '{command[0]}' "
-                    f"created with parameters: "
-                    f"base={command[1]}, "
-                    f"label={command[2]}, "
-                    f"shape={command[3]}, "
-                    f"size={command[4]}, "
-                    f"color={command[5]}, "
-                    f"alpha={command[6]}"
-                ),
-            ]
-            for string in expected_strings:
-                assert string in result.stdout
+        # check that the new themes are not in the palette anymore
+        check_palette_data(commands, presence=False)
 
-    def check_palette_data(commands, presence=True):
-        palette_data = get_palette_data
+        def run_commands_and_check_output(commands):
+            for command in commands:
+                result = subprocess.run(*command, capture_output=True, text=True)
+                expected_strings = [
+                    f"New theme added to palette: ",
+                    (
+                        f"New theme '{command[0]}' "
+                        f"created with parameters: "
+                        f"base={command[1]}, "
+                        f"label={command[2]}, "
+                        f"shape={command[3]}, "
+                        f"color={command[5]}, "
+                        f"size={command[4]}, "
+                        f"alpha={command[6]}"
+                    ),
+                ]
+                for string in expected_strings:
+                    assert string in result.stdout
 
-        for command in commands:
-            assert (command[0] in palette_data["bases"]) == presence
-            assert (command[1] in palette_data["labels"]) == presence
-            assert (command[2] in palette_data["shapes"]) == presence
-            assert (command[3] in palette_data["sizes"]) == presence
-            assert (command[4] in palette_data["colors"]) == presence
-            assert (command[5] in palette_data["alphas"]) == presence
+        def check_palette_data(commands, presence=True):
+            palette_data = get_palette_data
+
+            for command in commands:
+                assert (command[0] in palette_data["bases"]) == presence
+                assert (command[1] in palette_data["labels"]) == presence
+                assert (command[2] in palette_data["shapes"]) == presence
+                assert (command[4] in palette_data["colors"]) == presence
+                assert (command[3] in palette_data["sizes"]) == presence
+                assert (command[5] in palette_data["alphas"]) == presence
 
 
 # tests package command demo: with all options
@@ -447,22 +561,22 @@ def test_empty(session, labels, grid, show, json):
     session.install(".")
     for i in range(2):
         if i == 0:
-            result = session.run(
+            result = subprocess.run(
                 "codecarto",
                 empty_file_path,
                 *options_short,
-                capture=True,
+                capture_output=True,
                 text=True,
                 check=True,
             )
             for string in expected_strings:
                 assert string in result.stdout
         else:
-            result = session.run(
+            result = subprocess.run(
                 "codecarto",
                 empty_file_path,
                 *options_long,
-                capture=True,
+                capture_output=True,
                 text=True,
                 check=True,
             )
@@ -482,7 +596,7 @@ def test_file(session, labels, grid, show, json):
 
 def run_test(session, demo, labels, grid, show, json):
     # get demo file path
-    from .src.codecarto.utils.directory.main_dir import MAIN_DIRECTORY
+    from src.codecarto.utils.directory.main_dir import MAIN_DIRECTORY
 
     demo_file_path = MAIN_DIRECTORY["path"]
 
@@ -551,22 +665,22 @@ def run_test(session, demo, labels, grid, show, json):
     session.install(".")
     for i in range(2):
         if i == 0:
-            result = session.run(
+            result = subprocess.run(
                 "codecarto",
                 run_argument,
                 *options_short,
-                capture=True,
+                capture_output=True,
                 text=True,
                 check=True,
             )
             for string in expected_strings:
                 assert string in result.stdout
         else:
-            result = session.run(
+            result = subprocess.run(
                 "codecarto",
                 run_argument,
                 *options_long,
-                capture=True,
+                capture_output=True,
                 text=True,
                 check=True,
             )
