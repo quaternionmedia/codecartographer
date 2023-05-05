@@ -1,12 +1,12 @@
-import os
-import shutil
+import os 
 import tempfile
 import itertools
-
+from pathlib import Path
 import networkx as nx
 import matplotlib.pyplot as plt
 
-from codecarto.src.codecarto.plotter import GraphPlot
+from ..src.codecarto.plotter import GraphPlot
+from ..src.codecarto.utils.directory.output_dir import set_output_dir
 
 
 def create_sample_graph():
@@ -25,54 +25,52 @@ def create_sample_graph():
 
 
 def test_plotter():
-    # Create temporary directory
-    temp_dir = tempfile.mkdtemp()
-
-    # Set up test directories
-    test_dirs = {
-        "graph_code_dir": os.path.join(temp_dir, "graph_code"),
-        "graph_json_dir": os.path.join(temp_dir, "graph_json"),
-    }
-
-    # Create the required directories
-    os.makedirs(test_dirs["graph_code_dir"])
-    os.makedirs(test_dirs["graph_json_dir"])
-
+    """Test GraphPlot class functions and that outputs exist."""
     try:
-        for json, labels, grid, show in itertools.product([False, True], repeat=4):
-            # Create a sample graph
-            _graph = create_sample_graph()
+        # Create temporary directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir_path = Path(temp_dir)
 
-            # Test GraphPlot object with different options
-            graph_plot = GraphPlot(
-                _dirs=test_dirs, do_labels=labels, do_grid=grid, do_show=show
-            )
+            # Set up test directories
+            test_dirs = {
+                "graph_code_dir": temp_dir_path / "graph_code",
+                "graph_json_dir": temp_dir_path / "graph_json",
+            }
 
-            # Pass graph to GraphPlot object and plot
-            plt.ioff()  # Turn off interactive mode so plt.show() doesn't block the test
-            graph_plot.plot(_graph, _json=False)
-            if json:
-                graph_plot.plot(_graph, _json=True)
-            plt.ion()  # Turn interactive mode back on so the test can continue
+            # Create the required directories
+            test_dirs["graph_code_dir"].mkdir()
+            test_dirs["graph_json_dir"].mkdir()
 
-            # Check if output files exist
-            dir_suffixes = [("graph_code_dir", True), ("graph_json_dir", json)]
-            for dir_suffix, _json in dir_suffixes:
-                plot_files = [
-                    f for f in os.listdir(test_dirs[dir_suffix]) if f.endswith(".png")
-                ]
+            for json, labels, grid, show in itertools.product([False, True], repeat=4):
+                # Create a sample graph
+                _graph = create_sample_graph()
 
-                if _json:
-                    if grid:
-                        assert len(plot_files) == 1
+                # Test GraphPlot object with different options
+                graph_plot = GraphPlot(
+                    _dirs=test_dirs, do_labels=labels, do_grid=grid, do_show=show
+                )
+
+                # Pass graph to GraphPlot object and plot
+                plt.ioff()  # Turn off interactive mode so plt.show() doesn't block the test
+                graph_plot.plot(_graph, _json=False)
+                if json:
+                    graph_plot.plot(_graph, _json=True)
+                plt.ion()  # Turn interactive mode back on so the test can continue
+
+                # Check if output files exist
+                dir_suffixes = [("graph_code_dir", True), ("graph_json_dir", json)]
+                for dir_suffix, _json in dir_suffixes:
+                    plot_files = [
+                        f for f in os.listdir(test_dirs[dir_suffix]) if f.endswith(".png")
+                    ]
+
+                    if _json:
+                        if grid:
+                            assert len(plot_files) == 1
+                        else:
+                            assert len(plot_files) > 1  # should get at least 2
                     else:
-                        assert len(plot_files) > 1  # should get at least 2
-                else:
-                    assert len(plot_files) == 0
-
+                        assert len(plot_files) == 0 
     except Exception as e:
         # Raise exception
-        raise e
-    finally:
-        # Cleanup temporary directory
-        shutil.rmtree(temp_dir)
+        raise e 

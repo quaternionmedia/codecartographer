@@ -37,7 +37,7 @@ def get_default_output_dir() -> str:
     return default_output_dir
 
 
-def set_output_dir(new_dir: str):
+def set_output_dir(new_dir: str, ask_user: bool = True):
     """Set the output directory to a new directory.
 
     Parameters:
@@ -47,23 +47,23 @@ def set_output_dir(new_dir: str):
     """
     # check if the new dir exists
     if not os.path.exists(new_dir):
-        # ask user if they'd like to make it 
-        make_dir = input(f"The new output directory does not exist. Would you like to make it? (y/n) ")
-        if make_dir.lower() == "y":
-            os.makedirs(new_dir, exist_ok=True)
+        if ask_user:
+            # ask user if they'd like to make it  
+            make_dir = input(f"The new output directory does not exist. Would you like to make it? (y/n) ")
+            if make_dir.lower() == "y":
+                os.makedirs(new_dir, exist_ok=True)
+            else:
+                import sys
+                print("Exiting...\n")
+                sys.exit(0)
         else:
-            import sys
-            print("Exiting...\n")
-            sys.exit(0)
+            # make the dir, used in library and testing
+            os.makedirs(new_dir, exist_ok=True)
+
     # check if the new dir is a directory
     if not os.path.isdir(new_dir):
         raise ValueError("The new output directory is not a directory.")
-    
-    #TODO: do we want it to be an 'output' directory specifically?
-    # # check if the new dir has output in its path
-    # if "output" not in new_dir:
-    #     raise ValueError("The new output directory does not have output in its path.")
-
+     
     # get the config file
     from ..config import Config
 

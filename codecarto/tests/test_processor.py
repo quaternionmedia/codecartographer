@@ -1,76 +1,60 @@
 import os
+import tempfile
+from pathlib import Path
 import itertools
 import matplotlib.pyplot as plt
 import matplotlib._pylab_helpers as pylab_helpers
-
-from codecarto.src.codecarto.processor import Processor
-from codecarto.src.codecarto.utils.directory.main_dir import MAIN_DIRECTORY
+ 
+from ..src.codecarto.utils.directory.main_dir import MAIN_DIRECTORY
+from ..src.codecarto.utils.directory.output_dir import set_output_dir
+from ..src.codecarto.processor import Processor 
 
 
 def test_processor():
-    """Test demo command outputs exist with all options.
-
-    noxfile.py - test_demo, tests if demo command COMPLETES without error for all options
-    This function - test_demo, tests if demo command outputs are CREATED for all options
-    """
-    output_dirs: dict = {}
+    """Test Processor's outputs exist with all options.""" 
     try:
-        for json, labels, grid, show in itertools.product([False, True], repeat=4):
-            if show:
-                # Turn off interactive mode so plt.show() doesn't block the test
-                plt.ioff()
+        # Create temporary directory 
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for json, labels, grid, show in itertools.product([False, True], repeat=4):
+                if show:
+                    # Turn off interactive mode so plt.show() doesn't block the test
+                    plt.ioff()
 
-            # Run demo command
-            output_dirs: dict = Processor(
-                file_path=MAIN_DIRECTORY["path"],
-                do_json=json,
-                do_labels=labels,
-                do_grid=grid,
-                do_show=show,
-            ).main()
+                # Run demo command
+                set_output_dir(Path(temp_dir), ask_user=False)
+                output_dirs: dict = Processor(
+                    file_path=MAIN_DIRECTORY["path"],
+                    do_json=json,
+                    do_labels=labels,
+                    do_grid=grid,
+                    do_show=show,
+                ).main()
 
-            # Check if demo closed the plot
-            closed_plots = len(pylab_helpers.Gcf.get_all_fig_managers()) == 0
+                # Check if demo closed the plot
+                closed_plots = len(pylab_helpers.Gcf.get_all_fig_managers()) == 0
 
-            if show:
-                # Turn interactive mode back on so the test can continue
-                plt.ion()
+                if show:
+                    # Turn interactive mode back on so the test can continue
+                    plt.ion()
 
-            # Check if the plot was closed
-            assert closed_plots
+                # Check if the plot was closed
+                assert closed_plots
 
-            # Check if the main directories exist
-            assert os.path.exists(output_dirs["output_dir"])
-            assert os.path.exists(output_dirs["version_dir"])
-            assert os.path.exists(output_dirs["graph_dir"])
-            assert os.path.exists(output_dirs["graph_code_dir"])
-            assert os.path.exists(output_dirs["graph_json_dir"])
-            assert os.path.exists(output_dirs["json_dir"])
+                # Check if the main directories exist
+                assert os.path.exists(output_dirs["output_dir"])
+                assert os.path.exists(output_dirs["version_dir"])
+                assert os.path.exists(output_dirs["graph_dir"])
+                assert os.path.exists(output_dirs["graph_code_dir"])
+                assert os.path.exists(output_dirs["graph_json_dir"])
+                assert os.path.exists(output_dirs["json_dir"])
 
-            # Check if the JSON file exists
-            assert os.path.exists(output_dirs["json_graph_file_path"])
+                # Check if the JSON file exists
+                assert os.path.exists(output_dirs["json_graph_file_path"])
 
-            # Check if at least one plot file is created in the graph_code_dir
-            plot_files = [
-                f
-                for f in os.listdir(output_dirs["graph_code_dir"])
-                if f.endswith(".png")
-            ]
-            assert len(plot_files) > 0
-
-            # Check if only one plot file is created in the graph_code_dir when grid is True
-            if grid:
-                assert len(plot_files) == 1
-            else:
-                assert (
-                    len(plot_files) > 1
-                )  # should get at least 2 plots when grid is False
-
-            # Check if at least one plot file is created in the graph_json_dir
-            if json:
+                # Check if at least one plot file is created in the graph_code_dir
                 plot_files = [
                     f
-                    for f in os.listdir(output_dirs["graph_json_dir"])
+                    for f in os.listdir(output_dirs["graph_code_dir"])
                     if f.endswith(".png")
                 ]
                 assert len(plot_files) > 0
@@ -82,12 +66,23 @@ def test_processor():
                     assert (
                         len(plot_files) > 1
                     )  # should get at least 2 plots when grid is False
+
+                # Check if at least one plot file is created in the graph_json_dir
+                if json:
+                    plot_files = [
+                        f
+                        for f in os.listdir(output_dirs["graph_json_dir"])
+                        if f.endswith(".png")
+                    ]
+                    assert len(plot_files) > 0
+
+                    # Check if only one plot file is created in the graph_code_dir when grid is True
+                    if grid:
+                        assert len(plot_files) == 1
+                    else:
+                        assert (
+                            len(plot_files) > 1
+                        )  # should get at least 2 plots when grid is False
     except Exception as e:
         # Raise the exception
-        raise e
-    finally:
-        # Delete the output directories
-        if output_dirs and len(output_dir) > 0:
-            for output_dir in output_dirs.values():
-                if os.path.exists(output_dir):
-                    os.rmdir(output_dir)
+        raise e 

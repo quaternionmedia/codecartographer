@@ -1,12 +1,16 @@
 import nox
+import tempfile
 import itertools
 
 # TODO: we need to check config files after output changed
 
+# TODO: set output to temp directories so that we don't rely on making changes to the user's computer
+# or do we? cause nox sets up environments right?
+
 
 def get_palette_data(item: str) -> dict | str:
     """Load the palette data from the Palette class."""
-    from codecarto.src.codecarto.palette.palette import Palette
+    from .src.codecarto.palette.palette import Palette
 
     if item == "bases":
         return Palette().get_palette_data()
@@ -478,7 +482,7 @@ def test_file(session, labels, grid, show, json):
 
 def run_test(session, demo, labels, grid, show, json):
     # get demo file path
-    from codecarto.src.codecarto.utils.directory.main_dir import MAIN_DIRECTORY
+    from .src.codecarto.utils.directory.main_dir import MAIN_DIRECTORY
 
     demo_file_path = MAIN_DIRECTORY["path"]
 
