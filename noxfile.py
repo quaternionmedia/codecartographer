@@ -4,14 +4,14 @@ import json
 import shutil
 import tempfile
 import itertools
-import subprocess
+import subprocess 
 
 # TODO: make checks when user says no to prmopts
-
+# TODO: put these in tests\test_cli\ files
 
 def get_palette_data(item: str, appdata: bool = True) -> dict | str:
     """Load the palette data from the Palette class."""
-    from src.codecarto.palette.palette import Palette
+    from codecarto.palette.palette import Palette
 
     if item == "bases":
         return Palette().get_palette_data()
@@ -21,13 +21,37 @@ def get_palette_data(item: str, appdata: bool = True) -> dict | str:
         return Palette()._palette_pack_dir[item]
 
 
-# tests if package can be installed on python 3.8, 3.9 and 3.11
+def inject_js_to_coverage_report(js_file, coverage_dir):
+    index_html_path = os.path.join(coverage_dir, 'index.html')
+    with open(index_html_path, 'r') as f:
+        index_html = f.read()
+        
+    with open(js_file, 'r') as f:
+        js_content = f.read()
+
+    updated_html = index_html.replace('</body>', f'<script>{js_content}</script></body>')
+    with open(index_html_path, 'w') as f:
+        f.write(updated_html)
+
+# tests on python 3.8, 3.9 and 3.11
 @nox.session(python=["3.8", "3.9", "3.11"])
 def unit_tests(session):
     session.install(".")
     session.install("matplotlib")  # needed to close the matplot show window
-    session.install("pytest")
-    session.run("pytest", "tests")
+    session.install("pytest", "pytest-html", "pytest-cov") # needed to run pytest and pytest extensions
+    session.run(
+        "pytest", 
+        "tests", 
+        "--confcutdir=tests/test_reports",
+        "--cov=codecarto", 
+        "--cov-report=html:tests/test_reports/coverage", 
+        "--html=tests/test_reports/report.html", 
+        "--css=tests/test_reports/codecarto.css"
+        )
+    inject_js_to_coverage_report(
+        "tests/test_reports/add_link.js", 
+        "tests/test_reports/coverage"
+        )
 
 
 # tests package command dir:
@@ -35,7 +59,8 @@ def unit_tests(session):
 def test_dir(session):
     """Test that expected print statements are printed when running the dir command."""
     session.install(".")
-    result = subprocess.run(["codecarto", "dir"], capture_output=True, text=True)
+    command = ["codecarto", "dir"]
+    result = subprocess.run(command, capture_output=True, text=True)
 
     # Check if certain strings are in the directory section
     expected_strings = [
@@ -96,7 +121,7 @@ def test_help(session):
     ]
 
     for command in commands:
-        result = subprocess.run(*command, capture_output=True, text=True)
+        result = subprocess.run(command, capture_output=True, text=True)
 
         expected_strings = [
             "Usage:",
@@ -136,15 +161,15 @@ def test_help(session):
             "--types  | -t  : Display the styles for all types or for a specific type.",
             "--new    | -n  : Create a new theme with the specified parameters.",
             "Examples:",
-            "codecarto palette -n ClassDef def.class Cl o 10 red 10",
+            "codecarto palette -n ClassDef def.class Cl o red 5 10",
             "codecarto palette --export EXPORT_DIR",
             "codecarto palette -i IMPORT_FILE",
             "New Theme Information:",
             "For a list of valid types      : https://docs.python.org/3/library/ast.html#abstract-grammar",
-            "For a list of valid colors     : https://matplotlib.org/stable/gallery/color/named_colors.html",
             "For a list of valid shapes     : https://matplotlib.org/stable/api/markers_api.html",
-            "Alpha must be an integer between 0 and 10. Represents [0.0, 0.1, 0.2., ... , 1.0] transparency.",
+            "For a list of valid colors     : https://matplotlib.org/stable/gallery/color/named_colors.html",
             "Size must be an integer between 0 and 10. Represents [100, 200, 300, ... , 1000] size.",
+            "Alpha must be an integer between 0 and 10. Represents [0.0, 0.1, 0.2., ... , 1.0] transparency.",
         ]
         for string in expected_strings:
             assert string in result.stdout
@@ -166,7 +191,7 @@ def test_output(session):
 
         for command in commands:
             result = subprocess.run(
-                *command, input="y\n", capture_output=True, text=True
+                command, input="y\n", capture_output=True, text=True
             )
 
             if command == ["codecarto", "output"]:
@@ -211,7 +236,7 @@ def test_output_dir_yes(session):
 
     with tempfile.TemporaryDirectory() as temp_dir:
         non_existent_dir = os.path.join(temp_dir, "not_here")
-        command = f"codecarto output -s {non_existent_dir}"
+        command = ["codecarto", "output", "-s", non_existent_dir]
 
         # Run the command and send the input "y\n"
         result = subprocess.run(
@@ -233,7 +258,7 @@ def test_output_dir_no(session):
 
     with tempfile.TemporaryDirectory() as temp_dir:
         non_existent_dir = os.path.join(temp_dir, "not_here")
-        command = f"codecarto output -s {non_existent_dir}"
+        command = ["codecarto", "output", "-s", non_existent_dir]
 
         # Run the command and send the input "n\n"
         result = subprocess.run(
@@ -252,7 +277,7 @@ def test_output_dir_no(session):
 @nox.session
 def test_palette(session):
     session.install(".")
-    result = subprocess.run("codecarto", "palette", capture_output=True, text=True)
+    result = subprocess.run(["codecarto", "palette"], capture_output=True, text=True)
 
     # define the expected strings
     palette_path = get_palette_data("path")
@@ -311,7 +336,7 @@ def test_palette_import(session):
 
         # run commands
         for command in commands:
-            result = subprocess.run(*command, capture_output=True, text=True)
+            result = subprocess.run(command, capture_output=True, text=True)
             assert "Palette imported from " in result.stdout
 
         # check if the palette file is the same as the default palette
@@ -339,7 +364,7 @@ def test_palette_export(session):
 
         # run commands
         for command in commands:
-            result = subprocess.run(*command, capture_output=True, text=True)
+            result = subprocess.run(command, capture_output=True, text=True)
             assert "Palette exported to " in result.stdout
 
         # get the default palette
@@ -367,7 +392,7 @@ def test_palette_reset(session):
 
         # run commands
         for command in commands:
-            result = subprocess.run(*command, capture_output=True, text=True)
+            result = subprocess.run(command, capture_output=True, text=True)
             assert "Palette reset to default." in result.stdout
 
         # get the default palette
@@ -406,7 +431,7 @@ def test_palette_types(session):
 
     # run commands
     for command in commands:
-        result = subprocess.run(*command, capture_output=True, text=True)
+        result = subprocess.run(command, capture_output=True, text=True)
         for string in expected_strings:
             assert string in result.stdout
 
@@ -479,7 +504,7 @@ def test_palette_new(session):
 
         def run_commands_and_check_output(commands):
             for command in commands:
-                result = subprocess.run(*command, capture_output=True, text=True)
+                result = subprocess.run(command, capture_output=True, text=True)
                 expected_strings = [
                     f"New theme added to palette: ",
                     (
@@ -562,9 +587,9 @@ def test_empty(session, labels, grid, show, json):
     for i in range(2):
         if i == 0:
             result = subprocess.run(
-                "codecarto",
+                ["codecarto",
                 empty_file_path,
-                *options_short,
+                *options_short],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -573,9 +598,9 @@ def test_empty(session, labels, grid, show, json):
                 assert string in result.stdout
         else:
             result = subprocess.run(
-                "codecarto",
+                ["codecarto",
                 empty_file_path,
-                *options_long,
+                *options_long],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -596,7 +621,7 @@ def test_file(session, labels, grid, show, json):
 
 def run_test(session, demo, labels, grid, show, json):
     # get demo file path
-    from src.codecarto.utils.directory.main_dir import MAIN_DIRECTORY
+    from codecarto import MAIN_DIRECTORY
 
     demo_file_path = MAIN_DIRECTORY["path"]
 
@@ -666,9 +691,9 @@ def run_test(session, demo, labels, grid, show, json):
     for i in range(2):
         if i == 0:
             result = subprocess.run(
-                "codecarto",
+                ["codecarto",
                 run_argument,
-                *options_short,
+                *options_short],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -677,9 +702,9 @@ def run_test(session, demo, labels, grid, show, json):
                 assert string in result.stdout
         else:
             result = subprocess.run(
-                "codecarto",
+                ["codecarto",
                 run_argument,
-                *options_long,
+                *options_long],
                 capture_output=True,
                 text=True,
                 check=True,

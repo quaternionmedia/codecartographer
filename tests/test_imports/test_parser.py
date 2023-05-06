@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 
-from src.codecarto.parser import SourceParser
+from codecarto.parser import SourceParser
 
 
 def test_parser():

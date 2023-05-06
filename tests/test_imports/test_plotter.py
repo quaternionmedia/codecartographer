@@ -5,7 +5,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-from src.codecarto.plotter import GraphPlot
+from codecarto.plotter import GraphPlot
 
 
 def create_sample_graph():

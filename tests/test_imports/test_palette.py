@@ -1,9 +1,9 @@
 import tempfile
 from pathlib import Path
 
-from src.codecarto.palette.palette import Palette
-from src.codecarto.errors import ThemeNotFoundError
-from src.codecarto.utils.directory.output_dir import set_output_dir
+from codecarto.palette.palette import Palette
+from codecarto.errors import ThemeNotFoundError
+from codecarto.utils.directory.output_dir import set_output_dir
 
 
 def test_palette():

@@ -26,17 +26,27 @@ python = "^3.8.1"
 networkx = "^3.1"
 numpy = "^1.24.2"
 matplotlib = "^3.7.1" 
-click = {version = ">=8.1.2", optional = true}
 scipy = "^1.7.3"
 importlib-metadata = "^4.11.3"
-#?? mkdocs-exclude = "^1.0.2"
+click = {version = ">=8.1.2", optional = true}
+ 
+# these lines can make cli and library separate
+# pip install codecarto will enable library usage
+# pip install codecarto[cli] will enable cli usage as weell
+# [tool.poetry.extras]
+# cli = ["click>=8.1.2"]
 
 [tool.poetry.group.dev.dependencies]
 nox = "^2022.11.21"
+pytest = "^7.1.3"
+pytest-cov = "^2.12.1"
+black = "^23.1.0"
 flake8 = "^6.0.0"
 mkdocs = "^1.4.2"
 mkdocstrings =  {extras = ["python"], version = "^0.20.0"}
 mkdocs-material = "^9.0.11"
+mkdocs-exclude = "^1.0.2"
+python-dotenv = "^0.19.1"
 
 [build-system]
 requires = ["poetry-core"]
