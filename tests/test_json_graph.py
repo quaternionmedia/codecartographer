@@ -3,7 +3,7 @@ import tempfile
 import networkx as nx
 from pathlib import Path
 
-from codecarto.src.codecarto.json.json_graph import JsonGraph
+from src.codecarto.json.json_graph import JsonGraph
 
 
 def test_json_graph():
