@@ -84,7 +84,10 @@ def get_all_source_files(starting_file_path) -> list:
     """
     top_level_directory = find_top_level_directory(starting_file_path)
     source_files: list = []
-    for root, _, files in os.walk(top_level_directory):
+    for root, dirs, files in os.walk(top_level_directory):
+        # remove 'venv' directory from search
+        if "venv" in dirs:
+            dirs.remove("venv")
         for file in files:
             if file.endswith(".py"):
                 source_files.append(os.path.join(root, file))

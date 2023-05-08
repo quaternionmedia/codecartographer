@@ -283,9 +283,13 @@ def dir() -> dict:
     source_dirs: list = get_all_source_files(main_file_path)
     all_dirs.update({"source": source_dirs})
     for path in source_dirs:
-        # print every thing in the path after \dev\
-        _path = path.split("\codecarto\\")[2]
-        print(f"...carto\\{_path}")
+        # only print files in codecarto directory
+        # drop the __init__.py file
+        if "__init__.py" not in path:
+            if "codecarto" in path:
+                # trim the path to only show the codecarto directory
+                path = path.split("codecarto\\")[1]
+                print(f"...carto\\{path}")
     print()
 
     return all_dirs

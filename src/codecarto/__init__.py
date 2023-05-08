@@ -1,6 +1,29 @@
-# codecarto\__init__.py
+### codecarto\__init__.py
 
-from codecarto.json.json_graph import JsonGraph
-from codecarto.json.json_utils import save_json_data, load_json_data
-from codecarto.utils.directory.output_dir import set_output_dir
-from codecarto.utils.directory.main_dir import MAIN_DIRECTORY
+
+"""An AST viewing widget library plus app, built for and with Textual."""
+
+##############################################################################
+# Import the sub modules to make them easier to get at
+from .json.json_graph import JsonGraph
+from .palette.palette import Palette
+from .parser import SourceParser
+from .processor import Processor
+from .plotter import GraphPlot
+from .json.json_utils import save_json_data as save_json, load_json_data as load_json
+from .utils.directory.output_dir import set_output_dir
+from .utils.directory.main_dir import MAIN_DIRECTORY
+
+##############################################################################
+# Export the submodules.
+__all__ = [
+    "JsonGraph",
+    "Palette",
+    "SourceParser",
+    "Processor",
+    "GraphPlot",
+    "save_json",
+    "load_json",
+]
+
+### __init__.py ends here
