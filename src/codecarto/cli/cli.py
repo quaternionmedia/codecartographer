@@ -62,6 +62,7 @@ Usage:
                  -g | --grid  (default False)
                  -s | --show  (default False)
                  -j | --json  (default False)
+                 -d | --dir   (default False)
     codecarto dir
     codecarto help | -h | --help
     codecarto output -s | --set DIR
@@ -70,6 +71,7 @@ Usage:
                  -g | --grid  (default False)
                  -s | --show  (default False)
                  -j | --json  (default False)
+                 -d | --dir   (default False)
     codecarto palette 
                  -i | --import FILE
                  -e | --export DIR
@@ -89,6 +91,8 @@ Command Description:
            --grid   | -g : Display a grid on the graph. Default is False.
            --show   | -s : Show the graph plot. Default is False.
            --json   | -j : Converts json data to graph and plots. Default is False.
+           --dir    | -d : Prints passed file's source code to be used in process.
+                           Does NOT run the package. Default is False.
         Examples:
            codecarto foo.py -l --grid --json
            codecarto demo -labels -g -show
@@ -113,10 +117,97 @@ New Theme Information:
     print(help_text)
 
 
+################### SET UP SHARED COMMANDS
+
+
+def shared_options(func):
+    """Shared options for the run command."""
+
+    @click.option(
+        "--json",
+        "-j",
+        is_flag=True,
+        help="Whether to convert json back to graph and plot.",
+    )
+    @click.option(
+        "--labels",
+        "-l",
+        is_flag=True,
+        help="Whether to show labels on plots.",
+    )
+    @click.option(
+        "--grid",
+        "-g",
+        is_flag=True,
+        help="Whether to have all plots in a grid layout.",
+    )
+    @click.option(
+        "--show",
+        "-s",
+        is_flag=True,
+        help="Whether to show plots.",
+    )
+    @click.option(
+        "--dir",
+        "-d",
+        is_flag=True,
+        help="Prints passed file's source code to be used in process.",
+    )
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 ################### SETUP HELP GROUP
 
 
 class CustomHelpGroup(click.Group):
+    def get_command(self, ctx, cmd_name):
+        rv = click.Group.get_command(self, ctx, cmd_name)
+        if rv is not None:
+            return rv
+
+        return self.command_not_found(ctx, cmd_name)
+
+    def command_not_found(self, ctx, cmd_name):
+        """Handles scenario where cmd_name is treated as a file path."""
+        from pathlib import Path
+
+        # check if cmd_name is a file path to a Python file
+        file_path = Path(cmd_name)
+        if file_path.exists() and file_path.suffix == ".py":
+            # get the full path of the file if not already
+            file_path = file_path.resolve()
+            # create a command for the file path
+            @click.command(name=cmd_name)
+            @shared_options
+            @click.pass_context
+            def run_codecarto_cmd(ctx, json, labels, grid, show, dir):
+                if dir:
+                    from ..utils.directory.import_source_dir import get_all_source_files
+                    source_dirs:list = get_all_source_files(file_path)
+                    print("\nPackage Source Python Files:") 
+                    for source_dir in source_dirs:
+                        print(source_dir)
+                    print()
+                    return source_dirs
+                else:
+                    output_dirs:dict = run_codecarto(str(file_path), json, labels, grid, show)
+                    return output_dirs
+            return run_codecarto_cmd
+        else:
+            # check if file_path has a suffix
+            if file_path.suffix != "":
+                # check if file_path is a Python file
+                if file_path.suffix != ".py":
+                    raise click.ClickException(f"File '{cmd_name}' is not a Python file.")
+                else:
+                    raise click.ClickException(f"File path '{cmd_name}' does not exist in current directory.")
+            else:
+                raise click.ClickException(f"Command '{cmd_name}' not found. See --help for more information.")
+    
     def get_help(self, ctx):
         """Get the help text for the group.
 
@@ -162,101 +253,37 @@ def run_help():
     print_help()
 
 
-################### SET UP SHARED COMMANDS
-
-
-def shared_options(func):
-    """Shared options for the run command."""
-
-    @click.option(
-        "--json",
-        "-j",
-        is_flag=True,
-        help="Whether to convert json back to graph and plot.",
-    )
-    @click.option(
-        "--labels",
-        "-l",
-        is_flag=True,
-        help="Whether to show labels on plots.",
-    )
-    @click.option(
-        "--grid",
-        "-g",
-        is_flag=True,
-        help="Whether to have all plots in a grid layout.",
-    )
-    @click.option(
-        "--show",
-        "-s",
-        is_flag=True,
-        help="Whether to show plots.",
-    )
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-################### RUN APP COMMAND
-
-
-@run.command(
-    context_settings={
-        "ignore_unknown_options": True,
-    },
-)
-@click.argument("import_name", metavar="FILE", type=click.Path(exists=True))
-@shared_options
-def run_app(
-    import_name: str, json: bool, labels: bool, grid: bool, show: bool
-) -> dict | None:
-    """Run CodeCartographer application.
-
-    The code to run may be given as a path (ending with .py)
-
-    Args:
-    -----
-        import_name : str
-            The import name of the application to run.
-
-    Example:
-    --------
-        codecarto foo.py [OPTIONS]
-
-    Optional Args:
-    --------------
-        -l | --labels   : Display labels on the graph. Default is False.\n
-        -g | --grid     : Display a grid on the graph. Default is False.\n
-        -s | --show     : Show the graph plot. Default is False.\n
-        -j | --json     : Converts json data to graph and plots. Default is False.
-
-    Returns:
-    --------
-    dict | None\n
-        The output directories if the command is successful, otherwise None.
-    """
-    output_dirs = run_codecarto(import_name, json, labels, grid, show)
-    return output_dirs
+################### DEMO COMMAND
 
 
 @run.command("demo")
 @shared_options
-def demo(json: bool, labels: bool, grid: bool, show: bool) -> dict | None:
+def demo(json: bool, labels: bool, grid: bool, show: bool, dir:bool) -> dict | None:
     """Runs the package on itself.
 
     Returns:
     --------
     dict | None\n
+        The source code directories if the dir flag is passed.
         The output directories if the command is successful, otherwise None.
     """
     from ..utils.directory.main_dir import MAIN_DIRECTORY
 
     demo_file_path = MAIN_DIRECTORY["path"]
-    # Call the run_app function with the demo_file_path and labels/grid options
-    output_dirs = run_codecarto(demo_file_path, json, labels, grid, show)
-    return output_dirs
+    if dir:
+        # Print source code
+        from ..utils.directory.import_source_dir import get_all_source_files
+
+        source_dirs: list = get_all_source_files(demo_file_path)
+        print("\nPackage Source Python Files:") 
+        for source_dir in source_dirs:
+            print(source_dir)
+        print()
+        return source_dirs
+    else:
+        # Call run_codecarto 
+        output_dirs:dict = run_codecarto(demo_file_path, json, labels, grid, show)
+        return output_dirs
 
 
 ################### DIR COMMAND

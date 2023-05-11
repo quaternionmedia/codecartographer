@@ -83,11 +83,15 @@ def get_all_source_files(starting_file_path) -> list:
         A list of all Python source files in the directory of the starting file.
     """
     top_level_directory = find_top_level_directory(starting_file_path)
+    
     source_files: list = []
     for root, dirs, files in os.walk(top_level_directory):
-        # remove 'venv' directory from search
-        if "venv" in dirs:
-            dirs.remove("venv")
+        filters = [".dev", ".git", ".env", "env", ".venv", "venv", "__pycache__", ".nox", ".pytest_cache", ".benchmarks"]
+        # remove dirs in filters list 
+        dirs[:] = [d for d in dirs if d not in filters]
+        # remove files in filters list
+        files[:] = [f for f in files if f not in filters]
+        # add files to source_files list
         for file in files:
             if file.endswith(".py"):
                 source_files.append(os.path.join(root, file))
