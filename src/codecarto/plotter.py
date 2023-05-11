@@ -12,10 +12,12 @@ from .positions.positions import LayoutPositions
 class GraphPlot:
     def __init__(
         self,
-        _dirs: dict[str, str] = None,
+        dirs: dict[str, str] = None,
+        file_path: str = "",
         do_labels: bool = False,
         do_grid: bool = False,
         do_show: bool = False,
+        do_single_file: bool = False,
         do_ntx: bool = True,
         do_custom: bool = True,
     ):
@@ -27,13 +29,17 @@ class GraphPlot:
                 The directories to use.
         """
         self.seed: dict[str, int] = {}
-        self.dirs: dict[str, str] = _dirs
+        self.dirs: dict[str, str] = dirs
+        self.file_path: str = file_path
         self.show_label: bool = do_labels
         self.do_grid: bool = do_grid
-        self.do_show: bool = do_show 
+        self.do_show: bool = do_show
+        self.do_single_file: bool = do_single_file
 
         # get all layout functions
-        self.layouts:tuple(str,function,list) = LayoutPositions(do_ntx, do_custom).get_layouts()
+        self.layouts: tuple(str, function, list) = LayoutPositions(
+            do_ntx, do_custom
+        ).get_layouts()
 
     def plot(self, _graph, _json: bool = False):
         """Plots a graph using layouts."""
@@ -60,7 +66,7 @@ class GraphPlot:
             else:
                 graph_dir = self.dirs["graph_json_dir"]
 
-            # Loop through all layouts 
+            # Loop through all layouts
             for layout_name, layout_info in self.layouts.items():
                 layout, layout_params = layout_info
 
@@ -69,9 +75,14 @@ class GraphPlot:
 
                 # placement of show on monitor
                 fig.canvas.manager.window.wm_geometry("+0+0")
-                ax.set_title(
+                _title: str = (
                     f"{str(layout_name).replace('_layout', '').capitalize()} Layout"
                 )
+                if self.do_single_file:
+                    _file_name: str = os.path.basename(self.file_path)
+                    _title = f"{_title} for '{_file_name}'"
+
+                ax.set_title(_title)
                 ax.axis("off")
 
                 # Collect nodes and their attributes
@@ -86,10 +97,8 @@ class GraphPlot:
                     node_data[node_type].append(n)
 
                 # Get layout parameters
-                # TODO: get the seed and pass that to layouts.get_positions
-                # layouts.get_positions(layout_name, _graph, seed)
                 seed = -1
-                layout_kwargs = {"graph": _graph}
+                layout_kwargs = {"G": _graph}
                 for param in layout_params:
                     if param == "seed":
                         if _json:
@@ -110,48 +119,15 @@ class GraphPlot:
 
                         # Create the list of lists (shells)
                         shells = list(grouped_nodes.values())
-                        layout_kwargs["nlist"] = shells
-                    elif param != "graph":
-                        # Handle other parameters here
+                        layout_kwargs["nshells"] = shells
+                    elif param != "G":
+                        # TODO: Handle other parameters here
                         pass
-                
-                # # compute layout
-                # try:
-                #     if "seed" in inspect.signature(layout).parameters:
-                #         if _json:
-                #             # Use the same seed for the same layout
-                #             seed = self.seed[layout.__name__]
-                #         else:
-                #             seed = random.randint(0, 1000)
-                #             self.seed[layout.__name__] = seed
-                #         pos = layout(_graph, seed=seed)
-                #     elif layout.__name__ == "shell_layout":
-                #         # Group nodes by parent
-                #         grouped_nodes: dict[str, list] = {}
-                #         for node, data in _graph.nodes(data=True):
-                #             parent = data.get("parent", "Unknown")
-                #             if parent not in grouped_nodes:
-                #                 grouped_nodes[parent] = []
-                #             grouped_nodes[parent].append(node)
 
-                #         # Create the list of lists (shells)
-                #         shells = list(grouped_nodes.values())
-
-                #         # Apply shell layout
-                #         pos = nx.layout.shell_layout(_graph, nlist=shells)
-                #     else:
-                #         pos = layout(_graph)
-                # except Exception as e:
-                #     print(e)
-                #     continue
-                
                 # compute layout
                 try:
-                    #TODO: update for VVVVV
-                    #  layouts.get_positions(layout_name, _graph, seed)
-                    from .positions.positions import LayoutPositions
                     layout_pos = LayoutPositions()
-                    pos = layout_pos.get_positions(layout_name, _graph, **layout_kwargs)
+                    pos = layout_pos.get_positions(layout_name, **layout_kwargs)
                 except Exception as e:
                     print(e)
                     continue
@@ -229,9 +205,8 @@ class GraphPlot:
                 if self.do_show:
                     plt.show()
                 plt.close()
- 
 
-    def plot_in_grid(self, _graph, _json:bool = False):
+    def plot_in_grid(self, _graph, _json: bool = False):
         """
         Plots the given graph in a grid of subplots, one subplot for each layout.
         """
@@ -243,7 +218,7 @@ class GraphPlot:
                 graph_dir = self.dirs["graph_code_dir"]
             else:
                 graph_dir = self.dirs["graph_json_dir"]
-                
+
             print("Plotting grid...")
 
             # compute grid
@@ -265,13 +240,9 @@ class GraphPlot:
 
             # Loop through all layouts
             empty_axes_indices = []
-            for idx, layout in enumerate(self.layouts): 
+            for idx, layout in enumerate(self.layouts):
                 # Set up ax
-                ax = (
-                    axes[idx // grid_size, idx % grid_size]
-                    if grid_size > 1
-                    else axes
-                )
+                ax = axes[idx // grid_size, idx % grid_size] if grid_size > 1 else axes
                 ax.set_title(f"{layout.__name__}")
                 ax.axis("off")
 

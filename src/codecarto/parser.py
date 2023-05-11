@@ -96,7 +96,7 @@ class SourceParser(ast.NodeVisitor):
         """
         test = False
         if test:
-            # TODO: for testing purpose
+            # TODO: for local testing purpose
             _files = ["plotter.py"]
             # loop through the list of source files
             for file_path in source_files:

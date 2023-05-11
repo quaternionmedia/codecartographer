@@ -8,7 +8,7 @@ class Processor:
         do_labels: bool = False,
         do_grid: bool = False,
         do_show: bool = False,
-        do_uno: bool = False,
+        do_single_file: bool = False,
     ):
         """Initialize the CodeCartographer class.
 
@@ -24,7 +24,7 @@ class Processor:
         self.do_labels = do_labels
         self.do_grid = do_grid
         self.do_show = do_show
-        self.single_file = do_uno
+        self.single_file = do_single_file
 
     def main(self) -> dict | None:
         """The main function of the code cartographer.
@@ -68,10 +68,12 @@ class Processor:
             # Create the graph plotter, needs to be same
             # plotter for both to handle seed correctly
             plotter: GraphPlot = GraphPlot(
-                _dirs=paths,
+                dirs=paths,
+                file_path=self.file_path,
                 do_labels=self.do_labels,
                 do_grid=self.do_grid,
                 do_show=self.do_show,
+                do_single_file=self.single_file,
             )
 
             # Plot the graph made from code
