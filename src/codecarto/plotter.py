@@ -6,6 +6,7 @@ import networkx as nx
 import random
 import inspect
 from .palette.palette import Palette
+from .custom_layouts import grid_layout
 
 
 class GraphPlot:
@@ -49,14 +50,15 @@ class GraphPlot:
 
             # get all layout functions
             layouts = [
-                nx.layout.spring_layout,
-                nx.layout.spiral_layout,
-                nx.layout.circular_layout,
-                nx.layout.random_layout,
-                # nx.layout.kamada_kawai_layout,
-                nx.layout.shell_layout,
-                nx.layout.spectral_layout,
-                nx.layout.planar_layout,
+                # nx.layout.spring_layout,
+                # nx.layout.spiral_layout,
+                # nx.layout.circular_layout,
+                # nx.layout.random_layout,
+                # # nx.layout.kamada_kawai_layout,
+                # nx.layout.shell_layout,
+                # nx.layout.spectral_layout,
+                # nx.layout.planar_layout,
+                grid_layout,
             ]
 
             # compute grid
