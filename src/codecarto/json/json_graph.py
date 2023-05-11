@@ -1,4 +1,6 @@
-from .json_utils import save_json_data
+import networkx as nx
+
+from .json_utils import save_json_data, load_json_data
 from ..palette.palette import Palette
 
 # TODO: We have a 'P' theme going on here, plotter, parser, palette, processor.
@@ -9,26 +11,42 @@ from ..palette.palette import Palette
 
 
 class JsonGraph:
-    """Converts a networkx graph to a JSON object and vice versa."""
+    """Converts a networkx graph to a JSON object and vice versa. \n
 
-    def __init__(self, _path, _graph, _convert_back: bool = False):
-        """Constructor.\n
+    Attributes:
+    -----------
+        json_file_path (str): The path to the JSON file to save.\n
+        json_data (dict): The JSON data loaded from the file.\n
+        json_graph (networkx.classes.graph.Graph): A networkx graph object.\n
+
+    Functions:
+    ----------
+        save_json_data - A function used to save json data to a file. \n
+        load_json_data - A function used to load json data from a file. \n
+        graph_to_json - A function used to convert a networkx graph to a json object. \n
+        json_to_graph - A function used to convert a json object to a networkx graph. \n
+    """
+
+    def __init__(self, _path, _graph: nx.Graph, _convert_back: bool = False):
+        """Constructor for JsonGraph class.\n
         Args:\n
-            graph (networkx.classes.graph.Graph): The graph to convert.\n
-            json_file_path (str): The path to the JSON file to save.\n
+            _path (str): The path to the JSON file to save.\n
+            _graph (networkx.classes.graph.Graph): The graph to convert.\n
+            _convert_back (bool, optional): Whether to convert the JSON object back to a graph. Defaults to False.\n
         """
         self.json_file_path = _path
-	if not _graph.has_children():
-		_json_data = load_json_data(_path)
-        	save_json_data(self.json_file_path, self.json_data)
-		self.json_graph = self.json_to_graph(self.json_data)
-	else:
-        	self.json_data = self.graph_to_json(_graph)
-        	save_json_data(self.json_file_path, self.json_data)
-        	if _convert_back:
-            		self.json_graph = self.json_to_graph(self.json_data)
-        	else:
-            		self.json_graph = None
+
+        if _graph.number_of_nodes() == 0:
+            self.json_data = load_json_data(self.json_file_path)
+            save_json_data(self.json_file_path, self.json_data)
+            self.json_graph = self.json_to_graph(self.json_data)
+        else:
+            self.json_data = self.graph_to_json(_graph)
+            save_json_data(self.json_file_path, self.json_data)
+            if _convert_back:
+                self.json_graph = self.json_to_graph(self.json_data)
+            else:
+                self.json_graph = None
 
     def graph_to_json(self, graph):
         """Converts a networkx graph to a JSON object.\n
