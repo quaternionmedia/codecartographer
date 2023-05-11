@@ -18,12 +18,17 @@ class JsonGraph:
             json_file_path (str): The path to the JSON file to save.\n
         """
         self.json_file_path = _path
-        self.json_data = self.graph_to_json(_graph)
-        save_json_data(self.json_file_path, self.json_data)
-        if _convert_back:
-            self.json_graph = self.json_to_graph(self.json_data)
-        else:
-            self.json_graph = None
+	if not _graph.has_children():
+		_json_data = load_json_data(_path)
+        	save_json_data(self.json_file_path, self.json_data)
+		self.json_graph = self.json_to_graph(self.json_data)
+	else:
+        	self.json_data = self.graph_to_json(_graph)
+        	save_json_data(self.json_file_path, self.json_data)
+        	if _convert_back:
+            		self.json_graph = self.json_to_graph(self.json_data)
+        	else:
+            		self.json_graph = None
 
     def graph_to_json(self, graph):
         """Converts a networkx graph to a JSON object.\n
