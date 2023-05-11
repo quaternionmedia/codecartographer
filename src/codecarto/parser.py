@@ -41,6 +41,8 @@ import os
 class SourceParser(ast.NodeVisitor):
     """Parse a python source file into a networkx graph."""
 
+    # TODO: when we eventually add import and importFrom, they need to be the id of the Module they represent
+    # TODO: when this gets updated, do logic of option 'uno'
     def __init__(self, source_files: list):
         """Initialize the parser.
 

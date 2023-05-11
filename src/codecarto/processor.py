@@ -8,6 +8,7 @@ class Processor:
         do_labels: bool = False,
         do_grid: bool = False,
         do_show: bool = False,
+        do_uno: bool = False,
     ):
         """Initialize the CodeCartographer class.
 
@@ -23,6 +24,7 @@ class Processor:
         self.do_labels = do_labels
         self.do_grid = do_grid
         self.do_show = do_show
+        self.single_file = do_uno
 
     def main(self) -> dict | None:
         """The main function of the code cartographer.
@@ -30,14 +32,27 @@ class Processor:
         Returns:
         --------
         dict | None
-            The dictionary of the graph data or None if no graph.
+            The paths to the output directory.
+                'version': the runtime version of the process. \n
+                'output_dir': the path to the output directory. \n
+                'version_dir': the path to the output/version directory. \n
+                'graph_dir': the path to the output/graph directory. \n
+                'graph_code_dir': the path to the output/graph/from_code directory. \n
+                'graph_json_dir': the path to the output/graph/from_json directory. \n
+                'json_dir': the path to the output/json directory. \n
+                'json_graph_file_path': the path to the output/json/graph.json file.
         """
         from .utils.directory.import_source_dir import get_all_source_files
         from .parser import SourceParser
 
         # Analyze the code
+        _source_files: list[str] = []
+        if self.single_file:
+            _source_files = [self.file_path]
+        else:
+            _source_files = get_all_source_files(self.file_path)
         graph = SourceParser(
-            source_files=get_all_source_files(self.file_path),
+            source_files=_source_files,
         ).graph
         print("Visited Tree")
 

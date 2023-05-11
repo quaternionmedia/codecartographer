@@ -8,7 +8,7 @@ from ..errors import BaseNotFoundError, ThemeCreationError
 
 
 def run_codecarto(
-    import_name: str, json: bool, labels: bool, grid: bool, show: bool
+    import_name: str, json: bool, labels: bool, grid: bool, show: bool, uno: bool
 ) -> dict | None:
     """Run the codecarto package on the provided import_name.\n
 
@@ -27,6 +27,8 @@ def run_codecarto(
         Whether to display a grid on the graph.
     show : bool
         Whether to show the graph plot.
+    uno : bool
+        Whether to run for a single file or all of source directory.
 
     Returns
     -------
@@ -41,6 +43,7 @@ def run_codecarto(
         do_labels=labels,
         do_grid=grid,
         do_show=show,
+        do_uno=uno,
     ).main()
     return output_dirs
 
@@ -63,6 +66,7 @@ Usage:
                  -s | --show  (default False)
                  -j | --json  (default False)
                  -d | --dir   (default False)
+                 -u | --uno  (default False)
     codecarto dir
     codecarto help | -h | --help
     codecarto output -s | --set DIR
@@ -72,6 +76,7 @@ Usage:
                  -s | --show  (default False)
                  -j | --json  (default False)
                  -d | --dir   (default False)
+                 -u | --uno  (default False)
     codecarto palette 
                  -i | --import FILE
                  -e | --export DIR
@@ -93,6 +98,7 @@ Command Description:
            --json   | -j : Converts json data to graph and plots. Default is False.
            --dir    | -d : Prints passed file's source code to be used in process.
                            Does NOT run the package. Default is False.
+           --uno    | -u : Whether to run for a single file or all of source directory. Default is False.
         Examples:
            codecarto foo.py -l --grid --json
            codecarto demo -labels -g -show
@@ -153,6 +159,12 @@ def shared_options(func):
         is_flag=True,
         help="Prints passed file's source code to be used in process.",
     )
+    @click.option(
+        "--uno",
+        "-u",
+        is_flag=True,
+        help="Whether to do a single file or the whole source directory.",
+    )
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
@@ -180,34 +192,45 @@ class CustomHelpGroup(click.Group):
         if file_path.exists() and file_path.suffix == ".py":
             # get the full path of the file if not already
             file_path = file_path.resolve()
+
             # create a command for the file path
             @click.command(name=cmd_name)
             @shared_options
             @click.pass_context
-            def run_codecarto_cmd(ctx, json, labels, grid, show, dir):
+            def run_codecarto_cmd(ctx, json, labels, grid, show, dir, uno):
                 if dir:
                     from ..utils.directory.import_source_dir import get_all_source_files
-                    source_dirs:list = get_all_source_files(file_path)
-                    print("\nPackage Source Python Files:") 
+
+                    source_dirs: list = get_all_source_files(file_path)
+                    print("\nPackage Source Python Files:")
                     for source_dir in source_dirs:
                         print(source_dir)
                     print()
                     return source_dirs
                 else:
-                    output_dirs:dict = run_codecarto(str(file_path), json, labels, grid, show)
+                    output_dirs: dict = run_codecarto(
+                        str(file_path), json, labels, grid, show, uno
+                    )
                     return output_dirs
+
             return run_codecarto_cmd
         else:
             # check if file_path has a suffix
             if file_path.suffix != "":
                 # check if file_path is a Python file
                 if file_path.suffix != ".py":
-                    raise click.ClickException(f"File '{cmd_name}' is not a Python file.")
+                    raise click.ClickException(
+                        f"File '{cmd_name}' is not a Python file."
+                    )
                 else:
-                    raise click.ClickException(f"File path '{cmd_name}' does not exist in current directory.")
+                    raise click.ClickException(
+                        f"File path '{cmd_name}' does not exist in current directory."
+                    )
             else:
-                raise click.ClickException(f"Command '{cmd_name}' not found. See --help for more information.")
-    
+                raise click.ClickException(
+                    f"Command '{cmd_name}' not found. See --help for more information."
+                )
+
     def get_help(self, ctx):
         """Get the help text for the group.
 
@@ -258,7 +281,9 @@ def run_help():
 
 @run.command("demo")
 @shared_options
-def demo(json: bool, labels: bool, grid: bool, show: bool, dir:bool) -> dict | None:
+def demo(
+    json: bool, labels: bool, grid: bool, show: bool, dir: bool, uno: bool
+) -> dict | None:
     """Runs the package on itself.
 
     Returns:
@@ -275,14 +300,14 @@ def demo(json: bool, labels: bool, grid: bool, show: bool, dir:bool) -> dict | N
         from ..utils.directory.import_source_dir import get_all_source_files
 
         source_dirs: list = get_all_source_files(demo_file_path)
-        print("\nPackage Source Python Files:") 
+        print("\nPackage Source Python Files:")
         for source_dir in source_dirs:
             print(source_dir)
         print()
         return source_dirs
     else:
-        # Call run_codecarto 
-        output_dirs:dict = run_codecarto(demo_file_path, json, labels, grid, show)
+        # Call run_codecarto
+        output_dirs: dict = run_codecarto(demo_file_path, json, labels, grid, show, uno)
         return output_dirs
 
 
