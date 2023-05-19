@@ -1,7 +1,21 @@
+import os
+import json
 import subprocess
 import tempfile
 from cli_palette_helper import get_palette_data
+ 
 
+    # # print themes by base
+    # for base, node_types in base_themes.items():
+    #     max_width = max(len(prop) for prop in palette_data.keys()) + 1
+    #     print(f"{'Base     ':{max_width}}: {base}")
+    #     for prop in palette_data.keys():
+    #         if prop != "bases":
+    #             print(f"  {prop:{max_width}}: {palette_data[prop][base]}")
+    #     print()
+    # print(
+    #     f"\nBase themes and properties can be found in 'palette.json': {palette._palette_app_dir['path']}\n"
+    # )
 
 def test_palette():
     """Test the palette command."""
@@ -32,13 +46,27 @@ def test_palette():
             base_themes[base].append(node_type)
 
         # print themes by base
-        data: str = ""
         for base, node_types in base_themes.items():
             max_width = max(len(prop) for prop in palette_data.keys()) + 1
-            data += f"{'Base     ':{max_width}}: {base}\n"
+            assert f"{'Base     ':{max_width}}: {base}" in result.stdout
             for prop in palette_data.keys():
                 if prop != "bases":
-                    data += f"  {prop:{max_width}}: {palette_data[prop][base]}\n"
+                    assert (
+                        f"  {prop:{max_width}}: {palette_data[prop][base]}" in result.stdout
+                    )
+            assert "\n" in result.stdout
+        assert "\n" in result.stdout
 
-        # check if the base style string is in the output
-        assert data in result.stdout
+        # check the config file to make sure it didn't change during printing
+        # get the config file in the \src\codecarto\ directory
+        config_file = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "src\\codecarto\\config.json",
+        )
+        with open(config_file, "r") as f:
+            config = json.load(f)
+        # check if the output directory is the same as the one in the config file
+        assert config["palette_dir"] == palette_path
+
+        # # check if the base style string is in the output
+        # assert data in result.stdout

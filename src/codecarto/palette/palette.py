@@ -165,7 +165,7 @@ class Palette:
         size: float,
         alpha: float,
         ask_user: bool = False,
-    ) -> str:
+    ) -> dict:
         """Create a new theme with the specified parameters.
 
         Parameters:
@@ -185,8 +185,8 @@ class Palette:
 
         Returns:
         --------
-        str
-            The name of the new theme.
+        dict
+            Dictionary of the new theme. Keys are the values are the theme parameters.
         """
         if ask_user:
             # check if node type already exists
@@ -194,10 +194,11 @@ class Palette:
                 # ask user if they want to overwrite
                 node = self.get_node_styles(node_type)
                 overwrite = input(
-                    f"\n{node_type} already exists. \n {node} \n\nOverwrite? Y/N "
+                    f"\n{node_type} already exists in '{self._palette_app_dir['path']}' with parameters: \n {node} \n\nOverwrite? Y/N "
                 )
                 if overwrite.upper() == "N":
-                    return "User cancelled."
+                    print(f"\nNew theme not created.\n")
+                    return None
         # create new node type
         self.bases[node_type] = base
         self.labels[base] = label
@@ -213,7 +214,7 @@ class Palette:
             print(
                 f"New theme '{node_type}' created with parameters: base={base}, label={label}, shape={shape}, color={color}, size={size}, alpha={alpha}\n"
             )
-        return node_type
+        return self.get_node_styles(node_type)
 
     def get_node_styles(self, type: str = None) -> dict:
         """Get the styles for all node types.
@@ -232,11 +233,11 @@ class Palette:
             return {
                 type: {
                     "base": self.bases[type],
+                    "label": self.labels[self.bases[type]],
+                    "shape": self.shapes[self.bases[type]],
+                    "color": self.colors[self.bases[type]],
                     "size": self.sizes[self.bases[type]],
                     "alpha": self.alphas[self.bases[type]],
-                    "color": self.colors[self.bases[type]],
-                    "shape": self.shapes[self.bases[type]],
-                    "label": self.labels[self.bases[type]],
                 }
             }
         else:
@@ -244,11 +245,11 @@ class Palette:
             for type in self.bases.keys():
                 styles[type] = {
                     "base": self.bases[type],
+                    "label": self.labels[self.bases[type]],
+                    "shape": self.shapes[self.bases[type]],
+                    "color": self.colors[self.bases[type]],
                     "size": self.sizes[self.bases[type]],
                     "alpha": self.alphas[self.bases[type]],
-                    "color": self.colors[self.bases[type]],
-                    "shape": self.shapes[self.bases[type]],
-                    "label": self.labels[self.bases[type]],
                 }
             return styles
 
@@ -267,4 +268,4 @@ class Palette:
             "colors": self.colors,
             "sizes": self.sizes,
             "alphas": self.alphas,
-        }
+        } 

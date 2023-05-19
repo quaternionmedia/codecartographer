@@ -21,10 +21,12 @@ def test_output():
             )
 
             if command == ["codecarto", "output"]:
-                # output directory
+                # check output directory prints
                 assert "Current output directory: " in result.stdout
-                # check if the path exists
+                # get the path
                 path = result.stdout.split("Current output directory: ")[1]
+                path = path[:-1] 
+                # check if the path exists
                 assert os.path.exists(path)
             elif command == ["codecarto", "-s", temp_dir] or command == [
                 "codecarto",
@@ -33,14 +35,18 @@ def test_output():
             ]:
                 # set output directory
                 assert "Output directory changed to " in result.stdout
-                # check if the path exists
+                # get the path
                 path = result.stdout.split("Output directory changed to ")[1]
+                path = path[:-1] 
+                # check if the path exists
                 assert os.path.exists(path)
             elif command == ["codecarto", "-r"] or command == ["codecarto", "--reset"]:
                 # reset output directory
-                assert "Output directory reset to " in result.stdout
-                # check if the path exists
+                assert "Output directory reset to " in result.stdout 
+                # get the path
                 path = result.stdout.split("Output directory reset to ")[1]
+                path = path[:-1] 
+                # check if the path exists
                 assert os.path.exists(path)
 
             # check the config file

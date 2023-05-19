@@ -1,6 +1,5 @@
 import subprocess
-import tempfile
-
+import tempfile 
 
 def test_help():
     """Test the help command."""
@@ -21,6 +20,8 @@ def test_help():
                 "-g | --grid  (default False)",
                 "-s | --show  (default False)",
                 "-j | --json  (default False)",
+                "-d | --dir   (default False)",
+                "-u | --uno  (default False)",
                 "codecarto dir",
                 "codecarto help | -h | --help",
                 "codecarto output -s | --set DIR",
@@ -43,6 +44,9 @@ def test_help():
                 "--grid   | -g : Display a grid on the graph. Default is False.",
                 "--show   | -s : Show the graph plot. Default is False.",
                 "--json   | -j : Converts json data to graph and plots. Default is False.",
+                "--dir    | -d : Prints passed file's source code to be used in process.",
+                "Does NOT run the package. Default is False.",
+                "--uno    | -u : Whether to run for a single file or all of source directory. Default is False.",
                 "Examples:",
                 "codecarto foo.py -l --grid --json",
                 "codecarto demo -labels -g -show",
@@ -51,6 +55,7 @@ def test_help():
                 "--export | -e  : Export package palette.json to a provided directory.",
                 "--types  | -t  : Display the styles for all types or for a specific type.",
                 "--new    | -n  : Create a new theme with the specified parameters.",
+                "PARAMS must be in the format: TYPE NAME SHAPE COLOR SIZE ALPHA",
                 "Examples:",
                 "codecarto palette -n ClassDef def.class Cl o red 5 10",
                 "codecarto palette --export EXPORT_DIR",
@@ -63,4 +68,7 @@ def test_help():
                 "Alpha must be an integer between 0 and 10. Represents [0.0, 0.1, 0.2., ... , 1.0] transparency.",
             ]
             for string in expected_strings:
+                # the string does not include the newline character or spacing 
+                # so we need to check that the 'string' is in the result.stdout
+                # but not exactly equal to the result.stdout
                 assert string in result.stdout

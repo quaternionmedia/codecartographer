@@ -15,7 +15,7 @@ def reset_config_data() -> dict:
     """
     from pkg_resources import get_distribution
     from .palette_dir import get_palette_package_file_path
-    from .palette_dir import PALETTE_FILE, get_palette_appdata_file_path
+    from .palette_dir import PALETTE_FILE, get_palette_appdata_dir
     from ...json.json_utils import save_json_data
     from .main_dir import get_main_dir
 
@@ -32,11 +32,11 @@ def reset_config_data() -> dict:
     config_data: dict = {
         "version": get_distribution("codecarto").version,
         "default_config_path": config_path,
-        "default_palette_dir": get_palette_package_file_path(),
+        "default_palette_path": get_palette_package_file_path(),
         "default_output_dir": default_output_dir,
         "config_path": config_path,
         "palette_file_name": PALETTE_FILE,
-        "palette_dir": get_palette_appdata_file_path(),
+        "palette_dir": get_palette_appdata_dir(),
         "output_dir": default_output_dir,
     }
     save_json_data(config_path, config_data)

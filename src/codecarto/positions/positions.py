@@ -52,9 +52,11 @@ class LayoutPositions:
 
     def add_custom_layouts(self):
         """Add all custom layouts to the list of available layouts"""
-        from .custom_layouts import grid_layout
+        from .custom_layouts.grid_layout import grid_layout
+        from .custom_layouts.cluster_layout import cluster_layout
 
         self.add_layout("grid_layout", grid_layout, ["graph"])
+        self.add_layout("cluster_layout", cluster_layout, ["graph", "root"])
 
     def get_layout_names(self):
         """Get all layout names from the list of available layouts
@@ -89,26 +91,7 @@ class LayoutPositions:
         tuple(str,function,list)
             The layout with its attributes
         """
-        return self._layouts[name]
-
-    # def get_positions(self, name: str, graph: nx.Graph, **kwargs):
-    #     """Get a positions from the list of available layouts
-
-    #     Parameters
-    #     ----------
-    #     name : str
-    #         The name of the layout
-    #     graph : nx.Graph
-    #         The graph to apply the layout to
-    #     **kwargs : dict
-    #         The attributes of the layout
-
-    #     Returns
-    #     -------
-    #     dict
-    #         The positions of the layout
-    #     """
-    #     return self._layouts[name][0](graph, **kwargs)
+        return self._layouts[name] 
 
     def get_positions(self, name: str, seed: int = -1, **kwargs):
         """Get a positions from the list of available layouts
@@ -146,6 +129,9 @@ class LayoutPositions:
                     # Create the list of lists (shells)
                     shells = list(grouped_nodes.values())
                     layout_kwargs["nshells"] = shells
+            elif param == "root" and name == "cluster_layout":
+                # Set the root node 
+                layout_kwargs["root"] = kwargs["root"]
             elif param != "G":
                 # TODO Handle other parameters here
                 pass

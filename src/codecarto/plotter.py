@@ -35,11 +35,20 @@ class GraphPlot:
         self.do_grid: bool = do_grid
         self.do_show: bool = do_show
         self.do_single_file: bool = do_single_file
+        self.do_ntx: bool = do_ntx
+        self.do_custom: bool = do_custom
 
-        # get all layout functions
-        self.layouts: tuple(str, function, list) = LayoutPositions(
-            do_ntx, do_custom
-        ).get_layouts()
+        test: bool = True
+        if test:
+            # get all layout functions
+            self.layouts: tuple(str, function, list) = LayoutPositions(
+                False, do_custom
+            ).get_layouts()
+        else:
+            # get all layout functions
+            self.layouts: tuple(str, function, list) = LayoutPositions(
+                do_ntx, do_custom
+            ).get_layouts()
 
     def plot(self, _graph, _json: bool = False):
         """Plots a graph using layouts."""
@@ -70,8 +79,8 @@ class GraphPlot:
             for layout_name, layout_info in self.layouts.items():
                 layout, layout_params = layout_info
 
-                # Initialize figure and axes
-                fig, ax = plt.subplots(figsize=(15, 7.5))
+                # Initialize figure and axes (w, h)
+                fig, ax = plt.subplots(figsize=(15, 15))
 
                 # placement of show on monitor
                 fig.canvas.manager.window.wm_geometry("+0+0")
@@ -120,16 +129,24 @@ class GraphPlot:
                         # Create the list of lists (shells)
                         shells = list(grouped_nodes.values())
                         layout_kwargs["nshells"] = shells
+                    elif param == "root" and layout_name == "cluster_layout":
+                        # get the node at the very top 
+                        root = None
+                        for node, data in _graph.nodes(data=True): 
+                            if data.get("label", "") == "root":
+                                root = node
+                                break
+                        layout_kwargs["root"] = root
                     elif param != "G":
                         # TODO: Handle other parameters here
                         pass
 
                 # compute layout
                 try:
-                    layout_pos = LayoutPositions()
+                    layout_pos = LayoutPositions(include_networkx=self.do_ntx, include_custom=self.do_custom)
                     pos = layout_pos.get_positions(layout_name, **layout_kwargs)
                 except Exception as e:
-                    print(e)
+                    print("Error: ", e)
                     continue
 
                 # Draw nodes with different shapes
@@ -204,6 +221,12 @@ class GraphPlot:
                 plt.savefig(file_path)
                 if self.do_show:
                     plt.show()
+
+
+                if layout.__name__ == "cluster_layout":
+                    plt.show()
+
+
                 plt.close()
 
     def plot_in_grid(self, _graph, _json: bool = False):
@@ -240,10 +263,12 @@ class GraphPlot:
 
             # Loop through all layouts
             empty_axes_indices = []
-            for idx, layout in enumerate(self.layouts):
+            for layout_name, layout_info in self.layouts.items():
+                layout, layout_params = layout_info
+
                 # Set up ax
                 ax = axes[idx // grid_size, idx % grid_size] if grid_size > 1 else axes
-                ax.set_title(f"{layout.__name__}")
+                ax.set_title(f"{layout_name}")
                 ax.axis("off")
 
                 # Collect nodes and their attributes
@@ -257,18 +282,19 @@ class GraphPlot:
                         node_type = "Unknown"
                     node_data[node_type].append(n)
 
-                # Compute positions
+                # Get layout parameters
                 seed = -1
-                try:
-                    if "seed" in inspect.signature(layout).parameters:
+                layout_kwargs = {"G": _graph}
+                for param in layout_params:
+                    if param == "seed":
                         if _json:
                             # Use the same seed for the same layout
-                            seed = self.seed[layout.__name__]
+                            seed = self.seed[layout_name]
                         else:
                             seed = random.randint(0, 1000)
-                            self.seed[layout.__name__] = seed
-                        pos = layout(_graph, seed=seed)
-                    elif layout.__name__ == "shell_layout":
+                            self.seed[layout_name] = seed
+                        layout_kwargs["seed"] = seed
+                    elif param == "nshells" and layout_name == "shell_layout":
                         # Group nodes by parent
                         grouped_nodes: dict[str, list] = {}
                         for node, data in _graph.nodes(data=True):
@@ -279,16 +305,19 @@ class GraphPlot:
 
                         # Create the list of lists (shells)
                         shells = list(grouped_nodes.values())
+                        layout_kwargs["nshells"] = shells
+                    elif param != "G":
+                        # TODO: Handle other parameters here
+                        pass
 
-                        # Apply shell layout
-                        pos = nx.layout.shell_layout(_graph, nlist=shells)
-                    else:
-                        pos = layout(_graph)
+                # compute layout
+                try:
+                    layout_pos = LayoutPositions(include_networkx=self.do_ntx, include_custom=self.do_custom)
+                    pos = layout_pos.get_positions(layout_name, **layout_kwargs)
                 except Exception as e:
-                    print(f"Skipping {layout.__name__} due to an error: {e}")
+                    print(f"Skipping {layout_name} due to an error: {e}")
                     empty_axes_indices.append(idx)
-
-                    continue
+                    continue 
 
                 # Draw nodes with different shapes
                 for node_type, nodes in node_data.items():

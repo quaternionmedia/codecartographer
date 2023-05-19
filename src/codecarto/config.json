@@ -1,10 +1,10 @@
 {
     "version": "0.1.0",
-    "default_config_path": "D:\\Users\\Cameron\\Documents\\Projects\\Programming\\Repos\\QM\\CodeCartographer\\codecarto\\src\\codecarto\\config\\default_config.json",
-    "default_palette_dir": "D:\\Users\\Cameron\\Documents\\Projects\\Programming\\Repos\\QM\\CodeCartographer\\codecarto\\src\\codecarto\\palette\\default_palette.json",
-    "default_output_dir": "D:\\Users\\Cameron\\Documents\\Projects\\Programming\\Repos\\QM\\CodeCartographer\\codecarto\\output",
-    "config_path": "D:\\Users\\Cameron\\Documents\\Projects\\Programming\\Repos\\QM\\CodeCartographer\\codecarto\\src\\codecarto\\config.json",
+    "default_config_path": "C:\\Users\\Cameron\\Documents\\Programming Projects\\Repos\\QM\\CodeCartographer\\src\\codecarto\\config\\default_config.json",
+    "default_palette_path": "C:\\Users\\Cameron\\Documents\\Programming Projects\\Repos\\QM\\CodeCartographer\\src\\codecarto\\palette\\default_palette.json",
+    "default_output_dir": "C:\\Users\\Cameron\\Documents\\Programming Projects\\Repos\\QM\\CodeCartographer\\output",
+    "config_path": "C:\\Users\\Cameron\\Documents\\Programming Projects\\Repos\\QM\\CodeCartographer\\src\\codecarto\\config.json",
     "palette_file_name": "palette.json",
-    "palette_dir": "C:\\Users\\Cameron\\AppData\\Roaming\\CodeCartographer\\palette.json",
-    "output_dir": "D:\\Users\\Cameron\\Documents\\Projects\\Programming\\Repos\\QM\\CodeCartographer\\output"
+    "palette_dir": "C:\\Users\\Cameron\\AppData\\Roaming\\CodeCartographer",
+    "output_dir": "C:\\Users\\Cameron\\Documents\\Programming Projects\\Repos\\QM\\CodeCartographer\\output"
 }

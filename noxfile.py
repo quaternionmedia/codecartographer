@@ -1,6 +1,5 @@
 import os
-import nox
-
+import nox 
 
 def inject_js_to_coverage_report(js_file, coverage_dir):
     index_html_path = os.path.join(coverage_dir, "index.html")
@@ -23,11 +22,13 @@ def unit_tests(session):
     session.install(".") 
     session.install("matplotlib")  # needed to close the matplot show window
     session.install(
-        "pytest", "pytest-html", "pytest-cov"
+        "pytest", "pytest-html", "pytest-cov", "pytest-xdist"
     )  # needed to run pytest and pytest extensions
     session.run(
-        "pytest",
+        "python", "-m", "cProfile", "-o", "profile_output.pstats",
+        "-m", "pytest",  
         "tests",
+        "-n", "4",
         "--confcutdir=tests/test_reports/assets",
         "--cov=codecarto",
         "--cov-report=html:tests/test_reports/coverage",
@@ -46,11 +47,13 @@ def debug(session):
     session.install(".") 
     session.install("matplotlib")  # needed to close the matplot show window
     session.install(
-        "pytest", "pytest-html", "pytest-cov"
+        "pytest", "pytest-html", "pytest-cov", "pytest-xdist"
     )  # needed to run pytest and pytest extensions
     session.run(
-        "pytest",
+        "python", "-m", "cProfile", "-o", "profile_output.pstats",
+        "-m", "pytest",  "-vv",
         file_path,
+        "-n", "4",
         "--confcutdir=tests/test_reports/assets",
         "--cov=codecarto",
         "--cov-report=html:tests/test_reports/coverage",
@@ -58,6 +61,3 @@ def debug(session):
         "--css=tests/test_reports/assets/codecarto.css",
         )
 
-@nox.session()
-def cleanup(session):
-    session.run("nox", "-r")

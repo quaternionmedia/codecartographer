@@ -43,7 +43,7 @@ def run_codecarto(
         do_labels=labels,
         do_grid=grid,
         do_show=show,
-        do_uno=uno,
+        do_single_file=uno,
     ).main()
     return output_dirs
 
@@ -369,8 +369,7 @@ def output(set: str, reset: bool):
         from ..utils.directory.output_dir import set_output_dir
 
         set_output_dir(set)
-        print(f"Output directory changed to '{set}'")
-
+        print(f"Output directory changed to '{set}'") 
     elif reset:
         from ..utils.directory.output_dir import reset_output_dir
 
@@ -459,11 +458,9 @@ def palette(
             shape,
             color,
             palette._sizes[size - 1],
-            palette._alphas[alpha - 1],
+            palette._alphas[alpha],
             True,
-        )
-        if node_type == None:
-            raise ThemeCreationError("New theme could not be created.")
+        ) 
     else:
         palette_print(palette)
 

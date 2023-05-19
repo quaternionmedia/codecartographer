@@ -17,9 +17,10 @@ def grid_layout(G: nx.Graph):
     import numpy as np 
 
     num_nodes = len(G.nodes())
-    grid_size = math.ceil(math.sqrt(num_nodes))
+    sqrt_num_nodes = math.sqrt(num_nodes)
+    grid_size = math.ceil(sqrt_num_nodes) 
 
-    # Sort nodes by 'value' attribute
+    # Sort nodes by 'type' attribute
     sorted_nodes = sorted(G.nodes(data=True), key=lambda x: x[1]["type"])
 
     # Create a grid of positions

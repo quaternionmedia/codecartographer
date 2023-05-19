@@ -42,6 +42,7 @@ Classes:
 
 ##############################################################################
 # Import the sub modules to make them easier to get at
+from .config.config import Config
 from .json.json_graph import JsonGraph
 from .palette.palette import Palette
 from .parser import SourceParser
@@ -55,6 +56,7 @@ from .cli.cli import demo
 ##############################################################################
 # Export the submodules.
 __all__ = [
+    "Config",
     "JsonGraph",
     "Palette",
     "SourceParser",

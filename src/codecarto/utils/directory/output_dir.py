@@ -1,29 +1,6 @@
 import os
 
-JSON_GRAPH_FILE = "graph_data.json"
-
-
-def set_config_property(name: str, value: str) -> str:
-    """Set the value of a property in the config file.
-
-    Parameters:
-    -----------
-    property_name: str
-        The name of the property to set.
-    property_value: str
-        The value of the property to set.
-
-    Returns:
-    --------
-    str
-        The value of the property that was set.
-    """
-    from ...config.config import Config
-
-    config = Config()
-    config.set_config_property(name, value)
-    return config.config_data[name]
-
+JSON_GRAPH_FILE = "graph_data.json" 
 
 def get_run_version() -> str:
     """Get the version number of the run.
@@ -80,6 +57,8 @@ def set_output_dir(new_dir: str, ask_user: bool = True, makedir: bool = False) -
     str
         The new output directory.
     """
+    from ...config.config import Config
+    
     # check if the new dir exists
     if not os.path.exists(new_dir):
         if ask_user and not makedir:
@@ -100,8 +79,10 @@ def set_output_dir(new_dir: str, ask_user: bool = True, makedir: bool = False) -
         else:
             raise ValueError("The new output directory does not exist.")
 
-    # Save to the config file
-    return set_config_property("output_dir", new_dir)
+    # Save to the config file 
+    config = Config()
+    config.set_config_property("output_dir", new_dir)
+    return config.config_data["output_dir"] 
 
 
 def reset_output_dir() -> str:
@@ -112,7 +93,7 @@ def reset_output_dir() -> str:
     str
         The default output directory.
     """
-    return set_config_property("output_dir", get_output_package_dir())
+    return set_output_dir(get_output_package_dir(), ask_user=False) 
 
 
 def get_output_dir(ask_user: bool = False) -> str:

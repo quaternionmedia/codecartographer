@@ -17,6 +17,7 @@ class Processor:
         file_path : str
             The path to the file to parse.
         """
+        from .config.config import Config
         print(f"\nCode Cartographer:\nProcessing File:\n{file_path}\n")
 
         self.file_path = file_path
@@ -25,6 +26,7 @@ class Processor:
         self.do_grid = do_grid
         self.do_show = do_show
         self.single_file = do_single_file
+        Config()
 
     def main(self) -> dict | None:
         """The main function of the code cartographer.
@@ -74,6 +76,8 @@ class Processor:
                 do_grid=self.do_grid,
                 do_show=self.do_show,
                 do_single_file=self.single_file,
+                do_ntx=True,
+                do_custom=True
             )
 
             # Plot the graph made from code

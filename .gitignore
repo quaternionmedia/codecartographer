@@ -66,6 +66,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 .nox/
+*.pstats
 
 # Translations
 *.mo
@@ -146,3 +147,7 @@ sandbox/
 
 # Used by mkdocs-material social plugin
 .cache
+
+src/codecarto/config/default_config.json
+
+src/codecarto/config.json

@@ -2,6 +2,7 @@ import os
 
 from ..json.json_utils import load_json_data, save_json_data
 
+#TODO: Need to be setting up default_config and config files when the package is installed.
 
 class Config:
     def __init__(self):
@@ -72,7 +73,7 @@ class Config:
             The value of the property that was set.
         """
         # set the value of the property in the package config file
-        config_path: str = self.get_config_path(True)
+        config_path: str = self.get_config_path(package_dir = True)
         self.config_data[property_name] = property_value
         save_json_data(config_path, self.config_data)
 

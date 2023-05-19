@@ -75,35 +75,31 @@ def get_palette_appdata_file_name() -> str:
 
 
 def get_palette_appdata_dir() -> str:
-    """Get the path to the APPDATA\Roaming\CodeCartographer directory.
+    """Get the appdata dir from config.json.
 
     Returns:
     --------
     str
-        The path to the APPDATA\Roaming\CodeCartographer directory.
+        The appdata dir from config.json.
     """
-    return get_codecarto_appdata_dir()
+    from ...config.config import Config
+
+    config: Config = Config() 
+    if "palette_dir" not in config.config_data:
+        # add the palette dir to the config file
+        config.set_config_property("palette_dir", get_codecarto_appdata_dir())
+    return config.config_data["palette_dir"]
 
 
 def get_palette_appdata_file_path() -> str:
-    """Get the path to the APPDATA\Roaming\CodeCartographer\\palette.json file.
+    """Get the appdata path from config.json.
 
     Returns:
     --------
     str
-        The path to the APPDATA\Roaming\CodeCartographer\\palette.json file.
+        The appdata path from config.json.
     """
-    palette_file_path = os.path.join(get_palette_appdata_dir(), PALETTE_FILE)
-    if not os.path.exists(palette_file_path):
-        # copy the default palette file to the appdata directory
-        default_palette_file = get_palette_package_file_path()
-        shutil.copy2(default_palette_file, palette_file_path)
-        # check if the file was copied successfully
-        if not os.path.exists(palette_file_path):
-            raise RuntimeError(
-                "Unable to copy default palette. Package may be corrupted."
-            )
-    return palette_file_path
+    return os.path.join(get_palette_appdata_dir(), get_palette_appdata_file_name())
 
 
 PALETTE_APPDATA_DIRECTORY = {
