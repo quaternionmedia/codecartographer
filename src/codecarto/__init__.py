@@ -1,5 +1,4 @@
 ### codecarto\__init__.py
-
 ##############################################################################
 
 """A tool used to analyze and graph source code. \n
@@ -24,8 +23,8 @@ Classes:
             json_graph:networkx.DiGraph - A networkx graph object. \n
 
         Functions: \n
-            save_json_data - A function used to save json data to a file. \n
-            load_json_data - A function used to load json data from a file. \n
+            save_json_file - A function used to save json data to a file. \n
+            load_json_file - A function used to load json data from a file. \n
             graph_to_json - A function used to convert a networkx graph to a json object. \n
             json_to_graph - A function used to convert a json object to a networkx graph. \n
 
@@ -40,7 +39,7 @@ Classes:
     GraphPlot - A class used to plot a graph.
 """
 
-##############################################################################
+########################### IMPORTS #######################################
 # Import the sub modules to make them easier to get at
 from .config.config import Config
 from .json.json_graph import JsonGraph
@@ -48,12 +47,11 @@ from .palette.palette import Palette
 from .parser import SourceParser
 from .processor import Processor
 from .plotter import GraphPlot
-from .json.json_utils import save_json_data as save_json, load_json_data as load_json
-from .utils.directory.output_dir import set_output_dir
-from .utils.directory.main_dir import MAIN_DIRECTORY
-from .cli.cli import demo
+from .json.json_utils import save_json_file as save_json, load_json_file as load_json
+from .api import CodeCarto
 
-##############################################################################
+
+########################### EXPORTS #########################################
 # Export the submodules.
 __all__ = [
     "Config",
@@ -64,8 +62,7 @@ __all__ = [
     "GraphPlot",
     "save_json",
     "load_json",
-    "set_output_dir",
-    "demo",
+    "CodeCarto",
 ]
 
 ### __init__.py ends here

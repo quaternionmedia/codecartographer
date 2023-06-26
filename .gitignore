@@ -5,6 +5,10 @@ output/
 .vscode/
 ..vscode/
 
+# package files
+config.json
+default_config.json
+
 # General
 *.ipynb
 .pytype

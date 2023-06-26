@@ -1,6 +1,7 @@
 import os
 
-JSON_GRAPH_FILE = "graph_data.json" 
+JSON_GRAPH_FILE = "graph_data.json"
+
 
 def get_run_version() -> str:
     """Get the version number of the run.
@@ -58,7 +59,7 @@ def set_output_dir(new_dir: str, ask_user: bool = True, makedir: bool = False) -
         The new output directory.
     """
     from ...config.config import Config
-    
+
     # check if the new dir exists
     if not os.path.exists(new_dir):
         if ask_user and not makedir:
@@ -79,10 +80,10 @@ def set_output_dir(new_dir: str, ask_user: bool = True, makedir: bool = False) -
         else:
             raise ValueError("The new output directory does not exist.")
 
-    # Save to the config file 
+    # Save to the config file
     config = Config()
     config.set_config_property("output_dir", new_dir)
-    return config.config_data["output_dir"] 
+    return config.config_data["output_dir"]
 
 
 def reset_output_dir() -> str:
@@ -93,7 +94,7 @@ def reset_output_dir() -> str:
     str
         The default output directory.
     """
-    return set_output_dir(get_output_package_dir(), ask_user=False) 
+    return set_output_dir(get_output_package_dir(), ask_user=False)
 
 
 def get_output_dir(ask_user: bool = False) -> str:
@@ -227,6 +228,11 @@ def get_json_graph_file_path(make_dir: bool = False) -> str:
 
 def setup_output_directory(make_dir: bool = False) -> dict:
     """Setup the output directory.
+
+    Parameters:
+    -----------
+    make_dir : bool
+        Whether or not to make the output directory. If False, the output directory is set to 'RUN_TIME' filler string.
 
     Returns:
     --------

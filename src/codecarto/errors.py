@@ -1,3 +1,7 @@
+# TODO: go through errors in package and make sure they're custom and not just generic exceptions.
+# ^^^ IF NEEDED
+
+
 class ThemeError(Exception):
     """Base class for exceptions in the Theme module."""
 

@@ -16,7 +16,7 @@ def reset_config_data() -> dict:
     from pkg_resources import get_distribution
     from .palette_dir import get_palette_package_file_path
     from .palette_dir import PALETTE_FILE, get_palette_appdata_dir
-    from ...json.json_utils import save_json_data
+    from ...json.json_utils import save_json_file
     from .main_dir import get_main_dir
 
     # create the default output dir
@@ -39,7 +39,7 @@ def reset_config_data() -> dict:
         "palette_dir": get_palette_appdata_dir(),
         "output_dir": default_output_dir,
     }
-    save_json_data(config_path, config_data)
+    save_json_file(config_path, config_data)
     return config_data
 
 

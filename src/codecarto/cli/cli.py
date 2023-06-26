@@ -1,10 +1,11 @@
 from __future__ import annotations
 import click
 import functools
+from trogon import tui
 from ..errors import BaseNotFoundError, ThemeCreationError
 
 
-################### DEFAULTS
+################### HELPER FUNCTIONS
 
 
 def run_codecarto(
@@ -119,6 +120,11 @@ New Theme Information:
     For a list of valid colors     : https://matplotlib.org/stable/gallery/color/named_colors.html
     Size must be an integer between 0 and 10. Represents [100, 200, 300, ... , 1000] size.
     Alpha must be an integer between 0 and 10. Represents [0.0, 0.1, 0.2., ... , 1.0] transparency.
+
+TUI Command Builder:
+    codecarto tui
+        This will open a TUI that will help you build a command.
+        Thank you Textualize.Trogon! : https://github.com/Textualize/trogon
     """
     print(help_text)
 
@@ -127,7 +133,7 @@ New Theme Information:
 
 
 def shared_options(func):
-    """Shared options for the run command."""
+    """Shared options for the run and demo commands."""
 
     @click.option(
         "--json",
@@ -261,6 +267,7 @@ class CustomHelpGroup(click.Group):
 ################### RUN COMMAND
 
 
+@tui()
 @click.group(cls=CustomHelpGroup)
 @click.version_option(get_version())
 def run() -> None:
@@ -369,7 +376,7 @@ def output(set: str, reset: bool):
         from ..utils.directory.output_dir import set_output_dir
 
         set_output_dir(set)
-        print(f"Output directory changed to '{set}'") 
+        print(f"Output directory changed to '{set}'")
     elif reset:
         from ..utils.directory.output_dir import reset_output_dir
 
@@ -460,7 +467,7 @@ def palette(
             palette._sizes[size - 1],
             palette._alphas[alpha],
             True,
-        ) 
+        )
     else:
         palette_print(palette)
 

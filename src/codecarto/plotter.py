@@ -50,14 +50,23 @@ class GraphPlot:
                 do_ntx, do_custom
             ).get_layouts()
 
-    def plot(self, _graph, _json: bool = False):
-        """Plots a graph using layouts."""
-        if self.do_grid:
-            self.plot_in_grid(_graph, _json)
+    def plot(self, _graph: nx.DiGraph, _layout: str = "", _json: bool = False):
+        """Plots a graph."""
+        # Check if graph provided
+        if not _graph or not isinstance(_graph, nx.Graph):
+            raise ValueError("No graph provided.")
+        # Plot based on args
+        if _layout != "":
+            self.plot_layout(_graph, _layout, _json)
+        elif self.do_grid:
+            self.plot_all_in_grid(_graph, _json)
         else:
-            self.plot_all(_graph, _json)
+            self.plot_all_separate(_graph, _json)
 
-    def plot_all(self, _graph, _json: bool = False):
+    def plot_layout(self, _graph: nx.DiGraph, _layout: str, _json: bool = False):
+        pass
+
+    def plot_all_separate(self, _graph, _json: bool = False):
         """Plots a graph using matplotlib.
 
         Parameters:
@@ -130,9 +139,9 @@ class GraphPlot:
                         shells = list(grouped_nodes.values())
                         layout_kwargs["nshells"] = shells
                     elif param == "root" and layout_name == "cluster_layout":
-                        # get the node at the very top 
+                        # get the node at the very top
                         root = None
-                        for node, data in _graph.nodes(data=True): 
+                        for node, data in _graph.nodes(data=True):
                             if data.get("label", "") == "root":
                                 root = node
                                 break
@@ -143,7 +152,9 @@ class GraphPlot:
 
                 # compute layout
                 try:
-                    layout_pos = LayoutPositions(include_networkx=self.do_ntx, include_custom=self.do_custom)
+                    layout_pos = LayoutPositions(
+                        include_networkx=self.do_ntx, include_custom=self.do_custom
+                    )
                     pos = layout_pos.get_positions(layout_name, **layout_kwargs)
                 except Exception as e:
                     print("Error: ", e)
@@ -222,14 +233,12 @@ class GraphPlot:
                 if self.do_show:
                     plt.show()
 
-
                 if layout.__name__ == "cluster_layout":
                     plt.show()
 
-
                 plt.close()
 
-    def plot_in_grid(self, _graph, _json: bool = False):
+    def plot_all_in_grid(self, _graph, _json: bool = False):
         """
         Plots the given graph in a grid of subplots, one subplot for each layout.
         """
@@ -312,12 +321,14 @@ class GraphPlot:
 
                 # compute layout
                 try:
-                    layout_pos = LayoutPositions(include_networkx=self.do_ntx, include_custom=self.do_custom)
+                    layout_pos = LayoutPositions(
+                        include_networkx=self.do_ntx, include_custom=self.do_custom
+                    )
                     pos = layout_pos.get_positions(layout_name, **layout_kwargs)
                 except Exception as e:
                     print(f"Skipping {layout_name} due to an error: {e}")
                     empty_axes_indices.append(idx)
-                    continue 
+                    continue
 
                 # Draw nodes with different shapes
                 for node_type, nodes in node_data.items():
@@ -443,6 +454,29 @@ class GraphPlot:
             if self.do_show:
                 plt.show()
             plt.close()
+
+    def set_plot_output_dir(self, output_dir: str = None):
+        """Sets the plot output directory.
+
+        Parameters:
+        -----------
+            output_dir (str) Default = None:
+                The directory to use.
+        """
+        _dir = output_dir if output_dir is not None else self.dirs["output_dir"]
+        if _dir is None:
+            raise ValueError("No output directory provided.")
+        # check if the directory exists
+        if not os.path.isdir(_dir):
+            raise ValueError("The provided output directory does not exist.")
+        self.dirs["graph_code_dir"] = os.path.join(_dir, "code")
+        self.dirs["graph_json_dir"] = os.path.join(_dir, "json")
+
+    def reset_plot_output_dir(self):
+        """Resets the plot output directory to the default output directory."""
+        from .utils.directory.output_dir import setup_output_directory
+
+        self.dirs = setup_output_directory(make_dir=True)
 
 
 ########## OPTIONAL ##########

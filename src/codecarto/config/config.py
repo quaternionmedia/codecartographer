@@ -1,8 +1,9 @@
 import os
 
-from ..json.json_utils import load_json_data, save_json_data
+from ..json.json_utils import load_json_file, save_json_file
 
-#TODO: Need to be setting up default_config and config files when the package is installed.
+# TODO: Need to be setting up default_config and config files when the package is installed.
+
 
 class Config:
     def __init__(self):
@@ -33,11 +34,11 @@ class Config:
         if config_path is None:
             config_path = self.config_path
 
-        save_json_data(config_path, self.config_data)
+        save_json_file(config_path, self.config_data)
 
     def load_config_data(self):
         """Load the config data, to the class' config_data, from the config file."""
-        self.config_data = load_json_data(self.config_path)
+        self.config_data = load_json_file(self.config_path)
 
     def get_config_path(self, package_dir: bool = True) -> str:
         """Return the path of the codecarto config file.
@@ -73,14 +74,14 @@ class Config:
             The value of the property that was set.
         """
         # set the value of the property in the package config file
-        config_path: str = self.get_config_path(package_dir = True)
+        config_path: str = self.get_config_path(package_dir=True)
         self.config_data[property_name] = property_value
-        save_json_data(config_path, self.config_data)
+        save_json_file(config_path, self.config_data)
 
         try:
             # try to set the value of the property in the appdata config file
             config_path: str = self.get_config_path(False)
-            save_json_data(config_path, self.config_data)
+            save_json_file(config_path, self.config_data)
         except:
             pass
 

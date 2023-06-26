@@ -2,7 +2,7 @@ import os
 import json
 
 
-def load_json_data(file_path) -> dict:
+def load_json_file(file_path) -> dict:
     """Load data from a json file.
 
     Parameters:
@@ -29,7 +29,7 @@ def load_json_data(file_path) -> dict:
     return data
 
 
-def save_json_data(file_path, data):
+def save_json_file(file_path, data):
     """Save data to a json file.
 
     Parameters:

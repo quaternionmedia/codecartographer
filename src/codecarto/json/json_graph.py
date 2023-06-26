@@ -1,6 +1,6 @@
 import networkx as nx
 
-from .json_utils import save_json_data, load_json_data
+from .json_utils import save_json_file, load_json_file
 from ..palette.palette import Palette
 
 # TODO: We have a 'P' theme going on here, plotter, parser, palette, processor.
@@ -21,8 +21,8 @@ class JsonGraph:
 
     Functions:
     ----------
-        save_json_data - A function used to save json data to a file. \n
-        load_json_data - A function used to load json data from a file. \n
+        save_json_file - A function used to save json data to a file. \n
+        load_json_file - A function used to load json data from a file. \n
         graph_to_json - A function used to convert a networkx graph to a json object. \n
         json_to_graph - A function used to convert a json object to a networkx graph. \n
     """
@@ -37,12 +37,12 @@ class JsonGraph:
         self.json_file_path = _path
 
         if _graph.number_of_nodes() == 0:
-            self.json_data = load_json_data(self.json_file_path)
-            save_json_data(self.json_file_path, self.json_data)
+            self.json_data = load_json_file(self.json_file_path)
+            save_json_file(self.json_file_path, self.json_data)
             self.json_graph = self.json_to_graph(self.json_data)
         else:
             self.json_data = self.graph_to_json(_graph)
-            save_json_data(self.json_file_path, self.json_data)
+            save_json_file(self.json_file_path, self.json_data)
             if _convert_back:
                 self.json_graph = self.json_to_graph(self.json_data)
             else:

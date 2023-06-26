@@ -9,15 +9,29 @@ class Processor:
         do_grid: bool = False,
         do_show: bool = False,
         do_single_file: bool = False,
+        output_dir: str = "",
     ):
         """Initialize the CodeCartographer class.
 
         Parameters:
         -----------
-        file_path : str
-            The path to the file to parse.
+        file_path (str) - Default: __file__
+            The path to the file to be analyzed. \n
+        do_json (bool) - Default: False
+            Whether to create a json file of the graph. \n
+        do_labels (bool) - Default: False
+            Whether to label the nodes of the graph. \n
+        do_grid (bool) - Default: False
+            Whether to add a grid to the graph. \n
+        do_show (bool) - Default: False
+            Whether to show the graph. \n
+        do_single_file (bool) - Default: False
+            Whether to analyze a single file. \n
+        output_dir (str) - Default: ""
+            The path to the output directory. \n
         """
         from .config.config import Config
+
         print(f"\nCode Cartographer:\nProcessing File:\n{file_path}\n")
 
         self.file_path = file_path
@@ -26,7 +40,9 @@ class Processor:
         self.do_grid = do_grid
         self.do_show = do_show
         self.single_file = do_single_file
-        Config()
+        self.config = Config()
+        if output_dir and output_dir != "":
+            self.config.set_config_property("output_dir", output_dir)
 
     def main(self) -> dict | None:
         """The main function of the code cartographer.
@@ -77,7 +93,7 @@ class Processor:
                 do_show=self.do_show,
                 do_single_file=self.single_file,
                 do_ntx=True,
-                do_custom=True
+                do_custom=True,
             )
 
             # Plot the graph made from code

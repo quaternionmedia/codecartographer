@@ -3,7 +3,7 @@ import shutil
 from ..utils.directory.palette_dir import PALETTE_DIRECTORY
 from ..utils.utils import get_date_time_file_format
 from ..errors import ThemeNotFoundError
-from ..json.json_utils import save_json_data, load_json_data
+from ..json.json_utils import save_json_file, load_json_file
 
 
 class Palette:
@@ -23,9 +23,9 @@ class Palette:
             "sizes": {},
             "alphas": {},
         }
-        self.load()
+        self.load_palette()
 
-    def save(self):
+    def save_palette(self):
         """Save the current palette to the palette json file."""
         # create dictionary with current palette data
         palette_data = {
@@ -37,18 +37,18 @@ class Palette:
             "alphas": self.alphas,
         }
         # write palette data to file
-        save_json_data(self._palette_app_dir["path"], palette_data)
+        save_json_file(self._palette_app_dir["path"], palette_data)
 
-    def load(self):
+    def load_palette(self):
         """Load the palette from the palette json file."""
         # load palette data from file
         palette_data: dict = {}
         try:
-            palette_data = load_json_data(self._palette_app_dir["path"])
+            palette_data = load_json_file(self._palette_app_dir["path"])
             # check if palette data is none
             if palette_data is None:
                 # load the default palette
-                palette_data = load_json_data(self._palette_pack_dir["path"])
+                palette_data = load_json_file(self._palette_pack_dir["path"])
             if palette_data is None:
                 raise ThemeNotFoundError(
                     "No palette data found. Package may be corrupted."
@@ -76,7 +76,7 @@ class Palette:
             if overwrite.upper() == "N":
                 return
         # load the default palette
-        palette_data = load_json_data(self._palette_pack_dir["path"])
+        palette_data = load_json_file(self._palette_pack_dir["path"])
         # check if palette data was loaded
         if len(palette_data.keys()) > 0:
             # overwrite palette file in appdata directory
@@ -208,7 +208,7 @@ class Palette:
         self.alphas[base] = alpha
 
         # save themes to palette file
-        self.save()
+        self.save_palette()
         if ask_user:
             print(f"\nNew theme added to palette: {self._palette_app_dir['path']}")
             print(
@@ -268,4 +268,4 @@ class Palette:
             "colors": self.colors,
             "sizes": self.sizes,
             "alphas": self.alphas,
-        } 
+        }

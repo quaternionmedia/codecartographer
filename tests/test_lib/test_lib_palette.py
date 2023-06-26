@@ -15,8 +15,8 @@ def test_palette():
             palette = Palette()
 
             # Test save, load, and get_palette_data methods
-            palette.save()
-            palette.load()
+            palette.save_palette()
+            palette.load_palette()
             palette_data = palette.get_palette_data()
             assert palette_data is not None
 
