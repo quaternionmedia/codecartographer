@@ -30,7 +30,7 @@ class Processor:
         output_dir (str) - Default: ""
             The path to the output directory. \n
         """
-        from .config.config import Config
+        from codecarto import Config
 
         print(f"\nCode Cartographer:\nProcessing File:\n{file_path}\n")
 
@@ -60,32 +60,29 @@ class Processor:
                 'json_dir': the path to the output/json directory. \n
                 'json_graph_file_path': the path to the output/json/graph.json file.
         """
-        from .utils.directory.import_source_dir import get_all_source_files
-        from .parser import SourceParser
+        from codecarto import Directories as Dir, Parser
 
         # Analyze the code
         _source_files: list[str] = []
         if self.single_file:
             _source_files = [self.file_path]
         else:
-            _source_files = get_all_source_files(self.file_path)
-        graph = SourceParser(
+            _source_files = Dir.get_source_files(self.file_path)
+        graph = Parser(
             source_files=_source_files,
         ).graph
         print("Visited Tree")
 
         # Process the graph
         if graph and graph.number_of_nodes() > 0:
-            from .utils.directory.output_dir import setup_output_directory
-            from .json.json_graph import JsonGraph
-            from .plotter import GraphPlot
+            from codecarto import Directories as Dir, PolyGraph, Plotter
 
             # Create the output directory
-            paths = setup_output_directory(make_dir=True)
+            paths = Dir.new_output_directory(make_dir=True)
 
             # Create the graph plotter, needs to be same
             # plotter for both to handle seed correctly
-            plotter: GraphPlot = GraphPlot(
+            plotter: Plotter = Plotter(
                 dirs=paths,
                 file_path=self.file_path,
                 do_labels=self.do_labels,
@@ -102,7 +99,7 @@ class Processor:
             print("Code Plots Saved\n")
 
             # Plot the graph made from json
-            json_grapher: JsonGraph = JsonGraph(
+            json_grapher: PolyGraph = PolyGraph(
                 _path=paths["json_graph_file_path"],
                 _graph=graph,
                 _convert_back=self.do_json,

@@ -36,7 +36,7 @@ def run_codecarto(
     dict | None
         The output directories of the package.
     """
-    from ..processor import Processor
+    from codecarto import Processor
 
     output_dirs: dict = Processor(
         file_path=import_name,
@@ -51,9 +51,9 @@ def run_codecarto(
 
 def get_version():
     """Get the version of the codecarto package."""
-    from ..utils.directory.package_dir import CODE_CARTO_PACKAGE_VERSION
+    from codecarto import Directories
 
-    return CODE_CARTO_PACKAGE_VERSION
+    return Directories.get_package_version()
 
 
 def print_help():
@@ -205,9 +205,9 @@ class CustomHelpGroup(click.Group):
             @click.pass_context
             def run_codecarto_cmd(ctx, json, labels, grid, show, dir, uno):
                 if dir:
-                    from ..utils.directory.import_source_dir import get_all_source_files
+                    from codecarto import Directories
 
-                    source_dirs: list = get_all_source_files(file_path)
+                    source_dirs: list = Directories.get_source_files(file_path)
                     print("\nPackage Source Python Files:")
                     for source_dir in source_dirs:
                         print(source_dir)
@@ -299,14 +299,12 @@ def demo(
         The source code directories if the dir flag is passed.
         The output directories if the command is successful, otherwise None.
     """
-    from ..utils.directory.main_dir import MAIN_DIRECTORY
+    from codecarto import Directories
 
-    demo_file_path = MAIN_DIRECTORY["path"]
+    demo_file_path = Directories.get_main_dir()["path"]
     if dir:
         # Print source code
-        from ..utils.directory.import_source_dir import get_all_source_files
-
-        source_dirs: list = get_all_source_files(demo_file_path)
+        source_dirs: list = Directories.get_source_files(demo_file_path)
         print("\nPackage Source Python Files:")
         for source_dir in source_dirs:
             print(source_dir)
@@ -330,16 +328,12 @@ def dir() -> dict:
     dict\n
         The available directories.
     """
-    from ..utils.directories import print_all_directories
+    from codecarto import Directories
 
-    all_dirs: dict = print_all_directories()
-
+    all_dirs: dict = Directories.print_all_directories()
     print("Package Source Python Files:")
-    from ..utils.directory.main_dir import MAIN_DIRECTORY
-    from ..utils.directory.import_source_dir import get_all_source_files
-
-    main_file_path = MAIN_DIRECTORY["path"]
-    source_dirs: list = get_all_source_files(main_file_path)
+    main_file_path = Directories.get_main_dir()["path"]
+    source_dirs: list = Directories.get_source_files(main_file_path)
     all_dirs.update({"source": source_dirs})
     for path in source_dirs:
         # only print files in codecarto directory
@@ -371,21 +365,17 @@ def dir() -> dict:
     help="Set the output directory back to the package directory.",
 )
 def output(set: str, reset: bool):
+    from codecarto import Directories
+
     """Show the current output directory or change it."""
     if set:
-        from ..utils.directory.output_dir import set_output_dir
-
-        set_output_dir(set)
+        Directories.set_output_dir(set)
         print(f"Output directory changed to '{set}'")
     elif reset:
-        from ..utils.directory.output_dir import reset_output_dir
-
-        _path = reset_output_dir()
+        _path = Directories.reset_output_dir()
         print(f"Output directory reset to '{_path}'")
     else:
-        from ..utils.directory.output_dir import get_output_dir
-
-        current_output_dir = get_output_dir()
+        current_output_dir = Directories.get_output_dir()
         print(f"Current output directory: '{current_output_dir}'")
 
 
@@ -444,9 +434,9 @@ def palette(
         types (bool): Whether to print the available node types and their corresponding properties.
     """
     # Call the appropriate subcommand function
-    from ..palette.palette import Palette
+    from codecarto import Palette
 
-    palette = Palette()
+    palette: Palette = Palette()
     if import_path:
         palette.import_palette(import_path, True)
     elif export_dir:

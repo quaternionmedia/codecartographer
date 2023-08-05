@@ -20,3 +20,7 @@ def get_codecarto_appdata_dir() -> str:
     if not os.path.exists(codecarto_appdata_dir):
         os.makedirs(codecarto_appdata_dir, exist_ok=True)
     return codecarto_appdata_dir
+
+
+APPDATA_DIRECTORY = get_appdata_dir()
+CODECARTO_APPDATA_DIRECTORY = get_codecarto_appdata_dir()

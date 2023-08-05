@@ -1,48 +1,36 @@
 import networkx as nx
-
-from .json_utils import save_json_file, load_json_file
-from ..palette.palette import Palette
-
-# TODO: We have a 'P' theme going on here, plotter, parser, palette, processor.
-#      We should try to make this follow the same convention.
-#      It should be descriptive, short, not too many syllables, and easy to type.
-#      GPT suggested PolyGrapher, if we changed this to take in any data type,
-#      not just JSON, then this could work.
+from codecarto import GraphData, Palette, JsonHandler as Json
 
 
-class JsonGraph:
-    """Converts a networkx graph to a JSON object and vice versa. \n
-
-    Attributes:
-    -----------
-        json_file_path (str): The path to the JSON file to save.\n
-        json_data (dict): The JSON data loaded from the file.\n
-        json_graph (networkx.classes.graph.Graph): A networkx graph object.\n
-
-    Functions:
-    ----------
-        save_json_file - A function used to save json data to a file. \n
-        load_json_file - A function used to load json data from a file. \n
-        graph_to_json - A function used to convert a networkx graph to a json object. \n
-        json_to_graph - A function used to convert a json object to a networkx graph. \n
-    """
-
+class PolyGraph:
     def __init__(self, _path, _graph: nx.Graph, _convert_back: bool = False):
-        """Constructor for JsonGraph class.\n
-        Args:\n
-            _path (str): The path to the JSON file to save.\n
-            _graph (networkx.classes.graph.Graph): The graph to convert.\n
-            _convert_back (bool, optional): Whether to convert the JSON object back to a graph. Defaults to False.\n
+        """Converts an assortment of data objects to an nx.DiGraph object and vice versa.
+
+        Attributes:
+        -----------
+            json_file_path (str):
+                The path to the JSON file to save.
+            json_data (dict):
+                The JSON data loaded from the file.
+            json_graph (networkx.classes.graph.Graph):
+                A networkx graph object.
+
+        Functions:
+        ----------
+            graph_to_json:
+                A function used to convert a networkx graph to a json object.
+            json_to_graph:
+                function used to convert a json object to a networkx graph.
         """
         self.json_file_path = _path
 
         if _graph.number_of_nodes() == 0:
-            self.json_data = load_json_file(self.json_file_path)
-            save_json_file(self.json_file_path, self.json_data)
+            self.json_data = Json.load_json(self.json_file_path)
+            Json.save_json(self.json_file_path, self.json_data)
             self.json_graph = self.json_to_graph(self.json_data)
         else:
             self.json_data = self.graph_to_json(_graph)
-            save_json_file(self.json_file_path, self.json_data)
+            Json.save_json(self.json_file_path, self.json_data)
             if _convert_back:
                 self.json_graph = self.json_to_graph(self.json_data)
             else:
@@ -112,11 +100,15 @@ class JsonGraph:
         return graph_data
 
     def json_to_graph(self, json_data: dict[str, dict]):
-        """Converts a JSON object to a networkx graph.\n
-        Args:\n
-            json_data (dict): The JSON object to convert.\n
-        Returns:\n
-            networkx.classes.graph.Graph: The graph.\n
+        """Converts a JSON object to a networkx graph.
+
+        Args:
+        -----
+            json_data (dict): The JSON object to convert.
+
+        Returns:
+        --------
+            networkx.classes.graph.Graph: The graph.
         """
         import networkx as nx
 
@@ -144,3 +136,16 @@ class JsonGraph:
             graph.add_edge(edge_obj["source"], edge_obj["target"])
 
         return graph
+
+    def convert_to_nx(graph_data: GraphData) -> nx.DiGraph:
+        G = nx.DiGraph()
+
+        # Add nodes to the graph
+        for node_id, node in graph_data.nodes.items():
+            G.add_node(node_id, label=node.label, type=node.type, base=node.base)
+
+        # Add edges to the graph
+        for edge_id, edge in graph_data.edges.items():
+            G.add_edge(edge.source, edge.target, id=edge_id, type=edge.type)
+
+        return G

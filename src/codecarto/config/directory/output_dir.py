@@ -226,7 +226,7 @@ def get_json_graph_file_path(make_dir: bool = False) -> str:
     return os.path.join(get_output_json_dir(make_dir), JSON_GRAPH_FILE)
 
 
-def setup_output_directory(make_dir: bool = False) -> dict:
+def new_output_directory(make_dir: bool = False) -> dict:
     """Setup the output directory.
 
     Parameters:
@@ -256,4 +256,4 @@ def setup_output_directory(make_dir: bool = False) -> dict:
     }
 
 
-OUTPUT_DIRECTORY = setup_output_directory()
+OUTPUT_DIRECTORY = get_output_dir()

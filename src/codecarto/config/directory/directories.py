@@ -1,3 +1,7 @@
+# TODO: import all directory files here to make it easier to import them from other files
+# TODO: rework all directory files, i feel like there is a lot of duplicated code
+
+
 def get_all_directories() -> dict:
     """Get all the directories.
 
@@ -6,17 +10,17 @@ def get_all_directories() -> dict:
     dict
         All the directories.
     """
-    from .directory.appdata_dir import get_codecarto_appdata_dir, get_appdata_dir
-    from .directory.package_dir import get_package_dir
-    from .directory.palette_dir import PALETTE_DIRECTORY
-    from .directory.output_dir import OUTPUT_DIRECTORY
-    from .directory.config_dir import CONFIG_DIRECTORY
-    from .directory.main_dir import MAIN_DIRECTORY
+    from .appdata_dir import CODECARTO_APPDATA_DIRECTORY, APPDATA_DIRECTORY
+    from .package_dir import PACKAGE_DIRECTORY
+    from .palette_dir import PALETTE_DIRECTORY
+    from .output_dir import OUTPUT_DIRECTORY
+    from ...config.config_dir import CONFIG_DIRECTORY
+    from .main_dir import MAIN_DIRECTORY
 
     return {
-        "appdata_dir": get_appdata_dir(),
-        "codecarto_appdata_dir": get_codecarto_appdata_dir(),
-        "package_dir": get_package_dir(),
+        "appdata_dir": APPDATA_DIRECTORY,
+        "codecarto_appdata_dir": CODECARTO_APPDATA_DIRECTORY,
+        "package_dir": PACKAGE_DIRECTORY,
         "config_dirs": CONFIG_DIRECTORY,
         "main_dirs": MAIN_DIRECTORY,
         "palette_dirs": PALETTE_DIRECTORY,

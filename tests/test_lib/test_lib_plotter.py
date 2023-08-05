@@ -5,11 +5,11 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-from codecarto.plotter import GraphPlot
+from codecarto.plotter.plotter import Plotter
 
 
 def create_sample_graph():
-    """Create a sample graph for testing that looks similar to SourceParser graph."""
+    """Create a sample graph for testing that looks similar to Parser graph."""
     # Create Graph
     G: nx.DiGraph = nx.DiGraph(name="root")
     # Create Nodes
@@ -35,7 +35,7 @@ def create_sample_graph():
 
 
 def test_plotter():
-    """Test GraphPlot class functions and that outputs exist."""
+    """Test Plotter class functions and that outputs exist."""
     try:
         # Create temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -55,12 +55,12 @@ def test_plotter():
                 # Create a sample graph
                 _graph: nx.DiGraph = create_sample_graph()
 
-                # Test GraphPlot object with different options
-                graph_plot = GraphPlot(
+                # Test Plotter object with different options
+                graph_plot = Plotter(
                     _dirs=test_dirs, do_labels=labels, do_grid=grid, do_show=show
                 )
 
-                # Pass graph to GraphPlot object and plot
+                # Pass graph to Plotter object and plot
                 plt.ioff()  # Turn off interactive mode so plt.show() doesn't block the test
                 graph_plot.plot(_graph, _json=False)
                 if json == True:

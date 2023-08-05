@@ -5,34 +5,53 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import random
 import inspect
-from .palette.palette import Palette
-from .positions.positions import LayoutPositions
 
 
-class GraphPlot:
+# TODO: why are we not calling this Plotter?
+class Plotter:
     def __init__(
         self,
         dirs: dict[str, str] = None,
         file_path: str = "",
         do_labels: bool = False,
         do_grid: bool = False,
+        do_json: bool = False,
         do_show: bool = False,
         do_single_file: bool = False,
         do_ntx: bool = True,
         do_custom: bool = True,
     ):
-        """Constructor.
+        """Plots a graph using matplotlib and outputs the plots to the output directory.
 
         Parameters:
         -----------
-            _dirs (dict[str, str]) Default = None:
-                The directories to use.
+            dirs (dict[str, str]) Default = None:
+               The directories to use.
+            file_path (str) Default = "":
+               The path to the file to plot.
+            do_labels (bool) Default = False:
+               Whether or not to show the labels.
+            do_grid (bool) Default = False:
+               Whether or not to plot all layouts in a grid.
+            do_json (bool) Default = False:
+               Whether or not to return the json data.
+            do_show (bool) Default = False:
+               Whether or not to show the plots.
+            do_single_file (bool) Default = False:
+               Whether or not to plot all layouts in a single file.
+            do_ntx (bool) Default = True:
+               Whether or not to include networkx layouts.
+            do_custom (bool) Default = True:
+               Whether or not to include custom layouts.
         """
+        from codecarto import Position
+
         self.seed: dict[str, int] = {}
         self.dirs: dict[str, str] = dirs
         self.file_path: str = file_path
         self.show_label: bool = do_labels
         self.do_grid: bool = do_grid
+        self.do_json: bool = do_json
         self.do_show: bool = do_show
         self.do_single_file: bool = do_single_file
         self.do_ntx: bool = do_ntx
@@ -41,27 +60,35 @@ class GraphPlot:
         test: bool = True
         if test:
             # get all layout functions
-            self.layouts: tuple(str, function, list) = LayoutPositions(
+            self.layouts: tuple(str, function, list) = Position(
                 False, do_custom
             ).get_layouts()
         else:
             # get all layout functions
-            self.layouts: tuple(str, function, list) = LayoutPositions(
+            self.layouts: tuple(str, function, list) = Position(
                 do_ntx, do_custom
             ).get_layouts()
 
-    def plot(self, _graph: nx.DiGraph, _layout: str = "", _json: bool = False):
-        """Plots a graph."""
+    def plot(self, _graph: nx.DiGraph, _layout: str = ""):
+        """Plots a graph using matplotlib.
+
+        Parameters:
+        -----------
+            _graph (networkx.classes.graph.Graph):
+                The graph to plot.
+            _layout (str) Default = "":
+                The layout to use.
+        """
         # Check if graph provided
         if not _graph or not isinstance(_graph, nx.Graph):
             raise ValueError("No graph provided.")
         # Plot based on args
         if _layout != "":
-            self.plot_layout(_graph, _layout, _json)
+            self.plot_layout(_graph, _layout, self.do_json)
         elif self.do_grid:
-            self.plot_all_in_grid(_graph, _json)
+            self.plot_all_in_grid(_graph, self.do_json)
         else:
-            self.plot_all_separate(_graph, _json)
+            self.plot_all_separate(_graph, self.do_json)
 
     def plot_layout(self, _graph: nx.DiGraph, _layout: str, _json: bool = False):
         pass
@@ -78,6 +105,8 @@ class GraphPlot:
         """
         # check if graph
         if _graph and isinstance(_graph, nx.classes.graph.Graph):
+            from codecarto import Palette
+
             # check if json
             if _json == False:
                 graph_dir = self.dirs["graph_code_dir"]
@@ -152,7 +181,9 @@ class GraphPlot:
 
                 # compute layout
                 try:
-                    layout_pos = LayoutPositions(
+                    from codecarto import Position
+
+                    layout_pos = Position(
                         include_networkx=self.do_ntx, include_custom=self.do_custom
                     )
                     pos = layout_pos.get_positions(layout_name, **layout_kwargs)
@@ -245,6 +276,8 @@ class GraphPlot:
 
         # check if graph
         if _graph and isinstance(_graph, nx.classes.graph.Graph):
+            from codecarto import Palette
+
             # check if json
             if _json == False:
                 graph_dir = self.dirs["graph_code_dir"]
@@ -321,7 +354,9 @@ class GraphPlot:
 
                 # compute layout
                 try:
-                    layout_pos = LayoutPositions(
+                    from codecarto import Position
+
+                    layout_pos = Position(
                         include_networkx=self.do_ntx, include_custom=self.do_custom
                     )
                     pos = layout_pos.get_positions(layout_name, **layout_kwargs)
@@ -474,9 +509,9 @@ class GraphPlot:
 
     def reset_plot_output_dir(self):
         """Resets the plot output directory to the default output directory."""
-        from .utils.directory.output_dir import setup_output_directory
+        from codecarto import Directories
 
-        self.dirs = setup_output_directory(make_dir=True)
+        self.dirs = Directories.reset_output_dir(make_dir=True)
 
 
 ########## OPTIONAL ##########

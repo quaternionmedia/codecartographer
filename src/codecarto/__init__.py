@@ -34,35 +34,92 @@ Classes:
 
         Functions: \n
             get_color - A function used to get a color from the palette. \n
-    SourceParser - A class used to parse source code. \n
+    Parser - A class used to parse source code. \n
     Processor - A class used to process source code. \n
-    GraphPlot - A class used to plot a graph.
+    Plotter - A class used to plot a graph.
 """
 
 ########################### IMPORTS #######################################
 # Import the sub modules to make them easier to get at
-from .config.config import Config
-from .json.json_graph import JsonGraph
-from .palette.palette import Palette
-from .parser import SourceParser
-from .processor import Processor
-from .plotter import GraphPlot
-from .json.json_utils import save_json_file as save_json, load_json_file as load_json
-from .api import CodeCarto
+from .codecarto import (
+    Config,
+    Directories,
+    ErrorHandler,
+    GraphData,
+    JsonHandler,
+    PaletteManager as Palette,
+    ParserManager as Parser,
+    PlotterManager as Plotter,
+    PolyGraphManager as PolyGraph,
+    PositionManager as Position,
+    ProcessorManager as Processor,
+    Utility,
+)
 
 
 ########################### EXPORTS #########################################
 # Export the submodules.
 __all__ = [
     "Config",
-    "JsonGraph",
+    "Directories",
+    "ErrorHandler",
+    "GraphData",
+    "JsonHandler",
     "Palette",
-    "SourceParser",
+    "Parser",
+    "Plotter",
+    "PolyGraph",
+    "Position",
     "Processor",
-    "GraphPlot",
-    "save_json",
-    "load_json",
-    "CodeCarto",
+    "Utility",
 ]
 
+# Adv use would know the library layout and use specific imports
+# Med use would know the main class names and import as needed
+# Basic use would just import the CodeCarto class which has wrappers to main funcionality
+
+
+# ########################### LOGGER ##########################################
+# import logging
+
+# # create logger with 'codecarto'
+# logger = logging.getLogger("codecarto")
+# logger.setLevel(logging.DEBUG)  # set root logger level
+
+# # logging log levels
+# # CRITICAL = 50
+# # FATAL = CRITICAL
+# # ERROR = 40
+# # WARNING = 30
+# # WARN = WARNING
+# # INFO = 20
+# # DEBUG = 10
+# # NOTSET = 0
+
+# # create console handler with a higher log level
+# ch = logging.StreamHandler()
+# ch.setLevel(logging.INFO)  # set handler level
+
+# # create formatter and add it to the handlers
+# formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+# ch.setFormatter(formatter)
+
+# # add the handlers to the logger
+# logger.addHandler(ch)
+
+# # can use logger instance in your code, like this:
+# # logger.debug("This is a debug message.")
+# # logger.info("This is an informational message.")
+# # logger.warning("This is a warning message.")
+# # logger.error("This is an error message.")
+# # logger.critical("This is a critical message.")
+
+# # create file handler which logs even debug messages
+# fh = logging.FileHandler("codecarto.log")
+# fh.setLevel(logging.DEBUG)
+# fh.setFormatter(formatter)
+# logger.addHandler(fh)
+
+
+##############################################################################
 ### __init__.py ends here

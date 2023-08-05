@@ -27,8 +27,9 @@ networkx = "^3.1"
 numpy = "^1.24.2"
 matplotlib = "^3.7.1" 
 scipy = "^1.7.3"
-importlib-metadata = "^4.11.3"
+importlib-metadata = "^5.2.0"
 click = {version = ">=8.1.2", optional = true}
+fastapi = "^0.70.0"
  
 # these lines can make cli and library separate
 # pip install codecarto will enable library usage

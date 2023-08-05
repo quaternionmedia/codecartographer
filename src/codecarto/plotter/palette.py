@@ -1,9 +1,11 @@
 import os
 import shutil
-from ..utils.directory.palette_dir import PALETTE_DIRECTORY
-from ..utils.utils import get_date_time_file_format
-from ..errors import ThemeNotFoundError
-from ..json.json_utils import save_json_file, load_json_file
+from codecarto import (
+    ErrorHandler,
+    JsonHandler as Json,
+    Utility as Util,
+    Directories as Dir,
+)
 
 
 class Palette:
@@ -11,8 +13,8 @@ class Palette:
 
     def __init__(self):
         """Initialize a palette."""
-        self._palette_app_dir = PALETTE_DIRECTORY["appdata"]
-        self._palette_pack_dir = PALETTE_DIRECTORY["package"]
+        self._palette_app_dir = Dir.get_palette_directory()["appdata"]
+        self._palette_pack_dir = Dir.get_palette_directory()["package"]
         self._alphas = [round(0.1 * i, ndigits=1) for i in range(11)]
         self._sizes = [(100 * i) for i in range(1, 11)]
         self._theme = {
@@ -37,20 +39,20 @@ class Palette:
             "alphas": self.alphas,
         }
         # write palette data to file
-        save_json_file(self._palette_app_dir["path"], palette_data)
+        Json.save_json(self._palette_app_dir["path"], palette_data)
 
     def load_palette(self):
         """Load the palette from the palette json file."""
         # load palette data from file
         palette_data: dict = {}
         try:
-            palette_data = load_json_file(self._palette_app_dir["path"])
+            palette_data = Json.load_json(self._palette_app_dir["path"])
             # check if palette data is none
             if palette_data is None:
                 # load the default palette
-                palette_data = load_json_file(self._palette_pack_dir["path"])
+                palette_data = Json.load_json(self._palette_pack_dir["path"])
             if palette_data is None:
-                raise ThemeNotFoundError(
+                raise ErrorHandler.ThemeNotFoundError(
                     "No palette data found. Package may be corrupted."
                 )
             # check if palette data was loaded
@@ -64,7 +66,9 @@ class Palette:
                 self.alphas: dict = palette_data["alphas"]
                 self.types: list = list(self.bases.keys())
         except FileNotFoundError:
-            raise ThemeNotFoundError("No palette data found. Package may be corrupted.")
+            raise ErrorHandler.ThemeNotFoundError(
+                "No palette data found. Package may be corrupted."
+            )
 
     def reset_palette(self, ask_user: bool = False):
         """Reset the palette to the default palette."""
@@ -76,13 +80,13 @@ class Palette:
             if overwrite.upper() == "N":
                 return
         # load the default palette
-        palette_data = load_json_file(self._palette_pack_dir["path"])
+        palette_data = Json.load_json(self._palette_pack_dir["path"])
         # check if palette data was loaded
         if len(palette_data.keys()) > 0:
             # overwrite palette file in appdata directory
             shutil.copy(self._palette_pack_dir["path"], self._palette_app_dir["path"])
         else:
-            raise ThemeNotFoundError(
+            raise ErrorHandler.ThemeNotFoundError(
                 "No default palette data found. Package may be corrupted."
             )
         if ask_user:
@@ -140,11 +144,11 @@ class Palette:
         if not os.path.exists(palette_file) or os.path.getsize(palette_file) == 0:
             palette_file = self._palette_pack_dir["path"]
             if not os.path.exists(palette_file) or os.path.getsize(palette_file) == 0:
-                raise ThemeNotFoundError(
+                raise ErrorHandler.ThemeNotFoundError(
                     "No palette file found. Package may be corrupted."
                 )
         # create export file
-        export_date = get_date_time_file_format()
+        export_date = Util.get_date_time_file_format()
         export_name = str(os.path.basename(palette_file)).split(".")[0]
         export_name = f"{export_name}_{export_date}.json"
         export_file = os.path.join(export_path, export_name)

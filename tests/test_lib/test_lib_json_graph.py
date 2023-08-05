@@ -3,7 +3,7 @@ import tempfile
 import networkx as nx
 from pathlib import Path
 
-from codecarto.json.json_graph import JsonGraph
+from codecarto.polygraph.polygraph import PolyGraph
 
 
 def test_json_graph():
@@ -31,7 +31,7 @@ def test_json_graph():
 
             # use graph_to_json to pass graph
             json_file_path = tmpdir_path / "test_graph.json"
-            json_graph_obj = JsonGraph(str(json_file_path), G)
+            json_graph_obj = PolyGraph(str(json_file_path), G)
 
             # check that the json file created an object that represents the graph created
             with open(json_file_path, "r") as f:

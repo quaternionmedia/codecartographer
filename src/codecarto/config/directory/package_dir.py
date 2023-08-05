@@ -18,3 +18,6 @@ def get_package_dir() -> str:
         return package_dir
     else:
         return None
+
+
+PACKAGE_DIRECTORY = get_package_dir()

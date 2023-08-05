@@ -1,19 +1,19 @@
 import tempfile
 from pathlib import Path
 
-from codecarto.parser import SourceParser
+from codecarto.parser import Parser
 
 
 def test_parser():
-    """Test SourceParser class functions and output graph."""
+    """Test Parser class functions and output graph."""
     try:
         # Create temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
             # Get the source files of 'test_source_code' directory
             source_files = list(Path("tests/test_source_code").rglob("*.py"))
-            
-            # Create a SourceParser object
-            parser = SourceParser(source_files)
+
+            # Create a Parser object
+            parser = Parser(source_files)
 
             # get back parser's graph
             graph = parser.graph
@@ -33,7 +33,7 @@ def test_parser():
             assert all(
                 node_id in range(graph.number_of_nodes()) for node_id in node_ids
             )
-            
+
             # check some parameters around graph.nodes
 
     except Exception as e:

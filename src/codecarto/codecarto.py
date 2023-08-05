@@ -1,32 +1,44 @@
 import networkx as nx
-
+from pydantic import BaseModel
 from .config.config import Config
-from .json.json_graph import JsonGraph
-from .palette.palette import Palette
-from .parser import SourceParser
+from .config.directory.main_dir import MAIN_DIRECTORY
+from .config.directory.package_dir import CODE_CARTO_PACKAGE_VERSION
+from .config.directory.palette_dir import PALETTE_DIRECTORY
+from .config.directory.directories import print_all_directories
+from .config.directory.import_source_dir import get_all_source_files
+from .config.directory.output_dir import (
+    get_output_dir,
+    reset_output_dir,
+    set_output_dir,
+    new_output_directory,
+)
+from .parser import Parser
+from .plotter.palette import Palette
+from .plotter.plotter import Plotter
+from .plotter.positions import LayoutPositions
+from .polygraph.json_utils import save_json_file, load_json_file
+from .polygraph.polygraph import PolyGraph, GraphData
 from .processor import Processor
-from .plotter import GraphPlot
-from .json.json_utils import save_json_file, load_json_file
-from .utils.directory.import_source_dir import get_all_source_files
+from .utils.utils import get_date_time_file_format
+from .errors import ThemeNotFoundError
 
 
-class CodeCarto:
-    def __init__(
-        self,
-        source_files: list = None,
-        output_dir: str = None,
-        palette_file_path: str = None,
-    ):
+class Theme(BaseModel):
+    node_type: str
+    base: str
+    label: str
+    shape: str
+    color: str
+    size: str
+    alpha: str
+
+
+class ParserManager:
+    def __init__(self, source_files: list = None):
         self.source: list = source_files
-        self.output_dir: str = output_dir
-        self.palette = Palette()
-        if palette_file_path is not None:
-            self.palette.load_palette(palette_file_path)
         self.parser = None
         self.graph = None
-        self.plotter = None
 
-    ########### PARSER #####################
     def parse_source(self, source: str | list = None) -> nx.DiGraph:
         """Parses a source file or list of source files into a networkx graph.
 
@@ -44,11 +56,18 @@ class CodeCarto:
             raise ValueError("No source provided.")
         if isinstance(source, str):
             source = self.get_source_files(source)
-        self.parser: SourceParser = SourceParser(source)
+        self.parser: Parser = Parser(source)
         self.graph = self.parser.graph
         return self.graph
 
-    ########### PLOTTER ####################
+
+class PlotterManager:
+    def __init__(self, source_files: list = None):
+        self.source: list = source_files
+        self.output_dir: str = None
+        self.plotter = None
+        self.graph = None
+
     def plot(self, graph: nx.DiGraph, layout: str = "", _grid: bool = False) -> str:
         """Plots a networkx graph.
 
@@ -70,8 +89,8 @@ class CodeCarto:
         self.plotter.plot(graph, layout)
         return self.plotter.dirs["output_dir"]
 
-    def _set_plotter(self, _grid: bool = False) -> GraphPlot:
-        """Sets the plotter to a GraphPlot object.
+    def _set_plotter(self, _grid: bool = False) -> Plotter:
+        """Sets the plotter to a Plotter object.
 
         Args:
         -----
@@ -79,15 +98,47 @@ class CodeCarto:
 
         Returns:
         --------
-            GraphPlot: The GraphPlot object.
+            Plotter: The Plotter object.
         """
         if self.plotter is None:
-            self.plotter = GraphPlot(do_grid=_grid)
+            self.plotter = Plotter(do_grid=_grid)
         if _grid:
             self.plotter.do_grid = True
         return self.plotter
 
-    ########### JSON #######################
+    def set_output_dir(self, output_dir: str):
+        """Sets the output directory for plots.
+
+        Args:
+        -----
+            output_dir (str): The output directory to set.
+        """
+        self.output_dir = output_dir
+        # TODO: does this need to be set in config for library?
+
+    def reset_output_dir(self):
+        """Resets the output directory for plots to default package output."""
+        self.output_dir = None
+
+    ########### OUTPUT DIRECTORY ###########
+    # def set_output_dir(self, output_dir):
+    #     """Sets the output directory for plots.
+
+    #     Args:
+    #     -----
+    #         output_dir (str): The output directory to set.
+    #     """
+    #     self.plotter.set_plot_output_dir(output_dir)
+    #     # TODO: does this need to be set in config for library?
+
+    # def reset_output_dir(self):
+    #     """Resets the output directory for plots to default package output."""
+    #     if self.plotter is None:
+    #         self._set_plotter()
+    #     self.plotter.reset_plot_output_dir()
+
+
+class PolyGraphManager(PolyGraph):
     def convert_graph_to_json(self, graph: nx.DiGraph) -> dict:
         """Converts a networkx graph to a json serializable object.
 
@@ -102,7 +153,7 @@ class CodeCarto:
         graph = self.graph if graph is None else graph
         if graph is None:
             raise ValueError("No graph provided.")
-        return JsonGraph.graph_to_json(graph)
+        return PolyGraph.graph_to_json(graph)
 
     def convert_json_to_graph(self, json: dict) -> nx.DiGraph:
         """Converts a json object to a networkx graph.
@@ -118,7 +169,7 @@ class CodeCarto:
         json = self.graph if json is None else json
         if json is None:
             raise ValueError("No json provided.")
-        return JsonGraph.json_to_graph(json)
+        return PolyGraph.json_to_graph(json)
 
     def convert_source_to_json(self, source: str | list) -> dict:
         """Converts a source file or list of source files to a json serializable object.
@@ -139,6 +190,8 @@ class CodeCarto:
         self.graph = self.parse_source(source)
         return self.convert_graph_to_json(self.graph)
 
+
+class JsonHandler:
     def load_json(self, json_file: str) -> dict:
         """Loads a json file into a json serializable object.
 
@@ -162,42 +215,12 @@ class CodeCarto:
         """
         save_json_file(json_file, data)
 
-    ########### SOURCE FILES ###############
-    def get_source_files(self, source_file: str = None) -> list:
-        """Gets all source files from a source file or directory.
 
-        Args:
-        -----
-            source_file (str): The source file or directory to get the source files from.
+class PaletteManager:
+    def __init__(self):
+        self.palette = Palette()
 
-        Returns:
-        --------
-            list: The list of source files.
-        """
-        _source_file: str = self.source[0] if source_file is None else source_file
-        if _source_file is None:
-            raise ValueError("No source provided.")
-        return get_all_source_files(_source_file)
-
-    ########### OUTPUT DIRECTORY ###########
-    def set_output_dir(self, output_dir):
-        """Sets the output directory for plots.
-
-        Args:
-        -----
-            output_dir (str): The output directory to set.
-        """
-        self.plotter.set_plot_output_dir(output_dir)
-        # TODO: does this need to be set in config for library?
-
-    def reset_output_dir(self):
-        """Resets the output directory for plots to default package output."""
-        if self.plotter is None:
-            self._set_plotter()
-        self.plotter.reset_plot_output_dir()
-
-    ########### PALETTE ####################
-    def set_palette(self, palette_file_path):
+    def set_palette(self, palette_file_path: str):
         """Sets the palette for plots.
 
         Args:
@@ -236,9 +259,7 @@ class CodeCarto:
         """
         return self.palette.get_palette_data()
 
-    def create_new_theme(
-        self, node_type, base, label, shape, color, size, alpha
-    ) -> dict:
+    def create_new_theme(self, theme: Theme) -> dict:
         """Creates a new theme.
 
         Args:
@@ -256,14 +277,89 @@ class CodeCarto:
             dict: The new theme.
         """
         return self.palette.create_new_theme(
-            node_type, base, label, shape, color, size, alpha
+            theme.node_type,
+            theme.base,
+            theme.label,
+            theme.shape,
+            theme.color,
+            theme.size,
+            theme.alpha,
         )
 
-    ########### CONFIG ######################
-    # def reset_config(self):
-    #     Config.reset_config()
 
-    ########### PROCESSOR ###################
+class PositionManager:
+    def __init__(self, include_networkx: bool = True, include_custom: bool = True):
+        self.layouts = LayoutPositions(include_networkx, include_custom)
+
+    def add_layout(self, name: str, function: callable, attributes: list):
+        """Adds a layout to the list of available layouts.
+
+        Args:
+        -----
+            name (str): The name of the layout to add. \n
+            function (callable): The function to use for the layout. \n
+            attributes (list): The attributes to use for the layout.
+        """
+        self.layouts.add_layout(name, function, attributes)
+
+    def add_networkx_layouts(self):
+        """Adds all networkx layouts to the list of available layouts."""
+        self.layouts.add_networkx_layouts()
+
+    def add_custom_layouts(self):
+        """Adds all custom layouts to the list of available layouts."""
+        self.layouts.add_custom_layouts()
+
+    def get_layout_names(self) -> list:
+        """Gets all layout names from the list of available layouts.
+
+        Returns:
+        --------
+            list: The name of available layouts.
+        """
+        return self.layouts.get_layout_names()
+
+    def get_positions(self, graph: nx.DiGraph, layout: str = "") -> dict:
+        """Gets the positions of the nodes in the graph.
+
+        Args:
+        -----
+            graph (nx.DiGraph): The networkx graph to get the positions of. \n
+            layout (str): The layout to use to get the positions of the nodes.
+
+        Returns:
+        --------
+            dict: The positions of the nodes in the graph.
+        """
+        return self.layouts.get_positions(graph, layout)
+
+    def get_layouts(self) -> list:
+        """Gets the available layouts.
+
+        Returns:
+        --------
+            list: The available layouts.
+        """
+        return self.layouts.get_layouts()
+
+    def get_layout(self, name: str) -> tuple:
+        """Gets a layout from the list of available layouts.
+
+        Args:
+        -----
+            name (str): The name of the layout to get.
+
+        Returns:
+        --------
+            tuple: The layout.
+        """
+        return self.layouts.get_layout(name)
+
+
+class ProcessorManager:
+    def __init__(self):
+        self.processor = None
+
     def run_process(
         self,
         source,
@@ -291,17 +387,132 @@ class CodeCarto:
         --------
             dict: The output directories for the json file and plots.
         """
-        if _output_dir == "":
-            if self.output_dir is not None and self.output_dir != "":
-                _output_dir = self.output_dir
-
-        processor = Processor(
+        self.processor = Processor(
             source, _labels, _json, _grid, _show, _single_file, _output_dir
         )
-        return processor.main()
+        return self.processor.main()
+
+
+class Directories:
+    def __init__(self, source_files: list = None):
+        self.source: list = source_files
+        self.parser = None
+        self.graph = None
+
+    def get_source_files(self, source_file: str = None) -> list:
+        """Gets all source files from a source file or directory.
+
+        Args:
+        -----
+            source_file (str): The source file or directory to get the source files from.
+
+        Returns:
+        --------
+            list: The list of source files.
+        """
+        _source_file: str = self.source[0] if source_file is None else source_file
+        if _source_file is None:
+            raise ValueError("No source provided.")
+        return get_all_source_files(_source_file)
+
+    def get_output_dir(self) -> str:
+        """Gets the output directory.
+
+        Returns:
+        --------
+            str: The output directory.
+        """
+        return get_output_dir()
+
+    def reset_output_dir(self) -> str:
+        """Resets the output directory to the default package output."""
+        return reset_output_dir()
+
+    def set_output_dir(self, output_dir: str) -> str:
+        """Sets the output directory.
+
+        Args:
+        -----
+            output_dir (str): The output directory to set.
+        """
+        return set_output_dir(output_dir)
+
+    def create_output_dir(self, make_dir: bool = False) -> str:
+        """Setup the output directory.
+
+        Parameters:
+        -----------
+        make_dir : bool
+            Whether or not to make the output directory. If False, the output directory is set to 'RUN_TIME' filler string.
+
+        Returns:
+        --------
+        str
+            The path to the output directory.
+        """
+        return reset_output_dir(make_dir)
+
+    def get_main_dir(self) -> str:
+        """Gets the main directory.
+
+        Returns:
+        --------
+            str: The main directory.
+        """
+        return MAIN_DIRECTORY
+
+    def get_package_version(self) -> str:
+        """Gets the package version.
+
+        Returns:
+        --------
+            str: The package version.
+        """
+        return CODE_CARTO_PACKAGE_VERSION
+
+    def get_palette_directory(self):
+        """Gets the palette directory.
+
+        Returns:
+        --------
+            str: The palette directory.
+        """
+        return PALETTE_DIRECTORY
+
+    def print_all_directories(self) -> dict:
+        """Prints all directories."""
+        return print_all_directories()
+
+
+class ErrorHandler:
+    def __init__(self):
+        self.error_handler = None
+        self.ThemeNotFoundError = ThemeNotFoundError
+
+
+class Utility:
+    def __init__(self):
+        self.utility = None
+
+    def get_date_time_file_format(self) -> str:
+        """Gets the date time file format.
+
+        Returns:
+        --------
+            str: The date time file format.
+        """
+        return get_date_time_file_format()
 
 
 ########################### NOTES ############################################
+
+# Example use for imported library
+# import CodeCarto
+# cc = CodeCarto()
+# cc.set_output_dir("path/to/output/dir")
+
+# For FastAPI use, functions will be in individual routes
+# import, export, config, and convert routes
 
 # Can use this class for simple use cases of the library
 # Things like:
@@ -333,7 +544,7 @@ class CodeCarto:
 
 
 # Work out some use cases for library use for low, mid, and adv users.
-# 1. Create a graph from a source file, source directory (SourceParser)
+# 1. Create a graph from a source file, source directory (Parser)
 # 2. Create a graph from a json file (JsonGraph)
 # 3. Create a plot from a networkx graph, graph originating from json file, graph originating from source file/dir (Plotter)
 # 4. Create a json file from a networkx graph, graph originating from json file, graph originating from source file/dir (JsonGraph)
@@ -349,7 +560,7 @@ class CodeCarto:
 
 # That's main functionality, but what about possible use cases for helper functions?
 # 1. Getting full directory of source files (get_source_files)
-#       Could also add a wrapper func in SourceParser that will call get_source_files to avoid pushing that function directly
+#       Could also add a wrapper func in Parser that will call get_source_files to avoid pushing that function directly
 # 2. Saving json data to a file (save_json_file), although this is really just a wrapper for json.dump
 # 3. Loading json data from a file (load_json_file), although this is really just a wrapper for json.load
 #       Could consider making these internal functions of the pacakage _save_json_file, _load_json_file and remove imports
@@ -362,7 +573,7 @@ class CodeCarto:
 #       ^ consider Peter's useage of library in his project, would this be easier for him to use?
 
 # This class would need all the low level functions
-# 1. Create a graph from a source file, source directory (SourceParser)
+# 1. Create a graph from a source file, source directory (Parser)
 # 2. Create a graph from a json file (JsonGraph)
 # 3. Create a plot from a networkx graph, graph originating from json file, graph originating from source file/dir (Plotter)
 # 4. Create a json file from a networkx graph, graph originating from json file, graph originating from source file/dir (JsonGraph)

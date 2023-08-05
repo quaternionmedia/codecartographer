@@ -38,7 +38,7 @@ import os
 #   5. next file
 
 
-class SourceParser(ast.NodeVisitor):
+class Parser(ast.NodeVisitor):
     """Parse a python source file into a networkx graph."""
 
     # TODO: when we eventually add import and importFrom, they need to be the id of the Module they represent

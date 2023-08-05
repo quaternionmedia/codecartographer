@@ -1,62 +1,92 @@
 import os
-
-from ..json.json_utils import load_json_file, save_json_file
-
-# TODO: Need to be setting up default_config and config files when the package is installed.
+from ..polygraph.json_utils import load_json_file, save_json_file
+from .config_dir import (
+    create_config_file,
+    reset_config_data,
+    get_config_path,
+)
 
 
 class Config:
     def __init__(self):
         """Initialize the config object to write to JSON file."""
         self.config_data = {}
-        self.config_path = self.get_config_path()
+        self.config_path = self.get_config_path()  # appdata config file path
         if not os.path.exists(self.config_path):
-            self.reset_config_data()
-        else:
-            self.load_config_data()
+            self.create_config_file()  # create the config file
+        self.load_config_data()  # load the config data from the config file
 
-    def reset_config_data(self):
-        """Initialize the config data."""
-        from ..utils.directory.config_dir import reset_config_data
+    def create_config_file(self) -> dict:
+        """Create the config file.
 
+        Returns:
+        --------
+        dict
+            The config data.
+        """
+        self.config_data = create_config_file()
+        self.save_config_data()
+        return self.config_data
+
+    def reset_config_data(self) -> dict:
+        """Recreate the config data.
+
+        Returns:
+        --------
+        dict
+            The config data.
+        """
         self.config_data = reset_config_data()
         self.save_config_data()
+        return self.config_data
 
-    def save_config_data(self, config_path: str = None):
-        """Save the class' config_data to the config file.
+    def load_config_data(self) -> dict:
+        """Load the config data from the config file.
+
+        Returns:
+        --------
+        dict
+            The config data.
+        """
+        self.config_data = load_json_file(self.config_path)
+        return self.config_data
+
+    # TODO: likely unused as the 'set_config_property' method saves the config data
+    def save_config_data(self, config_path: str = None) -> dict:
+        """Save the config data to the config file.
 
         Parameters:
         -----------
         config_path: str
             The path of the config file to save the config data to.
-            Default uses the package config file path.
+
+        Returns:
+        --------
+        dict
+            The config data.
         """
-        if config_path is None:
-            config_path = self.config_path
+        try:
+            if config_path is None:
+                config_path = self.config_path
+            # try to set the value of the property in the appdata config file
+            save_json_file(config_path, self.config_data)
+        except Exception as e:
+            # if it fails, likely due to save permissions
+            # send exception to the console
+            print(e)
+        finally:
+            return self.config_data
 
-        save_json_file(config_path, self.config_data)
-
-    def load_config_data(self):
-        """Load the config data, to the class' config_data, from the config file."""
-        self.config_data = load_json_file(self.config_path)
-
-    def get_config_path(self, package_dir: bool = True) -> str:
+    # unlikely to be used much, as the config class has a config_path attribute
+    def get_config_path(self) -> str:
         """Return the path of the codecarto config file.
-
-        Parameters:
-        -----------
-        package_dir: bool
-            If True, return the path of the config file in the package directory.
-            If False, return the path of the config file in the appdata directory.
 
         Returns:
         --------
         str
             The path of the codecarto config file.
         """
-        from ..utils.directory.config_dir import get_config_path
-
-        return get_config_path(package_dir)
+        return get_config_path()
 
     def set_config_property(self, property_name: str, property_value: str):
         """Set the value of a property in the config file.
@@ -73,16 +103,15 @@ class Config:
         Any
             The value of the property that was set.
         """
-        # set the value of the property in the package config file
-        config_path: str = self.get_config_path(package_dir=True)
-        self.config_data[property_name] = property_value
-        save_json_file(config_path, self.config_data)
-
         try:
+            # set the value of the property in the package config file
+            config_path: str = self.get_config_path()
+            self.config_data[property_name] = property_value
             # try to set the value of the property in the appdata config file
-            config_path: str = self.get_config_path(False)
             save_json_file(config_path, self.config_data)
-        except:
-            pass
-
-        return self.config_data[property_name]
+        except Exception as e:
+            # if it fails, likely due to save permissions
+            # send exception to the console
+            print(e)
+        finally:
+            return self.config_data[property_name]
