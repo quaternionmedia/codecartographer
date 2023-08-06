@@ -5,9 +5,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import random
 import inspect
-
-
-# TODO: why are we not calling this Plotter?
+ 
 class Plotter:
     def __init__(
         self,
@@ -49,7 +47,7 @@ class Plotter:
         self.seed: dict[str, int] = {}
         self.dirs: dict[str, str] = dirs
         self.file_path: str = file_path
-        self.show_label: bool = do_labels
+        self.do_labels: bool = do_labels
         self.do_grid: bool = do_grid
         self.do_json: bool = do_json
         self.do_show: bool = do_show
@@ -57,6 +55,7 @@ class Plotter:
         self.do_ntx: bool = do_ntx
         self.do_custom: bool = do_custom
 
+        #TODO: will need to replace with do_ntx and do_custom
         test: bool = True
         if test:
             # get all layout functions
@@ -69,7 +68,7 @@ class Plotter:
                 do_ntx, do_custom
             ).get_layouts()
 
-    def plot(self, _graph: nx.DiGraph, _layout: str = ""):
+    def plot(self, _graph: nx.DiGraph, specific_layout: str = ""):
         """Plots a graph using matplotlib.
 
         Parameters:
@@ -83,8 +82,8 @@ class Plotter:
         if not _graph or not isinstance(_graph, nx.Graph):
             raise ValueError("No graph provided.")
         # Plot based on args
-        if _layout != "":
-            self.plot_layout(_graph, _layout, self.do_json)
+        if specific_layout != "":
+            self.plot_layout(_graph, specific_layout, self.do_json)
         elif self.do_grid:
             self.plot_all_in_grid(_graph, self.do_json)
         else:
@@ -205,7 +204,7 @@ class Plotter:
 
                 # Draw edges and labels
                 nx.drawing.draw_networkx_edges(_graph, pos, alpha=0.2)
-                if self.show_label:
+                if self.do_labels:
                     nx.drawing.draw_networkx_labels(
                         _graph,
                         pos,
@@ -257,16 +256,13 @@ class Plotter:
                     else:
                         plot_name = f"CODE_{seed}_{layout.__name__}.png"
 
-                file_path = os.path.join(graph_dir, plot_name)
-
+                file_path = os.path.join(graph_dir, plot_name) 
                 plt.tight_layout()
                 plt.savefig(file_path)
                 if self.do_show:
-                    plt.show()
-
+                    plt.show() 
                 if layout.__name__ == "cluster_layout":
-                    plt.show()
-
+                    plt.show() 
                 plt.close()
 
     def plot_all_in_grid(self, _graph, _json: bool = False):
@@ -380,7 +376,7 @@ class Plotter:
 
                 # Draw edges and labels
                 nx.drawing.draw_networkx_edges(_graph, pos, alpha=0.2, ax=ax)
-                if self.show_label:
+                if self.do_labels:
                     nx.drawing.draw_networkx_labels(
                         _graph,
                         pos,
@@ -490,28 +486,7 @@ class Plotter:
                 plt.show()
             plt.close()
 
-    def set_plot_output_dir(self, output_dir: str = None):
-        """Sets the plot output directory.
-
-        Parameters:
-        -----------
-            output_dir (str) Default = None:
-                The directory to use.
-        """
-        _dir = output_dir if output_dir is not None else self.dirs["output_dir"]
-        if _dir is None:
-            raise ValueError("No output directory provided.")
-        # check if the directory exists
-        if not os.path.isdir(_dir):
-            raise ValueError("The provided output directory does not exist.")
-        self.dirs["graph_code_dir"] = os.path.join(_dir, "code")
-        self.dirs["graph_json_dir"] = os.path.join(_dir, "json")
-
-    def reset_plot_output_dir(self):
-        """Resets the plot output directory to the default output directory."""
-        from codecarto import Directories
-
-        self.dirs = Directories.reset_output_dir(make_dir=True)
+    
 
 
 ########## OPTIONAL ##########

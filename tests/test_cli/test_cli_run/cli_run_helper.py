@@ -5,10 +5,10 @@ import tempfile
 def run_test(demo, labels, grid, json, file_path=None):
     """Run the test for the demo/file command."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        from codecarto import MAIN_DIRECTORY
+        from codecarto import Directory as Dir
 
         # define file path
-        _file_path: str = file_path if file_path is not None else MAIN_DIRECTORY["path"]
+        _file_path: str = file_path if file_path is not None else Dir.get_main_dir()["path"]
 
         # define static strings
         starting_strings: list = [

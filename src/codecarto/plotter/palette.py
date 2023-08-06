@@ -2,9 +2,9 @@ import os
 import shutil
 from codecarto import (
     ErrorHandler,
-    JsonHandler as Json,
+    Json,
     Utility as Util,
-    Directories as Dir,
+    Directory as Dir,
 )
 
 

@@ -11,9 +11,9 @@ def create_config_file() -> dict:
     dict
         The config data.
     """
-    from ..utils.directory.package_dir import get_package_dir
-    from ..utils.directory.palette_dir import PALETTE_FILE, get_palette_appdata_dir
-    from ..polygraph.json_utils import save_json_file
+    from .directory.package_dir import get_package_dir
+    from .directory.palette_dir import PALETTE_FILE, get_palette_appdata_dir
+    from ..utils.utils import save_json_file
 
     # create the default output dir
     upper_codecarto_dir: str = os.path.dirname(os.path.dirname(get_package_dir()))
@@ -62,7 +62,7 @@ def get_config_path() -> str:
     str
         The path of the codecarto config file.
     """
-    from ..utils.directory.appdata_dir import get_codecarto_appdata_dir
+    from .directory.appdata_dir import get_codecarto_appdata_dir
 
     return os.path.join(get_codecarto_appdata_dir(), "config.json")
 

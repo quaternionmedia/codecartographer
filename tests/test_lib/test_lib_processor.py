@@ -4,10 +4,8 @@ import itertools
 import matplotlib.pyplot as plt
 import matplotlib._pylab_helpers as pylab_helpers
 from pathlib import Path
-
-from codecarto.utils.directory.main_dir import MAIN_DIRECTORY
-from codecarto.utils.directory.output_dir import set_output_dir
-from codecarto.processor import Processor
+ 
+from codecarto import Processor, Directory as Dir
 
 
 def test_processor():
@@ -20,14 +18,14 @@ def test_processor():
                 plt.ioff()
 
                 # Run demo command
-                set_output_dir(Path(temp_dir), ask_user=False)
-                output_dirs: dict = Processor(
-                    file_path=MAIN_DIRECTORY["path"],
-                    do_json=json,
-                    do_labels=labels,
-                    do_grid=grid,
-                    do_show=show,
-                ).main()
+                Dir.set_output_dir(Path(temp_dir), ask_user=False)
+                output_dirs: dict = Processor.process(
+                    source=Dir.get_main_dir()["path"],
+                    json=json,
+                    labels=labels,
+                    grid=grid,
+                    show=show,
+                )
 
                 # Check if demo closed the plot
                 closed_plots = len(pylab_helpers.Gcf.get_all_fig_managers()) == 0

@@ -5,7 +5,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-from codecarto.plotter.plotter import Plotter
+from codecarto import Plotter
 
 
 def create_sample_graph():
@@ -56,9 +56,14 @@ def test_plotter():
                 _graph: nx.DiGraph = create_sample_graph()
 
                 # Test Plotter object with different options
-                graph_plot = Plotter(
-                    _dirs=test_dirs, do_labels=labels, do_grid=grid, do_show=show
+                plotHandler: Plotter = Plotter()
+                plotHandler.set_plotter_attrs(
+                    dirs=test_dirs, 
+                    do_labels=labels, 
+                    do_grid=grid, 
+                    do_show=show
                 )
+                graph_plot = plotHandler.plotter()
 
                 # Pass graph to Plotter object and plot
                 plt.ioff()  # Turn off interactive mode so plt.show() doesn't block the test

@@ -11,9 +11,9 @@ def get_run_version() -> str:
     str
         The version number of the run.
     """
-    from ..utils import get_date_time_file_format
+    from codecarto import Utility as Util
 
-    return get_date_time_file_format()
+    return Util.get_date_time_file_format()
 
 
 RUN_TIME = get_run_version()
@@ -253,7 +253,21 @@ def new_output_directory(make_dir: bool = False) -> dict:
         "graph_json_dir": get_output_graph_from_json_dir(make_dir),
         "json_dir": get_output_json_dir(make_dir),
         "json_graph_file_path": get_json_graph_file_path(make_dir),
-    }
-
+    } 
 
 OUTPUT_DIRECTORY = get_output_dir()
+
+def get_last_dated_dir():
+    """Get the last dated directory in the output directory.
+
+    Returns:
+    --------
+    str
+        The path to the last dated directory in the output directory.
+    """
+    dated_dirs = [
+        d for d in os.listdir(get_output_dir()) if os.path.isdir(os.path.join(get_output_dir(), d))
+    ]
+    dated_dirs.sort(reverse=True)
+    return os.path.join(get_output_dir(), dated_dirs[0])
+

@@ -30,6 +30,8 @@ scipy = "^1.7.3"
 importlib-metadata = "^5.2.0"
 click = {version = ">=8.1.2", optional = true}
 fastapi = "^0.70.0"
+slowapi = "^0.1.4"
+togon = "^0.5.0"
  
 # these lines can make cli and library separate
 # pip install codecarto will enable library usage

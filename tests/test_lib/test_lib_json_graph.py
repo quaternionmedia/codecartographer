@@ -3,7 +3,7 @@ import tempfile
 import networkx as nx
 from pathlib import Path
 
-from codecarto.polygraph.polygraph import PolyGraph
+from codecarto import PolyGraph
 
 
 def test_json_graph():

@@ -1,53 +1,72 @@
 import networkx as nx
-from codecarto import GraphData, Palette, JsonHandler as Json
+from codecarto import GraphData, Json, ErrorHandler
 
 
-class PolyGraph:
-    def __init__(self, _path, _graph: nx.Graph, _convert_back: bool = False):
-        """Converts an assortment of data objects to an nx.DiGraph object and vice versa.
+class PolyGraph: 
+    """A class used to convert data types to a networkx graph and vice versa."""
 
-        Attributes:
+    def graph_to_json_file(self, graph: GraphData, json_path:str) -> str:
+        """Converts a networkx graph to a JSON object. 
+
+        Parameters: 
         -----------
-            json_file_path (str):
-                The path to the JSON file to save.
-            json_data (dict):
-                The JSON data loaded from the file.
-            json_graph (networkx.classes.graph.Graph):
-                A networkx graph object.
-
-        Functions:
-        ----------
-            graph_to_json:
-                A function used to convert a networkx graph to a json object.
-            json_to_graph:
-                function used to convert a json object to a networkx graph.
+            graph (GraphData): The graph to convert. 
+            json_path (str): The path to save the JSON file to.
+            
+        Returns: 
+        --------
+            str: The JSON object. 
         """
-        self.json_file_path = _path
+        # Validate inputs
+        if graph is None:
+            ErrorHandler.raise_error("No graph provided.")
+        if json_path is None or json_path == "":
+            ErrorHandler.raise_error("No json_path provided.")
 
-        if _graph.number_of_nodes() == 0:
-            self.json_data = Json.load_json(self.json_file_path)
-            Json.save_json(self.json_file_path, self.json_data)
-            self.json_graph = self.json_to_graph(self.json_data)
-        else:
-            self.json_data = self.graph_to_json(_graph)
-            Json.save_json(self.json_file_path, self.json_data)
-            if _convert_back:
-                self.json_graph = self.json_to_graph(self.json_data)
-            else:
-                self.json_graph = None
+        # Convert the graph to a JSON object and save it to a file
+        json_data = self.graph_to_json_data(graph)
+        return Json.save_json(json_path, json_data)
+    
+    def json_file_to_graph(self, json_file: str) -> nx.DiGraph:
+        """Converts a JSON object to a networkx graph.
 
-    def graph_to_json(self, graph):
-        """Converts a networkx graph to a JSON object.\n
-        Args:\n
-            G (networkx.classes.graph.Graph): The graph to convert.\n
-        Returns:\n
-            dict: The JSON object.\n
+        Parameters:
+        -----------
+            json_file (str): The path to the JSON file to load.
+
+        Returns:
+        --------
+            nx.DiGraph: The networkx graph.
         """
-        # Check if the graph is a networkx graph
-        import networkx as nx
+        # Validate inputs
+        if json_file is None or json_file == "":
+            ErrorHandler.raise_error("No json_file provided.")
 
-        if not isinstance(graph, nx.Graph):
-            raise TypeError("'graph' must be a networkx graph")
+        # Load the JSON file and convert it to a graph
+        graph_data = Json.load_json(json_file)
+        return self.json_data_to_graph(graph_data)
+
+    def graph_to_json_data(self, graph:GraphData) -> dict:
+        """Converts a networkx graph to a JSON object. 
+
+        Parameters: 
+        -----------
+            graph (GraphData): The graph to convert. 
+            
+        Returns: 
+        --------
+            dict: The JSON object. 
+        """ 
+        from codecarto import Palette
+
+        # Validate inputs
+        if graph is None:
+            ErrorHandler.raise_error("No graph provided.") 
+        if not isinstance(graph, nx.DiGraph):
+            try:
+                graph:nx.DiGraph = self.graphdata_to_nx(graph)
+            except:
+                ErrorHandler.raise_error("'graph' must be formatted as a GraphData object.") 
 
         # Create the JSON object
         graph_data: dict[str, dict[str, dict[str, list]]] = {"nodes": {}, "edges": {}}
@@ -99,19 +118,23 @@ class PolyGraph:
 
         return graph_data
 
-    def json_to_graph(self, json_data: dict[str, dict]):
+    def json_data_to_graph(self, json_data: dict[str, dict]) -> nx.DiGraph:
         """Converts a JSON object to a networkx graph.
 
-        Args:
-        -----
+        Parameters:
+        -----------
             json_data (dict): The JSON object to convert.
 
         Returns:
         --------
-            networkx.classes.graph.Graph: The graph.
-        """
-        import networkx as nx
+            networkx.classes.graph.DiGraph: The graph.
+        """ 
 
+        # Validate inputs
+        if json_data is None:
+            ErrorHandler.raise_error("No json provided.")
+        
+        # Create the graph
         graph = nx.DiGraph()
 
         def add_node_and_children(node_id, node_obj):
@@ -137,15 +160,34 @@ class PolyGraph:
 
         return graph
 
-    def convert_to_nx(graph_data: GraphData) -> nx.DiGraph:
-        G = nx.DiGraph()
+    def graphdata_to_nx(graph_data: GraphData) -> nx.DiGraph:
+        """Converts a GraphData object to a networkx graph.
 
-        # Add nodes to the graph
-        for node_id, node in graph_data.nodes.items():
-            G.add_node(node_id, label=node.label, type=node.type, base=node.base)
+        Parameters:
+        -----------
+            graph_data (GraphData): The GraphData object to convert.
 
-        # Add edges to the graph
-        for edge_id, edge in graph_data.edges.items():
-            G.add_edge(edge.source, edge.target, id=edge_id, type=edge.type)
+        Returns:
+        --------
+            networkx.classes.graph.Graph: The graph.
+        """ 
 
-        return G
+        # Validate inputs
+        if graph_data is None:
+            ErrorHandler.raise_error("No graph provided.")
+
+        # Create the graph
+        try:
+            G = nx.DiGraph()
+
+            # Add nodes to the graph
+            for node_id, node in graph_data.nodes.items():
+                G.add_node(node_id, label=node.label, type=node.type, base=node.base)
+
+            # Add edges to the graph
+            for edge_id, edge in graph_data.edges.items():
+                G.add_edge(edge.source, edge.target, id=edge_id, type=edge.type)
+
+            return G
+        except:
+            ErrorHandler.raise_error("'graph' must be formatted as a GraphData object.")

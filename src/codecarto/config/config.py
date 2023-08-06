@@ -1,5 +1,5 @@
 import os
-from ..polygraph.json_utils import load_json_file, save_json_file
+from ..utils.utils import load_json_file, save_json_file
 from .config_dir import (
     create_config_file,
     reset_config_data,

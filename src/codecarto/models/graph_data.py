@@ -32,7 +32,7 @@ class GraphData(BaseModel):
     edges: dict[str, Edge] = Field(..., alias="edges")
 
 
-async def get_graph_description() -> dict:
+def get_graph_description() -> dict:
     """Returns a description of the GraphData class.
 
     Returns:

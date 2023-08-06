@@ -1,6 +1,7 @@
 ### codecarto\__init__.py
 ##############################################################################
-
+#TODO: extend these docstrings with new classes
+##############################################################################
 """A tool used to analyze and graph source code. \n
 
 This package is used to analyze source code and create a graph of the \n
@@ -43,17 +44,20 @@ Classes:
 # Import the sub modules to make them easier to get at
 from .codecarto import (
     Config,
-    Directories,
-    ErrorHandler,
+    DirectoryHandler as Directory,
+    ErrorHandler, 
     GraphData,
-    JsonHandler,
-    PaletteManager as Palette,
-    ParserManager as Parser,
-    PlotterManager as Plotter,
-    PolyGraphManager as PolyGraph,
-    PositionManager as Position,
-    ProcessorManager as Processor,
-    Utility,
+    JsonHandler as Json,
+    LogHandler,
+    ModelHandler as Model,
+    PaletteHandler as Palette,
+    ParserHandler as Parser,
+    PlotterHandler as Plotter,
+    PolyGraphHandler as PolyGraph,
+    PositionHandler as Position,
+    ProcessorHandler as Processor,
+    Theme,
+    UtilityHandler as Utility,
 )
 
 
@@ -61,23 +65,21 @@ from .codecarto import (
 # Export the submodules.
 __all__ = [
     "Config",
-    "Directories",
     "ErrorHandler",
+    "Directory",
     "GraphData",
-    "JsonHandler",
+    "Json",
+    "LogHandler",
+    "Model",
     "Palette",
     "Parser",
     "Plotter",
     "PolyGraph",
     "Position",
     "Processor",
+    "Theme",
     "Utility",
-]
-
-# Adv use would know the library layout and use specific imports
-# Med use would know the main class names and import as needed
-# Basic use would just import the CodeCarto class which has wrappers to main funcionality
-
+] 
 
 # ########################### LOGGER ##########################################
 # import logging
