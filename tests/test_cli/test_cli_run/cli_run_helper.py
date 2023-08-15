@@ -1,14 +1,14 @@
 import subprocess
-import tempfile 
+import tempfile
 
 
 def run_test(demo, labels, grid, json, file_path=None):
     """Run the test for the demo/file command."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        from codecarto import Directory as Dir
+        from ....src.codecarto.config.directory.package_dir import PROCESSOR_FILE_PATH
 
         # define file path
-        _file_path: str = file_path if file_path is not None else Dir.get_main_dir()["path"]
+        _file_path: str = file_path if file_path is not None else PROCESSOR_FILE_PATH
 
         # define static strings
         starting_strings: list = [
@@ -48,7 +48,7 @@ def run_test(demo, labels, grid, json, file_path=None):
                 "long": "--grid",
                 "strings": running_strings + grid_strings,
                 "condition": grid,
-            }, 
+            },
             "json": {
                 "short": "-j",
                 "long": "--json",
@@ -78,11 +78,10 @@ def run_test(demo, labels, grid, json, file_path=None):
         run_argument: str = "demo" if demo else _file_path
 
         # run commands
-        for options in [options_short, options_long]: 
+        for options in [options_short, options_long]:
             result = subprocess.run(
                 ["codecarto", run_argument, *options],
                 capture_output=True,
                 text=True,
                 check=True,
-            ) 
-
+            )

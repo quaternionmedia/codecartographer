@@ -1,1 +1,2 @@
-# Plotter folder contains the plotter module as well as theming and positioning for layouts. 
+# Plotter folder contains the modules needed to plot graphs.
+# This includes the palette, pal dirs, positioning, layouts, etc.

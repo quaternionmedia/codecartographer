@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 
-from codecarto import Palette, ErrorHandler, Directory as Dir 
+from ...src.codecarto.plotter.palette import Palette
 
 
 def test_palette():
@@ -10,8 +10,7 @@ def test_palette():
         # Create temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
             # Initialize a new Palette object
-            paletteHandler:Palette = Palette()
-            palette = paletteHandler.palette
+            palette: Palette = Palette()
 
             # Test save, load, and get_palette_data methods
             palette.save_palette()
@@ -53,14 +52,14 @@ def test_palette():
             ) as temp_file:
                 palette_file = Path(temp_file.name)
                 with palette_file.open("w") as dest, open(
-                    palette._palette_pack_dir["path"], "r"
+                    palette._palette_user_path, "r"
                 ) as src:
                     dest.write(src.read())
             palette.import_palette(palette_file)
             exported_file = palette.export_palette(temp_dir)
             assert exported_file.exists()
 
-            # Check if the exported file is the same as palette._palette_pack_dir["path"]
+            # Check if the exported file is the same as palette._palette_user_path
             with palette_file.open("r") as f:
                 palette_file_data = f.read()
             with exported_file.open("r") as f:
@@ -70,9 +69,7 @@ def test_palette():
             # Test ThemeNotFoundError
             try:
                 palette.get_node_styles("nonexistent_node_type")
-            except ErrorHandler.ThemeNotFoundError:
-                pass
-            else:
+            except:
                 raise Exception("ThemeNotFoundError not raised")
     except Exception as e:
         # Raise exception

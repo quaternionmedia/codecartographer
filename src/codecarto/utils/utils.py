@@ -1,6 +1,7 @@
 import os
 import json
 
+
 def get_date_time_file_format():
     """Get the current date and time in a file format.
 
@@ -37,9 +38,9 @@ def check_file_path(file_path):
     return True
 
 
-# this use to be in the polygraph folder, but was moved 
+# this use to be in the polygraph folder, but was moved
 # here because it does not relate to converting data
-def load_json_file(file_path) -> dict:
+def load_json(file_path) -> dict:
     """Load data from a json file.
 
     Parameters:
@@ -52,22 +53,26 @@ def load_json_file(file_path) -> dict:
     dict
         The data loaded from the file.
     """
+    # Check if file exists
     if not os.path.exists(file_path):
+        print(f"File {file_path} not found.")
         raise FileNotFoundError(f"File not found: {file_path}")
+
+    # Load data from file
     try:
         with open(file_path, "r") as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON data in file '{file_path}': {str(e)}") from e
-    if not isinstance(data, dict):
-        raise ValueError(
-            f"Invalid JSON data in file '{file_path}': expected dictionary"
-        )
+        print(f"Failed to load data from {file_path}.")
+        raise e
+
+    # The calling function should do a validation check on type of data expecting
     return data
 
-# this use to be in the polygraph folder, but was moved 
+
+# this use to be in the polygraph folder, but was moved
 # here because it does not relate to converting data
-def save_json_file(file_path, data):
+def save_json(file_path: str, data: dict) -> bool:
     """Save data to a json file.
 
     Parameters:
@@ -76,8 +81,20 @@ def save_json_file(file_path, data):
         The path to the file to save.
     data : dict
         The data to save to the file.
+
+    Returns:
+    --------
+    bool
+        True if the file was saved successfully, False otherwise.
     """
     if not os.path.exists(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, "w") as f:
         json.dump(data, f, indent=4)
+
+    # Check if file was created
+    if os.path.exists(file_path):
+        return True
+    else:
+        print(f"File {file_path} was not created.")
+        return False

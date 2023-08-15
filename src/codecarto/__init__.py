@@ -1,6 +1,6 @@
 ### codecarto\__init__.py
 ##############################################################################
-#TODO: extend these docstrings with new classes
+# TODO: extend these docstrings with new classes
 ##############################################################################
 """A tool used to analyze and graph source code. \n
 
@@ -13,22 +13,14 @@ used as a library. \n
 
 Classes:
 --------
-    JsonGraph - A class used to create a json representation of a graph. \n
-        Notes: \n
-            If an empty graph is passed to the class, the class will create a \n
-            graph from the passed json file. \n
-
-        Attributes: \n
-            json_file_path:str - The path to the json file to load. \n
-            json_data:dict - The json data loaded from the file. \n
-            json_graph:networkx.DiGraph - A networkx graph object. \n
-
+    PolyGraph - A class used to create a json representation of a graph. \n
         Functions: \n
-            save_json_file - A function used to save json data to a file. \n
-            load_json_file - A function used to load json data from a file. \n
-            graph_to_json - A function used to convert a networkx graph to a json object. \n
-            json_to_graph - A function used to convert a json object to a networkx graph. \n
-
+            graph_to_json_file - A function used to convert a networkx graph to a json object. \n
+            json_file_to_graph - A function used to convert a json object to a networkx graph. \n
+            graph_to_json_data - A function used to convert a networkx graph to a json object. \n
+            json_data_to_graph - A function used to convert a json object to a networkx graph. \n
+            graphdata_to_nx - A function used to convert a GraphData object to a networkx graph. \n
+            
     Palette - A class used to create a color palette. \n
         Attributes: \n
             colors - A list of colors to use for the palette. \n
@@ -41,45 +33,44 @@ Classes:
 """
 
 ########################### IMPORTS #######################################
-# Import the sub modules to make them easier to get at
-from .codecarto import (
-    Config,
-    DirectoryHandler as Directory,
-    ErrorHandler, 
-    GraphData,
-    JsonHandler as Json,
-    LogHandler,
-    ModelHandler as Model,
-    PaletteHandler as Palette,
-    ParserHandler as Parser,
-    PlotterHandler as Plotter,
-    PolyGraphHandler as PolyGraph,
-    PositionHandler as Position,
-    ProcessorHandler as Processor,
-    Theme,
-    UtilityHandler as Utility,
-)
+# # Import the sub modules to make them easier to get at
+# from .codecarto import (
+#     Config,
+#     DirectoryHandler as Directory,
+#     GraphData,
+#     LogHandler,
+#     ModelHandler as Model,
+#     PaletteHandler as Palette,
+#     ParserHandler as Parser,
+#     PlotterHandler as Plotter,
+#     PolyGraphHandler as PolyGraph,
+#     PositionHandler as Position,
+#     ProcessorHandler as Processor,
+#     Theme,
+#     UtilityHandler as Utility,
+#     save_json,
+#     load_json,
+# )
 
 
-########################### EXPORTS #########################################
-# Export the submodules.
-__all__ = [
-    "Config",
-    "ErrorHandler",
-    "Directory",
-    "GraphData",
-    "Json",
-    "LogHandler",
-    "Model",
-    "Palette",
-    "Parser",
-    "Plotter",
-    "PolyGraph",
-    "Position",
-    "Processor",
-    "Theme",
-    "Utility",
-] 
+# ########################### EXPORTS #########################################
+# # Export the submodules.
+# __all__ = [
+#     "Config",
+#     "Directory",
+#     "GraphData",
+#     "Json",
+#     "LogHandler",
+#     "Model",
+#     "Palette",
+#     "Parser",
+#     "Plotter",
+#     "PolyGraph",
+#     "Position",
+#     "Processor",
+#     "Theme",
+#     "Utility",
+# ]
 
 # ########################### LOGGER ##########################################
 # import logging

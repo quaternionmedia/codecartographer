@@ -1,7 +1,7 @@
 from __future__ import annotations
 import click
 import functools
-from trogon import tui 
+from trogon import tui
 
 
 ################### HELPER FUNCTIONS
@@ -10,7 +10,7 @@ from trogon import tui
 def run_codecarto(
     import_name: str, json: bool, labels: bool, grid: bool, show: bool, uno: bool
 ) -> dict | None:
-    """Run the codecarto package on the provided import_name. 
+    """Run the codecarto package on the provided import_name.
 
     Args:
     -----
@@ -35,7 +35,7 @@ def run_codecarto(
     dict | None
         The output directories of the package.
     """
-    from codecarto import Processor
+    from ..processor import Processor
 
     output_dirs: dict = Processor.process(
         file_path=import_name,
@@ -51,9 +51,9 @@ def run_codecarto(
 
 def get_version():
     """Get the version of the codecarto package."""
-    from codecarto import Directory as Dir
+    from ..config.directory.package_dir import CODE_CARTO_PACKAGE_VERSION
 
-    return Dir.get_package_version()
+    return CODE_CARTO_PACKAGE_VERSION
 
 
 def print_help():
@@ -61,6 +61,8 @@ def print_help():
     and links to documentation for valid types, colors, and shapes."""
     help_text = """
 Usage:
+    codecarto config
+                 -s | --set DIR
     codecarto demo 
                  -l | --labels (default True)
                  -g | --grid  (default False)
@@ -85,6 +87,8 @@ Usage:
                  -n | --new PARAMS
 
 Command Description:
+    config : Show the various directories used by package.
+        --set | -s : Set the config file to the provided directory.
     dir    : Show the various directories used by package.
     help   : Display this information
     output : Show the output directory.
@@ -205,9 +209,9 @@ class CustomHelpGroup(click.Group):
             @click.pass_context
             def run_codecarto_cmd(ctx, json, labels, grid, show, dir, uno):
                 if dir:
-                    from codecarto import Directory as Dir
+                    from ..parser.import_source_dir import get_all_source_files
 
-                    source_dirs: list = Dir.get_source_files(file_path)
+                    source_dirs: list = get_all_source_files(file_path)
                     print("\nPackage Source Python Files:")
                     for source_dir in source_dirs:
                         print(source_dir)
@@ -283,6 +287,47 @@ def run_help():
     print_help()
 
 
+################### CONFIG COMMAND
+
+
+@run.command("config")
+@click.option(
+    "--set",
+    "-s",
+    help="Set a config property to a given value.",
+)
+@click.option(
+    "--reset",
+    "-r",
+    is_flag=True,
+    help="Reset the config data to the default values.",
+)
+def run_config(set: str, reset: bool):
+    """Display configuration information."""
+    from ..config.config_process import (
+        get_config_data,
+        reset_config_CLI,
+        set_config_property,
+    )
+
+    """Show the current config data or change it."""
+    if set:
+        set_config_property(set)
+        print(f"\nConfig property has been updated.\n")
+    elif reset:
+        reset_config_CLI()
+
+    # get the config data
+    config = get_config_data()
+    # find the maximum length of the keys
+    max_key_len = max([len(key) for key in config.keys()]) + 1
+    # print the config
+    print()
+    for key, value in config.items():
+        print(f"{key:<{max_key_len}}: {value}")
+    print()
+
+
 ################### DEMO COMMAND
 
 
@@ -299,12 +344,13 @@ def demo(
         The source code directories if the dir flag is passed.
         The output directories if the command is successful, otherwise None.
     """
-    from codecarto import Directory as Dir
+    from ..config.directory.package_dir import PROCESSOR_FILE_PATH
+    from ..parser.import_source_dir import get_all_source_files
 
-    demo_file_path = Dir.get_main_dir()["path"]
+    demo_file_path = PROCESSOR_FILE_PATH
     if dir:
         # Print source code
-        source_dirs: list = Dir.get_source_files(demo_file_path)
+        source_dirs: list = get_all_source_files(demo_file_path)
         print("\nPackage Source Python Files:")
         for source_dir in source_dirs:
             print(source_dir)
@@ -328,12 +374,13 @@ def dir() -> dict:
     dict\n
         The available directories.
     """
-    from codecarto import Directory as Dir
+    from ..config.directory.directories import print_all_directories
+    from ..config.directory.package_dir import PROCESSOR_FILE_PATH
+    from ..parser.import_source_dir import get_all_source_files
 
-    all_dirs: dict = Dir.print_all_directories()
+    all_dirs: dict = print_all_directories()
     print("Package Source Python Files:")
-    main_file_path = Dir.get_main_dir()["path"]
-    source_dirs: list = Dir.get_source_files(main_file_path)
+    source_dirs: list = get_all_source_files(PROCESSOR_FILE_PATH)
     all_dirs.update({"source": source_dirs})
     for path in source_dirs:
         # only print files in codecarto directory
@@ -365,24 +412,44 @@ def dir() -> dict:
     help="Set the output directory back to the package directory.",
 )
 def output(set: str, reset: bool):
-    from codecarto import Directory as Dir
+    from ..config.directory.output_dir import (
+        set_output_dir,
+        reset_output_dir,
+        get_output_dir,
+    )
 
     """Show the current output directory or change it."""
     if set:
-        Dir.set_output_dir(set)
-        print(f"Output directory changed to '{set}'")
+        set_output_dir(set)
+        print(f"\nOutput directory changed to '{set}'")
+        print(f"{set}\n")
     elif reset:
-        _path = Dir.reset_output_dir()
-        print(f"Output directory reset to '{_path}'")
+        # ask the user if they're sure they want to change the output directory
+        user_resp = input(
+            "\nAre you sure you want to reset the output directory to the default directory? (y/n) : "
+        )
+        if user_resp.lower() == "y":
+            reset_output_dir()
+            print("\nOutput directory has been reset to the default directory.")
+            print("USERS\\Documents\\CodeCartographer\\output\n")
+        else:
+            print("Exiting...\n")
     else:
-        current_output_dir = Dir.get_output_dir()
-        print(f"Current output directory: '{current_output_dir}'")
+        current_output_dir = get_output_dir()
+        print(f"\nCurrent output directory: '{current_output_dir}'\n")
 
 
 ################### PALETTE COMMAND
 
 
 @run.command("palette")
+@click.option(
+    "--set",
+    "-s",
+    "set_path",
+    metavar="FILEPATH",
+    help="Set the palette to a given JSON file.",
+)
 @click.option(
     "--import",
     "-i",
@@ -420,58 +487,68 @@ def output(set: str, reset: bool):
     metavar="TYPE BASE LABEL SHAPE COLOR SIZE ALPHA",
 )
 def palette(
-    import_path: str, export_dir: str, reset: bool, new: bool, types: bool
+    set_path: str,
+    import_path: str,
+    export_dir: str,
+    reset: bool,
+    new: bool,
+    types: bool,
 ) -> None:
-    """Prints information about the package palette.\n
-    Additionally, this function can be used to import and export a palette from/to a JSON file.\n
+    """
+    Prints information about the package palette.\n
+    Additionally, this function can be used to import and export a palette from/to a JSON file.
 
-    Optional Args:
-    --------------
+    Optional Args:\n
+        set_path (str): The filepath of the JSON file to set the palette to.\n
         import_path (str): The filepath of the JSON file to import a palette from.\n
         export_dir (str): The directory to export the current palette to.\n
         reset (bool): Whether to reset the palette.json to the default_palette.json.\n
         new (bool): Whether to create a new theme with the specified parameters.\n
-        types (bool): Whether to print the available node types and their corresponding properties.
+        types (bool): Whether to print the available node types and their corresponding properties.\n
     """
     # Call the appropriate subcommand function
-    from codecarto import Palette
+    from ..plotter.palette import Palette
 
-    paletter:Palette = Palette() 
-    if import_path:
-        paletter.import_palette(import_path, True)
+    palette: Palette = Palette()
+    if set_path:
+        palette.set_palette(set_path, True)
+    elif import_path:
+        palette.import_palette(import_path, True)
     elif export_dir:
-        paletter.export_palette(export_dir)
-        print(f"Palette exported to '{export_dir}'.\n")
+        palette.export_palette(export_dir)
+        print(f"Palette exported to '{export_dir}'\n")
     elif reset:
-        paletter.reset_palette(True)
+        palette.reset_palette(True)
     elif types:
-        palette_types(paletter)
+        palette_types(palette)
     elif new:
         node_type, base, label, shape, color, size, alpha = new
-        node_type = paletter.create_new_theme(
+        node_type = palette.create_new_theme(
             node_type,
             base,
             label,
             shape,
             color,
-            paletter.palette._sizes[size - 1],
-            paletter.palette._alphas[alpha],
+            palette._sizes[size - 1],
+            palette._alphas[alpha],
             True,
         )
     else:
-        palette_print(paletter)
+        palette_print(palette)
 
 
 ################### PALETTE COMMAND HELPERS
 
 
-def palette_print(paletter):
+def palette_print(_palette=None):
     """Print the available base themes and their corresponding properties.\n
     Also prints where the user's palette.json file is located.
     """
+    from ..plotter.palette import Palette
 
     # Load palette data
-    palette_data = paletter.get_palette()
+    palette: Palette = _palette if _palette else Palette()
+    palette_data = palette.get_palette_data()
 
     # Group the themes by base
     base_themes: dict[str, list] = {}
@@ -490,21 +567,22 @@ def palette_print(paletter):
                 print(f"  {prop:{max_width}}: {palette_data[prop][base]}")
         print()
     print(
-        f"\nBase themes and properties can be found in 'palette.json': {paletter.palette._palette_app_dir['path']}\n"
+        f"\nBase themes and properties can be found in 'palette.json': {palette._palette_user_path}\n"
     )
 
 
-def palette_types(paletter):
+def palette_types(_palette=None):
     """Print the available node types and their corresponding properties.\n
     And some information for valid node type options."""
+    from ..plotter.palette import Palette
 
     # Load palette data
-    palette_data = paletter.get_palette()
+    palette: Palette = _palette if _palette else Palette()
+    palette_data = palette.get_palette_data()
 
     # Check if palette_data is not empty
     if not palette_data:
-        from codecarto import ErrorHandler
-        raise ErrorHandler.BaseNotFoundError("No node type data.")
+        raise ValueError("Palette data is empty. Please create a new theme first.")
 
     # Print node types
     print("\nNode types and properties:\n")

@@ -1,32 +1,33 @@
 import networkx as nx
-from codecarto import GraphData, Json, ErrorHandler
+from ..models.graph_data import GraphData
+from ..utils.utils import save_json, load_json
 
 
-class PolyGraph: 
+class PolyGraph:
     """A class used to convert data types to a networkx graph and vice versa."""
 
-    def graph_to_json_file(self, graph: GraphData, json_path:str) -> str:
-        """Converts a networkx graph to a JSON object. 
+    def graph_to_json_file(self, graph: GraphData, json_path: str) -> str:
+        """Converts a networkx graph to a JSON object.
 
-        Parameters: 
+        Parameters:
         -----------
-            graph (GraphData): The graph to convert. 
+            graph (GraphData): The graph to convert.
             json_path (str): The path to save the JSON file to.
-            
-        Returns: 
+
+        Returns:
         --------
-            str: The JSON object. 
+            str: The JSON object.
         """
         # Validate inputs
         if graph is None:
-            ErrorHandler.raise_error("No graph provided.")
+            raise ValueError("No graph provided.")
         if json_path is None or json_path == "":
-            ErrorHandler.raise_error("No json_path provided.")
+            raise ValueError("No json_path provided.")
 
         # Convert the graph to a JSON object and save it to a file
         json_data = self.graph_to_json_data(graph)
-        return Json.save_json(json_path, json_data)
-    
+        return save_json(json_path, json_data)
+
     def json_file_to_graph(self, json_file: str) -> nx.DiGraph:
         """Converts a JSON object to a networkx graph.
 
@@ -40,33 +41,33 @@ class PolyGraph:
         """
         # Validate inputs
         if json_file is None or json_file == "":
-            ErrorHandler.raise_error("No json_file provided.")
+            raise ValueError("No json_file provided.")
 
         # Load the JSON file and convert it to a graph
-        graph_data = Json.load_json(json_file)
+        graph_data = load_json(json_file)
         return self.json_data_to_graph(graph_data)
 
-    def graph_to_json_data(self, graph:GraphData) -> dict:
-        """Converts a networkx graph to a JSON object. 
+    def graph_to_json_data(self, graph: GraphData) -> dict:
+        """Converts a networkx graph to a JSON object.
 
-        Parameters: 
+        Parameters:
         -----------
-            graph (GraphData): The graph to convert. 
-            
-        Returns: 
+            graph (GraphData): The graph to convert.
+
+        Returns:
         --------
-            dict: The JSON object. 
-        """ 
-        from codecarto import Palette
+            dict: The JSON object.
+        """
+        from ..plotter.palette import Palette
 
         # Validate inputs
         if graph is None:
-            ErrorHandler.raise_error("No graph provided.") 
+            raise ValueError("No graph provided.")
         if not isinstance(graph, nx.DiGraph):
             try:
-                graph:nx.DiGraph = self.graphdata_to_nx(graph)
+                graph: nx.DiGraph = self.graphdata_to_nx(graph)
             except:
-                ErrorHandler.raise_error("'graph' must be formatted as a GraphData object.") 
+                raise ValueError("'graph' must be formatted as a GraphData object.")
 
         # Create the JSON object
         graph_data: dict[str, dict[str, dict[str, list]]] = {"nodes": {}, "edges": {}}
@@ -128,12 +129,12 @@ class PolyGraph:
         Returns:
         --------
             networkx.classes.graph.DiGraph: The graph.
-        """ 
+        """
 
         # Validate inputs
         if json_data is None:
-            ErrorHandler.raise_error("No json provided.")
-        
+            raise ValueError("No json provided.")
+
         # Create the graph
         graph = nx.DiGraph()
 
@@ -170,11 +171,11 @@ class PolyGraph:
         Returns:
         --------
             networkx.classes.graph.Graph: The graph.
-        """ 
+        """
 
         # Validate inputs
         if graph_data is None:
-            ErrorHandler.raise_error("No graph provided.")
+            raise ValueError("No graph provided.")
 
         # Create the graph
         try:
@@ -190,4 +191,4 @@ class PolyGraph:
 
             return G
         except:
-            ErrorHandler.raise_error("'graph' must be formatted as a GraphData object.")
+            raise ValueError("'graph' must be formatted as a GraphData object.")

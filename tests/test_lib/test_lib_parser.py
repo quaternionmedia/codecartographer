@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 
-from codecarto import Parser
+from ...src.codecarto.parser.parser import Parser
 
 
 def test_parser():
@@ -13,8 +13,7 @@ def test_parser():
             source_files = list(Path("tests/test_source_code").rglob("*.py"))
 
             # Create a Parser object
-            parserHandler = Parser(source_files)
-            parser = parserHandler.parser
+            parser: Parser = Parser(source_files)
 
             # get back parser's graph
             graph = parser.graph

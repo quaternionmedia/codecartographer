@@ -1,12 +1,13 @@
 from fastapi import APIRouter
-from codecarto import Processor
+from ...processor import Processor
 
 router = APIRouter()
 
+
 @router.get("/processor/process")
 async def process(
-        file_path: str = __file__, 
-        do_single_file: bool = False) -> dict[str, str]:
+    file_path: str = __file__, do_single_file: bool = False
+) -> dict[str, str]:
     """Runs the code cartographer.
 
     Parameters:
@@ -20,9 +21,9 @@ async def process(
     --------
     dict:
         The json_data of the processed source code.
-    """ 
+    """
     return Processor.process(
         file_path=file_path,
         api=True,
-        do_single_file=do_single_file, 
+        do_single_file=do_single_file,
     )

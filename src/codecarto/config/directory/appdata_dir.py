@@ -15,7 +15,7 @@ def get_appdata_dir() -> str:
 
 
 def get_codecarto_appdata_dir() -> str:
-    """Return the APPDATA\Roaming\CodeCartographer directory."""
+    """Return the C:\\Users\\USER\\AppData\Roaming\CodeCartographer directory."""
     codecarto_appdata_dir = os.path.join(get_appdata_dir(), "CodeCartographer")
     if not os.path.exists(codecarto_appdata_dir):
         os.makedirs(codecarto_appdata_dir, exist_ok=True)

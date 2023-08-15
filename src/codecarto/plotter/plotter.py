@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import random
 import inspect
- 
+
+
 class Plotter:
     def __init__(
         self,
@@ -42,7 +43,7 @@ class Plotter:
             do_custom (bool) Default = True:
                Whether or not to include custom layouts.
         """
-        from codecarto import Position
+        from .positions import LayoutPositions as Position
 
         self.seed: dict[str, int] = {}
         self.dirs: dict[str, str] = dirs
@@ -55,7 +56,7 @@ class Plotter:
         self.do_ntx: bool = do_ntx
         self.do_custom: bool = do_custom
 
-        #TODO: will need to replace with do_ntx and do_custom
+        # TODO: will need to replace with do_ntx and do_custom
         test: bool = True
         if test:
             # get all layout functions
@@ -67,6 +68,51 @@ class Plotter:
             self.layouts: tuple(str, function, list) = Position(
                 do_ntx, do_custom
             ).get_layouts()
+
+    def set_plotter_attrs(
+        self,
+        dirs: dict[str, str] = None,
+        file_path: str = "",
+        do_labels: bool = False,
+        do_grid: bool = False,
+        do_json: bool = False,
+        do_show: bool = False,
+        do_single_file: bool = False,
+        do_ntx: bool = True,
+        do_custom: bool = True,
+    ):
+        """Sets the plotter attributes.
+
+        Parameters:
+        -----------
+            dirs (dict):
+                The directories to use for the plotter.
+            file_path (str):
+                The file path to use for the plotter.
+            do_labels (bool):
+                Whether or not to show the labels.
+            do_grid (bool):
+                Whether or not to show the grid.
+            do_json (bool):
+                Whether or not to save the json file.
+            do_show (bool):
+                Whether or not to show the plot.
+            do_single_file (bool):
+                Whether or not to save the plot to a single file.
+            do_ntx (bool):
+                Whether or not to save the plot to a networkx file.
+            do_custom (bool):
+                Whether or not to save the plot to a custom file.
+        """
+        self.dirs = dirs if dirs is not None else self.dirs
+        self.file_path = file_path if file_path is not None else self.file_path
+        self.do_labels = do_labels
+        self.do_grid = do_grid
+        self.do_json = do_json
+        self.do_show = do_show
+        self.do_single_file = do_single_file
+        self.do_ntx = do_ntx
+        self.do_custom = do_custom
 
     def plot(self, _graph: nx.DiGraph, specific_layout: str = ""):
         """Plots a graph using matplotlib.
@@ -104,7 +150,7 @@ class Plotter:
         """
         # check if graph
         if _graph and isinstance(_graph, nx.classes.graph.Graph):
-            from codecarto import Palette
+            from ..plotter.palette import Palette
 
             # check if json
             if _json == False:
@@ -180,7 +226,7 @@ class Plotter:
 
                 # compute layout
                 try:
-                    from codecarto import Position
+                    from .positions import LayoutPositions as Position
 
                     layout_pos = Position(
                         include_networkx=self.do_ntx, include_custom=self.do_custom
@@ -256,13 +302,13 @@ class Plotter:
                     else:
                         plot_name = f"CODE_{seed}_{layout.__name__}.png"
 
-                file_path = os.path.join(graph_dir, plot_name) 
+                file_path = os.path.join(graph_dir, plot_name)
                 plt.tight_layout()
                 plt.savefig(file_path)
                 if self.do_show:
-                    plt.show() 
+                    plt.show()
                 if layout.__name__ == "cluster_layout":
-                    plt.show() 
+                    plt.show()
                 plt.close()
 
     def plot_all_in_grid(self, _graph, _json: bool = False):
@@ -272,7 +318,7 @@ class Plotter:
 
         # check if graph
         if _graph and isinstance(_graph, nx.classes.graph.Graph):
-            from codecarto import Palette
+            from .palette import Palette
 
             # check if json
             if _json == False:
@@ -350,7 +396,7 @@ class Plotter:
 
                 # compute layout
                 try:
-                    from codecarto import Position
+                    from .positions import LayoutPositions as Position
 
                     layout_pos = Position(
                         include_networkx=self.do_ntx, include_custom=self.do_custom
@@ -485,8 +531,6 @@ class Plotter:
             if self.do_show:
                 plt.show()
             plt.close()
-
-    
 
 
 ########## OPTIONAL ##########

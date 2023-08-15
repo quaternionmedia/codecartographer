@@ -1,11 +1,22 @@
 import os
 import shutil
-from codecarto import (
-    ErrorHandler,
-    Json,
-    Utility as Util,
-    Directory as Dir,
+from pydantic import BaseModel
+from ..utils.utils import (
+    get_date_time_file_format,
+    save_json,
+    load_json,
 )
+from ..plotter.palette_dir import PALETTE_DIRECTORY
+
+
+class Theme(BaseModel):
+    node_type: str
+    base: str
+    label: str
+    shape: str
+    color: str
+    size: str
+    alpha: str
 
 
 class Palette:
@@ -13,8 +24,8 @@ class Palette:
 
     def __init__(self):
         """Initialize a palette."""
-        self._palette_app_dir = Dir.get_palette_directory()["appdata"]
-        self._palette_pack_dir = Dir.get_palette_directory()["package"]
+        self._palette_default_path = PALETTE_DIRECTORY["default"]
+        self._palette_user_path = PALETTE_DIRECTORY["user"]
         self._alphas = [round(0.1 * i, ndigits=1) for i in range(11)]
         self._sizes = [(100 * i) for i in range(1, 11)]
         self._theme = {
@@ -27,8 +38,12 @@ class Palette:
         }
         self.load_palette()
 
-    def save_palette(self):
-        """Save the current palette to the palette json file."""
+    def save_palette(self, default: bool = False):
+        """Save the current palette to the palette json file.
+
+        Args:
+            default (bool, optional): Whether to save the palette to the default palette file. Defaults to False.
+        """
         # create dictionary with current palette data
         palette_data = {
             "bases": self.bases,
@@ -39,22 +54,30 @@ class Palette:
             "alphas": self.alphas,
         }
         # write palette data to file
-        Json.save_json(self._palette_app_dir["path"], palette_data)
+        if default:
+            save_json(self._palette_default_path, palette_data)
+        else:
+            save_json(self._palette_user_path, palette_data)
 
-    def load_palette(self):
-        """Load the palette from the palette json file."""
+    def load_palette(self, default: bool = False):
+        """Load the palette from the palette json file.
+
+        Args:
+            default (bool, optional): Whether to load the palette from the default palette file. Defaults to False.
+        """
         # load palette data from file
         palette_data: dict = {}
         try:
-            palette_data = Json.load_json(self._palette_app_dir["path"])
-            # check if palette data is none
+            if default:
+                palette_data = load_json(self._palette_default_path)
+            else:
+                palette_data = load_json(self._palette_user_path)
+                # check if palette data is none
+                if palette_data is None:
+                    # load the default palette
+                    palette_data = load_json(self._palette_default_path)
             if palette_data is None:
-                # load the default palette
-                palette_data = Json.load_json(self._palette_pack_dir["path"])
-            if palette_data is None:
-                raise ErrorHandler.ThemeNotFoundError(
-                    "No palette data found. Package may be corrupted."
-                )
+                raise ValueError("No palette data found. Package may be corrupted.")
             # check if palette data was loaded
             if len(palette_data.keys()) > 0:
                 # load palette data
@@ -66,31 +89,67 @@ class Palette:
                 self.alphas: dict = palette_data["alphas"]
                 self.types: list = list(self.bases.keys())
         except FileNotFoundError:
-            raise ErrorHandler.ThemeNotFoundError(
-                "No palette data found. Package may be corrupted."
-            )
+            raise ValueError("No palette data found. Package may be corrupted.")
 
     def reset_palette(self, ask_user: bool = False):
         """Reset the palette to the default palette."""
         if ask_user:
             # check if user wants to overwrite existing palette
             overwrite = input(
-                f"\nAre you sure you want to reset the palette to the default palette?\nOverwrite? Y/N "
+                f"\nAre you sure you want to reset the palette to the default palette?\nOverwrite? (y/n) : "
             )
-            if overwrite.upper() == "N":
+            if overwrite.lower() == "n":
+                print("Exiting ... \n")  # blank line
                 return
         # load the default palette
-        palette_data = Json.load_json(self._palette_pack_dir["path"])
+        palette_data = load_json(self._palette_default_path)
         # check if palette data was loaded
         if len(palette_data.keys()) > 0:
-            # overwrite palette file in appdata directory
-            shutil.copy(self._palette_pack_dir["path"], self._palette_app_dir["path"])
+            # overwrite user's palette with the appdata palette
+            shutil.copy(self._palette_default_path, self._palette_user_path)
         else:
-            raise ErrorHandler.ThemeNotFoundError(
-                "No default palette data found. Package may be corrupted."
-            )
+            raise ValueError("No default palette data found. Package may be corrupted.")
         if ask_user:
             print(f"Palette reset to default.\n")
+
+    def set_palette(self, file_path: str, ask_user: bool = False):
+        """Set the palette to the specified palette file.
+
+        Parameters:
+        -----------
+        file_path : str
+            The path to the palette file to set as the current palette.
+        """
+        # check if user wants to overwrite existing palette
+        if ask_user:
+            overwrite = input(
+                f"\nAre you sure you want to set the palette to the specified palette file? (y/n) : "
+            )
+            if overwrite.lower() == "n":
+                print("Exiting ... \n")  # blank line
+                return
+
+        # check if the new config path exists
+        if not os.path.exists(file_path):
+            raise Exception(f"Provided path does not exist: {file_path}")
+        # check if the new config path is a file
+        if not os.path.isfile(file_path):
+            raise Exception(f"Provided path is not a file: {file_path}")
+        # check if the new config path is a JSON file
+        if not file_path.endswith(".json"):
+            raise Exception(f"Provided path is not a JSON file: {file_path}")
+
+        # set the pallette path property in the config file
+        from ..config.config_process import CONFIG_DIRECTORY
+
+        config_path = CONFIG_DIRECTORY["user"]
+        config_data = load_json(config_path)
+        config_data["palette_path"] = file_path
+        save_json(config_path, config_data)
+
+        # load palette file
+        self.load_palette()
+        print(f"Now using palette file '{file_path}'\n")
 
     def import_palette(self, import_path: str, ask_user: bool = False):
         """Import a palette file from the specified file path.
@@ -100,25 +159,32 @@ class Palette:
         import_path : str
             The path to the palette file to import.
         """
-        # check if import file exists
+        # check if the new config path exists
         if not os.path.exists(import_path):
-            raise FileNotFoundError(f"Palette file not found: {import_path}")
-        # check if import file is a json file
+            raise Exception(f"Provided path does not exist: {import_path}")
+        # check if the new config path is a file
+        if not os.path.isfile(import_path):
+            raise Exception(f"Provided path is not a file: {import_path}")
+        # check if the new config path is a JSON file
         if not import_path.endswith(".json"):
-            raise TypeError(f"Palette file must be a json file: {import_path}")
+            raise Exception(f"Provided path is not a JSON file: {import_path}")
+
+        # check if user wants to overwrite existing palette
         if ask_user:
-            # check if user wants to overwrite existing palette
             overwrite = input(
-                f"\nAre you sure you want to import a palette file? This will overwrite the current palette.\nOverwrite? Y/N "
+                f"\nAre you sure you want to import a palette file? This will overwrite the current palette.\nOverwrite? (y/n) : "
             )
-            if overwrite.upper() == "N":
+            if overwrite.lower() == "n":
+                print("Exiting ... \n")  # blank line
                 return
+
         # overwrite palette file in appdata directory
-        shutil.copy(import_path, self._palette_app_dir["path"])
+        shutil.copy(import_path, self._palette_user_path)
         # load palette file
-        self.load()
+        self.load_palette()
+
         if ask_user:
-            print(f"Palette imported from '{import_path}'.\n")
+            print(f"Palette imported from '{import_path}'\n")
 
     def export_palette(self, export_path: str):
         """Export the current palette file to the specified directory.
@@ -140,15 +206,13 @@ class Palette:
         if not os.path.isdir(export_path):
             raise TypeError(f"Path must be a directory: {export_path}")
         # check if palette file exists and is not empty
-        palette_file = self._palette_app_dir["path"]
+        palette_file = self._palette_user_path
         if not os.path.exists(palette_file) or os.path.getsize(palette_file) == 0:
-            palette_file = self._palette_pack_dir["path"]
+            palette_file = self._palette_user_path
             if not os.path.exists(palette_file) or os.path.getsize(palette_file) == 0:
-                raise ErrorHandler.ThemeNotFoundError(
-                    "No palette file found. Package may be corrupted."
-                )
+                raise ValueError("No palette file found. Package may be corrupted.")
         # create export file
-        export_date = Util.get_date_time_file_format()
+        export_date = get_date_time_file_format()
         export_name = str(os.path.basename(palette_file)).split(".")[0]
         export_name = f"{export_name}_{export_date}.json"
         export_file = os.path.join(export_path, export_name)
@@ -198,7 +262,7 @@ class Palette:
                 # ask user if they want to overwrite
                 node = self.get_node_styles(node_type)
                 overwrite = input(
-                    f"\n{node_type} already exists in '{self._palette_app_dir['path']}' with parameters: \n {node} \n\nOverwrite? Y/N "
+                    f"\n{node_type} already exists in '{self._palette_user_path}' with parameters: \n {node} \n\nOverwrite? Y/N "
                 )
                 if overwrite.upper() == "N":
                     print(f"\nNew theme not created.\n")
@@ -214,7 +278,7 @@ class Palette:
         # save themes to palette file
         self.save_palette()
         if ask_user:
-            print(f"\nNew theme added to palette: {self._palette_app_dir['path']}")
+            print(f"\nNew theme added to palette: {self._palette_user_path}")
             print(
                 f"New theme '{node_type}' created with parameters: base={base}, label={label}, shape={shape}, color={color}, size={size}, alpha={alpha}\n"
             )

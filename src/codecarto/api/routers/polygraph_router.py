@@ -1,9 +1,9 @@
 from fastapi import APIRouter
-from codecarto import Model
+from ...models.graph_data import get_graph_description
 
 router = APIRouter()
 
 
 @router.get("/graph/description")
 async def get_graph_description() -> dict:
-    return Model.get_graph_description()
+    return get_graph_description()

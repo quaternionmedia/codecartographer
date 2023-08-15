@@ -4,8 +4,10 @@ import itertools
 import matplotlib.pyplot as plt
 import matplotlib._pylab_helpers as pylab_helpers
 from pathlib import Path
- 
-from codecarto import Processor, Directory as Dir
+
+from ...src.codecarto.processor import Processor
+from ...src.codecarto.config.directory.output_dir import set_output_dir
+from ...src.codecarto.config.directory.package_dir import PROCESSOR_FILE_PATH
 
 
 def test_processor():
@@ -18,9 +20,9 @@ def test_processor():
                 plt.ioff()
 
                 # Run demo command
-                Dir.set_output_dir(Path(temp_dir), ask_user=False)
+                set_output_dir(Path(temp_dir), ask_user=False)
                 output_dirs: dict = Processor.process(
-                    source=Dir.get_main_dir()["path"],
+                    source=PROCESSOR_FILE_PATH,
                     json=json,
                     labels=labels,
                     grid=grid,
