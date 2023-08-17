@@ -33,30 +33,21 @@ class LayoutPositions:
 
     def add_networkx_layouts(self):
         """Add all networkx layouts to the list of available layouts"""
-        self.add_layout(
-            "spring_layout",
-            nx.layout.spring_layout,
-            ["graph", "seed"],
-        )
+        #self.add_layout("spring_layout",nx.layout.spring_layout,["graph", "seed"],)
         self.add_layout("spiral_layout", nx.layout.spiral_layout, ["graph"])
         self.add_layout("circular_layout", nx.layout.circular_layout, ["graph"])
-        self.add_layout("random_layout", nx.layout.random_layout, ["graph", "seed"])
-        # self.add_layout(
-        #     "kamada_kawai_layout",
-        #     nx.layout.kamada_kawai_layout,
-        #     ["graph", "iterations"],
-        # )
-        self.add_layout("shell_layout", nx.layout.shell_layout, ["graph", "nshells"])
-        self.add_layout("spectral_layout", nx.layout.spectral_layout, ["graph"])
+        #self.add_layout("random_layout", nx.layout.random_layout, ["graph", "seed"])
+        #self.add_layout("shell_layout", nx.layout.shell_layout, ["graph", "nshells"])
+        #self.add_layout("spectral_layout", nx.layout.spectral_layout, ["graph"])
         self.add_layout("planar_layout", nx.layout.planar_layout, ["graph"])
 
     def add_custom_layouts(self):
         """Add all custom layouts to the list of available layouts"""
-        from .custom_layouts.grid_layout import grid_layout
-        from .custom_layouts.cluster_layout import cluster_layout
+        from .custom_layouts.sorted_square_layout import sorted_square_layout
+        #from .custom_layouts.cluster_layout import cluster_layout
 
-        self.add_layout("grid_layout", grid_layout, ["graph"])
-        self.add_layout("cluster_layout", cluster_layout, ["graph", "root"])
+        self.add_layout("sorted_square_layout", sorted_square_layout, ["graph"])
+        #self.add_layout("cluster_layout", cluster_layout, ["graph", "root"])
 
     def get_layout_names(self):
         """Get all layout names from the list of available layouts

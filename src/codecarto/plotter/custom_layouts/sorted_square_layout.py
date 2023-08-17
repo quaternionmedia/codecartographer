@@ -1,6 +1,6 @@
 import networkx as nx
 
-def grid_layout(G: nx.Graph):
+def sorted_square_layout(G: nx.Graph):
     """Position nodes in a grid.
 
     Parameters

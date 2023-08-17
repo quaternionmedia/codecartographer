@@ -5,12 +5,96 @@
 import os
 from ..utils.utils import load_json, save_json
 
+
 CONFIG_FILE = "config.json"
 DEFAULT_CONFIG_FILE = "default_config.json"
 
 # dir is a folder. Example: C:\Users\user\AppData\Roaming\codecarto
 # path is a file. Example: C:\Users\user\AppData\Roaming\codecarto\config.json
 # filename is a file name. Example: config.json
+
+def initiate_package():
+    """Initiate the CodeCartographer package.
+
+    Returns:
+    --------
+    dict
+        The user's config data.
+    """
+    from .directory.appdata_dir import CODECARTO_APPDATA_DIRECTORY, APPDATA_DIRECTORY
+    from ..plotter.palette_dir import get_package_palette_path, NEW_PALETTE_FILENAME, DEFAULT_PALETTE_FILENAME
+
+    # Check if the appdata directory exists
+    # This should exist, it's the system's appdata directory
+    if os.path.exists(APPDATA_DIRECTORY):
+        codecarto_folder_exists: bool = os.path.exists(CODECARTO_APPDATA_DIRECTORY)
+        if not codecarto_folder_exists:
+            # Create the codecarto appdata directory
+            print("Initiate package...")
+            print("Making CodeCartographr in environment folder...")
+            os.makedirs(CODECARTO_APPDATA_DIRECTORY, exist_ok=True)
+        
+        # Check if we need to make any files
+        default_palette_path:str = os.path.join(CODECARTO_APPDATA_DIRECTORY, DEFAULT_PALETTE_FILENAME)
+        new_palette_path:str = os.path.join(CODECARTO_APPDATA_DIRECTORY, NEW_PALETTE_FILENAME)
+        default_config_path: str = os.path.join(CODECARTO_APPDATA_DIRECTORY, DEFAULT_CONFIG_FILE)
+        user_config_file: str = os.path.join(CODECARTO_APPDATA_DIRECTORY, CONFIG_FILE) 
+        if not (os.path.exists(CODECARTO_APPDATA_DIRECTORY) 
+                or os.path.exists(default_palette_path)
+                or os.path.exists(new_palette_path)
+                or os.path.exists(default_config_path)
+                or os.path.exists(user_config_file)): 
+            if codecarto_folder_exists:
+                # If the codecarto folder exists, but the files don't,
+                # print the initiate message
+                print("Initiate package...")
+            
+            # Check we have the default palette file
+            package_palette_path: str = get_package_palette_path()
+            print("Loading package default palette...")
+            print(f"Package default palette path {package_palette_path}")
+            if not os.path.exists(package_palette_path):
+                raise FileNotFoundError(
+                    f"Package Missing Files: Default palette file not found at {package_palette_path}"
+                )
+            
+            # Check if the default palette file exists in the appdata directory
+            print("Creating default app data files...")
+            print(f"Default palette: {default_palette_path}")
+            if not os.path.exists(default_palette_path):
+                # Create the default palette file in the appdata directory. 
+                # This is so we have a backup of the default palette file.
+                default_palette_data: dict = load_json(package_palette_path)
+                save_json(default_palette_path, default_palette_data)
+            
+            # Check if the new palette file exists in the appdata directory
+            # Shouldn't be the case that default does exist and this doesn't, but lets check. 
+            print(f"User's palette: {new_palette_path}")
+            if not os.path.exists(new_palette_path):
+                # Create the default palette file in the appdata directory. 
+                # This is so users can create their own palette file.
+                default_palette_data: dict = load_json(package_palette_path)
+                save_json(new_palette_path, default_palette_data)
+
+            # Create the default/user config files
+            print("Creating config files...")
+            create_config_file()
+
+            # Double check that all appdata folder and four files exist
+            print(f"Default config file: {default_config_path}")
+            print(f"User config file: {user_config_file}")
+            if not (os.path.exists(CODECARTO_APPDATA_DIRECTORY) 
+                    or os.path.exists(default_palette_path)
+                    or os.path.exists(new_palette_path)
+                    or os.path.exists(default_config_path)
+                    or os.path.exists(user_config_file)):
+                raise FileNotFoundError(
+                    f"CRITICAL ERROR: Package was unable to create all necessary files and folders. Please contact the package maintainer."
+                )
+            
+            print("Package initiated successfully!")
+            
+
 
 
 def create_user_config_file(
@@ -106,11 +190,11 @@ def create_config_file(user_config_path: str = "") -> dict:
     appdata_codecarto: str = CODECARTO_APPDATA_DIRECTORY
     default_palette_name: str = DEFAULT_PALETTE_FILENAME
 
-    # create the default config file
+    # create the default config file 
     default_config_path: str = os.path.join(appdata_codecarto, DEFAULT_CONFIG_FILE)
     default_palette_path: str = os.path.join(appdata_codecarto, default_palette_name)
     default_output_dir: str = os.path.join(
-        get_users_documents_dir, "CodeCartographer", "output"
+        get_users_documents_dir(), "CodeCartographer", "output"
     )
     if not os.path.exists(default_output_dir):
         os.makedirs(default_output_dir, exist_ok=True)

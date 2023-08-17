@@ -97,13 +97,13 @@ class PlotterHandler:
         self,
         dirs: dict[str, str] = None,
         file_path: str = "",
-        do_labels: bool = False,
-        do_grid: bool = False,
-        do_json: bool = False,
-        do_show: bool = False,
-        do_single_file: bool = False,
-        do_ntx: bool = True,
-        do_custom: bool = True,
+        labels: bool = False,
+        grid: bool = False,
+        json: bool = False,
+        show_plot: bool = False,
+        single_file: bool = False,
+        ntx_layouts: bool = True,
+        custom_layouts: bool = True,
     ):
         """Sets the plotter attributes.
 
@@ -113,32 +113,32 @@ class PlotterHandler:
                 The directories to use for the plotter.
             file_path (str):
                 The file path to use for the plotter.
-            do_labels (bool):
+            labels (bool):
                 Whether or not to show the labels.
-            do_grid (bool):
+            grid (bool):
                 Whether or not to show the grid.
-            do_json (bool):
+            json (bool):
                 Whether or not to save the json file.
-            do_show (bool):
+            show_plot (bool):
                 Whether or not to show the plot.
-            do_single_file (bool):
+            single_file (bool):
                 Whether or not to save the plot to a single file.
-            do_ntx (bool):
+            ntx_layouts (bool):
                 Whether or not to save the plot to a networkx file.
-            do_custom (bool):
+            custom_layouts (bool):
                 Whether or not to save the plot to a custom file.
         """
         self.plotter.dirs = dirs if dirs is not None else self.plotter.dirs
         self.plotter.file_path = (
             file_path if file_path is not None else self.plotter.file_path
         )
-        self.plotter.do_labels = do_labels
-        self.plotter.do_grid = do_grid
-        self.plotter.do_json = do_json
-        self.plotter.do_show = do_show
-        self.plotter.do_single_file = do_single_file
-        self.plotter.do_ntx = do_ntx
-        self.plotter.do_custom = do_custom
+        self.plotter.labels = labels
+        self.plotter.grid = grid
+        self.plotter.json = json
+        self.plotter.show_plot = show_plot
+        self.plotter.single_file = single_file
+        self.plotter.ntx_layouts = ntx_layouts
+        self.plotter.custom_layouts = custom_layouts
 
     def plot_graph(
         self,
@@ -146,8 +146,8 @@ class PlotterHandler:
         output_dir: str = None,
         file_name: str = None,
         specific_layout: str = "",
-        do_grid: bool = False,
-        do_json: bool = False,
+        grid: bool = False,
+        json: bool = False,
         api: bool = False,
     ) -> dict[dict, str]:
         """Plots a graph representing code.
@@ -163,9 +163,9 @@ class PlotterHandler:
             specific_layout (str):
                 The specific layout to use for the plot.
                     default (""): will plot all layouts.
-            do_grid (bool):
+            grid (bool):
                 Whether or not to show the grid.
-            do_json (bool):
+            json (bool):
                 Whether or not to save the json file.
             api (bool):
                 Whether or not the function is being called from the API.
@@ -189,8 +189,8 @@ class PlotterHandler:
         graph = PolyGraph.graphdata_to_nx(GraphData)
 
         # Set the plotter parameters
-        self.plotter.do_grid = do_grid
-        self.plotter.do_json = do_json
+        self.plotter.grid = grid
+        self.plotter.json = json
 
         # Plot the graph
         self.plotter.plot(graph, specific_layout)
@@ -580,7 +580,7 @@ class ProcessorHandler:
                 'json_graph_file_path':
                     the path to the output/json/graph.json file.
         """
-
+        from .processor import process
         # Validate the source
         if not os.path.exists(source):
             raise ValueError(f"Source {source} does not exist.")
@@ -588,11 +588,11 @@ class ProcessorHandler:
             raise ValueError(f"Source {source} is not a directory or file.")
 
         if not api:
-            return Processor.process(
+            return process(
                 source, api, plot, labels, json, grid, show, single_file, output_dir
             )
         else:
-            return Processor.process(source=source, api=api, single_file=single_file)
+            return process(source=source, api=api, single_file=single_file)
 
 
 class DirectoryHandler:

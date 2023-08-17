@@ -58,7 +58,7 @@ def test_plotter():
                 # Test Plotter object with different options
                 graph_plot: Plotter = Plotter()
                 graph_plot.set_plotter_attrs(
-                    dirs=test_dirs, do_labels=labels, do_grid=grid, do_show=show
+                    dirs=test_dirs, labels=labels, grid=grid, show_plot=show
                 )
 
                 # Pass graph to Plotter object and plot

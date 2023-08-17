@@ -94,5 +94,16 @@ def get_palette_path(default: bool = False) -> str:
 
     return palette_path
 
+def get_package_palette_path() -> str:
+    """Get the path to the package's default palette file.
 
-PALETTE_DIRECTORY = {"default": get_palette_path(True), "user": get_palette_path()}
+    Returns:
+    --------
+    str
+        The path to the package's default palette file.
+    """
+    from ..config.directory.package_dir import get_package_dir
+
+    return os.path.join(get_package_dir(), "plotter", DEFAULT_PALETTE_FILENAME)
+
+PALETTE_DIRECTORY = {"default": get_package_palette_path(), "user": get_palette_path()}

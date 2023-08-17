@@ -111,14 +111,15 @@ class Parser(ast.NodeVisitor):
                     self.current_file = file_path
                     self.parse_code(file_path)
         else:
-            # loop through the list of source files
+            # check if graph only has root and python nodes
             if not source_files or len(source_files) == 0:
-                # check if graph only has root and python nodes
                 if len(self.graph.nodes) == 2:
                     # remove the root and python nodes
                     self.graph.remove_node(id(self.root))
                     self.graph.remove_node(id(self.python))
                 return None
+            
+            # loop through the list of source files
             for file_path in source_files:
                 # Check if the file has already been parsed
                 if file_path in self.parsed_files:

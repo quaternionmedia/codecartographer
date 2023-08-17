@@ -23,8 +23,8 @@ router: APIRouter = APIRouter()
 async def plot(
     graph_data: GraphData,
     layout: str = "",
-    do_grid: bool = False,
-    do_json: bool = False,
+    grid: bool = False,
+    json: bool = False,
 ) -> Response:
     """Plots a graph representing source code.
 
@@ -34,9 +34,9 @@ async def plot(
             The graph to plot.
         layout (str):
             The layout to use for the plot.
-        do_grid (bool):
+        grid (bool):
             Whether or not plot all layouts in a grid.
-        do_json (bool):
+        json (bool):
             Whether or not to return the json data.
 
     Returns:
@@ -74,8 +74,8 @@ async def plot(
 
             # Plot the graph
             plotter = Plotter()
-            plotter.do_grid = do_grid
-            plotter.do_json = do_json
+            plotter.grid = grid
+            plotter.json = json
             plotter.file_path = tmpname
 
             Plotter.plot(graph=graph_data, specific_layout=layout)

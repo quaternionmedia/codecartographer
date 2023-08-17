@@ -183,7 +183,7 @@ def create_output_dirs() -> dict:
     return {
         "version": run_version,
         "output_dir": output_dir,
-        "version_dir": run_version,
+        "version_dir": run_version_dir,
         "graph_dir": output_graph_dir,
         "graph_code_dir": output_graph_from_code_dir,
         "graph_json_dir": output_graph_from_json_dir,

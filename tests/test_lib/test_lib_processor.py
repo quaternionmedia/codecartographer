@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib._pylab_helpers as pylab_helpers
 from pathlib import Path
 
-from ...src.codecarto.processor import Processor
+from ...src.codecarto.processor import process
 from ...src.codecarto.config.directory.output_dir import set_output_dir
 from ...src.codecarto.config.directory.package_dir import PROCESSOR_FILE_PATH
 
@@ -21,7 +21,7 @@ def test_processor():
 
                 # Run demo command
                 set_output_dir(Path(temp_dir), ask_user=False)
-                output_dirs: dict = Processor.process(
+                output_dirs: dict = process(
                     source=PROCESSOR_FILE_PATH,
                     json=json,
                     labels=labels,

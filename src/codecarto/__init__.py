@@ -32,6 +32,10 @@ Classes:
     Plotter - A class used to plot a graph.
 """
 
+from .config.config_process import initiate_package
+
+initiate_package()
+
 ########################### IMPORTS #######################################
 # # Import the sub modules to make them easier to get at
 # from .codecarto import (

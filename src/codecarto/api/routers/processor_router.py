@@ -1,12 +1,12 @@
 from fastapi import APIRouter
-from ...processor import Processor
+from ...processor import process
 
 router = APIRouter()
 
 
 @router.get("/processor/process")
 async def process(
-    file_path: str = __file__, do_single_file: bool = False
+    file_path: str = __file__, single_file: bool = False
 ) -> dict[str, str]:
     """Runs the code cartographer.
 
@@ -14,7 +14,7 @@ async def process(
     -----------
     file_path (str) - Default: __file__
         The path to the file to be analyzed.
-    do_single_file (bool) - Default: False
+    single_file (bool) - Default: False
         Whether to analyze a single file.
 
     Returns:
@@ -22,8 +22,8 @@ async def process(
     dict:
         The json_data of the processed source code.
     """
-    return Processor.process(
+    return process(
         file_path=file_path,
         api=True,
-        do_single_file=do_single_file,
+        single_file=single_file,
     )

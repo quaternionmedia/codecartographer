@@ -19,6 +19,8 @@ def run_codecarto(
 
     Optional Args:
     --------------
+    Using the options sets them to true, not using them sets them to false.
+    
     json : bool
         Whether to convert the json data to a graph and plot.
     labels : bool
@@ -35,15 +37,15 @@ def run_codecarto(
     dict | None
         The output directories of the package.
     """
-    from ..processor import Processor
+    from ..processor import process
 
-    output_dirs: dict = Processor.process(
+    output_dirs: dict = process(
         file_path=import_name,
         plot=True,
         labels=labels,
         json=json,
         grid=grid,
-        show=show,
+        show_plot=show,
         single_file=uno,
     )
     return output_dirs
@@ -212,12 +214,13 @@ class CustomHelpGroup(click.Group):
                     from ..parser.import_source_dir import get_all_source_files
 
                     source_dirs: list = get_all_source_files(file_path)
-                    print("\nPackage Source Python Files:")
+                    print("\nPackage files to parse:")
                     for source_dir in source_dirs:
                         print(source_dir)
                     print()
                     return source_dirs
                 else:
+                    print("\nStarting package process...\n")
                     output_dirs: dict = run_codecarto(
                         str(file_path), json, labels, grid, show, uno
                     )
@@ -338,6 +341,23 @@ def demo(
 ) -> dict | None:
     """Runs the package on itself.
 
+    Optional Parameters:
+    -----------
+    Using the options sets them to true, not using them sets them to false.
+
+    json : bool
+        Whether to convert json back to graph and plot.
+    labels : bool
+        Whether to show labels on plots.
+    grid : bool
+        Whether to have all plots in a grid layout.
+    show : bool
+        Whether to show plots. Will pause process on each plot.
+    dir : bool
+        Prints passed file's source code to be used in process.
+    uno : bool
+        Whether to do a single file or the whole source directory.
+
     Returns:
     --------
     dict | None\n
@@ -351,13 +371,14 @@ def demo(
     if dir:
         # Print source code
         source_dirs: list = get_all_source_files(demo_file_path)
-        print("\nPackage Source Python Files:")
+        print("\nPackage files used in demo:")
         for source_dir in source_dirs:
             print(source_dir)
         print()
         return source_dirs
     else:
         # Call run_codecarto
+        print("\nRunning demo on package files:")
         output_dirs: dict = run_codecarto(demo_file_path, json, labels, grid, show, uno)
         return output_dirs
 
