@@ -1,27 +1,15 @@
-from fastapi import APIRouter, UploadFile, HTTPException, Request, Depends, File
+from fastapi import APIRouter, UploadFile, HTTPException, File
 from fastapi.responses import JSONResponse
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 
 from ...parser.parser import Parser
 from ...polygraph.polygraph import PolyGraph
 
-# This sets the rate limit to 30 requests per hour and 2 requests per minute
-limiter = Limiter(key_func=get_remote_address, default_limits=["30/hour", "2/minute"])
-
 # Create a router and add the limiter to it
-router: APIRouter = APIRouter(dependencies=[Depends(limiter)])
+ParserRoute: APIRouter = APIRouter()
 
 
-@router.exception_handler(RateLimitExceeded)
-async def ratelimit_handler(request: Request, exc: RateLimitExceeded):
-    return JSONResponse(status_code=429, content={"message": "Rate limit exceeded"})
-
-
-@router.post(
+@ParserRoute.post(
     "/parser/parse",
-    request_body_max=1000000,
     response_class=JSONResponse,
     responses={200: {"content": {"application/json": {}}}},
 )

@@ -12,12 +12,11 @@ from ...utils.utils import (
 )
 from ...config.directory.output_dir import get_last_dated_output_dirs
 
-router: APIRouter = APIRouter()
+PlotterRoute: APIRouter = APIRouter()
 
 
-@router.post(
+@PlotterRoute.post(
     "/plotter/plot",
-    request_body_max=1000000,
     responses={200: {"content": {"image/png": {}}}},
 )
 async def plot(

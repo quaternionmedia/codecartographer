@@ -1,10 +1,10 @@
 from fastapi import APIRouter
 from ...processor import process
 
-router = APIRouter()
+ProcessorRoute = APIRouter()
 
 
-@router.get("/processor/process")
+@ProcessorRoute.get("/processor/process")
 async def process(
     file_path: str = __file__, single_file: bool = False
 ) -> dict[str, str]:

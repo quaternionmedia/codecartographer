@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 from ...models.graph_data import get_graph_description
 
-router = APIRouter()
+PolyGraphRoute = APIRouter()
 
 
-@router.get("/graph/description")
+@PolyGraphRoute.get("/graph/description")
 async def get_graph_description() -> dict:
     return get_graph_description()

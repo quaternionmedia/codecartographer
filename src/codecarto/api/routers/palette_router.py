@@ -1,12 +1,12 @@
 from fastapi import APIRouter
 from ...plotter.palette import Palette, Theme
 
-router: APIRouter = APIRouter()
+PaletteRoute: APIRouter = APIRouter()
 
 # TODO: how does each user using the API get their own palette? Is it cached on their machine? How do?
 
 
-@router.get("/palette/get_palette")
+@PaletteRoute.get("/palette/get_palette")
 async def get_palette() -> dict[str, str]:
     """Gets the current palette data.
 
@@ -18,7 +18,7 @@ async def get_palette() -> dict[str, str]:
     return Palette.get_palette()
 
 
-@router.post("/palette/set_palette")
+@PaletteRoute.post("/palette/set_palette")
 async def set_palette(palette_file_path: str):
     """Sets the palette to use for plots
 
@@ -30,7 +30,7 @@ async def set_palette(palette_file_path: str):
     Palette.set_palette(palette_file_path)
 
 
-@router.get("/palette/reset_palette")
+@PaletteRoute.get("/palette/reset_palette")
 async def reset_palette() -> dict[str, str]:
     """Resets the palette to the default.
 
@@ -43,7 +43,7 @@ async def reset_palette() -> dict[str, str]:
     return Palette.get_palette()
 
 
-@router.get("/palette/add_theme")
+@PaletteRoute.get("/palette/add_theme")
 async def add_theme(
     node_type: str,
     base: str,
