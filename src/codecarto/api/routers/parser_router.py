@@ -8,7 +8,7 @@ from ...polygraph.polygraph import PolyGraph
 ParserRoute: APIRouter = APIRouter()
 
 
-@ParserRoute.post(
+@ParserRoute.get(
     "/parser/parse",
     response_class=JSONResponse,
     responses={200: {"content": {"application/json": {}}}},
@@ -63,8 +63,10 @@ async def parse(
                 raise HTTPException(status_code=415, detail=msg)
 
             # Parse the source code and return the {json_data, output_dir} dict
-            graph = Parser.parse_list([file.file for file in passed_files])
-            json_data = PolyGraph.graph_to_json_data(graph)
+            parser: Parser = Parser()
+            polygraph: PolyGraph = PolyGraph()
+            graph = parser.parse_list([file.file for file in passed_files])
+            json_data = polygraph.graph_to_json_data(graph)
 
             # Return the json data
             return JSONResponse(

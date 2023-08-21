@@ -15,19 +15,27 @@ async def get_palette() -> dict[str, str]:
         dict:
             The current palette data.
     """
-    return Palette.get_palette()
+    palette: Palette = Palette()
+    return palette.get_palette_data()
 
 
-@PaletteRoute.post("/palette/set_palette")
-async def set_palette(palette_file_path: str):
+@PaletteRoute.get("/palette/set_palette")
+async def set_palette(palette_file_path: str) -> dict[str, str]:
     """Sets the palette to use for plots
 
     Parameters:
     -----
         palette_file_path (str):
             The path to the palette file.
+
+    Returns:
+    --------
+        dict:
+            The new palette data.
     """
-    Palette.set_palette(palette_file_path)
+    palette: Palette = Palette()
+    palette.set_palette(palette_file_path)
+    return palette.get_palette_data()
 
 
 @PaletteRoute.get("/palette/reset_palette")
@@ -39,8 +47,9 @@ async def reset_palette() -> dict[str, str]:
         dict:
             The current palette data.
     """
-    Palette.reset_palette()
-    return Palette.get_palette()
+    palette: Palette = Palette()
+    palette.reset_palette()
+    return palette.get_palette_data()
 
 
 @PaletteRoute.get("/palette/add_theme")
@@ -78,5 +87,6 @@ async def add_theme(
             The current palette data.
     """
     theme = Theme(node_type, base, label, shape, color, size, alpha)
-    Palette.create_new_theme(theme)
-    return Palette.get_palette()
+    palette: Palette = Palette()
+    palette.create_new_theme(theme)
+    return palette.get_palette_data()

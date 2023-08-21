@@ -17,14 +17,14 @@ PlotterRoute: APIRouter = APIRouter()
 
 @PlotterRoute.post(
     "/plotter/plot",
-    responses={200: {"content": {"image/png": {}}}},
 )
 async def plot(
     graph_data: GraphData,
     layout: str = "",
     grid: bool = False,
     json: bool = False,
-) -> Response:
+    show: bool = False,
+):
     """Plots a graph representing source code.
 
     Parameters:
@@ -37,6 +37,8 @@ async def plot(
             Whether or not plot all layouts in a grid.
         json (bool):
             Whether or not to return the json data.
+        show (bool):
+            Whether or not to show the plot.
 
     Returns:
     --------
@@ -76,19 +78,21 @@ async def plot(
             plotter.grid = grid
             plotter.json = json
             plotter.file_path = tmpname
+            plotter.api = True
+            if show:
+                plotter.show_plot = True
+            plotter.plot(graph=graph_data, specific_layout=layout)
 
-            Plotter.plot(graph=graph_data, specific_layout=layout)
+            # # Create a response with the file
+            # response = FileResponse(
+            #     tmpname, media_type="image/png", filename="plot.png"
+            # )
 
-            # Create a response with the file
-            response = FileResponse(
-                tmpname, media_type="image/png", filename="plot.png"
-            )
+            # # Delete the temporary file after sending it
+            # response.on_finish.append(lambda: os.unlink(tmpname))
 
-            # Delete the temporary file after sending it
-            response.on_finish.append(lambda: os.unlink(tmpname))
-
-            # Return the response image/file
-            return response
+            # # Return the response image/file
+            # return response
         except Exception as e:
             # internal server error log
             raise ValueError(f"Error plotting graph: {e}")

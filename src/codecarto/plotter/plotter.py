@@ -45,6 +45,7 @@ class Plotter:
         """
         from .positions import LayoutPositions as Position
 
+        self.api: bool = False
         self.seed: dict[str, int] = {}
         self.dirs: dict[str, str] = dirs
         self.file_path: str = file_path
@@ -57,7 +58,7 @@ class Plotter:
         self.custom_layouts: bool = custom_layouts
         self.layouts: tuple(str, function, list) = Position(
             self.ntx_layouts, custom_layouts
-        ).get_layouts() 
+        ).get_layouts()
 
     def set_plotter_attrs(
         self,
@@ -129,7 +130,6 @@ class Plotter:
     def plot_layout(self, _graph: nx.DiGraph, _layout: str, _json: bool = False):
         pass
 
-
     def plotting_progress(self):
         pass
 
@@ -155,13 +155,25 @@ class Plotter:
                 graph_dir = self.dirs["graph_json_dir"]
 
             # Create the overall progress bar
-            overall_total: int = len(self.layouts.items()) +1 # plus 1 for when the overall bar finishes
-            progress_overall: ProgressBar = ProgressBar(overall_total, "  Plotting:", "Complete", extra_msg="Plotting...")
-            overall_line = (progress_overall.get_current_cursor_position()[1]) -1 # move back one line
-            line_number: int = overall_line + 2 # plus 2 for where we want the children to start
+            overall_total: int = (
+                len(self.layouts.items()) + 1
+            )  # plus 1 for when the overall bar finishes
+            progress_overall: ProgressBar = ProgressBar(
+                overall_total, "  Plotting:", "Complete", extra_msg="Plotting..."
+            )
+            overall_line = (
+                progress_overall.get_current_cursor_position()[1]
+            ) - 1  # move back one line
+            line_number: int = (
+                overall_line + 2
+            )  # plus 2 for where we want the children to start
             progress_overall.has_children = True
-            progress_overall.current_line = overall_line + 1 # plus 1 to combat the -1 in first call of increment()
-            max_layout_name_length: int = max([len(layout_name) for layout_name in self.layouts.keys()])
+            progress_overall.current_line = (
+                overall_line + 1
+            )  # plus 1 to combat the -1 in first call of increment()
+            max_layout_name_length: int = max(
+                [len(layout_name) for layout_name in self.layouts.keys()]
+            )
             # TODO: after creating sub progress bars set the line number - number of layouts for overall progress bar
             # TODO: May need to print blank lines equal to number of layouts to get the cursor to the correct position
             # TODO: Create the sub progress bars for each layout in dict, set line number for each layout
@@ -179,7 +191,7 @@ class Plotter:
                 }
                 len_node_data: int = len(node_data.items())
                 num_of_nodes: int = _graph.number_of_nodes()
-                unique_node_types = set() 
+                unique_node_types = set()
                 for _, node_type in _graph.nodes(data="type"):
                     if node_type is not None:
                         unique_node_types.add(node_type)
@@ -190,13 +202,19 @@ class Plotter:
                     if param == "seed":
                         param_len += 1
                     elif param == "nshells" and layout_name == "shell_layout":
-                        param_len += (num_of_nodes + 1)
+                        param_len += num_of_nodes + 1
                     elif param == "root" and layout_name == "cluster_layout":
                         param_len += num_of_nodes
                     elif param != "G":
                         param_len += 1
-                progress_total:int = 8 # the number of .increment()s outside of loops
-                progress_total += (num_of_nodes + len_layout_param + param_len + len_node_data + len_unigue_node_types)  # various lengths of expected loops
+                progress_total: int = 8  # the number of .increment()s outside of loops
+                progress_total += (
+                    num_of_nodes
+                    + len_layout_param
+                    + param_len
+                    + len_node_data
+                    + len_unigue_node_types
+                )  # various lengths of expected loops
 
                 # Create progress bar extra messages
                 extra_msg: dict[str, str] = {
@@ -215,10 +233,17 @@ class Plotter:
                     "Final": "Finished",
                 }
                 max_extra_msg_len: int = max([len(msg) for msg in extra_msg.values()])
-                
+
                 # create ProgressBar
-                progress_plot: ProgressBar = ProgressBar(progress_total, f"    {layout_name:{max_layout_name_length}}:", "Complete", line_number=line_number)
-                progress_plot.increment(extra_msg = f"{extra_msg['Start']:<{max_extra_msg_len}}")
+                progress_plot: ProgressBar = ProgressBar(
+                    progress_total,
+                    f"    {layout_name:{max_layout_name_length}}:",
+                    "Complete",
+                    line_number=line_number,
+                )
+                progress_plot.increment(
+                    extra_msg=f"{extra_msg['Start']:<{max_extra_msg_len}}"
+                )
 
                 # Initialize figure, axes (w, h), title, and position on monitor
                 fig, ax = plt.subplots(figsize=(15, 15))
@@ -231,7 +256,9 @@ class Plotter:
                     _title = f"{_title} for '{_file_name}'"
                 ax.set_title(_title)
                 ax.axis("off")
-                progress_plot.increment(extra_msg = f"{extra_msg['Init']:<{max_extra_msg_len}}")
+                progress_plot.increment(
+                    extra_msg=f"{extra_msg['Init']:<{max_extra_msg_len}}"
+                )
 
                 # Collect nodes and their attributes
                 for n, a in _graph.nodes(data=True):
@@ -239,7 +266,9 @@ class Plotter:
                     if node_type not in node_styles.keys():
                         node_type = "Unknown"
                     node_data[node_type].append(n)
-                    progress_plot.increment(extra_msg = f"{extra_msg['Nodes']:<{max_extra_msg_len}}")
+                    progress_plot.increment(
+                        extra_msg=f"{extra_msg['Nodes']:<{max_extra_msg_len}}"
+                    )
 
                 # Get layout parameters
                 seed = -1
@@ -253,7 +282,9 @@ class Plotter:
                             seed = random.randint(0, 1000)
                             self.seed[layout_name] = seed
                         layout_kwargs["seed"] = seed
-                        progress_plot.increment(extra_msg = f"{extra_msg['Layout']:<{max_extra_msg_len}}")
+                        progress_plot.increment(
+                            extra_msg=f"{extra_msg['Layout']:<{max_extra_msg_len}}"
+                        )
                     elif param == "nshells" and layout_name == "shell_layout":
                         # Group nodes by parent
                         grouped_nodes: dict[str, list] = {}
@@ -262,11 +293,15 @@ class Plotter:
                             if parent not in grouped_nodes:
                                 grouped_nodes[parent] = []
                             grouped_nodes[parent].append(node)
-                            progress_plot.increment(extra_msg = f"{extra_msg['Layout']:<{max_extra_msg_len}}")
+                            progress_plot.increment(
+                                extra_msg=f"{extra_msg['Layout']:<{max_extra_msg_len}}"
+                            )
                         # Create the list of lists (shells)
                         shells = list(grouped_nodes.values())
                         layout_kwargs["nshells"] = shells
-                        progress_plot.increment(extra_msg = f"{extra_msg['Layout']:<{max_extra_msg_len}}")
+                        progress_plot.increment(
+                            extra_msg=f"{extra_msg['Layout']:<{max_extra_msg_len}}"
+                        )
                     elif param == "root" and layout_name == "cluster_layout":
                         # get the node at the very top
                         root = None
@@ -274,30 +309,45 @@ class Plotter:
                             if data.get("label", "") == "root":
                                 root = node
                                 break
-                            progress_plot.increment(extra_msg = f"{extra_msg['Layout']:<{max_extra_msg_len}}")
+                            progress_plot.increment(
+                                extra_msg=f"{extra_msg['Layout']:<{max_extra_msg_len}}"
+                            )
                         layout_kwargs["root"] = root
-                        progress_plot.increment(extra_msg = f"{extra_msg['Layout']:<{max_extra_msg_len}}")
+                        progress_plot.increment(
+                            extra_msg=f"{extra_msg['Layout']:<{max_extra_msg_len}}"
+                        )
                     elif param != "G":
                         # TODO: Handle other parameters here
-                        progress_plot.increment(extra_msg = f"{extra_msg['Layout']:<{max_extra_msg_len}}")
-                    progress_plot.increment(extra_msg = f"{extra_msg['Layout']:<{max_extra_msg_len}}")
+                        progress_plot.increment(
+                            extra_msg=f"{extra_msg['Layout']:<{max_extra_msg_len}}"
+                        )
+                    progress_plot.increment(
+                        extra_msg=f"{extra_msg['Layout']:<{max_extra_msg_len}}"
+                    )
 
                 # Compute layout positions
-                progress_plot.increment(extra_msg = f"{extra_msg['Position']:<{max_extra_msg_len}}")
+                progress_plot.increment(
+                    extra_msg=f"{extra_msg['Position']:<{max_extra_msg_len}}"
+                )
                 try:
                     from .positions import LayoutPositions as Position
 
                     layout_pos = Position(
-                        include_networkx=self.ntx_layouts, include_custom=self.custom_layouts
+                        include_networkx=self.ntx_layouts,
+                        include_custom=self.custom_layouts,
                     )
                     pos = layout_pos.get_positions(layout_name, **layout_kwargs)
                 except Exception as e:
-                    progress_plot.increment(extra_msg = f"{extra_msg['GError']:<{max_extra_msg_len}}")
-                    print() # needs an extra line
+                    progress_plot.increment(
+                        extra_msg=f"{extra_msg['GError']:<{max_extra_msg_len}}"
+                    )
+                    print()  # needs an extra line
                     continue
 
                 # Draw nodes with different shapes
-                progress_plot.increment(extra_msg = f"{extra_msg['Loop']:<{max_extra_msg_len}}")
+                progress_plot.increment(
+                    extra_msg=f"{extra_msg['Loop']:<{max_extra_msg_len}}"
+                )
                 for node_type, nodes in node_data.items():
                     nx.drawing.draw_networkx_nodes(
                         _graph,
@@ -308,10 +358,14 @@ class Plotter:
                         node_size=node_styles[node_type]["size"],
                         alpha=node_styles[node_type]["alpha"],
                     )
-                    progress_plot.increment(extra_msg = f"{extra_msg['Shapes']:<{max_extra_msg_len}}")
+                    progress_plot.increment(
+                        extra_msg=f"{extra_msg['Shapes']:<{max_extra_msg_len}}"
+                    )
 
                 # Draw edges and labels
-                progress_plot.increment(extra_msg = f"{extra_msg['Edges']:<{max_extra_msg_len}}")
+                progress_plot.increment(
+                    extra_msg=f"{extra_msg['Edges']:<{max_extra_msg_len}}"
+                )
                 nx.drawing.draw_networkx_edges(_graph, pos, alpha=0.2)
                 if self.labels:
                     nx.drawing.draw_networkx_labels(
@@ -328,7 +382,9 @@ class Plotter:
                 for node_type in unique_node_types:
                     _colors[node_type] = node_styles[node_type]["color"]
                     _shapes[node_type] = node_styles[node_type]["shape"]
-                    progress_plot.increment(extra_msg = f"{extra_msg['Legend']:<{max_extra_msg_len}}")
+                    progress_plot.increment(
+                        extra_msg=f"{extra_msg['Legend']:<{max_extra_msg_len}}"
+                    )
                 legend_elements = [
                     mlines.Line2D(
                         [0],
@@ -346,7 +402,9 @@ class Plotter:
                 ax.legend(handles=legend_elements, loc="upper right", fontsize=10)
 
                 # Save the file to the interations folder
-                progress_plot.increment(extra_msg = f"{extra_msg['Filename']:<{max_extra_msg_len}}")
+                progress_plot.increment(
+                    extra_msg=f"{extra_msg['Filename']:<{max_extra_msg_len}}"
+                )
                 plot_name = ""
                 if seed == -1:
                     if _json:
@@ -360,18 +418,28 @@ class Plotter:
                         plot_name = f"CODE_{seed}_{layout.__name__}.png"
                 file_path = os.path.join(graph_dir, plot_name)
 
-                progress_plot.increment(extra_msg = f"{extra_msg['Save']:<{max_extra_msg_len}}")
+                progress_plot.increment(
+                    extra_msg=f"{extra_msg['Save']:<{max_extra_msg_len}}"
+                )
                 plt.tight_layout()
                 plt.savefig(file_path)
 
                 # Show the plot
-                if self.show_plot: plt.show()
+                if self.show_plot:
+                    if self.api:
+                        import mpld3
 
-                # Close the plot
-                plt.close()
-                progress_plot.increment(extra_msg = f"{extra_msg['Final']:<{max_extra_msg_len}}")
+                        mpld3.show()
+                    else:
+                        plt.show()
+                        # Close the plot
+                        plt.close()
+
+                progress_plot.increment(
+                    extra_msg=f"{extra_msg['Final']:<{max_extra_msg_len}}"
+                )
                 line_number += 1
-                #TODO: loop through layout progress bars and decrement the start_line, call their 'increment' method after each loop with 'Final' message
+                # TODO: loop through layout progress bars and decrement the start_line, call their 'increment' method after each loop with 'Final' message
             progress_overall.increment(extra_msg="Finished     ")
 
     def plot_all_in_grid(self, _graph, _json: bool = False):
@@ -462,7 +530,8 @@ class Plotter:
                     from .positions import LayoutPositions as Position
 
                     layout_pos = Position(
-                        include_networkx=self.ntx_layouts, include_custom=self.custom_layouts
+                        include_networkx=self.ntx_layouts,
+                        include_custom=self.custom_layouts,
                     )
                     pos = layout_pos.get_positions(layout_name, **layout_kwargs)
                 except Exception as e:

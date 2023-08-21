@@ -30,6 +30,8 @@ scipy = "^1.7.3"
 importlib-metadata = "^5.2.0"
 click = {version = ">=8.1.2", optional = true}
 fastapi = "^0.70.0"
+python-multipart = ">=0.0.6"
+mpld3 = "^0.5.5"
 trogon = "^0.4.0"
  
 # these lines can make cli and library separate
