@@ -4,7 +4,7 @@ WebRouter: APIRouter = APIRouter()
 
 
 @WebRouter.get(
-    "/",
+    "/website/grid_plot",
 )
 async def website():
     return """

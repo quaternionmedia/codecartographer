@@ -173,9 +173,9 @@ async def site():
         #         node_type = "Unknown"
         #     node_data[node_type].append(n)
         # try:
-        #     from ..plotter.positions import LayoutPositions as Position
+        #     from ..plotter.positions import Positions
 
-        #     layout_pos = Position(
+        #     layout_pos = Positions(
         #         include_networkx=True,
         #         include_custom=False,
         #     )

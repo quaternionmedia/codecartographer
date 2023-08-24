@@ -4,7 +4,7 @@ from ...processor import process
 ProcessorRoute = APIRouter()
 
 
-@ProcessorRoute.get("/processor/process")
+@ProcessorRoute.get("/process")
 async def process(
     file_path: str = __file__, single_file: bool = False
 ) -> dict[str, str]:

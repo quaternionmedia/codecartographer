@@ -9,7 +9,7 @@ ParserRoute: APIRouter = APIRouter()
 
 
 @ParserRoute.get(
-    "/parser/parse",
+    "/parse",
     response_class=JSONResponse,
     responses={200: {"content": {"application/json": {}}}},
 )

@@ -43,7 +43,7 @@ class Plotter:
             custom_layouts (bool) Default = True:
                Whether or not to include custom layouts.
         """
-        from .positions import LayoutPositions as Position
+        from .positions import Positions
 
         self.api: bool = False
         self.seed: dict[str, int] = {}
@@ -56,7 +56,7 @@ class Plotter:
         self.single_file: bool = single_file
         self.ntx_layouts: bool = ntx_layouts
         self.custom_layouts: bool = custom_layouts
-        self.layouts: tuple(str, function, list) = Position(
+        self.layouts: tuple(str, function, list) = Positions(
             self.ntx_layouts, custom_layouts
         ).get_layouts()
 
@@ -330,9 +330,9 @@ class Plotter:
                     extra_msg=f"{extra_msg['Position']:<{max_extra_msg_len}}"
                 )
                 try:
-                    from .positions import LayoutPositions as Position
+                    from .positions import Positions
 
-                    layout_pos = Position(
+                    layout_pos = Positions(
                         include_networkx=self.ntx_layouts,
                         include_custom=self.custom_layouts,
                     )
@@ -525,11 +525,11 @@ class Plotter:
                         # TODO: Handle other parameters here
                         pass
 
-                # compute layout
+                # Compute Layout
                 try:
-                    from .positions import LayoutPositions as Position
+                    from .positions import Positions
 
-                    layout_pos = Position(
+                    layout_pos = Positions(
                         include_networkx=self.ntx_layouts,
                         include_custom=self.custom_layouts,
                     )
@@ -654,15 +654,19 @@ class Plotter:
             #     # Move to the next non-empty axis in the old figure
             #     old_ax_index += 1
 
-            # Save the file to the interations folder
-            if _json:
-                file_path = os.path.join(graph_dir, "JSON_grid.png")
-            else:
-                file_path = os.path.join(graph_dir, "CODE_grid.png")
-            plt.savefig(file_path)
-            if self.show_plot:
-                plt.show()
-            plt.close()
+            if not self.api:
+                # Save the file to the interations folder
+                if _json:
+                    file_path = os.path.join(graph_dir, "JSON_grid.png")
+                else:
+                    file_path = os.path.join(graph_dir, "CODE_grid.png")
+
+                plt.savefig(file_path)
+
+                # Show plot
+                if self.show_plot:
+                    plt.show()
+                plt.close()
 
 
 ########## OPTIONAL ##########

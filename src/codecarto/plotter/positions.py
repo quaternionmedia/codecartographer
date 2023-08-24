@@ -2,7 +2,7 @@ import networkx as nx
 from typing import Callable
 
 
-class LayoutPositions:
+class Positions:
     def __init__(self, include_networkx: bool = True, include_custom: bool = True):
         """Constructor for Layouts
 
@@ -33,21 +33,26 @@ class LayoutPositions:
 
     def add_networkx_layouts(self):
         """Add all networkx layouts to the list of available layouts"""
-        #self.add_layout("spring_layout",nx.layout.spring_layout,["graph", "seed"],)
-        self.add_layout("spiral_layout", nx.layout.spiral_layout, ["graph"])
+        # self.add_layout(
+        #     "spring_layout",
+        #     nx.layout.spring_layout,
+        #     ["graph", "seed"],
+        # )
+        # self.add_layout("spiral_layout", nx.layout.spiral_layout, ["graph"])
         self.add_layout("circular_layout", nx.layout.circular_layout, ["graph"])
-        #self.add_layout("random_layout", nx.layout.random_layout, ["graph", "seed"])
-        #self.add_layout("shell_layout", nx.layout.shell_layout, ["graph", "nshells"])
-        #self.add_layout("spectral_layout", nx.layout.spectral_layout, ["graph"])
-        self.add_layout("planar_layout", nx.layout.planar_layout, ["graph"])
+        # self.add_layout("random_layout", nx.layout.random_layout, ["graph", "seed"])
+        self.add_layout("shell_layout", nx.layout.shell_layout, ["graph", "nshells"])
+        self.add_layout("spectral_layout", nx.layout.spectral_layout, ["graph"])
+        # self.add_layout("planar_layout", nx.layout.planar_layout, ["graph"])
 
     def add_custom_layouts(self):
         """Add all custom layouts to the list of available layouts"""
         from .custom_layouts.sorted_square_layout import sorted_square_layout
-        #from .custom_layouts.cluster_layout import cluster_layout
+
+        # from .custom_layouts.cluster_layout import cluster_layout
 
         self.add_layout("sorted_square_layout", sorted_square_layout, ["graph"])
-        #self.add_layout("cluster_layout", cluster_layout, ["graph", "root"])
+        # self.add_layout("cluster_layout", cluster_layout, ["graph", "root"])
 
     def get_layout_names(self):
         """Get all layout names from the list of available layouts
@@ -82,7 +87,7 @@ class LayoutPositions:
         tuple(str,function,list)
             The layout with its attributes
         """
-        return self._layouts[name] 
+        return self._layouts[name]
 
     def get_positions(self, name: str, seed: int = -1, **kwargs):
         """Get a positions from the list of available layouts
@@ -121,7 +126,7 @@ class LayoutPositions:
                     shells = list(grouped_nodes.values())
                     layout_kwargs["nshells"] = shells
             elif param == "root" and name == "cluster_layout":
-                # Set the root node 
+                # Set the root node
                 layout_kwargs["root"] = kwargs["root"]
             elif param != "G":
                 # TODO Handle other parameters here

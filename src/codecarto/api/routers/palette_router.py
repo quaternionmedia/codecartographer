@@ -1,12 +1,11 @@
 from fastapi import APIRouter
-from ...plotter.palette import Palette, Theme
 
 PaletteRoute: APIRouter = APIRouter()
 
 # TODO: how does each user using the API get their own palette? Is it cached on their machine? How do?
 
 
-@PaletteRoute.get("/palette/get_palette")
+@PaletteRoute.get("/get_palette")
 async def get_palette() -> dict[str, str]:
     """Gets the current palette data.
 
@@ -15,11 +14,27 @@ async def get_palette() -> dict[str, str]:
         dict:
             The current palette data.
     """
-    palette: Palette = Palette()
-    return palette.get_palette_data()
+    # from ...plotter.palette import Palette, Theme
+    # palette: Palette = Palette()
+    # return palette.get_palette_data()
+    from json import load
+
+    # get the path
+    pal_path: str = "src/codecarto/api/static/default_palette.json"
+
+    # load the data
+    with open(pal_path, "r") as pal_file:
+        pal_data: dict[str, str] = load(pal_file)
+
+    # # loop the data and create a string for html div
+    # pal_string: str = ""
+    # for key, value in pal_data.items():
+    #     pal_string += f'<div class="palette-item" id="{key}" style="background-color: {value};"></div>'
+
+    return pal_data
 
 
-@PaletteRoute.get("/palette/set_palette")
+@PaletteRoute.get("/set_palette")
 async def set_palette(palette_file_path: str) -> dict[str, str]:
     """Sets the palette to use for plots
 
@@ -33,12 +48,14 @@ async def set_palette(palette_file_path: str) -> dict[str, str]:
         dict:
             The new palette data.
     """
+    from ...plotter.palette import Palette
+
     palette: Palette = Palette()
     palette.set_palette(palette_file_path)
     return palette.get_palette_data()
 
 
-@PaletteRoute.get("/palette/reset_palette")
+@PaletteRoute.get("/reset_palette")
 async def reset_palette() -> dict[str, str]:
     """Resets the palette to the default.
 
@@ -47,12 +64,14 @@ async def reset_palette() -> dict[str, str]:
         dict:
             The current palette data.
     """
+    from ...plotter.palette import Palette
+
     palette: Palette = Palette()
     palette.reset_palette()
     return palette.get_palette_data()
 
 
-@PaletteRoute.get("/palette/add_theme")
+@PaletteRoute.get("/add_theme")
 async def add_theme(
     node_type: str,
     base: str,
@@ -86,6 +105,8 @@ async def add_theme(
         dict:
             The current palette data.
     """
+    from ...plotter.palette import Palette, Theme
+
     theme = Theme(node_type, base, label, shape, color, size, alpha)
     palette: Palette = Palette()
     palette.create_new_theme(theme)

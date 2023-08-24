@@ -44,7 +44,7 @@ from .parser.import_source_dir import get_all_source_files
 from .plotter.palette import Palette
 from .plotter.palette_dir import PALETTE_DIRECTORY
 from .plotter.plotter import Plotter
-from .plotter.positions import LayoutPositions
+from .plotter.positions import Positions
 from .polygraph.polygraph import PolyGraph
 from .processor import Processor
 from .utils.utils import (
@@ -454,7 +454,7 @@ class PaletteHandler:
 
 class PositionHandler:
     def __init__(self, include_networkx: bool = True, include_custom: bool = True):
-        self.layouts = LayoutPositions(include_networkx, include_custom)
+        self.layouts = Positions(include_networkx, include_custom)
 
     def add_layout(self, name: str, function: callable, attributes: list):
         """Adds a layout to the list of available layouts.

@@ -3,9 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>mpld3 Plot</title>
+    <title>CodeCartographer</title>
   </head>
+  <style>
+    body {
+      font-family: 'Calibri', sans-serif;
+    }
+    #plot {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
   <body>
-    {{ plot_html | safe }}
+    <h1>Code Cartographer</h1>
+    <button onclick="returnHome()">Return Home</button>
+    <br />
+    <p>{{output | safe}}</p>
+    <div id="plot">{{ plot_html | safe }}</div>
   </body>
+  <script>
+    function returnHome() {
+      // Request the server to cancel plotting
+      fetch('/plotter/cancel').then(() => {
+        // Redirect to home
+        window.location.href = '/'
+      })
+    }
+  </script>
 </html>
