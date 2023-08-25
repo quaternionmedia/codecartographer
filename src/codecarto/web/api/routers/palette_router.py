@@ -48,7 +48,7 @@ async def set_palette(palette_file_path: str) -> dict[str, str]:
         dict:
             The new palette data.
     """
-    from ...plotter.palette import Palette
+    from ....processor.plotter.palette import Palette
 
     palette: Palette = Palette()
     palette.set_palette(palette_file_path)
@@ -64,7 +64,7 @@ async def reset_palette() -> dict[str, str]:
         dict:
             The current palette data.
     """
-    from ...plotter.palette import Palette
+    from ....processor.plotter.palette import Palette
 
     palette: Palette = Palette()
     palette.reset_palette()
@@ -105,7 +105,7 @@ async def add_theme(
         dict:
             The current palette data.
     """
-    from ...plotter.palette import Palette, Theme
+    from ....processor.plotter.palette import Palette, Theme
 
     theme = Theme(node_type, base, label, shape, color, size, alpha)
     palette: Palette = Palette()

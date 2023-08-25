@@ -9,10 +9,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 
-from ..parser.parser import Parser
-from ..plotter.plotter import Plotter
-from ..plotter.palette import Palette
-from ..config.directory.package_dir import PROCESSOR_FILE_PATH
+from ...processor.parser.parser import Parser
+from ...processor.plotter.plotter import Plotter
+from ...processor.plotter.palette import Palette
+from ...processor.config.directory.package_dir import PROCESSOR_FILE_PATH
 import matplotlib.pyplot as plt
 from matplotlib import image, patches, colors
 from matplotlib.colors import colorConverter
@@ -129,7 +129,7 @@ def test_site():
 
 
 async def site():
-    from ..plotter.plotter import Plotter
+    from ...processor.plotter.plotter import Plotter
 
     file_path: str = PROCESSOR_FILE_PATH
     print(file_path)

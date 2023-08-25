@@ -1,4 +1,0 @@
-# App dependencies
-python=="^3.8.1"
-importlib-metadata=="^5.2.0"
-python-multipart==">=0.0.6" 

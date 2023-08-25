@@ -20,8 +20,8 @@ async def plot(
     # redis_conn: redis.StrictRedis = Depends(get_redis_conn),
     grid: bool = False,
 ):
-    from ...polygraph.polygraph import PolyGraph
-    from ...plotter.palette import Palette
+    from ....processor.polygraph.polygraph import PolyGraph
+    from ....processor.plotter.palette import Palette
 
     # Make sure to clear the cancel flag at the start of a new plotting task
     # redis_conn.delete("plotting_cancel_flag")
@@ -49,14 +49,15 @@ async def plot(
     if not grid_test:
         # Create a simple plot
         output += f"Number of nodes: {graph.number_of_nodes()} <br>"
-        fig, ax = plt.subplots(figsize=(5, 5))
-        fig.canvas.manager.window.wm_geometry("+0+0")
+        fig, ax = plt.subplots(figsize=(15, 10))
+        # fig.canvas.manager.window.wm_geometry("+0+0")
         _title: str = f"Spiral Layout"
         _file_name: str = "graph_data.json"
         _title = f"{_title} for '{_file_name}'"
         ax.set_title(_title)
         ax.axis("off")
         pos = nx.spiral_layout(graph)
+        # pos = nx.spring_layout(graph, k=0.5, iterations=50)
 
         # Draw Nodes with positions and styles
         for node_type, nodes in node_data.items():
@@ -72,7 +73,7 @@ async def plot(
     else:
         import math
         import matplotlib.lines as mlines
-        from ...plotter.positions import Positions
+        from ....processor.plotter.positions import Positions
 
         # compute grid
         posi: Positions = Positions()
@@ -216,7 +217,16 @@ async def plot(
     output += f"Converting fig to html <br> "
 
     # Convert the Matplotlib plot to D3.js HTML representation
-    plot_html = mpld3.fig_to_html(fig)
+    # plot_html = mpld3.fig_to_html(fig)
+    plot_html = mpld3.fig_to_html(
+        fig,
+        template_type="simple",
+        figid="figid",
+        d3_url=None,
+        no_extras=False,
+        use_http=False,
+        include_libraries=True,
+    )
 
     output += f"Done"
     return templates.TemplateResponse(

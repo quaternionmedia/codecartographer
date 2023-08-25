@@ -6,7 +6,12 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    command: ["sh", "-c", "pip install debugpy -t /tmp && python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 -m uvicorn src.codecarto\__init__:app --host 0.0.0.0 --port 2000"]
+    command:
+      [
+        'sh',
+        '-c',
+        "pip install debugpy -t /tmp && python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 -m uvicorn src.codecarto\__init__:app --host 0.0.0.0 --port 2000",
+      ]
     ports:
       - 2000:2000
       - 5678:5678

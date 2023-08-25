@@ -1,8 +1,8 @@
 from fastapi import APIRouter, UploadFile, HTTPException, File
 from fastapi.responses import JSONResponse
 
-from ...parser.parser import Parser
-from ...polygraph.polygraph import PolyGraph
+from ....processor.parser.parser import Parser
+from ....processor.polygraph.polygraph import PolyGraph
 
 # Create a router and add the limiter to it
 ParserRoute: APIRouter = APIRouter()

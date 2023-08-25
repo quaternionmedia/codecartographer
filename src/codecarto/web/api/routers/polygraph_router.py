@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from ...models.graph_data import get_graph_description
+from ....processor.models.graph_data import get_graph_description
 
 PolyGraphRoute = APIRouter()
 

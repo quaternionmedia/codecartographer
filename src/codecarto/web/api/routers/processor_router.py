@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from ...processor import process
+from ....processor.processor import process
 
 ProcessorRoute = APIRouter()
 

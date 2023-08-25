@@ -231,7 +231,7 @@ class PlotterHandler:
 
     def reset_plot_output_dir(self):
         """Resets the plot output directory to the default output directory."""
-        from codecarto import Directory as Dir
+        from codecarto.processor import Directory as Dir
 
         self.plotter.dirs = Dir.reset_output_dir(make_dir=True)
 

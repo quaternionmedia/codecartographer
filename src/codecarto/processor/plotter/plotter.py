@@ -477,7 +477,8 @@ class Plotter:
             mng.window.wm_geometry("+0+0")
 
             # Loop through all layouts
-            empty_axes_indices = []
+            # empty_axes_indices = []
+            idx: int = 0
             for layout_name, layout_info in self.layouts.items():
                 layout, layout_params = layout_info
 
@@ -536,7 +537,7 @@ class Plotter:
                     pos = layout_pos.get_positions(layout_name, **layout_kwargs)
                 except Exception as e:
                     print(f"Skipping {layout_name} due to an error: {e}")
-                    empty_axes_indices.append(idx)
+                    # empty_axes_indices.append(idx)
                     continue
 
                 # Draw nodes with different shapes
@@ -593,10 +594,12 @@ class Plotter:
                     )
                 ]
                 ax.legend(handles=legend_elements, loc="upper right", fontsize=10)
+                idx += 1
 
             # Remove extra subplots if the grid is not fully filled
-            for idx in reversed(empty_axes_indices):
-                fig.delaxes(fig.axes[idx])
+            # TODO: this is not working
+            # for idx in reversed(empty_axes_indices):
+            #     fig.delaxes(fig.axes[idx])
 
             # TODO: attempting to recreate the figure with the correct grid size, but not working out yet
             # import copy

@@ -1,0 +1,7 @@
+# Processor dependencies
+importlib-metadata
+networkx
+numpy
+matplotlib
+mpld3
+scipy
