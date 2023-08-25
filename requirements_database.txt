@@ -1,0 +1,13 @@
+# To ensure app dependencies are ported from your virtual environment/host 
+# machine into your container, run 'pip freeze > requirements.txt' in the 
+# terminal to overwrite this file
+
+# App dependencies
+# python=="^3.8.1"
+# importlib-metadata=="^5.2.0"
+# python-multipart==">=0.0.6" 
+
+# Optional CLI dependencies
+# These are not installed by default, but can be installed manually if needed
+# click=={version = ">=8.1.2", optional = true} 
+# trogon=="^0.4.0"

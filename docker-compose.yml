@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  codecartographer:
+    build:
+      context: .
+      dockerfile: ./Dockerfile_App
+    ports:
+      - 3000:2000
+
+  web:
+    build:
+      context: .
+      dockerfile: ./Dockerfile_Web
+    ports:
+      - "2000:2000"
+
+  processor:
+    build:
+      context: .
+      dockerfile: ./Dockerfile_Processor
+
+  db:
+    image: "postgres:latest"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
