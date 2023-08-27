@@ -4,7 +4,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: ./src/codecarto/web/api/Dockerfile
+      dockerfile: ./src/codecarto/web/Dockerfile
     ports:
       - '2000:2000'
     networks:

@@ -1,0 +1,4 @@
+ # API/web dependencies
+fastapi[all]
+uvicorn[standard]
+gunicorn 
