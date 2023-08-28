@@ -1,7 +1,7 @@
 # For more information, please refer to https://aka.ms/vscode-docker-python
 FROM tiangolo/uvicorn-gunicorn:python3.11 
 
-
+EXPOSE 2020
 
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -10,12 +10,12 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Install pip requirements
-COPY ./src/codecarto/processor/requirements_processor.txt .
-RUN python -m pip install -r requirements_processor.txt
+COPY ./src/codecarto/proc_container/requirements.txt .
+RUN python -m pip install -r requirements.txt
 
 # Directory
 WORKDIR /app
-COPY ./src/codecarto/processor /app
+COPY ./src/codecarto/proc_container /app
 ENV PYTHONPATH=/
 
 # # Creates a non-root user with an explicit UID and adds permission to access the /codecarto folder

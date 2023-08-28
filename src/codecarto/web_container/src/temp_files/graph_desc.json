@@ -1,0 +1,18 @@
+{
+  "nodes": "Dictionary where each key is the ID of a node and the value is the node's data.",
+  "edges": "Dictionary where each key is the ID of an edge and the value is the edge's data.",
+  "node data": {
+    "id": "The node's ID.",
+    "type": "The type of the node.",
+    "label": "The node's label.",
+    "base": "The node's base.",
+    "parent": "The ID of the node's parent, or null if the node has no parent.",
+    "children": "List of the node's children. Each child is represented by its data."
+  },
+  "edge data": {
+    "id": "The edge's ID.",
+    "type": "The type of the edge.",
+    "source": "The ID of the edge's source node.",
+    "target": "The ID of the edge's target node."
+  }
+}

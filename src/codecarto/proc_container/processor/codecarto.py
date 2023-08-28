@@ -231,7 +231,7 @@ class PlotterHandler:
 
     def reset_plot_output_dir(self):
         """Resets the plot output directory to the default output directory."""
-        from codecarto.processor import Directory as Dir
+        from codecarto.proc_container import Directory as Dir
 
         self.plotter.dirs = Dir.reset_output_dir(make_dir=True)
 
@@ -581,6 +581,7 @@ class ProcessorHandler:
                     the path to the output/json/graph.json file.
         """
         from .processor import process
+
         # Validate the source
         if not os.path.exists(source):
             raise ValueError(f"Source {source} does not exist.")

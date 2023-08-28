@@ -5,9 +5,13 @@ import matplotlib.pyplot as plt
 import matplotlib._pylab_helpers as pylab_helpers
 from pathlib import Path
 
-from ...src.codecarto.processor import process
-from ...src.codecarto.config.directory.output_dir import set_output_dir
-from ...src.codecarto.config.directory.package_dir import PROCESSOR_FILE_PATH
+from ...src.codecarto.proc_container.processor import process
+from ...src.codecarto.proc_container.processor.config.directory.output_dir import (
+    set_output_dir,
+)
+from ...src.codecarto.proc_container.processor.config.directory.package_dir import (
+    PROCESSOR_FILE_PATH,
+)
 
 
 def test_processor():

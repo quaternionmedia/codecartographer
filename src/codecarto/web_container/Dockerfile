@@ -10,12 +10,12 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Install pip requirements
-COPY ./src/codecarto/web/requirements_web.txt .
-RUN python -m pip install -r requirements_web.txt
+COPY ./src/codecarto/web_container/requirements.txt .
+RUN python -m pip install -r requirements.txt
 
 # Directory
 WORKDIR /app
-COPY ./src/codecarto/web /app 
+COPY ./src/codecarto/web_container /app 
 ENV PYTHONPATH=/
 
 # # Creates a non-root user with an explicit UID and adds permission to access the /app folder
