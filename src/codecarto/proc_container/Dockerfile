@@ -1,4 +1,3 @@
-# For more information, please refer to https://aka.ms/vscode-docker-python
 FROM tiangolo/uvicorn-gunicorn:python3.11 
 
 EXPOSE 2020
@@ -15,8 +14,9 @@ RUN python -m pip install -r requirements.txt
 
 # Directory
 WORKDIR /app
-COPY ./src/codecarto/proc_container /app
-ENV PYTHONPATH=/
+COPY ./src/codecarto/proc_container/api /app/api
+COPY ./src/codecarto/proc_container/src /app/src
+ENV PYTHONPATH=/app
 
 # # Creates a non-root user with an explicit UID and adds permission to access the /codecarto folder
 # # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
@@ -25,4 +25,4 @@ ENV PYTHONPATH=/
 
 # # During debugging, this entry point will be overridden. 
 # For more information, please refer to https://aka.ms/vscode-docker-python-debug
-CMD ["gunicorn", "--bind", "0.0.0.0:2000", "-k", "uvicorn.workers.UvicornWorker", "main:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:2020", "-k", "uvicorn.workers.UvicornWorker", "api.main:app"] 

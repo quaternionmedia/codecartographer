@@ -32,15 +32,14 @@
       background-color: #f1f1f1;
     }
   </style>
-  <body onload="getPalette();">
+  <body>
     <h1>Code Cartographer</h1>
     <button onclick="window.location.href = '/'">Return Home</button>
     <br />
     <br />
     <h2>Palette</h2>
-    <br />
-    <div id="pal_data">{{ pal_data | safe }}</div>
-    <div id="pal_data" style="display: none"></div>
+    <button onclick="getPalette()">Show Palette</button>
+    <div id="pal_data"></div>
   </body>
   <script>
     function attachCollapsibleListeners() {
@@ -63,6 +62,7 @@
       fetch('/palette/get_palette')
         .then(response => response.json())
         .then(data => {
+          console.log(data)
           // Create a string variable with the content of the <div>
           let content = ''
           for (const [key, value] of Object.entries(data)) {
@@ -87,7 +87,10 @@
         .catch(error => {
           document.getElementById('pal_data').innerHTML =
             'Error getting palette data'
-          console.error('An error occurred:', error)
+          console.error(
+            'An error occurred in palette.html getPalette():',
+            error
+          )
         })
     }
   </script>

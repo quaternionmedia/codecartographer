@@ -321,7 +321,7 @@ class Palette:
                 }
             return styles
 
-    def get_palette_data(self) -> dict:
+    def get_palette_data(self) -> dict[str, dict]:
         """Get the data of the current palette.
 
         Returns:

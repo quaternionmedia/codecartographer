@@ -15,17 +15,18 @@ services:
     build:
       context: .
       dockerfile: ./src/codecarto/proc_container/Dockerfile
+
     networks:
       - internal_network
 
-  db:
-    image: 'postgres:latest'
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: mydb
-    networks:
-      - internal_network
+  # db:
+  #   image: 'postgres:latest'
+  #   environment:
+  #     POSTGRES_USER: user
+  #     POSTGRES_PASSWORD: password
+  #     POSTGRES_DB: mydb
+  #   networks:
+  #     - internal_network
 
 networks:
   external_network:

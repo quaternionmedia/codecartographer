@@ -14,8 +14,8 @@ async def plot(
     request: Request,
     grid: bool = False,
 ):
-    from ...processor.polygraph.polygraph import PolyGraph
-    from ...processor.plotter.palette import Palette
+    from ...src.polygraph.polygraph import PolyGraph
+    from ...src.plotter.palette import Palette
 
     # Make sure to clear the cancel flag at the start of a new plotting task
     # redis_conn.delete("plotting_cancel_flag")
@@ -25,7 +25,9 @@ async def plot(
     output: str = "Output: <br> "
 
     # Load the graph
-    file_path: str = "src/codecarto/api/static/parse_files/graph_data.json"
+    file_path: str = (
+        "src/codecarto/web_container/src/temp_files/parse_files/graph_data.json"
+    )
     poly: PolyGraph = PolyGraph()
     graph: nx.Graph = poly.json_file_to_graph(file_path)
 
@@ -67,7 +69,7 @@ async def plot(
     else:
         import math
         import matplotlib.lines as mlines
-        from ...processor.plotter.positions import Positions
+        from ...src.plotter.positions import Positions
 
         # compute grid
         posi: Positions = Positions()

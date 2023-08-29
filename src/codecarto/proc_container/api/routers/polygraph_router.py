@@ -5,6 +5,6 @@ PolyGraphRoute = APIRouter()
 
 @PolyGraphRoute.get("/graph_description")
 async def get_graph_desc() -> dict:
-    from ...processor.models.graph_data import get_graph_description
+    from ...src.models.graph_data import get_graph_description
 
     return get_graph_description()

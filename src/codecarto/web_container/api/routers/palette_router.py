@@ -4,27 +4,26 @@ from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
 PaletteRoute: APIRouter = APIRouter()
-templates = Jinja2Templates(directory="/templates")
-PROC_API_URL = "http://localhost:2020/palette"
+templates = Jinja2Templates(directory="src/templates")
+PROC_API_URL = "http://processor:2020/palette/get_palette"
+html_page = "palette.html"
 
 
 # Root page
 @PaletteRoute.get("/")
 async def root(request: Request):
-    return templates.TemplateResponse("palette.html", {"request": request})
+    return templates.TemplateResponse(html_page, {"request": request})
 
 
 @PaletteRoute.get("/get_palette")
-async def get_palette(request: Request) -> dict[str, dict]:
+async def get_palette() -> dict:
     async with httpx.AsyncClient() as client:
         # returns a dict[str:dict] of palette data
         response = await client.get(PROC_API_URL)
         if not response.status_code == 200:
             return {"error": "Could not fetch palette from processor container"}
 
-    return templates.TemplateResponse(
-        "plot.html", {"request": request, "pal_data": response}
-    )
+    return response.json()
 
 
 # @PaletteRoute.get("/set_palette")

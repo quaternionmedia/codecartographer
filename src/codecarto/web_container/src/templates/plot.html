@@ -29,7 +29,7 @@
     <br />
     <button onclick="gridPlot()">Grid of all layouts</button>
     <br /><br />
-    <div id="plot">{{ plot_html | safe }}</div>
+    <div id="plot"></div>
     <br /><br />
   </body>
   <!-- <body>
@@ -50,6 +50,8 @@
           console.error('Network error:', error)
         })
     }
+    // this was on the home page so it loaded the plot page, but now it's
+    // called on the plot page directly. this will help with progressbars later
     // function singlePlot() {
     //   fetch('/plotter/plot?grid=false')
     //     .then(response => {

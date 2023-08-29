@@ -1,5 +1,3 @@
-__package__ = "app"
-
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -11,9 +9,9 @@ from .routers.plotter_router import PlotterRoute
 app = FastAPI()
 
 # Serve the static files
-app.mount("/templates", StaticFiles(directory="templates"), name="templates")
-app.mount("/temp_files", StaticFiles(directory="temp_files"), name="temp_files")
-templates = Jinja2Templates(directory="/templates")
+app.mount("/templates", StaticFiles(directory="src/templates"), name="templates")
+app.mount("/temp_files", StaticFiles(directory="src/temp_files"), name="temp_files")
+templates = Jinja2Templates(directory="src/templates")
 
 
 # Root page

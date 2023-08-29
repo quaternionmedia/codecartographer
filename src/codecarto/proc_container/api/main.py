@@ -1,7 +1,5 @@
-__package__ = "app"
-
 from fastapi import FastAPI, Request
-
+from fastapi.staticfiles import StaticFiles
 
 from .routers.palette_router import PaletteRoute
 from .routers.plotter_router import PlotterRoute
@@ -13,6 +11,7 @@ from .routers.plotter_router import PlotterRoute
 # It is not used in the local version of CodeCarto
 # So, anything that returns a python object should not be used here
 app = FastAPI()
+app.mount("/temp_files", StaticFiles(directory="api/temp_files"), name="temp_files")
 
 
 app.include_router(PaletteRoute, prefix="/palette", tags=["palette"])

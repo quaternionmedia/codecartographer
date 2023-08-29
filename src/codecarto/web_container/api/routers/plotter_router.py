@@ -4,8 +4,8 @@ from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
 PlotterRoute: APIRouter = APIRouter()
-templates = Jinja2Templates(directory="/templates")
-PROC_API_URL = "http://localhost:2020/plotter"
+templates = Jinja2Templates(directory="src/templates")
+PROC_API_URL = "http://processor:2020/plotter/plot"
 
 
 # Root page
