@@ -44,6 +44,7 @@ const filesToMonitor = [
   '/pages/plot/plot.js',
   '/pages/base.css',
   '/pages/base.html',
+  '/pages/reload.js',
 ]
 
 monitorFiles(filesToMonitor)

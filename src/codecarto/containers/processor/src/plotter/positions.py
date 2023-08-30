@@ -54,7 +54,7 @@ class Positions:
         self.add_layout("circular_layout", nx.layout.circular_layout, ["graph"])
         self.add_layout("random_layout", nx.layout.random_layout, ["graph", "seed"])
         self.add_layout("spectral_layout", nx.layout.spectral_layout, ["graph"])
-        # self.add_layout("shell_layout", nx.layout.shell_layout, ["graph", "nshells"])
+        self.add_layout("shell_layout", nx.layout.shell_layout, ["graph", "nshells"])
         # self.add_layout("planar_layout", nx.layout.planar_layout, ["graph"])
 
     def add_custom_layouts(self) -> None:

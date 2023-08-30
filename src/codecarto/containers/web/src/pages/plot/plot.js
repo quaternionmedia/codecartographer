@@ -1,29 +1,46 @@
-async function singlePlot() {
+async function plot(all = false) {
+  // Clear plot
+  document.getElementById('plot').innerHTML = ''
+  // Show spinner
+  document.getElementById('plot-loader').style.display = 'inline'
+
   // get the current layout and run
   const layoutElement = document.getElementById('layouts')
-  const runElement = document.getElementById('run')
+  const runElement = document.getElementById('files')
   const selectedLayout = layoutElement.value
   const selectedRun = runElement.value
 
   let debug = false
   let file = selectedRun
+  let layout = selectedLayout
   if (selectedRun === 'debug') {
     debug = true
     file = ''
   }
-  var href_line = `/plotter/plot?grid=false&debug=${debug}&file=${file}&layout=${selectedLayout}`
+  if (all == true) {
+    layout = 'all'
+  } else {
+    layout = selectedLayout
+  }
+  var href_line = `/plotter/plot?grid=false&debug=${debug}&file=${file}&layout=${layout}`
 
   try {
     const response = await fetch(href_line)
+    document.getElementById('plot-loader').style.display = 'none'
     console.log(`Received response: ${response.status}`)
     const responseData = await response.json()
+    console.log(`Received response: ${responseData.plot_html}`)
 
     if (response.ok) {
-      //console.log(`Received response: ${responseData.plot_html}`)
       const plotHTML = responseData.plot_html
-      insertHTMLWithScripts('plot', plotHTML)
+      let newPlotHTML = stylePlotHTML(plotHTML)
+
+      console.log(`Received response: ${newPlotHTML}`)
+
+      insertHTMLWithScripts('plot', newPlotHTML)
     }
   } catch (error) {
+    document.getElementById('plot-loader').style.display = 'none'
     console.error('Network error:', error)
   }
   console.log('Started request…')
@@ -50,14 +67,11 @@ function insertHTMLWithScripts(containerId, html) {
   })
 }
 
-function gridPlot() {
-  fetch('/plotter/plot?grid=true')
-    .then(response => response.json())
-    .then(data => {
-      console.log(data)
-      document.getElementById('plot').innerHTML = data
-    })
-    .catch(error => {
-      console.error('Network error:', error)
-    })
+function stylePlotHTML(plotHTML) {
+  let newPlotHTML = plotHTML.replace(
+    /"axesbg": "#FFFFFF"/g,
+    '"axesbg": "#e8dbad"'
+  )
+  newPlotHTML = newPlotHTML.replace(/"fontsize": 12.0/g, '"fontsize": 30.0')
+  return newPlotHTML
 }

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "codecarto"
-version = "0.1.0"
+version = "0.2.0"
 homepage = "https://github.com/QuaternionMedia/codecarto"
 description = "A tool used to analyze and graph source code."
 authors = ['"Quaternion Media" <cameron@quaternionmedia.com>']

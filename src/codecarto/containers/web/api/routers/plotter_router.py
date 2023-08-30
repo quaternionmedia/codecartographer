@@ -21,7 +21,7 @@ async def plot(
     request: Request,
     graph_data: dict = None,
     file: str = None,
-    layout: str = "spring_layout",
+    layout: str = "spring",
     grid: bool = False,
     labels: bool = False,
     ntx: bool = True,

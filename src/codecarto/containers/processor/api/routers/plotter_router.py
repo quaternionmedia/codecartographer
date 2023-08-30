@@ -84,7 +84,10 @@ async def plot(
             # plot_html: str = plots[-1]
 
             # return {"plotted": plot_html}
-            return simple_plot(graph=graph, title=layout, file_name="processor.py")
+            if layout.lower() == "all":
+                return grid_plot(graph)
+            else:
+                return single_plot(graph=graph, title=layout, file_name="processor.py")
         else:
             graph = nx.Graph()
             # add nodes with a type and label attribute
@@ -115,7 +118,10 @@ async def plot(
                 ]
             )
 
-            return simple_plot(graph=graph, title=layout, file_name="Demo Graph")
+            if layout.lower() == "all":
+                return grid_plot(graph)
+            else:
+                return single_plot(graph=graph, title=layout, file_name="Demo Graph")
     except Exception as e:
         import traceback
 
@@ -127,7 +133,7 @@ async def plot(
         }
 
 
-def simple_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib Demo"):
+def single_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib Demo"):
     """Plot a graph.
 
     Parameters:
@@ -149,6 +155,8 @@ def simple_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib De
     fig, ax = plt.subplots(figsize=(15, 10))
     ax.set_title(f"{title} Layout for '{file_name}'")
     ax.set_axis_off()
+
+    # positions
     pos = get_node_positions(graph, f"{title.lower()}_layout")
 
     # nodes
@@ -156,6 +164,7 @@ def simple_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib De
         graph,
         pos,
         nodelist=graph.nodes,
+        ax=ax,
     )
 
     # labels
@@ -165,6 +174,7 @@ def simple_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib De
         labels=nx.get_node_attributes(graph, "label"),
         font_size=12,
         font_color="black",
+        ax=ax,
     )
 
     # edges
@@ -175,9 +185,88 @@ def simple_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib De
         width=2,
         alpha=0.5,
         edge_color="black",
+        ax=ax,
     )
 
     # convert to html
+    plt.tight_layout()
+    plot_html = mpld3.fig_to_html(
+        fig,
+        template_type="simple",
+        figid="pltfig",
+        d3_url=None,
+        no_extras=False,
+        use_http=False,
+        include_libraries=True,
+    )
+    return {"plotted": plot_html}
+
+
+def grid_plot(graph: nx.DiGraph = None):
+    import math
+
+    layouts: list[str] = [
+        "circular",
+        "spiral",
+        # "spring",
+        "shell",
+        # "spectral",
+        "sorted_Square",
+    ]
+
+    # create a grid plot
+    num_layouts = len(layouts)
+    grid_size = math.ceil(math.sqrt(num_layouts))
+
+    fig, axs = plt.subplots(
+        grid_size,
+        grid_size,
+        figsize=(grid_size * 15, grid_size * 10),
+    )
+    fig.set_size_inches(18.5, 9.5)  # TODO: try to size in css
+
+    idx: int = 0
+    for layout_name in layouts:
+        # ax
+        ax = axs[idx // grid_size, idx % grid_size] if grid_size > 1 else axs
+        ax.set_title(f"{str(layout_name).capitalize()} Layout")
+
+        # positions
+        pos = get_node_positions(graph, f"{layout_name.lower()}_layout")
+
+        # nodes
+        nx.drawing.draw_networkx_nodes(
+            graph,
+            pos,
+            nodelist=graph.nodes,
+            ax=ax,
+        )
+
+        idx += 1
+
+        # labels
+        nx.drawing.draw_networkx_labels(
+            graph,
+            pos,
+            labels=nx.get_node_attributes(graph, "label"),
+            font_size=12,
+            font_color="black",
+            ax=ax,
+        )
+
+        # edges
+        nx.drawing.draw_networkx_edges(
+            graph,
+            pos,
+            edgelist=graph.edges,
+            width=2,
+            alpha=0.5,
+            edge_color="black",
+            ax=ax,
+        )
+
+    # convert to html
+    plt.tight_layout()
     plot_html = mpld3.fig_to_html(
         fig,
         template_type="simple",

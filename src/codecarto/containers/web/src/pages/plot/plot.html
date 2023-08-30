@@ -8,8 +8,9 @@
 
 <!-- BODY -->
 <main>
-  <!-- Navigation -->
+  <h2 style="margin-top: -20px">Plotter</h2>
   <button onclick="window.location.href = '/'">Return Home</button>
+  <br /><br />
 
   <!-- Plot Configuration -->
   <section id="plot-config">
@@ -17,10 +18,12 @@
     <select name="layouts" id="layouts">
       <option value="Circular">Circular</option>
       <option value="Spectral">Spectral</option>
+      <option value="Shell">Shell</option>
       <option value="Spiral">Spiral</option>
       <option value="Spring">Spring</option>
+      <option value="Sorted_Square">Square</option>
     </select>
-    <select name="run" id="run">
+    <select name="files" id="files">
       <option value="debug">Demo Graph</option>
       <option value="src/plotter/palette.py">palette.py</option>
       <option value="src/parser/parser.py">parser.py</option>
@@ -30,9 +33,9 @@
       <option value="src/processor.py">processor.py</option>
     </select>
     <br />
-    <button onclick="singlePlot()">Single Layout</button>
-    <br /><br />
-    <button onclick="gridPlot()">Grid of all layouts</button>
+    <button id="single" onclick="plot()">Single Layout</button>
+    <button id="grid" onclick="plot(true)">Grid of all layouts</button>
+    <div id="plot-loader" class="loader" style="display: none">Loading ...</div>
   </section>
 
   <!-- Plot Display -->

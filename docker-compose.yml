@@ -17,18 +17,18 @@ services:
     build:
       context: .
       dockerfile: ./src/codecarto/containers/processor/Dockerfile
-
     networks:
       - internal_network
 
-  # db:
-  #   image: 'postgres:latest'
-  #   environment:
-  #     POSTGRES_USER: user
-  #     POSTGRES_PASSWORD: password
-  #     POSTGRES_DB: mydb
-  #   networks:
-  #     - internal_network
+  database:
+    image: mongo:latest
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: examplepassword
+    networks:
+      - internal_network
 
 networks:
   external_network:
