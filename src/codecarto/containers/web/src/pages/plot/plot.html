@@ -1,0 +1,44 @@
+{% extends "base.html" %} {% block content %}
+
+<!-- SCRIPT/CSS -->
+<script src="https://d3js.org/d3.v5.js"></script>
+<script src="https://mpld3.github.io/js/mpld3.v0.5.9.js"></script>
+<script src="/pages/plot/plot.js" defer></script>
+<link rel="stylesheet" href="/pages/plot/plot.css" />
+
+<!-- BODY -->
+<main>
+  <!-- Navigation -->
+  <button onclick="window.location.href = '/'">Return Home</button>
+
+  <!-- Plot Configuration -->
+  <section id="plot-config">
+    <h2>Plot Demo Graph</h2>
+    <select name="layouts" id="layouts">
+      <option value="Circular">Circular</option>
+      <option value="Spectral">Spectral</option>
+      <option value="Spiral">Spiral</option>
+      <option value="Spring">Spring</option>
+    </select>
+    <select name="run" id="run">
+      <option value="debug">Demo Graph</option>
+      <option value="src/plotter/palette.py">palette.py</option>
+      <option value="src/parser/parser.py">parser.py</option>
+      <option value="src/plotter/plotter.py">plotter.py</option>
+      <option value="src/polygraph/polygraph.py">polygraph.py</option>
+      <option value="src/plotter/positions.py">positions.py</option>
+      <option value="src/processor.py">processor.py</option>
+    </select>
+    <br />
+    <button onclick="singlePlot()">Single Layout</button>
+    <br /><br />
+    <button onclick="gridPlot()">Grid of all layouts</button>
+  </section>
+
+  <!-- Plot Display -->
+  <section id="plot-display">
+    <div id="plot"></div>
+  </section>
+</main>
+
+{% endblock %}

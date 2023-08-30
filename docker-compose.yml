@@ -4,17 +4,19 @@ services:
   web:
     build:
       context: .
-      dockerfile: ./src/codecarto/web_container/Dockerfile
+      dockerfile: ./src/codecarto/containers/web/Dockerfile
     ports:
       - '2000:2000'
     networks:
       - external_network
       - internal_network
+    volumes:
+      - ./src/codecarto/containers/web/src:/app/src
 
   processor:
     build:
       context: .
-      dockerfile: ./src/codecarto/proc_container/Dockerfile
+      dockerfile: ./src/codecarto/containers/processor/Dockerfile
 
     networks:
       - internal_network

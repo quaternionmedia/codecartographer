@@ -1,0 +1,29 @@
+{% extends "base.html" %} {% block content %}
+
+<!-- SCRIPT/CSS -->
+<script src="/pages/palette/palette.js" defer></script>
+<link rel="stylesheet" href="/pages/palette/palette.css" />
+
+<script>
+  window.onload = function () {
+    getPalette()
+  }
+</script>
+
+<!-- BODY -->
+<main>
+  <!-- Navigation -->
+  <button onclick="window.location.href = '/'">Return Home</button>
+
+  <!-- Palette Desc -->
+  <section id="palette-desc">
+    <h2>Palette</h2>
+  </section>
+
+  <!-- Palette Display -->
+  <section id="palette-display">
+    <div id="pal_data"></div>
+  </section>
+</main>
+
+{% endblock %}

@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 import matplotlib._pylab_helpers as pylab_helpers
 from pathlib import Path
 
-from ...src.codecarto.proc_container.src import process
-from ...src.codecarto.proc_container.src.config.directory.output_dir import (
+from ...src.codecarto.processor.src.local import process
+from ...src.codecarto.processor.src.local.config.directory.output_dir import (
     set_output_dir,
 )
-from ...src.codecarto.proc_container.src.config.directory.package_dir import (
+from ...src.codecarto.processor.src.local.config.directory.package_dir import (
     PROCESSOR_FILE_PATH,
 )
 

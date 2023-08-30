@@ -1,0 +1,24 @@
+/* plot.html specific styles */
+#plot {
+  width: 100%;
+  height: 100%;
+}
+
+.mpld3-xaxis,
+.mpld3-yaxis {
+  display: none;
+}
+
+.mpld3-text {
+  font-family: 'Calibri', sans-serif;
+  color: white;
+}
+
+.mpld3-baseaxes {
+  font-family: 'Calibri', sans-serif;
+  color: white;
+}
+
+.mpld3-figure {
+  color: white;
+}

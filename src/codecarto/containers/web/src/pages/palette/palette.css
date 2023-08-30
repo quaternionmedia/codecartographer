@@ -1,0 +1,22 @@
+/* palette.html specific styles */
+.collapsible {
+  background-color: #444;
+  color: #eee;
+  cursor: pointer;
+  padding: 10px;
+  font-size: 15px;
+  width: 500px;
+  text-align: left;
+  border: none;
+  outline: none;
+}
+.active,
+.collapsible:hover {
+  background-color: #666;
+}
+.content {
+  display: none;
+  padding: 10px;
+  width: 50%;
+  background-color: #868686;
+}
