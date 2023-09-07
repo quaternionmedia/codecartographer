@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import mpld3
 import matplotlib.lines as mlines
 
+from api.util import generate_return, proc_exception
 
 PlotterRoute: APIRouter = APIRouter()
 
@@ -57,6 +58,7 @@ async def plot(
 
     # TODO: DEBUG - This is a demo file
     try:
+        results: dict = {}
         if not debug:
             # from src.plotter.plotter import Plotter
             # from src.polygraph.polygraph import PolyGraph
@@ -85,9 +87,11 @@ async def plot(
 
             # return {"plotted": plot_html}
             if layout.lower() == "all":
-                return grid_plot(graph)
+                results = grid_plot(graph)
             else:
-                return single_plot(graph=graph, title=layout, file_name="processor.py")
+                results = single_plot(
+                    graph=graph, title=layout, file_name="processor.py"
+                )
         else:
             graph = nx.Graph()
             # add nodes with a type and label attribute
@@ -119,18 +123,12 @@ async def plot(
             )
 
             if layout.lower() == "all":
-                return grid_plot(graph)
+                results = grid_plot(graph)
             else:
-                return single_plot(graph=graph, title=layout, file_name="Demo Graph")
+                results = single_plot(graph=graph, title=layout, file_name="Demo Graph")
+        return generate_return("success", "Proc - Plot generated successfully", results)
     except Exception as e:
-        import traceback
-
-        tb_str = traceback.format_exception(type(e), e, e.__traceback__)
-        tb_str = "".join(tb_str)
-        return {
-            "error": f"Could not generate plot in processor: {e.__str__()}",
-            "traceback": f"{tb_str}",
-        }
+        return proc_exception("error", "Proc - Could not generate plot", e)
 
 
 def single_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib Demo"):
@@ -199,7 +197,7 @@ def single_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib De
         use_http=False,
         include_libraries=True,
     )
-    return {"plotted": plot_html}
+    return plot_html
 
 
 def grid_plot(graph: nx.DiGraph = None):
@@ -276,7 +274,7 @@ def grid_plot(graph: nx.DiGraph = None):
         use_http=False,
         include_libraries=True,
     )
-    return {"plotted": plot_html}
+    return plot_html
 
 
 def get_node_positions(graph: nx.Graph, layout_name: str) -> dict:
@@ -328,11 +326,5 @@ def get_node_positions(graph: nx.Graph, layout_name: str) -> dict:
             pass
 
     # Compute layout positions
-    pos: dict = {}
-    try:
-        pos = position.get_positions(layout_name, **layout_kwargs)
-    except Exception as e:
-        # TODO: log an error in the database to be displayed to the user
-        raise e
-
+    pos: dict = position.get_positions(layout_name, **layout_kwargs)
     return pos

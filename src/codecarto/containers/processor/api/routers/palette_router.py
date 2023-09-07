@@ -1,10 +1,11 @@
 import os
+import traceback
 from json import load
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-import traceback
 
 from src.plotter.palette import Theme
+from api.util import generate_return, proc_exception
 
 PaletteRoute: APIRouter = APIRouter()
 default_palette_path: str = "src/plotter/default_palette.json"
@@ -16,30 +17,11 @@ temp_palette_path: str = "src/plotter/palette.json"
 debug: bool = True
 
 
-def get_user_from_database(user_id: int) -> dict:
-    pass
-
-
-def load_palette_from_database(user_id: int) -> dict:
-    pass
-
-
-def save_palette_to_database(user_id: int, new_pal_data: dict) -> dict:
-    pass
-
-
 @PaletteRoute.get(
     "/get_palette",
 )
 async def get_palette(user_id: int = -1) -> dict:
     try:
-        # IF USER, LOOK UP USER PALETTE ID
-        if user_id != -1:
-            # get_user_from_database(user_id)
-            pass
-
-        # load_palette_from_database(user_id)
-
         # TODO: DEBUG - temporary solution
         if debug == True:
             file_path = temp_palette_path
@@ -51,12 +33,9 @@ async def get_palette(user_id: int = -1) -> dict:
             with open(file_path, "r") as f:
                 pal_data = load(f)
 
-        return pal_data
+        return generate_return("success", "Proc - Success", pal_data)
     except Exception as e:
-        traceback.print_exc()
-        return JSONResponse(
-            status_code=500, content={"Processor Palette Error": str(e)}
-        )
+        return proc_exception("error", "Proc - Could not get palette data", e)
 
 
 @PaletteRoute.get("/set_palette")

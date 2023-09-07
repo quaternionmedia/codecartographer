@@ -9,3 +9,5 @@ matplotlib
 mpld3
 scipy
 pydantic
+requests
+httpx

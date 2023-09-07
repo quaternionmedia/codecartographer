@@ -2,7 +2,7 @@ async function plot(all = false) {
   // Clear plot
   document.getElementById('plot').innerHTML = ''
   // Show spinner
-  document.getElementById('plot-loader').style.display = 'inline'
+  document.getElementById('plot_loader').style.display = 'inline'
 
   // get the current layout and run
   const layoutElement = document.getElementById('layouts')
@@ -10,6 +10,7 @@ async function plot(all = false) {
   const selectedLayout = layoutElement.value
   const selectedRun = runElement.value
 
+  // get the variables for the request
   let debug = false
   let file = selectedRun
   let layout = selectedLayout
@@ -24,26 +25,32 @@ async function plot(all = false) {
   }
   var href_line = `/plotter/plot?grid=false&debug=${debug}&file=${file}&layout=${layout}`
 
+  // make the request
   try {
+    document.getElementById('plot_loader').style.display = 'none'
     const response = await fetch(href_line)
-    document.getElementById('plot-loader').style.display = 'none'
-    console.log(`Received response: ${response.status}`)
     const responseData = await response.json()
-    console.log(`Received response: ${responseData.plot_html}`)
 
     if (response.ok) {
-      const plotHTML = responseData.plot_html
-      let newPlotHTML = stylePlotHTML(plotHTML)
+      if (responseData.status === 'error') {
+        console.error(`Error with response data: ${responseData.message}`)
+        document.getElementById('plot').innerHTML = responseData.message
+      } else {
+        console.log(`Received response: ${responseData.message}`)
+        const plotHTML = responseData.results
+        let newPlotHTML = stylePlotHTML(plotHTML)
 
-      console.log(`Received response: ${newPlotHTML}`)
-
-      insertHTMLWithScripts('plot', newPlotHTML)
+        insertHTMLWithScripts('plot', newPlotHTML)
+      }
+    } else {
+      document.getElementById('plot').innerHTML = 'Network error'
+      console.error(`Error with response status: ${response.status}`)
     }
   } catch (error) {
-    document.getElementById('plot-loader').style.display = 'none'
-    console.error('Network error:', error)
+    document.getElementById('plot_loader').style.display = 'none'
+    document.getElementById('plot').innerHTML = 'Network error'
+    console.error('Error - plot.js - plot():', error)
   }
-  console.log('Started request…')
 }
 
 function insertHTMLWithScripts(containerId, html) {
