@@ -74,6 +74,8 @@ async function handleGithubURL() {
   } else {
     try {
       // Get the url from the input, and encode it
+      document.getElementById('url_content').innerHTML = ''
+      document.getElementById('github_loader').style.display = 'inline'
       let githubUrl = document.getElementById('githubUrl').value
       if (githubUrl[githubUrl.length - 1] !== '/') {
         githubUrl += '/'
@@ -111,6 +113,8 @@ async function handleGithubURL() {
         'JS Error',
         `Error - parse.js - handleGithubURL(): ${error}`
       )
+    } finally {
+      document.getElementById('github_loader').style.display = 'none'
     }
   }
 }

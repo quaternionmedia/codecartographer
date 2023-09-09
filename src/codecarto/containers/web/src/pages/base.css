@@ -5,6 +5,11 @@ body {
   color: #e1c48f;
   font-size: 16px;
 }
+hr {
+  width: 75%;
+  border: 1px solid #e1c48f;
+  margin-left: auto;
+}
 /* selection lists */
 select {
   height: 30px;
