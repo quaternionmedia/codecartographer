@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from api.util import generate_return, proc_exception
 
@@ -18,8 +18,9 @@ async def get_graph_desc() -> dict:
             graph_desc,
         )
     except Exception as e:
-        return proc_exception(
-            "error",
-            "An error occurred while fetching graph description from processor.",
+        proc_exception(
+            "get_graph_desc",
+            "Could not fetch graph description",
+            {},
             e,
         )

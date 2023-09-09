@@ -1,5 +1,5 @@
 import httpx
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.templating import Jinja2Templates
 
 from api.util import generate_return, web_exception
@@ -24,25 +24,33 @@ async def get_palette() -> dict:
             response = await client.get(PROC_API_URL)
             response.raise_for_status()
             if not response.status_code == 200:
-                return generate_return(
-                    "error",
-                    "Web - Could not fetch palette from processor.",
-                    response.content,
+                web_exception(
+                    "get_palette",
+                    "Could not fetch palette from processor",
+                    {},
                 )
             return response.json()
         except httpx.RequestError as exc:
             # Handle network errors
-            return web_exception(
-                "error", "Web - An error occurred while requesting", exc
+            web_exception(
+                "get_palette",
+                "An error occurred while requesting",
+                {},
             )
         except httpx.HTTPStatusError as exc:
             # Handle non-2xx responses
-            return web_exception(
-                "error", "Web - Error response from processor", exc.response.content
+            web_exception(
+                "get_palette",
+                "Error response from processor",
+                {},
+                exc,
             )
-        except KeyError:
-            return web_exception(
-                "error", "Web - Key 'results' not found in response", response.json()
+        except KeyError as exc:
+            web_exception(
+                "get_palette",
+                "Key 'results' not found in response",
+                {},
+                exc,
             )
 
 
