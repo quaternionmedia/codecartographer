@@ -1,44 +1,173 @@
+/**
+ * Attach event listeners to the collapsible buttons.
+ */
 async function getGraphDesc() {
-  var href_line = `/polygraph/get_graph_desc`
   try {
+    // Get the graph description from the backend
+    const href_line = `/polygraph/get_graph_desc`
     const response = await fetch(href_line)
-    console.log(`Received response status: ${response.status}`)
     const responseData = await response.json()
-    console.log(`Received response data: ${responseData}`)
 
     if (response.ok) {
-      if (responseData.error) {
-        console.log(`Received response error: ERROR WITH RESPONSE DATA`)
-        document.getElementById('graph_desc').innerHTML =
-          'Could not display graph description'
+      // Check if the response is an error from the backend
+      if (responseData.status === 'error') {
+        displayError(
+          'graph_desc',
+          responseData.message,
+          `Error with response data: `
+        )
       } else {
-        console.log(`Getting graph_desc`)
-        const graph_desc = responseData.graph_desc
-        console.log(`Checking graph_desc is object: ${graph_desc}`)
-        console.log(`Parsing graph_desc to HTML`)
+        // Convert the data to html and display it
+        const graph_desc = responseData.results
         let graphDescHTML =
           '<div id="graph_desc">The graph data (JSON obj) needs to structured as the following:'
         graphDescHTML += graphDescToHTML(graph_desc)
         graphDescHTML += '</div>'
         document.getElementById('graph_desc').innerHTML = graphDescHTML
       }
+    } else {
+      displayError(
+        'graph_desc',
+        'API Error',
+        `Error with response status: ${response.status}`
+      )
     }
   } catch (error) {
-    document.getElementById('graph_desc').innerHTML = 'Network error'
-    console.error('Network error:', error)
+    displayError(
+      'graph_desc',
+      'JS Error',
+      `Error - parse.js - getGraphDesc(): ${error}`
+    )
   }
-  console.log('Started request…')
 }
 
+/**
+ * Convert the given graph description object to HTML.
+ * @param {Object} obj - The graph description object.
+ * @return {string} - The formatted HTML content.
+ */
 function graphDescToHTML(obj) {
+  // Check if the object is null
+  let html = ''
   if (typeof obj !== 'object') {
-    return `<span>${obj}</span>`
+    html += `<span>Invalid format: ${obj}</span>`
+  } else {
+    // Iterate through the object
+    html = `<ul>`
+    for (const [key, value] of Object.entries(obj)) {
+      html += `<li><strong>${key}</strong>: ${graphDescToHTML(value)}</li>`
+    }
+    html += `</ul>`
   }
-
-  let html = `<ul>`
-  for (const [key, value] of Object.entries(obj)) {
-    html += `<li><strong>${key}</strong>: ${graphDescToHTML(value)}</li>`
-  }
-  html += `</ul>`
+  // Return the html
   return html
+}
+
+/**
+ * Get the directories and files from the given GitHub URL.
+ */
+async function handleGithubURL() {
+  // Check if the url input is blank or not
+  if (document.getElementById('githubUrl').value === '') {
+    document.getElementById('url_content').innerHTML = 'Please enter a URL'
+    return
+  } else {
+    try {
+      // Get the url from the input, and encode it
+      let githubUrl = document.getElementById('githubUrl').value
+      if (githubUrl[githubUrl.length - 1] !== '/') {
+        githubUrl += '/'
+      }
+      const encodedGithubUrl = encodeURIComponent(githubUrl)
+      const href_line = `/parser/handle_github_url?github_url=${encodedGithubUrl}`
+      const response = await fetch(href_line)
+      const responseData = await response.json()
+
+      if (response.ok) {
+        // Check if the response is an error from the backend
+        if (responseData.status === 'error') {
+          displayError(
+            'url_content',
+            responseData.message,
+            `Error with response data: ${responseData.detail}`
+          )
+        } else {
+          // Refactor the data and display it
+          const data = responseData.results
+          const refactoredData = refactorGitHubData(data)
+          document.getElementById('url_content').innerHTML = refactoredData
+          attachCollapsibleListeners()
+        }
+      } else {
+        displayError(
+          'url_content',
+          'API Error',
+          `Error with response status: ${response.status}`
+        )
+      }
+    } catch (error) {
+      displayError(
+        'url_content',
+        'JS Error',
+        `Error - parse.js - handleGithubURL(): ${error}`
+      )
+    }
+  }
+}
+
+/**
+ * Attach collapsible listeners to the collapsible buttons.
+ * @param {Object} data - The GitHub data to be converted.
+ * @return {string} - The formatted HTML content.
+ */
+function refactorGitHubData(data) {
+  // Check if the data is null
+  let html = ''
+  if (!data) {
+    html += `<span>There is no content to display</span>`
+  } else {
+    // Extract the owner, repo, and contents from the data
+    const dataOwner = data.package_owner
+    const dataRepo = data.package_name
+    const dataContents = data.contents
+    const dataDict = { contents: dataContents }
+    const contentHtml = handleGitHubData(dataDict)
+    // Add package owner and name to the html
+    html += `<pre>`
+    html += `Package Owner: ${dataOwner}<br>`
+    html += `Package Name: ${dataRepo}`
+    html += `</pre>`
+    html += `${contentHtml}`
+  }
+  // Return the html
+  return html
+}
+
+/**
+ * Create a collapsible button structure from the given GitHub data.
+ * @param {Object} data - The GitHub data to be converted.
+ * @param {boolean} nested - Whether the data is nested or not.
+ * @return {string} - The formatted HTML content.
+ */
+function handleGitHubData(data, nested = false) {
+  // Iterate through the data
+  let content = ''
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === 'object') {
+      // If the key is "files", it's a list of filenames
+      if (key === 'files') {
+        for (const file of value) {
+          content += `<div>${file}</div>`
+        }
+      } else {
+        // Else, it's a directory
+        content += `<button class="collapsible">${key}</button>`
+        content += `<div class="content">`
+        content += handleGitHubData(value, nested) // Recursive call for nested directories
+        content += `</div>`
+      }
+    }
+  }
+  // Return the content
+  return content
 }
