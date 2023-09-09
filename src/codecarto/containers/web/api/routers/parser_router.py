@@ -66,7 +66,7 @@ async def handle_github_url(github_url: str) -> dict:
                 "Error response from processor",
                 {"github_url": github_url},
                 exc,
-                error_message,
+                proc_error=error_message,
             )
         except KeyError as exc:
             # Handle missing 'results' key in response

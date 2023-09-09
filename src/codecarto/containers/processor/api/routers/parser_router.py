@@ -30,6 +30,7 @@ async def handle_github_url(github_url: str) -> dict:
                 "handle_github_url",
                 "URL is not a valid GitHub URL",
                 {"github_url": github_url},
+                status=404,
             )
 
         # Extract owner and repo from the URL
@@ -74,12 +75,20 @@ async def handle_github_url(github_url: str) -> dict:
                 "Could not parse file content",
                 {"github_url": github_url},
             )
-    except Exception as e:
+    except HTTPException as exc:
+        # Handle network errors
+        proc_exception(
+            "handle_github_url",
+            "An error occurred while requesting",
+            {"github_url": github_url},
+            exc,
+        )
+    except Exception as exc:
         proc_exception(
             "handle_github_url",
             "Error when handling GitHub URL",
             {"github_url": github_url},
-            e,
+            exc,
         )
     finally:
         await client.aclose()
@@ -123,9 +132,20 @@ async def read_github_content(
             logger.info(f"    json_data: {json_data}")
             return json_data
         else:
-            proc_exception(
-                "read_github_content", "Error with client response", {"url": url}
-            )
+            if response.status_code == 404:
+                proc_exception(
+                    "read_github_content",
+                    "GitHub API returned 404",
+                    {"url": url, "api_url": api_url},
+                    HTTPException,
+                    404,
+                )
+            else:
+                proc_exception(
+                    "read_github_content",
+                    "Error with client response",
+                    {"url": url, "status_code": response.status_code},
+                )
     except httpx.RequestError as exc:
         proc_exception(
             "read_github_content",

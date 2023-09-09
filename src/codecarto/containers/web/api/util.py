@@ -29,7 +29,13 @@ def web_exception(
         logger.error(tbk_str)
 
     # raise the exception
-    raise HTTPException(
-        status_code=500,
-        detail=error_message,
-    )
+    if status == 404:
+        raise HTTPException(
+            status_code=404,
+            detail=error_message,
+        )
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail=error_message,
+        )
