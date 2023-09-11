@@ -4,6 +4,7 @@ output/
 .dev/
 .vscode/
 ..vscode/
+.git/
 
 # package files
 config.json

@@ -11,25 +11,7 @@ async function getPalette() {
       } else {
         console.log(`Received response: ${responseData.message}`)
         const data = responseData.results
-
-        // Create a string variable with the content of the <div>
-        let content = ''
-        for (const [key, value] of Object.entries(data)) {
-          // check if value is a dictionary
-          if (typeof value === 'object') {
-            content += `<button class="collapsible">${key}</button>`
-            content += `<div class="content">`
-            // if so, iterate through the dictionary
-            for (const [k, v] of Object.entries(value)) {
-              // Concatenating key-value pairs
-              content += `${k}: ${v}<br>`
-            }
-            // remove last <br>
-            content = content.slice(0, -4)
-            content += `</div><br>`
-          }
-        }
-        // Update the content of the <div>
+        const content = handleContents(data)
         document.getElementById('pal_data').innerHTML = content
         attachCollapsibleListeners()
       }
@@ -43,18 +25,30 @@ async function getPalette() {
   }
 }
 
-function attachCollapsibleListeners() {
-  var coll = document.getElementsByClassName('collapsible')
-  var i
-  for (i = 0; i < coll.length; i++) {
-    coll[i].addEventListener('click', function () {
-      this.classList.toggle('active')
-      var content = this.nextElementSibling
-      if (content.style.display === 'block') {
-        content.style.display = 'none'
-      } else {
-        content.style.display = 'block'
+function handleContents(data) {
+  let content = ''
+
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === 'object') {
+      // If the value is an object (directory)
+      content += `<button class="collapsible">${key}</button>`
+      content += `<div class="content">`
+      for (const [k, v] of Object.entries(value)) {
+        // Concatenating key-value pairs
+        content += `${k}: ${v}<br>`
       }
-    })
+      // remove last <br>
+      content = content.slice(0, -4)
+      content += `</div><br>`
+    } else {
+      // If the value is not an object (file)
+      if (key === 'file') {
+        content += `<div>${value}</div><br>`
+      } else {
+        content += `<div>${key}</div><br>`
+      }
+    }
   }
+
+  return content
 }
