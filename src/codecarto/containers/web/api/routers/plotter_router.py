@@ -1,7 +1,8 @@
 import httpx
-
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
+
+from api.util import generate_return, web_exception
 
 PlotterRoute: APIRouter = APIRouter()
 pages = Jinja2Templates(directory="src/pages")
@@ -60,33 +61,48 @@ async def plot(
     """
     # Call the processor container
     async with httpx.AsyncClient(timeout=60.0) as client:
-        # returns a string of HTML representing plot
-        response = await client.get(
-            PROC_API_URL,
-            params={
-                "graph_data": graph_data,
-                "file": file,
-                "layout": layout,
-                "grid": grid,
-                "labels": labels,
-                "ntx": ntx,
-                "custom": custom,
-                "palette": palette,
-                "debug": debug,
-            },
-        )
-        if not response.status_code == 200:
-            return {"error": "Could not fetch plot from processor."}
-
         try:
-            plot_html = response.json()["plotted"]
-        except KeyError:
-            print("Received JSON:", response.json())  # Debugging line
-            return {"error": "Key 'plotted' not found in response"}
+            response = await client.get(
+                PROC_API_URL,
+                params={
+                    "graph_data": graph_data,
+                    "file": file,
+                    "layout": layout,
+                    "grid": grid,
+                    "labels": labels,
+                    "ntx": ntx,
+                    "custom": custom,
+                    "palette": palette,
+                    "debug": debug,
+                },
+            )
+            response.raise_for_status()
+            if not response.status_code == 200:
+                return generate_return(
+                    "error",
+                    "Web - Could not fetch plot from processor.",
+                    response.content,
+                )
+            return response.json()
 
-    return {
-        "plot_html": plot_html,
-        "layout": layout,
-        "file": file,
-        "status": "completed",
-    }
+            # plot_html = response.json()["results"] # response.json()["plotted"]
+            # return {
+            #     "plot_html": plot_html,
+            #     "layout": layout,
+            #     "file": file,
+            #     "status": "completed",
+            # }
+        except httpx.RequestError as exc:
+            # Handle network errors
+            return web_exception(
+                "error", "Web - An error occurred while requesting", exc
+            )
+        except httpx.HTTPStatusError as exc:
+            # Handle non-2xx responses
+            return web_exception(
+                "error", "Web - Error response from processor", exc.response.content
+            )
+        except KeyError:
+            return web_exception(
+                "error", "Web - Key 'results' not found in response", response.json()
+            )
