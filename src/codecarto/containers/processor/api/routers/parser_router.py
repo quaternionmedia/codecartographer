@@ -108,7 +108,7 @@ async def read_github_content(
         headers = {
             "Accept": "application/vnd.github.v3+json",
             # Uncomment and set your token if you have one
-            "Authorization": "token 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",
+            # "Authorization": "your token here",
         }
 
         response = await client.get(api_url, headers=headers, follow_redirects=False)
