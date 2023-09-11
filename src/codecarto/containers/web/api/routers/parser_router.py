@@ -3,6 +3,12 @@ from fastapi import APIRouter, UploadFile, File, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 
+from api.util import generate_return, web_exception
+
+# DEBUG
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Create a router
 ParserRoute: APIRouter = APIRouter()
@@ -28,6 +34,7 @@ async def handle_github_url(github_url: str) -> dict:
     # TODO: Temp work around to see if working
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
+            logger.info(f"Started Web.handle_github_url(): {github_url}")
             response = await client.get(
                 PROC_GITHUB_API_URL,
                 params={
@@ -36,43 +43,42 @@ async def handle_github_url(github_url: str) -> dict:
             )
             response.raise_for_status()
             if not response.status_code == 200:
-                detail: dict = response.json()
-                detail["web_err_msg"] = "Could not fetch github contents from processor"
-                raise HTTPException(
-                    status_code=response.status_code, detail=response.json()
+                web_exception(
+                    "handle_github_url",
+                    "Could not fetch github contents from processor",
+                    {"github_url": github_url},
                 )
             return response.json()
         except httpx.RequestError as exc:
             # Handle network errors
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "web_err_msg": "An error occurred while requesting",
-                    "github_url": github_url,
-                },
-            ) from exc
+            web_exception(
+                "handle_github_url",
+                "An error occurred while requesting",
+                {"github_url": github_url},
+                exc,
+            )
         except httpx.HTTPStatusError as exc:
             # Handle non-2xx responses
             # Extract the actual error message from the response content
             error_message = exc.response.json().get("detail", str(exc))
-            raise HTTPException(
-                status_code=exc.response.status_code,
-                detail={
-                    "web_err_msg": f"Error response from processor: {error_message}",
-                    "github_url": github_url,
-                },
-            ) from exc
+            web_exception(
+                "handle_github_url",
+                "Error response from processor",
+                {"github_url": github_url},
+                exc,
+                proc_error=error_message,
+            )
         except KeyError as exc:
             # Handle missing 'results' key in response
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "web_err_msg": "Key 'results' not found in response",
-                    "github_url": github_url,
-                },
-            ) from exc
+            web_exception(
+                "handle_github_url",
+                "Key 'results' not found in response",
+                {"github_url": github_url},
+                exc,
+            )
         finally:
             await client.aclose()
+            logger.info(f"Finished Web.handle_github_url(): {github_url}")
 
 
 @ParserRoute.get(

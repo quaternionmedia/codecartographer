@@ -1,7 +1,7 @@
 import os
 import traceback
 from json import load
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from src.plotter.palette import Theme
@@ -35,7 +35,12 @@ async def get_palette(user_id: int = -1) -> dict:
 
         return generate_return("success", "Proc - Success", pal_data)
     except Exception as e:
-        return proc_exception("error", "Proc - Could not get palette data", e)
+        proc_exception(
+            "get_palette",
+            "Could not fetch palette data",
+            {"user_id": user_id},
+            e,
+        )
 
 
 @PaletteRoute.get("/set_palette")
@@ -68,14 +73,17 @@ async def set_palette(user_id: int = -1, new_pal_data: dict = {}) -> dict:
 
             return pal_data
         else:
-            return JSONResponse(
-                status_code=500,
-                content={"Processor Palette Error": "No new palette data provided."},
+            proc_exception(
+                "set_palette",
+                "No new palette data provided",
+                {"user_id": user_id, "new_pal_data": new_pal_data},
             )
     except Exception as e:
-        traceback.print_exc()
-        return JSONResponse(
-            status_code=500, content={"Processor Palette Error": str(e)}
+        proc_exception(
+            "set_palette",
+            "Could not set palette data",
+            {"user_id": user_id, "new_pal_data": new_pal_data},
+            e,
         )
 
 
@@ -111,7 +119,9 @@ async def update_palette(user_id: int = -1, new_type: Theme = {}) -> dict:
 
         return pal_data
     except Exception as e:
-        traceback.print_exc()
-        return JSONResponse(
-            status_code=500, content={"Processor Palette Error": str(e)}
+        proc_exception(
+            "update_palette",
+            "Could not add new palette type",
+            {"user_id": user_id, "new_type": new_type},
+            e,
         )

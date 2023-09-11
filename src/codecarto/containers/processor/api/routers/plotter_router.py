@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 import networkx as nx
 import matplotlib.pyplot as plt
 import mpld3
@@ -128,7 +128,12 @@ async def plot(
                 results = single_plot(graph=graph, title=layout, file_name="Demo Graph")
         return generate_return("success", "Proc - Plot generated successfully", results)
     except Exception as e:
-        return proc_exception("error", "Proc - Could not generate plot", e)
+        proc_exception(
+            "plot",
+            "Could not generate plot",
+            {"graph_data": graph_data, "file": file, "layout": layout},
+            e,
+        )
 
 
 def single_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib Demo"):
