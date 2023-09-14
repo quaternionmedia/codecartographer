@@ -44,7 +44,7 @@ async def raw_to_json(file_url: str) -> dict:
 
         raw_data: str = await read_raw_data_from_url(file_url)
         filename = file_url.split("/")[-1]
-        graph = raw_to_graph(raw_data["results"], filename)
+        graph = raw_to_graph(raw_data, filename)
         json_data = graph_to_json(graph)
         return generate_return("success", "Proc - Success", json_data)
     except Exception as exc:
