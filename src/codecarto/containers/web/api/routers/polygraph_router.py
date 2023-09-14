@@ -1,5 +1,5 @@
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.templating import Jinja2Templates
 
 from api.util import generate_return, web_exception
@@ -18,23 +18,31 @@ async def get_graph_desc() -> dict:
             response = await client.get(PROC_API_URL)
             response.raise_for_status()
             if not response.status_code == 200:
-                return generate_return(
-                    "error",
-                    "Web - Could not fetch graph description from processor.",
-                    response.content,
+                web_exception(
+                    "get_graph_desc",
+                    "Could not fetch graph description from processor",
                 )
             return response.json()
         except httpx.RequestError as exc:
             # Handle network errors
-            return web_exception(
-                "error", "Web - An error occurred while requesting", exc
+            web_exception(
+                "get_graph_desc",
+                "An error occurred while requesting",
+                {},
+                exc,
             )
         except httpx.HTTPStatusError as exc:
             # Handle non-2xx responses
-            return web_exception(
-                "error", "Web - Error response from processor", exc.response.content
+            web_exception(
+                "get_graph_desc",
+                "Error response from processor",
+                {},
+                exc,
             )
         except KeyError:
-            return web_exception(
-                "error", "Web - Key 'results' not found in response", response.json()
+            web_exception(
+                "get_graph_desc",
+                "Key 'results' not found in response",
+                {},
+                exc,
             )

@@ -1,6 +1,13 @@
 import httpx
 from fastapi import APIRouter, HTTPException
 
+from api.util import generate_return, proc_exception
+
+# DEBUG
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Create a router
 ParserRoute = APIRouter()
 
@@ -14,82 +21,78 @@ async def parse():
 async def handle_github_url(github_url: str) -> dict:
     try:
         client = httpx.AsyncClient()
+        logger.info(
+            f"Started Proc.handle_github_url() - handle_github_url(): {github_url}"
+        )
         # check that the url is a github url
         if "github.com" not in github_url:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "proc_err_msg": "URL is not a valid GitHub URL",
-                    "github_url": github_url,
-                },
+            proc_exception(
+                "handle_github_url",
+                "URL is not a valid GitHub URL",
+                {"github_url": github_url},
+                status=404,
             )
 
         # Extract owner and repo from the URL
         # Assuming the URL is like: https://github.com/owner/repo
         parts = github_url.split("/")
         if len(parts) < 5 or parts[2] != "github.com":
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "proc_err_msg": "Invalid GitHub URL format",
-                    "github_url": github_url,
-                },
+            proc_exception(
+                "read_github_file",
+                "Invalid GitHub URL format",
+                {"github_url": github_url},
             )
         owner, repo = parts[3], parts[4]
 
         # get content from url
         url_content: list[dict] = await read_github_content(github_url, owner, repo)
         if not url_content:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "proc_err_msg": "Empty file content received from GitHub",
-                    "github_url": github_url,
-                },
+            proc_exception(
+                "handle_github_url",
+                "Empty file content received from GitHub",
+                {"github_url": github_url},
             )
+
         # url_content = await fetch_directory(github_url)
         repo_contents = {
             "package_owner": owner,
             "package_name": repo,
             "contents": {},
         }
+        logger.info(f"Started Proc.parse_github_content(): {owner}/{repo}")
         repo_contents["contents"]: dict = await parse_github_content(
             url_content, owner, repo
         )
+        logger.info(f"Finished Proc.parse_github_content(): {owner}/{repo}")
         if repo_contents:
-            return {
-                "status": "success",
-                "message": "Proc - Success",
-                "results": repo_contents,
-            }
-
+            logger.info(
+                f"Proc.handle_github_url() - success - Results: {repo_contents}"
+            )
+            return generate_return("success", "Proc - Success", repo_contents)
         else:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "proc_err_msg": "Could not parse content returned from GitHub",
-                    "github_url": github_url,
-                },
+            proc_exception(
+                "handle_github_url",
+                "Could not parse file content",
+                {"github_url": github_url},
             )
     except HTTPException as exc:
         # Handle network errors
-        raise HTTPException(
-            status_code=exc.status_code,
-            detail={
-                "proc_err_msg": f'Error requesting GitHub URL: {exc.detail["proc_err_msg"]}',
-                "github_url": github_url,
-            },
-        ) from exc
+        proc_exception(
+            "handle_github_url",
+            "An error occurred while requesting",
+            {"github_url": github_url},
+            exc,
+        )
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "proc_err_msg": "An error occurred while processing the GitHub URL",
-                "github_url": github_url,
-            },
-        ) from exc
+        proc_exception(
+            "handle_github_url",
+            "Error when handling GitHub URL",
+            {"github_url": github_url},
+            exc,
+        )
     finally:
         await client.aclose()
+        logger.info(f"Finished Proc.handle_github_url(): {github_url}")
 
 
 async def read_github_content(
@@ -97,6 +100,7 @@ async def read_github_content(
 ) -> list[dict]:
     try:
         client = httpx.AsyncClient()
+        logger.info(f"Started Proc.read_github_content(): {url}")
 
         # Construct the API URL
         api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
@@ -112,13 +116,10 @@ async def read_github_content(
         if response.status_code == 200:
             json_data = response.json()
             if not json_data:
-                raise HTTPException(
-                    status_code=404,
-                    detail={
-                        "proc_err_msg": "No data returned from GitHub API",
-                        "url": url,
-                        "api_url": api_url,
-                    },
+                proc_exception(
+                    "read_github_content",
+                    "No data returned from GitHub API for UR",
+                    {"url": url, "api_url": api_url},
                 )
 
             # Remove unnecessary data from the response
@@ -128,49 +129,42 @@ async def read_github_content(
                 item.pop("git_url", None)
                 item.pop("_links", None)
 
+            logger.info(f"    json_data: {json_data}")
             return json_data
         else:
             if response.status_code == 404:
-                raise HTTPException(
-                    status_code=404,
-                    detail={
-                        "proc_err_msg": "GitHub API returned 404",
-                        "url": url,
-                        "api_url": api_url,
-                    },
+                proc_exception(
+                    "read_github_content",
+                    "GitHub API returned 404",
+                    {"url": url, "api_url": api_url},
+                    HTTPException,
+                    404,
                 )
             else:
-                raise HTTPException(
-                    status_code=500,
-                    detail={
-                        "proc_err_msg": "GitHub API returned an error",
-                        "url": url,
-                        "api_url": api_url,
-                        "status_code": response.status_code,
-                    },
+                proc_exception(
+                    "read_github_content",
+                    "Error with client response",
+                    {"url": url, "status_code": response.status_code},
                 )
     except httpx.RequestError as exc:
-        # Handle network errors
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "proc_err_msg": "Error while attempting to set up request url & headers",
-                "url": url,
-                "api_url": api_url,
-            },
-        ) from exc
+        proc_exception(
+            "read_github_content",
+            "Error while attempting to set up request url & headers",
+            {"url": url},
+            exc,
+        )
+    finally:
+        logger.info(f"Finished Proc.read_github_content(): {url}")
 
 
 async def parse_github_content(file_content, owner, repo) -> dict:
     try:
         # Check that the file content is a list
         if not file_content or not isinstance(file_content, list):
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "proc_err_msg": "Invalid file content format",
-                    "file_content": file_content,
-                },
+            proc_exception(
+                "parse_github_content",
+                "Invalid file content format",
+                {"file_content": file_content},
             )
 
         # Process directories
@@ -195,10 +189,9 @@ async def parse_github_content(file_content, owner, repo) -> dict:
 
         return results
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "proc_err_msg": "Error when parsing GitHub content",
-                "file_content": file_content,
-            },
-        ) from exc
+        proc_exception(
+            "parse_github_content",
+            "Error when parsing GitHub content",
+            {"owner": owner, "repo": repo},
+            exc,
+        )
