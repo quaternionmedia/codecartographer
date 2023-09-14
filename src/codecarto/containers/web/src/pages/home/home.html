@@ -1,0 +1,17 @@
+{% extends "base.html" %} {% block content %}
+
+<!-- SCRIPT/CSS -->
+<script src="/pages/home/home.js" defer></script>
+<link rel="stylesheet" href="/pages/home/home.css" />
+
+<!-- BODY -->
+<main>
+  <!-- Navigation -->
+  <button onclick="window.location.href = '/palette/'">Palette</button>
+  <br />
+  <button onclick="window.location.href = '/plotter/'">Plotter</button>
+  <br />
+  <button onclick="window.location.href = '/parser/'">Parser</button>
+</main>
+
+{% endblock %}

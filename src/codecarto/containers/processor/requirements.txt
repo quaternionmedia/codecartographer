@@ -1,0 +1,13 @@
+# Processor dependencies
+fastapi[all]
+uvicorn[standard]
+gunicorn 
+importlib-metadata
+networkx
+numpy
+matplotlib
+mpld3
+scipy
+pydantic
+requests
+httpx

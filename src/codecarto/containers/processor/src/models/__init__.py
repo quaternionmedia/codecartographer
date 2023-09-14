@@ -1,0 +1,1 @@
+# Models folder will hold data models for the application.

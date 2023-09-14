@@ -1,0 +1,49 @@
+{% extends "base.html" %} {% block title %} - Plot{% endblock %} {% block
+content %}
+
+<!-- SCRIPT/CSS -->
+<script src="https://d3js.org/d3.v5.js"></script>
+<script src="https://mpld3.github.io/js/mpld3.v0.5.9.js"></script>
+<script src="/pages/plot/plot.js" defer></script>
+<link rel="stylesheet" href="/pages/plot/plot.css" />
+
+<!-- BODY -->
+<main>
+  <h2 style="margin-top: -20px">Plotter</h2>
+  <button onclick="window.location.href = '/'">Return Home</button>
+  <br /><br />
+
+  <!-- Plot Configuration -->
+  <section id="plot_config">
+    <h2>Plot Demo Graph</h2>
+    <select name="layouts" id="layouts">
+      <option value="Circular">Circular</option>
+      <option value="Spectral">Spectral</option>
+      <option value="Shell">Shell</option>
+      <option value="Spiral">Spiral</option>
+      <option value="Spring">Spring</option>
+      <option value="Sorted_Square">Square</option>
+    </select>
+    <select name="files" id="files">
+      <option value="debug">Demo Graph</option>
+      <option value="src/plotter/palette.py">palette.py</option>
+      <option value="src/parser/parser.py">parser.py</option>
+      <option value="src/plotter/plotter.py">plotter.py</option>
+      <option value="src/polygraph/polygraph.py">polygraph.py</option>
+      <option value="src/plotter/positions.py">positions.py</option>
+      <option value="src/processor.py">processor.py</option>
+    </select>
+    <div id="fileUrl" data-url="{{ file_url }}"></div>
+    <br />
+    <button id="single" onclick="plot()">Single Layout</button>
+    <button id="grid" onclick="plot(true)">Grid of all layouts</button>
+    <div id="plot_loader" class="loader" style="display: none">Loading ...</div>
+  </section>
+
+  <!-- Plot Display -->
+  <section id="plot_display">
+    <div id="plot"></div>
+  </section>
+</main>
+
+{% endblock %}

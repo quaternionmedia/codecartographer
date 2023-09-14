@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>report.html</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    let visibleString = getQueryParameter('visible') || 'all';
+    visibleString = visibleString.toLowerCase();
+    const checkedItems = visibleString.split(',');
+
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++) {
+        filterItems[i].hidden = false;
+
+        if (visibleString != 'all') {
+            filterItems[i].checked = checkedItems.includes(filterItems[i].getAttribute('data-test-result'));
+            filterTable(filterItems[i]);
+        }
+    }
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>report.html</h1>
+    <p>Report generated on 01-Aug-2023 at 14:30:59 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.2.0</p>
+    <h2>Summary</h2>
+    <p>1 tests ran in 10.00 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">0 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">1 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">tests/test_cli/test_cli_palette/test_cli_palette_new.py::test_palette_new</td>
+          <td class="col-duration">3.43</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.11.4 D:\Users\Cameron\Documents\Projects\Programming\repos\qm\CodeCartographer\.nox\debug-3-11\Scripts\python.EXE<br/>[gw1] win32 -- Python 3.11.4 D:\Users\Cameron\Documents\Projects\Programming\repos\qm\CodeCartographer\.nox\debug-3-11\Scripts\python.EXE[gw1] win32 -- Python 3.11.4 D:\Users\Cameron\Documents\Projects\Programming\repos\qm\CodeCartographer\.nox\debug-3-11\Scripts\python.EXE<br/><br/>    def test_palette_new():<br/>        &quot;&quot;&quot;Test the palette new command.&quot;&quot;&quot;<br/>        with tempfile.TemporaryDirectory() as temp_dir:<br/>    <br/>    #TODO: set up a test default_config.json file in the temp_dir<br/>    # difficult to use the codecarto from temp dir or nox env<br/>    # because the codecarto is installed in the base env<br/>    # need to change this so that when the codecarto is installed<br/>    # it will set up default_config.json, don&#x27;t want to save it in the repo<br/>    <br/>    ########### Helper functions ###########<br/>    # have to create these here to maintain<br/>    # the scope of the temp_file_path variable<br/>    <br/>            def assert_result(expected, actual):<br/>                try:<br/>                    assert str(expected) in str(actual)<br/>                except AssertionError as e:<br/>                    raise AssertionError(f&quot;Error in test_cli_palette_new.py: &quot;<br/>                                            f&quot;\n\nExpected:\n---------\n{expected}\n&quot;<br/>                                            f&quot;\n\nActual:\n-------\n{actual}\n&quot;<br/>                                            )<br/>    <br/>            def get_palette_data():<br/>                &quot;&quot;&quot;Return the palette data.&quot;&quot;&quot;<br/>                import json<br/>    <br/>                # get the palette data from the temp_palette_new.json file<br/>                with open(temp_file_path, &quot;r&quot;) as f:<br/>                    palette_data = json.load(f)<br/>                return palette_data<br/>    <br/>            def check_new_data(command):<br/>                &quot;&quot;&quot;Check that the new type is in palette.json and has correct params.&quot;&quot;&quot;<br/>    <br/>                palette_data = get_palette_data()<br/>                for command in commands:<br/>                    assert_result(command[3],palette_data[&quot;bases&quot;])<br/>                    assert_result(command[5],palette_data[&quot;labels&quot;])<br/>                    assert_result(command[6],palette_data[&quot;shapes&quot;])<br/>                    assert_result(command[7],palette_data[&quot;colors&quot;])<br/>                    assert_result(int(command[8])*100,palette_data[&quot;sizes&quot;])<br/>                    assert_result(round(0.1 * int(command[9]), ndigits=1),palette_data[&quot;alphas&quot;])<br/>    <br/>            def check_output(command, result, input:str = &quot;&quot;):<br/>                &quot;&quot;&quot;Check the output of the command.&quot;&quot;&quot;<br/>    <br/>                actual_output = result.stdout<br/>    <br/>                if input == &quot;&quot;:<br/>                    # check that the new type added prompt is in the output<br/>                    assert_result((f&quot;\nNew theme added to palette: {temp_file_path}&quot;),actual_output)<br/>                    assert_result((f&quot;New theme &#x27;{command[3]}&#x27; created with parameters: &quot;<br/>                            f&quot;base={command[4]}, label={command[5]}, shape={command[6]}, color={command[7]}, &quot;<br/>                            f&quot;size={(int(command[8])*100)}, alpha={round(0.1 * int(command[9]), ndigits=1)}\n&quot;),actual_output)<br/>                elif input == &quot;n\n&quot;:<br/>                    assert_result((f&quot;\n{command[3]} already exists. \n &quot;<br/>                            f&quot;base:{command[4]}&quot;<br/>                            f&quot;label:{command[5]}&quot;<br/>                            f&quot;shape:{command[6]}&quot;<br/>                            f&quot;color:{command[7]}&quot;<br/>                            f&quot;size={(int(command[8])*100)}, alpha={round(0.1 * int(command[9]), ndigits=1)}\n&quot;<br/>                            f&quot;\n\nOverwrite? Y/N &quot;),actual_output)<br/>                elif input == &quot;y\n&quot;:<br/>                    assert_result((f&quot;\n{command[3]} already exists. \n &quot;<br/>                            f&quot;base:{command[4]}&quot;<br/>                            f&quot;label:{command[5]}&quot;<br/>                            f&quot;shape:{command[6]}&quot;<br/>                            f&quot;color:{command[7]}&quot;<br/>                            f&quot;size={(int(command[8])*100)}, alpha={round(0.1 * int(command[9]), ndigits=1)}\n&quot;<br/>                            f&quot;\n\nOverwrite? Y/N &quot;),actual_output)<br/>                    assert_result((f&quot;\nNew theme added to palette: {temp_file_path}&quot;),actual_output)<br/>                    assert_result((f&quot;New theme &#x27;{command[3]}&#x27; created with parameters: &quot;<br/>                            f&quot;base={command[4]}, label={command[5]}, shape={command[6]}, color={command[7]}, &quot;<br/>                            f&quot;size={(int(command[8])*100)}, alpha={round(0.1 * int(command[9]), ndigits=1)}\n&quot;),actual_output)<br/>            def get_config_prop(_prop_name:str):<br/>                &quot;&quot;&quot;Get the config properties.&quot;&quot;&quot;<br/>                from codecarto import Config<br/>                return Config().config_data[_prop_name]<br/>    <br/>            def set_config_prop(_prop_name:str, _value:str = &quot;reset&quot;):<br/>                &quot;&quot;&quot;Set the config properties.&quot;&quot;&quot;<br/>                from codecarto import Config<br/>                if _value == &quot;reset&quot;:<br/>                    Config().reset_config_data()<br/>                else:<br/>                    Config().set_config_property(_prop_name, _value)<br/>    <br/>            def reset_palette_manually(temp_file_path):<br/>                &quot;&quot;&quot;Reset the palette manually.&quot;&quot;&quot;<br/>                import os<br/>                import shutil<br/>    <br/>                # get the default palette<br/>                default_palette_path = get_config_prop(&quot;default_palette_path&quot;)<br/>    <br/>                # delete the appdata palette<br/>                if os.path.exists(temp_file_path):<br/>                    os.remove(temp_file_path)<br/>    <br/>                # copy the default palette to the appdata directory<br/>                shutil.copy(default_palette_path, temp_file_path)<br/>    <br/>            def check_palette_matches_default(temp_file_path) -&gt; bool:<br/>                &quot;&quot;&quot;Check if the palette is the same as the default palette.&quot;&quot;&quot;<br/>                import json<br/>    <br/>                # get the default palette<br/>                default_palette_path = get_config_prop(&quot;default_palette_path&quot;)<br/>    <br/>                # check if the palette file is the same as the default palette<br/>                with open(default_palette_path, &quot;r&quot;) as f:<br/>                    default_palette = json.load(f)<br/>                with open(temp_file_path, &quot;r&quot;) as f:<br/>                    appdata_palette = json.load(f)<br/>                if default_palette == appdata_palette:<br/>                    return True<br/>                else:<br/>                    return False<br/>    <br/>    <br/>    ########### Test functions ###########<br/>    <br/>    <br/>            # create a temporary file for palette.json<br/>            temp_file_name = &quot;test_palette_new.json&quot;<br/>            temp_file_path = os.path.join(temp_dir, temp_file_name)<br/>    <br/>&gt;           set_config_prop(&quot;palette_file_name&quot;, temp_file_name)<br/><br/>tests\test_cli\test_cli_palette\test_cli_palette_new.py:133: <br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/>tests\test_cli\test_cli_palette\test_cli_palette_new.py:87: in set_config_prop<br/>    from codecarto import Config<br/>.nox\debug-3-11\Lib\site-packages\codecarto\__init__.py:45: in &lt;module&gt;<br/>    from .json.json_graph import JsonGraph<br/>.nox\debug-3-11\Lib\site-packages\codecarto\json\json_graph.py:4: in &lt;module&gt;<br/>    from ..palette.palette import Palette<br/>.nox\debug-3-11\Lib\site-packages\codecarto\palette\palette.py:3: in &lt;module&gt;<br/>    from ..utils.directory.palette_dir import PALETTE_DIRECTORY<br/>.nox\debug-3-11\Lib\site-packages\codecarto\utils\directory\palette_dir.py:106: in &lt;module&gt;<br/>    &quot;name&quot;: get_palette_appdata_file_name(),<br/>.nox\debug-3-11\Lib\site-packages\codecarto\utils\directory\palette_dir.py:69: in get_palette_appdata_file_name<br/>    config: Config = Config()<br/>.nox\debug-3-11\Lib\site-packages\codecarto\config\config.py:14: in __init__<br/>    self.config_path = self.get_config_path()<br/>.nox\debug-3-11\Lib\site-packages\codecarto\config\config.py:59: in get_config_path<br/>    from ..utils.directory.config_dir import get_config_path<br/>.nox\debug-3-11\Lib\site-packages\codecarto\utils\directory\config_dir.py:99: in &lt;module&gt;<br/>    &quot;dir&quot;: os.path.dirname(get_default_config_path()),<br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/><br/>    def get_default_config_path() -&gt; str:<br/>        &quot;&quot;&quot;Return the path of the default config file path.<br/>    <br/>        Returns:<br/>        --------<br/>        str<br/>            The path of the default config file path.<br/>        &quot;&quot;&quot;<br/>        from .package_dir import get_package_dir<br/>    <br/>        config_dir = os.path.join(get_package_dir(), &quot;config\\default_config.json&quot;)<br/>        if not os.path.exists(config_dir):<br/>&gt;           raise RuntimeError(&quot;Config directory not found. Package may be corrupted.&quot;)<br/><span class="error">E           RuntimeError: Config directory not found. Package may be corrupted.</span><br/><br/>.nox\debug-3-11\Lib\site-packages\codecarto\utils\directory\config_dir.py:58: RuntimeError[gw1] win32 -- Python 3.11.4 D:\Users\Cameron\Documents\Projects\Programming\repos\qm\CodeCartographer\.nox\debug-3-11\Scripts\python.EXE<br/></div></td></tr></tbody></table></body></html>

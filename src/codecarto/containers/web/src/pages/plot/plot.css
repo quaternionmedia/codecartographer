@@ -1,0 +1,28 @@
+/* plot.html specific styles */
+
+.mpld3-xaxis,
+.mpld3-yaxis {
+  display: none;
+}
+
+#grid {
+  background-color: #d79d73;
+}
+#grid:focus,
+#grid:hover {
+  background-color: #e8c9ad;
+}
+#grid:disabled {
+  background-color: #b1987e;
+  color: rgb(67, 60, 56);
+}
+
+#plot-loader {
+  font-size: 24px;
+  padding: 10px;
+}
+
+#fileUrl {
+  font-size: 24px;
+  padding: 5px;
+}

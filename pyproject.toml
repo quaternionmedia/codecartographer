@@ -1,0 +1,59 @@
+[tool.poetry]
+name = "codecarto"
+version = "0.2.0"
+homepage = "https://github.com/QuaternionMedia/codecarto"
+description = "A tool used to analyze and graph source code."
+authors = ['"Quaternion Media" <cameron@quaternionmedia.com>']
+license = "MIT"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+include = [
+    { path = "docs/examples", format = "sdist" },
+    { path = "tests", format = "sdist" },
+]
+
+[tool.poetry.scripts]
+codecarto = "codecarto.cli.cli:run"
+
+[tool.poetry.dependencies]
+python = "^3.8.1"
+networkx = "^3.1"
+numpy = "^1.24.2"
+matplotlib = "^3.7.1" 
+scipy = "^1.7.3"
+importlib-metadata = "^5.2.0"
+click = {version = ">=8.1.2", optional = true}
+fastapi = "^0.70.0"
+python-multipart = ">=0.0.6"
+mpld3 = "^0.5.5"
+trogon = "^0.4.0"
+ 
+# these lines can make cli and library separate
+# pip install codecarto will enable library usage
+# pip install codecarto[cli] will enable cli usage as weell
+# [tool.poetry.extras]
+# cli = ["click>=8.1.2"]
+
+[tool.poetry.group.dev.dependencies]
+nox = "^2022.11.21"
+pytest = "^7.1.3"
+pytest-cov = "^2.12.1"
+pytest-xdist = "^2.4.0"
+pytest-profiling = "^1.7.0"
+black = "^23.1.0"
+flake8 = "^6.0.0"
+mkdocs = "^1.4.2"
+mkdocstrings =  {extras = ["python"], version = "^0.20.0"}
+mkdocs-material = "^9.0.11"
+mkdocs-exclude = "^1.0.2"
+python-dotenv = "^0.19.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

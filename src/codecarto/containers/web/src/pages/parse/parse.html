@@ -1,0 +1,43 @@
+{% extends "base.html" %} {% block title %} - Parse{% endblock %} {% block
+content %}
+
+<!-- SCRIPT/CSS -->
+<script src="/pages/parse/parse.js" defer></script>
+<link rel="stylesheet" href="/pages/parse/parse.css" />
+<script>
+  window.onload = function () {
+    getGraphDesc()
+  }
+</script>
+
+<!-- BODY -->
+<main>
+  <!-- Parser Desc -->
+  <section id="parser_desc">
+    <h2 style="margin-top: -20px">Parser</h2>
+    <button onclick="window.location.href = '/'">Return Home</button>
+  </section>
+  <!-- Parser github URL -->
+  <section id="github_url">
+    <form id="githubForm">
+      <h3 for="githubUrl">GitHub Repository URL:</h3>
+      <input type="text" id="githubUrl" name="githubUrl" /><br />
+      <button id="githubUrl_btn" type="button" onclick="handleGithubURL()">
+        Submit
+      </button>
+      <div id="github_loader" class="loader" style="display: none">
+        Loading ...
+      </div>
+    </form>
+    <div id="url_content"></div>
+  </section>
+  <br /><br />
+  <hr />
+  <br />
+  <!-- Parser Display -->
+  <section id="parser_display">
+    <div id="graph_desc"></div>
+  </section>
+</main>
+
+{% endblock %}
