@@ -24,7 +24,7 @@ async def root(request: Request):
 async def get_palette() -> dict:
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(PROC_API_URL)
+            response = await client.get(PROC_API_GET_PALETTE)
             response.raise_for_status()
             if not response.status_code == 200:
                 web_exception(
