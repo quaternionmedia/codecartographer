@@ -111,7 +111,7 @@ async def read_github_content(
         headers = {
             "Accept": "application/vnd.github.v3+json",
             # Uncomment and set your token if you have one
-            "Authorization": git_api_key,
+            "Authorization": f"Bearer {git_api_key}",
         }
 
         response = await client.get(api_url, headers=headers, follow_redirects=False)
@@ -145,6 +145,17 @@ async def read_github_content(
                     {"url": url, "api_url": api_url},
                     HTTPException,
                     404,
+                )
+            if response.status_code == 403:
+                error_message = f"GitHub API returned 403: {response.text}"
+                # if "rate_limit" in response.text:
+                #     error_message = f"GitHub API rate limit exceeded: {response.text}"
+                proc_exception(
+                    "read_github_content",
+                    error_message,
+                    {"url": url, "api_url": api_url},
+                    HTTPException,
+                    403,
                 )
             else:
                 proc_exception(
