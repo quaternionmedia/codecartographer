@@ -1,28 +1,36 @@
 import httpx
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
 from api.util import generate_return, web_exception
 
+# Create a router
 PlotterRoute: APIRouter = APIRouter()
 pages = Jinja2Templates(directory="src/pages")
 html_page = "/plot/plot.html"
 
-PROC_API_URL = "http://processor:2020/plotter/plot"
+# Set the processor api url
+PROC_API_URL = "http://processor:2020/plotter"
+PROC_API_PLOT = f"{PROC_API_URL}/plot"
 
 
 # Root page
 @PlotterRoute.get("/")
-async def root(request: Request):
-    return pages.TemplateResponse(html_page, {"request": request})
+async def root(request: Request, file_url: str = None):
+    if file_url and file_url != "":
+        return pages.TemplateResponse(
+            html_page, {"request": request, "file_url": file_url}
+        )
+    else:
+        return pages.TemplateResponse(html_page, {"request": request})
 
 
 @PlotterRoute.get("/plot")
 async def plot(
-    request: Request,
     graph_data: dict = None,
     file: str = None,
-    layout: str = "spring",
+    url: str = None,
+    layout: str = None,
     grid: bool = False,
     labels: bool = False,
     ntx: bool = True,
@@ -40,6 +48,8 @@ async def plot(
         The graph data. JSON format.
     file : str
         The file to parse and plot.
+    url : str
+        The url to parse and plot.
     layout : str
         The name of the layout to plot.
             Used to plot a single layout.
@@ -53,6 +63,8 @@ async def plot(
         Whether to use the custom layouts.
     palette: dict
         The palette to use for plotting.
+    debug: bool
+        Whether to run long process vs short process.
 
     Returns:
     --------
@@ -64,6 +76,7 @@ async def plot(
         params: dict = {
             "graph_data": graph_data,
             "file": file,
+            "url": url,
             "layout": layout,
             "grid": grid,
             "labels": labels,
@@ -72,8 +85,9 @@ async def plot(
             "palette": palette,
             "debug": debug,
         }
+
         try:
-            response = await client.get(PROC_API_URL, params=params)
+            response = await client.get(PROC_API_PLOT, params=params)
             response.raise_for_status()
             if not response.status_code == 200:
                 web_exception(
@@ -82,26 +96,12 @@ async def plot(
                     params,
                 )
             return response.json()
-        except httpx.RequestError as exc:
-            # Handle network errors
+        except Exception as exc:
+            error_message = exc.response.json().get("detail", str(exc))
             web_exception(
                 "plot",
-                "An error occurred while requesting",
+                "Error from processor",
                 params,
                 exc,
-            )
-        except httpx.HTTPStatusError as exc:
-            # Handle non-2xx responses
-            web_exception(
-                "plot",
-                "Error response from processor",
-                params,
-                exc,
-            )
-        except KeyError as exc:
-            web_exception(
-                "plot",
-                "Key 'results' not found in response",
-                params,
-                exc,
+                proc_error=error_message,
             )

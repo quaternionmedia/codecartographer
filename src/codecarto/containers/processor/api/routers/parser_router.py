@@ -22,7 +22,7 @@ async def handle_github_url(github_url: str) -> dict:
     try:
         client = httpx.AsyncClient()
         logger.info(
-            f"Started Proc.handle_github_url() - handle_github_url(): {github_url}"
+            f"  Started     Proc.handle_github_url(): github_url - {github_url}"
         )
         # check that the url is a github url
         if "github.com" not in github_url:
@@ -59,16 +59,15 @@ async def handle_github_url(github_url: str) -> dict:
             "package_name": repo,
             "contents": {},
         }
-        logger.info(f"Started Proc.parse_github_content(): {owner}/{repo}")
+        logger.info(f"  Started     Proc.parse_github_content(): {owner}/{repo}")
         repo_contents["contents"]: dict = await parse_github_content(
             url_content, owner, repo
         )
-        logger.info(f"Finished Proc.parse_github_content(): {owner}/{repo}")
+        logger.info(f"  Finished    Proc.parse_github_content()")
         if repo_contents:
-            logger.info(
-                f"Proc.handle_github_url() - success - Results: {repo_contents}"
+            return generate_return(
+                "success", "Proc.handle_github_url() - Success", repo_contents
             )
-            return generate_return("success", "Proc - Success", repo_contents)
         else:
             proc_exception(
                 "handle_github_url",
@@ -92,23 +91,27 @@ async def handle_github_url(github_url: str) -> dict:
         )
     finally:
         await client.aclose()
-        logger.info(f"Finished Proc.handle_github_url(): {github_url}")
+        logger.info(f"  Finished    Proc.handle_github_url()")
 
 
 async def read_github_content(
     url: str, owner: str, repo: str, path: str = ""
 ) -> list[dict]:
     try:
+        import os
+        from dotenv import load_dotenv
+
         client = httpx.AsyncClient()
         logger.info(f"Started Proc.read_github_content(): {url}")
 
         # Construct the API URL
         api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
-
+        load_dotenv()
+        git_api_key = os.getenv("GIT_API_KEY")
         headers = {
             "Accept": "application/vnd.github.v3+json",
             # Uncomment and set your token if you have one
-            # "Authorization": "your token here",
+            "Authorization": git_api_key,
         }
 
         response = await client.get(api_url, headers=headers, follow_redirects=False)
@@ -123,6 +126,9 @@ async def read_github_content(
                 )
 
             # Remove unnecessary data from the response
+            # this will leave us with {name, path, size, html_url, download_url, type}
+            # html url is the url to view the file in the browser
+            # download url is the url to see just the raw file contents
             for item in json_data:
                 item.pop("sha", None)
                 item.pop("url", None)
@@ -181,10 +187,8 @@ async def parse_github_content(file_content, owner, repo) -> dict:
         # Process files
         top_files = []
         for file in files:
-            file_name = file["name"]
-            top_files.append(file_name)
-
-        if top_files:
+            top_files.append(file)
+        if top_files and len(top_files) > 0:
             results["files"] = top_files
 
         return results
@@ -195,3 +199,22 @@ async def parse_github_content(file_content, owner, repo) -> dict:
             {"owner": owner, "repo": repo},
             exc,
         )
+
+
+def raw_to_graph(raw_data: str, filename: str):
+    try:
+        logger.info(f"  Started     Proc.text_to_json()")
+        from src.parser.parser import Parser
+
+        parser = Parser(None, {"raw": raw_data, "filename": filename})
+        graph = parser.graph
+        return graph
+    except Exception as exc:
+        proc_exception(
+            "text_to_json",
+            "Error when transforming raw data to JSON",
+            {"raw_data": raw_data},
+            exc,
+        )
+    finally:
+        logger.info(f"  Finished    Proc.text_to_json()")

@@ -1,14 +1,17 @@
 import httpx
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
 from api.util import generate_return, web_exception
 
+# Create a router
 PaletteRoute: APIRouter = APIRouter()
 pages = Jinja2Templates(directory="src/pages")
 html_page = "/palette/palette.html"
 
-PROC_API_URL = "http://processor:2020/palette/get_palette"
+# Set the processor api url
+PROC_API_URL = "http://processor:2020/palette"
+PROC_API_GET_PALETTE = f"{PROC_API_URL}/get_palette"
 
 
 # Root page
@@ -30,27 +33,14 @@ async def get_palette() -> dict:
                     {},
                 )
             return response.json()
-        except httpx.RequestError as exc:
-            # Handle network errors
+        except Exception as exc:
+            error_message = exc.response.json().get("detail", str(exc))
             web_exception(
                 "get_palette",
-                "An error occurred while requesting",
-                {},
-            )
-        except httpx.HTTPStatusError as exc:
-            # Handle non-2xx responses
-            web_exception(
-                "get_palette",
-                "Error response from processor",
+                "Error from processor",
                 {},
                 exc,
-            )
-        except KeyError as exc:
-            web_exception(
-                "get_palette",
-                "Key 'results' not found in response",
-                {},
-                exc,
+                proc_error=error_message,
             )
 
 

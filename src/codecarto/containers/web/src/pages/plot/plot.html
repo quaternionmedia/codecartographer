@@ -1,4 +1,5 @@
-{% extends "base.html" %} {% block content %}
+{% extends "base.html" %} {% block title %} - Plot{% endblock %} {% block
+content %}
 
 <!-- SCRIPT/CSS -->
 <script src="https://d3js.org/d3.v5.js"></script>
@@ -32,6 +33,7 @@
       <option value="src/plotter/positions.py">positions.py</option>
       <option value="src/processor.py">processor.py</option>
     </select>
+    <div id="fileUrl" data-url="{{ file_url }}"></div>
     <br />
     <button id="single" onclick="plot()">Single Layout</button>
     <button id="grid" onclick="plot(true)">Grid of all layouts</button>
