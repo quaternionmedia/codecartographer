@@ -43,7 +43,7 @@ class Parser(ast.NodeVisitor):
 
     # TODO: when we eventually add import and importFrom, they need to be the id of the Module they represent
     # TODO: when this gets updated, do logic of option 'uno'
-    def __init__(self, source_files: list):
+    def __init__(self, source_files: list = None, source_dict: dict = None):
         """Initialize the parser.
 
         Parameters:
@@ -68,7 +68,12 @@ class Parser(ast.NodeVisitor):
         self.add_start_nodes()
         # Parse the source code
         self.parsed_files: list = []
-        self.parse_list(source_files)
+        self.text_to_json_filename: str = None
+        if source_files:
+            self.parse_list_of_files(source_files)
+        elif source_dict:
+            self.text_to_json_filename = source_dict["filename"]
+            self.parse_text(source_dict["raw"])
 
     def add_start_nodes(self):
         """Add root and python node to the graph."""
@@ -86,7 +91,7 @@ class Parser(ast.NodeVisitor):
         )
         self.graph.add_edge(id(self.root), id(self.python))
 
-    def parse_list(self, source_files: list) -> nx.DiGraph:
+    def parse_list_of_files(self, source_files: list) -> nx.DiGraph:
         """Parse the codes in the list.
 
         Parameters:
@@ -129,6 +134,33 @@ class Parser(ast.NodeVisitor):
                 # Parse the code
                 self.current_file = file_path
                 self.parse_code(file_path)
+
+    def parse_text(self, source_text: str) -> nx.DiGraph:
+        """Parse the code in the specified file path.
+
+        Parameters:
+        -----------
+        source_text : str
+            The source text to parse.
+        """
+        # Check params
+        if not source_text:
+            raise ValueError("Parser.parse_text: source_text is None")
+        if not self.text_to_json_filename:
+            raise ValueError("Parser.parse_text: filename is None")
+
+        # Parse the code
+        tree = ast.parse(source_text, filename=self.text_to_json_filename)
+        # self.pretty_ast_dump(tree)
+        # Visit the tree
+        # this starts the decent through the file's code objects
+        if tree:
+            self.visit(tree)
+        else:
+            print(f"Parser.parse_text: tree is None for {self.text_to_json_filename}")
+            raise ValueError(
+                f"Parser.parse_text: tree is None for {self.text_to_json_filename}"
+            )
 
     def parse_code(self, file_path) -> nx.DiGraph:
         """Parse the code in the specified file path.
@@ -289,10 +321,17 @@ class Parser(ast.NodeVisitor):
         ast.Module represents the entire python file.
         """
         # Add the module node to the graph
+        if self.current_file:
+            node_label = os.path.basename(self.current_file)
+        elif self.text_to_json_filename:
+            node_label = self.text_to_json_filename
+        else:
+            node_label = "default_filename.py"
+
         self.create_new_node(
             node_id=id(node),
             node_type="Module",
-            node_label=os.path.basename(self.current_file),
+            node_label=node_label,
             node_parent_id=id(self.root),
         )
         # Set the current parent to the module node

@@ -10,3 +10,29 @@
   padding-left: 5px;
   margin-left: 5px;
 }
+
+.gitLink,
+.jsonLink,
+.plotLink {
+  color: #e1c48f;
+}
+.gitLink:link,
+.jsonLink:link,
+.plotLink:link {
+  color: #e1c48f;
+}
+.gitLink:visited,
+.jsonLink:visited,
+.plotLink:visited {
+  color: #c29e63;
+}
+.gitLink:hover,
+.jsonLink:hover,
+.plotLink:hover {
+  color: #e8dbad;
+}
+.gitLink:active,
+.jsonLink:active,
+.plotLink:active {
+  color: #e8dbad;
+}

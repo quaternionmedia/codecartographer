@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request
 import networkx as nx
 import matplotlib.pyplot as plt
 import mpld3
@@ -16,6 +16,7 @@ async def plot(
     request: Request,
     graph_data: dict = None,
     file: str = None,
+    url: str = None,
     layout: str = "Spring",
     grid: bool = False,
     labels: bool = False,
@@ -34,6 +35,8 @@ async def plot(
         The graph data. JSON format.
     file : str
         The file to parse and plot.
+    url : str
+        The url to parse and plot.
     layout : str
         The name of the layout to plot.
             Used to plot a single layout.
@@ -59,40 +62,8 @@ async def plot(
     # TODO: DEBUG - This is a demo file
     try:
         results: dict = {}
-        if not debug:
-            # from src.plotter.plotter import Plotter
-            # from src.polygraph.polygraph import PolyGraph
-            from src.parser.parser import Parser
-
-            # Convert the graph data to a networkx graph
-            graph: nx.DiGraph = None
-            if not graph_data:  # if no graph, run demo
-                import os
-
-                py_file_path = file
-                if not os.path.exists(py_file_path):
-                    return {"error": "File not found."}
-
-                parse: Parser = Parser([py_file_path])
-                # poly: PolyGraph = PolyGraph()
-                # graph = poly.json_file_to_graph(json_file_path)
-                graph = parse.graph
-
-            # plots: list[str] = []
-            # plotter: Plotter = Plotter(graph, labels, grid, ntx, custom, palette)
-            # plots = plotter.plot(layout_name=layout)  # a list of html strings
-
-            # # get the last plot
-            # plot_html: str = plots[-1]
-
-            # return {"plotted": plot_html}
-            if layout.lower() == "all":
-                results = grid_plot(graph)
-            else:
-                results = single_plot(
-                    graph=graph, title=layout, file_name="processor.py"
-                )
-        else:
+        filename: str = ""
+        if debug:
             graph = nx.Graph()
             # add nodes with a type and label attribute
             graph.add_nodes_from(
@@ -121,17 +92,48 @@ async def plot(
                     (7, 8),
                 ]
             )
+        else:
+            from src.parser.parser import Parser
 
-            if layout.lower() == "all":
-                results = grid_plot(graph)
+            # Convert the graph data to a networkx graph
+            graph: nx.DiGraph = None
+            if not graph_data:  # if no graph, run demo
+                if url:
+                    from .polygraph_router import read_raw_data_from_url
+
+                    filename = url.split("/")[-1]
+                    raw_data: str = await read_raw_data_from_url(url)
+                    parser: Parser = Parser(
+                        source_dict={"raw": raw_data, "filename": filename}
+                    )
+                    graph = parser.graph
+                elif file:
+                    import os
+
+                    py_file_path = file
+                    if not os.path.exists(py_file_path):
+                        return {"error": "File not found."}
+                    filename = os.path.basename(py_file_path)
+                    parser: Parser = Parser(source_files=[py_file_path])
+                    graph = parser.graph
             else:
-                results = single_plot(graph=graph, title=layout, file_name="Demo Graph")
+                filename = "Demo Graph"
+                graph = nx.DiGraph(graph_data)
+
+        if layout.lower() == "all":
+            results = grid_plot(graph)
+        else:
+            results = single_plot(graph=graph, title=layout, file_name=filename)
         return generate_return("success", "Proc - Plot generated successfully", results)
     except Exception as e:
         proc_exception(
             "plot",
             "Could not generate plot",
-            {"graph_data": graph_data, "file": file, "layout": layout},
+            {
+                "graph_data": graph_data,
+                "file": file,
+                "layout": layout,
+            },
             e,
         )
 

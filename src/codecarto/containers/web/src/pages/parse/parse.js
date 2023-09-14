@@ -160,8 +160,17 @@ function handleGitHubData(data, nested = false) {
     if (typeof value === 'object') {
       // If the key is "files", it's a list of filenames
       if (key === 'files') {
+        link_style = 'style="color: #e1c48f; text-decoration: none;"'
         for (const file of value) {
-          content += `<div>${file}</div>`
+          let json_link = `/polygraph/raw_to_json?file_url=${file['download_url']}`
+          let plot_link = `/plotter/?file_url=${file['download_url']}`
+          content += `<div>`
+          content += `<a class="gitLink" href="${file['html_url']}" target="_blank">${file['name']}</a>`
+          content += `  `
+          content += `<a class="jsonLink" href="${json_link}" target="_blank">JSON</a>`
+          content += `  `
+          content += `<a class="plotLink" href="${plot_link}" target="_blank">PLOT</a>`
+          content += `</div>`
         }
       } else {
         // Else, it's a directory

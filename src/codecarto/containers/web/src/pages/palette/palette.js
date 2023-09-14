@@ -1,3 +1,7 @@
+/**
+ * Gets the currently loaded palette.
+ * @return {Promise} A promise that resolves to the palette.
+ */
 async function getPalette() {
   var href_line = `/palette/get_palette`
   try {
@@ -25,6 +29,11 @@ async function getPalette() {
   }
 }
 
+/**
+ * Attach event listeners to collapsible buttons.
+ * @param {string} data - The data to be displayed.
+ * @returns {string} The HTML content.
+ */
 function handleContents(data) {
   let content = ''
 

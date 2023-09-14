@@ -1,4 +1,10 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def generate_return(status: str, message: str, results) -> dict:
+    logger.info(f"{message} - Results: {results}")
     return {
         "status": status,  # success or error
         "message": message,  # friendly message
@@ -14,12 +20,10 @@ def proc_exception(
     status: int = 500,
 ) -> dict:
     import traceback
-    import logging
     from fastapi import HTTPException
 
     # log the error and stack trace
     error_message = f"Proc.{called_from}() - status: {status} - param: {params} - message: {message}"
-    logger = logging.getLogger(__name__)
     logger.error(error_message)
     if exc:
         error_message = f"{error_message} - exception: {str(exc)}"
