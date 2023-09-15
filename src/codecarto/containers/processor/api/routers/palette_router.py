@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from src.plotter.palette import Theme
-from api.util import generate_return, proc_exception
+from api.util import generate_return, proc_exception, proc_error
 
 PaletteRoute: APIRouter = APIRouter()
 default_palette_path: str = "src/plotter/default_palette.json"
@@ -33,7 +33,7 @@ async def get_palette(user_id: int = -1) -> dict:
             with open(file_path, "r") as f:
                 pal_data = load(f)
 
-        return generate_return("success", "Proc - Success", pal_data)
+        return generate_return(200, "Proc - Success", pal_data)
     except Exception as e:
         proc_exception(
             "get_palette",
@@ -73,10 +73,11 @@ async def set_palette(user_id: int = -1, new_pal_data: dict = {}) -> dict:
 
             return pal_data
         else:
-            proc_exception(
+            return proc_error(
                 "set_palette",
                 "No new palette data provided",
                 {"user_id": user_id, "new_pal_data": new_pal_data},
+                500,
             )
     except Exception as e:
         proc_exception(

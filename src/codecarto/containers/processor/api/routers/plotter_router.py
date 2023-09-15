@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import mpld3
 import matplotlib.lines as mlines
 
-from api.util import generate_return, proc_exception
+from api.util import generate_return, proc_exception, proc_error
 
 PlotterRoute: APIRouter = APIRouter()
 
@@ -124,7 +124,7 @@ async def plot(
             results = grid_plot(graph)
         else:
             results = single_plot(graph=graph, title=layout, file_name=filename)
-        return generate_return("success", "Proc - Plot generated successfully", results)
+        return generate_return(200, "Proc - Plot generated successfully", results)
     except Exception as e:
         proc_exception(
             "plot",

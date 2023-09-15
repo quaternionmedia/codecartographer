@@ -5,6 +5,8 @@ output/
 .vscode/
 ..vscode/
 .git/
+token.txt
+secrets.txt
 
 # package files
 config.json

@@ -9,8 +9,8 @@ async function getGraphDesc() {
     const responseData = await response.json()
 
     if (response.ok) {
-      // Check if the response is an error from the backend
-      if (responseData.status === 'error') {
+      // Check if responseData.status is not 200
+      if (responseData.status !== 200) {
         displayError(
           'graph_desc',
           responseData.message,
@@ -87,7 +87,7 @@ async function handleGithubURL() {
 
       if (response.ok) {
         // Check if the response is an error from the backend
-        if (responseData.status === 'error') {
+        if (responseData.status !== 200) {
           displayError(
             'url_content',
             responseData.message,

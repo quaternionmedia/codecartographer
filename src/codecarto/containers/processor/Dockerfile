@@ -10,7 +10,8 @@ ENV PYTHONUNBUFFERED=1
 
 # Install pip requirements
 COPY ./src/codecarto/containers/processor/requirements.txt .
-RUN python -m pip install -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+        python -m pip install -r requirements.txt
 
 # Directory
 WORKDIR /app
@@ -19,10 +20,14 @@ COPY ./src/codecarto/containers/processor/src /app/src
 ENV PYTHONPATH=/app
 
 # # Creates a non-root user with an explicit UID and adds permission to access the /app folder
-# # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
 # RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
 # USER appuser
+# # Good idea to also remove the shell access and ensure there is no home directory for the user
+# RUN addgroup --gid 1001 --system app && \
+#     adduser --no-create-home --shell /bin/false --disabled-password --uid 1001 --system --group app
+# USER app
+
 
 # # During debugging, this entry point will be overridden. 
 # For more information, please refer to https://aka.ms/vscode-docker-python-debug
-CMD ["gunicorn", "--bind", "0.0.0.0:2020", "-k", "uvicorn.workers.UvicornWorker", "api.main:app"] 
+CMD ["gunicorn", "--bind", "0.0.0.0:2020", "-k", "uvicorn.workers.UvicornWorker", "api.main:app"]  

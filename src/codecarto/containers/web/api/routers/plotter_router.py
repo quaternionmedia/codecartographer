@@ -2,7 +2,7 @@ import httpx
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
-from api.util import generate_return, web_exception
+from api.util import generate_return, web_exception, proc_error
 
 # Create a router
 PlotterRoute: APIRouter = APIRouter()
@@ -88,20 +88,32 @@ async def plot(
 
         try:
             response = await client.get(PROC_API_PLOT, params=params)
-            response.raise_for_status()
-            if not response.status_code == 200:
-                web_exception(
+
+            # returning a json response from the processor
+            # even in the case of an error in the processor
+            data: dict = response.json()
+            status_code = data.get("status", 500)
+
+            # check if the response is an error
+            if status_code != 200:
+                error_message = data.get("message", "No error message")
+                results = proc_error(
                     "plot",
-                    "Could not fetch plot from processor",
+                    "Error from processor",
                     params,
+                    status=status_code,
+                    proc_error=error_message,
                 )
-            return response.json()
+            else:
+                results = data
+
+            return results
         except Exception as exc:
-            error_message = exc.response.json().get("detail", str(exc))
+            # should only get here if there
+            # is an error with web container
             web_exception(
                 "plot",
-                "Error from processor",
+                "Error with request to processor",
                 params,
                 exc,
-                proc_error=error_message,
             )
