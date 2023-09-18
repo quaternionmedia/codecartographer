@@ -17,6 +17,8 @@ services:
     build:
       context: .
       dockerfile: ./src/codecarto/containers/processor/Dockerfile
+    secrets:
+      - github_token
     networks:
       - internal_network
 
@@ -35,3 +37,7 @@ networks:
     driver: bridge
   internal_network:
     driver: bridge
+
+secrets:
+  github_token:
+    file: ./token.txt

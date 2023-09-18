@@ -2,7 +2,12 @@ import httpx
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
-from api.util import generate_return, web_exception
+from api.util import generate_return, web_exception, proc_error
+
+# Debug
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Create a router
 ParserRoute: APIRouter = APIRouter()
@@ -27,7 +32,7 @@ async def handle_github_url(github_url: str) -> dict:
     # TODO: call the proc api to start it, will get a job id
     # TODO: check the database every X secs on job id for results
     # TODO: Temp work around to see if working
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         try:
             response = await client.get(
                 PROC_API_GITHUB_URL,
@@ -35,20 +40,32 @@ async def handle_github_url(github_url: str) -> dict:
                     "github_url": github_url,
                 },
             )
-            response.raise_for_status()
-            if not response.status_code == 200:
-                web_exception(
+
+            # returning a json response from the processor
+            # even in the case of an error in the processor
+            data: dict = response.json()
+            status_code = data.get("status", 500)
+
+            # check if the response is an error
+            if status_code != 200:
+                error_message = data.get("message", "No error message")
+                results = proc_error(
                     "handle_github_url",
-                    "Could not fetch github contents from processor",
+                    "Error from processor",
                     {"github_url": github_url},
+                    status=status_code,
+                    proc_error=error_message,
                 )
-            return response.json()
+            else:
+                results = data
+
+            return results
         except Exception as exc:
-            error_message = exc.response.json().get("detail", str(exc))
+            # should only get here if there
+            # is an error with web container
             web_exception(
                 "handle_github_url",
-                "Error from processor",
+                "Error with request to processor",
                 {"github_url": github_url},
                 exc,
-                proc_error=error_message,
             )

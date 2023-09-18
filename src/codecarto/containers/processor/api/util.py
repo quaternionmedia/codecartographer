@@ -3,13 +3,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def generate_return(status: str, message: str, results) -> dict:
-    logger.info(f"{message} - Results: {results}")
+def generate_return(status: int = 200, message: str = "", results: str = {}):
     return {
-        "status": status,  # success or error
-        "message": message,  # friendly message
-        "results": results,  # the actual results or the error message
+        "status": status,
+        "message": message,
+        "results": results,
     }
+
+
+def proc_error(called_from: str, message: str, params: dict = {}, status: int = 500):
+    """Return error results when something is wrong but did not throw exception"""
+    # Generate msg based on proc error status
+    error_message = f"\n\n\tProc.{called_from}() \n\tstatus: {status} \n\tmessage: {message} \n\tparam: {params} \n"
+    logger.error(f"{error_message}")
+
+    # return the error
+    return generate_return(status=status, message=message, results=params)
 
 
 def proc_exception(
@@ -19,22 +28,25 @@ def proc_exception(
     exc: Exception = None,
     status: int = 500,
 ) -> dict:
+    """Raise an exception if there is an exception thrown in processor"""
     import traceback
     from fastapi import HTTPException
 
     # log the error and stack trace
-    error_message = f"Proc.{called_from}() - status: {status} - param: {params} - message: {message}"
+    error_message = f"\n\n\tProc.{called_from}() \n\tstatus: {status} message: {message} \n\tparam: {params}\n"
     logger.error(error_message)
+
+    # create a stack trace
     if exc:
-        error_message = f"{error_message} - exception: {str(exc)}"
+        error_message = f"\tProc.exception: {str(exc)} \n\tmessage:{error_message}\n"
         tbk_str = traceback.format_exception(type(exc), exc, exc.__traceback__)
         tbk_str = "".join(tbk_str)
-        logger.error(tbk_str)
+        logger.error(f"\n\t{tbk_str}")
 
     # raise the exception
-    if status == 404:
+    if status != 500:
         raise HTTPException(
-            status_code=404,
+            status_code=status,
             detail=error_message,
         )
     else:

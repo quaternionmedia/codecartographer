@@ -9,6 +9,13 @@ async function getPalette() {
     const responseData = await response.json()
 
     if (response.ok) {
+      if (responseData.status !== 200) {
+        displayError(
+          'pal_data',
+          responseData.message,
+          `Error with response data: ${responseData.detail}`
+        )
+      }
       if (responseData.status === 'error') {
         console.error(`Error with response data: ${responseData.message}`)
         document.getElementById('pal_data').innerHTML = responseData.message
