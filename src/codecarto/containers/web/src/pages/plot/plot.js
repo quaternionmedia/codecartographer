@@ -13,7 +13,7 @@ if (fileUrlDiv) {
     document.getElementById('fileUrl').style.display = 'inline'
 
     // check if the file ends with .py
-    if (!fileName.endsWith('.py')) {
+    if (!fileName.endsWith('.py') && !fileName.endsWith('.json')) {
       document.getElementById('single').disabled = true
       document.getElementById('grid').disabled = true
       document.getElementById('plot').innerHTML = '<br>Invalid file type'
