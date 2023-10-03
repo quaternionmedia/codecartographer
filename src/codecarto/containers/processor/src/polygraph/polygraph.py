@@ -58,7 +58,7 @@ class PolyGraph:
             print(f"Failed to load data from {json_file}.")
             raise e
 
-        return self.json_data_to_graph(graph_data)
+        return self.json_data_to_graphdata(graph_data)
 
     def graph_to_json_data(self, graph: GraphData) -> dict:
         """Converts a networkx graph to a JSON object.
@@ -132,8 +132,8 @@ class PolyGraph:
 
         return graph_data
 
-    def json_data_to_graph(self, json_data: dict[str, dict]) -> nx.DiGraph:
-        """Converts a JSON object to a networkx graph.
+    def json_data_to_graphdata(self, json_data: dict[str, dict]) -> nx.DiGraph:
+        """Converts a JSON object to a networkx graphdata.
 
         Parameters:
         -----------

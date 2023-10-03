@@ -75,6 +75,9 @@ class Parser(ast.NodeVisitor):
             self.text_to_json_filename = source_dict["filename"]
             self.parse_text(source_dict["raw"])
 
+        # TODO get file extension, based on ext, send to specific parser.
+        # code currently here is for python
+
     def add_start_nodes(self):
         """Add root and python node to the graph."""
         # add the root node

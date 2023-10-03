@@ -103,10 +103,40 @@ async def plot(
 
                     filename = url.split("/")[-1]
                     raw_data: str = await read_raw_data_from_url(url)
-                    parser: Parser = Parser(
-                        source_dict={"raw": raw_data, "filename": filename}
-                    )
-                    graph = parser.graph
+
+                    # get the file extension
+                    file_ext = filename.split(".")[-1]
+                    if file_ext == "json":
+                        # Parse the graph
+                        graph = json_parse(raw_data)
+
+                        # Draw the graph
+                        fig = plt.figure(figsize=(20, 20))
+                        pos = nx.spiral_layout(graph)
+                        nx.draw(graph, pos, with_labels=True, font_weight="bold")
+                        edge_labels = nx.get_edge_attributes(graph, "weight")
+                        nx.draw_networkx_edge_labels(
+                            graph, pos, edge_labels=edge_labels
+                        )
+                        plt.tight_layout()
+                        results = mpld3.fig_to_html(
+                            fig,
+                            template_type="simple",
+                            figid="pltfig",
+                            d3_url=None,
+                            no_extras=False,
+                            use_http=False,
+                            include_libraries=True,
+                        )
+
+                        return generate_return(
+                            200, "Proc - Plot generated successfully", results
+                        )
+                    elif file_ext == "py":
+                        parser: Parser = Parser(
+                            source_dict={"raw": raw_data, "filename": filename}
+                        )
+                        graph = parser.graph
                 elif file:
                     import os
 
@@ -335,3 +365,39 @@ def get_node_positions(graph: nx.Graph, layout_name: str) -> dict:
     # Compute layout positions
     pos: dict = position.get_positions(layout_name, **layout_kwargs)
     return pos
+
+
+def json_parse(json_data):
+    def add_edges(graph, parent, obj):
+        for key, value in obj.items():
+            if isinstance(value, dict):
+                graph.add_edge(parent, key, weight=1)
+                add_edges(graph, key, value)
+            elif isinstance(value, list):
+                graph.add_edge(parent, key, weight=1)
+                for index, item in enumerate(value):
+                    item_key = f"{key}_{index}"
+                    if isinstance(item, dict):
+                        graph.add_edge(key, item_key, weight=1)
+                        add_edges(graph, item_key, item)
+                    else:
+                        graph.add_edge(key, item_key, weight=1)
+            else:
+                graph.add_edge(
+                    parent, key, weight=value if isinstance(value, (int, float)) else 1
+                )
+
+    def json_to_graph(json_obj):
+        graph = nx.DiGraph()
+        add_edges(graph, "root", json_obj)
+        return graph
+
+    # Usage:
+    # Load JSON from file
+    # with open("data.json", "r") as file:
+    #     json_obj = json.load(file)
+
+    json_obj = json_data
+
+    # Convert JSON to graph
+    return json_to_graph(json_obj)
