@@ -61,7 +61,7 @@ async def raw_to_json(file_url: str) -> dict:
 async def read_raw_data_from_url(url: str) -> str:
     try:
         logger.info(f"  Started   Proc.read_raw_data_from_url(): url - {url}")
-        if not url.endswith(".py") or not url.endswith(".json"):
+        if not url.endswith(".py") and not url.endswith(".json"):
             return proc_error(
                 "read_raw_data_from_url",
                 "URL is not a valid Python file",
