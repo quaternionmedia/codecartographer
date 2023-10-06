@@ -18,6 +18,8 @@ content %}
     <h2>Plot Demo Graph</h2>
     <select name="layouts" id="layouts">
       <option value="Circular">Circular</option>
+      <option value="Kamada">Kamada</option>
+      <option value="Random">Random</option>
       <option value="Spectral">Spectral</option>
       <option value="Shell">Shell</option>
       <option value="Spiral">Spiral</option>
@@ -34,7 +36,15 @@ content %}
       <option value="src/processor.py">processor.py</option>
     </select>
     <div id="fileUrl" data-url="{{ file_url }}"></div>
+    <select name="parse_type" id="parse_type" style="display: none">
+      Parse Option
+      <option value="single_1">Single Key Nodes: edge = 1</option>
+      <option value="single_2">Single Key Nodes: edge data</option>
+      <option value="working">Single Key Nodes: edge data 2</option>
+      <option value="multiple">Multiple Key Nodes</option>
+    </select>
     <br />
+    <!-- create a list of 3 options -->
     <button id="single" onclick="plot()">Single Layout</button>
     <button id="grid" onclick="plot(true)">Grid of all layouts</button>
     <div id="plot_loader" class="loader" style="display: none">Loading ...</div>
@@ -42,6 +52,7 @@ content %}
 
   <!-- Plot Display -->
   <section id="plot_display">
+    <!--<div id="json_data" data-url="{{ json_data }}"></div><br />-->
     <div id="plot"></div>
   </section>
 </main>

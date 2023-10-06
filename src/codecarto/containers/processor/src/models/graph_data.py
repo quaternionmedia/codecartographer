@@ -20,24 +20,24 @@ class Node(BaseModel):
     label: str = ""
     base: str = ""
     parent: int = None
-    children: list["Node"] = []
+    children: list["Node"] or list[int] = []
     edges: list[Edge] = []
 
 
 Node.update_forward_refs()
 
 
-class GraphData(BaseModel):
+class PlotGraph(BaseModel):
     nodes: dict[str, Node] = Field(..., alias="nodes")
     edges: dict[str, Edge] = Field(..., alias="edges")
 
 
 def get_graph_description() -> dict:
-    """Returns a description of the GraphData class.
+    """Returns a description of the PlotGraph class.
 
     Returns:
     --------
-        dict: A description of the GraphData class.
+        dict: A description of the PlotGraph class.
     """
     return {
         "nodes": "Dictionary where each key is the ID of a node and the value is the node's data.",

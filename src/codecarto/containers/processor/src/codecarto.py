@@ -48,7 +48,7 @@ pass
 #     set_output_dir,
 #     get_last_dated_output_dirs,
 # )
-# from .models.graph_data import GraphData, get_graph_description
+# from .models.graph_data import PlotGraph, get_graph_description
 # from .parser.parser import Parser
 # from .parser.import_source_dir import get_all_source_files
 # from .plotter.palette import Palette
@@ -152,7 +152,7 @@ pass
 
 #     def plot_graph(
 #         self,
-#         graph: GraphData,
+#         graph: PlotGraph,
 #         output_dir: str = None,
 #         file_name: str = None,
 #         specific_layout: str = "",
@@ -164,7 +164,7 @@ pass
 
 #         Parameters:
 #         -----------
-#             graph (GraphData):
+#             graph (PlotGraph):
 #                 The networkx graph to plot.
 #             output_dir (str):
 #                 The directory to save the plot to.
@@ -195,8 +195,8 @@ pass
 #         if file_name is None:
 #             file_name = f"GraphPlot {get_date_time_file_format()}"
 
-#         # Convert the GraphData object to a networkx graph
-#         graph = PolyGraph.graphdata_to_nx(GraphData)
+#         # Convert the PlotGraph object to a networkx graph
+#         graph = PolyGraph.plotgraph_to_nx(PlotGraph)
 
 #         # Set the plotter parameters
 #         self.plotter.grid = grid

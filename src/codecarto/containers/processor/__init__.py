@@ -6,13 +6,13 @@
 # since the server will have fixed output directories and configurations.
 
 # The main functions the API will have access to are:
-#  - Converting any input data to GraphData (PolyGraph)
-#  - Parsing source code to a GraphData object
+#  - Converting any input data to PlotGraph (PolyGraph)
+#  - Parsing source code to a PlotGraph object
 #  - Passing plot layouts and themes
 #       TODO: how will we save these on the server?
 #       Will need to have access to them when plotting
 #       could we somehow have layout and theme objects passed in to the plotter?
-#  - Plotting a GraphData object to an image
+#  - Plotting a PlotGraph object to an image
 #  - ? Analyzing the graph
 #       TODO: this part actually may be handled in TechOps)
 # I can't think of anything else that the API will need to do.

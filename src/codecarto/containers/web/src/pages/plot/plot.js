@@ -17,6 +17,8 @@ if (fileUrlDiv) {
       document.getElementById('single').disabled = true
       document.getElementById('grid').disabled = true
       document.getElementById('plot').innerHTML = '<br>Invalid file type'
+    } else if (fileName.endsWith('.json')) {
+      document.getElementById('parse_type').style.display = 'inline'
     }
   }
 } else {
@@ -57,12 +59,14 @@ function generateEndpoint(all) {
     // Get the selected layout
     const layoutElement = document.getElementById('layouts')
     const selectedLayout = all ? 'all' : layoutElement.value
+    const parseType = document.getElementById('parse_type').value
 
     // Create a data object to send in the POST request
     let postData = {
       layout: selectedLayout,
       file: '',
       url: '',
+      parse_type: parseType, // if parse_type hidden, won't apply to the plot anyway
       debug: false,
     }
 
@@ -80,7 +84,7 @@ function generateEndpoint(all) {
     }
 
     // Construct the endpoint
-    let endpoint = `/plotter/plot?file=${postData.file}&url=${postData.url}&layout=${postData.layout}&debug=${postData.debug}`
+    let endpoint = `/plotter/plot?file=${postData.file}&url=${postData.url}&layout=${postData.layout}&debug=${postData.debug}&parse_type=${postData.parse_type}`
 
     // Return the endpoint
     return endpoint

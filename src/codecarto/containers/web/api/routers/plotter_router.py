@@ -36,6 +36,7 @@ async def plot(
     ntx: bool = True,
     custom: bool = True,
     palette: dict = None,
+    parse_type: str = "multiple",
     debug: bool = False,
 ) -> dict:
     """Plot a graph.
@@ -63,6 +64,8 @@ async def plot(
         Whether to use the custom layouts.
     palette: dict
         The palette to use for plotting.
+    parse_type: str
+        Plotting option for multiple nodes of same data type or single node.
     debug: bool
         Whether to run long process vs short process.
 
@@ -83,6 +86,7 @@ async def plot(
             "ntx": ntx,
             "custom": custom,
             "palette": palette,
+            "parse_type": parse_type,
             "debug": debug,
         }
 

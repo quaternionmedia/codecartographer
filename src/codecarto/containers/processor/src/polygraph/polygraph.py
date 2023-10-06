@@ -1,16 +1,16 @@
 import networkx as nx
-from ..models.graph_data import GraphData
+from ..models.graph_data import PlotGraph
 
 
 class PolyGraph:
     """A class used to convert data types to a networkx graph and vice versa."""
 
-    def graph_to_json_file(self, graph: GraphData, json_path: str) -> dict:
+    def graph_to_json_file(self, graph: PlotGraph, json_path: str) -> dict:
         """Converts a networkx graph to a JSON object.
 
         Parameters:
         -----------
-            graph (GraphData): The graph to convert.
+            graph (PlotGraph): The graph to convert.
             json_path (str): The path to save the JSON file to.
 
         Returns:
@@ -58,14 +58,14 @@ class PolyGraph:
             print(f"Failed to load data from {json_file}.")
             raise e
 
-        return self.json_data_to_graphdata(graph_data)
+        return self.json_data_to_plotgraph(graph_data)
 
-    def graph_to_json_data(self, graph: GraphData) -> dict:
+    def graph_to_json_data(self, graph: PlotGraph) -> dict:
         """Converts a networkx graph to a JSON object.
 
         Parameters:
         -----------
-            graph (GraphData): The graph to convert.
+            graph (PlotGraph): The graph to convert.
 
         Returns:
         --------
@@ -78,9 +78,9 @@ class PolyGraph:
             raise ValueError("No graph provided.")
         if not isinstance(graph, nx.DiGraph):
             try:
-                graph: nx.DiGraph = self.graphdata_to_nx(graph)
+                graph: nx.DiGraph = self.plotgraph_to_nx(graph)
             except:
-                raise ValueError("'graph' must be formatted as a GraphData object.")
+                raise ValueError("'graph' must be formatted as a PlotGraph object.")
 
         # Create the JSON object
         graph_data: dict[str, dict[str, dict[str, list]]] = {"nodes": {}, "edges": {}}
@@ -132,8 +132,8 @@ class PolyGraph:
 
         return graph_data
 
-    def json_data_to_graphdata(self, json_data: dict[str, dict]) -> nx.DiGraph:
-        """Converts a JSON object to a networkx graphdata.
+    def json_data_to_plotgraph(self, json_data: dict[str, dict]) -> nx.DiGraph:
+        """Converts a JSON object to a networkx plotgraph.
 
         Parameters:
         -----------
@@ -174,12 +174,12 @@ class PolyGraph:
 
         return graph
 
-    def graphdata_to_nx(graph_data: GraphData) -> nx.DiGraph:
-        """Converts a GraphData object to a networkx graph.
+    def plotgraph_to_nx(graph_data: PlotGraph) -> nx.DiGraph:
+        """Converts a PlotGraph object to a networkx graph.
 
         Parameters:
         -----------
-            graph_data (GraphData): The GraphData object to convert.
+            graph_data (PlotGraph): The PlotGraph object to convert.
 
         Returns:
         --------
@@ -204,4 +204,4 @@ class PolyGraph:
 
             return G
         except:
-            raise ValueError("'graph' must be formatted as a GraphData object.")
+            raise ValueError("'graph' must be formatted as a PlotGraph object.")
