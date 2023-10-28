@@ -12,7 +12,7 @@ html_page = "/parse/parse.html"
 # Set the processor api url
 PROC_API_URL = "http://processor:2020/polygraph"
 PROC_API_GRAPH_DESC = f"{PROC_API_URL}/get_graph_desc"
-PROC_API_RAW_TO_JSON = f"{PROC_API_URL}/raw_to_json"
+PROC_API_URL_TO_JSON = f"{PROC_API_URL}/url_to_json"
 
 
 @PolyGraphRoute.get("/get_graph_desc")
@@ -48,12 +48,12 @@ async def get_graph_desc() -> dict:
             )
 
 
-@PolyGraphRoute.get("/raw_to_json")
-async def raw_to_json(file_url: str) -> dict:
+@PolyGraphRoute.get("/url_to_json")
+async def url_to_json(file_url: str) -> dict:
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
             response = await client.get(
-                PROC_API_RAW_TO_JSON,
+                PROC_API_URL_TO_JSON,
                 params={
                     "file_url": file_url,
                 },
@@ -67,7 +67,7 @@ async def raw_to_json(file_url: str) -> dict:
             if status_code != 200:
                 error_message = data.get("message", "No error message")
                 results = proc_error(
-                    "raw_to_json",
+                    "url_to_json",
                     "Error from processor",
                     {},
                     status=status_code,
@@ -79,7 +79,7 @@ async def raw_to_json(file_url: str) -> dict:
             return results
         except Exception as exc:
             web_exception(
-                "raw_to_json",
+                "url_to_json",
                 "Error with request to processor",
                 {},
                 exc,

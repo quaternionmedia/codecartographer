@@ -36,10 +36,10 @@ async def get_graph_desc() -> dict:
         logger.info(f"  Finished    Proc.get_graph_desc()") 
 
 
-@PolyGraphRoute.get("/raw_to_json")
-async def raw_to_json(file_url: str) -> dict:
+@PolyGraphRoute.get("/url_to_json")
+async def url_to_json(file_url: str) -> dict:
     try:
-        logger.info(f"  Started     Proc.raw_to_json(): file_url - {file_url}")
+        logger.info(f"  Started     Proc.url_to_json(): file_url - {file_url}")
         from .parser_router import raw_to_graph
 
         raw_data = await read_raw_data_from_url(file_url)
@@ -51,14 +51,13 @@ async def raw_to_json(file_url: str) -> dict:
         return generate_return(200, "Proc - Success", json_data)
     except Exception as exc:
         proc_exception(
-            "raw_to_json",
+            "url_to_json",
             "Error when converting raw data to JSON",
             {"file_url": file_url},
             exc,
         )
     finally:
-        logger.info(f"  Finished    Proc.raw_to_json()")
-        
+        logger.info(f"  Finished    Proc.url_to_json()")
 
 
 async def read_raw_data_from_url(url: str) -> str | dict:
