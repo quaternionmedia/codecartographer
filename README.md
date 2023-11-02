@@ -1,6 +1,6 @@
 # Codecarto:
 
-Development tool for mapping source code.
+Development tool for mapping source code
 
 Create graphs.
 
