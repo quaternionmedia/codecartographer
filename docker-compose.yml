@@ -37,7 +37,3 @@ networks:
     driver: bridge
   internal_network:
     driver: bridge
-
-secrets:
-  github_token:
-    file: ./token.txt
