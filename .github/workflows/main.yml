@@ -16,7 +16,7 @@ jobs:
         run: |
           docker-compose -f docker-compose.yml build
           docker-compose -f docker-compose.yml up -d
-          docker cp <web>:/app ./statics
+          docker cp web:/app ./statics
 
       # Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
