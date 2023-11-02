@@ -1,19 +1,31 @@
-name: 🕸️ Website deploy
+name: Deploy to GitHub Pages
+
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: 📰 Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
-      - name: run docker-compose
-        uses: sudo-bot/action-docker-compose@latest
+      # Build static assets in Docker container
+      - name: Build static assets
+        run: |
+          docker-compose -f docker-compose.yml build
+          docker-compose -f docker-compose.yml up -d
+          docker cp <web>:/app ./statics
+
+      # Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          cli-args: 'up'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./statics
+          keep_files: true
+          # user_name: 'github-actions[bot]'
+          # user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'Deploy to GitHub Pages'
+
