@@ -44,7 +44,7 @@ pip install -e .
 
 ### Help Information
 
-Check this first to see all usage information.
+Check this first to see all usage information
 
 ```
 codecarto help
