@@ -2,7 +2,7 @@
 
 Development tool for mapping source code
 
-Create graphs.
+Create graphs
 
 Plot the graphs.
 
