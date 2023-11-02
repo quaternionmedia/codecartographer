@@ -3,9 +3,11 @@ on:
   push:
     branches:
       - main
+      - 30-github-actions-deploy-website
   pull_request:
     branches:
       - main
+      - 30-github-actions-deploy-website
 jobs:
   deploy:
     runs-on: ubuntu-latest
