@@ -28,14 +28,14 @@ jobs:
 
     # Render the Jinja2 templates to static HTML
     - name: Render Templates 🖌️
-      run: python src/containers/web/src/render_templates.py  # Adjusted for the location of your script
+      run: python src/codecarto/containers/web/src/render_templates.py  # Adjusted for the location of your script
 
     # Deploy to GitHub Pages
     - name: Deploy to GitHub Pages 🚀
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./src/containers/web/src/pages  # The directory where your index.html now exists
+        publish_dir: ./src/codecarto/containers/web/src/pages  # The directory where your index.html now exists
 
 
     # Start the necessary Docker containers.
