@@ -28,8 +28,8 @@ jobs:
 
       # Render the Jinja2 templates to static HTML
       - name: Render Templates 🖌️
-        run: python src/codecarto/containers/web/render_templates.py # Ensure this is the correct path
-        working-directory: ./src/codecarto/containers/web # Add this line
+        run: render_templates.py
+        working-directory: ./src/codecarto/containers/web
 
       # Deploy to GitHub Pages
       - name: Deploy to GitHub Pages 🚀
