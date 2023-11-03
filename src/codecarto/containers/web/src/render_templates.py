@@ -12,7 +12,7 @@ context = {
 }
 
 # Render home.html as index.html
-template = env.get_template("home/home.html")
+template = env.get_template("./home/home.html")
 rendered = template.render(context)
 
 # Write the rendered template to the output directory
