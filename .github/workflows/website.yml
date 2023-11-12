@@ -1,27 +1,31 @@
-name: 🕸️ Website deploy
+name: Deploy Frontend to GitHub Pages
+
 on:
   push:
     branches:
-      - main
-      - 30-github-actions-deploy-website
-  pull_request:
-    branches:
-      - main
-      - 30-github-actions-deploy-website
+      - 30-github-actions-auto-deploy-website
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: 📰 Checkout
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v2
 
-      - name: run docker-compose
-        uses: sudo-bot/action-docker-compose@latest
-        with:
-          cli-args: 'up'
+      # - name: Set up Node.js (if using Node.js in your project)
+      #   uses: actions/setup-node@v2
+      #   with:
+      #     node-version: '14'
 
-      - name: ⛵ Deploy
+      # - name: Install Dependencies (if needed)
+      #   run: npm install # or yarn install for any dependencies
+
+      # - name: Build (if you have a build script)
+      #   run: npm run build # or your build command
+
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: web/dist
+          publish_dir: ./src/codecarto/containers/web/client/pages/home/ # Path to your static files
