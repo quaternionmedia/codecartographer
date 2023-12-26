@@ -1,6 +1,6 @@
 FROM tiangolo/uvicorn-gunicorn:python3.11 
 
-EXPOSE 2020
+EXPOSE 2020 
 
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -15,8 +15,12 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # Directory
 WORKDIR /app
+COPY ./graphbase /app/graphbase
+RUN --mount=type=cache,target=/root/.cache/pip \
+        python -m pip install -e /app/graphbase
 COPY ./src/codecarto/containers/processor/api /app/api
 COPY ./src/codecarto/containers/processor/src /app/src
+COPY ./src/codecarto/containers/processor/tests /app/tests
 ENV PYTHONPATH=/app
 
 # # Creates a non-root user with an explicit UID and adds permission to access the /app folder
@@ -30,4 +34,4 @@ ENV PYTHONPATH=/app
 
 # # During debugging, this entry point will be overridden. 
 # For more information, please refer to https://aka.ms/vscode-docker-python-debug
-CMD ["gunicorn", "--bind", "0.0.0.0:2020", "-k", "uvicorn.workers.UvicornWorker", "api.main:app"]  
+CMD ["gunicorn", "--bind", "0.0.0.0:2020", "--timeout", "120", "-k", "uvicorn.workers.UvicornWorker", "api.main:app"]  

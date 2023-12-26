@@ -1,9 +1,10 @@
+from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def generate_return(status: int = 200, message: str = "", results: str = {}):
+def generate_return(status: int = 200, message: str = "", results: str | dict = {}):
     return {
         "status": status,
         "message": message,
@@ -25,7 +26,7 @@ def proc_exception(
     called_from: str,
     message: str,
     params: dict = {},
-    exc: Exception = None,
+    exc: Optional[Exception] = None,
     status: int = 500,
 ) -> dict:
     """Raise an exception if there is an exception thrown in processor"""

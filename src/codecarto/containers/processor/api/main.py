@@ -6,6 +6,9 @@ from .routers.plotter_router import PlotterRoute
 from .routers.parser_router import ParserRoute
 from .routers.polygraph_router import PolyGraphRoute
 
+# from .routers.database_router import DatabaseRoute
+from graphbase import GraphBaseRouter
+
 # Debug
 import logging
 
@@ -29,3 +32,4 @@ app.include_router(PaletteRoute, prefix="/palette", tags=["palette"])
 app.include_router(PlotterRoute, prefix="/plotter", tags=["plotter"])
 app.include_router(ParserRoute, prefix="/parser", tags=["parser"])
 app.include_router(PolyGraphRoute, prefix="/polygraph", tags=["polygraph"])
+app.include_router(GraphBaseRouter, prefix="/db", tags=["db"])

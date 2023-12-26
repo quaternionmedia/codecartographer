@@ -14,7 +14,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         python -m pip install -r requirements.txt
 
 # Directory
-WORKDIR /app 
+WORKDIR /app
+COPY ./graphbase /app/graphbase
+RUN --mount=type=cache,target=/root/.cache/pip \
+        python -m pip install -e /app/graphbase
 COPY ./src/codecarto/containers/web/api /app/api
 COPY ./src/codecarto/containers/web/src /app/src
 ENV PYTHONPATH=/app
@@ -30,4 +33,4 @@ ENV PYTHONPATH=/app
 
 # # During debugging, this entry point will be overridden. 
 # For more information, please refer to https://aka.ms/vscode-docker-python-debug
-CMD ["gunicorn", "--bind", "0.0.0.0:2000", "-k", "uvicorn.workers.UvicornWorker", "api.main:app"] 
+CMD ["gunicorn", "--bind", "0.0.0.0:2000", "--timeout", "120", "-k", "uvicorn.workers.UvicornWorker", "api.main:app"] 

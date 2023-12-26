@@ -1,0 +1,35 @@
+name: 🕸️ Website deploy
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📰 Checkout
+        uses: actions/checkout@v3
+
+      # - name: ☊ Setup node
+      #   uses: actions/setup-node@v3
+      #   with:
+      #     node-version: '18'
+
+      # - name: 🧶 Install dependencies with yarn
+      #   run: yarn install
+      #   working-directory: web
+
+      # - name: 🏗️ Build files
+      #   run: yarn parcel build --public-url /codecartographer src/index.html
+      #   working-directory: web
+
+      - name: ⛵ Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: web/dist

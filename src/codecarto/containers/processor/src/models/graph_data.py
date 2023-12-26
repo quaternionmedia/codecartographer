@@ -24,7 +24,7 @@ class Node(BaseModel):
     edges: list[Edge] = []
 
 
-Node.update_forward_refs()
+Node.model_rebuild()
 
 
 class GraphData(BaseModel):

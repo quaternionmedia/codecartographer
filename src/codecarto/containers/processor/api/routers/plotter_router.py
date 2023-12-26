@@ -1,28 +1,37 @@
-from fastapi import APIRouter, Request
+from pprint import pprint
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Request
 import networkx as nx
 import matplotlib.pyplot as plt
 import mpld3
 import matplotlib.lines as mlines
 
+
 from api.util import generate_return, proc_exception, proc_error
 
 PlotterRoute: APIRouter = APIRouter()
+
+# DEBUG
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @PlotterRoute.get(
     "/plot",
 )
+
 async def plot(
     request: Request,
-    graph_data: dict = None,
-    file: str = None,
-    url: str = None,
+    graph_data: Optional[dict] = None,
+    file: Optional[str] = None,
+    url: Optional[str]  = None,
     layout: str = "Spring",
     grid: bool = False,
     labels: bool = False,
     ntx: bool = True,
     custom: bool = True,
-    palette: dict = None,
+    palette: Optional[dict] = None,
     debug: bool = False,
 ):
     """Plot a graph.
@@ -61,10 +70,10 @@ async def plot(
 
     # TODO: DEBUG - This is a demo file
     try:
-        results: dict = {}
+        results: str = ""
         filename: str = ""
         if debug:
-            graph = nx.Graph()
+            graph = nx.DiGraph()
             # add nodes with a type and label attribute
             graph.add_nodes_from(
                 [
@@ -96,17 +105,29 @@ async def plot(
             from src.parser.parser import Parser
 
             # Convert the graph data to a networkx graph
-            graph: nx.DiGraph = None
+            graph = nx.DiGraph()
             if not graph_data:  # if no graph, run demo
                 if url:
-                    from .polygraph_router import read_raw_data_from_url
+                    from .polygraph_router import read_raw_data_from_url, graph_to_graphbase
 
                     filename = url.split("/")[-1]
-                    raw_data: str = await read_raw_data_from_url(url)
+                    raw_data = await read_raw_data_from_url(url) 
                     parser: Parser = Parser(
                         source_dict={"raw": raw_data, "filename": filename}
                     )
                     graph = parser.graph
+ 
+                    from graphbase.src.main import insert_graph 
+                    json_data = graph_to_graphbase(graph) 
+                    pprint(json_data) 
+                    try:
+                        # in try block to avoid error if graph already exists
+                        await insert_graph(name=filename, body={"graph_data": json_data})
+                    except HTTPException as e:
+                        logger.error(e)
+                        if e.status_code != 409:
+                            raise e 
+
                 elif file:
                     import os
 
@@ -138,7 +159,7 @@ async def plot(
         )
 
 
-def single_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib Demo"):
+def single_plot(graph: nx.DiGraph, title: str = "Sprial", file_name: str = "Fib Demo") -> str:
     """Plot a graph.
 
     Parameters:
@@ -207,7 +228,7 @@ def single_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib De
     return plot_html
 
 
-def grid_plot(graph: nx.DiGraph = None):
+def grid_plot(graph: nx.DiGraph) -> str: 
     import math
 
     layouts: list[str] = [
@@ -281,10 +302,10 @@ def grid_plot(graph: nx.DiGraph = None):
         use_http=False,
         include_libraries=True,
     )
-    return plot_html
+    return plot_html 
 
 
-def get_node_positions(graph: nx.Graph, layout_name: str) -> dict:
+def get_node_positions(graph: nx.DiGraph, layout_name: str) -> dict:
     """Gets the node positions for a given layout.
 
     Parameters:
@@ -302,7 +323,7 @@ def get_node_positions(graph: nx.Graph, layout_name: str) -> dict:
     position = Positions(True, True)
     seed = -1
     layout_params = position.get_layout_params(layout_name)
-    layout_kwargs = {"G": graph}
+    layout_kwargs: dict = {"G": graph}
     for param in layout_params:
         if param == "seed":
             import random

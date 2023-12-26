@@ -1,3 +1,4 @@
+import re 
 import httpx
 from fastapi import APIRouter, HTTPException
 
@@ -19,15 +20,14 @@ async def parse():
 
 @ParserRoute.get("/handle_github_url")
 async def handle_github_url(github_url: str) -> dict:
-    try:
-        import time
-
+    import time
+    # get current time to calculate total time taken
+    start_time = time.time()
+    try: 
         client = httpx.AsyncClient()
         logger.info(
             f"  Started     Proc.handle_github_url(): github_url - {github_url}"
         )
-        # get current time to calculate total time taken
-        start_time = time.time()
 
         # check that the url is a github url
         if "github.com" not in github_url:
@@ -80,7 +80,7 @@ async def handle_github_url(github_url: str) -> dict:
         if contents:
             # check if contents dict has status key
             # if it does, then it is an error
-            logger.info(f"\n\n\tContents: {contents}\n\n")
+            # logger.info(f"\n\n\tContents: {contents}\n\n")
             if "status" in contents:
                 return contents
             else:
@@ -104,6 +104,7 @@ async def handle_github_url(github_url: str) -> dict:
             {"github_url": github_url},
             exc,
         )
+
     finally:
         await client.aclose()
         logger.info(f"  Finished    Proc.handle_github_url()")
@@ -112,6 +113,7 @@ async def handle_github_url(github_url: str) -> dict:
         total_time = time.strftime("%H:%M:%S", time.gmtime(end_time - start_time))
         logger.info(f"  Total time taken: {total_time}")
         # TODO: Log this in database later
+        
 
 
 async def read_github_content(
@@ -120,18 +122,18 @@ async def read_github_content(
     repo: str,
     path: str = "",
     first: bool = False,
-) -> list[dict]:
+) -> list[dict] | dict:
     try:
         client = httpx.AsyncClient()
 
         # Construct the API URL
         with open("/run/secrets/github_token", "r") as file:
-            GIT_API_KEY = file.read().strip()
+            GIT_API_KEY = file.read().strip() 
         if not GIT_API_KEY or GIT_API_KEY == "":
             return proc_error(
                 "read_github_content",
                 "No GitHub API key found",
-                {"url": url, "api_url": api_url},
+                {"url": url, "api_url": "nothing"},
                 403,
             )
         headers = {
@@ -217,6 +219,14 @@ async def read_github_content(
             {"url": url},
             exc,
         )
+    except Exception as exc:
+        proc_exception(
+            "read_github_content",
+            "Error when reading GitHub content",
+            {"url": url},
+            exc,
+        ) 
+        
 
 
 async def parse_github_content(file_content, owner, repo) -> dict:
@@ -255,7 +265,8 @@ async def parse_github_content(file_content, owner, repo) -> dict:
             "Error when parsing GitHub content",
             {"owner": owner, "repo": repo},
             exc,
-        )
+        ) 
+        
 
 
 def raw_to_graph(raw_data: str, filename: str):
@@ -275,3 +286,4 @@ def raw_to_graph(raw_data: str, filename: str):
         )
     finally:
         logger.info(f"  Finished    Proc.text_to_json()")
+        
