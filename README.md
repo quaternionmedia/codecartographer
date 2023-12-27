@@ -32,6 +32,8 @@ Clone the repo
 
 ```
 git clone git@github.com:quaternionmedia/codecarto.git
+git submodule init
+git submodule update
 ```
 
 Open a shell terminal, navigate to CodeCartographer folder
