@@ -117,12 +117,12 @@ async def plot(
                     )
                     graph = parser.graph
  
-                    from graphbase.src.main import insert_graph 
-                    json_data = graph_to_graphbase(graph) 
-                    pprint(json_data) 
+                    from graphbase.src.main import insert_serialized_graph, serialize_graph 
+                    json_data = serialize_graph(filename, graph)
+                    pprint(json_data)
                     try:
                         # in try block to avoid error if graph already exists
-                        await insert_graph(name=filename, body={"graph_data": json_data})
+                        await insert_serialized_graph(filename, json_data)
                     except HTTPException as e:
                         logger.error(e)
                         if e.status_code != 409:
