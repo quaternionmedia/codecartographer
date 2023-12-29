@@ -8,10 +8,9 @@ from .routers.plotter_router import PlotterRoute
 from .routers.parser_router import ParserRoute
 from .routers.polygraph_router import PolyGraphRoute
 from .routers.graphs_router import GraphsRoute
-from graphbase import GraphBaseRouter
-
-# from .routers.database_router import DatabaseRoute
-#from graphbase import GraphBaseRouter
+from graphbase.src.main import graphdb as GraphBaseRouter
+# TODO: if we expose the graphbase package, we can import the router directly
+# like this 'from graphbase import GraphBaseRouter'
 
 # Debug
 import logging
