@@ -3,3 +3,5 @@ fastapi[all]
 uvicorn[standard]
 gunicorn 
 httpx
+pytest
+motor

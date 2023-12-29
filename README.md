@@ -8,9 +8,10 @@ Plot the graphs.
 
 Create JSON object of the graph.
 
----
+# Installation
 
-## Installation
+<details>
+<summary>PyPi not implemented yet</summary>
 
 ### From pypi:
 
@@ -20,103 +21,78 @@ python -m venv venv
 .\venv\Scripts\activate
 
 pip install codecarto
+
 ```
 
-### From Git [dev use]:
+</details>
 
-clone repo
+### From Git (dev):
 
-open terminal
+Clone the repo
 
-navigate to repo
+```
+git clone git@github.com:quaternionmedia/codecarto.git
+git submodule init
+git submodule update
+```
+
+Open a shell terminal, navigate to CodeCartographer folder
+
+Setup virtual environment
 
 ```
 python -m venv venv
-
 .\venv\Scripts\activate
-
-pip install -e .
 ```
 
----
-
-## Usage
-
-### Help Information
-
-Check this first to see all usage information.
+Install dependencies
 
 ```
-codecarto help
+poetry install
 ```
 
-### Check output dir:
-
-To show the current output directory
+Install graphbase module
 
 ```
-codecarto output
+pip install -m graphbase
 ```
 
-### Change output:
-
--s | --set : options can be used to set the output directory
-
-If directory does not exist, will ask if you'd like to make it
+Docker Up
 
 ```
-codecarto output -s DIR_PATH
+docker-compose -f ./codecarto/graphbase/docker-compose.yml up --build -d && docker-compose -f ./codecarto/docker-compose.yml up --build -d
 ```
 
-### Demo:
+# Usage (dev)
 
-Parse the package source code
+### Site
 
-```
-codecarto demo
-```
+Go to localhost:2000 to see the CodeCarto site.
 
-### Passed file:
+### Parser
 
-Can pass a file or running script of source code in.
+Click Parser
 
-```
-codecarto FILE_PATH
-```
+Input github repo url
 
----
+Click Parse
 
-## Testing
+Look through contents for .py file
 
-Can test the package using nox commands.
+Click PLOT next to .py file to display the Plotter page
 
-### All Tests
+### Plotter
 
-```
-nox
-```
+Select a layout
 
-### Session Tests
+Click Single Plot to display the graph of the .py file
 
-Test the use of package as an imported library.
+### Docker Down
 
 ```
-nox -s unit_test
+docker-compose -f ./codecarto/docker-compose.yml down -v && docker-compose -f ./codecarto/graphbase/docker-compose.yml down -v
 ```
 
-Test the package CLI commands.
+# Test (dev)
 
-```
-nox -s test_dir
-nox -s test_help
-nox -s test_output
-nox -s test_palette
-nox -s test_palette_import
-nox -s test_palette_export
-nox -s test_palette_reset
-nox -s test_palette_types
-nox -s test_palette_new
-nox -s test_demo
-nox -s test_empty
-nox -s test_file
-```
+**Note:** Tests are not implemented yet.

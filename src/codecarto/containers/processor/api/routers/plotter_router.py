@@ -1,29 +1,36 @@
-from fastapi import APIRouter, Request
+from pprint import pprint
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Request, params
 import networkx as nx
 import matplotlib.pyplot as plt
 import mpld3
 import matplotlib.lines as mlines
 
+
 from api.util import generate_return, proc_exception, proc_error
 
 PlotterRoute: APIRouter = APIRouter()
 
+# DEBUG
+import logging
 
-@PlotterRoute.get(
-    "/plot",
-)
+logger = logging.getLogger(__name__)
+
+
+@PlotterRoute.get("/plot") 
 async def plot(
     request: Request,
-    graph_data: dict = None,
-    file: str = None,
     url: str = None,
+    graph_data: dict = None,
+    db_graph: bool = False,
+    demo: bool = False,
+    demo_file: str = None,
     layout: str = "Spring",
     grid: bool = False,
     labels: bool = False,
     ntx: bool = True,
     custom: bool = True,
     palette: dict = None,
-    debug: bool = False,
 ):
     """Plot a graph.
 
@@ -31,12 +38,16 @@ async def plot(
     -----------
     request : Request
         The request object.
-    graph_data : dict
-        The graph data. JSON format.
-    file : str
-        The file to parse and plot.
     url : str
         The url to parse and plot.
+    graph_data : dict
+        The graph data. JSON format.
+    db_graph: bool
+        Whether to plot a graph from the database.
+    demo: bool
+        Whether to plot the demo graph.
+    demo_file : str
+        The demo_file to parse and plot.
     layout : str
         The name of the layout to plot.
             Used to plot a single layout.
@@ -50,95 +61,86 @@ async def plot(
         Whether to use the custom layouts.
     palette: dict
         The palette to use for plotting.
-    debug: bool
-        Whether to run long process vs short process.
 
     Returns:
     --------
     dict
         The results of the plot. {index: plot html}
     """
-
+    # TODO: need to implement labels, ntx, custom, palette as options at some point
+    # TODO: need to use code in src, not here in api
     # TODO: DEBUG - This is a demo file
+    params = request.query_params
+
     try:
-        results: dict = {}
+        results: str = ""
         filename: str = ""
-        if debug:
-            graph = nx.Graph()
-            # add nodes with a type and label attribute
-            graph.add_nodes_from(
-                [
-                    (1, {"type": "file", "label": "1"}),
-                    (2, {"type": "file", "label": "2"}),
-                    (3, {"type": "file", "label": "3"}),
-                    (4, {"type": "file", "label": "4"}),
-                    (5, {"type": "file", "label": "5"}),
-                    (6, {"type": "file", "label": "6"}),
-                    (7, {"type": "file", "label": "7"}),
-                    (8, {"type": "file", "label": "8"}),
-                ]
-            )
-            graph.add_edges_from(
-                [
-                    (1, 2),
-                    (1, 3),
-                    (2, 3),
-                    (2, 4),
-                    (3, 4),
-                    (5, 6),
-                    (5, 7),
-                    (6, 7),
-                    (6, 8),
-                    (7, 8),
-                ]
-            )
-        else:
+        graph: nx.DiGraph = None
+
+        # Use demo graph
+        if demo: 
+            graph:nx.DiGraph = demo_graph()
+            filename = "Demo Graph"
+
+        # Get graph from demo_file
+        elif demo_file:
+            import os
             from src.parser.parser import Parser
+ 
+            if not os.path.exists(demo_file):
+                return {"error": "File not found."}
+            parser: Parser = Parser(source_files=[demo_file])
+            graph = parser.graph
+            filename = os.path.basename(demo_file)
 
-            # Convert the graph data to a networkx graph
-            graph: nx.DiGraph = None
-            if not graph_data:  # if no graph, run demo
-                if url:
-                    from .polygraph_router import read_raw_data_from_url
+        # Get graph from database
+        elif db_graph and url: 
+            graph: nx.DiGraph = await get_graph_from_database(url)
+            filename = url
 
-                    filename = url.split("/")[-1]
-                    raw_data: str = await read_raw_data_from_url(url)
-                    parser: Parser = Parser(
-                        source_dict={"raw": raw_data, "filename": filename}
-                    )
-                    graph = parser.graph
-                elif file:
-                    import os
+        # Get graph from json data
+        elif graph_data and graph_data != {}:
+            # TODO: at some point user may be able to provide json data
+            # TODO: will need to verify json data represents valid graph
 
-                    py_file_path = file
-                    if not os.path.exists(py_file_path):
-                        return {"error": "File not found."}
-                    filename = os.path.basename(py_file_path)
-                    parser: Parser = Parser(source_files=[py_file_path])
-                    graph = parser.graph
-            else:
-                filename = "Demo Graph"
-                graph = nx.DiGraph(graph_data)
+            # Make sure graph has more than just 'name' key
+            if len(graph_data.keys()) == 1:
+                return {"error": "Graph data must be a valid json graph."}
+            
+            graph = nx.DiGraph(graph_data)
+            filename = "Graph Data"
 
+        # Get graph from url
+        elif url: 
+            from src.parser.parser import Parser
+            from .polygraph_router import read_raw_data_from_url
+
+            filename = url.split("/")[-1]
+            raw_data = await read_raw_data_from_url(url) 
+            parser: Parser = Parser(
+                source_dict={"raw": raw_data, "filename": filename}
+            )
+            graph = parser.graph
+            db_results = await insert_graph_into_database(filename, graph)
+
+        # Plot the graph
         if layout.lower() == "all":
             results = grid_plot(graph)
         else:
             results = single_plot(graph=graph, title=layout, file_name=filename)
+
+        # Return the results
         return generate_return(200, "Proc - Plot generated successfully", results)
     except Exception as e:
         proc_exception(
             "plot",
             "Could not generate plot",
-            {
-                "graph_data": graph_data,
-                "file": file,
-                "layout": layout,
-            },
+            params,
             e,
         )
 
 
-def single_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib Demo"):
+def single_plot(graph: nx.DiGraph, title: str = "Sprial", file_name: str = "Fib Demo") -> str:
     """Plot a graph.
 
     Parameters:
@@ -207,7 +209,7 @@ def single_plot(graph: nx.Graph, title: str = "Sprial", file_name: str = "Fib De
     return plot_html
 
 
-def grid_plot(graph: nx.DiGraph = None):
+def grid_plot(graph: nx.DiGraph) -> str: 
     import math
 
     layouts: list[str] = [
@@ -281,10 +283,10 @@ def grid_plot(graph: nx.DiGraph = None):
         use_http=False,
         include_libraries=True,
     )
-    return plot_html
+    return plot_html 
 
 
-def get_node_positions(graph: nx.Graph, layout_name: str) -> dict:
+def get_node_positions(graph: nx.DiGraph, layout_name: str) -> dict:
     """Gets the node positions for a given layout.
 
     Parameters:
@@ -302,7 +304,7 @@ def get_node_positions(graph: nx.Graph, layout_name: str) -> dict:
     position = Positions(True, True)
     seed = -1
     layout_params = position.get_layout_params(layout_name)
-    layout_kwargs = {"G": graph}
+    layout_kwargs: dict = {"G": graph}
     for param in layout_params:
         if param == "seed":
             import random
@@ -335,3 +337,135 @@ def get_node_positions(graph: nx.Graph, layout_name: str) -> dict:
     # Compute layout positions
     pos: dict = position.get_positions(layout_name, **layout_kwargs)
     return pos
+
+
+def demo_graph() -> nx.DiGraph:
+    """Create a demo graph.
+
+    Returns:
+    --------
+        graph (nx.DiGraph):
+            The demo graph.
+    """
+    graph = nx.DiGraph()
+    graph.add_nodes_from(
+        [
+            (1, {"type": "file", "label": "1"}),
+            (2, {"type": "file", "label": "2"}),
+            (3, {"type": "file", "label": "3"}),
+            (4, {"type": "file", "label": "4"}),
+            (5, {"type": "file", "label": "5"}),
+            (6, {"type": "file", "label": "6"}),
+            (7, {"type": "file", "label": "7"}),
+            (8, {"type": "file", "label": "8"}),
+        ]
+    )
+    graph.add_edges_from(
+        [
+            (1, 2),
+            (1, 3),
+            (2, 3),
+            (2, 4),
+            (3, 4),
+            (5, 6),
+            (5, 7),
+            (6, 7),
+            (6, 8),
+            (7, 8),
+        ]
+    )
+    return graph
+
+
+################## DATABASE ##################
+
+async def get_graph_from_database(graph_name: str) -> nx.DiGraph: 
+    """Get a graph from the database.
+
+    Parameters:
+    -----------
+        graph_name (str):
+            The name of the graph.
+
+    Returns:
+    --------
+        graph (nx.DiGraph):
+            The graph.
+    """
+    from graphbase.src.main import read_graph
+
+    # Check if graph name provided
+    if not graph_name or graph_name == "":
+        return proc_error(
+            "get_graph_from_database",
+            "No graph name provided",
+            {"graph_name": graph_name}
+        )
+    
+    # Get the graph from database
+    graph_data: nx.DiGraph = await read_graph(graph_name)
+
+    # Check if graph data found
+    if not graph_data or graph_data == {}:
+        return proc_error(
+            "get_graph_from_database",
+            "Graph data not found in database",
+            {"graph_name": graph_name,"graph_data": graph_data}
+        )
+    
+
+    # TODO: node_link_data creates an undirected multiDiGraph by default
+    #       1.need to decide if we want to use MultiDiGraph or DiGraph in graphBase
+    #       2.or if we need to set directed=True by default in GraphBase node_link_data
+    #       3.or, we convert to what is needed when we get the graph
+
+    # GraphBase uses node_link_data, which has directed=False by default
+    # Set directed=True to get arrows working correctly
+    graph_data["directed"] = True
+    graph: nx.DiGraph = nx.node_link_graph(graph_data)
+    
+
+    # Check if graph found
+    if not graph:
+        return proc_error(
+            "get_graph_from_database",
+            "Graph not found in database",
+            {"graph_name": graph_name,"graph": graph}
+        )
+    elif graph.number_of_nodes() == 0:
+        return proc_error(
+            "get_graph_from_database",
+            "Graph has no nodes",
+            {"graph_name": graph_name,"graph": graph}
+        )
+    
+    # Return the graph
+    return graph
+
+
+async def insert_graph_into_database(graph_name: str, graph: nx.DiGraph) -> dict:
+    """Insert a graph into the database.
+
+    Parameters:
+    -----------
+        graph_name (str):
+            The name of the graph.
+        graph (nx.DiGraph):
+            The graph.
+
+    Returns:
+    --------
+        results (dict):
+            The results of the insert.
+    """
+    try:
+        from graphbase.src.main import insert_serialized_graph, serialize_graph 
+        json_data = serialize_graph(graph_name, graph)
+        # pprint(json_data)
+        result:dict = await insert_serialized_graph(graph_name, json_data)
+        return result
+    except HTTPException as e:
+        logger.error(e)
+        # If graph already exists (409), ignore error
+        if e.status_code != 409:
+            raise e

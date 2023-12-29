@@ -1,0 +1,3 @@
+[submodule "graphbase"]
+	path = graphbase
+	url = https://github.com/quaternionmedia/graphbase.git

@@ -2,36 +2,42 @@ version: '3'
 
 services:
   web:
+    container_name: web
+    image: web  
     build:
       context: .
       dockerfile: ./src/codecarto/containers/web/Dockerfile
     ports:
       - '2000:2000'
     networks:
-      - external_network
-      - internal_network
+      - front_net
+      - back_net
+      - graphbase_db_net
     volumes:
       - ./src/codecarto/containers/web/src:/app/src
 
   processor:
+    container_name: processor
+    image: processor  
     build:
       context: .
       dockerfile: ./src/codecarto/containers/processor/Dockerfile
+    ports:
+      - '2020:2020'
     networks:
-      - internal_network
-
-  # database:
-  #   image: mongo:latest
-  #   ports:
-  #     - '27017:27017'
-  #   environment:
-  #     MONGO_INITDB_ROOT_USERNAME: root
-  #     MONGO_INITDB_ROOT_PASSWORD: examplepassword
-  #   networks:
-  #     - internal_network
+      - back_net
+      - graphbase_db_net
+    secrets:
+      - github_token
 
 networks:
-  external_network:
+  front_net:
     driver: bridge
-  internal_network:
+  back_net:
     driver: bridge
+  graphbase_db_net:
+    external: true
+
+secrets:
+  github_token:
+    file: ./token.txt

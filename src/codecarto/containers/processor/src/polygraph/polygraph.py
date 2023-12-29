@@ -5,7 +5,7 @@ from ..models.graph_data import GraphData
 class PolyGraph:
     """A class used to convert data types to a networkx graph and vice versa."""
 
-    def graph_to_json_file(self, graph: GraphData, json_path: str) -> dict:
+    def graph_to_json_file(self, graph: nx.DiGraph, json_path: str) -> dict:
         """Converts a networkx graph to a JSON object.
 
         Parameters:
@@ -60,12 +60,12 @@ class PolyGraph:
 
         return self.json_data_to_graph(graph_data)
 
-    def graph_to_json_data(self, graph: GraphData) -> dict:
+    def graph_to_json_data(self, nx_graph: nx.DiGraph) -> dict:
         """Converts a networkx graph to a JSON object.
 
         Parameters:
         -----------
-            graph (GraphData): The graph to convert.
+            graph (nx.DiGraph): The graph to convert.
 
         Returns:
         --------
@@ -74,11 +74,11 @@ class PolyGraph:
         from ..plotter.palette import Palette
 
         # Validate inputs
-        if graph is None:
+        if nx_graph is None:
             raise ValueError("No graph provided.")
-        if not isinstance(graph, nx.DiGraph):
+        if not isinstance(nx_graph, nx.DiGraph):
             try:
-                graph: nx.DiGraph = self.graphdata_to_nx(graph)
+                graph: nx.DiGraph = self.graphdata_to_nx(nx_graph)
             except:
                 raise ValueError("'graph' must be formatted as a GraphData object.")
 
@@ -87,7 +87,7 @@ class PolyGraph:
 
         # Create all node objects
         node_styles = Palette().get_node_styles()
-        for node_id, data in graph.nodes.data(True):
+        for node_id, data in nx_graph.nodes.data(True):
             node_type = data.get("type", "Unknown")
             if node_type not in node_styles.keys():
                 node_type = "Unknown"
@@ -110,19 +110,19 @@ class PolyGraph:
                 graph_data["nodes"][parent_id]["children"].append(node_obj)
 
         # Create edge objects and link them to their source nodes
-        for edge_id, (source, target) in enumerate(graph.edges()):
+        for edge_id, (source, target) in enumerate(nx_graph.edges()):
             if source not in graph_data["nodes"] or target not in graph_data["nodes"]:
                 continue
             source_node: dict[str, list] = graph_data["nodes"][source]
             target_node: dict[str, list] = graph_data["nodes"][target]
 
             edge_obj = {
-                "id": edge_id,
+                "id": str(edge_id),  # Convert edge_id to a string
                 "type": "edge",
                 "source": source_node["id"],
                 "target": target_node["id"],
             }
-            graph_data["edges"][edge_id] = edge_obj
+            graph_data["edges"][str(edge_id)] = edge_obj  # Convert edge_id to a string
             source_node["edges"].append(edge_obj)
 
         # # Clean out any graph_data["nodes"] that have parents
@@ -174,7 +174,7 @@ class PolyGraph:
 
         return graph
 
-    def graphdata_to_nx(graph_data: GraphData) -> nx.DiGraph:
+    def graphdata_to_nx(self, graph_data: GraphData) -> nx.DiGraph:
         """Converts a GraphData object to a networkx graph.
 
         Parameters:
@@ -205,3 +205,75 @@ class PolyGraph:
             return G
         except:
             raise ValueError("'graph' must be formatted as a GraphData object.")
+
+    def digraph_to_graphbase(self, digraph: nx.DiGraph) -> dict:
+        """Converts a networkx DiGraph to a GraphBase compatible graph.
+
+        Parameters:
+        -----------
+            digraph (nx.DiGraph): The graph to convert.
+
+        Returns:
+        --------
+            dict: object compatible with graphbase database.
+        """
+        from ..plotter.palette import Palette
+
+        # Validate inputs
+        if digraph is None:
+            raise ValueError("No graph provided.")
+        if not isinstance(digraph, nx.DiGraph): 
+            raise ValueError("'graph' must be formatted as a GraphData object.")
+
+        # Create the GraphData object
+        graph_data: dict[str, list] = {"nodes": [], "links": []}
+
+        # Create all node objects
+        node_styles = Palette().get_node_styles()
+        for node_id, data in digraph.nodes.data(True):
+            node_type = data.get("type", "Unknown")
+            if node_type not in node_styles.keys():
+                node_type = "Unknown"
+
+            node_obj = {
+                "id": node_id,
+                "type": node_type,
+                "label": data.get("label", node_id),
+                "base": data.get("base", "unknown"),
+                "parent": data.get("parent"),
+                "children": [],
+                "edges": [],
+            }
+            graph_data["nodes"].append(node_obj)
+
+        # Link parent and child nodes together
+        for node_obj in graph_data["nodes"]:
+            parent_id = node_obj["parent"]
+            if parent_id and parent_id in graph_data["nodes"]:
+                parent_obj:dict = graph_data["nodes"][parent_id]
+                parents_children:list = parent_obj["children"]
+                if node_obj not in parents_children:
+                    parents_children.append(node_obj)
+
+        # Create edge objects and link them to their source nodes
+        for edge_id, (source, target) in enumerate(digraph.edges()):
+            if source not in graph_data["nodes"] or target not in graph_data["nodes"]:
+                continue
+            source_node: dict[str, list] = graph_data["nodes"][source]
+            target_node: dict[str, list] = graph_data["nodes"][target]
+
+            edge_obj = {
+                "id": edge_id,
+                "type": "edge",
+                "source": source_node["id"],
+                "target": target_node["id"],
+            }
+            graph_data["links"].append(edge_obj)
+            source_node["links"].append(edge_obj) # TODO: why was i doing this?
+
+        # # Clean out any graph_data["nodes"] that have parents
+        # for node_id, node_obj in list(graph_data["nodes"].items()):
+        #     if node_obj["parent"]:
+        #         del graph_data["nodes"][node_id]
+
+        return graph_data

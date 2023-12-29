@@ -11,3 +11,5 @@ scipy
 pydantic
 requests
 httpx
+motor
+pytest-asyncio
