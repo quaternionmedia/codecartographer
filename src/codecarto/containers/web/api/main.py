@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 
 from .routers.palette_router import PaletteRoute
 from .routers.plotter_router import PlotterRoute
@@ -39,6 +40,18 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 async def root(request: Request):
     return pages.TemplateResponse("/home/home.html", {"request": request})
 
+
+# TODO: this is here to test moe calling the api
+origins = [
+    "http://localhost:5000",  # moe
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Add the routers
 app.include_router(PaletteRoute, prefix="/palette", tags=["palette"])

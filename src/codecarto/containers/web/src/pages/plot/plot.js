@@ -18,15 +18,20 @@ if (fileUrlDiv) {
       'fileUrl'
     ).innerHTML = `File:&nbsp;&nbsp;${fileName}`
     document.getElementById('fileUrl').style.display = 'inline'
+    document.getElementById('plot_moe').style.display = 'inline'
 
     // check if the file ends with .py
     if (!fileName.endsWith('.py')) {
       document.getElementById('single').disabled = true
       document.getElementById('grid').disabled = true
+      document.getElementById('plot_moe').disabled = true
       document.getElementById('plot').innerHTML = '<br>Invalid file type'
     }
+  } else {
+    document.getElementById('plot_moe').style.display = 'none'
   }
 } else {
+  document.getElementById('plot_moe').style.display = 'none'
   console.error('fileUrlDiv not found')
 }
 
@@ -43,7 +48,7 @@ async function plot(all = false) {
     document.getElementById('plot_loader').style.display = 'inline'
 
     // Fetch plot data
-    const endpoint = generateEndpoint(all)
+    const endpoint = generatePlotEndpoint(all)
     const responseData = await fetchPlotData(endpoint)
     handlePlotResponse(responseData)
 
@@ -61,7 +66,7 @@ async function plot(all = false) {
  * @returns {string} The endpoint for the plot API.
  *
  */
-function generateEndpoint(all) {
+function generatePlotEndpoint(all) {
   try {
     // Get the selected layout
     const layoutElement = document.getElementById('layouts')
@@ -103,7 +108,7 @@ function generateEndpoint(all) {
     // Return the endpoint
     return endpoint
   } catch (error) {
-    console.error('Error - plot.js - generateEndpoint():', error)
+    console.error('Error - plot.js - generatePlotEndpoint():', error)
     document.getElementById('plot_loader').style.display = 'none'
   }
 }
@@ -206,5 +211,36 @@ function stylePlotHTML(plotHTML) {
   } catch (error) {
     console.error('Error - plot.js - stylePlotHTML():', error)
     document.getElementById('plot_loader').style.display = 'none'
+  }
+}
+
+/**
+ * Open the graph in Moe
+ * @param {string} graphId - The ID of the graph to open.
+ */
+async function openInMoe(graphId) {
+  try {
+    let url
+    // If fileUrl is defined, add it to the postData object
+    if (window.fileUrl && window.fileUrl !== '') {
+      url = window.fileUrl
+    } else {
+      // throw error for no url
+      throw 'No url found'
+    }
+
+    // TODO: This is temporary until we have a graph database, which will return a graph ID
+    // Construct Moe API endpoint
+    const moe = 'http://localhost:5000/#!/graph'
+    const moeURL = `${moe}?url=${url}`
+
+    // Open the new tab
+    window.open(moeURL, '_blank')
+    document.getElementById('plot_sent_to_moe').style.display = 'block'
+  } catch (error) {
+    document.getElementById('plot_sent_to_moe').style.display = 'block'
+    document.getElementById('plot_sent_to_moe').innterHTML = 'Error opening Moe'
+    console.error('Error - plot.js - openInMoe():', error)
+    return { status: 'error', message: 'Network error' }
   }
 }
