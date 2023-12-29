@@ -1,3 +1,10 @@
+// Get db_graph from url
+function getQueryParam(key) {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(key);
+}
+const dbGraphValue = getQueryParam('db_graph'); 
+window.dbGraph = dbGraphValue === 'true'; 
 // Set up fileUrl if it is defined
 const fileUrlDiv = document.getElementById('fileUrl')
 if (fileUrlDiv) {
@@ -29,6 +36,8 @@ if (fileUrlDiv) {
  */
 async function plot(all = false) {
   try {
+    console.log('Plotting...')
+
     // Clear plot and show spinner
     document.getElementById('plot').innerHTML = ''
     document.getElementById('plot_loader').style.display = 'inline'
@@ -63,24 +72,33 @@ function generateEndpoint(all) {
       layout: selectedLayout,
       file: '',
       url: '',
-      debug: false,
+      demo: false,
+    }
+    let graphData = {
+      name: '',
     }
 
-    // If fileUrl is defined, add it to the postData object
-    if (window.fileUrl && window.fileUrl !== '') {
+    if (window.fileUrl && window.fileUrl !== '' && !window.dbGraph) {
+      // If fileUrl is defined, add it to the postData object
+      postData.url = window.fileUrl
+    } else if (window.dbGraph) {
+      // Otherwise, set the url to the graph name (file name)
       postData.url = window.fileUrl
     } else {
       // Otherwise, get the file selector value
       const runElement = document.getElementById('files')
       const selectedRun = runElement.value
-      postData.debug = selectedRun === 'debug'
-      if (!postData.debug) {
+      postData.demo = selectedRun === 'demo'
+      if (!postData.demo) {
         postData.file = selectedRun
       }
     }
 
     // Construct the endpoint
-    let endpoint = `/plotter/plot?file=${postData.file}&url=${postData.url}&layout=${postData.layout}&debug=${postData.debug}`
+    let endpoint = `/plotter/plot?url=${postData.url}&graph_data=${graphData}&db_graph=${window.dbGraph}&demo=${postData.demo}&demo_file=${postData.file}&layout=${postData.layout}`
+    if (window.dbGraph) {
+      console.log('Grabbing graph from database...')
+    }
 
     // Return the endpoint
     return endpoint
@@ -125,7 +143,7 @@ function handlePlotResponse(responseData) {
       console.error(`Error with response data: ${responseData.message}`)
       document.getElementById('plot').innerHTML = responseData.message
     } else {
-      console.log(`Received response: ${responseData.message}`)
+      // console.log(`Received response: ${responseData.message}`)
       // Style the plot HTML and insert it into the page
       const plotHTML = responseData.results
       let newPlotHTML = stylePlotHTML(plotHTML)

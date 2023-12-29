@@ -1,1 +1,14 @@
 /* db.html specific styles */
+
+.plotLink {
+  color: #e1c48f;
+}
+.plotLink:link {
+  color: #e1c48f;
+}
+.plotLink:hover {
+  color: #e8dbad;
+}
+.plotLink:active {
+  color: #e8dbad;
+}

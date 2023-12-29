@@ -43,11 +43,26 @@ async function getDatabase() {
  * @returns {string} The HTML content.
  */
 function handleContents(data) { 
-  //loop list of graph names in data 
-  let content = ''
-  var arrayLength = data.length;
-  for (var i = 0; i < arrayLength; i++) {
-      console.log(data[i]);
-      content += `${data[i]}`;
+  //loop list of graph names in database
+  let html = ''
+  if (typeof data !== 'object') {
+    html += `<span>Invalid format: ${obj}</span>`
+  } else if (data.length === 0) {
+    html += `<span>No graphs in database</span>`
+  } else {
+    // Iterate through the array
+    const arrayLength = data.length;
+    html = `<ul>`
+    for (var i = 0; i < arrayLength; i++) {
+      //set plot link
+      const plot_link = `/plotter/?file_url=${data[i]}&db_graph=true`
+      html += `<li><strong>${data[i]}</strong>`
+      html += `${'&nbsp;'.repeat(2)} - ${'&nbsp;'.repeat(2)}`
+      html += `<a class="plotLink" href="${plot_link}" target="_blank">PLOT</a>`
+      html += `</li>`
+    }
+    html += `</ul>`
   }
+  // Return the html
+  return html
 }

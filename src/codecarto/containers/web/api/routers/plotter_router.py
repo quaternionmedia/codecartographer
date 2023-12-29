@@ -13,13 +13,12 @@ html_page = "/plot/plot.html"
 PROC_API_URL = "http://processor:2020/plotter"
 PROC_API_PLOT = f"{PROC_API_URL}/plot"
 
-
 # Root page
 @PlotterRoute.get("/")
-async def root(request: Request, file_url: str = None):
+async def root(request: Request, file_url: str = None, db_graph: bool = False):
     if file_url and file_url != "":
         return pages.TemplateResponse(
-            html_page, {"request": request, "file_url": file_url}
+            html_page, {"request": request, "file_url": file_url, "db_graph": db_graph}
         )
     else:
         return pages.TemplateResponse(html_page, {"request": request})
@@ -27,16 +26,18 @@ async def root(request: Request, file_url: str = None):
 
 @PlotterRoute.get("/plot")
 async def plot(
+    request: Request,
+    url:str = None,
     graph_data: dict = None,
-    file: str = None,
-    url: str = None,
-    layout: str = None,
+    db_graph: bool = False,
+    demo: bool = False,
+    demo_file: str = None,
+    layout: str = "Spring",
     grid: bool = False,
     labels: bool = False,
     ntx: bool = True,
     custom: bool = True,
     palette: dict = None,
-    debug: bool = False,
 ) -> dict:
     """Plot a graph.
 
@@ -44,12 +45,16 @@ async def plot(
     -----------
     request : Request
         The request object.
-    graph_data : dict
-        The graph data. JSON format.
-    file : str
-        The file to parse and plot.
     url : str
         The url to parse and plot.
+    graph_data : dict
+        The graph data. JSON format.
+    db_graph: bool
+        Whether to plot a graph from the database.
+    demo: bool
+        Whether to plot the demo graph.
+    demo_file : str
+        The demo_file to parse and plot.
     layout : str
         The name of the layout to plot.
             Used to plot a single layout.
@@ -63,8 +68,6 @@ async def plot(
         Whether to use the custom layouts.
     palette: dict
         The palette to use for plotting.
-    debug: bool
-        Whether to run long process vs short process.
 
     Returns:
     --------
@@ -73,18 +76,7 @@ async def plot(
     """
     # Call the processor container
     async with httpx.AsyncClient(timeout=60.0) as client:
-        params: dict = {
-            "graph_data": graph_data,
-            "file": file,
-            "url": url,
-            "layout": layout,
-            "grid": grid,
-            "labels": labels,
-            "ntx": ntx,
-            "custom": custom,
-            "palette": palette,
-            "debug": debug,
-        }
+        params = request.query_params
 
         try:
             response = await client.get(PROC_API_PLOT, params=params)
@@ -117,3 +109,4 @@ async def plot(
                 params,
                 exc,
             )
+ 
