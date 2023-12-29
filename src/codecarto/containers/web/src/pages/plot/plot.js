@@ -229,14 +229,33 @@ async function openInMoe(graphId) {
       throw 'No url found'
     }
 
+    // Construct the endpoint for the url_to_json API
     // TODO: This is temporary until we have a graph database, which will return a graph ID
+    // let graphEndpoint = `/polygraph/url_to_json?file_url=${postData.url}`
+    // const graphResponse = await fetch(graphEndpoint)
+    // const graphResponseData = await graphResponse.json()
+
     // Construct Moe API endpoint
     const moe = 'http://localhost:5000/#!/graph'
     const moeURL = `${moe}?url=${url}`
+    // TODO: This is temporary until we have a graph database, which will send a graph ID
+    //const endpoint = `${moe}?graph=${graphResponseData}` // generateMoeEndpoint(all)
 
     // Open the new tab
     window.open(moeURL, '_blank')
     document.getElementById('plot_sent_to_moe').style.display = 'block'
+
+    // // Fetch the data and wait for the response
+    // const response = await fetch(endpoint)
+
+    // // Check the response status
+    // if (response.ok) {
+    //   //Show sent message
+    //   document.getElementById('plot_sent_to_moe').style.display = 'block'
+    // } else {
+    //   console.error(`Error with response status: ${response.status}`)
+    //   return { status: 'error', message: 'Network error' }
+    // }
   } catch (error) {
     document.getElementById('plot_sent_to_moe').style.display = 'block'
     document.getElementById('plot_sent_to_moe').innterHTML = 'Error opening Moe'
@@ -244,3 +263,25 @@ async function openInMoe(graphId) {
     return { status: 'error', message: 'Network error' }
   }
 }
+
+// /**
+//  * Generate the endpoint to call Moe.
+//  * @param {boolean} all - If true, plot all layouts.
+//  * @returns {string} The endpoint for calling Moe.
+//  *
+//  */
+// async function generateMoeEndpoint(all) {
+//   // TODO: Temporary solution is to send graph as json obj to Moe
+//   // will eventually send just an id to graph from a database
+
+//   try {
+//     // Construct the endpoint for Moe
+//     let endpoint = `/moe?graph=${responseData.results}`
+
+//     // Return the endpoint
+//     return endpoint
+//   } catch (error) {
+//     console.error('Error - plot.js - generateMoeEndpoint():', error)
+//     document.getElementById('plot_loader').style.display = 'none'
+//   }
+// }
