@@ -112,6 +112,9 @@ async def plot(
 
         # Get graph from url
         elif url: 
+            #TODO: need to have the 'insert into database' code in somewhere else
+            # Not when the user click Single Plot on Plotter page. 
+            
             from src.parser.parser import Parser
             from .polygraph_router import read_raw_data_from_url
 
@@ -378,7 +381,6 @@ def demo_graph() -> nx.DiGraph:
 
 
 ################## DATABASE ##################
-
 async def get_graph_from_database(graph_name: str) -> nx.DiGraph: 
     """Get a graph from the database.
 
@@ -403,7 +405,8 @@ async def get_graph_from_database(graph_name: str) -> nx.DiGraph:
         )
     
     # Get the graph from database
-    graph_data: nx.DiGraph = await read_graph(graph_name)
+    graph_data: dict = await read_graph(graph_name)
+    pprint(f"web - graph_data: {graph_data}")
 
     # Check if graph data found
     if not graph_data or graph_data == {}:
@@ -413,17 +416,15 @@ async def get_graph_from_database(graph_name: str) -> nx.DiGraph:
             {"graph_name": graph_name,"graph_data": graph_data}
         )
     
-
     # TODO: node_link_data creates an undirected multiDiGraph by default
     #       1.need to decide if we want to use MultiDiGraph or DiGraph in graphBase
     #       2.or if we need to set directed=True by default in GraphBase node_link_data
     #       3.or, we convert to what is needed when we get the graph
-
+    
     # GraphBase uses node_link_data, which has directed=False by default
     # Set directed=True to get arrows working correctly
     graph_data["directed"] = True
     graph: nx.DiGraph = nx.node_link_graph(graph_data)
-    
 
     # Check if graph found
     if not graph:
@@ -438,7 +439,7 @@ async def get_graph_from_database(graph_name: str) -> nx.DiGraph:
             "Graph has no nodes",
             {"graph_name": graph_name,"graph": graph}
         )
-    
+     
     # Return the graph
     return graph
 
@@ -459,13 +460,12 @@ async def insert_graph_into_database(graph_name: str, graph: nx.DiGraph) -> dict
             The results of the insert.
     """
     try:
-        from graphbase.src.main import insert_serialized_graph, serialize_graph 
-        json_data = serialize_graph(graph_name, graph)
-        # pprint(json_data)
-        result:dict = await insert_serialized_graph(graph_name, json_data)
+        from graphbase.src.main import insert_graph
+        result:dict = await insert_graph(graph_name, graph)
         return result
     except HTTPException as e:
         logger.error(e)
         # If graph already exists (409), ignore error
         if e.status_code != 409:
             raise e
+        

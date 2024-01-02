@@ -110,3 +110,59 @@ async def plot(
                 exc,
             )
  
+@PlotterRoute.get("/ipynb")
+async def extract_outputs(graph_name:str, nb_path:str = "src/notebooks/codecarto.ipynb"):
+    """Extract the outputs from a notebook.
+
+    Parameters:
+    -----------
+    graph_name : str
+        The name of the graph to pass to ipynb.
+    nb_path : str
+        The path to the notebook.
+
+    Returns:
+    --------
+    list
+        The list of outputs.
+    """
+    import nbformat
+    from nbconvert.preprocessors import ExecutePreprocessor
+    from graphbase.src.main import read_graph
+
+    from pprint import pprint
+    
+    # Get the graph from the database
+    pprint(f"start reading graph {graph_name}")
+
+    graph_data = await read_graph(graph_name)
+    graph_data = {"graph": graph_data.get("graph", None)}
+    pprint(graph_data)
+
+    if not graph_data:
+        return None
+    
+    # Read in the notebook
+    with open(nb_path, 'r', encoding='utf-8') as f:
+        nb = nbformat.read(f, as_version=4)
+
+        # Create a new code cell with the parameter
+        param_cell = nbformat.v4.new_code_cell(f"g = {graph_data}")
+        
+        # Insert the cell at the beginning of the notebook
+        nb.cells.insert(0, param_cell)
+
+    # Execute the notebook
+    ep = ExecutePreprocessor(timeout=600)
+    ep.preprocess(nb, {'metadata': {'path': 'src/notebooks/'}})
+
+    # Extract the outputs
+    outputs = []
+    for cell in nb.cells:
+        if cell.cell_type == 'code':
+            for output in cell.outputs:
+                if output.output_type == 'execute_result':
+                    outputs.append(output.data)
+
+    # Return the outputs
+    return outputs

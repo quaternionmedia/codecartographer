@@ -5,3 +5,5 @@ gunicorn
 httpx
 pytest
 motor
+nbformat
+nbconvert

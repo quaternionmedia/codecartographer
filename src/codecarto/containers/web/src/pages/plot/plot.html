@@ -40,6 +40,9 @@ content %}
     <button id="plot_moe" onclick="openInMoe(true)" style="display: none">
       Open in Moe
     </button>
+    <button id="plot_notebook" style="display: none" onclick="getNotebookOutput(true)">
+      Run Notebook
+    </button>
     <div id="plot_loader" class="loader" style="display: none">Loading ...</div>
     <div id="plot_sent_to_moe" class="loader" style="display: none">
       Sent to Moe
@@ -49,6 +52,7 @@ content %}
   <!-- Plot Display -->
   <section id="plot_display">
     <div id="plot"></div>
+    <section id="output"></section>
   </section>
 </main>
 

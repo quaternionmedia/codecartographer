@@ -5,6 +5,11 @@ function getQueryParam(key) {
 }
 const dbGraphValue = getQueryParam('db_graph'); 
 window.dbGraph = dbGraphValue === 'true'; 
+// Check if dbGraph is true
+if (window.dbGraph) {
+  // Show the notebook button
+  document.getElementById('plot_notebook').style.display = 'inline'
+}
 // Set up fileUrl if it is defined
 const fileUrlDiv = document.getElementById('fileUrl')
 if (fileUrlDiv) {
@@ -242,5 +247,48 @@ async function openInMoe(graphId) {
     document.getElementById('plot_sent_to_moe').innterHTML = 'Error opening Moe'
     console.error('Error - plot.js - openInMoe():', error)
     return { status: 'error', message: 'Network error' }
+  }
+}
+
+/**
+ * Get ipynb output.
+ */
+async function getNotebookOutput() {
+  try {
+    document.getElementById('plot_loader').style.display = 'inline'
+    console.log('Getting notebook output...')
+
+    // Get the output div
+    const outputElement = document.getElementById('output')
+
+    // Clear the existing content
+    outputElement.innerHTML = ''
+
+    // Insert the new content
+    const filename = window.fileUrl.substring(
+      window.fileUrl.lastIndexOf('/') + 1
+    )
+    const endpoint = `/plotter/ipynb?graph_name=${filename}`
+    const responseData = await fetchPlotData(endpoint)
+
+    console.log(responseData)
+    // Check if the response data contains the expected output
+    if (responseData && responseData.length > 0) {
+      responseData.forEach(output => {
+        if (output['text/html']) {
+            // Create an iframe for each output
+            let iframe = document.createElement('iframe');
+            iframe.className = 'nbFrame';
+            iframe.srcdoc = output['text/html'];
+            iframe.style.width = '500px';
+            iframe.style.height = '500px';
+            iframe.style.border = 'none';
+            outputElement.appendChild(iframe);
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error - plot.js - getNotebookOutput():', error)
+    document.getElementById('plot_loader').style.display = 'none'
   }
 }
