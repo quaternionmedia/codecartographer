@@ -668,7 +668,7 @@ async def insert_graph_into_database(graph_name: str, graph: nx.DiGraph) -> dict
     try:
         from graphbase.src.main import insert_graph
 
-        result:dict = await insert_graph(graph_name, graph)
+        result:dict = await insert_graph(graph_name, {"graph_data":graph})
 
         return result
     except HTTPException as e:
