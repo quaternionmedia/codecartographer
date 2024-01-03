@@ -1,10 +1,8 @@
 from pprint import pprint
-from typing import Optional
-from fastapi import APIRouter, HTTPException, Request, params
+from fastapi import APIRouter, HTTPException, Request
 import networkx as nx
 import matplotlib.pyplot as plt
 import mpld3
-import matplotlib.lines as mlines
 
 
 from api.util import generate_return, proc_exception, proc_error
@@ -415,6 +413,8 @@ async def get_graph(demo:bool, file_path:str, db_graph:bool, url:str, graph_data
     elif db_graph and url:
         pprint("db_graph")
         graph_data, filename = await get_gJGF_from_database(url)
+        graph_data["name"] = filename
+        #graph_data = format_gJGF(graph_data)
         graph, filename = gJGF_to_nxGraph(url, graph_data)
 
     # Get graph from url
@@ -542,7 +542,7 @@ async def url_graph(url: str) -> tuple:
     graph = parser.graph
     
     #TODO: need to have the 'insert into database' code in somewhere else
-    # Not when the user click Single Plot on Plotter page. 
+    # Not when the user click Single Plot on Plotter page.
     db_results = await insert_graph_into_database(filename, graph)
 
     return graph, filename
@@ -580,39 +580,12 @@ async def get_gJGF_from_database(graph_name: str) -> tuple:
         return proc_error(
             "get_gJGF_from_database",
             "Graph data not found in database",
-            {"graph_name": graph_name,"graph_data": graph_data}
+            {"graph_name": graph_name, "graph_data": graph_data}
         )
     
     # Return the graph data and filename
     return graph_data, graph_name
 
-def format_gJGF(graph_data: dict) -> dict:
-    """Format a gJGF graph.
-
-    Parameters:
-    -----------
-        graph_data (dict):
-            The graph data.
-
-    Returns:
-    --------
-        dict:
-            The formatted graph.
-    """
-    # TODO: node_link_data creates an undirected multiDiGraph by default
-    #       1.need to decide if we want to use MultiDiGraph or DiGraph in graphBase
-    #       2.or if we need to set directed=True by default in GraphBase node_link_data
-    #       3.or, we convert to what is needed when we get the graph
-    
-    # GraphBase uses node_link_data, which has directed=False by default
-    # Set directed=True to get arrows working correctly
-    # graph_data["directed"] = True
-    graph_data = graph_data["graph"]
-    nodes = [{**v, "id": k} for k, v in graph_data["nodes"].items()]
-    edges = [{"source": e["source"], "target": e["target"]} for e in graph_data["edges"]]
-
-    # Creating a new dictionary in the expected format
-    return {"nodes": nodes, "links": edges}
 
 def gJGF_to_nxGraph(graph_name:str, graph_data: dict) -> tuple:
     """Convert a graph in gJGF format to a networkx graph.
@@ -630,7 +603,8 @@ def gJGF_to_nxGraph(graph_name:str, graph_data: dict) -> tuple:
             The graph and the filename.
     """ 
     # Convert the graph to a networkx graph
-    graph = nx.node_link_graph(format_gJGF(graph_data), directed=True)
+    #graph = nx.node_link_graph(format_gJGF(graph_data), directed=True)
+    graph = nx.node_link_graph(graph_data, directed=True)
 
     # Check if graph found
     if not graph:
@@ -668,7 +642,19 @@ async def insert_graph_into_database(graph_name: str, graph: nx.DiGraph) -> dict
     try:
         from graphbase.src.main import insert_graph
 
-        result:dict = await insert_graph(graph_name, {"graph_data":graph})
+        # Check if graph provided
+        if not graph:
+            return proc_error(
+                "insert_graph_into_database",
+                "No graph provided",
+                {"graph_name": graph_name,"graph": graph}
+            )
+        
+        # Convert graph to json
+        nx_graph_json = nx.node_link_data(graph)
+
+        # Insert the graph into the database
+        result:dict = await insert_graph(graph_name, nx_graph_json)
 
         return result
     except HTTPException as e:

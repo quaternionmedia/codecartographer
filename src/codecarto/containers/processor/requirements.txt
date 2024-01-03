@@ -13,5 +13,6 @@ requests
 httpx
 motor
 pytest-asyncio
+gravis
 nbformat
 nbconvert

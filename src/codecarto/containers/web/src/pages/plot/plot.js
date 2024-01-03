@@ -6,6 +6,13 @@ function getQueryParam(key) {
 const dbGraphValue = getQueryParam('db_graph'); 
 window.dbGraph = dbGraphValue === 'true';  
 
+console.log('dbGraph:', window.dbGraph)
+if (window.dbGraph == true) {
+
+  document.getElementById('gv_single').style.display = 'inline'
+  document.getElementById('gv_grid').style.display = 'inline'
+}
+
 // Set up fileUrl if it is defined
 const fileUrlDiv = document.getElementById('fileUrl')
 if (fileUrlDiv) {
