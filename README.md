@@ -104,7 +104,19 @@ Click PLOT next to .py file to display the Plotter page
 
 Select a layout
 
-Click Single Plot to display the graph of the .py file
+Click "Single Plot" to display the graph of the .py file
+
+This will save the graph to the database as well
+
+### Saved Graphs
+
+Click "Return to Home"
+
+Click "Saved Graphs"
+
+Click "PLOT" next to a file name
+
+Click "Single GV Plot"
 
 ### Docker Down
 
