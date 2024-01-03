@@ -8,6 +8,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Turns off buffering for easier container logging
 ENV PYTHONUNBUFFERED=1
 
+# Install Jupyter Notebook and create a kernel for Python 3
+RUN pip install jupyter
+RUN python -m ipykernel install --user --name python3
+
 # Install pip requirements
 COPY ./src/codecarto/containers/processor/requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \

@@ -13,3 +13,5 @@ requests
 httpx
 motor
 pytest-asyncio
+nbformat
+nbconvert

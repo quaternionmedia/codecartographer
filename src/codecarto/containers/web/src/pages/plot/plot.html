@@ -36,12 +36,13 @@ content %}
     <div id="fileUrl" data-url="{{ file_url }}"></div>
     <br />
     <button id="single" onclick="plot()">Single Layout</button>
-    <button id="grid" onclick="plot(true)">Grid of all layouts</button>
+    <button id="grid" class="red_button" onclick="plot(true)">Grid of all layouts</button>
+    <br>
+    <button id="gv_single" onclick="plot(false, true)">GV Single Layout</button>
+    <button id="gv_grid" class="red_button" onclick="plot(false, true, true)">Grid of d3, vis, three</button>
+    <br>
     <button id="plot_moe" onclick="openInMoe(true)" style="display: none">
       Open in Moe
-    </button>
-    <button id="plot_notebook" style="display: none" onclick="getNotebookOutput(true)">
-      Run Notebook
     </button>
     <div id="plot_loader" class="loader" style="display: none">Loading ...</div>
     <div id="plot_sent_to_moe" class="loader" style="display: none">
