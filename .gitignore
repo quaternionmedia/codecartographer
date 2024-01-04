@@ -13,7 +13,6 @@ config.json
 default_config.json
 
 # General
-*.ipynb
 .pytype
 .DS_Store
 .vscode

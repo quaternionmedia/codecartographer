@@ -33,6 +33,9 @@ async def plot(
     demo: bool = False,
     demo_file: str = None,
     layout: str = "Spring",
+    gv: bool = False,
+    nb: bool = False,
+    type: str = "d3",
     grid: bool = False,
     labels: bool = False,
     ntx: bool = True,
@@ -58,6 +61,16 @@ async def plot(
     layout : str
         The name of the layout to plot.
             Used to plot a single layout.
+    gv : bool
+        Whether to plot with gravis.
+    nb : bool
+        Whether to show ipython notebooks.
+    type : str
+        The type of plot to use.
+            all: all types
+            d3: d3.js
+            vis: vis.js
+            three: gravis
     grid : bool
         Whether to plot all plot layouts in a grid.
     labels : bool

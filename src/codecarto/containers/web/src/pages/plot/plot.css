@@ -5,14 +5,14 @@
   display: none;
 }
 
-#grid {
+.red_button {
   background-color: #d79d73;
 }
-#grid:focus,
-#grid:hover {
+#red_button:focus,
+#red_button:hover {
   background-color: #e8c9ad;
 }
-#grid:disabled {
+#red_button:disabled {
   background-color: #b1987e;
   color: rgb(67, 60, 56);
 }

@@ -4,7 +4,15 @@ function getQueryParam(key) {
   return urlParams.get(key);
 }
 const dbGraphValue = getQueryParam('db_graph'); 
-window.dbGraph = dbGraphValue === 'true'; 
+window.dbGraph = dbGraphValue === 'true';  
+
+console.log('dbGraph:', window.dbGraph)
+if (window.dbGraph == true) {
+
+  document.getElementById('gv_single').style.display = 'inline'
+  document.getElementById('gv_grid').style.display = 'inline'
+}
+
 // Set up fileUrl if it is defined
 const fileUrlDiv = document.getElementById('fileUrl')
 if (fileUrlDiv) {
@@ -38,24 +46,24 @@ if (fileUrlDiv) {
 /**
  * Plot the data from the GitHub API or from one of the demo files.
  * @param {boolean} all - If true, plot all layouts.
+ * @param {boolean} gv - If true, plot using gv.
+ * @param {boolean} all_gv - If true, plot all gv types.
  */
-async function plot(all = false) {
+async function plot(all = false, gv = false, all_gv = false) {
   try {
+    // Clear the existing content
+    document.getElementById('plot_loader').style.display = 'inline'
+    document.getElementById('plot').innerHTML = ''
+
     console.log('Plotting...')
 
-    // Clear plot and show spinner
-    document.getElementById('plot').innerHTML = ''
-    document.getElementById('plot_loader').style.display = 'inline'
-
     // Fetch plot data
-    const endpoint = generatePlotEndpoint(all)
+    const endpoint = generatePlotEndpoint(all, gv, all_gv)
     const responseData = await fetchPlotData(endpoint)
     handlePlotResponse(responseData)
-
-    // Hide spinner
-    document.getElementById('plot_loader').style.display = 'none'
   } catch (error) {
     console.error('Error - plot.js - plot():', error)
+  } finally { 
     document.getElementById('plot_loader').style.display = 'none'
   }
 }
@@ -63,10 +71,11 @@ async function plot(all = false) {
 /**
  * Generate the endpoint for the plot API.
  * @param {boolean} all - If true, plot all layouts.
+ * @param {boolean} gv - If true, plot using gv.
+ * @param {boolean} all_gv - If true, plot all gv types.
  * @returns {string} The endpoint for the plot API.
- *
  */
-function generatePlotEndpoint(all) {
+function generatePlotEndpoint(all, gv, all_gv) {
   try {
     // Get the selected layout
     const layoutElement = document.getElementById('layouts')
@@ -100,7 +109,8 @@ function generatePlotEndpoint(all) {
     }
 
     // Construct the endpoint
-    let endpoint = `/plotter/plot?url=${postData.url}&graph_data=${graphData}&db_graph=${window.dbGraph}&demo=${postData.demo}&demo_file=${postData.file}&layout=${postData.layout}`
+    let type = all_gv ? 'all' : 'd3'
+    let endpoint = `/plotter/plot?url=${postData.url}&graph_data=${graphData}&db_graph=${window.dbGraph}&demo=${postData.demo}&demo_file=${postData.file}&layout=${postData.layout}&gv=${gv}&type=${type}`
     if (window.dbGraph) {
       console.log('Grabbing graph from database...')
     }
@@ -109,7 +119,6 @@ function generatePlotEndpoint(all) {
     return endpoint
   } catch (error) {
     console.error('Error - plot.js - generatePlotEndpoint():', error)
-    document.getElementById('plot_loader').style.display = 'none'
   }
 }
 
@@ -132,7 +141,6 @@ async function fetchPlotData(endpoint) {
     }
   } catch (error) {
     console.error('Error - plot.js - fetchPlotData():', error)
-    document.getElementById('plot_loader').style.display = 'none'
     return { status: 'error', message: 'Network error' }
   }
 }
@@ -150,13 +158,16 @@ function handlePlotResponse(responseData) {
     } else {
       // console.log(`Received response: ${responseData.message}`)
       // Style the plot HTML and insert it into the page
-      const plotHTML = responseData.results
-      let newPlotHTML = stylePlotHTML(plotHTML)
-      insertHTMLWithScripts('plot', newPlotHTML)
+      if (responseData.results.includes('!function(mpld3){')) {
+        const plotHTML = responseData.results
+        let newPlotHTML = stylePlotHTML(plotHTML)
+        insertHTMLWithScripts('plot', newPlotHTML)
+      } else { 
+        handleNotebook(responseData)
+      }
     }
   } catch (error) {
     console.error('Error - plot.js - handlePlotResponse():', error)
-    document.getElementById('plot_loader').style.display = 'none'
   }
 }
 
@@ -188,7 +199,6 @@ function insertHTMLWithScripts(divId, html) {
     })
   } catch (error) {
     console.error('Error - plot.js - insertHTMLWithScripts():', error)
-    document.getElementById('plot_loader').style.display = 'none'
   }
 }
 
@@ -204,13 +214,18 @@ function stylePlotHTML(plotHTML) {
       /"axesbg": "#FFFFFF"/g,
       '"axesbg": "#e8dbad"'
     )
+    
+    // .mpld3-baseaxes > .mpld3-text {
+    //   color: white;
+    //   fill: rgb(255,255,255)
+    // }
+    
     // font size
     newPlotHTML = newPlotHTML.replace(/"fontsize": 12.0/g, '"fontsize": 30.0')
     // return new HTML
     return newPlotHTML
   } catch (error) {
     console.error('Error - plot.js - stylePlotHTML():', error)
-    document.getElementById('plot_loader').style.display = 'none'
   }
 }
 
@@ -220,6 +235,8 @@ function stylePlotHTML(plotHTML) {
  */
 async function openInMoe(graphId) {
   try {
+    document.getElementById('plot_moe').disabled = true
+    document.getElementById('plot_loader').style.display = 'inline'
     let url
     // If fileUrl is defined, add it to the postData object
     if (window.fileUrl && window.fileUrl !== '') {
@@ -236,11 +253,50 @@ async function openInMoe(graphId) {
 
     // Open the new tab
     window.open(moeURL, '_blank')
-    document.getElementById('plot_sent_to_moe').style.display = 'block'
   } catch (error) {
-    document.getElementById('plot_sent_to_moe').style.display = 'block'
     document.getElementById('plot_sent_to_moe').innterHTML = 'Error opening Moe'
     console.error('Error - plot.js - openInMoe():', error)
     return { status: 'error', message: 'Network error' }
+  } finally {
+    document.getElementById('plot_moe').disabled = false
+    document.getElementById('plot_loader').style.display = 'none' 
+  }
+}
+
+/**
+ * Handle ipynb output.
+ * @param {string} type - The type of output to get.
+ */
+async function handleNotebook(responseData) {
+  try { 
+    document.getElementById('plot_loader').style.display = 'inline'
+    document.getElementById('plot').innerHTML = ''
+    console.log('Getting notebook output...')
+
+    // Get the plot div
+    const plotElement = document.getElementById('plot')
+
+    // Check if the response data contains the expected output
+    if (responseData && responseData.results.length > 0) {
+      responseData.results.forEach(output => {
+        console.log(output)
+        if (output['text/html']) {
+            // Create an iframe for each output
+            let iframe = document.createElement('iframe');
+            iframe.className = 'nbFrame';
+            iframe.srcdoc = output['text/html'];
+            iframe.style.width = '800px';
+            iframe.style.height = '475px';
+            iframe.style.border = 'none';
+            plotElement.appendChild(iframe);
+        }
+      });
+    } else {
+      plotElement.innerHTML = 'No notebook found'
+    }
+  } catch (error) {
+    console.error('Error - plot.js - handleNotebook():', error) 
+  } finally { 
+    document.getElementById('plot_loader').style.display = 'none'
   }
 }
