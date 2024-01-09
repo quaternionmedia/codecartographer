@@ -35,6 +35,7 @@ async def run_notebook(
     import gravis as gv
     from nbconvert.preprocessors import ExecutePreprocessor
     from src.plotter.plotter import Plotter
+    from src.plotter.positions import Positions
 
     # Check if graph provided
     if not graph:
@@ -45,7 +46,8 @@ async def run_notebook(
         )
 
     # Set and scale up the postiions
-    pos = Plotter.get_node_positions(graph, f"{title.lower()}_layout")
+    plot = Plotter(graph=graph)
+    pos = plot.get_node_positions(graph=graph, layout_name=f"{title.lower()}_layout")
     for id, (x, y) in pos.items():
         node = graph.nodes[id]
         node["x"] = float(x) * 100

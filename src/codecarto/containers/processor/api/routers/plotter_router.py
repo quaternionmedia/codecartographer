@@ -95,6 +95,14 @@ async def plot(
                 params,
             )
         else:
+            plotter = Plotter(
+                graph=graph,
+                labels=labels,
+                grid=grid,
+                ntx_layouts=ntx,
+                custom_layouts=custom,
+                palette_dict=palette,
+            )
             if nb:
                 pprint("Running notebook")
                 results = await run_notebook(
@@ -103,7 +111,7 @@ async def plot(
             elif db_graph:
                 if layout.lower() == "all":
                     pprint("Running cc grid plot on db")
-                    results = Plotter.grid_plot(graph)
+                    results = plotter.grid_plot(graph)
                 elif gv:
                     pprint("Running notebook on db")
                     results = await run_notebook(
@@ -115,16 +123,16 @@ async def plot(
                 else:
                     # TODO: will probably just be gv_single_plot in the end
                     pprint("Running cc single plot on db")
-                    results = Plotter.single_plot(
+                    results = plotter.single_plot(
                         graph=graph, title=layout, file_name=filename
                     )
             else:
                 if layout.lower() == "all":
                     pprint("Running cc grid plot")
-                    results = Plotter.grid_plot(graph)
+                    results = plotter.grid_plot(graph)
                 else:
                     pprint("Running cc single plot")
-                    results = Plotter.single_plot(
+                    results = plotter.single_plot(
                         graph=graph, title=layout, file_name=filename
                     )
 
