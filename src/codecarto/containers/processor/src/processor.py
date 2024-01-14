@@ -105,11 +105,14 @@ def process(
     return_data: dict = None
     if graph and graph.number_of_nodes() > 0:
         from .plotter.plotter import Plotter
-        from .polygraph.polygraph import PolyGraph
+        from .polygraph.polygraph import (
+            graph_to_json_data,
+            graph_to_json_file,
+            json_file_to_graph,
+        )
 
         # TODO: until we figure out how to return a plot through API,
         # we won't do the plotting we'll just return the json file of the graph
-        pg: PolyGraph = PolyGraph()
         if not from_api:
             # Create the output directory
             paths = create_output_dirs()
@@ -147,12 +150,12 @@ def process(
                 # Create a json file of the graph
                 print_status("Converting Graph to JSON...", from_api)
                 json_graph_file = paths["json_file_path"]
-                pg.graph_to_json_file(graph, json_graph_file)
+                graph_to_json_file(graph, json_graph_file)
 
                 # Create the json graph
                 if json:  # this is asking if we should convert back from json to graph
                     print_status("Converting JSON back to Graph...", from_api)
-                    json_graph = pg.json_file_to_graph(json_graph_file)
+                    json_graph = json_file_to_graph(json_graph_file)
 
                     # Plot the graph from json file
                     plot.json = True
@@ -167,7 +170,7 @@ def process(
                     print_status("JSON Plots Saved...\n", from_api)
             else:
                 # Create a json file of the graph
-                json_data: dict = pg.graph_to_json_data(graph)
+                json_data: dict = graph_to_json_data(graph)
                 json_file_path = paths["json_file_path"]
                 save_json(json_data, json_file_path)
 
@@ -178,7 +181,7 @@ def process(
             # TODO: this is just until we can figure out how to return a plot through API
             # this is being run through the API, don't create a bunch of stuff on server
             # just return the graph as json data
-            return_data = pg.graph_to_json_data(graph)
+            return_data = graph_to_json_data(graph)
     else:
         if not from_api:
             print_status("No graph to plot\n", from_api)

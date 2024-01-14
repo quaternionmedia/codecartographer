@@ -2,7 +2,7 @@ import httpx
 from fastapi import APIRouter
 from fastapi.templating import Jinja2Templates
 
-from api.util import generate_return, web_exception, proc_error
+from api.util import web_exception, proc_error
 
 # Create a router
 PolyGraphRoute: APIRouter = APIRouter()
@@ -49,7 +49,7 @@ async def get_graph_desc() -> dict:
 
 
 @PolyGraphRoute.get("/url_to_json")
-async def url_to_json(file_url: str) -> dict:
+async def url_data_to_json(file_url: str) -> dict:
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
             response = await client.get(
@@ -67,7 +67,7 @@ async def url_to_json(file_url: str) -> dict:
             if status_code != 200:
                 error_message = data.get("message", "No error message")
                 results = proc_error(
-                    "url_to_json",
+                    "url_data_to_json",
                     "Error from processor",
                     {},
                     status=status_code,
@@ -79,7 +79,7 @@ async def url_to_json(file_url: str) -> dict:
             return results
         except Exception as exc:
             web_exception(
-                "url_to_json",
+                "url_data_to_json",
                 "Error with request to processor",
                 {},
                 exc,

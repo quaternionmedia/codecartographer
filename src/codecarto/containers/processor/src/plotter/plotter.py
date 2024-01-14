@@ -251,65 +251,6 @@ class Plotter:
         # also if labels are involved, if edges are involved, legend, etc.
         pass
 
-    def get_node_positions(self, layout_name: str) -> dict:
-        """Gets the node positions for a given layout.
-
-        Parameters:
-        -----------
-            layout_name (str):
-                The name of the layout.
-
-        Returns:
-        --------
-            positions (dict):
-                The positions of nodes for layout.
-        """
-        from .positions import Positions
-
-        position = Positions(
-            include_networkx=self.ntx_layouts,
-            include_custom=self.custom_layouts,
-        )
-        seed = -1
-        layout_params = position.get_layout_params(layout_name)
-        layout_kwargs = {"G": self.graph}
-        for param in layout_params:
-            if param == "seed":
-                seed = random.randint(0, 1000)
-                layout_kwargs["seed"] = seed
-            elif param == "nshells" and layout_name == "shell_layout":
-                # Group nodes by parent
-                grouped_nodes: dict[str, list] = {}
-                for node, data in self.graph.nodes(data=True):
-                    parent = data.get("parent", "Unknown")
-                    if parent not in grouped_nodes:
-                        grouped_nodes[parent] = []
-                    grouped_nodes[parent].append(node)
-                # Create the list of lists (shells)
-                shells = list(grouped_nodes.values())
-                layout_kwargs["nshells"] = shells
-            elif param == "root" and layout_name == "cluster_layout":
-                # get the node at the very top
-                root = None
-                for node, data in self.graph.nodes(data=True):
-                    if data.get("label", "") == "root":
-                        root = node
-                        break
-                layout_kwargs["root"] = root
-            elif param != "G":
-                # TODO: Handle other parameters here
-                pass
-
-        # Compute layout positions
-        pos: dict = {}
-        try:
-            pos = position.get_positions(layout_name, **layout_kwargs)
-        except Exception as e:
-            # TODO: log an error in the database to be displayed to the user
-            raise e
-
-        return pos
-
     def set_node_data(self) -> dict:
         """Sets the node data for the Plotter object."""
         # Collect the node data and unique node types
@@ -379,6 +320,258 @@ class Plotter:
             for theme, color, shape in zip(_colors, _colors.values(), _shapes.values())
         ]
         ax.legend(handles=legend_elements, loc="upper right", fontsize=10)
+
+    ################## PLOT ##################
+    def grav_single_plot(
+        self,
+        graph: nx.DiGraph,
+        title: str = "Sprial",
+        file_name: str = "Fib Demo",
+    ) -> str:
+        """Plot a graph.
+
+        Parameters:
+        -----------
+        graph : nx.DiGraph
+            The graph to plot.
+        title : str
+            The name of the layout to plot.
+                Used to plot a single layout.
+        file_name : str
+            The name of the file to plot.
+
+        Returns:
+        --------
+        dict
+            The results of the plot. {index: plot html}
+        """
+        import gravis as gv
+
+        # get the positions
+        pos = self.get_node_positions(graph, f"{title.lower()}_layout")
+
+        # add the positions to the graph
+        for name, (x, y) in pos.items():
+            node = graph.nodes[name]
+            node["x"] = float(x) * 100
+            node["y"] = float(y) * 100
+
+        # create the figure
+        fig = gv.d3(
+            graph,
+            zoom_factor=2,
+            graph_height=550,
+            show_menu=True,
+            show_details_toggle_button=False,
+            node_label_data_source="label",
+            edge_label_data_source="label",
+            node_hover_neighborhood=True,
+        )
+
+        # convert to html
+        results = fig.to_html_partial()
+        return results
+
+    def single_plot(
+        self,
+        graph: nx.DiGraph,
+        title: str = "Sprial",
+        file_name: str = "Fib Demo",
+    ) -> str:
+        """Plot a graph.
+
+        Parameters:
+        -----------
+        graph : nx.Graph
+            The graph to plot.
+        title : str
+            The name of the layout to plot.
+                Used to plot a single layout.
+        file_name : str
+            The name of the file to plot.
+
+        Returns:
+        --------
+        dict
+            The results of the plot. {index: plot html}
+        """
+        # create a simple plot
+        fig, ax = plt.subplots(figsize=(15, 10))
+        ax.set_title(f"{title} Layout for '{file_name}'")
+        ax.set_axis_off()
+
+        # positions
+        pos = self.get_node_positions(graph, f"{title.lower()}_layout")
+
+        # nodes
+        nx.drawing.draw_networkx_nodes(
+            graph,
+            pos,
+            nodelist=graph.nodes,
+            ax=ax,
+        )
+
+        # labels
+        nx.drawing.draw_networkx_labels(
+            graph,
+            pos,
+            labels=nx.get_node_attributes(graph, "label"),
+            font_size=12,
+            font_color="black",
+            ax=ax,
+        )
+
+        # edges
+        nx.drawing.draw_networkx_edges(
+            graph,
+            pos,
+            edgelist=graph.edges,
+            width=2,
+            alpha=0.5,
+            edge_color="black",
+            ax=ax,
+        )
+
+        # convert to html
+        plt.tight_layout()
+        plot_html = mpld3.fig_to_html(
+            fig,
+            template_type="simple",
+            figid="pltfig",
+            d3_url=None,
+            no_extras=False,
+            use_http=False,
+            include_libraries=True,
+        )
+        return plot_html
+
+    def grid_plot(self, graph: nx.DiGraph) -> str:
+        import math
+
+        layouts: list[str] = [
+            "circular",
+            "spiral",
+            "spring",
+            "shell",
+            "spectral",
+            # "sorted_Square",
+        ]
+
+        # create a grid plot
+        num_layouts = len(layouts)
+        grid_size = math.ceil(math.sqrt(num_layouts))
+
+        fig, axs = plt.subplots(
+            grid_size,
+            grid_size,
+            figsize=(grid_size * 15, grid_size * 10),
+        )
+        fig.set_size_inches(18.5, 9.5)  # TODO: try to size in css
+
+        idx: int = 0
+        for layout_name in layouts:
+            # ax
+            ax = axs[idx // grid_size, idx % grid_size] if grid_size > 1 else axs
+            ax.set_title(f"{str(layout_name).capitalize()} Layout")
+
+            # positions
+            pos = self.get_node_positions(graph, f"{layout_name.lower()}_layout")
+
+            # nodes
+            nx.drawing.draw_networkx_nodes(
+                graph,
+                pos,
+                nodelist=graph.nodes,
+                ax=ax,
+            )
+
+            idx += 1
+
+            # labels
+            nx.drawing.draw_networkx_labels(
+                graph,
+                pos,
+                labels=nx.get_node_attributes(graph, "label"),
+                font_size=12,
+                font_color="black",
+                ax=ax,
+            )
+
+            # edges
+            nx.drawing.draw_networkx_edges(
+                graph,
+                pos,
+                edgelist=graph.edges,
+                width=2,
+                alpha=0.5,
+                edge_color="black",
+                ax=ax,
+            )
+
+        # convert to html
+        plt.tight_layout()
+        plot_html = mpld3.fig_to_html(
+            fig,
+            template_type="simple",
+            figid="pltfig",
+            d3_url=None,
+            no_extras=False,
+            use_http=False,
+            include_libraries=True,
+        )
+        return plot_html
+
+    def get_node_positions(self, graph: nx.DiGraph, layout_name: str) -> dict:
+        """Gets the node positions for a given layout.
+
+        Parameters:
+        -----------
+            layout_name (str):
+                The name of the layout.
+
+        Returns:
+        --------
+            positions (dict):
+                The positions of nodes for layout.
+        """
+        from src.plotter.positions import Positions
+
+        position = Positions(True, True)
+        seed = -1
+        layout_params = position.get_layout_params(layout_name)
+        layout_kwargs: dict = {"G": graph}
+        for param in layout_params:
+            if param == "seed":
+                import random
+
+                seed = random.randint(0, 1000)
+                layout_kwargs["seed"] = seed
+            elif param == "nshells" and layout_name == "shell_layout":
+                # Group nodes by parent
+                grouped_nodes: dict[str, list] = {}
+                for node, data in graph.nodes(data=True):
+                    parent = data.get("parent", "Unknown")
+                    if parent not in grouped_nodes:
+                        grouped_nodes[parent] = []
+                    grouped_nodes[parent].append(node)
+                # Create the list of lists (shells)
+                shells = list(grouped_nodes.values())
+                layout_kwargs["nshells"] = shells
+            elif param == "root" and layout_name == "cluster_layout":
+                # get the node at the very top
+                root = None
+                for node, data in graph.nodes(data=True):
+                    if data.get("label", "") == "root":
+                        root = node
+                        break
+                layout_kwargs["root"] = root
+            elif param != "G":
+                # TODO: Handle other parameters here
+                pass
+
+        # Compute layout positions
+        pos: dict = position.get_positions(layout_name, **layout_kwargs)
+        return pos
 
 
 ########## OPTIONAL ##########
