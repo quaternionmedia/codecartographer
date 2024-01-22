@@ -55,7 +55,12 @@ function handleContents(data) {
     html = `<ul>`
     for (var i = 0; i < arrayLength; i++) {
       //set plot link
-      const plot_link = `/plotter/?file_url=${data[i]}&db_graph=true`
+      let plot_link = ``
+      if (!(data[i].includes('.py'))) {
+        plot_link = `/plotter/?is_repo=true&file_url=https://github.com/${data[i]}/`
+      } else {
+        plot_link = `/plotter/?db_graph=true&file_url=${data[i]}`
+      }
       html += `<li><strong>${data[i]}</strong>`
       html += `${'&nbsp;'.repeat(2)} - ${'&nbsp;'.repeat(2)}`
       html += `<a class="plotLink" href="${plot_link}" target="_blank">PLOT</a>`

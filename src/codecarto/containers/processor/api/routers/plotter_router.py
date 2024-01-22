@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 async def plot(
     request: Request,
     url: str = None,
+    is_repo: bool = False,
     graph_data: dict = None,
     db_graph: bool = False,
     demo: bool = False,
@@ -39,6 +40,8 @@ async def plot(
         The request object.
     url : str
         The url to parse and plot.
+    is_repo : bool
+        Whether the url is a repo.
     graph_data : dict
         The graph data. JSON format.
     db_graph: bool
@@ -85,7 +88,15 @@ async def plot(
 
     try:
         results: str = ""
-        graph, filename = await get_graph(demo, demo_file, db_graph, url, graph_data)
+        graph, filename = await get_graph(
+            demo,
+            demo_file,
+            db_graph,
+            url,
+            graph_data,
+            is_repo,
+            gv,
+        )
 
         # Plot the graph
         if not graph:
@@ -108,7 +119,7 @@ async def plot(
                 results = await run_notebook(
                     graph_name=filename, graph=graph, title=layout.lower(), type=type
                 )
-            elif db_graph:
+            elif db_graph or is_repo:
                 if layout.lower() == "all":
                     pprint("Running cc grid plot on db")
                     results = plotter.grid_plot(graph)

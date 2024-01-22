@@ -31,8 +31,8 @@ async def handle_github_url(github_url: str) -> dict:
     import time
     from src.parser.import_source_url import (
         ImportSourceUrlError,
-        read_github_content,
-        parse_github_content,
+        get_github_repo_content,
+        get_repo_tree,
     )
 
     # get current time to calculate total time taken
@@ -65,7 +65,7 @@ async def handle_github_url(github_url: str) -> dict:
         owner, repo = parts[3], parts[4]
 
         # get content from url
-        url_content: list[dict] | dict = await read_github_content(
+        url_content: list[dict] | dict = await get_github_repo_content(
             github_url, owner, repo, "", True
         )
         if not url_content:
@@ -86,9 +86,9 @@ async def handle_github_url(github_url: str) -> dict:
             "package_name": repo,
             "contents": {},
         }
-        logger.info(f"\tStarted\tProc.parse_github_content(): {owner}/{repo}")
-        contents: dict = await parse_github_content(url_content, owner, repo)
-        logger.info(f"\tFinished\tProc.parse_github_content()")
+        logger.info(f"\tStarted\tProc.get_repo_tree(): {owner}/{repo}")
+        contents: dict = await get_repo_tree(url_content, owner, repo)
+        logger.info(f"\tFinished\tProc.get_repo_tree()")
 
         # check contents
         if contents:

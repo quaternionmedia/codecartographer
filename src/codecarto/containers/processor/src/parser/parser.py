@@ -1,6 +1,10 @@
 import ast
+from operator import contains
+from platform import node
+from xml.etree.ElementTree import tostring
 import networkx as nx
 import os
+from pprint import pprint
 
 # Walk through the steps
 # Note: Not every visitor will add a node to the graph. They will do one more more of the following:
@@ -43,16 +47,26 @@ class Parser(ast.NodeVisitor):
 
     # TODO: when we eventually add import and importFrom, they need to be the id of the Module they represent
     # TODO: when this gets updated, do logic of option 'uno'
-    def __init__(self, source_files: list = None, source_dict: dict = None):
+    def __init__(
+        self,
+        source_files: list = None,
+        source_data: dict = None,
+        is_repo: bool = False,
+    ):
         """Initialize the parser.
 
         Parameters:
         -----------
         source_files : set
             A set of source files to parse.
+        source_data : dict
+            A dict of source files to parse.
+        is_repo : bool
+            Whether the source is a repo.
         """
         # The graph to populate
         self.source_files: list = source_files
+        self.source_dict: dict = source_data
         self.graph: nx.DiGraph = nx.DiGraph()
         # To track current elements
         self.current_file: str = None  # file
@@ -62,34 +76,60 @@ class Parser(ast.NodeVisitor):
         # self.current_class: nx.DiGraph = None  # class
         # self.current_function: nx.DiGraph = None  # function
         self.current_parent: nx.DiGraph = None  # for, while, if, etc.
-        # Create root and python nodes
-        self.root: nx.DiGraph = nx.DiGraph(name="root")
-        self.python: nx.DiGraph = nx.DiGraph(name="python")
-        self.add_start_nodes()
         # Parse the source code
         self.parsed_files: list = []
         self.text_to_json_filename: str = None
-        if source_files:
-            self.parse_list_of_files(source_files)
-        elif source_dict:
-            self.text_to_json_filename = source_dict["filename"]
-            self.parse_text(source_dict["raw"])
+        # Create root and python nodes
+        if is_repo:
+            self.add_start_nodes(True)
+            self.parse_dir(self.source_dict["raw"])
+        else:
+            self.add_start_nodes(False)
+            if source_files:
+                self.parse_list_of_files(source_files)
+            elif self.source_dict:
+                self.text_to_json_filename = self.source_dict["name"]
+                self.parse_text(self.source_dict["raw"])
 
-    def add_start_nodes(self):
-        """Add root and python node to the graph."""
-        # add the root node
-        self.graph.add_node(
-            id(self.root), type="Module", label="root", base="module", parent=None
-        )
-        # add the python node
-        self.graph.add_node(
-            id(self.python),
-            type="Module",
-            label="python",
-            base="module",
-            parent=id(self.root),
-        )
-        self.graph.add_edge(id(self.root), id(self.python))
+    def add_start_nodes(self, is_repo: bool):
+        """Add root and python node to the graph.
+
+        Parameters:
+        -----------
+        is_repo : bool
+            Whether the source is a repo.
+        """
+        if is_repo:
+            root_label: str = f"{self.source_dict['owner']}/{self.source_dict['repo']}"
+            self.root: nx.DiGraph = nx.DiGraph(name=root_label)
+            self.graph.add_node(
+                id(self.root),
+                type="Module",
+                label=root_label,
+                base="module",
+                parent=None,
+            )
+            self.current_parent = id(self.root)
+        else:
+            self.root: nx.DiGraph = nx.DiGraph(name="root")
+            self.python: nx.DiGraph = nx.DiGraph(name="python")
+            # add the root node
+            self.graph.add_node(
+                id(self.root),
+                type="Module",
+                label="root",
+                base="module",
+                parent=None,
+            )
+            # add the python node
+            self.graph.add_node(
+                id(self.python),
+                type="Module",
+                label="python",
+                base="module",
+                parent=id(self.root),
+            )
+            self.graph.add_edge(id(self.root), id(self.python))
 
     def parse_list_of_files(self, source_files: list) -> nx.DiGraph:
         """Parse the codes in the list.
@@ -134,6 +174,54 @@ class Parser(ast.NodeVisitor):
                 # Parse the code
                 self.current_file = file_path
                 self.parse_code(file_path)
+
+    def parse_dir(self, source_dict: dict) -> nx.DiGraph:
+        """Parse the codes in the list.
+
+        Parameters:
+        -----------
+        source_dict : dict
+            A dict of source files to parse.
+        """
+        # loop through the list of source files
+        for key, value in source_dict.items():
+            # key is the name of the dir or 'files'
+            if key == "files":
+                # value is a list of dicts with name and raw
+                for file in value:
+                    name = file["name"]
+                    raw = file["raw"]
+                    # parse the file contents
+                    # python files
+                    self.current_file = name
+                    self.text_to_json_filename = name
+                    if contains(name, ".py"):
+                        if not raw:  # empty file
+                            self.create_new_node(
+                                node_id=id(name),
+                                node_type="File",
+                                node_label=name,
+                                node_parent_id=id(self.current_parent),
+                            )
+                        else:  # non-empty file
+                            self.parse_text(raw)
+                    else:  # other files
+                        self.create_new_node(
+                            node_id=id(name),
+                            node_type="File",
+                            node_label=name,
+                            node_parent_id=id(self.current_parent),
+                        )
+            else:
+                # add a node for the dir
+                self.create_new_node(
+                    node_id=id(key),
+                    node_type="Dir",
+                    node_label="",
+                    node_parent_id=id(self.root),
+                )
+                self.current_parent = id(key)
+                self.parse_dir(value)
 
     def parse_text(self, source_text: str) -> nx.DiGraph:
         """Parse the code in the specified file path.
@@ -218,7 +306,7 @@ class Parser(ast.NodeVisitor):
         node_parent_id : int
             The id of the parent new node.
         """
-        if not node_label:
+        if not node_label or node_label == "":
             node_label = f"{node_type} (u)"
         _node = self.graph.add_node(
             node_id, type=node_type, label=node_label, parent=node_parent_id
@@ -236,6 +324,7 @@ class Parser(ast.NodeVisitor):
     # def visit_Str(self, node : ast.Str):
     # def visit_Param(self, node: ast.Param):
 
+    # region Visitors
     # region Mode
     def visit_Expression(self, node: ast.Expression):
         """Visit the expression node.
@@ -2260,3 +2349,6 @@ class Parser(ast.NodeVisitor):
         )
 
     # endregion
+
+
+# endregion
