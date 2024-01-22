@@ -1,3 +1,6 @@
+let repoData = null
+let repoUrl = null
+
 /**
  * Attach event listeners to the collapsible buttons.
  */
@@ -76,11 +79,11 @@ async function handleGithubURL() {
       // Get the url from the input, and encode it
       document.getElementById('url_content').innerHTML = ''
       document.getElementById('github_loader').style.display = 'inline'
-      let githubUrl = document.getElementById('githubUrl').value
-      if (githubUrl[githubUrl.length - 1] !== '/') {
-        githubUrl += '/'
+      repoUrl = document.getElementById('githubUrl').value
+      if (repoUrl[repoUrl.length - 1] !== '/') {
+        repoUrl += '/'
       }
-      const encodedGithubUrl = encodeURIComponent(githubUrl)
+      const encodedGithubUrl = encodeURIComponent(repoUrl)
       const href_line = `/parser/handle_github_url?github_url=${encodedGithubUrl}`
       const response = await fetch(href_line)
       const responseData = await response.json()
@@ -96,6 +99,7 @@ async function handleGithubURL() {
         } else {
           // Refactor the data and display it
           const data = responseData.results
+          repoData = data
           const refactoredData = refactorGitHubData(data)
           document.getElementById('url_content').innerHTML = refactoredData
           attachCollapsibleListeners()
@@ -136,10 +140,12 @@ function refactorGitHubData(data) {
     const dataContents = data.contents
     const dataDict = { contents: dataContents }
     const contentHtml = handleGitHubData(dataDict)
+    const plot_link = `/plotter/?is_repo=true&file_url=${repoUrl}`
     // Add package owner and name to the html
     html += `<pre>`
     html += `Package Owner: ${dataOwner}<br>`
-    html += `Package Name: ${dataRepo}`
+    html += `Package Name: ${dataRepo} <br>`
+    html += `<a class="plotLink" href="${plot_link}" target="_blank">Plot Whole Repo</a>`
     html += `</pre>`
     html += `${contentHtml}`
   }
@@ -153,14 +159,13 @@ function refactorGitHubData(data) {
  * @param {boolean} nested - Whether the data is nested or not.
  * @return {string} - The formatted HTML content.
  */
-function handleGitHubData(data, nested = false) {
+function handleGitHubData(data) {
   // Iterate through the data
-  let content = ''
+  let content = '' 
   for (const [key, value] of Object.entries(data)) {
     if (typeof value === 'object') {
       // If the key is "files", it's a list of filenames
       if (key === 'files') {
-        link_style = 'style="color: #e1c48f; text-decoration: none;"'
         for (const file of value) {
           let json_link = `/polygraph/url_to_json?file_url=${file['download_url']}`
           let plot_link = `/plotter/?file_url=${file['download_url']}`
@@ -176,7 +181,7 @@ function handleGitHubData(data, nested = false) {
         // Else, it's a directory
         content += `<button class="collapsible">${key}</button>`
         content += `<div class="content">`
-        content += handleGitHubData(value, nested) // Recursive call for nested directories
+        content += handleGitHubData(value) // Recursive call for nested directories
         content += `</div>`
       }
     }
