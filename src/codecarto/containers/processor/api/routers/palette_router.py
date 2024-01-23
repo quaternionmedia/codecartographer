@@ -1,8 +1,6 @@
 import os
-import traceback
 from json import load
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter
 
 from src.plotter.palette import Theme
 from api.util import generate_return, proc_exception, proc_error
@@ -17,9 +15,7 @@ temp_palette_path: str = "src/plotter/palette.json"
 debug: bool = True
 
 
-@PaletteRoute.get(
-    "/get_palette",
-)
+@PaletteRoute.get("/get_palette")
 async def get_palette(user_id: int = -1) -> dict:
     try:
         # TODO: DEBUG - temporary solution
