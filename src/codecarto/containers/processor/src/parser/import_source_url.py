@@ -284,8 +284,7 @@ async def get_raw_data_from_github_repo(url: str) -> str | dict:
         # url is in the format github.com/owner/repo and possibly /repo/
         owner = url_parts[3]
         repo = url_parts[4]
-        logger.info(f"Owner: {owner}, Repo: {repo}")
-
+        logger.info(f"Owner: {owner}, Repo: {repo}, URL: {url}")
         # Call the recursive function to create the repo structure
         repo_contents = await get_github_repo_content(url, owner, repo, "", True)
         repo_tree = await get_repo_tree(repo_contents, owner, repo)
@@ -330,16 +329,17 @@ async def reduce_repo_structure(repo_data: dict, repo_size: int = 0) -> tuple:
                 # loop through the files
                 for file in value:
                     # add the file size to the repo size
-                    repo_size += file["size"]
+                    repo_size += file.get("size", 0)
                     # if the file is a python file, get the raw data
-                    if file["download_url"].endswith(".py"):
-                        file_raw_data = await get_raw_data_from_github_url(
-                            file["download_url"]
-                        )
-                        file["type"] = "python"
-                    else:  # otherwise, just get the download url
-                        file_raw_data = file["download_url"]
-                        file["type"] = "other"
+                    if file["download_url"]:
+                        if file["download_url"].endswith(".py"):
+                            file_raw_data = await get_raw_data_from_github_url(
+                                file["download_url"]
+                            )
+                            file["file_type"] = "python"
+                        else:  # otherwise, just get the download url
+                            file_raw_data = file["download_url"]
+                            file["file_type"] = "other"
                     file["raw"] = file_raw_data
                     # remove unnecessary data from the file
                     file.pop("path", None)
@@ -361,7 +361,7 @@ async def reduce_repo_structure(repo_data: dict, repo_size: int = 0) -> tuple:
         return (repo_structure, repo_size)
     except Exception as exc:
         raise ImportSourceUrlError(
-            "read_raw_data_from_repo",
+            "reduce_repo_structure",
             {"repo_data": repo_data},
             "Error when reading raw data from repo URL",
             500,

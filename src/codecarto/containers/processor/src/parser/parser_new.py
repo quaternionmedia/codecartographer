@@ -253,6 +253,7 @@ class Parser:
                 # parse the repo
                 print("Parsing repo...")
                 self.parse_repo(self.source_data["raw"])
+                # parse the raw for accepted file types
                 # self.parse_raw()
             elif isinstance(self.source_data, list):
                 # loop through the list of source files
@@ -288,10 +289,10 @@ class Parser:
                         filename: str = file["name"]
                         node_id: int = id(filename)
                         # save the node id to the source_data
-                        self.source_data["raw"][self.current_dir]["files"][file_idx][
-                            "node_id"
-                        ] = node_id
-                        # check if the file contains one of the allowed type
+                        # TODO: This is breaking because these don't all exist on every node
+                        # self.source_data["raw"][self.current_dir]["files"][file_idx][
+                        #     "node_id"
+                        # ] = node_id
                         self.create_node(
                             node_id=node_id,
                             node_type="File",
@@ -335,9 +336,10 @@ class Parser:
         # TODO: one of the problems is that the raw data is
         # TODO: being linked off other files instead of the dir
         # TODO: This came from the parse_repo function
-        # raw: str = file["raw"]
+        # check if the file contains one of the allowed type
         # file_type: str = filename.split(".")[-1]
         # if contains(ast_types.keys(), file_type):
+        #     raw: str = file["raw"]
         #     if not raw or raw == "":  # empty file
         #         self.create_node(
         #             node_id=id(filename),
