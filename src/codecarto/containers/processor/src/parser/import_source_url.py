@@ -1,3 +1,4 @@
+import re
 import httpx
 from src.util.exceptions import (
     GithubAPIError,
@@ -46,7 +47,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def read_github_content(
+async def get_github_repo_content(
     url: str,
     owner: str,
     repo: str,
@@ -73,7 +74,7 @@ async def read_github_content(
             GIT_API_KEY = file.read().strip()
         if not GIT_API_KEY or GIT_API_KEY == "":
             raise GithubAPIError(
-                "read_github_content", {"github_url": url, "api_url": "nothing"}
+                "get_github_repo_content", {"github_url": url, "api_url": "nothing"}
             )
 
         headers = {
@@ -95,7 +96,7 @@ async def read_github_content(
                     logger.info(f"  Repo Size: {size} bytes")
                     if size > 1000000:
                         raise GithubSizeError(
-                            "read_github_content",
+                            "get_github_repo_content",
                             {"github_url": url, "api_url": api_url},
                         )
 
@@ -108,7 +109,7 @@ async def read_github_content(
             json_data = response.json()
             if not json_data:
                 raise GithubNoDataError(
-                    "read_github_content",
+                    "get_github_repo_content",
                     {"github_url": url, "api_url": api_url},
                 )
             else:
@@ -126,7 +127,7 @@ async def read_github_content(
         else:
             if response.status_code == 404:
                 raise GithubNoDataError(
-                    "read_github_content",
+                    "get_github_repo_content",
                     {"github_url": url, "api_url": api_url},
                 )
             if response.status_code == 403:
@@ -134,19 +135,19 @@ async def read_github_content(
                 if "rate_limit" in response.text:
                     error_message = f"GitHub API rate limit exceeded: {response.text}"
                 raise Github404Error(
-                    "read_github_content",
+                    "get_github_repo_content",
                     {"github_url": url, "api_url": api_url},
                     error_message,
                 )
             else:
                 raise GithubError(
-                    "read_github_content",
+                    "get_github_repo_content",
                     {"url": url, "status_code": response.status_code},
                     "Error with client response",
                 )
     except httpx.RequestError as exc:
         raise ImportSourceUrlHttpError(
-            "read_github_content",
+            "get_github_repo_content",
             {"url": url},
             "Error while attempting to set up request url & headers",
             500,
@@ -154,7 +155,7 @@ async def read_github_content(
         )
     except Exception as exc:
         raise ImportSourceUrlError(
-            "read_github_content",
+            "get_github_repo_content",
             {"url": url},
             "Error when reading GitHub content",
             500,
@@ -162,7 +163,7 @@ async def read_github_content(
         )
 
 
-async def parse_github_content(file_content, owner, repo) -> dict:
+async def get_repo_tree(file_content, owner, repo) -> dict:
     """Parses GitHub content and returns a dictionary of directories and files
 
     Parameters:
@@ -177,7 +178,7 @@ async def parse_github_content(file_content, owner, repo) -> dict:
         # Check that the file content is a list
         if not file_content or not isinstance(file_content, list):
             raise ImportSourceUrlError(
-                "parse_github_content",
+                "get_repo_tree",
                 {},
                 "Invalid file content format",
                 404,
@@ -190,8 +191,8 @@ async def parse_github_content(file_content, owner, repo) -> dict:
         files: list = [item for item in file_content if item["type"] == "file"]
 
         for dir in directories:
-            dir_content = await read_github_content("", owner, repo, dir["path"])
-            parsed_dir_content = await parse_github_content(dir_content, owner, repo)
+            dir_content = await get_github_repo_content("", owner, repo, dir["path"])
+            parsed_dir_content = await get_repo_tree(dir_content, owner, repo)
             dir_name = dir["name"]
             results[dir_name] = parsed_dir_content
 
@@ -205,14 +206,14 @@ async def parse_github_content(file_content, owner, repo) -> dict:
         return results
     except Exception as exc:
         raise ImportSourceUrlError(
-            "parse_github_content",
+            "get_repo_tree",
             {"owner": owner, "repo": repo},
             "Error when parsing GitHub content",
             exc,
         )
 
 
-async def read_data_from_url(url: str) -> str | dict:
+async def get_raw_data_from_github_url(url: str) -> str | dict:
     """Read raw data from a URL.
 
     Parameters:
@@ -222,10 +223,10 @@ async def read_data_from_url(url: str) -> str | dict:
         str | dict: Raw data from URL
     """
     try:
-        logger.info(f"  Started   Proc.read_raw_data_from_url(): url - {url}")
+        logger.info(f"  Started   Proc.get_raw_data_from_github_url(): url - {url}")
         if not url.endswith(".py"):
             raise ImportSourceUrlError(
-                "read_raw_data_from_url",
+                "get_raw_data_from_github_url",
                 {"url": url},
                 "URL is not a valid Python file",
                 404,
@@ -236,20 +237,133 @@ async def read_data_from_url(url: str) -> str | dict:
             return response.text
         else:
             raise ImportSourceUrlError(
-                "read_raw_data_from_url",
+                "get_raw_data_from_github_url",
                 {"url": url},
                 "Could not read raw data from URL",
                 404,
             )
     except Exception as exc:
         raise ImportSourceUrlError(
-            "read_raw_data_from_url",
+            "get_raw_data_from_github_url",
             {"url": url},
             "Error when reading raw data from URL",
             500,
             exc,
         )
     finally:
-        if client:
-            await client.aclose()
-        logger.info(f"  Finished    Proc.read_raw_data_from_url()")
+        logger.info(f"  Finished    Proc.get_raw_data_from_github_url()")
+
+
+async def get_raw_data_from_github_repo(url: str) -> str | dict:
+    """Read raw data from a repo URL.
+
+    Parameters:
+        url (str): Repo URL to read from
+
+    Returns:
+        str | dict: Raw repo data from URL
+    """
+    from pprint import pprint
+
+    try:
+        logger.info(f"  Started    Proc.get_raw_data_from_github_repo(): url - {url}")
+        if not url or url == "":
+            raise ImportSourceUrlError(
+                "get_raw_data_from_github_repo",
+                {"url": url},
+                "URL is not a valid repo URL",
+                404,
+            )
+
+        # Parse the URL
+        url_parts = url.split("/")
+        if len(url_parts) < 5:
+            raise ValueError(f"Invalid GitHub repo URL: {url}")
+
+        # Get the owner and repo name
+        # url is in the format github.com/owner/repo and possibly /repo/
+        owner = url_parts[3]
+        repo = url_parts[4]
+        logger.info(f"Owner: {owner}, Repo: {repo}, URL: {url}")
+        # Call the recursive function to create the repo structure
+        repo_contents = await get_github_repo_content(url, owner, repo, "", True)
+        repo_tree = await get_repo_tree(repo_contents, owner, repo)
+        repo_raw_data, repo_size = await reduce_repo_structure(repo_tree)
+        repo_structure = {
+            "owner": owner,
+            "repo": repo,
+            "size": repo_size,
+            "raw": repo_raw_data,
+        }
+
+        return repo_structure
+    except Exception as exc:
+        raise ImportSourceUrlError(
+            "get_raw_data_from_github_repo",
+            {"url": url},
+            f"Error when reading raw data from repo URL: {exc}",
+            500,
+            exc,
+        )
+    finally:
+        logger.info(f"  Finished    Proc.get_raw_data_from_github_repo()")
+
+
+async def reduce_repo_structure(repo_data: dict, repo_size: int = 0) -> tuple:
+    """Go through the repo structure and reduce it to just needed content
+
+    Parameters:
+        repo_data {dict} -- Dictionary of directories and files
+        repo_size {int} -- Size of the repo in bytes
+
+    Returns:
+        tuple -- Tuple containing the reduced repo structure and the repo size
+    """
+    try:
+        repo_structure = {}
+        # loop through the repo data
+        for key, value in repo_data.items():
+            # if key is files, then it's a list of files
+            if key == "files":
+                files = []
+                # loop through the files
+                for file in value:
+                    # add the file size to the repo size
+                    repo_size += file.get("size", 0)
+                    # if the file is a python file, get the raw data
+                    if file["download_url"]:
+                        if file["download_url"].endswith(".py"):
+                            file_raw_data = await get_raw_data_from_github_url(
+                                file["download_url"]
+                            )
+                            file["file_type"] = "python"
+                        else:  # otherwise, just get the download url
+                            file_raw_data = file["download_url"]
+                            file["file_type"] = "other"
+                    file["raw"] = file_raw_data
+                    # remove unnecessary data from the file
+                    file.pop("path", None)
+                    file.pop("size", None)
+                    file.pop("type", None)
+                    file.pop("html_url", None)
+                    file.pop("download_url", None)
+                    # add the file to the list of files
+                    files.append(file)
+                repo_structure[key] = files
+            else:  # key is a directory
+                # recursively call this function to reduce the sub directory
+                sub_dir_structure, repo_size = await reduce_repo_structure(
+                    value, repo_size
+                )
+                repo_structure[key] = sub_dir_structure
+
+        # return the repo structure and the repo size
+        return (repo_structure, repo_size)
+    except Exception as exc:
+        raise ImportSourceUrlError(
+            "reduce_repo_structure",
+            {"repo_data": repo_data},
+            "Error when reading raw data from repo URL",
+            500,
+            exc,
+        )

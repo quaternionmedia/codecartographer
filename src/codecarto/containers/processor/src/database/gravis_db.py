@@ -83,6 +83,10 @@ async def insert_graph_into_database(graph_name: str, graph: nx.DiGraph) -> dict
                 "No graph provided",
             )
 
+        # If graph doesn't have name, add it
+        if not graph.name:
+            graph.name = graph_name
+
         # Convert graph to json
         nx_graph_json = nx.node_link_data(graph)
 

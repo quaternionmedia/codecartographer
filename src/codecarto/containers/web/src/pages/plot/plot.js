@@ -1,14 +1,13 @@
-// Get db_graph from url
+// Get parameters from the URL
 function getQueryParam(key) {
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get(key);
+  return urlParams.get(key)
 }
-const dbGraphValue = getQueryParam('db_graph'); 
-window.dbGraph = dbGraphValue === 'true';  
+window.dbGraph = getQueryParam('db_graph') === 'true'
+window.isRepo = getQueryParam('is_repo') === 'true'
 
-console.log('dbGraph:', window.dbGraph)
-if (window.dbGraph == true) {
-
+// Set up isRepo if it is defined
+if (window.isRepo == true || window.dbGraph == true) {
   document.getElementById('gv_single').style.display = 'inline'
   document.getElementById('gv_grid').style.display = 'inline'
 }
@@ -19,17 +18,26 @@ if (fileUrlDiv) {
   window.fileUrl = fileUrlDiv.getAttribute('data-url')
   if (window.fileUrl && window.fileUrl !== '') {
     document.getElementById('files').style.display = 'none'
-    const fileName = window.fileUrl.substring(
-      window.fileUrl.lastIndexOf('/') + 1
-    )
-    document.getElementById(
-      'fileUrl'
-    ).innerHTML = `File:&nbsp;&nbsp;${fileName}`
-    document.getElementById('fileUrl').style.display = 'inline'
+    let fileName = ""
+    if (!window.isRepo) {
+      // get the file name
+      fileName = window.fileUrl.substring(
+        window.fileUrl.lastIndexOf('/') + 1
+      )
+      fileUrlDiv.innerHTML = `File:&nbsp;&nbsp;${fileName}`
+    } else {
+      // get the repo name between the last two slashes
+      fileName = window.fileUrl.substring(
+        window.fileUrl.lastIndexOf('/'),
+        window.fileUrl.lastIndexOf('.com/') + 5
+      ) 
+      fileUrlDiv.innerHTML = `Repo:&nbsp;&nbsp;${fileName}`
+    }
+    fileUrlDiv.style.display = 'inline'
     document.getElementById('plot_moe').style.display = 'inline'
 
     // check if the file ends with .py
-    if (!fileName.endsWith('.py')) {
+    if (!fileName.endsWith('.py') && !window.isRepo) {
       document.getElementById('single').disabled = true
       document.getElementById('grid').disabled = true
       document.getElementById('plot_moe').disabled = true
@@ -110,9 +118,12 @@ function generatePlotEndpoint(all, gv, all_gv) {
 
     // Construct the endpoint
     let type = all_gv ? 'all' : 'd3'
-    let endpoint = `/plotter/plot?url=${postData.url}&graph_data=${graphData}&db_graph=${window.dbGraph}&demo=${postData.demo}&demo_file=${postData.file}&layout=${postData.layout}&gv=${gv}&type=${type}`
+    let endpoint = `/plotter/plot?url=${postData.url}&is_repo=${window.isRepo}&graph_data=${graphData}&db_graph=${window.dbGraph}&demo=${postData.demo}&demo_file=${postData.file}&layout=${postData.layout}&gv=${gv}&type=${type}`
     if (window.dbGraph) {
       console.log('Grabbing graph from database...')
+    }
+    if (window.isRepo) {
+      console.log('Parsing repo to plot...')
     }
 
     // Return the endpoint

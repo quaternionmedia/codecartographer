@@ -13,12 +13,24 @@ html_page = "/plot/plot.html"
 PROC_API_URL = "http://processor:2020/plotter"
 PROC_API_PLOT = f"{PROC_API_URL}/plot"
 
+
 # Root page
 @PlotterRoute.get("/")
-async def root(request: Request, file_url: str = None, db_graph: bool = False):
+async def root(
+    request: Request,
+    repo_url: str = None,
+    file_url: str = None,
+    db_graph: bool = False,
+):
     if file_url and file_url != "":
         return pages.TemplateResponse(
-            html_page, {"request": request, "file_url": file_url, "db_graph": db_graph}
+            html_page,
+            {
+                "request": request,
+                "repo_url": repo_url,
+                "db_graph": db_graph,
+                "file_url": file_url,
+            },
         )
     else:
         return pages.TemplateResponse(html_page, {"request": request})
@@ -27,7 +39,8 @@ async def root(request: Request, file_url: str = None, db_graph: bool = False):
 @PlotterRoute.get("/plot")
 async def plot(
     request: Request,
-    url:str = None,
+    url: str = None,
+    is_repo: bool = False,
     graph_data: dict = None,
     db_graph: bool = False,
     demo: bool = False,
@@ -50,6 +63,8 @@ async def plot(
         The request object.
     url : str
         The url to parse and plot.
+    is_repo : bool
+        Whether the url is a repo url.
     graph_data : dict
         The graph data. JSON format.
     db_graph: bool
@@ -122,4 +137,3 @@ async def plot(
                 params,
                 exc,
             )
- 

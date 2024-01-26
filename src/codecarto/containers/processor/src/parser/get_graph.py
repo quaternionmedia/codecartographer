@@ -1,10 +1,17 @@
+from operator import is_
 import networkx as nx
 from pprint import pprint
 from src.database.gravis_db import insert_graph_into_database, get_gJGF_from_database
 
 
 async def get_graph(
-    demo: bool, file_path: str, db_graph: bool, url: str, graph_data: dict
+    demo: bool,
+    file_path: str,
+    db_graph: bool,
+    url: str,
+    graph_data: dict,
+    is_repo: bool,
+    gv: bool = False,
 ) -> tuple:
     """Get a graph.
 
@@ -20,6 +27,10 @@ async def get_graph(
             The url to the file.
         graph_data (dict):
             The graph data.
+        is_repo (bool):
+            Whether the url is a repo.
+        gv (bool):
+            Whether to use the gravis repo.
 
     Returns:
     --------
@@ -43,11 +54,36 @@ async def get_graph(
     elif db_graph and url:
         from src.polygraph.polygraph import gJGF_to_nxGraph
 
-        pprint("db_graph")
-        graph_data, filename = await get_gJGF_from_database(url)
+        graph_name = url
+        if is_repo:
+            pprint("db_graph & is_repo")
+            # remove trailing '/' if there
+            if url.endswith("/"):
+                url = url[:-1]
+            # get owner and repo name from url
+            owner = url.split("/")[-2]
+            repo = url.split("/")[-1]
+            graph_name = f"{owner}/{repo}"
+        else:
+            pprint("db_graph")
+        pprint(f"graph_name: {graph_name}")
+        graph_data, filename = await get_gJGF_from_database(graph_name)
         graph_data["name"] = filename
         # graph_data = format_gJGF(graph_data)
-        graph, filename = gJGF_to_nxGraph(url, graph_data)
+        graph, filename = gJGF_to_nxGraph(graph_name, graph_data)
+
+    # Get graph from repo url
+    elif is_repo and url:
+        pprint("is_repo")
+        graph, filename = await repo_url_graph(url)
+        pprint("gravis repo")
+        pprint(filename)
+        if gv:
+            from src.polygraph.polygraph import gJGF_to_nxGraph
+
+            db_results = await insert_graph_into_database(filename, graph)
+            pprint("gravis repo")
+            graph_data, filename = await get_gJGF_from_database(filename)
 
     # Get graph from url
     elif url:
@@ -120,7 +156,7 @@ def file_graph(file_path) -> tuple:
 
     if not os.path.exists(file_path):
         return {"error": "File not found."}
-    parser: Parser = Parser(source_files=[file_path])
+    parser: Parser = Parser(source_data=[file_path])
     filename = os.path.basename(file_path)
 
     return parser.graph, filename
@@ -164,15 +200,48 @@ async def url_graph(url: str) -> tuple:
             The graph and the filename.
     """
     from src.parser.parser import Parser
-    from .import_source_url import read_data_from_url
+    from .import_source_url import get_raw_data_from_github_url
 
     filename = url.split("/")[-1]
-    raw_data = await read_data_from_url(url)
-    parser: Parser = Parser(source_dict={"raw": raw_data, "filename": filename})
+    raw_data = await get_raw_data_from_github_url(url)
+    parser: Parser = Parser(source_data={"raw": raw_data, "name": filename})
     graph = parser.graph
 
     # TODO: need to have the 'insert into database' code in somewhere else
     # Not when the user click Single Plot on Plotter page.
     db_results = await insert_graph_into_database(filename, graph)
+
+    return graph, filename
+
+
+async def repo_url_graph(url: str) -> tuple:
+    """Create a graph from a repo url.
+
+    Parameters:
+    -----------
+        url (str):
+            The url to the file.
+
+    Returns:
+    --------
+        tuple (nx.DiGraph, str):
+            The graph and the filename.
+    """
+    from src.parser.parser_new import Parser
+    from .import_source_url import get_raw_data_from_github_repo
+    import networkx as nx
+
+    pprint(f"repo_url_graph: {url}")
+    filename = ""
+    if url.endswith("/"):
+        filename = f"{url.split('/')[-3]}/{url.split('/')[-2]}"
+    else:
+        filename = url.split("/")[-1]
+    repo_struct = await get_raw_data_from_github_repo(url)
+    parser: Parser = Parser(source_data=repo_struct, is_repo=True)
+    graph = parser.graph
+
+    json_graph = nx.readwrite.json_graph.node_link_data(graph)
+    pprint(json_graph)
 
     return graph, filename
