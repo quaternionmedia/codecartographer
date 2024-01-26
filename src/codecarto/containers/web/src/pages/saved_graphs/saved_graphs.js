@@ -54,11 +54,13 @@ function handleContents(data) {
     const arrayLength = data.length;
     html = `<ul>`
     for (var i = 0; i < arrayLength; i++) {
-      //set plot link
+      // set plot link
       let plot_link = ``
       if (!(data[i].includes('.py'))) {
-        plot_link = `/plotter/?is_repo=true&file_url=https://github.com/${data[i]}/`
+        // if not a python file, then it is a repo
+        plot_link = `/plotter/?is_repo=true&db_graph=true&file_url=https://github.com/${data[i]}/`
       } else {
+        // if python file
         plot_link = `/plotter/?db_graph=true&file_url=${data[i]}`
       }
       html += `<li><strong>${data[i]}</strong>`

@@ -1,3 +1,4 @@
+from operator import is_
 import networkx as nx
 from pprint import pprint
 from src.database.gravis_db import insert_graph_into_database, get_gJGF_from_database
@@ -53,11 +54,23 @@ async def get_graph(
     elif db_graph and url:
         from src.polygraph.polygraph import gJGF_to_nxGraph
 
-        pprint("db_graph")
-        graph_data, filename = await get_gJGF_from_database(url)
+        graph_name = url
+        if is_repo:
+            pprint("db_graph & is_repo")
+            # remove trailing '/' if there
+            if url.endswith("/"):
+                url = url[:-1]
+            # get owner and repo name from url
+            owner = url.split("/")[-2]
+            repo = url.split("/")[-1]
+            graph_name = f"{owner}/{repo}"
+        else:
+            pprint("db_graph")
+        pprint(f"graph_name: {graph_name}")
+        graph_data, filename = await get_gJGF_from_database(graph_name)
         graph_data["name"] = filename
         # graph_data = format_gJGF(graph_data)
-        graph, filename = gJGF_to_nxGraph(url, graph_data)
+        graph, filename = gJGF_to_nxGraph(graph_name, graph_data)
 
     # Get graph from repo url
     elif is_repo and url:
