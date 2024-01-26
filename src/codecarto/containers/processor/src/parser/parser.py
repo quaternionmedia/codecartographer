@@ -50,7 +50,7 @@ class Parser(ast.NodeVisitor):
     def __init__(
         self,
         source_files: list = None,
-        source_data: dict = None,
+        source_dict: dict = None,
         is_repo: bool = False,
     ):
         """Initialize the parser.
@@ -59,14 +59,14 @@ class Parser(ast.NodeVisitor):
         -----------
         source_files : set
             A set of source files to parse.
-        source_data : dict
+        source_dict : dict
             A dict of source files to parse.
         is_repo : bool
             Whether the source is a repo.
         """
         # The graph to populate
         self.source_files: list = source_files
-        self.source_dict: dict = source_data
+        self.source_dict: dict = source_dict
         self.graph: nx.DiGraph = nx.DiGraph()
         # To track current elements
         self.current_file: str = None  # file

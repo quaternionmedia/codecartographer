@@ -7,10 +7,10 @@ window.dbGraph = getQueryParam('db_graph') === 'true'
 window.isRepo = getQueryParam('is_repo') === 'true'
 
 // Set up isRepo if it is defined
-if (window.isRepo == true || window.dbGraph == true) {
-  document.getElementById('gv_single').style.display = 'inline'
-  document.getElementById('gv_grid').style.display = 'inline'
-}
+// if (window.isRepo == true || window.dbGraph == true) {
+//   document.getElementById('gv_single').style.display = 'inline'
+//   document.getElementById('gv_grid').style.display = 'inline'
+// }
 
 // Set up fileUrl if it is defined
 const fileUrlDiv = document.getElementById('fileUrl')
@@ -38,8 +38,8 @@ if (fileUrlDiv) {
 
     // check if the file ends with .py
     if (!fileName.endsWith('.py') && !window.isRepo) {
-      document.getElementById('single').disabled = true
-      document.getElementById('grid').disabled = true
+      //document.getElementById('single').disabled = true
+      //document.getElementById('grid').disabled = true
       document.getElementById('plot_moe').disabled = true
       document.getElementById('plot').innerHTML = '<br>Invalid file type'
     }
@@ -57,7 +57,7 @@ if (fileUrlDiv) {
  * @param {boolean} gv - If true, plot using gv.
  * @param {boolean} all_gv - If true, plot all gv types.
  */
-async function plot(all = false, gv = false, all_gv = false) {
+async function plot(all = false, gv = true, all_gv = false) {
   try {
     // Clear the existing content
     document.getElementById('plot_loader').style.display = 'inline'
@@ -119,12 +119,6 @@ function generatePlotEndpoint(all, gv, all_gv) {
     // Construct the endpoint
     let type = all_gv ? 'all' : 'd3'
     let endpoint = `/plotter/plot?url=${postData.url}&is_repo=${window.isRepo}&graph_data=${graphData}&db_graph=${window.dbGraph}&demo=${postData.demo}&demo_file=${postData.file}&layout=${postData.layout}&gv=${gv}&type=${type}`
-    if (window.dbGraph) {
-      console.log('Grabbing graph from database...')
-    }
-    if (window.isRepo) {
-      console.log('Parsing repo to plot...')
-    }
 
     // Return the endpoint
     return endpoint
@@ -296,8 +290,8 @@ async function handleNotebook(responseData) {
             let iframe = document.createElement('iframe');
             iframe.className = 'nbFrame';
             iframe.srcdoc = output['text/html'];
-            iframe.style.width = '800px';
-            iframe.style.height = '475px';
+            iframe.style.width = '1000px';
+            iframe.style.height = '500px';
             iframe.style.border = 'none';
             plotElement.appendChild(iframe);
         }
