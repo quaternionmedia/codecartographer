@@ -53,6 +53,9 @@ async def get_graph(
                 owner = url.split("/")[-2]
                 repo = url.split("/")[-1]
                 graph_name = f"{owner}/{repo}"
+            else:
+                # get filename from url
+                graph_name = url.split("/")[-1]
 
         # Check if graph is in database
         if graph_name and graph_name != "":
@@ -65,11 +68,11 @@ async def get_graph(
                 pass
 
             if graph_data:
-                pprint("Graph found in database")
+                pprint(f"Graph '{graph_name}' found in database")
                 db_graph = True
                 is_in_db = True
             else:
-                pprint("Graph not found in database")
+                pprint(f"Graph '{graph_name}' not found in database")
                 db_graph = False
                 is_in_db = False
 
