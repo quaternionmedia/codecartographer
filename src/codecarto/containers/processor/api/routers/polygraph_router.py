@@ -60,7 +60,7 @@ async def url_data_to_json(file_url: str) -> dict:
         filename = file_url.split("/")[-1]
         if isinstance(url_data, dict):
             url_data = str(url_data)
-        parser: Parser = Parser(source_data={"raw": url_data, "name": filename})
+        parser: Parser = Parser(source_dict={"raw": url_data, "name": filename})
         graph = parser.graph
 
         json_data = graph_to_json_data(graph)

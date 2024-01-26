@@ -35,11 +35,11 @@ content %}
     </select>
     <div id="fileUrl" data-url="{{ file_url }}"></div>
     <br />
-    <button id="single" onclick="plot()">Single Layout</button>
-    <button id="grid" class="red_button" onclick="plot(true)">Grid of all layouts</button>
-    <br>
-    <button id="gv_single" style="display: none" onclick="plot(false, true)" >GV Single Layout</button>
-    <button id="gv_grid" class="red_button" style="display: none" onclick="plot(false, true, true)">Grid of d3, vis, three</button>
+    <!-- <button id="single" onclick="plot(false, false)">Single Layout</button>
+    <button id="grid" class="red_button" onclick="plot(true, false)">Grid of all layouts</button>
+    <br> -->
+    <button id="gv_single" onclick="plot()" >Single Layout</button>
+    <button id="gv_grid" class="red_button" onclick="plot(false, true, true)">Grid of d3, vis, three</button>
     <br>
     <button id="plot_moe" onclick="openInMoe(true)" style="display: none">
       Open in Moe

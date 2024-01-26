@@ -79,6 +79,7 @@ async def plot(
     dict
         The results of the plot. {index: plot html}
     """
+    pprint("-------- PLOTTING STARTING --------")
     from src.plotter.plotter import Plotter
 
     # TODO: need to implement labels, ntx, custom, palette as options at some point
@@ -119,7 +120,7 @@ async def plot(
                 results = await run_notebook(
                     graph_name=filename, graph=graph, title=layout.lower(), type=type
                 )
-            elif db_graph or is_repo:
+            elif db_graph or is_repo or gv:
                 if layout.lower() == "all":
                     pprint("Running cc grid plot on db")
                     results = plotter.grid_plot(graph)
@@ -156,3 +157,5 @@ async def plot(
             params,
             e,
         )
+    finally:
+        pprint("-------- PLOTTING COMPLETE --------")

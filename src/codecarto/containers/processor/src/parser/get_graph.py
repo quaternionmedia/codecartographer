@@ -38,66 +38,105 @@ async def get_graph(
             The graph and the filename.
     """
     graph: nx.DiGraph = None
-    filename: str = ""
+    graph_name: str = None
+    is_in_db: bool = False
+
+    # Clean the url if it is a repo
+    if not demo and not file_path:
+        if url and url != "":
+            graph_name = url
+            if is_repo:
+                # remove trailing '/' if there
+                if url.endswith("/"):
+                    url = url[:-1]
+                # get owner and repo name from url
+                owner = url.split("/")[-2]
+                repo = url.split("/")[-1]
+                graph_name = f"{owner}/{repo}"
+
+        # Check if graph is in database
+        if graph_name and graph_name != "":
+            pprint(f"graph_name: {graph_name}")
+
+            try:
+                graph_data, graph_name = await get_gJGF_from_database(graph_name)
+            except Exception as exc:
+                # If graph not in database, just igrnore error
+                pass
+
+            if graph_data:
+                pprint("Graph found in database")
+                db_graph = True
+                is_in_db = True
+            else:
+                pprint("Graph not found in database")
+                db_graph = False
+                is_in_db = False
 
     # Use demo graph
     if demo:
         pprint("demo")
-        graph, filename = demo_graph()
+        graph, graph_name = demo_graph()
 
     # Get graph from demo_file
     elif file_path and file_path != "":
         pprint("file_path")
-        graph, filename = file_graph(file_path)
+        graph, graph_name = file_graph(file_path)
 
     # Get graph from database
     elif db_graph and url:
         from src.polygraph.polygraph import gJGF_to_nxGraph
 
-        graph_name = url
-        if is_repo:
-            pprint("db_graph & is_repo")
-            # remove trailing '/' if there
-            if url.endswith("/"):
-                url = url[:-1]
-            # get owner and repo name from url
-            owner = url.split("/")[-2]
-            repo = url.split("/")[-1]
-            graph_name = f"{owner}/{repo}"
-        else:
-            pprint("db_graph")
-        pprint(f"graph_name: {graph_name}")
-        graph_data, filename = await get_gJGF_from_database(graph_name)
-        graph_data["name"] = filename
+        pprint("db_graph")
+        graph_data, graph_name = await get_gJGF_from_database(graph_name)
+        graph_data["name"] = graph_name
         # graph_data = format_gJGF(graph_data)
-        graph, filename = gJGF_to_nxGraph(graph_name, graph_data)
+        graph, graph_name = gJGF_to_nxGraph(graph_name, graph_data)
 
     # Get graph from repo url
     elif is_repo and url:
         pprint("is_repo")
-        graph, filename = await repo_url_graph(url)
-        pprint("gravis repo")
-        pprint(filename)
+        graph, graph_name = await repo_url_graph(url)
+        # TODO: we have polygraph, why can't it just do graph_to_gJGF?
+        db_results = await insert_graph_into_database(graph_name, graph)
+
         if gv:
             from src.polygraph.polygraph import gJGF_to_nxGraph
 
-            db_results = await insert_graph_into_database(filename, graph)
             pprint("gravis repo")
-            graph_data, filename = await get_gJGF_from_database(filename)
+            pprint(graph_name)
+            # If gv (gravis) we need the graph as a gJGF
+            # simplest way is to just get it from the database
+            # TODO: we have polygraph, why can't it just do graph_to_gJGF?
+            graph_data, graph_name = await get_gJGF_from_database(graph_name)
 
     # Get graph from url
     elif url:
         pprint("url")
-        graph, filename = await url_graph(url)
+        graph, graph_name = await url_graph(url)
 
     # Get graph from json data
     elif graph_data and graph_data != {}:
         pprint("graph_data")
         # TODO: at some point user may be able to provide json data
         # TODO: will need to verify json data represents valid graph
-        graph, filename = given_data_graph(graph_data)
+        graph, graph_name = given_data_graph(graph_data)
 
-    return graph, filename
+    # If this is not a demo or file_graph
+    if not demo and not file_path:
+        # Insert graph into database if not already there
+        if not is_in_db:
+            try:
+                pprint("Inserting graph into database")
+                db_results = await insert_graph_into_database(graph_name, graph)
+                pprint(f"Database results: {db_results}")
+            except Exception as exc:
+                # If graph already in database, ignore error
+                pass
+    else:
+        pprint("Not inserting graph into database")
+
+    return graph, graph_name
 
 
 def demo_graph() -> tuple:
@@ -156,7 +195,7 @@ def file_graph(file_path) -> tuple:
 
     if not os.path.exists(file_path):
         return {"error": "File not found."}
-    parser: Parser = Parser(source_data=[file_path])
+    parser: Parser = Parser(source_files=[file_path])
     filename = os.path.basename(file_path)
 
     return parser.graph, filename
@@ -204,12 +243,8 @@ async def url_graph(url: str) -> tuple:
 
     filename = url.split("/")[-1]
     raw_data = await get_raw_data_from_github_url(url)
-    parser: Parser = Parser(source_data={"raw": raw_data, "name": filename})
+    parser: Parser = Parser(source_dict={"raw": raw_data, "name": filename})
     graph = parser.graph
-
-    # TODO: need to have the 'insert into database' code in somewhere else
-    # Not when the user click Single Plot on Plotter page.
-    db_results = await insert_graph_into_database(filename, graph)
 
     return graph, filename
 
@@ -233,10 +268,18 @@ async def repo_url_graph(url: str) -> tuple:
 
     pprint(f"repo_url_graph: {url}")
     filename = ""
-    if url.endswith("/"):
-        filename = f"{url.split('/')[-3]}/{url.split('/')[-2]}"
-    else:
+    if url.endswith(".py"):
+        # is a file
         filename = url.split("/")[-1]
+    else:
+        # is a repo
+        # remove trailing '/' if there
+        if url.endswith("/"):
+            url = url[:-1]
+        # get the owner and repo name from url
+        owner = url.split("/")[-2]
+        repo = url.split("/")[-1]
+        filename = f"{owner}/{repo}"
     repo_struct = await get_raw_data_from_github_repo(url)
     parser: Parser = Parser(source_data=repo_struct, is_repo=True)
     graph = parser.graph

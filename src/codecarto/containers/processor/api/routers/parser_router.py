@@ -14,6 +14,8 @@ ParserRoute = APIRouter()
 
 @ParserRoute.get("/parse")
 async def parse():
+    # TODO: Implement this
+    # This may just be a stub
     pass
 
 
@@ -27,6 +29,7 @@ async def handle_github_url(github_url: str) -> dict:
     Returns:
         dict -- Dictionary of directories and files
     """
+    print("-------- PARSING STARTING --------")
     import time
     from src.parser.import_source_url import (
         ImportSourceUrlError,
@@ -137,3 +140,4 @@ async def handle_github_url(github_url: str) -> dict:
         total_time = time.strftime("%H:%M:%S", time.gmtime(end_time - start_time))
         logger.info(f"  Total time taken: {total_time}")
         # TODO: Log this in database later
+        print("-------- PARSING COMPLETE --------")
