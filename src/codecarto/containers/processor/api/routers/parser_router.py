@@ -1,4 +1,3 @@
-import httpx
 from fastapi import APIRouter
 
 from src.util.exceptions import GithubError
@@ -38,7 +37,6 @@ async def handle_github_url(github_url: str) -> dict:
     # get current time to calculate total time taken
     start_time = time.time()
     try:
-        client = httpx.AsyncClient()
         logger.info(
             f"  Started     Proc.handle_github_url(): github_url - {github_url}"
         )
@@ -133,7 +131,6 @@ async def handle_github_url(github_url: str) -> dict:
             exc,
         )
     finally:
-        await client.aclose()
         logger.info(f"  Finished    Proc.handle_github_url()")
         # calculate total time taken
         end_time = time.time()

@@ -45,6 +45,9 @@ async def run_notebook(
             "No graph provided",
         )
 
+    # make possible multigraphs into a digraph
+    graph = nx.DiGraph(graph)
+
     # Set and scale up the postiions
     plot = Plotter(graph=graph)
     pos = plot.get_node_positions(graph=graph, layout_name=f"{title.lower()}_layout")
@@ -52,6 +55,13 @@ async def run_notebook(
         node = graph.nodes[id]
         node["x"] = float(x) * 100
         node["y"] = float(y) * 100
+
+    # Scale nodes based on edges
+    for node, data in graph.nodes(data=True):
+        # Set size based on the number of outgoing edges
+        data["size"] = (
+            1 + (len(graph.out_edges(node)) * 10) + (len(graph.in_edges(node)) * 10)
+        )
 
     # Convert the graph to gJGF for the notebook
     gJFG = gv.convert.any_to_gjgf(graph)
