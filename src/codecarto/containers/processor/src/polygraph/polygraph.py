@@ -306,8 +306,7 @@ def gJGF_to_nxGraph(graph_name: str, graph_data: dict) -> tuple:
             The graph and the filename.
     """
     # Convert the graph to a networkx graph
-    # graph = nx.node_link_graph(format_gJGF(graph_data), directed=True)
-    graph: nx.DiGraph = nx.node_link_graph(graph_data, directed=True)
+    graph: nx.DiGraph = nx.node_link_graph(graph_data, directed=True, multigraph=False)
 
     # Check if graph found
     if not graph:

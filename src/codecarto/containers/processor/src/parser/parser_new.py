@@ -31,6 +31,7 @@ class Parser:
         """
         # The graph to populate
         self.graph: nx.DiGraph = nx.DiGraph()
+        self.root = None
         # The source data
         self.source_data: list | dict = source_data
         # To track current elements
@@ -42,24 +43,52 @@ class Parser:
         # Parse the source code
         self.parsed_files: list = []
         self.module_list: list = []
-        self.add_start_nodes(is_repo)
+        if source_data:
+            if isinstance(source_data, dict):
+                if is_repo:
+                    self.add_start_nodes(is_repo)
+                else:
+                    self.add_start_nodes(is_file=True, filename=source_data["name"])
+            elif isinstance(source_data, list):
+                self.add_start_nodes()
         self.parse_source_data()
 
     ########## GRAPH ##########
-    def add_start_nodes(self, is_repo: bool = False):
-        """Add root and python node to the graph."""
-        # Create root and python nodes
-        if is_repo:
+    def add_start_nodes(
+        self, is_repo: bool = False, is_file: bool = False, filename: str = None
+    ):
+        """Add root and python node to the graph.
+
+        Parameters:
+        -----------
+        is_repo : bool
+            Whether the source is a repo.
+        is_file : bool
+            Whether the source is a file.
+        filename : str
+            The name of the file.
+        """
+        if is_file:
+            # Create root file node
+            self.root: nx.DiGraph = nx.DiGraph(name=filename)
+            # Add the file node
+            self.graph.add_node(
+                id(self.root),
+                type="Module",
+                label=filename,
+                parent=None,
+            )
+        elif is_repo:
             # Repo source data
             root_label: str = f"{self.source_data['owner']}/{self.source_data['repo']}"
             self.root: nx.DiGraph = nx.DiGraph(name=root_label)
+            # Add the repo node
             self.graph.add_node(
                 id(self.root),
                 type="Module",
                 label=root_label,
                 parent=None,
             )
-            self.current_parent = id(self.root)
         else:
             # File source data
             self.root: nx.DiGraph = nx.DiGraph(name="root")
@@ -80,6 +109,9 @@ class Parser:
             )
             self.graph.add_edge(id(self.root), id(self.python))
 
+        # Set the current parent to the root node
+        self.current_parent = self.root
+
     def add_to_graph(self, visitor: BaseASTVisitor):
         """Add the parsed data to the graph.
 
@@ -91,6 +123,7 @@ class Parser:
         try:
             # Get the module
             module = visitor.module
+
             # Define types and corresponding attributes
             node_types = {
                 "interactive": visitor.interactives,
@@ -198,16 +231,20 @@ class Parser:
                 "relation": visitor.relations,
                 "variables": visitor.variables,
             }
-            # Add nodes and edges
+
+            # Add nodes and edges to the graph
             for node_type, nodes in node_types.items():
                 nodes = [str(node) for node in nodes]
                 for node in nodes:
+                    # need to pull out relavent info from the node
                     self.create_node(
                         node_id=id(node),
                         node_type=node_type,
                         node_label=node_type,
                         node_parent_id=id(self.current_parent),
                     )
+                    # add the edge to the parent
+                    self.graph.add_edge(id(self.current_parent), id(node))
         except Exception as ex:
             print(f"Failed to add to graph: {ex}")
             raise ex
@@ -217,7 +254,7 @@ class Parser:
         node_id: int,
         node_type: str,
         node_label: str,
-        node_parent_id: int,
+        node_parent_id: int | None,
     ):
         """Create new node.
 
@@ -250,17 +287,23 @@ class Parser:
         """Parse the source data."""
         try:
             if isinstance(self.source_data, dict):
-                # parse the repo
-                print("Parsing repo...")
-                self.parse_repo(self.source_data["raw"])
-                # parse the raw for accepted file types
-                # self.parse_raw()
+                # check if this is a file or a repo
+                if self.source_data.get("name", None) and self.source_data[
+                    "name"
+                ].endswith(".py"):
+                    # parse the file
+                    print("Parsing file...")
+                    self.parse_raw(self.source_data["raw"], self.source_data["name"])
+                else:
+                    # parse the repo
+                    print("Parsing repo...")
+                    self.parse_repo(self.source_data["raw"])
             elif isinstance(self.source_data, list):
                 # loop through the list of source files
                 print("Parsing files...")
                 self.module_list = self.source_data
                 for file in self.source_data:
-                    self.parse_file(file)
+                    self.parse_local_file(file)
             else:
                 # invalid source data type
                 raise TypeError("Invalid source data type.")
@@ -278,6 +321,7 @@ class Parser:
         """
         try:
             self.get_repo_modules(source_dict)
+
             # loop through the list of source files
             for key, value in source_dict.items():
                 # key is the name of the dir or 'files'
@@ -356,28 +400,22 @@ class Parser:
         #         )
         #         self.current_parent = filename
         #         self.parse_raw(raw, filename)
-        # else:  # other files
-        #     self.create_node(
-        #         node_id=id(filename),
-        #         node_type="File",
-        #         node_label=filename,
-        #         node_parent_id=id(self.current_parent),
-        #     )
 
         # Parse the code
         node = ast.parse(source_raw, filename)
         if node:
-            # Visit the node
+            # Start visiting the nodes
             file_ext = filename.split(".")[-1]
             visitor = ast_types[file_ext](self.module_list)
-            visitor.visit(node)
+            visitor.generic_visit(node)
+
             # Add the parsed data to the graph
             self.add_to_graph(visitor)
         else:
             print(f"Parser.parse_text: tree is None for {filename}")
             raise ValueError(f"Parser.parse_text: tree is None for {filename}")
 
-    def parse_file(self, filepath: str):
+    def parse_local_file(self, filepath: str):
         """Parse the passed file.
 
         Parameters:
