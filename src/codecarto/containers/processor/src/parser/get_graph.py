@@ -1,6 +1,6 @@
 from operator import is_
 import networkx as nx
-from pprint import pprint
+from pprint import pp, pprint
 from src.database.gravis_db import insert_graph_into_database, get_gJGF_from_database
 
 
@@ -115,8 +115,8 @@ async def get_graph(
 
     # Get graph from url
     elif url:
-        pprint("url")
-        graph, graph_name = await url_graph(url)
+        pprint("graph from url")
+        graph, graph_name = await file_url_graph(url)
 
     # Get graph from json data
     elif graph_data and graph_data != {}:
@@ -124,6 +124,10 @@ async def get_graph(
         # TODO: at some point user may be able to provide json data
         # TODO: will need to verify json data represents valid graph
         graph, graph_name = given_data_graph(graph_data)
+
+    # Apply some styling to the graph
+    if graph:
+        graph = apply_styles(graph)
 
     # If this is not a demo or file_graph
     if not demo and not file_path:
@@ -194,11 +198,11 @@ def file_graph(file_path) -> tuple:
             The graph and the filename.
     """
     import os
-    from src.parser.parser import Parser
+    from src.parser.parser_new import Parser
 
     if not os.path.exists(file_path):
         return {"error": "File not found."}
-    parser: Parser = Parser(source_files=[file_path])
+    parser: Parser = Parser(source_data=[file_path])
     filename = os.path.basename(file_path)
 
     return parser.graph, filename
@@ -228,7 +232,7 @@ def given_data_graph(data: dict) -> tuple:
     return graph, "Graph Data"
 
 
-async def url_graph(url: str) -> tuple:
+async def file_url_graph(url: str) -> tuple:
     """Create a graph from a url.
 
     Parameters:
@@ -241,12 +245,12 @@ async def url_graph(url: str) -> tuple:
         tuple (nx.DiGraph, str):
             The graph and the filename.
     """
-    from src.parser.parser import Parser
+    from src.parser.parser_new import Parser
     from .import_source_url import get_raw_data_from_github_url
 
     filename = url.split("/")[-1]
     raw_data = await get_raw_data_from_github_url(url)
-    parser: Parser = Parser(source_dict={"raw": raw_data, "name": filename})
+    parser: Parser = Parser(source_data={"raw": raw_data, "name": filename})
     graph = parser.graph
 
     return graph, filename
@@ -284,10 +288,146 @@ async def repo_url_graph(url: str) -> tuple:
         repo = url.split("/")[-1]
         filename = f"{owner}/{repo}"
     repo_struct = await get_raw_data_from_github_repo(url)
+    pprint("#####################################")
+    # print the struct with proper indentation and newlines, if raw is code, just print 'code'
+    pp(repo_struct)
     parser: Parser = Parser(source_data=repo_struct, is_repo=True)
     graph = parser.graph
 
-    json_graph = nx.readwrite.json_graph.node_link_data(graph)
-    pprint(json_graph)
+    # prints out the graph as json
+    # print(nx.readwrite.json_graph.node_link_data(graph))
 
     return graph, filename
+
+
+# TOOD: this is temporary until we define more in palette.py
+def apply_styles(graph: nx.DiGraph) -> nx.DiGraph:
+    node_styles = {
+        # "interactive": visitor.interactives,
+        # "expression": visitor.expressions,
+        "function": {"color": "#99ff99", "shape": "rectangle"},
+        "asyncfunction": {"color": "#99ff99", "shape": "rectangle"},
+        "class": {"color": "#ff9999", "shape": "ellipse"},
+        # "return": visitor.returns,
+        # "delete": visitor.deletes,
+        # "assign": visitor.assigns,
+        # "typealias": visitor.typealiases,
+        # "augassign": visitor.augassigns,
+        # "annassign": visitor.annassigns,
+        # "forloop": visitor.forloops,
+        # "asyncforloop": visitor.asyncforloops,
+        # "whileloop": visitor.whileloops,
+        # "if": visitor.ifs,
+        # "with": visitor.withs,
+        # "asyncwith": visitor.asyncwiths,
+        # "match": visitor.matches,
+        # "raise": visitor.raises,
+        # "try": visitor.trys,
+        # "trystar": visitor.trystars,
+        # "assert": visitor.asserts,
+        "import": {"color": "#9999ff", "shape": "diamond"},
+        "importfrom": {"color": "#9999ff", "shape": "diamond"},
+        # "global": visitor.globals,
+        # "nonlocal": visitor.nonlocals,
+        # "expr": visitor.exprs,
+        # "pass": visitor.passes,
+        # "break": visitor.breaks,
+        # "continue": visitor.continues,
+        # "boolop": visitor.boolops,
+        # "namedexpr": visitor.namedexprs,
+        # "binop": visitor.binops,
+        # "unaryop": visitor.uarynops,
+        # "lambda": visitor.lambdas,
+        # "ifexp": visitor.ifexps,
+        # "dict": visitor.dicts,
+        # "set": visitor.sets,
+        # "listcomp": visitor.listcomps,
+        # "setcomp": visitor.setcomps,
+        # "dictcomp": visitor.dictcomps,
+        # "generatorexp": visitor.generatorexps,
+        # "await": visitor.awaits,
+        # "yield": visitor.yields,
+        # "yieldfrom": visitor.yieldfroms,
+        # "comparison": visitor.comparisons,
+        # "call": visitor.calls,
+        # "formattedvalue": visitor.formattedvalues,
+        # "joinedstr": visitor.joinedstrs,
+        # "constant": visitor.constats,
+        # "attribute": visitor.attribuetes,
+        # "subscript": visitor.subscripts,
+        # "starred": visitor.starreds,
+        # "name": visitor.names,
+        # "list": visitor.lists,
+        # "tuple": visitor.tuples,
+        # "slice": visitor.slices,
+        # "load": visitor.loads,
+        # "store": visitor.stores,
+        # "del": visitor.dels,
+        # "and": visitor.ands,
+        # "or": visitor.ors,
+        # "add": visitor.adds,
+        # "sub": visitor.subs,
+        # "mult": visitor.mults,
+        # "matmult": visitor.matmults,
+        # "div": visitor.divs,
+        # "mod": visitor.mods,
+        # "pow": visitor.pows,
+        # "lshift": visitor.lshifts,
+        # "rshift": visitor.rshifts,
+        # "bitor": visitor.bitors,
+        # "bitxor": visitor.bitxors,
+        # "bitand": visitor.bitands,
+        # "floordiv": visitor.floordivs,
+        # "invert": visitor.inverts,
+        # "not": visitor.nots,
+        # "uadd": visitor.uaddss,
+        # "usub": visitor.usubss,
+        # "eq": visitor.eqss,
+        # "not_eq": visitor.not_eqss,
+        # "lt": visitor.lts,
+        # "lte": visitor.ltes,
+        # "gt": visitor.gts,
+        # "gte": visitor.gtes,
+        # "is": visitor.iss,
+        # "isnot": visitor.isnots,
+        # "in": visitor.ins,
+        # "notin": visitor.notins,
+        # "excepthandler": visitor.excepthandlers,
+        # "matchvalue": visitor.matchvalues,
+        # "matchsingleton": visitor.matchsingleton,
+        # "matchsequence": visitor.matchsequences,
+        # "matchmapping": visitor.matchmappings,
+        # "matchclass": visitor.matchclasses,
+        # "matchstar": visitor.matchstars,
+        # "matchas": visitor.matchases,
+        # "machor": visitor.machors,
+        # "typeignore": visitor.typeignores,
+        # "typevar": visitor.typevars,
+        # "paramspec": visitor.paramspecs,
+        # "typevartuple": visitor.typevartuples,
+        # "relation": visitor.relations,
+        "variables": {"color": "#009999", "shape": "rectangle"},
+        "module": {"color": "#ffff99", "shape": "rectangle"},
+        "default": {"color": "#0c0c44", "shape": "circle"},
+    }
+
+    edge_styles = {
+        "inheritance": {"color": "#990066", "line_style": "solid"},
+        "import": {"color": "#005500", "line_style": "dashed"},
+        "variable": {"color": "#000055", "line_style": "dotted"},
+        "function": {"color": "#550000", "line_style": "dotted"},
+        "default": {"color": "#000000", "line_style": "dotted"},
+    }
+
+    for node, data in graph.nodes(data=True):
+        node_type = data.get("type", "default")
+        style = node_styles.get(node_type.lower(), node_styles["default"])
+        data.update(style)
+        data["opacity"] = 0.5
+
+    for _, _, data in graph.edges(data=True):
+        edge_type = data.get("type", "default")
+        style = edge_styles.get(edge_type, edge_styles["default"])
+        data.update(style)
+
+    return graph

@@ -28,7 +28,7 @@ const monitorFiles = filePaths => {
   })
 }
 
-// Usage
+// Add all files of .css, .html, .js from src/pages to be monitored
 const filesToMonitor = [
   '/pages/home/home.css',
   '/pages/home/home.html',
@@ -42,6 +42,9 @@ const filesToMonitor = [
   '/pages/plot/plot.css',
   '/pages/plot/plot.html',
   '/pages/plot/plot.js',
+  '/pages/saved_graphs/saved_graphs.css',
+  '/pages/saved_graphs/saved_graphs.html',
+  '/pages/saved_graphs/saved_graphs.js',
   '/pages/base.css',
   '/pages/base.html',
   '/pages/base.js',

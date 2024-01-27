@@ -45,6 +45,11 @@ async def get_gJGF_from_database(graph_name: str) -> tuple:
     # Get the graph from database
     graph_data: dict = await read_graph(graph_name)
 
+    # make sure multidigraphs are converted to digraphs
+    if graph_data["multigraph"] == True:
+        graph_data["multigraph"] = False
+        graph_data["directed"] = True
+
     # Check if graph data found
     if not graph_data or graph_data == {}:
         raise GravisDBError(
@@ -89,6 +94,11 @@ async def insert_graph_into_database(graph_name: str, graph: nx.DiGraph) -> dict
 
         # Convert graph to json
         nx_graph_json = nx.node_link_data(graph)
+
+        # make sure multidigraphs are converted to digraphs
+        if nx_graph_json["multigraph"]:
+            nx_graph_json["multigraph"] = False
+            nx_graph_json["directed"] = True
 
         # Insert the graph into the database
         result: dict = await insert_graph(graph_name, nx_graph_json)

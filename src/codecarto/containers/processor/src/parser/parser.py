@@ -309,7 +309,10 @@ class Parser(ast.NodeVisitor):
         if not node_label or node_label == "":
             node_label = f"{node_type} (u)"
         _node = self.graph.add_node(
-            node_id, type=node_type, label=node_label, parent=node_parent_id
+            node_id,
+            type=node_type,
+            label=node_label,
+            parent=node_parent_id,
         )
         self.graph.add_edge(node_parent_id, node_id)
         return _node

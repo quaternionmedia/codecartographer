@@ -12,3 +12,18 @@
 .plotLink:active {
   color: #e8dbad;
 }
+
+.deleteLink {
+  color: #e19f8f;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.deleteLink:link {
+  color: #e19f8f;
+}
+.deleteLink:hover {
+  color: #ebbebe;
+}
+.deleteLink:active {
+  color: #ebbebe;
+}
