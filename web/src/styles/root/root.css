@@ -1,0 +1,27 @@
+:root {
+  --c-transparent-full: #00000000;
+  --c-transparent-qurt: #3a3a3a3c;
+  --c-transparent-half: #3a3a3a8a;
+  --c-transparent-3qurt: #3a3a3ac3;
+  --c-white: #eee;
+  --c-grey-lighter: #b4b4b4;
+  --c-grey-light: #999;
+  --c-grey-mid: #666;
+  --c-grey-dark: #333;
+  --c-grey-dark-rbg: rgb(51, 51, 51);
+  --c-black: #222;
+  --c-page-dark: #ccc;
+  --c-page-dark-border: #aaa;
+  --c-page-dark-shadow: rgb(136, 134, 136);
+  --c-page-light: floralwhite;
+  --c-page-light-border: #ccc;
+  --c-page-light-shadow: rgb(204, 198, 204);
+
+  --c-focus-color: #1ebaf7;
+
+  --f-root-font: 'Calibri', sans-serif;
+  --t-transition-time: 0.5s;
+  --border-size-thin: 1px;
+  --border-size-med: 1.5px;
+  --border-radius: 5px;
+}

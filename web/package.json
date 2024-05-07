@@ -1,0 +1,24 @@
+{
+  "name": "codecartographer",
+  "version": "0.0.1",
+  "description": "Graphical representation of source code.",
+  "author": "Quaternion Media, LLC",
+  "license": "MIT",
+  "main": "index.html",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite"
+  },
+  "browserslist": [
+    "defaults"
+  ],
+  "dependencies": {
+    "meiosis": "^2.0.0",
+    "meiosis-setup": "^6.2.3",
+    "meiosis-tracer": "^6.0.1",
+    "mithril": "^2.2.2"
+  },
+  "devDependencies": {
+    "vite": "^5.0.12"
+  }
+}
