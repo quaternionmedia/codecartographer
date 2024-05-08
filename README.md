@@ -76,7 +76,7 @@ pip install -m graphbase
 Docker Up
 
 ```
-docker-compose -f ./codecarto/graphbase/docker-compose.yml up --build -d && docker-compose -f ./codecarto/docker-compose.yml up --build -d
+docker-compose -f ./graphbase/docker-compose.yml up --build -d && docker-compose -f ./docker-compose.yml up --build -d
 ```
 *If you have problems with the above command, docker compose up graphbase, then docker compose up codecartographer*
 
