@@ -10,7 +10,7 @@ import './pages/index.css';
 const initial: State = {
   debug: {
     menu: false,
-    tracer: true,
+    tracer: false,
   },
   configurations: {
     processor_url: 'http://localhost:2020',

@@ -1,3 +1,5 @@
+import { attachCollapsibleListeners } from '../pages/index.js';
+
 function displayError(elementId, message, detail) {
   console.error(elementId, message, detail);
 }
@@ -51,7 +53,7 @@ function graphDescToHTML(obj) {
   // Check if the object is null
   let html = '';
   if (typeof obj !== 'object') {
-    html += `<span>Invalid format: ${obj}</span>`;
+    html += `<span>${obj}</span>`;
   } else {
     // Iterate through the object
     html = `<ul>`;
@@ -71,7 +73,8 @@ let repoUrl = '';
  */
 export async function handleGithubURL(state) {
   // Check if the url input is blank or not
-  if (document.getElementById('githubUrl').value === '') {
+  const urlInput = document.getElementById('githubUrl');
+  if (urlInput.value === '') {
     document.getElementById('url_content').innerHTML = 'Please enter a URL';
     return;
   } else {
@@ -84,6 +87,7 @@ export async function handleGithubURL(state) {
         repoUrl += '/';
       }
       const encodedGithubUrl = encodeURIComponent(repoUrl);
+      state.source_code_path = encodedGithubUrl;
       const href_line = `${state.configurations.processor_url}/parser/handle_github_url?github_url=${encodedGithubUrl}`;
       const response = await fetch(href_line);
       const responseData = await response.json();
@@ -99,7 +103,6 @@ export async function handleGithubURL(state) {
         } else {
           // Refactor the data and display it
           const data = responseData.results;
-          repoData = data;
           const refactoredData = refactorGitHubData(data);
           document.getElementById('url_content').innerHTML = refactoredData;
           attachCollapsibleListeners();
@@ -118,7 +121,7 @@ export async function handleGithubURL(state) {
         `Error - parse.js - handleGithubURL(): ${error}`
       );
     } finally {
-      //document.getElementById('github_loader').style.display = 'none';
+      document.getElementById('github_loader').style.display = 'none';
     }
   }
 }
@@ -141,6 +144,7 @@ function refactorGitHubData(data) {
     const dataDict = { contents: dataContents };
     const contentHtml = handleGitHubData(dataDict);
     const plot_link = `/plotter/?is_repo=true&file_url=${repoUrl}`;
+
     // Add package owner and name to the html
     html += `<pre>`;
     html += `Package Owner: ${dataOwner}<br>`;

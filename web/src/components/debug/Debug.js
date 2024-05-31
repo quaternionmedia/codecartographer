@@ -52,5 +52,5 @@ export const Tracer = (cells) => {
     streams: [{ label: 'CodeCarto Stream', stream: cells }],
   });
   const tracer = document.querySelector('#tracer');
-  //tracer.classList.toggle('hide');
+  tracer.classList.toggle('hide');
 };
