@@ -68,39 +68,40 @@
 }
 
 /* ###########  PLOT LINKS  ######### */
-.whole_plot_link {
+.plot_whole {
   display: flex;
+  cursor: pointer;
   justify-content: center;
   margin-bottom: 10px;
 }
+.plot_whole:hover {
+  color: var(--c-file-hover);
+  background-color: var(--cb-file-hover);
+}
 
+/* ###########  UNUSED  ######### */
 .git_link,
 .json_link,
-.plot_link,
-.whole_plot_link {
+.plot_lin {
   color: #e1c48f;
 }
 .git_link:link,
 .json_link:link,
-.plot_link:link,
-.whole_plot_link:link {
+.plot_link:link {
   color: #e1c48f;
 }
 .git_link:visited,
 .json_link:visited,
-.plot_link:visited,
-.whole_plot_link:visited {
+.plot_link:visited {
   color: #c29e63;
 }
 .git_link:hover,
 .json_link:hover,
-.plot_link:hover,
-.whole_plot_link:hover {
+.plot_link:hover {
   color: #e8dbad;
 }
 .git_link:active,
 .json_link:active,
-.plot_link:active,
-.whole_plot_link:active {
+.plot_link:active {
   color: #e8dbad;
 }

@@ -7,17 +7,28 @@ export const Directory = (
   cell: ICell,
   setSelectedUrl: (url: string) => void
 ) => {
-  var whole_repo_link = m('a', {
-    class: 'whole_plot_link',
-    href: cell.state.plot_repo_url,
-    target: '_blank',
-    innerText: 'Plot Whole Repo',
-  });
-  var contents = parseContents(cell.state.repo_data, 'root', setSelectedUrl);
+  var contents = [];
+
+  if (cell.state.repo_url !== '') {
+    var plot_all = m(
+      'div.plot_whole',
+      {
+        onclick: function () {
+          setSelectedUrl(cell.state.plot_repo_url);
+        },
+      },
+      'Plot Whole Repo'
+    );
+
+    var contents = [
+      plot_all,
+      parseContents(cell.state.repo_data, 'root', setSelectedUrl),
+    ];
+  }
 
   cell.update({ directory_content: contents });
 
-  return m('div.directory', [whole_repo_link, cell.state.directory_content]);
+  return m('div.directory', [cell.state.directory_content]);
 };
 
 export function parseContents(
