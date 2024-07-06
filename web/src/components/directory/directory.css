@@ -1,0 +1,106 @@
+/* ###########  DIRECTORY  ######### */
+.directory {
+  height: 100%;
+  justify-content: space-evenly;
+  justify-items: start;
+  border: '2px';
+  background-color: var(--cb-directory);
+}
+
+/* ###########  FOLDER BUTTON  ######### */
+.folder_button {
+  cursor: pointer;
+}
+.folder_button:hover {
+  color: var(--c-folder);
+  background-color: var(--cb-folder-hover);
+}
+.folder_button::before {
+  font-weight: bold;
+  content: '🗀 '; /* Closed folder icon */
+}
+.folder_button.active::before {
+  content: '🗁 '; /* Open folder icon */
+}
+.folder_button + .folder_content {
+  display: none;
+}
+.folder_button.active + .folder_content {
+  display: block;
+}
+
+/* ###########  FOLDER CONTENT  ######### */
+.folder_content {
+  display: none;
+  padding-left: 15px;
+  border-left: dashed 1px var(--c-folder-active-border);
+}
+.folder_button.active + .files,
+.folder_button.active + .files > .file {
+  background-color: var(--cb-folder-active);
+}
+.folder_button.active + .files {
+  border: solid 1px var(--c-folder-active-border);
+}
+
+/* ###########  FILES  ######### */
+.files {
+  color: var(--c-file);
+}
+.file {
+  cursor: pointer;
+  background-color: var(--cb-file);
+}
+.file::before {
+  font-weight: bold;
+  content: '🗎 '; /* Closed folder icon */
+}
+.file:hover {
+  color: var(--c-file-hover);
+  background-color: var(--cb-file-hover);
+}
+.file.disabled {
+  color: var(--c-file-disabled);
+}
+.file.disabled:hover {
+  color: var(--c-black);
+  background-color: var(--cb-file-disabled);
+}
+
+/* ###########  PLOT LINKS  ######### */
+.whole_plot_link {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.git_link,
+.json_link,
+.plot_link,
+.whole_plot_link {
+  color: #e1c48f;
+}
+.git_link:link,
+.json_link:link,
+.plot_link:link,
+.whole_plot_link:link {
+  color: #e1c48f;
+}
+.git_link:visited,
+.json_link:visited,
+.plot_link:visited,
+.whole_plot_link:visited {
+  color: #c29e63;
+}
+.git_link:hover,
+.json_link:hover,
+.plot_link:hover,
+.whole_plot_link:hover {
+  color: #e8dbad;
+}
+.git_link:active,
+.json_link:active,
+.plot_link:active,
+.whole_plot_link:active {
+  color: #e8dbad;
+}

@@ -320,3 +320,69 @@ async function handleNotebook(responseData) {
 //     document.getElementById('plot_loader').style.display = 'none'
 //   }
 // }
+
+// function refactorGitHubData(data) {
+//   // Check if the data is null
+//   let html = '';
+
+//   // Extract the owner, repo, and contents from the data
+//   const dataOwner = data.package_owner;
+//   const dataRepo = data.package_name;
+//   const dataContents = data.contents;
+//   const dataDict = { contents: dataContents };
+//   const contentHtml = handleGitHubData(dataDict);
+
+//   // Add package owner and name to the html
+//   html += `<pre>`;
+//   html += `Package Owner: ${dataOwner}<br>`;
+//   html += `Package Name: ${dataRepo} <br>`;
+//   html += `<a class="plotLink" href="${plot_link}" target="_blank">Plot Whole Repo</a>`;
+//   html += `</pre>`;
+//   html += `${contentHtml}`;
+
+//   // Return the html
+//   return html;
+// }
+
+// /**
+//  * Create a collapsible button structure from the given GitHub data.
+//  * @param {Object} data - The GitHub data to be converted.
+//  * @param {boolean} nested - Whether the data is nested or not.
+//  * @return {string} - The formatted HTML content.
+//  */
+// function handleGitHubData(data) {
+//   // Iterate through the data
+//   let content = '';
+//   for (const [key, value] of Object.entries(data)) {
+//     if (typeof value === 'object') {
+//       // If the key is "files", it's a list of filenames
+//       if (key === 'files') {
+//         for (const file of value) {
+//           let json_link = `/polygraph/url_to_json?file_url=${file['download_url']}`;
+//           let plot_link = `/plotter/?file_url=${file['download_url']}`;
+//           content += `<div>`;
+//           content +=
+//           `<a
+//             class="gitLink"
+//             href="${file['html_url']}"
+//             target="_blank">${file['name']}
+//           </a>`
+//           ;
+//           content += `  `;
+//           content += `<a class="jsonLink" href="${json_link}" target="_blank">JSON</a>`;
+//           content += `  `;
+//           content += `<a class="plotLink" href="${plot_link}" target="_blank">PLOT</a>`;
+//           content += `</div>`;
+//         }
+//       } else {
+//         // Else, it's a directory
+//         content += `<button class="collapsible">${key}</button>`;
+//         content += `<div class="content">`;
+//         content += handleGitHubData(value); // Recursive call for nested directories
+//         content += `</div>`;
+//       }
+//     }
+//   }
+//   // Return the content
+//   return content;
+// }

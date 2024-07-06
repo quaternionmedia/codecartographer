@@ -1,138 +1,36 @@
 /* ###########  NAV  ######### */
 .nav {
-  position: fixed;
-  top: 0;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
   height: 100%;
+  z-index: 1;
+  justify-content: left;
   overflow: hidden;
 }
-.nav__content {
+.nav__wrapper {
+  display: flex;
+  flex-direction: row;
   height: 100%;
-  background-color: var(--c-black);
-  transition: all var(--t-transition-time) ease;
 }
-
-/* #####  NAV LEFT  */
-.nav_left {
-  left: 0;
-}
-.nav_left__content {
-  width: 0;
-}
-.nav_left__toggle--open ~ .nav_left__content {
-  width: var(--w-nav-left);
-}
-
-/* #####  NAV RIGHT  */
-.nav_right {
-  right: 0;
-}
-.nav_right__content {
-  width: 0;
-}
-.nav_right__toggle--open ~ .nav_right__content {
-  width: var(--w-nav-right);
-}
-
-/* ###########  NAV TOGGLE  ######### */
 .nav__toggle {
-  position: fixed;
-  top: 0.5rem;
-  z-index: 2;
-  height: 2.7rem;
-  width: 2.5rem;
-  padding: 0.4rem;
-  background: var(--c-transparent-half);
+  height: 2em;
+  width: 2em;
   border: none;
   border-radius: var(--border-radius);
   cursor: pointer;
-  transition: all 0.3s ease;
-  transition: var(--t-transition-time);
+  color: var(--c-black);
+  font-weight: bold;
+  transition: all var(--t-transition-time) ease;
+}
+.nav__content {
+  height: 100%;
+  width: 50vw;
+  margin-left: calc(-50vw - 2.1em);
+  background-color: var(--c-black);
+  transition: all var(--t-transition-time) ease;
 }
 .nav__toggle--open {
-  background: var(--c-transparent-full);
-}
-.nav__toggle--open .nav__toggle__bar {
-  background: var(--c-grey-lighter);
+  margin-left: calc(50vw + 0.3em);
 }
 
-/* #####  NAV TOGGLE LEFT  */
-.nav_left__toggle {
-  left: 0.5rem;
-  border-bottom-left-radius: 0;
-}
-.nav_left__toggle--open {
-  border-bottom-left-radius: var(--border-radius);
-}
-
-/* #####  NAV TOGGLE RIGHT  */
-.nav_right__toggle {
-  right: 0.5rem;
-  border-bottom-right-radius: 0;
-}
-.nav_right__toggle--open {
-  border-bottom-right-radius: var(--border-radius);
-}
-
-/* ###########  NAV BARS  ######### */
-.nav__toggle__bar {
-  height: 0.2rem;
-  width: 100%;
-  margin-top: 0.5rem;
-  border-radius: var(--border-radius);
-  background: var(--c-white);
-  transition: var(--t-transition-time);
-}
-
-/* #####  NAV BARS LEFT  */
-.nav_left__toggle__bar__1 {
-  margin-top: 0.05rem;
-}
-.nav_left__toggle--open .nav_left__toggle__bar__1 {
-  transform: translate(-0.15rem, 0.32rem) rotate(-30deg);
-}
-.nav_left__toggle--open .nav_left__toggle__bar__2 {
-  transform: translate(0.5rem, 0rem) rotate(90deg);
-}
-.nav_left__toggle--open .nav_left__toggle__bar__3 {
-  transform: translate(-0.15rem, -0.32rem) rotate(30deg);
-}
-
-/* #####  NAV BARS RIGHT  */
-.nav_right__toggle__bar__1 {
-  margin-top: 0.05rem;
-}
-.nav_right__toggle--open .nav_right__toggle__bar__1 {
-  transform: translate(0.15rem, 0.32rem) rotate(30deg);
-}
-.nav_right__toggle--open .nav_right__toggle__bar__2 {
-  transform: translate(-0.5rem, 0rem) rotate(90deg);
-}
-.nav_right__toggle--open .nav_right__toggle__bar__3 {
-  transform: translate(0.15rem, -0.32rem) rotate(-30deg);
-}
-
-/* ###########  LANSCAPE MOBILE  ######### 
-Need to capture landscape on non desktop devices. 
-Landscape seems to just mean width > height  
-so, we need to also look at height pixels. 
-480px is a common width for mobile devices 
-so, we use that as a height breakpoint.
-However, for windows that are wide and short, 
-this will trigger. But perhaps that's ok?
-*/
-@media (max-height: 480px) and (orientation: landscape) {
-  .nav__toggle {
-    transition: opacity 1s ease;
-  }
-  .nav__toggle--hidden {
-    opacity: 0;
-  }
-  .nav__toggle--visible {
-    opacity: 1;
-    transition: opacity 0.5s ease;
-  }
+.nav__content > div {
+  padding: 0.5rem;
 }

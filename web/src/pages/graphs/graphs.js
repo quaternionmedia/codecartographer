@@ -1,32 +1,36 @@
-import m from "mithril";
+import m from 'mithril';
 
-import './graphs.css'
+import './graphs.css';
 
 window.onload = function () {
   //getDatabase()
-}
+};
 
 //TODO: translate the original html/js code to mithril
 
+// export const SavedGraphs = ({ state, update }) => ({
+//   view: (vnode) => [
+//     m('section#graphs_desc', [
+//       m('h2', { style: 'margin-top: -20px' }, 'Graphs'),
+//       m('button', { onclick: () => update({ page: 'home' }) }, 'Return Home'),
+//     ]),
+//     m('section#db_display', [
+//       m('h2', 'Current Graphs in Database'),
+//       m('div#db_data'),
+//     ]),
+//   ],
+// });
+
 export const SavedGraphs = ({ state, update }) => [
-  m("section#graphs_desc", [
-    m("h2", { style: "margin-top: -20px" }, "Graphs"),
-    m("button", { onclick: () => update({page: 'home' })}, "Return Home")
+  m('section#graphs_desc', [
+    m('h2', { style: 'margin-top: -20px' }, 'Graphs'),
+    m('button', { onclick: () => update({ page: 'home' }) }, 'Return Home'),
   ]),
-  m("section#db_display", [
-    m("h2", "Current Graphs in Database"),
-    m("div#db_data")
-  ])
+  m('section#db_display', [
+    m('h2', 'Current Graphs in Database'),
+    m('div#db_data'),
+  ]),
 ];
-
-
-
-
-
-
-
-
-
 
 // /**
 //  * Gets all the current graphs in database.
@@ -66,13 +70,12 @@ export const SavedGraphs = ({ state, update }) => [
 //   }
 // }
 
-
 // /**
 // * Handle the response data.
 // * @param {string} data - The data to be displayed.
 // * @returns {string} The HTML content.
 // */
-// function handleContents(data) { 
+// function handleContents(data) {
 // //loop list of graph names in database
 // let html = ''
 // if (typeof data !== 'object') {
@@ -132,7 +135,7 @@ export const SavedGraphs = ({ state, update }) => [
 //     } else {
 //       console.log(`Received Response: ${responseData.message}`);
 //       console.log(`Response Results: ${responseData.results}`);
-      
+
 //       // Reload the page to update the graph list
 //       location.reload();
 //     }
@@ -170,7 +173,7 @@ export const SavedGraphs = ({ state, update }) => [
 //     } else {
 //       console.log(`Received Response: ${responseData.message}`);
 //       console.log(`Response Results: ${responseData.results}`);
-      
+
 //       // Reload the page to update the graph list
 //       location.reload();
 //     }

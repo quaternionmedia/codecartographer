@@ -3,8 +3,8 @@ import meiosisTracer from 'meiosis-tracer';
 import './tracer.css';
 import './debug.css';
 
-export const DebugNavContent = (cell) =>
-  m(`div.debug`, DeviceSize(), TracerToggle(cell));
+export const DebugNavContent = ({ state, update }) =>
+  m(`div.debug`, DeviceSize(), TracerToggle(state, update));
 
 export const DeviceSize = () =>
   m(
@@ -17,22 +17,22 @@ export const DeviceSize = () =>
     )}`
   );
 
-export const TracerToggle = (cell) =>
+export const TracerToggle = (state, update) =>
   m(
-    `button.hide.debug__showTracer${cell.state.debug.tracer ? '.active' : ''}`,
+    `button.hide.debug__showTracer${state.debug.tracer ? '.active' : ''}`,
     {
       title: 'Toggle the Meiosis Tracer',
       onclick: () => {
-        cell.update({ debug: { tracer: !cell.state.debug.tracer } });
+        update({ debug: { tracer: !state.debug.tracer } });
         const tracer = document.querySelector('#tracer');
         tracer.classList.toggle('hide');
-        CloseNav(cell);
+        CloseNav(update);
       },
     },
     '🀀'
   );
 
-function CloseNav({ state, update }) {
+function CloseNav(update) {
   document
     .getElementsByClassName('nav__toggle')[0]
     .classList.remove('nav__toggle--open');
