@@ -11,9 +11,9 @@ export async function Request(url: string): Promise<Object> {
     if (response.ok) {
       if (responseData.status !== 200) {
         // some error occurred with the backend
-        console.error(
-          'Request',
-          responseData.message,
+        console.log(
+          'Request - ',
+          responseData.message + ':',
           `Error with response data: ${responseData.detail}`
         );
       } else {
@@ -23,11 +23,11 @@ export async function Request(url: string): Promise<Object> {
       }
     } else {
       // some error occurred with the response
-      console.error('Request', 'API Error', `Error: ${response.status}`);
+      console.log('Request - ', 'API Error:', `Error: ${response.status}`);
     }
   } catch (error) {
     // some error occurred with the fetch
-    console.error('Request', 'JS Error', `Error: ${error}`);
+    console.log('Request - ', 'JS Error:', `Error: ${error}`);
   }
   return {};
 }

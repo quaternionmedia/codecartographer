@@ -1,10 +1,11 @@
 import m from 'mithril';
 
 import './nav.css';
+import { ICell } from '../../state';
 
 const baseClass = 'nav';
 
-export const Nav = (cell, attrName, content) => {
+export const Nav = (cell: ICell, attrName: string, content: any) => {
   // Constructs class names dynamically based on the 'side' argument
   const navClass = `${baseClass}`;
   const navContentClass = `${baseClass}__content`;

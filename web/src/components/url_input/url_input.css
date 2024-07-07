@@ -1,6 +1,6 @@
 .url {
   padding: 5px;
-  background-color: #4c3e32;
+  background-color: var(--c-primary-light);
   border-radius: 5px;
 }
 .url_header {
@@ -10,7 +10,7 @@
   margin-left: 5px;
 }
 .url_input {
-  width: 90vw;
+  width: calc(100% - 1.25em);
   height: 20px;
   padding-left: 5px;
   margin-left: 5px;

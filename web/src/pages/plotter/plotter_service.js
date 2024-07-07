@@ -251,7 +251,7 @@ function stylePlotHTML(plotHTML) {
 
 /**
  * Handle ipynb output.
- * @param {string} type - The type of output to get.
+ * @param {object} responseData - The response data from the plot API.
  */
 async function handleNotebook(responseData) {
   try {

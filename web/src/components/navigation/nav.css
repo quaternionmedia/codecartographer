@@ -1,8 +1,10 @@
 /* ###########  NAV  ######### */
 .nav {
-  height: 100%;
-  z-index: 1;
+  position: relative;
+  height: calc(100vh - 8.8em) !important;
   justify-content: left;
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
   overflow: hidden;
 }
 .nav__wrapper {
@@ -19,16 +21,17 @@
   color: var(--c-black);
   font-weight: bold;
   transition: all var(--t-transition-time) ease;
+  z-index: 3;
 }
 .nav__content {
-  height: 100%;
-  width: 50vw;
-  margin-left: calc(-50vw - 2.1em);
+  width: 15em;
+  margin-left: calc(-15em - 2.1em);
   background-color: var(--c-black);
   transition: all var(--t-transition-time) ease;
+  z-index: 3;
 }
 .nav__toggle--open {
-  margin-left: calc(50vw + 0.3em);
+  margin-left: calc(18.8em + 0.3em);
 }
 
 .nav__content > div {

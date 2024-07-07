@@ -1,18 +1,24 @@
 :root {
-  --cb-directory: #2c221a;
-  --cb-folder-active: #433920;
-  --cb-folder-hover: #e8dbad;
-  --cb-folder: #d7b073;
-  --cb-file-disabled: #8d8374;
-  --cb-file-active: #e8dbad;
-  --cb-file-hover: #e8dbad;
-  --cb-file: #2c221a;
-  --c-folder-active-border: #e8dbad;
+  --c-primary: #2c221a;
+  --c-primary-light: #4c3e32;
+  --c-secondary: #d7b073;
+  --c-secondary-light: #e8dbad;
+  --c-folder-active-border: var(--c-secondary-light);
   --c-folder: var(--c-black);
   --c-file-disabled: var(--cb-file-disabled);
   --c-file-active: var(--c-black);
   --c-file-hover: var(--c-black);
-  --c-file: #d7b073;
+  --c-file: var(--c-secondary);
+  --c-font: #e1c48f;
+  --c-graph: #705d50;
+  --cb-directory: var(--c-primary);
+  --cb-folder-active: #433920;
+  --cb-folder-hover: var(--c-secondary-light);
+  --cb-folder: var(--c-secondary);
+  --cb-file-disabled: #8d8374;
+  --cb-file-active: var(--c-secondary-light);
+  --cb-file-hover: var(--c-secondary-light);
+  --cb-file: var(--c-primary);
   --w-nav-left: 5rem;
 }
 
@@ -22,7 +28,6 @@
   flex-direction: column;
   height: calc(100vh - 20px) !important;
   font-size: 20px;
-  color: #e1c48f;
 }
 
 .header {
@@ -34,11 +39,4 @@
 .parser_graph_desc {
   margin-block: 20px;
   margin-left: 5px;
-}
-
-.plot {
-  padding: 5px;
-  margin-top: 8px;
-  background-color: #4c3e32;
-  border-radius: 5px;
 }

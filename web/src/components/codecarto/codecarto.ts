@@ -4,17 +4,16 @@ import './codecarto.css';
 import { ICell } from '../../state';
 import { Plot } from '../plot/plot';
 import { UrlInput } from '../url_input/url_input';
+import { handleGithubURL } from '../../services/repo_service';
 
 export const CodeCarto = (cell: ICell) => {
   const title = m('div.header', 'Code Cartographer');
 
-  const setSelectedUrl = (url: string) => {
-    // Call PlotFile or any other processing needed
-    cell.state.selected_url = url;
-    PlotFile(url);
+  const handleUrlInput = async () => {
+    handleGithubURL(cell, updateGithubData);
   };
 
-  const updateRepoData = (data: any, url: string) => {
+  const updateGithubData = (data: any, url: string) => {
     // Update the cell with the new content
     cell.update({
       plot_repo_url: `/plotter/?is_repo=true&file_url=${url}`,
@@ -29,10 +28,5 @@ export const CodeCarto = (cell: ICell) => {
     m.redraw();
   };
 
-  const PlotFile = (url: string) => {
-    // Implement the logic to plot the file using the URL
-    console.log('Plotting file from URL:', url);
-  };
-
-  return [title, UrlInput(cell, updateRepoData), Plot(cell, setSelectedUrl)];
+  return [title, UrlInput(cell, handleUrlInput), Plot(cell)];
 };

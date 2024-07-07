@@ -22,7 +22,8 @@ export interface State {
   repo_name: string;
   repo_data: m.Vnode[];
   directory_content: m.Vnode[];
-  selected_url: string;
+  graph_content: m.Vnode[];
+  selected_file_url: string;
   showContentNav: boolean;
 }
 
@@ -40,6 +41,7 @@ export const InitialState: State = {
   repo_name: '',
   repo_data: [],
   directory_content: [],
-  selected_url: '',
+  graph_content: [],
+  selected_file_url: '',
   showContentNav: false,
 };

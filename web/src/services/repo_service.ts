@@ -7,55 +7,110 @@ import { Request } from './request_handler';
  */
 export async function handleGithubURL(
   cell: ICell,
-  updateRepoData: (data: any, url: string) => void
+  updateGithubData: (data: any, url: string) => void
 ): Promise<void> {
   // empty the content
-  const directory = getHTMLElement('directory');
-  if (directory) directory.innerHTML = '';
   cell.state.repo_data = [];
   cell.state.directory_content = [];
+  cell.state.graph_content = [];
+  cell.state.plot_repo_url = '';
 
-  // get the url input
-  const urlInput = getHTMLElement('url_input') as HTMLInputElement;
-  if (urlInput) {
-    let url = urlInput.value;
+  // Check the URL to be processed
+  let url = cell.state.repo_url;
 
-    // return if the url is empty
-    if (!url || url === '') {
-      updateMessage('Please enter a URL');
-      return;
-    }
-    updateMessage('Loading...');
+  // return if the url is empty
+  if (!url || url === '') {
+    updateMessage('Please enter a URL');
+    return;
+  }
+  updateMessage('Loading...');
 
-    // check for the trailing slash
-    if (url[url.length - 1] !== '/') url += '/';
+  // check for the trailing slash
+  if (url[url.length - 1] !== '/') url += '/';
 
-    // encode the url and create the href line
-    const encodedGithubUrl = encodeURIComponent(url);
-    const proc_url = cell.state.configurations.processor_url;
-    const href_line = `${proc_url}/parser/handle_github_url?github_url=${encodedGithubUrl}`;
+  // encode the url and create the href line
+  const encodedGithubUrl = encodeURIComponent(url);
+  const proc_url = cell.state.configurations.processor_url;
+  const href_line = `${proc_url}/parser/handle_github_url?github_url=${encodedGithubUrl}`;
 
+  try {
     // try calling the backend
-    try {
-      var data = await Request(href_line);
+    var data = await Request(href_line);
 
-      // Check if the data is null
-      if (!data) {
-        updateMessage('No content received');
-      } else {
-        const showFiles = getHTMLElement('nav__toggle');
-        if (showFiles) showFiles.classList.add('nav__toggle--open');
-        updateRepoData(data, url);
-        updateMessage();
-      }
-    } catch (error) {
-      // some error occurred with the fetch
-      displayError(
-        'url_content',
-        'JS Error',
-        `Error - parse.js - handleGithubURL(): ${error}`
-      );
+    // Check if the data is null
+    if (!data) {
+      updateMessage('No content received');
+    } else {
+      updateGithubData(data, url);
+      updateMessage();
     }
+  } catch (error) {
+    // some error occurred with the fetch
+    displayError(
+      'url_content',
+      'JS Error',
+      `Error - parse.js - handleGithubURL(): ${error}`
+    );
+  }
+}
+
+/**
+ * Plot the content of the GitHub URL.
+ * @param {string} url - The URL to be plotted.
+ */
+export async function plotGithubUrl(
+  cell: ICell,
+  handlePlotData: (data: any) => void
+): Promise<void> {
+  // empty the content
+  cell.state.graph_content = [];
+
+  // Check the selected URL
+  let url = cell.state.selected_file_url;
+
+  // return if the url is empty
+  if (!url || url === '') {
+    updateMessage('Please enter a URL');
+    return;
+  }
+  updateMessage('Loading...');
+
+  // check for the trailing slash
+  if (url[url.length - 1] !== '/') url += '/';
+
+  // encode the url and create the href line
+  const encodedGithubUrl = encodeURIComponent(url);
+  const proc_url = cell.state.configurations.processor_url;
+  const href_line =
+    `${proc_url}/plotter/plot?` +
+    `url=${encodedGithubUrl}&` +
+    `is_repo=${true}&` +
+    `graph_data=${{ name: '' }}&` +
+    `db_graph=${false}&` +
+    `demo=${false}&` +
+    `demo_file=${''}&` +
+    `layout=${'Spectral'}&` +
+    `gv=${true}&` +
+    `type=${'d3'}`;
+
+  try {
+    // try calling the backend
+    var data = await Request(href_line);
+
+    // Check if the data is null
+    if (!data) {
+      updateMessage('No content received');
+    } else {
+      handlePlotData(data);
+      updateMessage();
+    }
+  } catch (error) {
+    // some error occurred with the fetch
+    displayError(
+      'url_content',
+      'JS Error',
+      `Error - parse.js - handleGithubURL(): ${error}`
+    );
   }
 }
 
