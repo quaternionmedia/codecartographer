@@ -40,17 +40,20 @@ export async function handleGithubURL(
     // Check if the data is null
     if (!data) {
       updateMessage('No content received');
+    } else if (typeof data === 'string') {
+      updateMessage(data);
     } else {
       updateGithubData(data, url);
       updateMessage();
     }
   } catch (error) {
+    console.log(error.results.data);
     // some error occurred with the fetch
-    displayError(
-      'url_content',
-      'JS Error',
-      `Error - parse.js - handleGithubURL(): ${error}`
-    );
+    // displayError(
+    //   'url_content',
+    //   'JS Error',
+    //   `Error - parse.js - handleGithubURL(): ${error}`
+    // );
   }
 }
 

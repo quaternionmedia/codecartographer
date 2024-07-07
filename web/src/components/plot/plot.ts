@@ -1,8 +1,8 @@
 import m from 'mithril';
 
 import { ICell } from '../../state';
-import { Directory } from '../directory/directory';
 import { Nav } from '../navigation/nav';
+import { Directory } from '../directory/directory';
 import { plotGithubUrl } from '../../services/repo_service';
 import './plot.css';
 

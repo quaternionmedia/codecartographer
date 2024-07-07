@@ -20,7 +20,7 @@ export const Nav = (cell: ICell, attrName: string, content: any) => {
   );
 };
 
-export const NavToggle = ({ state, update }, attrName) => {
+export const NavToggle = ({ state, update }, attrName: string) => {
   // Toggles the state attribute and the open class for the nav
   const toggleNav = () => {
     const newValue = !state[attrName];
@@ -28,7 +28,7 @@ export const NavToggle = ({ state, update }, attrName) => {
   };
 
   // Constructs class names dynamically
-  const toggleClass = `${baseClass}__toggle`;
+  const toggleClass = `${baseClass}__toggle_btn`;
   const isOpen = state[attrName] ? `.${toggleClass}--open` : '';
 
   // Creates the toggle button with bars

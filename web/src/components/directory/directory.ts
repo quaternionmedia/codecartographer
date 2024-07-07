@@ -11,7 +11,7 @@ export const Directory = (
 
   if (cell.state.repo_url !== '') {
     var plot_all = m(
-      'div.plot_whole',
+      'button.plot_whole_btn',
       {
         onclick: function () {
           setSelectedUrl(cell.state.plot_repo_url);
@@ -21,8 +21,8 @@ export const Directory = (
     );
 
     var contents = [
-      plot_all,
       parseContents(cell.state.repo_data, 'root', setSelectedUrl),
+      plot_all,
     ];
   }
 
@@ -95,6 +95,7 @@ export const File = {
     let isDisabled = true;
     let ext = name.split('.').pop();
     const compatibleExtensions = ['py'];
+    // Check if the file extension is compatible
     if (compatibleExtensions.includes(ext)) {
       isDisabled = false;
     }

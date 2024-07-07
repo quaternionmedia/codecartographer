@@ -12,13 +12,10 @@
   flex-direction: row;
   height: 100%;
 }
-.nav__toggle {
+.nav__toggle_btn {
   height: 2em;
   width: 2em;
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  color: var(--c-black);
+  padding: 0;
   font-weight: bold;
   transition: all var(--t-transition-time) ease;
   z-index: 3;
@@ -30,10 +27,9 @@
   transition: all var(--t-transition-time) ease;
   z-index: 3;
 }
-.nav__toggle--open {
+.nav__toggle_btn--open {
   margin-left: calc(18.8em + 0.3em);
 }
-
 .nav__content > div {
   padding: 0.5rem;
 }

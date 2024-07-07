@@ -20,6 +20,8 @@
   --cb-file-hover: var(--c-secondary-light);
   --cb-file: var(--c-primary);
   --w-nav-left: 5rem;
+  --z-nav: 1;
+  --z-plot: 2;
 }
 
 .app {
@@ -40,3 +42,27 @@
   margin-block: 20px;
   margin-left: 5px;
 }
+
+/* ###########  DIRECTORY NAV TOGGLE  ######### */
+/* .nav {
+  position: fixed;
+  margin-top: 0;
+  top: 0;
+  left: 0;
+  z-index: var(--z-nav);
+}
+.nav__toggle_btn {
+  width: 1em;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.nav__toggle_btn--open {
+  width: 2em;
+  margin-left: calc(18.8em + 0.3em);
+  border-top-left-radius: var(--border-radius);
+  border-bottom-left-radius: var(--border-radius);
+}
+.nav__content {
+  width: 15em;
+  margin-left: calc(-15em - 2.1em);
+} */

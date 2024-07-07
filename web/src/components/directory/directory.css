@@ -69,14 +69,10 @@
 }
 
 /* ###########  PLOT LINKS  ######### */
-.plot_whole {
-  display: flex;
-  cursor: pointer;
-  justify-content: center;
-  margin-bottom: 10px;
+.plot_whole_btn {
+  margin-top: 1em;
 }
-.plot_whole:hover {
-  color: var(--c-file-hover);
+.plot_whole_btn:hover {
   background-color: var(--cb-file-hover);
 }
 

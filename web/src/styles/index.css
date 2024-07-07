@@ -6,44 +6,26 @@ body {
   font-size: 16px;
 }
 
-/* buttons */
+/* button */
 button {
   height: 25px;
-  width: 100px;
+  padding-inline: 1em;
   background-color: var(--c-secondary);
-  border: none;
-  border-radius: 5px;
   margin: 5px;
   outline: none;
-  color: var(--c-black);
+  border: none;
+  border-radius: var(--border-radius);
+  align-items: center;
+  justify-content: center;
   font-size: 16px;
+  color: var(--c-black);
+  cursor: pointer;
 }
 button:hover {
   background-color: var(--c-secondary-light);
 }
 button:disabled {
   background-color: var(--c-disabled);
-}
-
-/* collapsibles */
-button.collapsible {
-  height: 40px;
-  width: 300px;
-  border: none;
-  border-radius: 0px;
-  outline: none;
-  margin: 0px;
-  padding: 10px;
-  margin-top: 0;
-  background-color: var(--c-secondary);
-  color: var(--c-black);
-  font-size: 18px;
-  text-align: left;
-  cursor: pointer;
-}
-button.collapsible.active,
-button.collapsible:hover {
-  background-color: var(--c-secondary-light);
 }
 
 /* list */

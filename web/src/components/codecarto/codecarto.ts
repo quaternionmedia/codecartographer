@@ -1,10 +1,12 @@
 import m from 'mithril';
 
-import './codecarto.css';
 import { ICell } from '../../state';
 import { Plot } from '../plot/plot';
 import { UrlInput } from '../url_input/url_input';
-import { handleGithubURL } from '../../services/repo_service';
+import { Directory } from '../directory/directory';
+import { Nav } from '../navigation/nav';
+import { handleGithubURL, plotGithubUrl } from '../../services/repo_service';
+import './codecarto.css';
 
 export const CodeCarto = (cell: ICell) => {
   const title = m('div.header', 'Code Cartographer');
@@ -28,5 +30,40 @@ export const CodeCarto = (cell: ICell) => {
     m.redraw();
   };
 
-  return [title, UrlInput(cell, handleUrlInput), Plot(cell)];
+  // const setSelectedUrl = (url: string) => {
+  //   cell.state.selected_file_url = url;
+  //   plotGithubUrl(cell, handlePlotData);
+  // };
+
+  // const handlePlotData = (data: Array<object>) => {
+  //   let nbFrame: m.Vnode[] = [];
+  //   if (data && data.length > 0) {
+  //     // Create an iframe for each output
+  //     data.forEach((output) => {
+  //       if (output['text/html']) {
+  //         nbFrame.push(
+  //           m('iframe.graph_content.nbFrame', {
+  //             srcdoc: output['text/html'],
+  //           })
+  //         );
+  //       }
+  //     });
+  //   }
+
+  //   // Update the cell with the new content
+  //   cell.update({
+  //     graph_content: nbFrame,
+  //     showContentNav: false,
+  //   });
+
+  //   // Trigger a redraw to update the view
+  //   m.redraw();
+  // };
+
+  return [
+    title,
+    UrlInput(cell, handleUrlInput),
+    //Nav(cell, 'showContentNav', Directory(cell, setSelectedUrl)),
+    Plot(cell),
+  ];
 };
