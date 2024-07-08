@@ -1,11 +1,10 @@
 /* ###########  NAV  ######### */
 .nav {
   position: relative;
-  height: calc(100vh - 8.8em) !important;
+  height: 100vh !important;
   justify-content: left;
-  border-top-left-radius: 5px;
-  border-bottom-left-radius: 5px;
   overflow: hidden;
+  z-index: var(--z-nav);
 }
 .nav__wrapper {
   display: flex;
@@ -18,14 +17,14 @@
   padding: 0;
   font-weight: bold;
   transition: all var(--t-transition-time) ease;
-  z-index: 3;
+  z-index: var(--z-nav);
 }
 .nav__content {
   width: 15em;
   margin-left: calc(-15em - 2.1em);
   background-color: var(--c-black);
   transition: all var(--t-transition-time) ease;
-  z-index: 3;
+  z-index: var(--z-nav);
 }
 .nav__toggle_btn--open {
   margin-left: calc(18.8em + 0.3em);

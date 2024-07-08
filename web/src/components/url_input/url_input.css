@@ -1,5 +1,6 @@
 .url {
   padding: 3px;
+  width: calc(100% - 0.3em);
   background-color: var(--c-primary-light);
   border-radius: 5px;
 }

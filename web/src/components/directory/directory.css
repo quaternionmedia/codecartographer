@@ -3,14 +3,24 @@
   height: calc(100% - 0.8em) !important;
   justify-content: space-evenly;
   justify-items: start;
-  border: '2px';
   background-color: var(--cb-directory);
+  overflow: auto;
+}
+
+.directory_tree {
+  padding: 5px;
+  width: calc(100% - 11px);
+  margin-left: -1px;
+  background-color: var(--c-primary);
+  border-radius: 5px;
   overflow: auto;
 }
 
 /* ###########  FOLDER BUTTON  ######### */
 .folder_button {
   cursor: pointer;
+  padding-left: 3px;
+  border-radius: 3px;
 }
 .folder_button:hover {
   color: var(--c-folder);
@@ -33,7 +43,9 @@
 /* ###########  FOLDER CONTENT  ######### */
 .folder_content {
   display: none;
-  padding-left: 15px;
+  width: 100%;
+  margin-left: 8px;
+  padding-left: 7px;
   border-left: dashed 1px var(--c-folder-active-border);
 }
 .folder_button.active + .files,
@@ -46,11 +58,15 @@
 
 /* ###########  FILES  ######### */
 .files {
+  width: 100%;
   color: var(--c-file);
 }
 .file {
+  display: inline-block;
+  width: 100%;
   cursor: pointer;
-  background-color: var(--cb-file);
+  padding-left: 3px;
+  border-radius: 3px;
 }
 .file::before {
   font-weight: bold;

@@ -1,11 +1,11 @@
 import m from 'mithril';
 
-import './directory.css';
 import { ICell } from '../../state';
+import './directory.css';
 
 export const Directory = (
   cell: ICell,
-  setSelectedUrl: (url: string) => void
+  setSelectedFile: (url: string) => void
 ) => {
   var contents = [];
 
@@ -14,16 +14,14 @@ export const Directory = (
       'button.plot_whole_btn',
       {
         onclick: function () {
-          setSelectedUrl(cell.state.plot_repo_url);
+          setSelectedFile(cell.state.plot_repo_url);
         },
       },
       'Plot Whole Repo'
     );
 
-    var contents = [
-      parseContents(cell.state.repo_data, 'root', setSelectedUrl),
-      plot_all,
-    ];
+    var tree = parseContents(cell.state.repo_data, 'root', setSelectedFile);
+    var contents = [m('div.directory_tree', [tree]), plot_all];
   }
 
   cell.update({ directory_content: contents });
@@ -34,20 +32,20 @@ export const Directory = (
 export function parseContents(
   data: Object,
   name: string,
-  setSelectedUrl: (url: string) => void
+  setSelectedFile: (url: string) => void
 ) {
   return Object.entries(data).map(([key, value]) => {
     if (key === 'files') {
       return m(FileList, {
         parent: name,
         children: value,
-        setSelectedUrl: setSelectedUrl,
+        setSelectedFile: setSelectedFile,
       });
     } else {
       return m(Folder, {
         name: key,
         children: value,
-        setSelectedUrl: setSelectedUrl,
+        setSelectedFile: setSelectedFile,
       });
     }
   });
@@ -56,7 +54,7 @@ export function parseContents(
 // ###################### DIRECTORY COMPONENTS ######################
 export const Folder = {
   view: function (vnode) {
-    let { name, children, setSelectedUrl } = vnode.attrs;
+    let { name, children, setSelectedFile } = vnode.attrs;
     return m(`div.folder.folder__${name}`, [
       m(
         'div.folder_button',
@@ -69,20 +67,20 @@ export const Folder = {
         },
         name
       ),
-      m('div.folder_content', parseContents(children, name, setSelectedUrl)),
+      m('div.folder_content', parseContents(children, name, setSelectedFile)),
     ]);
   },
 };
 
 export const FileList = {
   view: function (vnode) {
-    let { parent, children, setSelectedUrl } = vnode.attrs;
+    let { parent, children, setSelectedFile } = vnode.attrs;
     return m(`div.files.files__${parent}`, [
       children.map((child: IRepoFile) =>
         m(File, {
           name: child.name,
           url: child.download_url,
-          setSelectedUrl: setSelectedUrl,
+          setSelectedFile: setSelectedFile,
         })
       ),
     ]);
@@ -91,7 +89,7 @@ export const FileList = {
 
 export const File = {
   view: function (vnode) {
-    let { name, url, setSelectedUrl } = vnode.attrs;
+    let { name, url, setSelectedFile } = vnode.attrs;
     let isDisabled = true;
     let ext = name.split('.').pop();
     const compatibleExtensions = ['py'];
@@ -106,7 +104,7 @@ export const File = {
         url: url,
         onclick: function () {
           if (!isDisabled) {
-            setSelectedUrl(url);
+            setSelectedFile(url);
           }
         },
       },

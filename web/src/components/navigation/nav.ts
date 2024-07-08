@@ -1,7 +1,7 @@
 import m from 'mithril';
 
-import './nav.css';
 import { ICell } from '../../state';
+import './nav.css';
 
 const baseClass = 'nav';
 

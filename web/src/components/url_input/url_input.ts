@@ -1,9 +1,8 @@
 import m from 'mithril';
 
-import './url_input.css';
 import { ICell } from '../../state';
+import './url_input.css';
 
-// https://github.com/quaternionmedia/moe
 let trackedValue = '';
 
 export const UrlInput = (cell: ICell, handleUrlInput: () => void) =>
