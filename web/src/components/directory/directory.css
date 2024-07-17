@@ -1,0 +1,120 @@
+/* ###########  DIRECTORY  ######### */
+.directory {
+  height: calc(100% - 0.8em) !important;
+  justify-content: space-evenly;
+  justify-items: start;
+  background-color: var(--cb-directory);
+  overflow: auto;
+}
+
+.directory_tree {
+  padding: 5px;
+  width: calc(100% - 11px);
+  margin-left: -1px;
+  background-color: var(--c-primary);
+  border-radius: 5px;
+  overflow: auto;
+}
+
+/* ###########  FOLDER BUTTON  ######### */
+.folder_button {
+  cursor: pointer;
+  padding-left: 3px;
+  border-radius: 3px;
+}
+.folder_button:hover {
+  color: var(--c-folder);
+  background-color: var(--cb-folder-hover);
+}
+.folder_button::before {
+  font-weight: bold;
+  content: '🗀 '; /* Closed folder icon */
+}
+.folder_button.active::before {
+  content: '🗁 '; /* Open folder icon */
+}
+.folder_button + .folder_content {
+  display: none;
+}
+.folder_button.active + .folder_content {
+  display: block;
+}
+
+/* ###########  FOLDER CONTENT  ######### */
+.folder_content {
+  display: none;
+  width: 100%;
+  margin-left: 8px;
+  padding-left: 7px;
+  border-left: dashed 1px var(--c-folder-active-border);
+}
+.folder_button.active + .files,
+.folder_button.active + .files > .file {
+  background-color: var(--cb-folder-active);
+}
+.folder_button.active + .files {
+  border: solid 1px var(--c-folder-active-border);
+}
+
+/* ###########  FILES  ######### */
+.files {
+  width: 100%;
+  color: var(--c-file);
+}
+.file {
+  display: inline-block;
+  width: 100%;
+  cursor: pointer;
+  padding-left: 3px;
+  border-radius: 3px;
+}
+.file::before {
+  font-weight: bold;
+  content: '🗎 '; /* Closed folder icon */
+}
+.file:hover {
+  color: var(--c-file-hover);
+  background-color: var(--cb-file-hover);
+}
+.file.disabled {
+  color: var(--c-file-disabled);
+}
+.file.disabled:hover {
+  color: var(--c-black);
+  background-color: var(--cb-file-disabled);
+}
+
+/* ###########  PLOT LINKS  ######### */
+.plot_whole_btn {
+  margin-top: 1em;
+}
+.plot_whole_btn:hover {
+  background-color: var(--cb-file-hover);
+}
+
+/* ###########  UNUSED  ######### */
+.git_link,
+.json_link,
+.plot_lin {
+  color: var(--c-font);
+}
+.git_link:link,
+.json_link:link,
+.plot_link:link {
+  color: var(--c-font);
+}
+.git_link:visited,
+.json_link:visited,
+.plot_link:visited {
+  color: var(--c-secondary);
+}
+.git_link:hover,
+.json_link:hover,
+.plot_link:hover {
+  color: var(--c-secondary-light);
+}
+.git_link:active,
+.json_link:active,
+.plot_link:active {
+  color: var(--c-secondary-light);
+}

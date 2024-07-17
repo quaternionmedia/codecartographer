@@ -1,0 +1,5 @@
+/* This file is used to style elements for accessibility purposes */
+
+*:focus {
+  outline: 2px solid var(--c-focus-color);
+}

@@ -1,0 +1,34 @@
+/* body */
+body {
+  background-color: var(--c-primary);
+  color: var(--c-font);
+  font-family: var(--f-root-font);
+  font-size: 16px;
+}
+
+/* button */
+button {
+  height: 25px;
+  padding-inline: 1em;
+  background-color: var(--c-secondary);
+  margin: 5px;
+  outline: none;
+  border: none;
+  border-radius: var(--border-radius);
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--c-black);
+  cursor: pointer;
+}
+button:hover {
+  background-color: var(--c-secondary-light);
+}
+button:disabled {
+  background-color: var(--c-disabled);
+}
+
+/* list */
+ul {
+  list-style-type: none;
+}

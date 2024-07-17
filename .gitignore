@@ -11,6 +11,7 @@ secrets.txt
 # package files
 config.json
 default_config.json
+node_modules/
 
 # General
 .pytype
