@@ -108,7 +108,7 @@ export const File = {
           }
         },
       },
-      name
+      [m('a.file_raw_btn', { href: url, target: '_blank' }), name]
     );
   },
 };

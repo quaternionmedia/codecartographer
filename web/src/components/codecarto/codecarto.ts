@@ -6,11 +6,10 @@ import { UrlInput } from '../url_input/url_input';
 import { Plot } from '../plot/plot';
 import { Directory } from '../directory/directory';
 import { handleGithubURL, plotGithubUrl } from '../../services/repo_service';
+import { handleDemoData } from '../../services/demo_service';
 import './codecarto.css';
 
 export const CodeCarto = (cell: ICell) => {
-  const title = m('div.header.app_header', 'Code Cartographer');
-
   const handleUrlInput = async () => {
     handleGithubURL(cell, updateGithubData);
   };
@@ -59,6 +58,21 @@ export const CodeCarto = (cell: ICell) => {
     // Trigger a redraw to update the view
     m.redraw();
   };
+
+  const demo_button = m('button', {
+    class: 'demo_btn',
+    innerText: 'Demo',
+    onclick: async () => {
+      cell.update({
+        repo_data: [],
+        directory_content: [],
+        graph_content: [],
+        plot_repo_url: '',
+      });
+      handleDemoData(handlePlotData);
+    },
+  });
+  const title = m('div.header.app_header', ['Code Cartographer', demo_button]);
 
   return [
     Nav(cell, 'showContentNav', Directory(cell, setSelectedFile)),

@@ -80,6 +80,12 @@
   margin-left: 0;
 }
 
+/* ###########  DEMO BUTTON  ######### */
+.demo_btn {
+  float: right;
+  margin-right: 0;
+}
+
 /* check if vw is of a certain width */
 @media (max-width: 700px) {
   .codecarto {
