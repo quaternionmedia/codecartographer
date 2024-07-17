@@ -146,7 +146,7 @@ async def get_graph(
     return graph, graph_name
 
 
-def demo_graph() -> tuple:
+def fib_demo_graph() -> tuple:
     """Create a demo graph.
 
     Returns:
@@ -154,6 +154,8 @@ def demo_graph() -> tuple:
         tuple (nx.DiGraph, str):
             The graph and the filename.
     """
+    pprint("fib_demo_graph")
+
     graph = nx.DiGraph()
     graph.add_nodes_from(
         [
@@ -182,6 +184,57 @@ def demo_graph() -> tuple:
         ]
     )
     return graph, "Fib Demo"
+
+
+def demo_graph() -> tuple:
+    """Create a demo graph.
+
+    Returns:
+    --------
+        tuple (nx.DiGraph, str):
+            The graph and the filename.
+    """
+    pprint("demo_graph")
+
+    graph = nx.DiGraph()
+
+    # create a demo graph about a simple python program
+    # Add nodes representing different AST objects in a Python program
+    graph.add_nodes_from(
+        [
+            (1, {"type": "module", "label": "module"}),
+            (2, {"type": "function", "label": "function_a"}),
+            (3, {"type": "class", "label": "class_a"}),
+            (4, {"type": "variables", "label": "variables_a"}),
+            (5, {"type": "import", "label": "import_a"}),
+            (6, {"type": "function", "label": "function_b"}),
+            (7, {"type": "class", "label": "class_b"}),
+            (8, {"type": "variables", "label": "variables_b"}),
+            (9, {"type": "function", "label": "function_c"}),
+            (10, {"type": "function", "label": "function_d"}),
+            (11, {"type": "class", "label": "class_c"}),
+            (12, {"type": "variables", "label": "variables_c"}),
+        ]
+    )
+
+    # Add edges to create a more complex graph with multiple branching clusters
+    graph.add_edges_from(
+        [
+            (1, 2),
+            (1, 3),
+            (1, 4),
+            (1, 5),
+            (2, 6),
+            (3, 7),
+            (4, 8),
+            (6, 9),
+            (7, 10),
+            (9, 11),
+            (10, 12),
+        ]
+    )
+
+    return graph, "Demo"
 
 
 def file_graph(file_path) -> tuple:

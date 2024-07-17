@@ -17,6 +17,15 @@ export async function handleGithubURL(
 
   // Check the URL to be processed
   let url = cell.state.repo_url;
+  const proc_url = cell.state.configurations.processor_url;
+  if (!proc_url) {
+    displayError(
+      'url_content',
+      'Server is unavailable at the moment. Please try again later.',
+      'Error - parse.js - plotGithubUrl(): Processor URL not found'
+    );
+    return;
+  }
 
   // return if the url is empty
   if (!url || url === '') {
@@ -30,7 +39,6 @@ export async function handleGithubURL(
 
   // encode the url and create the href line
   const encodedGithubUrl = encodeURIComponent(url);
-  const proc_url = cell.state.configurations.processor_url;
   const href_line = `${proc_url}/parser/handle_github_url?github_url=${encodedGithubUrl}`;
 
   try {
@@ -47,13 +55,13 @@ export async function handleGithubURL(
       updateMessage();
     }
   } catch (error) {
-    console.log(error.results.data);
+    // console.log(error.results.data);
     // some error occurred with the fetch
-    // displayError(
-    //   'url_content',
-    //   'JS Error',
-    //   `Error - parse.js - handleGithubURL(): ${error}`
-    // );
+    displayError(
+      'url_content',
+      'JS Error',
+      `Error - parse.js - handleGithubURL(): ${error}`
+    );
   }
 }
 
@@ -68,8 +76,17 @@ export async function plotGithubUrl(
   // empty the content
   cell.state.graph_content = [];
 
-  // Check the selected URL
+  // Check the selected URL and the processor URL
   let url = cell.state.selected_file_url;
+  const proc_url = cell.state.configurations.processor_url;
+  if (!proc_url) {
+    displayError(
+      'url_content',
+      'Server is unavailable at the moment. Please try again later.',
+      'Error - parse.js - plotGithubUrl(): Processor URL not found'
+    );
+    return;
+  }
 
   // return if the url is empty
   if (!url || url === '') {
@@ -83,7 +100,6 @@ export async function plotGithubUrl(
 
   // encode the url and create the href line
   const encodedGithubUrl = encodeURIComponent(url);
-  const proc_url = cell.state.configurations.processor_url;
   const href_line =
     `${proc_url}/plotter/plot?` +
     `url=${encodedGithubUrl}&` +

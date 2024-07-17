@@ -6,7 +6,7 @@ import { ICell, InitialState, State } from './state';
 import { CodeCarto } from './components/codecarto/codecarto';
 import { getViewPortSize } from './utility';
 
-export const App = {
+const App = {
   initial: InitialState,
   services: [],
   view: (cell: ICell) => [
