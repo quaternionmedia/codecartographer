@@ -44,7 +44,7 @@ git submodule update
 5. Choose one of the token options
 6. Check the "public_repo" checkbox
 7. Copy the ghp token generated
-8. Go to your local repo in file explorer
+8. Go to your local codecartographer repo in file explorer
 9. At the root, create a new text file named "token.txt"
     - PATH\TO\codecartographer\token.txt
 10. Paste your ghp token into token.txt and save
@@ -84,39 +84,40 @@ docker-compose -f ./graphbase/docker-compose.yml up --build -d && docker-compose
 
 ### Site
 
-Once Docker containers are up and running, go to localhost:2000 to see the CodeCarto site.
+Once Docker containers are up, run the site by going to the codecartographer/web directory and running npm run dev.
+```
+cd web
+npm run dev
+```
+Site will be running on localhost:1234
 
-### Parser
+### Demo
 
-Click Parser
+Click the Demo button in the top right to see a plot of a simple code graph.
 
-Input github repo url (that has a .py file)
+### Parse Github Repo
 
-*More file types are in the works*
+Input a public github repository into the text field. 
 
-Click Parse
+Click 'Submit'
 
-Look through contents for .py file
+The service will parse out the necessary information from the repo and open the file directory panel. 
 
-Click PLOT next to .py file to display the Plotter page
+You can collapse the panel by clicking the yellow arrow button attached to the side of the panel. 
 
-### Plotter
+You can open the panel by clicking the same yellow arrow button on the left hand side. 
 
-Select a layout
+### Plot Code Files
 
-Click "Single Plot" to display the graph of the .py file
+Once the file directory panel has been populated and opened, click any compatible file (the highlighted ones).
 
-This will save the graph to the database as well
+The service will begin reading the file url and plot a graph representing the file. 
+
+The graph is created using the Gravis library. 
 
 ### Saved Graphs
 
-Click "Return to Home"
-
-Click "Saved Graphs"
-
-Click "PLOT" next to a file name
-
-Click "Single GV Plot"
+Not implemented quite yet
 
 ### Docker Down
 
