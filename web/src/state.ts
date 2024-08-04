@@ -22,9 +22,12 @@ export interface State {
   repo_name: string;
   repo_data: m.Vnode[];
   directory_content: m.Vnode[];
+  upload_content: m.Vnode[];
   graph_content: m.Vnode[];
   selected_file_url: string;
-  showContentNav: boolean;
+  uploaded_file: object;
+  showDirectoryNav: boolean;
+  showUploadNav: boolean;
 }
 
 export const InitialState: State = {
@@ -41,7 +44,10 @@ export const InitialState: State = {
   repo_name: '',
   repo_data: [],
   directory_content: [],
+  upload_content: [],
   graph_content: [],
   selected_file_url: '',
-  showContentNav: false,
+  uploaded_file: {},
+  showDirectoryNav: false,
+  showUploadNav: false,
 };

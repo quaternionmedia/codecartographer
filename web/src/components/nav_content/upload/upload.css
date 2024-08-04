@@ -1,0 +1,8 @@
+/* ###########  UPLOAD  ######### */
+.upload {
+  height: calc(100% - 0.8em) !important;
+  justify-content: space-evenly;
+  justify-items: start;
+  background-color: var(--cb-directory);
+  overflow: auto;
+}

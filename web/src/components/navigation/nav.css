@@ -1,8 +1,7 @@
-/* ###########  NAV  ######### */
+/* ###########  GENERAL NAV  ######### */
 .nav {
   position: relative;
   height: 100vh !important;
-  justify-content: left;
   overflow: hidden;
   z-index: var(--z-nav);
 }
@@ -21,13 +20,10 @@
 }
 .nav__content {
   width: 15em;
-  margin-left: calc(-15em - 2.1em);
+  height: 100%;
   background-color: var(--c-black);
   transition: all var(--t-transition-time) ease;
   z-index: var(--z-nav);
-}
-.nav__toggle_btn--open {
-  margin-left: calc(18.8em + 0.3em);
 }
 .nav__content > div {
   padding: 0.5rem;

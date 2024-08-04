@@ -64,7 +64,6 @@ export async function handleGithubURL(
     );
   }
 }
-
 /**
  * Plot the content of the GitHub URL.
  * @param {string} url - The URL to be plotted.
@@ -126,14 +125,79 @@ export async function plotGithubUrl(
   } catch (error) {
     // some error occurred with the fetch
     displayError(
-      'url_content',
+      'url',
       'JS Error',
-      `Error - parse.js - handleGithubURL(): ${error}`
+      `Error - parse.js - plotGithubUrl(): ${error}`
     );
   }
 }
 
-// ###################### DIRECTORY UTILITIES ######################
+/**
+ * Plot the content of the GitHub URL.
+ * @param {string} url - The URL to be plotted.
+ */
+export async function plotUploadedFile(
+  cell: ICell,
+  handlePlotData: (data: any) => void
+): Promise<void> {
+  // empty the content
+  cell.state.graph_content = [];
+
+  // Check the selected URL and the processor URL
+  let file_content = cell.state.uploaded_file;
+  const proc_url = cell.state.configurations.processor_url;
+  if (!proc_url) {
+    displayError(
+      'url_content',
+      'Server is unavailable at the moment. Please try again later.',
+      'Error - parse.js - plotUploadedFile(): Processor URL not found'
+    );
+    return;
+  }
+
+  // return if the url is empty
+  if (!file_content) {
+    updateMessage('Please upload a file');
+    return;
+  }
+  updateMessage('Loading...');
+
+  // encode the url and create the href line
+  // const encodedGithubUrl = encodeURIComponent(url);
+  const href_line =
+    `${proc_url}/plotter/plot?` +
+    `url=""&` +
+    `is_repo=${true}&` +
+    `graph_data=${{ name: '' }}&` +
+    `db_graph=${false}&` +
+    `demo=${false}&` +
+    `demo_file=${''}&` +
+    `layout=${'Spectral'}&` +
+    `gv=${true}&` +
+    `type=${'d3'}`;
+
+  try {
+    // try calling the backend
+    var data = await Request(href_line);
+
+    // Check if the data is null
+    if (!data) {
+      updateMessage('No content received');
+    } else {
+      handlePlotData(data);
+      updateMessage();
+    }
+  } catch (error) {
+    // some error occurred with the fetch
+    displayError(
+      'file',
+      'JS Error',
+      `Error - parse.js - plotUploadedFile(): ${error}`
+    );
+  }
+}
+
+// ###################### UTILITIES ######################
 /**
  * Update the message displayed to the user.
  * @param {string} message - The message to be displayed.
