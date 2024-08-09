@@ -4,7 +4,7 @@ import { ICell } from '../../state';
 import { Nav } from '../navigation/nav';
 import { UrlInput } from '../url_input/url_input';
 import { Plot } from '../plot/plot';
-import { Directory } from '../nav_content/directory/directory';
+import { DirectoryNav } from '../nav_content/directory/directory_nav';
 import { Upload } from '../nav_content/upload/upload';
 import {
   handleGithubURL,
@@ -34,13 +34,13 @@ export const CodeCarto = (cell: ICell) => {
     m.redraw();
   };
 
-  const setSelectedFile = (url: string) => {
-    cell.state.selected_file_url = url;
+  const setSelectedUrlFile = (url: string) => {
+    cell.state.selected_url_file = url;
     plotGithubUrl(cell, handlePlotData);
   };
 
-  const setUploadedFile = (file: object) => {
-    cell.state.uploaded_file = file;
+  const setSelectedUploadedFile = (file: File) => {
+    cell.state.selected_uploaded_file = file;
     plotUploadedFile(cell, handlePlotData);
   };
 
@@ -85,8 +85,8 @@ export const CodeCarto = (cell: ICell) => {
   const title = m('div.header.app_header', ['Code Cartographer', demo_button]);
 
   return [
-    Nav(cell, 'showDirectoryNav', Directory(cell, setSelectedFile)),
-    Nav(cell, 'showUploadNav', Upload(cell, setUploadedFile), 'right'),
+    Nav(cell, 'showDirectoryNav', DirectoryNav(cell, setSelectedUrlFile)),
+    Nav(cell, 'showUploadNav', Upload(cell, setSelectedUploadedFile), 'right'),
     m('div.codecarto', [title, UrlInput(cell, handleUrlInput), Plot(cell)]),
   ];
 };

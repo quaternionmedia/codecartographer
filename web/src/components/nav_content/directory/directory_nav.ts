@@ -1,9 +1,9 @@
 import m from 'mithril';
 
 import { ICell } from '../../../state';
-import './directory.css';
+import './directory_nav.css';
 
-export const Directory = (
+export const DirectoryNav = (
   cell: ICell,
   setSelectedFile: (url: string) => void
 ) => {
@@ -20,16 +20,16 @@ export const Directory = (
       'Plot Whole Repo'
     );
 
-    var tree = parseContents(cell.state.repo_data, 'root', setSelectedFile);
+    var tree = parseDirectory(cell.state.repo_data, 'root', setSelectedFile);
     var contents = [m('div.directory_tree', [tree]), plot_all];
   }
 
   cell.update({ directory_content: contents });
 
-  return m('div.directory', [cell.state.directory_content]);
+  return m('div.directory_nav', [cell.state.directory_content]);
 };
 
-export function parseContents(
+export function parseDirectory(
   data: Object,
   name: string,
   setSelectedFile: (url: string) => void
@@ -51,7 +51,6 @@ export function parseContents(
   });
 }
 
-// ###################### DIRECTORY COMPONENTS ######################
 export const Folder = {
   view: function (vnode) {
     let { name, children, setSelectedFile } = vnode.attrs;
@@ -67,7 +66,7 @@ export const Folder = {
         },
         name
       ),
-      m('div.folder_content', parseContents(children, name, setSelectedFile)),
+      m('div.folder_content', parseDirectory(children, name, setSelectedFile)),
     ]);
   },
 };
@@ -77,11 +76,18 @@ export const FileList = {
     let { parent, children, setSelectedFile } = vnode.attrs;
     return m(`div.files.files__${parent}`, [
       children.map((child: IRepoFile) =>
-        m(File, {
-          name: child.name,
-          url: child.download_url,
-          setSelectedFile: setSelectedFile,
-        })
+        m('div.file_container', [
+          m(File, {
+            name: child.name,
+            url: child.download_url,
+            setSelectedFile: setSelectedFile,
+          }),
+          m(
+            'a.file_raw_btn',
+            { href: child.download_url, target: '_blank' },
+            'raw'
+          ),
+        ])
       ),
     ]);
   },
@@ -97,6 +103,7 @@ export const File = {
     if (compatibleExtensions.includes(ext)) {
       isDisabled = false;
     }
+
     return m(
       'div.file',
       {
@@ -108,7 +115,7 @@ export const File = {
           }
         },
       },
-      [m('a.file_raw_btn', { href: url, target: '_blank' }), name]
+      name
     );
   },
 };

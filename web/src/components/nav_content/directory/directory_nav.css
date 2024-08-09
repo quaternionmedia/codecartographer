@@ -1,5 +1,5 @@
 /* ###########  DIRECTORY  ######### */
-.directory {
+.directory_nav {
   height: calc(100% - 0.8em) !important;
   justify-content: space-evenly;
   justify-items: start;
@@ -20,6 +20,7 @@
 .folder_button {
   cursor: pointer;
   padding-left: 3px;
+  padding-block: 1px;
   border-radius: 3px;
 }
 .folder_button:hover {
@@ -44,6 +45,7 @@
 .folder_content {
   display: none;
   margin-left: 8px;
+  margin-block: 1px;
   padding-left: 7px;
   border-left: dashed 1px var(--c-folder-active-border);
 }
@@ -59,10 +61,16 @@
 .files {
   color: var(--c-file);
 }
+.file_container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: start;
+}
 .file {
-  display: block;
+  display: inline-block;
   cursor: pointer;
-  padding-left: 3px;
+  margin-block: 0.5px;
+  padding-inline: 3px;
   border-radius: 3px;
 }
 .file::before {
@@ -80,12 +88,35 @@
   color: var(--c-black);
   background-color: var(--cb-file-disabled);
 }
+.file_raw_btn {
+  cursor: pointer;
+  margin-left: 3px;
+  padding-inline: 2px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  border-radius: 3px;
+  background-color: var(--c-secondary);
+  color: var(--c-black);
+  font-size: small;
+  text-decoration: none;
+}
+.file_raw_btn:hover {
+  color: var(--c-file-hover);
+  background-color: var(--cb-file-hover);
+}
+.file_raw_btn.disabled {
+  color: var(--c-file-disabled);
+}
+.file_raw_btn.disabled:hover {
+  color: var(--c-black);
+  background-color: var(--cb-file-disabled);
+}
 
 /* ###########  PLOT LINKS  ######### */
-.plot_whole_btn {
+.directory_nav_plot_whole_btn {
   margin-top: 1em;
 }
-.plot_whole_btn:hover {
+.directory_nav_plot_whole_btn:hover {
   background-color: var(--cb-file-hover);
 }
 

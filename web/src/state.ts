@@ -24,8 +24,9 @@ export interface State {
   directory_content: m.Vnode[];
   upload_content: m.Vnode[];
   graph_content: m.Vnode[];
-  selected_file_url: string;
-  uploaded_file: object;
+  selected_url_file: string;
+  selected_uploaded_file?: File;
+  uploaded_files: File[];
   showDirectoryNav: boolean;
   showUploadNav: boolean;
 }
@@ -46,8 +47,8 @@ export const InitialState: State = {
   directory_content: [],
   upload_content: [],
   graph_content: [],
-  selected_file_url: '',
-  uploaded_file: {},
+  selected_url_file: '',
+  uploaded_files: [],
   showDirectoryNav: false,
   showUploadNav: false,
 };
