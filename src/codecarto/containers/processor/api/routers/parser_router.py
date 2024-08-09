@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile, File
 
 from src.util.exceptions import GithubError
 from api.util import generate_return, proc_exception, proc_error
@@ -141,3 +141,39 @@ async def handle_github_url(github_url: str) -> dict:
         logger.info(f"  Total time taken: {total_time}")
         # TODO: Log this in database later
         print("-------- PARSING COMPLETE --------")
+
+
+@ParserRoute.post("/handle_uploaded_file")
+async def handle_uploaded_file(file: UploadFile = File(...)) -> dict:
+    """Handles an uploaded file and processes it
+
+    Parameters:
+        file {UploadFile} -- The uploaded file to handle
+
+    Returns:
+        dict -- Result of processing the file
+    """
+    try:
+        logger.info("-------- FILE UPLOAD PARSING STARTING --------")
+
+        # Read file content
+        content = await file.read()
+
+        # Process the file content
+        # For example, parse it or save it somewhere
+        # This is where you can call your existing parsing logic
+
+        # Dummy processing
+        result = {"filename": file.filename, "content": content.decode("utf-8")}
+
+        logger.info("-------- FILE UPLOAD PARSING COMPLETE --------")
+
+        return generate_return(200, "File processed successfully", result)
+    except Exception as exc:
+        logger.error(f"Error processing uploaded file: {exc}")
+        proc_exception(
+            "handle_uploaded_file",
+            "Error when handling uploaded file",
+            {"filename": file.filename},
+            exc,
+        )

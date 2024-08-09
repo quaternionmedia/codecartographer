@@ -1,6 +1,6 @@
 import m from 'mithril';
 import { ICell } from '../state';
-import { Request } from './request_handler';
+import { Request, PostRequest } from './request_handler';
 
 /**
  * Get the directories and files from a given GitHub URL.
@@ -141,13 +141,10 @@ export async function plotUploadedFile(
   cell: ICell,
   handlePlotData: (data: any) => void
 ): Promise<void> {
-  updateMessage('Feature is still a work in progress');
-  return;
   // empty the content
   cell.state.graph_content = [];
 
-  // Check the selected URL and the processor URL
-  let file_content = cell.state.uploaded_files[0];
+  // Check the selected file and the processor URL
   const proc_url = cell.state.configurations.processor_url;
   if (!proc_url) {
     displayError(
@@ -156,45 +153,38 @@ export async function plotUploadedFile(
       'Error - parse.js - plotUploadedFile(): Processor URL not found'
     );
     return;
-  }
-
-  // return if the url is empty
-  if (!file_content) {
+  } else if (!cell.state.uploaded_files[0]) {
     updateMessage('Please upload a file');
     return;
   }
-  console.log(file_content);
+
+  // Construct the file input
   updateMessage('Loading...');
 
-  // encode the url and create the href line
-  // const encodedGithubUrl = encodeURIComponent(url);
-  const href_line =
-    `${proc_url}/plotter/plot?` +
-    `is_repo=${true}&` +
-    `graph_data=${{ name: '' }}&` +
-    `db_graph=${false}&` +
-    `demo=${false}&` +
-    `demo_file=${''}&` +
-    `layout=${'Spectral'}&` +
-    `gv=${true}&` +
-    `type=${'d3'}`;
+  const fileContent = cell.state.uploaded_files[0];
+  const url = `${proc_url}/parser/handle_uploaded_file`;
 
-  // Usage example
-  const fileInput = { files: file_content };
-  const fileContent = fileInput.files ? fileInput.files[0] : null;
-  const procUrl = 'your_processor_url_here';
+  // Create FormData object
+  const formData = new FormData();
+  formData.append('file', fileContent);
 
-  sendFile(fileContent, procUrl);
+  // Log the FormData content to verify
+  for (let [key, value] of formData.entries()) {
+    console.log(`FormData key: ${key}, value:`, value);
+  }
 
   try {
-    // try calling the backend
-    var data = await Request(href_line);
+    // Send the POST request with the FormData
+    const data: String = await PostRequest(url, formData);
+
+    // Handle response
+    console.log('Data:', data);
 
     // Check if the data is null
     if (!data) {
       updateMessage('No content received');
     } else {
-      handlePlotData(data);
+      //handlePlotData(response);
       updateMessage();
     }
   } catch (error) {
@@ -240,42 +230,4 @@ function getHTMLElement(classname: string): Element | null {
   const elemList = document.getElementsByClassName(classname);
   if (elemList && elemList.length > 0) return elemList[0];
   return null;
-}
-
-async function sendFile(fileContent: File, procUrl: string) {
-  if (!fileContent) {
-    updateMessage('Please upload a file');
-    return;
-  }
-  console.log(fileContent);
-  updateMessage('Loading...');
-
-  // Create FormData object
-  const formData = new FormData();
-  formData.append('file', fileContent);
-  formData.append('is_repo', 'true');
-  formData.append('graph_data', JSON.stringify({ name: '' }));
-  formData.append('db_graph', 'false');
-  formData.append('demo', 'false');
-  formData.append('demo_file', '');
-  formData.append('layout', 'Spectral');
-  formData.append('gv', 'true');
-  formData.append('type', 'd3');
-
-  try {
-    // Send the POST request with the FormData
-    const response = await m.request({
-      method: 'POST',
-      url: `${procUrl}/plotter/plot`,
-      body: formData,
-      serialize: (data) => data, // Ensure Mithril doesn't serialize FormData
-    });
-
-    // Handle response
-    console.log(response);
-    updateMessage('File uploaded successfully');
-  } catch (error) {
-    console.error(error);
-    updateMessage('Failed to upload file');
-  }
 }

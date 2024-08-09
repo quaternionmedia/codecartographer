@@ -1,33 +1,34 @@
 import m from 'mithril';
 
 import { ICell } from '../../../state';
-import './upload.css';
+import './upload_nav.css';
 
-export const Upload = (
+export const UploadNav = (
   cell: ICell,
   setSelectedUploadedFile: (file: File) => void
 ) => {
   var contents = [];
 
   if (cell.state.uploaded_files.length > 0) {
-    var plot = m(
-      'button.plot_btn',
-      {
-        onclick: function () {
-          if (cell.state.uploaded_files[0] !== undefined) {
-            setSelectedUploadedFile(cell.state.uploaded_files[0]);
-          }
+    var contents = [
+      m('div.upload_tree', [cell.state.uploaded_files]),
+      m(
+        'button.plot_btn',
+        {
+          onclick: function () {
+            if (cell.state.uploaded_files[0] !== undefined) {
+              setSelectedUploadedFile(cell.state.uploaded_files[0]);
+            }
+          },
         },
-      },
-      'Plot Uploaded File'
-    );
-
-    var contents = [m('div.upload_tree', [cell.state.uploaded_files]), plot];
+        'Plot Uploaded File'
+      ),
+    ];
   }
 
   cell.update({ upload_content: contents });
 
-  return m('div.upload', [
+  return m('div.upload_nav', [
     UploadHeader(cell),
     cell.state.upload_content.length > 0
       ? UploadedFiles(cell, setSelectedUploadedFile)

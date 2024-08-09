@@ -5,7 +5,7 @@ import { Nav } from '../navigation/nav';
 import { UrlInput } from '../url_input/url_input';
 import { Plot } from '../plot/plot';
 import { DirectoryNav } from '../nav_content/directory/directory_nav';
-import { Upload } from '../nav_content/upload/upload';
+import { UploadNav } from '../nav_content/upload/upload_nav';
 import {
   handleGithubURL,
   plotGithubUrl,
@@ -86,7 +86,12 @@ export const CodeCarto = (cell: ICell) => {
 
   return [
     Nav(cell, 'showDirectoryNav', DirectoryNav(cell, setSelectedUrlFile)),
-    Nav(cell, 'showUploadNav', Upload(cell, setSelectedUploadedFile), 'right'),
+    Nav(
+      cell,
+      'showUploadNav',
+      UploadNav(cell, setSelectedUploadedFile),
+      'right'
+    ),
     m('div.codecarto', [title, UrlInput(cell, handleUrlInput), Plot(cell)]),
   ];
 };
