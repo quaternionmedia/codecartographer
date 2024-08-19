@@ -526,6 +526,8 @@ class Plotter:
 
         Parameters:
         -----------
+            graph (nx.DiGraph):
+                The graph to plot.
             layout_name (str):
                 The name of the layout.
 

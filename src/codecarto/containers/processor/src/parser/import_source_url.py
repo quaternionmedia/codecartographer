@@ -1,4 +1,4 @@
-import re
+from pprint import pprint
 import httpx
 from src.util.exceptions import (
     GithubAPIError,
@@ -295,6 +295,7 @@ async def get_raw_data_from_github_repo(url: str) -> str | dict:
             "size": repo_size,
             "raw": repo_raw_data,
         }
+        # pprint(repo_structure)
 
         return repo_structure
     except Exception as exc:
@@ -358,6 +359,7 @@ async def reduce_repo_structure(repo_data: dict, repo_size: int = 0) -> tuple:
                 repo_structure[key] = sub_dir_structure
 
         # return the repo structure and the repo size
+        # pprint(repo_structure)
         return (repo_structure, repo_size)
     except Exception as exc:
         raise ImportSourceUrlError(

@@ -66,6 +66,7 @@ async def handle_github_url(github_url: str) -> dict:
         owner, repo = parts[3], parts[4]
 
         # get content from url
+        print("-------- GETTING URL CONTENT --------")
         url_content: list[dict] | dict = await get_github_repo_content(
             github_url, owner, repo, "", True
         )
@@ -81,6 +82,7 @@ async def handle_github_url(github_url: str) -> dict:
             if "status" in url_content:
                 return url_content
 
+        print("-------- GETTING URL TREE --------")
         # parse the content
         repo_contents = {
             "package_owner": owner,
@@ -99,6 +101,7 @@ async def handle_github_url(github_url: str) -> dict:
             if "status" in contents:
                 return contents
             else:
+                print("-------- GETTING URL CONTENT COMPLETE --------")
                 # otherwise good to return
                 repo_contents["contents"] = contents
                 return generate_return(
@@ -154,17 +157,22 @@ async def handle_uploaded_file(file: UploadFile = File(...)) -> dict:
         dict -- Result of processing the file
     """
     try:
-        logger.info("-------- FILE UPLOAD PARSING STARTING --------")
+        from src.polygraph.polygraph import graph_to_json_data
+        from src.parser.parser import Parser
 
+        logger.info("-------- READING FILE --------")
         # Read file content
-        content = await file.read()
+        file_raw = await file.read()
+        file_name = file.filename
+        logger.info(f"File name: {file_name}")
+        logger.info(f"File raw: {file_raw}")
 
+        logger.info("-------- FILE UPLOAD PARSING STARTING --------")
         # Process the file content
-        # For example, parse it or save it somewhere
-        # This is where you can call your existing parsing logic
+        parser: Parser = Parser(source_dict={"raw": file_raw, "name": file_name})
+        graph = parser.graph
 
-        # Dummy processing
-        result = {"filename": file.filename, "content": content.decode("utf-8")}
+        result = graph_to_json_data(graph)
 
         logger.info("-------- FILE UPLOAD PARSING COMPLETE --------")
 
@@ -175,5 +183,69 @@ async def handle_uploaded_file(file: UploadFile = File(...)) -> dict:
             "handle_uploaded_file",
             "Error when handling uploaded file",
             {"filename": file.filename},
+            exc,
+        )
+
+
+# class FileData:
+#     owner: str = None
+#     repo: str = None
+#     name: str = None
+#     size: int = None
+#     raw: str = None
+
+
+# class DirectoryData:
+#     owner: str = None
+#     repo: str = None
+#     name: str = None
+#     size: int = None
+#     files: list[FileData] = []
+
+
+@ParserRoute.post("/handle_raw_data")
+async def handle_raw_data(
+    file: dict,
+    layout: str = "Spring",
+    type: str = "d3",
+) -> dict:
+    """Handles raw data and processes it
+
+    Parameters:
+        file {UploadFile | str} -- The raw data to handle
+
+    Returns:
+        dict -- Result of processing the raw data
+    """
+    from src.polygraph.polygraph import graph_to_json_data
+    from src.parser.parser3 import Parser
+    from src.notebooks.notebook import run_notebook
+    from src.parser.get_graph import apply_styles
+
+    try:
+        logger.info("-------- RAW DATA PARSING STARTING --------")
+
+        # Parse the raw data
+        graph = Parser.parse(
+            source_dict={"raw": file["raw_drata"], "name": file["name"]}
+        )
+
+        # Apply styles to the graph
+        graph = apply_styles(graph)
+
+        # Run the notebook on the graph
+        results = await run_notebook(
+            graph_name=file["name"], graph=graph, title=layout.lower(), type=type
+        )
+
+        logger.info("-------- RAW DATA PARSING COMPLETE --------")
+
+        return generate_return(200, "Proc - Plot generated successfully", results)
+    except Exception as exc:
+        logger.error(f"Error processing raw data: {exc}")
+        proc_exception(
+            "handle_raw_data",
+            "Error when handling raw data",
+            {"filename": file["name"]},
             exc,
         )

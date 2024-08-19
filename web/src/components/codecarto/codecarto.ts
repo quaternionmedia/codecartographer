@@ -63,6 +63,7 @@ export const CodeCarto = (cell: ICell) => {
     cell.update({
       graph_content: nbFrame,
       showDirectoryNav: false,
+      showUploadNav: false,
     });
 
     // Trigger a redraw to update the view
@@ -85,7 +86,12 @@ export const CodeCarto = (cell: ICell) => {
   const title = m('div.header.app_header', ['Code Cartographer', demo_button]);
 
   return [
-    Nav(cell, 'showDirectoryNav', DirectoryNav(cell, setSelectedUrlFile)),
+    Nav(
+      cell,
+      'showDirectoryNav',
+      DirectoryNav(cell, setSelectedUrlFile),
+      'left'
+    ),
     Nav(
       cell,
       'showUploadNav',

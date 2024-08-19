@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, File
 
 from api.util import generate_return, proc_exception, proc_error
 
@@ -74,3 +74,37 @@ async def url_data_to_json(file_url: str) -> dict:
         )
     finally:
         logger.info(f"  Finished    Proc.url_data_to_json()")
+
+
+@PolyGraphRoute.get("/raw_to_json")
+async def file_data_to_json(file: dict) -> dict:
+    """Convert a raw file data to JSON.
+
+    Parameters:
+        file (dict): dict with file name and file content
+
+    Returns:
+        dict: JSON data
+    """
+    try:
+        logger.info(f"  Started     Proc.file_data_to_json(): file_raw - {file_raw}")
+        from src.polygraph.polygraph import graph_to_json_data
+        from src.parser.import_source_url import read_data_from_url
+        from src.parser.parser import Parser
+
+        file_name = file["filename"]
+        file_data = file["content"]
+        parser: Parser = Parser(source_dict={"raw": file_data, "name": file_name})
+        graph = parser.graph
+
+        json_data = graph_to_json_data(graph)
+        return generate_return(200, "Proc - Success", json_data)
+    except Exception as exc:
+        proc_exception(
+            "file_data_to_json",
+            "Error when converting raw data to JSON",
+            {"file_raw": file_raw},
+            exc,
+        )
+    finally:
+        logger.info(f"  Finished    Proc.file_data_to_json()")

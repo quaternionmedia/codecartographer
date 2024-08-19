@@ -73,22 +73,13 @@ def graph_to_json_data(nx_graph: nx.DiGraph) -> dict:
 
     Parameters:
     -----------
-        graph (nx.DiGraph): The graph to convert.
+        nx_graph (nx.DiGraph): The graph to convert.
 
     Returns:
     --------
         dict: The JSON object.
     """
     from src.plotter.palette import Palette
-
-    # Validate inputs
-    if nx_graph is None:
-        raise ValueError("No graph provided.")
-    if not isinstance(nx_graph, nx.DiGraph):
-        try:
-            graph: nx.DiGraph = graphdata_to_nx(nx_graph)
-        except:
-            raise ValueError("'graph' must be formatted as a GraphData object.")
 
     # Create the JSON object
     graph_data: dict[str, dict[str, dict[str, list]]] = {"nodes": {}, "edges": {}}

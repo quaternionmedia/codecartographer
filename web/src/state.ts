@@ -45,10 +45,10 @@ export const InitialState: State = {
   repo_name: '',
   repo_data: [],
   directory_content: [],
-  upload_content: [],
-  graph_content: [],
   selected_url_file: '',
   uploaded_files: [],
+  upload_content: [],
+  graph_content: [],
   showDirectoryNav: false,
   showUploadNav: false,
 };
