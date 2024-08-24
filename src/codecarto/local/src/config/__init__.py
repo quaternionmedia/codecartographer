@@ -1,1 +1,0 @@
-# Config folder holds logic for the configuration of the app as well as all the directory logic for the application.

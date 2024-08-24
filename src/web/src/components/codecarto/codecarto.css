@@ -1,0 +1,131 @@
+:root {
+  --c-primary: #2c221a;
+  --c-primary-light: #4c3e32;
+  --c-secondary: #d7b073;
+  --c-secondary-light: #e8dbad;
+  --c-folder-active-border: var(--c-secondary-light);
+  --c-folder: var(--c-black);
+  --c-file-disabled: var(--cb-file-disabled);
+  --c-file-active: var(--c-black);
+  --c-file-hover: var(--c-black);
+  --c-file: var(--c-secondary);
+  --c-font: #e1c48f;
+  --c-graph: #705d50;
+  --cb-directory: #3a2d23;
+  --cb-folder-active: #433920;
+  --cb-folder-hover: var(--c-secondary-light);
+  --cb-folder: var(--c-secondary);
+  --cb-file-disabled: #9d9282;
+  --cb-file-active: var(--c-secondary-light);
+  --cb-file-hover: var(--c-secondary-light);
+  --cb-file: var(--cb-directory);
+  --w-nav-content: 15em;
+  --mar-nav-content: calc(var(--w-nav-content) * -1);
+  --mar-nav-toggle-btn-open: calc(var(--w-nav-content) - 0.2em);
+  --z-plot: 1;
+  --z-nav: 2;
+}
+
+.app {
+  height: calc(100vh - 20px) !important;
+}
+
+.codecarto {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  flex-direction: column;
+  height: 100%;
+  padding-inline: 10%;
+  font-size: 20px;
+}
+
+.header {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.app_header {
+  font-size: 30px;
+}
+
+.parser_graph_desc {
+  margin-block: 20px;
+  margin-left: 5px;
+}
+
+/* ###########  CODECARTO CUSTOM NAV  ######### */
+.nav {
+  position: absolute;
+  height: calc(100vh - 10.05em) !important;
+  top: 9.3em;
+  border-radius: 5px;
+  z-index: var(--z-nav);
+}
+.nav__content {
+  position: absolute;
+  height: 100%;
+  width: var(--w-nav-content);
+}
+.nav__toggle_btn {
+  position: relative;
+  width: 1em;
+}
+.nav__toggle_btn--open {
+  width: 2em;
+}
+
+/* ###########  DIRECTORY NAV TOGGLE  ######### */
+.nav--left {
+  left: 0;
+  justify-content: left;
+}
+.nav__content--left {
+  left: 0;
+  margin-left: var(--mar-nav-content);
+}
+.nav__toggle_btn--left {
+  left: 0;
+  margin-left: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.nav__toggle_btn--left--open {
+  margin-left: var(--mar-nav-toggle-btn-open);
+}
+.nav__toggle_btn--left--open + .nav__content--left {
+  margin-left: 0;
+}
+
+/* ###########  UPLOAD NAV TOGGLE  ######### */
+.nav--right {
+  right: 0;
+  justify-content: right;
+}
+.nav__content--right {
+  right: 0;
+  margin-right: var(--mar-nav-content);
+}
+.nav__toggle_btn--right {
+  margin-right: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.nav__toggle_btn--right--open {
+  margin-right: var(--mar-nav-toggle-btn-open);
+}
+.nav__toggle_btn--right--open + .nav__content--right {
+  margin-right: 0;
+}
+
+/* ###########  DEMO BUTTON  ######### */
+.demo_btn {
+  float: right;
+  margin-right: 0;
+}
+
+/* check if vw is of a certain width */
+@media (max-width: 700px) {
+  .codecarto {
+    padding-inline: 0;
+  }
+}

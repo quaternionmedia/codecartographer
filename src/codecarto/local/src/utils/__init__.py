@@ -1,1 +1,0 @@
-# Utils folder holds any utility functions that are used throughout the application.
