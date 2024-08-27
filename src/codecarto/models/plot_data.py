@@ -9,13 +9,6 @@ class RawData:
         self.raw = raw
 
 
-class FileGraphData(BaseModel):
-    name: str = ""
-    size: int = 0
-    raw: str = ""
-    layout: str = "Spring"
-
-
 class LayoutType(dict):
     name: str
     func: Callable

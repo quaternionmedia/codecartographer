@@ -3,10 +3,7 @@ import m from 'mithril';
 import { ICell } from '../../../state';
 import './upload_nav.css';
 
-export const UploadNav = (
-  cell: ICell,
-  setSelectedUploadedFile: (file: File) => void
-) => {
+export const UploadNav = (cell: ICell, onFileClick: (file: File) => void) => {
   var contents = [];
 
   if (cell.state.uploaded_files.length > 0) {
@@ -17,7 +14,7 @@ export const UploadNav = (
         {
           onclick: function () {
             if (cell.state.uploaded_files[0] !== undefined) {
-              setSelectedUploadedFile(cell.state.uploaded_files[0]);
+              onFileClick(cell.state.uploaded_files[0]);
             }
           },
         },
@@ -30,9 +27,7 @@ export const UploadNav = (
 
   return m('div.upload_nav', [
     UploadHeader(cell),
-    cell.state.upload_content.length > 0
-      ? UploadedFiles(cell, setSelectedUploadedFile)
-      : null,
+    cell.state.upload_content.length > 0 ? Files(cell, onFileClick) : null,
   ]);
 };
 
@@ -78,15 +73,12 @@ export const UploadButton = (cell: ICell) => {
   ]);
 };
 
-export const UploadedFiles = (
-  cell: ICell,
-  setSelectedUploadedFile: (file: File) => void
-) => {
+export const Files = (cell: ICell, onFileClick: (file: File) => void) => {
   return m('div.upload_files', [
     cell.state.uploaded_files.map((file: File) =>
       m(File, {
         file: file,
-        setSelectedUploadedFile: setSelectedUploadedFile,
+        onFileClick: onFileClick,
       })
     ),
   ]);
@@ -94,7 +86,7 @@ export const UploadedFiles = (
 
 export const File = {
   view: function (vnode) {
-    let { file, setSelectedUploadedFile } = vnode.attrs;
+    let { file, onFileClick } = vnode.attrs;
     let isDisabled = true;
     let ext = file.name.split('.').pop();
 
@@ -112,7 +104,7 @@ export const File = {
           file: file,
           onclick: function () {
             if (!isDisabled) {
-              setSelectedUploadedFile(file);
+              onFileClick(file);
             }
           },
         },

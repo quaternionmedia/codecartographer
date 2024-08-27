@@ -1,15 +1,14 @@
 import m from 'mithril';
 
-import { ICell } from '../../state';
 import './url_input.css';
 
 let trackedValue = '';
 
-export const UrlInput = (cell: ICell, handleUrlInput: () => void) =>
+export const UrlInput = (handleUrlInput: (url: string) => void) =>
   m('section.url', [
     title,
-    input(cell, handleUrlInput),
-    submit(cell, handleUrlInput),
+    input(handleUrlInput),
+    submit(handleUrlInput),
     message,
   ]);
 
@@ -23,7 +22,7 @@ const message = m('div', {
   style: 'display: none',
 });
 
-const input = (cell: ICell, handleUrlInput: () => void) =>
+const input = (handleUrlInput: (url: string) => void) =>
   m('input', {
     autofocus: true,
     class: 'url_input',
@@ -31,19 +30,17 @@ const input = (cell: ICell, handleUrlInput: () => void) =>
     // needs to be keyup up to set value after something like ctrl+v
     onkeyup: (e) => {
       trackedValue = e.target.value;
-      cell.state.repo_url = e.target.value;
       if (e.key === 'Enter') {
-        handleUrlInput();
+        handleUrlInput(trackedValue);
       }
     },
   });
 
-const submit = (cell: ICell, handleUrlInput: () => void) =>
+const submit = (handleUrlInput: (url: string) => void) =>
   m('button', {
     class: 'url_btn',
     innerText: 'Submit',
     onclick: () => {
-      cell.state.repo_url = trackedValue;
-      handleUrlInput();
+      handleUrlInput(trackedValue);
     },
   });

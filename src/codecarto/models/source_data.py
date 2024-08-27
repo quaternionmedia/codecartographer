@@ -10,19 +10,25 @@ from typing import List, Union
 
 
 class File(BaseModel):
+    """The data of a file. [name, size, raw]"""
+
     name: str
     size: int
     raw: str
 
 
 class Folder(BaseModel):
+    """The data of a file. [name, size, files, folders]"""
+
     name: str
     size: int
     files: list[File]
     folders: list["Folder"]
 
 
-class SourceData(BaseModel):
+class Source(BaseModel):
+    """The data of a file. [name, size, source (files, folders)]"""
+
     name: str
     size: int
-    source: List[Union[File, Folder]]
+    source: List

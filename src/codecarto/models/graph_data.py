@@ -1,6 +1,9 @@
 from fileinput import filename
+from typing import Union
 from networkx import DiGraph
 from pydantic import BaseModel, Field
+
+from models.source_data import File, Folder
 
 
 class Edge(BaseModel):
@@ -45,3 +48,15 @@ class GraphBuilder:
 
     def get_graph(self):
         return self.graph
+
+
+class Repo:
+    """The data of a file. [name, size, raw (files, folders)]"""
+
+    def __init__(
+        self, owner: str, repo: str, size: int, raw: list[Union[File, Folder]]
+    ):
+        self.owner = owner
+        self.repo = repo
+        self.size = size
+        self.raw = raw

@@ -5,7 +5,8 @@ import './directory_nav.css';
 
 export const DirectoryNav = (
   cell: ICell,
-  setSelectedFile: (url: string) => void
+  setSelectedFile: (url: string) => void,
+  handleWholeRepo: () => void
 ) => {
   var contents = [];
 
@@ -14,12 +15,11 @@ export const DirectoryNav = (
       'button.plot_whole_btn',
       {
         onclick: function () {
-          setSelectedFile(cell.state.plot_repo_url);
+          handleWholeRepo();
         },
       },
       'Plot Whole Repo'
     );
-
     var tree = parseDirectory(cell.state.repo_data, 'root', setSelectedFile);
     var contents = [m('div.directory_tree', [tree]), plot_all];
   }

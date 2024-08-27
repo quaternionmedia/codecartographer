@@ -16,7 +16,6 @@ export interface State {
   debug: DebugOptions;
   configurations: Configurations;
   container?: any;
-  plot_repo_url: string;
   repo_url: string;
   repo_owner: string;
   repo_name: string;
@@ -39,7 +38,6 @@ export const InitialState: State = {
   configurations: {
     processor_url: 'http://localhost:2020',
   },
-  plot_repo_url: '',
   repo_url: '',
   repo_owner: '',
   repo_name: '',
@@ -52,3 +50,36 @@ export const InitialState: State = {
   showDirectoryNav: false,
   showUploadNav: false,
 };
+
+export class StateController {
+  public static clearGithubData(cell: ICell) {
+    cell.state.repo_url = '';
+    cell.state.repo_owner = '';
+    cell.state.repo_name = '';
+    cell.state.repo_data = [];
+    cell.state.directory_content = [];
+  }
+  public static clearAllFileData(cell: ICell) {
+    cell.state.uploaded_files = [];
+    cell.state.upload_content = [];
+    cell.state.selected_uploaded_file = undefined;
+  }
+  public static clearSelectedFile(cell: ICell) {
+    cell.state.selected_uploaded_file = undefined;
+  }
+  public static clearGraphContent(cell: ICell) {
+    cell.state.graph_content = [];
+  }
+
+  /** Clear all data from the cell */
+  public static clear(cell: ICell) {
+    this.clearGithubData(cell);
+    this.clearAllFileData(cell);
+    this.clearGraphContent(cell);
+  }
+
+  /** Update the cell with the new content */
+  public static update(cell: ICell, state: Partial<State>) {
+    cell.update(state);
+  }
+}

@@ -1,11 +1,65 @@
 from re import L
 from fastapi import APIRouter
-from models.source_data import File, SourceData
+from models.source_data import File, Source
 from util.exceptions import proc_exception, proc_error
 from util.utilities import Log, generate_return
 
-
 ParserRouter = APIRouter()
+
+
+@ParserRouter.get("/repo")
+async def read_github_repo(url: str):
+    import time
+    from services.github_service import (
+        ImportSourceUrlError,
+        GithubError,
+        get_raw_data_from_github_repo,
+        get_github_repo_source,
+        get_repo_tree,
+    )
+    from services.parser_service import ParserService
+    from services.ASTs.python_ast import PythonAST
+    from models.graph_data import Repo
+    from pprint import pprint
+
+    try:
+        # get current time to calculate total time taken
+        start_time = time.time()
+
+        # Get the repo content and structure
+        repo_data = await get_raw_data_from_github_repo(url)
+        if not repo_data:
+            return proc_error("read_github_repo", "Could not read GitHub repo")
+
+        data = get_github_repo_source(repo_data)
+
+        source_data = Source(
+            name=f"{data.owner}/{data.repo}",
+            size=data.size,
+            source=data.raw,
+        )
+
+        # Initialize the parser and parse the entire repository
+        parser = ParserService(PythonAST())
+        graph = parser.parse_repository(source_data)
+
+        pprint("#################################################################")
+        pprint(graph.nodes(data=True))
+
+        return generate_return(200, "Repository parsed successfully", {"graph": graph})
+    except Exception as exc:
+        proc_exception(
+            "read_github_url",
+            "Error when reading GitHub URL",
+            {"github_url": url},
+            exc,
+        )
+    finally:
+        # calculate total time taken
+        end_time = time.time()
+        total_time = time.strftime("%H:%M:%S", time.gmtime(end_time - start_time))
+        # TODO: Log this in database later
+        Log.info(f"  Total time taken: {total_time}")
 
 
 @ParserRouter.get("/url")
@@ -77,24 +131,24 @@ async def read_github_url(url: str):
 
 
 @ParserRouter.post("/source")
-async def parse_source(source: SourceData) -> dict:
+async def parse_source(source: Source) -> dict:
     return parse(source)
 
 
 @ParserRouter.post("/file")
 async def parse_file(file: File) -> dict:
-    source = SourceData(name=file.name, size=file.size, source=[file])
+    source = Source(name=file.name, size=file.size, source=[file])
     return parse(source)
 
 
 @ParserRouter.post("/raw")
 async def parse_raw(raw: str) -> dict:
     file = File(name="raw", size=len(raw), raw=raw)
-    source = SourceData(name="raw", size=len(raw), source=[file])
+    source = Source(name="raw", size=len(raw), source=[file])
     return parse(source)
 
 
-def parse(source: SourceData) -> dict:
+def parse(source: Source) -> dict:
     from services.ASTs.python_ast import PythonAST
     from services.parser_service import ParserService
     from services.polygraph_service import graph_to_json_data

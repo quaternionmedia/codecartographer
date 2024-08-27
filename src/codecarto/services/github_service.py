@@ -9,6 +9,7 @@ from util.exceptions import (
     ImportSourceUrlHttpError,
 )
 from util.utilities import Log
+from models.graph_data import Repo
 
 
 ########################   OLD CODE   ########################
@@ -219,7 +220,7 @@ async def get_raw_data_from_github_url(url: str) -> str:
         Log.info(f"  Finished    Proc.get_raw_data_from_github_url()")
 
 
-async def get_raw_data_from_github_repo(url: str) -> str | dict:
+async def get_raw_data_from_github_repo(url: str) -> dict:
     """Read raw data from a repo URL.
 
     Parameters:
@@ -260,7 +261,7 @@ async def get_raw_data_from_github_repo(url: str) -> str | dict:
             "size": repo_size,
             "raw": repo_raw_data,
         }
-        # pprint(repo_structure)
+        pprint(repo_structure)
 
         return repo_structure
     except Exception as exc:
@@ -273,6 +274,21 @@ async def get_raw_data_from_github_repo(url: str) -> str | dict:
         )
     finally:
         Log.info(f"  Finished    Proc.get_raw_data_from_github_repo()")
+
+
+def get_github_repo_source(data: dict) -> Repo:
+    try:
+        return Repo(data["owner"], data["repo"], data["size"], data["raw"])
+    except Exception as exc:
+        raise ImportSourceUrlError(
+            "get_github_repo_tree",
+            {"data": data},
+            f"Error when reading raw data from repo URL: {exc}",
+            500,
+            exc,
+        )
+    finally:
+        Log.info(f"  Finished    Proc.get_github_repo_tree()")
 
 
 async def reduce_repo_structure(repo_data: dict, repo_size: int = 0) -> tuple:

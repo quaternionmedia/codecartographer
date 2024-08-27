@@ -233,7 +233,7 @@ class PythonAST(BaseASTVisitor):
         # see if any of the imports are in the module list
         for module in self.module_list:
             if module in self.imports:
-                self.relations.append((module, self.module))
+                self.relations.append((self.module, module))
                 self.generic_visit(node)
 
     def visit_ImportFrom(self, node):
@@ -243,7 +243,7 @@ class PythonAST(BaseASTVisitor):
         # see if any of the imports are in the module list
         for module in self.module_list:
             if module in self.imports:
-                self.relations.append((module, self.module))
+                self.relations.append((self.module, module))
                 self.generic_visit(node)
 
     # endregion
