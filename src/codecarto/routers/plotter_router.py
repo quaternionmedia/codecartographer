@@ -1,68 +1,134 @@
+from typing import Union, List
 from fastapi import APIRouter
-from models.plot_data import DefaultPalette, PlotOptions, FileGraphData
-from util.exceptions import proc_exception
+from models.source_data import File, Folder
+from models.plot_data import DefaultPalette, PlotOptions
+from util.exceptions import proc_error, proc_exception
 from util.utilities import Log, generate_return
 
 PlotterRouter = APIRouter()
 
 
-@PlotterRouter.post("/raw")
-async def plot_from_raw(data: FileGraphData) -> dict:
+@PlotterRouter.post("/file")
+async def plot_raw(file: File, options: PlotOptions) -> dict:
     # TODO: raw is a placeholder for now
     # really this should parse from parser service
     # save it to the database and return an id
     # and then plot from plotter service using that id
-    import networkx as nx
     from notebooks.notebook import run_notebook
     from services.palette_service import apply_styles
-    from models.source_data import SourceData, File
+    from models.source_data import Source, File
     from services.ASTs.python_ast import PythonAST
     from services.parser_service import ParserService
 
     try:
         # parse the raw data
-        file = File(name=data.name, size=data.size, raw=data.raw)
-        source = SourceData(name=data.name, size=data.size, source=[file])
+        file = File(name=file.name, size=file.size, raw=file.raw)
+        source = Source(name=file.name, size=file.size, source=[file])
         parser = ParserService(PythonAST())
         graph = parser.parse(source)
 
         # Run the notebook on the graph
         results = await run_notebook(
-            graph_name=data.name,
+            graph_name=file.name,
             graph=apply_styles(graph),
-            title=data.layout,
+            title=options.layout,
             type="d3",
         )
-        return generate_return(message="plot_from_file - Success", results=results)
+        return generate_return(message="plot_file - Success", results=results)
     except Exception as e:
         return proc_exception(
-            "plot_from_file",
+            "plot_file",
             "Error generating plot",
-            {"file": data.name},
+            {"file": file.name},
             e,
         )
 
 
+@PlotterRouter.post("/repo")
+async def plot_whole_repo(url: str, options: PlotOptions):
+    from models.source_data import File, Source
+    from notebooks.notebook import run_notebook
+    from services.ASTs.python_ast import PythonAST
+    from services.github_service import get_raw_data_from_github_repo
+    from services.palette_service import apply_styles
+    from services.parser_service import ParserService
+    from services.plotter_service import PlotterService
+    import time
+    from services.github_service import (
+        ImportSourceUrlError,
+        GithubError,
+        get_raw_data_from_github_repo,
+        get_github_repo_source,
+        get_repo_tree,
+    )
+    from services.parser_service import ParserService
+    from services.ASTs.python_ast import PythonAST
+    from models.graph_data import Repo
+    from pprint import pprint
+
+    try:
+        # get current time to calculate total time taken
+        start_time = time.time()
+
+        # Get the repo content and structure
+        repo_data = await get_raw_data_from_github_repo(url)
+        if not repo_data:
+            return proc_error("read_github_repo", "Could not read GitHub repo")
+
+        data = get_github_repo_source(repo_data)
+
+        # parse data.raw into List[File|Folder ]
+        data_raw: List[Union[File, Folder]] = []
+        for item in data.raw:
+            data_raw.append(item)
+
+        source_data = Source(
+            name=f"{data.owner}/{data.repo}", size=data.size, source=[data_raw]
+        )
+
+        # Initialize the parser and parse the entire repository
+        parser = ParserService(PythonAST())
+        graph = parser.parse_repository(source_data)
+
+        pprint("#################################################################")
+        pprint(graph.nodes(data=True))
+
+        return generate_return(200, "Repository parsed successfully", {"graph": graph})
+    except Exception as exc:
+        proc_exception(
+            "read_github_url",
+            "Error when reading GitHub URL",
+            {"github_url": url},
+            exc,
+        )
+    finally:
+        # calculate total time taken
+        end_time = time.time()
+        total_time = time.strftime("%H:%M:%S", time.gmtime(end_time - start_time))
+        # TODO: Log this in database later
+        Log.info(f"  Total time taken: {total_time}")
+
+
 @PlotterRouter.post("/url")
-async def plot_from_url(url: str, options: PlotOptions) -> dict:
+async def plot_url(url: str, options: PlotOptions) -> dict:
     # TODO: Url is a placeholder for now
     # really this should parse from parser service
     # save it to the database and return an id
     # and then plot from plotter service using that id
     from database.database import DatabaseContext
-    from models.source_data import File, SourceData
     from models.graph_data import GraphBase
+    from models.source_data import File, Source
+    from notebooks.notebook import run_notebook
     from services.ASTs.python_ast import PythonAST
+    from services.github_service import get_raw_data_from_github_url
+    from services.palette_service import apply_styles
     from services.parser_service import ParserService
     from services.plotter_service import PlotterService
-    from services.github_service import get_raw_data_from_github_url
-    from notebooks.notebook import run_notebook
-    from services.palette_service import apply_styles
 
     try:
         raw = await get_raw_data_from_github_url(url)
         file = File(name="raw", size=0, raw=raw)
-        source = SourceData(name=file.name, size=file.size, source=[file])
+        source = Source(name=file.name, size=file.size, source=[file])
         parser = ParserService(PythonAST())
         graph = parser.parse(source)
 
@@ -78,10 +144,10 @@ async def plot_from_url(url: str, options: PlotOptions) -> dict:
         # results = PlotterService.plot_graph(
         #     graph=graphbase, palette=palette, options=options
         # )
-        return generate_return(message="plot_from_url - Success", results=results)
+        return generate_return(message="plot_url - Success", results=results)
     except Exception as e:
         return proc_exception(
-            "plot_from_url",
+            "plot_url",
             "Error generating plot",
             {"url": url},
             e,
@@ -89,7 +155,7 @@ async def plot_from_url(url: str, options: PlotOptions) -> dict:
 
 
 @PlotterRouter.post("/json")
-async def plot_from_json(json_graph: dict, options: PlotOptions) -> dict:
+async def plot_json(json_graph: dict, options: PlotOptions) -> dict:
     from services.polygraph_service import PolygraphService
     from database.database import DatabaseContext
     from services.plotter_service import PlotterService
@@ -100,10 +166,10 @@ async def plot_from_json(json_graph: dict, options: PlotOptions) -> dict:
         results = PlotterService.plot_graph(
             graph=graph, palette=palette, options=options
         )
-        return generate_return(message="plot_from_json - Success", results=results)
+        return generate_return(message="plot_json - Success", results=results)
     except Exception as e:
         return proc_exception(
-            "plot_from_json",
+            "plot_json",
             "Error generating plot",
             {"json_graph": json_graph},
             e,
@@ -111,7 +177,7 @@ async def plot_from_json(json_graph: dict, options: PlotOptions) -> dict:
 
 
 @PlotterRouter.post("/db")
-async def plot_from_db(graph_id: str, options: PlotOptions) -> dict:
+async def plot_db(graph_id: str, options: PlotOptions) -> dict:
     from database.database import DatabaseContext
     from services.plotter_service import PlotterService
 
@@ -121,10 +187,10 @@ async def plot_from_db(graph_id: str, options: PlotOptions) -> dict:
         results = PlotterService.plot_graph(
             graph=graph, palette=palette, options=options
         )
-        return generate_return(message="plot_from_db - Success", results=results)
+        return generate_return(message="plot_db - Success", results=results)
     except Exception as e:
         return proc_exception(
-            "plot_from_db",
+            "plot_db",
             "Error generating plot",
             {"graph_id": graph_id},
             e,
@@ -132,7 +198,7 @@ async def plot_from_db(graph_id: str, options: PlotOptions) -> dict:
 
 
 @PlotterRouter.post("/demo")
-async def plot_from_demo(options: PlotOptions) -> dict:
+async def plot_demo(options: PlotOptions) -> dict:
     from models.demo_data import DemoGraph
     from services.plotter_service import PlotterService
 
@@ -142,10 +208,10 @@ async def plot_from_demo(options: PlotOptions) -> dict:
         results = PlotterService.plot_graph(
             graph=graph, palette=palette, options=options
         )
-        return generate_return(message="plot_from_demo - Success", results=results)
+        return generate_return(message="plot_demo - Success", results=results)
     except Exception as e:
         return proc_exception(
-            "plot_from_db",
+            "plot_db",
             "Error generating plot",
             {"": ""},
             e,

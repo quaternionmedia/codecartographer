@@ -2,10 +2,11 @@ import m from 'mithril';
 import { meiosisSetup } from 'meiosis-setup';
 
 import './styles/index.css';
-import { ICell, InitialState, State } from './state';
+import { InitialState, ICell, State } from './state';
 import { CodeCarto } from './components/codecarto/codecarto';
 import { getViewPortSize } from './utility';
 
+// Initialize the app
 const App = {
   initial: InitialState,
   services: [],
@@ -17,8 +18,7 @@ const App = {
 
 // Initialize Meiosis
 const cells = meiosisSetup<State>({ app: App });
-cells.map((state) => {
-  // console.log('Current state:', state);
+cells.map(() => {
   m.redraw();
 });
 

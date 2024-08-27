@@ -2,7 +2,7 @@ import ast
 
 from networkx import DiGraph
 from models.graph_data import Node, Edge, GraphBuilder
-from models.source_data import Folder, File, SourceData
+from models.source_data import Folder, File, Source
 from random import randint
 from services.ASTs.base_ast import BaseASTVisitor
 
@@ -14,13 +14,108 @@ class ParserService:
         self.visitor = visitor
         self.graph_builder = graph_builder
         self.module_list = []
+        self.graph = DiGraph()
 
-    def parse(self, source: SourceData) -> DiGraph:
+    def parse_repository(self, source: Source) -> DiGraph:
+        """Parse the entire repository and link imports between files.
+
+        Parameters:
+        -----------
+        source: Source
+            The source code data to parse (including multiple files).
+
+        Returns:
+        --------
+        DiGraph
+            The parsed graph.
+        """
+        file_nodes = {}
+        for item in source.source:
+            if isinstance(item, File):
+                self.parse_file(item)
+                file_nodes[item.name] = (
+                    self.visitor.imports
+                )  # Store the imports for later linking
+            elif isinstance(item, Folder):
+                self._parse_folder(item, file_nodes)
+
+        self._link_imports(file_nodes)
+        return self.graph
+
+    def _parse_folder(self, folder: Folder, file_nodes: dict):
+        for file in folder.files:
+            self.parse_file(file)
+            file_nodes[file.name] = (
+                self.visitor.imports
+            )  # Store the imports for later linking
+
+        for sub_folder in folder.folders:
+            self._parse_folder(sub_folder, file_nodes)
+
+    def parse_file(self, file: File):
+        parsed_ast = self.parse_py_to_ast(file.raw)
+        self.visitor.generic_visit(parsed_ast)
+        self.build_graph(file.name)
+
+    def build_graph(self, filename: str):
+        """Add the parsed nodes from the visitor to the graph."""
+        node_types = {
+            "interactive": self.visitor.interactives,
+            "expression": self.visitor.expressions,
+            "function": self.visitor.functions,
+            "asyncfunction": self.visitor.asyncfunctions,
+            "class": self.visitor.classes,
+            "import": self.visitor.imports,
+        }
+
+        for node_type, nodes in node_types.items():
+            for node in nodes:
+                node_label = (
+                    str(node)
+                    if node_type in ["function", "class", "import"]
+                    else node_type
+                )
+                self.create_node(
+                    graph=self.graph,
+                    node_id=id(str(node)),
+                    node_type=node_type,
+                    node_label=node_label,
+                    node_parent_id=None,
+                    filename=filename,
+                )
+
+    def _link_imports(self, file_nodes: dict):
+        """Link imports in one file to the corresponding class/function in another file."""
+        for filename, imports in file_nodes.items():
+            for import_node in imports:
+                imported_module_name = str(import_node)
+                # Check if any file matches the imported module name
+                for other_filename, other_imports in file_nodes.items():
+                    if other_filename != filename and other_filename.endswith(
+                        f"{imported_module_name}.py"
+                    ):
+                        # Create an edge between the import in `filename` and the corresponding module in `other_filename`
+                        import_node_id = [
+                            n
+                            for n, d in self.graph.nodes(data=True)
+                            if d["file"] == filename
+                            and d["label"].startswith(imported_module_name)
+                        ]
+                        other_node_id = [
+                            n
+                            for n, d in self.graph.nodes(data=True)
+                            if d["file"] == other_filename
+                        ]
+
+                        if import_node_id and other_node_id:
+                            self.graph.add_edge(import_node_id[0], other_node_id[0])
+
+    def parse(self, source: Source) -> DiGraph:
         """Parse the source code to a graph.
 
         Parameters:
         -----------
-        source: SourceData
+        source: Source
             The source code data to parse.
 
         Returns:
@@ -172,6 +267,7 @@ class ParserService:
                         node_type=node_type,
                         node_label=node_label,
                         node_parent_id=id(self.current_parent),
+                        filename=self.module_list[-1],
                     )
                     # add the edge to the parent
                     graph.add_edge(id(self.current_parent), id(str(node)))
@@ -188,16 +284,18 @@ class ParserService:
         node_type: str,
         node_label: str,
         node_parent_id: int | None,
+        filename: str,
     ):
         # Check params
         if not node_label or node_label == "":
             node_label = f"{node_type} (u)"
 
         # Add the node
+        label = f"{node_label}"  #: {node_type}"
         graph.add_node(
             node_id,
             type=node_type,
-            label=f"{node_label}: {node_type}",
+            label=label,
             parent=node_parent_id,
         )
         # Add the edge
