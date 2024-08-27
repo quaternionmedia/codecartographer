@@ -1,0 +1,64 @@
+@startuml
+title Parser/Plotter Sequence Diagram
+
+' Define the participants 
+' in order of appearance
+participant User
+participant Web
+participant ParserRouter
+participant PlotterRouter
+participant ParserService as Parser
+participant PlotterService as Plotter
+participant Database
+
+' Define the activities
+group Parse from Local File/Folder
+    User -> Web: UploadFile/Folder
+    Web -> ParserRouter: Request(file data)
+    ParserRouter -> Parser: Parse(local file data)
+    Parser -> Database: Save(graph)
+    Parser -> ParserRouter: Return(graph)
+    Web <- ParserRouter: Response(json_graph)
+    User <- Web: Display Parsed Graph
+end
+
+group Parse from GitHub Repo URL
+    User -> Web: EnterRepoURL
+    Web -> ParserRouter: Request(repo URL)
+    ParserRouter -> Parser: Fetch and Parse(repo data)
+    Parser -> Database: Save(graph)
+    Parser -> ParserRouter: Return(graph)
+    Web <- ParserRouter: Response(json_graph)
+    User <- Web: Display Parsed Graph
+end
+
+group Plot Graph
+    User -> Web: SelectGraphForPlotting(json_graph)
+    Web -> PlotterRouter: Request Plot(json_graph)
+    PlotterRouter -> Plotter: Generate Plot
+    Plotter -> Database: Save(plotHtml)
+    Plotter -> PlotterRouter: Return(mpld3 HTML)
+    Web <- PlotterRouter: Response(mpld3 HTML)
+    User <- Web: Display Plot
+end
+
+group Plot from Database
+    User -> Web: RequestPlotFromDatabase
+    Web -> PlotterRouter: Request(db graph data)
+    PlotterRouter -> Plotter: Generate Plot(from db graph)
+    Plotter -> Database: Retrieve(graph)
+    Plotter -> PlotterRouter: Return(mpld3 HTML)
+    Web <- PlotterRouter: Response(mpld3 HTML)
+    User <- Web: Display Plot
+end
+
+group Run Demo Plot
+    User -> Web: RequestDemoPlot
+    Web -> PlotterRouter: RequestDemoPlot
+    PlotterRouter -> Plotter: GenerateDemoPlot
+    Plotter -> PlotterRouter: Return(mpld3 HTML)
+    Web <- PlotterRouter: Response(mpld3 HTML)
+    User <- Web: Display Demo Plot
+end
+
+@enduml

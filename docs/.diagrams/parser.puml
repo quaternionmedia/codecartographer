@@ -1,3 +1,60 @@
 @startuml
+title Parser Class Diagram
+
+' Node class representing graph nodes
+class Node {
+    +id: int
+    +label: str
+    +ast_type: str
+    +parent_id: int
+}
+
+' Edge class representing connections between nodes
+class Edge {
+    +id: str
+    +source: str
+    +target: str
+}
+
+' ntxGraph representing the entire graph
+class ntxGraph {
+    +nodes: List[Node]
+    +edges: List[Edge]
+    +add_node(node: Node)
+    +add_edge(edge: Edge)
+    +to_json(): dict
+}
+
+' Directory class representing a folder in the file system
+class Directory {
+    +name: str
+    +folders: List[Directory]
+    +files: List[File]
+    +add_folder(folder: Directory)
+    +add_file(file: File)
+}
+
+' File class representing an individual file
+class File {
+    +name: str
+    +content: str
+}
+
+' Parser class representing the parsing service
+class Parser {
+    +read_repo(url: str): Directory
+    +parse(directory: Directory): ntxGraph
+    +parse(file: File): ntxGraph
+    +save_graph(graph: ntxGraph): None
+}
+
+Parser -[hidden]-> Directory
+Parser -[hidden]-> ntxGraph
+
+' Relationships between classes
+Directory "1" -- "*" Directory: contains
+Directory "1" -- "*" File: contains
+ntxGraph "1" -- "*" Node: has
+ntxGraph "1" -- "*" Edge: has
 
 @enduml

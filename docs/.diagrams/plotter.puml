@@ -1,0 +1,13 @@
+@startuml
+
+
+' Plotter class responsible for generating the plot
+class Plotter {
+    +generate_plot(plot_data: PlotData): mpld3_HTML
+    +apply_layout(ntx_graph: ntxGraph, layout: str): ntxGraph
+    +apply_palette(gravis_plot: GravisPlot, palette: str): GravisPlot
+    +save_plot(gravis_plot: GravisPlot): None
+    +load_plot_from_db(id: str): GravisPlot
+}
+
+@enduml

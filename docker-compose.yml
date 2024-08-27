@@ -1,27 +1,12 @@
 version: '3'
 
 services:
-  # web:
-  #   container_name: web
-  #   image: web  
-  #   build:
-  #     context: .
-  #     dockerfile: ./src/codecarto/containers/web/Dockerfile
-  #   ports:
-  #     - '2000:2000'
-  #   networks:
-  #     - front_net
-  #     - back_net
-  #     - graphbase_db_net
-  #   volumes:
-  #     - ./src/codecarto/containers/web/src:/app/src
-
   processor:
     container_name: processor
-    image: processor  
+    image: processor
     build:
       context: .
-      dockerfile: ./src/codecarto/containers/processor/Dockerfile
+      dockerfile: ./src/codecarto/Dockerfile
     ports:
       - '2020:2020'
     networks:
