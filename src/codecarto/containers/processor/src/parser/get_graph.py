@@ -1,6 +1,5 @@
-from operator import is_
 import networkx as nx
-from pprint import pp, pprint
+from pprint import pprint
 from src.database.gravis_db import insert_graph_into_database, get_gJGF_from_database
 
 
@@ -12,6 +11,7 @@ async def get_graph(
     graph_data: dict,
     is_repo: bool,
     gv: bool = False,
+    file_data: dict | str = None,
 ) -> tuple:
     """Get a graph.
 
@@ -31,12 +31,15 @@ async def get_graph(
             Whether the url is a repo.
         gv (bool):
             Whether to use the gravis repo.
+        file_data (dict | str):
+            The file data.
 
     Returns:
     --------
         tuple (nx.DiGraph, str):
             The graph and the filename.
     """
+    pprint("0       ############## GET GRAPH STARTING ##############")
     graph: nx.DiGraph = None
     graph_name: str = None
     is_in_db: bool = False
@@ -44,6 +47,7 @@ async def get_graph(
     # Clean the url if it is a repo
     if not demo and not file_path:
         if url and url != "":
+            pprint(f"        url ")
             graph_name = url
             if is_repo:
                 # remove trailing '/' if there
@@ -59,7 +63,7 @@ async def get_graph(
 
         # Check if graph is in database
         if graph_name and graph_name != "":
-            pprint(f"graph_name: {graph_name}")
+            pprint(f"        graph_name: {graph_name}")
 
             try:
                 graph_data, graph_name = await get_gJGF_from_database(graph_name)
@@ -68,11 +72,11 @@ async def get_graph(
                 pass
 
             if graph_data:
-                pprint(f"Graph '{graph_name}' found in database")
+                pprint(f"        Graph '{graph_name}' found in database")
                 db_graph = True
                 is_in_db = True
             else:
-                pprint(f"Graph '{graph_name}' not found in database")
+                pprint(f"        Graph '{graph_name}' not found in database")
                 db_graph = False
                 is_in_db = False
 
@@ -84,7 +88,7 @@ async def get_graph(
     # Get graph from demo_file
     elif file_path and file_path != "":
         pprint("file_path")
-        graph, graph_name = file_graph(file_path)
+        graph, graph_name = file_path_graph(file_path)
 
     # Get graph from database
     elif db_graph and url:
@@ -98,7 +102,8 @@ async def get_graph(
 
     # Get graph from repo url
     elif is_repo and url:
-        pprint("is_repo")
+        pprint("        is_repo")
+        pprint("1       ############## GET REPO GRAPH ##############")
         graph, graph_name = await repo_url_graph(url)
         # TODO: we have polygraph, why can't it just do graph_to_gJGF?
         db_results = await insert_graph_into_database(graph_name, graph)
@@ -106,8 +111,7 @@ async def get_graph(
         if gv:
             from src.polygraph.polygraph import gJGF_to_nxGraph
 
-            pprint("gravis repo")
-            pprint(graph_name)
+            pprint(f"        gravis repo: {graph_name}")
             # If gv (gravis) we need the graph as a gJGF
             # simplest way is to just get it from the database
             # TODO: we have polygraph, why can't it just do graph_to_gJGF?
@@ -120,13 +124,42 @@ async def get_graph(
 
     # Get graph from json data
     elif graph_data and graph_data != {}:
-        pprint("graph_data")
+        pprint("        graph_data")
+        pprint("1       ############## GIVEN GRAPH DATA ##############")
         # TODO: at some point user may be able to provide json data
         # TODO: will need to verify json data represents valid graph
         graph, graph_name = given_data_graph(graph_data)
 
+    # Get graph from file data
+    elif (
+        file_data
+        and (isinstance(file_data, str) and file_data != "")
+        or (isinstance(file_data, dict) and file_data != {})
+    ):
+        pprint("        file_data")
+        pprint("1       ############## GET FILE GRAPH ##############")
+        graph, graph_name = await file_data_graph(file_data)
+        # TODO: we have polygraph, why can't it just do graph_to_gJGF?
+        db_results = await insert_graph_into_database(graph_name, graph)
+
+        if gv:
+            from src.polygraph.polygraph import gJGF_to_nxGraph
+
+            pprint(f"        gravis file: {graph_name}")
+            # If gv (gravis) we need the graph as a gJGF
+            # simplest way is to just get it from the database
+            # TODO: we have polygraph, why can't it just do graph_to_gJGF?
+            graph_data, graph_name = await get_gJGF_from_database(graph_name)
+
     # Apply some styling to the graph
+    # pprint("graph", graph)
     if graph:
+        pprint("        gravis graph")
+
+        pprint(
+            f"graph num nodes: {graph.number_of_nodes()} num edges: {graph.number_of_edges()}"
+        )
+        pprint(f"graph nodes: {graph.nodes( data=True)}")
         graph = apply_styles(graph)
 
     # If this is not a demo or file_graph
@@ -134,15 +167,16 @@ async def get_graph(
         # Insert graph into database if not already there
         if not is_in_db:
             try:
-                pprint("Inserting graph into database")
+                pprint("        Inserting graph into database")
                 db_results = await insert_graph_into_database(graph_name, graph)
-                pprint(f"Database results: {db_results}")
+                pprint(f"        Database results: {db_results}")
             except Exception as exc:
                 # If graph already in database, ignore error
                 pass
     else:
-        pprint("Not inserting graph into database")
+        pprint("        Not inserting graph into database")
 
+    pprint("2       ############## GET GRAPH FINISHED ##############")
     return graph, graph_name
 
 
@@ -237,30 +271,6 @@ def demo_graph() -> tuple:
     return graph, "Demo"
 
 
-def file_graph(file_path) -> tuple:
-    """Create a graph from a file path.
-
-    Parameters:
-    -----------
-        file_path (str):
-            The path to the file.
-
-    Returns:
-    --------
-        tuple (nx.DiGraph, str):
-            The graph and the filename.
-    """
-    import os
-    from src.parser.parser_new import Parser
-
-    if not os.path.exists(file_path):
-        return {"error": "File not found."}
-    parser: Parser = Parser(source_data=[file_path])
-    filename = os.path.basename(file_path)
-
-    return parser.graph, filename
-
-
 def given_data_graph(data: dict) -> tuple:
     """Create a graph from given data.
 
@@ -285,6 +295,65 @@ def given_data_graph(data: dict) -> tuple:
     return graph, "Graph Data"
 
 
+def file_path_graph(file_path) -> tuple:
+    """Create a graph from a file path.
+
+    Parameters:
+    -----------
+        file_path (str):
+            The path to the file.
+
+    Returns:
+    --------
+        tuple (nx.DiGraph, str):
+            The graph and the filename.
+    """
+    import os
+    from src.parser.parser_new import Parser
+
+    if not os.path.exists(file_path):
+        return {"error": "File not found."}
+
+    parser: Parser = Parser(source_data=[file_path])
+    filename = os.path.basename(file_path)
+
+    return parser.graph, filename
+
+
+async def file_data_graph(file_data: dict | str) -> tuple:
+    """Create a graph from file data.
+
+    Parameters:
+    -----------
+        file_data (str):
+            The file data.
+
+    Returns:
+    --------
+        tuple (nx.DiGraph, str):
+            The graph and the filename.
+    """
+    from src.parser.parser_new import Parser
+
+    name = "uploaded_file"
+    data = file_data
+    if isinstance(file_data, dict):
+        data = file_data["data"]
+        name = file_data["filename"]
+
+    repo_struct = {
+        "owner": "user",
+        "repo": "uploaded_file",
+        "size": "123",
+        "raw": data,
+    }
+    pprint("#####################  FILE DATA GRAPH  #####################")
+    parser: Parser = Parser(source_data=repo_struct, is_repo=True)
+    graph = parser.graph
+
+    return graph, name
+
+
 async def file_url_graph(url: str) -> tuple:
     """Create a graph from a url.
 
@@ -303,6 +372,8 @@ async def file_url_graph(url: str) -> tuple:
 
     filename = url.split("/")[-1]
     raw_data = await get_raw_data_from_github_url(url)
+    pprint("#####################  FILE URL GRAPH  #####################")
+
     parser: Parser = Parser(source_data={"raw": raw_data, "name": filename})
     graph = parser.graph
 
@@ -326,7 +397,8 @@ async def repo_url_graph(url: str) -> tuple:
     from .import_source_url import get_raw_data_from_github_repo
     import networkx as nx
 
-    pprint(f"repo_url_graph: {url}")
+    pprint("      REPO URL GRAPH ")
+    pprint(f"        repo_url_graph ")
     filename = ""
     if url.endswith(".py"):
         # is a file
@@ -341,11 +413,13 @@ async def repo_url_graph(url: str) -> tuple:
         repo = url.split("/")[-1]
         filename = f"{owner}/{repo}"
     repo_struct = await get_raw_data_from_github_repo(url)
-    pprint("#####################################")
     # print the struct with proper indentation and newlines, if raw is code, just print 'code'
-    pp(repo_struct)
+    # pp(repo_struct)
+
+    pprint("      PARSER STARTING ")
     parser: Parser = Parser(source_data=repo_struct, is_repo=True)
     graph = parser.graph
+    pprint("      PARSER COMPLETED ")
 
     # prints out the graph as json
     # print(nx.readwrite.json_graph.node_link_data(graph))

@@ -19,7 +19,9 @@
   --cb-file-active: var(--c-secondary-light);
   --cb-file-hover: var(--c-secondary-light);
   --cb-file: var(--cb-directory);
-  --w-nav-left: 5rem;
+  --w-nav-content: 15em;
+  --mar-nav-content: calc(var(--w-nav-content) * -1);
+  --mar-nav-toggle-btn-open: calc(var(--w-nav-content) - 0.2em);
   --z-plot: 1;
   --z-nav: 2;
 }
@@ -51,33 +53,68 @@
   margin-left: 5px;
 }
 
-/* ###########  DIRECTORY NAV TOGGLE  ######### */
+/* ###########  CODECARTO CUSTOM NAV  ######### */
 .nav {
   position: absolute;
-  height: calc(100vh - 10.1em) !important;
+  height: calc(100vh - 10.05em) !important;
   top: 9.3em;
   border-radius: 5px;
   z-index: var(--z-nav);
 }
+.nav__content {
+  position: absolute;
+  height: 100%;
+  width: var(--w-nav-content);
+}
 .nav__toggle_btn {
   position: relative;
   width: 1em;
+}
+.nav__toggle_btn--open {
+  width: 2em;
+}
+
+/* ###########  DIRECTORY NAV TOGGLE  ######### */
+.nav--left {
+  left: 0;
+  justify-content: left;
+}
+.nav__content--left {
+  left: 0;
+  margin-left: var(--mar-nav-content);
+}
+.nav__toggle_btn--left {
+  left: 0;
   margin-left: 0;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
-.nav__toggle_btn--open {
-  width: 2em;
-  margin-left: calc(14.8em);
+.nav__toggle_btn--left--open {
+  margin-left: var(--mar-nav-toggle-btn-open);
 }
-.nav__content {
-  position: absolute;
-  height: 100%;
-  width: 15em;
-  margin-left: -15em;
-}
-.nav__toggle_btn--open + .nav__content {
+.nav__toggle_btn--left--open + .nav__content--left {
   margin-left: 0;
+}
+
+/* ###########  UPLOAD NAV TOGGLE  ######### */
+.nav--right {
+  right: 0;
+  justify-content: right;
+}
+.nav__content--right {
+  right: 0;
+  margin-right: var(--mar-nav-content);
+}
+.nav__toggle_btn--right {
+  margin-right: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.nav__toggle_btn--right--open {
+  margin-right: var(--mar-nav-toggle-btn-open);
+}
+.nav__toggle_btn--right--open + .nav__content--right {
+  margin-right: 0;
 }
 
 /* ###########  DEMO BUTTON  ######### */

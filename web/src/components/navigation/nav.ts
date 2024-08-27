@@ -5,22 +5,31 @@ import './nav.css';
 
 const baseClass = 'nav';
 
-export const Nav = (cell: ICell, attrName: string, content: any) => {
+export const Nav = (
+  cell: ICell,
+  attrName: string,
+  content: any,
+  side: string = 'left'
+) => {
   // Constructs class names dynamically based on the 'side' argument
-  const navClass = `${baseClass}`;
-  const navContentClass = `${baseClass}__content`;
+  const navClass = `${baseClass} ${baseClass}--${side}`;
+  const navContentClass = `${baseClass}__content ${baseClass}__content--${side}`;
 
   // Combines the NavToggle and content into a single component
   return m(
     `.${navClass}`,
-    m('div.nav__wrapper', [
-      NavToggle(cell, attrName),
+    m(`div.nav__wrapper nav__wrapper--${side}`, [
+      NavToggle(cell, attrName, side),
       m(`.${navContentClass}`, content),
     ])
   );
 };
 
-export const NavToggle = ({ state, update }, attrName: string) => {
+export const NavToggle = (
+  { state, update },
+  attrName: string,
+  side: string = 'left'
+) => {
   // Toggles the state attribute and the open class for the nav
   const toggleNav = () => {
     const newValue = !state[attrName];
@@ -28,11 +37,13 @@ export const NavToggle = ({ state, update }, attrName: string) => {
   };
 
   // Constructs class names dynamically
-  const toggleClass = `${baseClass}__toggle_btn`;
-  const isOpen = state[attrName] ? `.${toggleClass}--open` : '';
+  const toggleClass = `${baseClass}__toggle_btn ${baseClass}__toggle_btn--${side}`;
+  const isOpen = state[attrName]
+    ? `.${baseClass}__toggle_btn--open ${toggleClass}--open`
+    : '';
 
   // Creates the toggle button with bars
   return m(`button.${toggleClass} ${isOpen}`, { onclick: toggleNav }, [
-    state.showContentNav ? '<' : '>',
+    state[attrName] ? (side == 'left' ? '<' : '>') : side == 'left' ? '>' : '<',
   ]);
 };

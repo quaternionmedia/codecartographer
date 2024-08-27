@@ -72,9 +72,9 @@ class Parser(ast.NodeVisitor):
         self.current_file: str = None  # file
         self.current_node: nx.DiGraph = None  # node
         self.current_type: str = None  # type
-        # self.current_module: nx.DiGraph = None  # module
-        # self.current_class: nx.DiGraph = None  # class
-        # self.current_function: nx.DiGraph = None  # function
+        self.current_module: nx.DiGraph = None  # module
+        self.current_class: nx.DiGraph = None  # class
+        self.current_function: nx.DiGraph = None  # function
         self.current_parent: nx.DiGraph = None  # for, while, if, etc.
         # Parse the source code
         self.parsed_files: list = []

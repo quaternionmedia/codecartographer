@@ -11,6 +11,7 @@ from .types.python_ast import PythonAST
 
 # from .types.python_ast import PythonAST
 
+
 ast_types = {
     "py": PythonAST,
 }
@@ -234,17 +235,16 @@ class Parser:
 
             # Add nodes and edges to the graph
             for node_type, nodes in node_types.items():
-                nodes = [str(node) for node in nodes]
                 for node in nodes:
                     # need to pull out relavent info from the node
                     self.create_node(
-                        node_id=id(node),
+                        node_id=id(str(node)),
                         node_type=node_type,
                         node_label=node_type,
                         node_parent_id=id(self.current_parent),
                     )
                     # add the edge to the parent
-                    self.graph.add_edge(id(self.current_parent), id(node))
+                    self.graph.add_edge(id(self.current_parent), id(str(node)))
         except Exception as ex:
             print(f"Failed to add to graph: {ex}")
             raise ex
@@ -292,15 +292,15 @@ class Parser:
                     "name"
                 ].endswith(".py"):
                     # parse the file
-                    print("Parsing file...")
+                    print("        Parsing file...")
                     self.parse_raw(self.source_data["raw"], self.source_data["name"])
                 else:
                     # parse the repo
-                    print("Parsing repo...")
+                    print("        Parsing repo...")
                     self.parse_repo(self.source_data["raw"])
             elif isinstance(self.source_data, list):
                 # loop through the list of source files
-                print("Parsing files...")
+                print("        Parsing files...")
                 self.module_list = self.source_data
                 for file in self.source_data:
                     self.parse_local_file(file)
@@ -477,13 +477,13 @@ class Parser:
         """
         if isinstance(node, ast.AST):
             node_name = node.__class__.__name__
-            print("  " * indent + node_name)
+            # print("  " * indent + node_name)
 
             for field_name, field_value in ast.iter_fields(node):
-                print("  " * (indent + 1) + field_name + ":")
+                # print("  " * (indent + 1) + field_name + ":")
                 self.pretty_ast_dump(field_value, indent + 2)
         elif isinstance(node, list):
             for item in node:
                 self.pretty_ast_dump(item, indent)
-        else:
-            print("  " * indent + repr(node))
+        # else:
+        #     print("  " * indent + repr(node))

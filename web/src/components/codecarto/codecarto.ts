@@ -4,8 +4,13 @@ import { ICell } from '../../state';
 import { Nav } from '../navigation/nav';
 import { UrlInput } from '../url_input/url_input';
 import { Plot } from '../plot/plot';
-import { Directory } from '../directory/directory';
-import { handleGithubURL, plotGithubUrl } from '../../services/repo_service';
+import { DirectoryNav } from '../nav_content/directory/directory_nav';
+import { UploadNav } from '../nav_content/upload/upload_nav';
+import {
+  handleGithubURL,
+  plotGithubUrl,
+  plotUploadedFile,
+} from '../../services/repo_service';
 import { handleDemoData } from '../../services/demo_service';
 import './codecarto.css';
 
@@ -22,16 +27,21 @@ export const CodeCarto = (cell: ICell) => {
       repo_owner: data.package_owner,
       repo_name: data.package_name,
       repo_data: data.contents,
-      showContentNav: true,
+      showDirectoryNav: true,
     });
 
     // Trigger a redraw to update the view
     m.redraw();
   };
 
-  const setSelectedFile = (url: string) => {
-    cell.state.selected_file_url = url;
+  const setSelectedUrlFile = (url: string) => {
+    cell.state.selected_url_file = url;
     plotGithubUrl(cell, handlePlotData);
+  };
+
+  const setSelectedUploadedFile = (file: File) => {
+    cell.state.selected_uploaded_file = file;
+    plotUploadedFile(cell, handlePlotData);
   };
 
   const handlePlotData = (data: Array<object>) => {
@@ -52,7 +62,8 @@ export const CodeCarto = (cell: ICell) => {
     // Update the cell with the new content
     cell.update({
       graph_content: nbFrame,
-      showContentNav: false,
+      showDirectoryNav: false,
+      showUploadNav: false,
     });
 
     // Trigger a redraw to update the view
@@ -75,7 +86,18 @@ export const CodeCarto = (cell: ICell) => {
   const title = m('div.header.app_header', ['Code Cartographer', demo_button]);
 
   return [
-    Nav(cell, 'showContentNav', Directory(cell, setSelectedFile)),
+    Nav(
+      cell,
+      'showDirectoryNav',
+      DirectoryNav(cell, setSelectedUrlFile),
+      'left'
+    ),
+    Nav(
+      cell,
+      'showUploadNav',
+      UploadNav(cell, setSelectedUploadedFile),
+      'right'
+    ),
     m('div.codecarto', [title, UrlInput(cell, handleUrlInput), Plot(cell)]),
   ];
 };
