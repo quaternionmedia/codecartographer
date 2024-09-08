@@ -29,10 +29,10 @@
 }
 .folder_button::before {
   font-weight: bold;
-  content: '🗀 '; /* Closed folder icon */
+  content: "🗀 "; /* Closed folder icon */
 }
 .folder_button.active::before {
-  content: '🗁 '; /* Open folder icon */
+  content: "🗁 "; /* Open folder icon */
 }
 .folder_button + .folder_content {
   display: none;
@@ -75,7 +75,7 @@
 }
 .file::before {
   font-weight: bold;
-  content: '🗎 '; /* Closed folder icon */
+  content: "🗎 "; /* Closed folder icon */
 }
 .file:hover {
   color: var(--c-file-hover);
@@ -113,10 +113,10 @@
 }
 
 /* ###########  PLOT LINKS  ######### */
-.directory_nav_plot_whole_btn {
+.directory_nav_plot_whole_repo_btn {
   margin-top: 1em;
 }
-.directory_nav_plot_whole_btn:hover {
+.directory_nav_plot_whole_repo_btn:hover {
   background-color: var(--cb-file-hover);
 }
 

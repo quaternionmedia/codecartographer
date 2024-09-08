@@ -1,15 +1,14 @@
 import m from 'mithril';
 
-import { ICell } from '../../state';
 import './nav.css';
 
 const baseClass = 'nav';
 
 export const Nav = (
-  cell: ICell,
-  attrName: string,
+  side: string = 'left',
+  attrValue: boolean,
   content: any,
-  side: string = 'left'
+  toggle: () => void
 ) => {
   // Constructs class names dynamically based on the 'side' argument
   const navClass = `${baseClass} ${baseClass}--${side}`;
@@ -19,31 +18,25 @@ export const Nav = (
   return m(
     `.${navClass}`,
     m(`div.nav__wrapper nav__wrapper--${side}`, [
-      NavToggle(cell, attrName, side),
+      NavToggle(attrValue, side, toggle),
       m(`.${navContentClass}`, content),
     ])
   );
 };
 
 export const NavToggle = (
-  { state, update },
-  attrName: string,
-  side: string = 'left'
+  attrValue: boolean,
+  side: string = 'left',
+  toggle: () => void
 ) => {
-  // Toggles the state attribute and the open class for the nav
-  const toggleNav = () => {
-    const newValue = !state[attrName];
-    update({ [attrName]: newValue });
-  };
-
   // Constructs class names dynamically
   const toggleClass = `${baseClass}__toggle_btn ${baseClass}__toggle_btn--${side}`;
-  const isOpen = state[attrName]
+  const isOpen = attrValue
     ? `.${baseClass}__toggle_btn--open ${toggleClass}--open`
     : '';
 
   // Creates the toggle button with bars
-  return m(`button.${toggleClass} ${isOpen}`, { onclick: toggleNav }, [
-    state[attrName] ? (side == 'left' ? '<' : '>') : side == 'left' ? '>' : '<',
+  return m(`button.${toggleClass} ${isOpen}`, { onclick: toggle }, [
+    attrValue ? (side == 'left' ? '<' : '>') : side == 'left' ? '>' : '<',
   ]);
 };

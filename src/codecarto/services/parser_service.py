@@ -5,6 +5,7 @@ from models.graph_data import Node, Edge, GraphBuilder
 from models.source_data import Folder, File, Source
 from random import randint
 from services.ASTs.base_ast import BaseASTVisitor
+from util.utilities import Log
 
 
 class ParserService:
@@ -13,10 +14,11 @@ class ParserService:
     ):
         self.visitor = visitor
         self.graph_builder = graph_builder
+        self.current_parent = None
         self.module_list = []
         self.graph = DiGraph()
 
-    def parse_repository(self, source: Source) -> DiGraph:
+    def parse(self, source: Source) -> DiGraph:
         """Parse the entire repository and link imports between files.
 
         Parameters:
@@ -30,19 +32,22 @@ class ParserService:
             The parsed graph.
         """
         file_nodes = {}
-        for item in source.source:
-            if isinstance(item, File):
-                self.parse_file(item)
-                file_nodes[item.name] = (
+        Log.info(f"{source.source.items()}")
+        for item in source.source.items():
+            value = item[1]
+            if isinstance(value, File):
+                Log.info(f"File: {value}")
+                self.parse_file(value)
+                file_nodes[value.name] = (
                     self.visitor.imports
                 )  # Store the imports for later linking
-            elif isinstance(item, Folder):
-                self._parse_folder(item, file_nodes)
+            elif isinstance(value, Folder):
+                self.parse_folder(value, file_nodes)
 
-        self._link_imports(file_nodes)
+        self.link_imports(file_nodes)
         return self.graph
 
-    def _parse_folder(self, folder: Folder, file_nodes: dict):
+    def parse_folder(self, folder: Folder, file_nodes: dict):
         for file in folder.files:
             self.parse_file(file)
             file_nodes[file.name] = (
@@ -50,7 +55,8 @@ class ParserService:
             )  # Store the imports for later linking
 
         for sub_folder in folder.folders:
-            self._parse_folder(sub_folder, file_nodes)
+            if isinstance(sub_folder, Folder):
+                self.parse_folder(sub_folder, file_nodes)
 
     def parse_file(self, file: File):
         parsed_ast = self.parse_py_to_ast(file.raw)
@@ -80,11 +86,11 @@ class ParserService:
                     node_id=id(str(node)),
                     node_type=node_type,
                     node_label=node_label,
-                    node_parent_id=None,
+                    node_parent_id=id(self.current_parent),
                     filename=filename,
                 )
 
-    def _link_imports(self, file_nodes: dict):
+    def link_imports(self, file_nodes: dict):
         """Link imports in one file to the corresponding class/function in another file."""
         for filename, imports in file_nodes.items():
             for import_node in imports:
@@ -110,31 +116,40 @@ class ParserService:
                         if import_node_id and other_node_id:
                             self.graph.add_edge(import_node_id[0], other_node_id[0])
 
-    def parse(self, source: Source) -> DiGraph:
-        """Parse the source code to a graph.
+    # def parse(self, source: Source) -> DiGraph:
+    #     """Parse the source code to a graph.
 
-        Parameters:
-        -----------
-        source: Source
-            The source code data to parse.
+    #     Parameters:
+    #     -----------
+    #     source: Source
+    #         The source code data to parse.
 
-        Returns:
-        --------
-        DiGraph
-            The parsed graph.
-        """
-        # Set the current parent to the source name
-        self.current_parent = id(source.name)
+    #     Returns:
+    #     --------
+    #     DiGraph
+    #         The parsed graph.
+    #     """
+    #     # Set the current parent to the source name
+    #     self.current_parent = id(source.name)
 
-        # Add the source name to the module list
-        self.module_list.append(source.name)
+    #     # Add the source name to the module list
+    #     self.module_list.append(source.name)
 
-        # Parse the Python code to AST
-        if isinstance(source.source[0], File):
-            parsed_ast = self.parse_py_to_ast(source.source[0].raw)
-            self.visitor.generic_visit(parsed_ast)
+    #     # Parse the Python code to AST
+    #     file_nodes = {}
+    #     for item in source.source:
+    #         if isinstance(item, File):
+    #             self.parse_file(item)
+    #             file_nodes[item.name] = (
+    #                 self.visitor.imports
+    #             )  # Store the imports for later linking
+    #         elif isinstance(item, Folder):
+    #             self.parse_folder(item, file_nodes)
 
-        return self.create_graph()
+    #         parsed_ast = self.parse_py_to_ast(source.source[0].raw)
+    #         self.visitor.generic_visit(parsed_ast)
+
+    #     return self.create_graph()
 
     def parse_py_to_ast(self, python_code: str):
         return ast.parse(python_code)
@@ -283,7 +298,7 @@ class ParserService:
         node_id: int,
         node_type: str,
         node_label: str,
-        node_parent_id: int | None,
+        node_parent_id: int,
         filename: str,
     ):
         # Check params

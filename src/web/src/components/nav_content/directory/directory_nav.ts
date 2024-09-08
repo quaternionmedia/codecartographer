@@ -1,126 +1,174 @@
-import m from 'mithril';
+import m, { Vnode } from "mithril";
+import { Raw, RawFile, RawFolder, Repo } from "../../models/source";
 
-import { ICell } from '../../../state';
-import './directory_nav.css';
+import "./directory_nav.css";
 
-export const DirectoryNav = (
-  cell: ICell,
-  setSelectedFile: (url: string) => void,
-  handleWholeRepo: () => void
-) => {
-  var contents = [];
+export class DirectoryState {
+  navContent: Vnode[];
+  selectedUrl: string;
+  repo: Repo;
+  onUrlFileClicked: (url: string) => void;
+  onWholeRepoClicked: () => void;
+  UpdateCell: (upload: DirectoryState) => void;
 
-  if (cell.state.repo_url !== '') {
-    var plot_all = m(
-      'button.plot_whole_btn',
-      {
-        onclick: function () {
-          handleWholeRepo();
-        },
-      },
-      'Plot Whole Repo'
-    );
-    var tree = parseDirectory(cell.state.repo_data, 'root', setSelectedFile);
-    var contents = [m('div.directory_tree', [tree]), plot_all];
+  constructor(
+    navContent: Vnode[] = [],
+    selectedUrl: string = "",
+    repo: Repo = new Repo(),
+    onUrlFileClicked: (url: string) => void,
+    onWholeRepoClicked: () => void,
+    UpdateCell: (upload: DirectoryState) => void
+  ) {
+    this.navContent = navContent;
+    this.selectedUrl = selectedUrl;
+    this.repo = repo;
+    this.onUrlFileClicked = onUrlFileClicked;
+    this.onWholeRepoClicked = onWholeRepoClicked;
+    this.UpdateCell = UpdateCell;
   }
 
-  cell.update({ directory_content: contents });
-
-  return m('div.directory_nav', [cell.state.directory_content]);
-};
-
-export function parseDirectory(
-  data: Object,
-  name: string,
-  setSelectedFile: (url: string) => void
-) {
-  return Object.entries(data).map(([key, value]) => {
-    if (key === 'files') {
-      return m(FileList, {
-        parent: name,
-        children: value,
-        setSelectedFile: setSelectedFile,
-      });
-    } else {
-      return m(Folder, {
-        name: key,
-        children: value,
-        setSelectedFile: setSelectedFile,
-      });
-    }
-  });
+  // Arrow function to automatically bind `this`
+  public setSelectedUrl = (url: string) => {
+    this.selectedUrl = url;
+    this.UpdateCell(this);
+    this.onUrlFileClicked(url);
+  };
 }
 
-export const Folder = {
-  view: function (vnode) {
-    let { name, children, setSelectedFile } = vnode.attrs;
+export const DirectoryNav = (directory: DirectoryState) => {
+  if (directory.selectedUrl !== "") {
+    var tree = recursiveDirectoryParse(
+      directory.repo.raw,
+      "root",
+      directory.setSelectedUrl
+    );
+    var plotAll = m(
+      "button.plot_whole_repo_btn",
+      {
+        onclick: function () {
+          directory.onWholeRepoClicked();
+        },
+      },
+      "Plot Whole Repo"
+    );
+
+    directory.navContent = [m("div.directory_tree", [tree]), plotAll];
+  }
+
+  return m("div.directory_nav", [directory.navContent]);
+};
+
+export function recursiveDirectoryParse(
+  data: Raw,
+  name: string,
+  onUrlFileClicked: (url: string) => void
+): m.Vnode<any, any>[] {
+  const folderElements: m.Vnode<any, any>[] = [];
+  const fileElements: m.Vnode<any, any>[] = [];
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (key === "files") {
+      fileElements.push(
+        m(FileList, {
+          parent: name,
+          children: value as RawFile[],
+          onUrlFileClicked: onUrlFileClicked,
+        })
+      );
+    } else if (value instanceof Object) {
+      folderElements.push(
+        m(Folder, {
+          name: key,
+          children: value,
+          onUrlFileClicked: onUrlFileClicked,
+        })
+      );
+    }
+  });
+
+  // Ensure folders are listed before files
+  return [...folderElements, ...fileElements];
+}
+
+interface FolderAttrs {
+  name: string;
+  children: any;
+  onUrlFileClicked: (url: string) => void;
+}
+
+interface FileListAttrs {
+  parent: string;
+  children: RawFile[];
+  onUrlFileClicked: (url: string) => void;
+}
+
+interface FileAttrs {
+  name: string;
+  url: string;
+  onUrlFileClicked: (url: string) => void;
+}
+
+interface FolderState {
+  isOpen: boolean;
+}
+
+export const Folder: m.Component<FolderAttrs> = {
+  view(vnode) {
+    const { name, children, onUrlFileClicked } = vnode.attrs;
+    const state = vnode.state as FolderState; // Type assertion for state
+
     return m(`div.folder.folder__${name}`, [
       m(
-        'div.folder_button',
+        "div.folder_button",
         {
           onclick: function () {
-            this.classList.toggle('active');
-            vnode.state.isOpen = !vnode.state.isOpen;
+            this.classList.toggle("active");
+            state.isOpen = !state.isOpen;
             m.redraw(); // Trigger a redraw to update the view
           },
         },
         name
       ),
-      m('div.folder_content', parseDirectory(children, name, setSelectedFile)),
+      m(
+        "div.folder_content",
+        recursiveDirectoryParse(children, name, onUrlFileClicked)
+      ),
     ]);
   },
 };
 
-export const FileList = {
-  view: function (vnode) {
-    let { parent, children, setSelectedFile } = vnode.attrs;
+export const FileList: m.Component<FileListAttrs> = {
+  view(vnode) {
+    const { parent, children, onUrlFileClicked } = vnode.attrs;
+
     return m(`div.files.files__${parent}`, [
-      children.map((child: IRepoFile) =>
-        m('div.file_container', [
+      children.map((child: RawFile) =>
+        m("div.file_container", [
           m(File, {
             name: child.name,
-            url: child.download_url,
-            setSelectedFile: setSelectedFile,
+            url: child.url,
+            onUrlFileClicked: onUrlFileClicked,
           }),
-          m(
-            'a.file_raw_btn',
-            { href: child.download_url, target: '_blank' },
-            'raw'
-          ),
+          m("a.file_raw_btn", { href: child.url, target: "_blank" }, "raw"),
         ])
       ),
     ]);
   },
 };
 
-export const File = {
-  view: function (vnode) {
-    let { name, url, setSelectedFile } = vnode.attrs;
-    let isDisabled = true;
-    let ext = name.split('.').pop();
-    const compatibleExtensions = ['py'];
-    // Check if the file extension is compatible
-    if (compatibleExtensions.includes(ext)) {
-      isDisabled = false;
-    }
+export const File: m.Component<FileAttrs> = {
+  view(vnode) {
+    const { name, url, onUrlFileClicked } = vnode.attrs;
+    const ext = name.split(".").pop() ?? "";
+    const isDisabled = !["py"].includes(ext);
 
     return m(
-      'div.file',
+      "div.file",
       {
-        class: `file__${ext} ${isDisabled ? 'disabled' : ''}`,
-        url: url,
-        onclick: function () {
-          if (!isDisabled) {
-            setSelectedFile(url);
-          }
-        },
+        class: `file__${ext} ${isDisabled ? "disabled" : ""}`,
+        onclick: () => !isDisabled && onUrlFileClicked(url),
       },
       name
     );
   },
 };
-
-export interface IRepoFile {
-  download_url: string;
-  name: string;
-}

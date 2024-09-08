@@ -1,7 +1,5 @@
-from fileinput import filename
-from typing import Union
 from networkx import DiGraph
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from models.source_data import File, Folder
 
@@ -53,9 +51,7 @@ class GraphBuilder:
 class Repo:
     """The data of a file. [name, size, raw (files, folders)]"""
 
-    def __init__(
-        self, owner: str, repo: str, size: int, raw: list[Union[File, Folder]]
-    ):
+    def __init__(self, owner: str, repo: str, size: int, raw: dict[str, File | Folder]):
         self.owner = owner
         self.repo = repo
         self.size = size

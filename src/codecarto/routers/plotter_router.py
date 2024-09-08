@@ -8,6 +8,83 @@ from util.utilities import Log, generate_return
 PlotterRouter = APIRouter()
 
 
+@PlotterRouter.post("/repo")
+async def plot_whole_repo(url: str, options: PlotOptions):
+    from models.source_data import File, Source
+    from notebooks.notebook import run_notebook
+    from services.ASTs.python_ast import PythonAST
+    from services.github_service import get_raw_from_repo
+    from services.palette_service import apply_styles
+    from services.parser_service import ParserService
+    from services.plotter_service import PlotterService
+    import time
+    from pprint import pprint
+
+    try:
+        # get current time to calculate total time taken
+        start_time = time.time()
+
+        # Get the repo content and structure
+        repo = await get_raw_from_repo(url)
+        if not repo:
+            return proc_error("read_github_repo", "Could not read GitHub repo")
+
+        pprint("######################  repo  ######################")
+        raw: dict[str, File | Folder] = {}
+        for item, value in repo.raw.items():
+            pprint(f"Item: {item}")
+            # see if value has attribute raw
+            if hasattr(value, "raw"):
+                # if it does, it is a file
+                raw[item] = value
+            else:
+                # if it doesn't, it is a folder
+                folder: dict = value.dict()
+                for subitem, subvalue in folder.items():
+                    raw[f"{item}/{subitem}"] = subvalue
+
+            raw[item] = value
+        pprint(raw)
+
+        source_data = Source(
+            name=f"{repo.info.owner}/{repo.info.repo}",
+            size=repo.size,
+            source=raw,
+        )
+
+        pprint("######################  source_data  ######################")
+        pprint(source_data)
+
+        # Initialize the parser and parse the entire repository
+        parser = ParserService(PythonAST())
+        graph = parser.parse(source_data)
+
+        pprint("######################  graph  ######################")
+        pprint(graph.nodes(data=True))
+
+        results = await run_notebook(
+            graph_name=repo.info.repo,
+            graph=apply_styles(graph),
+            title=options.layout,
+            type="d3",
+        )
+
+        return generate_return(message="plot_whole_repo - Success", results=results)
+    except Exception as exc:
+        proc_exception(
+            "plot_whole_repo",
+            "Error when plotting GitHub repo",
+            {"url": url},
+            exc,
+        )
+    finally:
+        # calculate total time taken
+        end_time = time.time()
+        total_time = time.strftime("%H:%M:%S", time.gmtime(end_time - start_time))
+        # TODO: Log this in database later
+        Log.info(f"  Total time taken: {total_time}")
+
+
 @PlotterRouter.post("/file")
 async def plot_raw(file: File, options: PlotOptions) -> dict:
     # TODO: raw is a placeholder for now
@@ -23,7 +100,7 @@ async def plot_raw(file: File, options: PlotOptions) -> dict:
     try:
         # parse the raw data
         file = File(name=file.name, size=file.size, raw=file.raw)
-        source = Source(name=file.name, size=file.size, source=[file])
+        source = Source(name=file.name, size=file.size, source={file.name: file})
         parser = ParserService(PythonAST())
         graph = parser.parse(source)
 
@@ -44,71 +121,6 @@ async def plot_raw(file: File, options: PlotOptions) -> dict:
         )
 
 
-@PlotterRouter.post("/repo")
-async def plot_whole_repo(url: str, options: PlotOptions):
-    from models.source_data import File, Source
-    from notebooks.notebook import run_notebook
-    from services.ASTs.python_ast import PythonAST
-    from services.github_service import get_raw_data_from_github_repo
-    from services.palette_service import apply_styles
-    from services.parser_service import ParserService
-    from services.plotter_service import PlotterService
-    import time
-    from services.github_service import (
-        ImportSourceUrlError,
-        GithubError,
-        get_raw_data_from_github_repo,
-        get_github_repo_source,
-        get_repo_tree,
-    )
-    from services.parser_service import ParserService
-    from services.ASTs.python_ast import PythonAST
-    from models.graph_data import Repo
-    from pprint import pprint
-
-    try:
-        # get current time to calculate total time taken
-        start_time = time.time()
-
-        # Get the repo content and structure
-        repo_data = await get_raw_data_from_github_repo(url)
-        if not repo_data:
-            return proc_error("read_github_repo", "Could not read GitHub repo")
-
-        data = get_github_repo_source(repo_data)
-
-        # parse data.raw into List[File|Folder ]
-        data_raw: List[Union[File, Folder]] = []
-        for item in data.raw:
-            data_raw.append(item)
-
-        source_data = Source(
-            name=f"{data.owner}/{data.repo}", size=data.size, source=[data_raw]
-        )
-
-        # Initialize the parser and parse the entire repository
-        parser = ParserService(PythonAST())
-        graph = parser.parse_repository(source_data)
-
-        pprint("#################################################################")
-        pprint(graph.nodes(data=True))
-
-        return generate_return(200, "Repository parsed successfully", {"graph": graph})
-    except Exception as exc:
-        proc_exception(
-            "read_github_url",
-            "Error when reading GitHub URL",
-            {"github_url": url},
-            exc,
-        )
-    finally:
-        # calculate total time taken
-        end_time = time.time()
-        total_time = time.strftime("%H:%M:%S", time.gmtime(end_time - start_time))
-        # TODO: Log this in database later
-        Log.info(f"  Total time taken: {total_time}")
-
-
 @PlotterRouter.post("/url")
 async def plot_url(url: str, options: PlotOptions) -> dict:
     # TODO: Url is a placeholder for now
@@ -120,15 +132,15 @@ async def plot_url(url: str, options: PlotOptions) -> dict:
     from models.source_data import File, Source
     from notebooks.notebook import run_notebook
     from services.ASTs.python_ast import PythonAST
-    from services.github_service import get_raw_data_from_github_url
+    from services.github_service import get_raw_from_url
     from services.palette_service import apply_styles
     from services.parser_service import ParserService
     from services.plotter_service import PlotterService
 
     try:
-        raw = await get_raw_data_from_github_url(url)
+        raw = await get_raw_from_url(url)
         file = File(name="raw", size=0, raw=raw)
-        source = Source(name=file.name, size=file.size, source=[file])
+        source = Source(name=file.name, size=file.size, source={file.name: file})
         parser = ParserService(PythonAST())
         graph = parser.parse(source)
 

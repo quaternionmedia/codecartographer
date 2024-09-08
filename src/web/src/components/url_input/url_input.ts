@@ -4,13 +4,24 @@ import './url_input.css';
 
 let trackedValue = '';
 
-export const UrlInput = (handleUrlInput: (url: string) => void) =>
-  m('section.url', [
-    title,
-    input(handleUrlInput),
-    submit(handleUrlInput),
-    message,
-  ]);
+export class InputState {
+  url: string;
+  onUrlInput: (url: string) => void;
+  update_cell: (upload: InputState) => void;
+
+  constructor(
+    url: string,
+    onUrlInput: (url: string) => void,
+    update_cell: (upload: InputState) => void
+  ) {
+    this.url = url;
+    this.onUrlInput = onUrlInput;
+    this.update_cell = update_cell;
+  }
+}
+
+export const UrlInput = (urlInput: InputState) =>
+  m('section.url', [title, input(urlInput), submit(urlInput), message]);
 
 const title = m('div.header', {
   class: 'url_header',
@@ -22,7 +33,7 @@ const message = m('div', {
   style: 'display: none',
 });
 
-const input = (handleUrlInput: (url: string) => void) =>
+const input = (urlInput: InputState) =>
   m('input', {
     autofocus: true,
     class: 'url_input',
@@ -31,16 +42,16 @@ const input = (handleUrlInput: (url: string) => void) =>
     onkeyup: (e) => {
       trackedValue = e.target.value;
       if (e.key === 'Enter') {
-        handleUrlInput(trackedValue);
+        urlInput.onUrlInput(trackedValue);
       }
     },
   });
 
-const submit = (handleUrlInput: (url: string) => void) =>
+const submit = (urlInput: InputState) =>
   m('button', {
     class: 'url_btn',
     innerText: 'Submit',
     onclick: () => {
-      handleUrlInput(trackedValue);
+      urlInput.onUrlInput(trackedValue);
     },
   });

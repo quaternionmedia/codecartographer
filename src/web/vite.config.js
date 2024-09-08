@@ -1,12 +1,12 @@
 export default {
-  root: 'src',
+  root: "src",
   server: {
     port: 1234,
-    host: '0.0.0.0',
+    host: "0.0.0.0",
   },
   build: {
-    base: '/codecartographer',
-    outDir: '../dist',
+    base: "/codecartographer",
+    outDir: "../dist",
     emptyOutDir: true,
   },
-}
+};

@@ -1,0 +1,21 @@
+@startuml
+
+title Frontend to Backend Sequence Diagram
+
+' Define the participants
+' in order of appearance
+participant RepoClient 
+participant ParserServer
+participant GithubServer
+ 
+
+
+' Define the activities 
+group Repo
+    RepoClient -> ParserServer: getGithubRepo( /url)
+    ParserServer -> GithubServer: get_repo_content()
+    GithubServer -> ParserServer: repo_contents
+    ParserServer -> RepoClient: repo_contents
+end 
+
+@enduml

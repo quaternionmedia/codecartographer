@@ -87,6 +87,12 @@ export class RequestHandler {
       throw new Error('No content received');
     }
 
+    // TODO: Look for more specific error includes than 'Error'
+    // // Check if the response data is an error
+    // if (typeof data === 'string' && data.includes('Error')) {
+    //   throw new Error(`Error with response data - ${data}`);
+    // }
+
     // Return the response data
     return data;
   }

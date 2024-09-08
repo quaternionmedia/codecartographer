@@ -1,5 +1,6 @@
-import m from 'mithril';
-import { MeiosisCell } from 'meiosis-setup/types';
+import m from "mithril";
+import { MeiosisCell, Patch } from "meiosis-setup/types";
+import { RawFile, Repo } from "./components/models/source";
 
 export interface ICell extends MeiosisCell<State> {}
 
@@ -9,25 +10,25 @@ export interface DebugOptions {
 }
 
 export interface Configurations {
-  processor_url?: string;
+  processorUrl?: string;
 }
 
 export interface State {
   debug: DebugOptions;
   configurations: Configurations;
-  container?: any;
-  repo_url: string;
-  repo_owner: string;
-  repo_name: string;
-  repo_data: m.Vnode[];
-  directory_content: m.Vnode[];
-  upload_content: m.Vnode[];
-  graph_content: m.Vnode[];
-  selected_url_file: string;
-  selected_uploaded_file?: File;
-  uploaded_files: File[];
+
+  inputUrl: string;
+  selectedUrl: string;
+  repoData: Repo;
   showDirectoryNav: boolean;
+  dirNavContent: m.Vnode[];
+
+  selectedFile: RawFile | null;
+  uploadedFiles: RawFile[];
   showUploadNav: boolean;
+  uploadNavContent: m.Vnode[];
+
+  graphContent: m.Vnode[];
 }
 
 export const InitialState: State = {
@@ -35,51 +36,102 @@ export const InitialState: State = {
     menu: false,
     tracer: false,
   },
+
   configurations: {
-    processor_url: 'http://localhost:2020',
+    processorUrl: "http://localhost:2020",
   },
-  repo_url: '',
-  repo_owner: '',
-  repo_name: '',
-  repo_data: [],
-  directory_content: [],
-  selected_url_file: '',
-  uploaded_files: [],
-  upload_content: [],
-  graph_content: [],
+
+  inputUrl: "",
+  selectedUrl: "",
+  repoData: new Repo(),
   showDirectoryNav: false,
+  dirNavContent: [],
+
+  selectedFile: null,
+  uploadedFiles: [],
   showUploadNav: false,
+  uploadNavContent: [],
+
+  graphContent: [],
 };
 
 export class StateController {
-  public static clearGithubData(cell: ICell) {
-    cell.state.repo_url = '';
-    cell.state.repo_owner = '';
-    cell.state.repo_name = '';
-    cell.state.repo_data = [];
-    cell.state.directory_content = [];
+  public static currentCell: ICell;
+
+  public static initialize(cell: ICell) {
+    this.currentCell = cell;
   }
-  public static clearAllFileData(cell: ICell) {
-    cell.state.uploaded_files = [];
-    cell.state.upload_content = [];
-    cell.state.selected_uploaded_file = undefined;
+
+  public static clearGithubData() {
+    if (this.currentCell) {
+      this.update({
+        repoData: new Repo(),
+        dirNavContent: [],
+      });
+    }
   }
-  public static clearSelectedFile(cell: ICell) {
-    cell.state.selected_uploaded_file = undefined;
+  public static clearAllFileData() {
+    if (this.currentCell) {
+      this.update({
+        uploadedFiles: [],
+        uploadNavContent: [],
+        selectedFile: undefined,
+      });
+    }
   }
-  public static clearGraphContent(cell: ICell) {
-    cell.state.graph_content = [];
+  public static clearGraphContent() {
+    if (this.currentCell) {
+      this.update({ graphContent: [] });
+    }
+  }
+  public static clearSelectedFile() {
+    if (this.currentCell) {
+      this.update({ selectedFile: undefined });
+    }
   }
 
   /** Clear all data from the cell */
-  public static clear(cell: ICell) {
-    this.clearGithubData(cell);
-    this.clearAllFileData(cell);
-    this.clearGraphContent(cell);
+  public static clear() {
+    if (this.currentCell) {
+      this.clearGithubData();
+      this.clearAllFileData();
+      this.clearGraphContent();
+    }
   }
 
   /** Update the cell with the new content */
-  public static update(cell: ICell, state: Partial<State>) {
-    cell.update(state);
+  public static update(state: Patch<State>) {
+    if (this.currentCell) {
+      console.log("StateController.update: passed state: \n", state);
+      this.currentCell.update(state);
+      console.log(
+        "StateController.update: updated state: ",
+        this.currentCell.state
+      );
+    }
+  }
+
+  public static setSelectedFile(file: RawFile) {
+    if (this.currentCell) {
+      this.update({ selectedFile: file });
+    }
+  }
+
+  /** toggle directory nav */
+  public static toggleDirectoryNav() {
+    if (this.currentCell) {
+      this.update({
+        showDirectoryNav: !this.currentCell.state.showDirectoryNav,
+      });
+    }
+  }
+
+  /** toggle upload nav */
+  public static toggleUploadNav() {
+    if (this.currentCell) {
+      this.update({
+        showUploadNav: !this.currentCell.state.showUploadNav,
+      });
+    }
   }
 }

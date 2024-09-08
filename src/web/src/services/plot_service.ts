@@ -1,21 +1,5 @@
-import { RequestHandler } from './request_handler';
-import { readFile } from '../utility';
-
-class FileData {
-  name: string;
-  raw: string;
-}
-
-class FolderData {
-  name: string;
-  files: FileData[];
-}
-
-class SourceData {
-  owner: string; // quaternionmedia
-  repo: string; // moe
-  folders: FolderData[];
-}
+import { RequestHandler } from "./request_handler";
+import { RawFile, Repo } from "../components/models/source";
 
 export class PlotService {
   /** Plot the content of the repo URL. */
@@ -27,13 +11,13 @@ export class PlotService {
     const body = {
       options: {
         palette_id: 0,
-        layout: 'Spring',
-        type: 'd3',
+        layout: "Spring",
+        type: "d3",
       },
     };
     const data = await this.sendPlotRequest(proc_url, repo_url, body);
-    if (typeof data === 'string') {
-      console.log('Error plotGithubUrl');
+    if (typeof data === "string") {
+      console.log("Error plotGithubUrl");
       return null;
     }
     return data;
@@ -48,52 +32,49 @@ export class PlotService {
     const body = {
       options: {
         palette_id: 0,
-        layout: 'Spring',
-        type: 'd3',
+        layout: "Spring",
+        type: "d3",
       },
     };
     const data = await this.sendPlotRequest(proc_url, repo_url, body);
-    if (typeof data === 'string') {
-      console.log('Error plotGithubUrl');
+    if (typeof data === "string") {
+      console.log("Error plotGithubUrl");
       return null;
     }
     return data;
   }
 
   /** Plot the content of the selected file. */
-  public static async plotFile(file: File, proc_url: string): Promise<any> {
+  public static async plotFile(file: RawFile, proc_url: string): Promise<any> {
     // temporary solution to send raw data to the plotter
+    console.log("plotFile: ", file);
     const plotBody = {
-      file: {
-        name: file.name,
-        size: file.size,
-        raw: await readFile(file),
-      },
-      options: { layout: 'Spectral' },
+      file: file,
+      options: { layout: "Spectral" },
     };
     const data = await this.sendPlotRequest(
       proc_url,
-      '/plotter/file',
+      "/plotter/file",
       plotBody
     );
-    if (typeof data === 'string') {
-      console.log('Error plotFile: plotter');
+    if (typeof data === "string") {
+      console.log("Error plotFile: plotter");
       return null;
     }
     return data;
   }
 
-  /** Send SourceData to the processor to plot the data. */
+  /** Send Source to the processor to plot the data. */
   public static async plotSourceData(
-    source: SourceData,
+    source: Repo,
     proc_url: string
   ): Promise<any> {
     const body = new FormData();
-    body.append('json_graph', JSON.stringify(source));
-    body.append('options', JSON.stringify({ layout: 'Spectral' }));
-    const data = await this.sendPlotRequest(proc_url, '/plotter/json', body);
-    if (typeof data === 'string') {
-      console.log('Error plotSourceData');
+    body.append("json_graph", JSON.stringify(source));
+    body.append("options", JSON.stringify({ layout: "Spectral" }));
+    const data = await this.sendPlotRequest(proc_url, "/plotter/json", body);
+    if (typeof data === "string") {
+      console.log("Error plotSourceData");
       return null;
     }
     return data;
@@ -107,8 +88,8 @@ export class PlotService {
   ): Promise<any> {
     const url = `${proc_url}${endpoint}`;
     const data = await RequestHandler.postRequest(url, body);
-    if (typeof data === 'string') {
-      console.log('Error sendPlotRequest');
+    if (typeof data === "string") {
+      console.log("Error sendPlotRequest");
       return null;
     }
     return data;

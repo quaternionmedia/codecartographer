@@ -1,106 +1,139 @@
-import m from 'mithril';
+import m, { Vnode } from "mithril";
 
-import { ICell } from '../../../state';
-import './upload_nav.css';
+import "./upload_nav.css";
+import { RawFile } from "../../models/source";
 
-export const UploadNav = (cell: ICell, onFileClick: (file: File) => void) => {
-  var contents = [];
+export class UploadState {
+  nav_content: Vnode[];
+  selected_file: RawFile | null;
+  files: RawFile[];
+  onFileClick: (file: RawFile) => void;
+  onWholeSourceClick: () => void;
+  update_cell: (upload: UploadState) => void;
 
-  if (cell.state.uploaded_files.length > 0) {
-    var contents = [
-      m('div.upload_tree', [cell.state.uploaded_files]),
-      m(
-        'button.plot_btn',
-        {
-          onclick: function () {
-            if (cell.state.uploaded_files[0] !== undefined) {
-              onFileClick(cell.state.uploaded_files[0]);
-            }
-          },
-        },
-        'Plot Uploaded File'
-      ),
-    ];
+  constructor(
+    nav_content: Vnode[] = [],
+    selected_file: RawFile | null = null,
+    files: RawFile[] = [],
+    onFileClick: (file: RawFile) => void,
+    onWholeSourceClick: () => void,
+    update_cell: (upload: UploadState) => void
+  ) {
+    this.nav_content = nav_content;
+    this.selected_file = selected_file;
+    this.files = files;
+    this.onFileClick = onFileClick;
+    this.onWholeSourceClick = onWholeSourceClick;
+    this.update_cell = update_cell;
   }
 
-  cell.update({ upload_content: contents });
+  public setSelectedFile(file: RawFile) {
+    this.selected_file = file;
+    this.update_cell(this);
+    this.onFileClick(file);
+  }
 
-  return m('div.upload_nav', [
-    UploadHeader(cell),
-    cell.state.upload_content.length > 0 ? Files(cell, onFileClick) : null,
+  public addFile(file: RawFile) {
+    this.files.push(file);
+    this.update_cell(this);
+  }
+}
+
+export const UploadNav = (upload: UploadState) => {
+  var tree = Files(upload, (file: RawFile) => {
+    upload.setSelectedFile(file);
+  });
+  var plot_all = m(
+    "button.plot_all_files_btn",
+    {
+      onclick: function () {
+        upload.onWholeSourceClick();
+      },
+    },
+    "Plot Uploaded Files"
+  );
+
+  upload.nav_content = [m("div.upload_tree", [UploadHeader(upload), tree])];
+
+  return m("div.upload_nav", [upload.nav_content]);
+};
+
+export const UploadHeader = (upload: UploadState) => {
+  return m("div.upload_header", [
+    m("div.upload_header_title", "Uploaded Files"),
+    UploadButton(upload),
   ]);
 };
 
-export const UploadHeader = (cell: ICell) => {
-  var title = 'Uploaded Files';
-  return m('div.upload_header', [
-    m('div.upload_header_title', title),
-    UploadButton(cell),
-  ]);
-};
-
-export const UploadButton = (cell: ICell) => {
-  return m('div.upload_header_button', [
-    m('input.upload_header_button_input', {
-      type: 'file',
-      id: 'fileInput',
-      style: 'display:none',
-      accept: '.py',
-      onchange: function (e) {
+export const UploadButton = (upload: UploadState) => {
+  return m("div.upload_header_button", [
+    m("input.upload_header_button_input", {
+      type: "file",
+      id: "fileInput",
+      style: "display:none",
+      accept: ".py",
+      onchange: async function (e) {
         if (e.target.files !== null) {
-          // Make sure selected file is not already in the list
           let exists = false;
-          cell.state.uploaded_files.forEach((file: File) => {
-            if (file.name === e.target.files[0].name) {
+          const uploadedFile = e.target.files[0];
+          upload.files.forEach((file: RawFile) => {
+            if (file.name === uploadedFile.name) {
               exists = true;
             }
           });
 
           if (!exists) {
-            // Add files to the cell state
-            cell.state.uploaded_files.push(e.target.files[0]);
+            const newFile = new RawFile(
+              uploadedFile.name,
+              uploadedFile.size,
+              await uploadedFile.text()
+            );
+            upload.addFile(newFile);
           }
         }
       },
     }),
-    m('button', {
-      class: 'upload_header_button_view',
-      innerText: 'Browse',
+    m("button", {
+      class: "upload_header_button_view",
+      innerText: "Browse",
       onclick: () => {
-        document.getElementById('fileInput')?.click();
+        document.getElementById("fileInput")?.click();
       },
     }),
   ]);
 };
 
-export const Files = (cell: ICell, onFileClick: (file: File) => void) => {
-  return m('div.upload_files', [
-    cell.state.uploaded_files.map((file: File) =>
-      m(File, {
+export const Files = (
+  upload: UploadState,
+  onFileClick: (file: RawFile) => void
+) => {
+  return m("div.upload_files", [
+    upload.files.map((file: RawFile) =>
+      m(File_Btn, {
         file: file,
-        onFileClick: onFileClick,
+        onFileClick,
       })
     ),
   ]);
 };
 
-export const File = {
+export const File_Btn = {
   view: function (vnode) {
-    let { file, onFileClick } = vnode.attrs;
+    const { file, onFileClick } = vnode.attrs;
     let isDisabled = true;
-    let ext = file.name.split('.').pop();
+    let ext = file.name.split(".").pop();
 
     // Check if the file extension is compatible
-    const compatibleExtensions = ['py'];
+    const compatibleExtensions = ["py"];
     if (compatibleExtensions.includes(ext)) {
       isDisabled = false;
     }
 
-    return m('div.file_container', [
+    return m("div.file_container", [
       m(
-        'div.file',
+        "div.file",
         {
-          class: `file__${ext} ${isDisabled ? 'disabled' : ''}`,
+          class: `file__${ext} ${isDisabled ? "disabled" : ""}`,
           file: file,
           onclick: function () {
             if (!isDisabled) {
