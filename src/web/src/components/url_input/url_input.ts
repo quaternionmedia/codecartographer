@@ -1,56 +1,48 @@
-import m from 'mithril';
+import m from "mithril";
 
-import './url_input.css';
+import "./url_input.css";
 
-let trackedValue = '';
+let trackedValue = "";
 
 export class InputState {
-  url: string;
   onUrlInput: (url: string) => void;
-  update_cell: (upload: InputState) => void;
 
-  constructor(
-    url: string,
-    onUrlInput: (url: string) => void,
-    update_cell: (upload: InputState) => void
-  ) {
-    this.url = url;
+  constructor(onUrlInput: (url: string) => void) {
     this.onUrlInput = onUrlInput;
-    this.update_cell = update_cell;
   }
 }
 
 export const UrlInput = (urlInput: InputState) =>
-  m('section.url', [title, input(urlInput), submit(urlInput), message]);
+  m("section.url", [title, input(urlInput), submit(urlInput), message]);
 
-const title = m('div.header', {
-  class: 'url_header',
-  innerText: 'GitHub Repository URL:',
+const title = m("div.header", {
+  class: "url_header",
+  innerText: "GitHub Repository URL:",
 });
 
-const message = m('div', {
-  class: 'loading',
-  style: 'display: none',
+const message = m("div", {
+  class: "loading",
+  style: "display: none",
 });
 
 const input = (urlInput: InputState) =>
-  m('input', {
+  m("input", {
     autofocus: true,
-    class: 'url_input',
-    placeholder: 'Enter a GitHub URL',
+    class: "url_input",
+    placeholder: "Enter a GitHub URL",
     // needs to be keyup up to set value after something like ctrl+v
     onkeyup: (e) => {
       trackedValue = e.target.value;
-      if (e.key === 'Enter') {
+      if (e.key === "Enter") {
         urlInput.onUrlInput(trackedValue);
       }
     },
   });
 
 const submit = (urlInput: InputState) =>
-  m('button', {
-    class: 'url_btn',
-    innerText: 'Submit',
+  m("button", {
+    class: "url_btn",
+    innerText: "Submit",
     onclick: () => {
       urlInput.onUrlInput(trackedValue);
     },

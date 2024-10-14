@@ -2,7 +2,7 @@ import ast
 
 from networkx import DiGraph
 from models.graph_data import Node, Edge, GraphBuilder
-from models.source_data import Folder, File, Source
+from models.source_data import Directory, Folder, File
 from random import randint
 from services.ASTs.base_ast import BaseASTVisitor
 from util.utilities import Log
@@ -18,12 +18,12 @@ class ParserService:
         self.module_list = []
         self.graph = DiGraph()
 
-    def parse(self, source: Source) -> DiGraph:
+    def parse(self, source: Directory) -> DiGraph:
         """Parse the entire repository and link imports between files.
 
         Parameters:
         -----------
-        source: Source
+        source: Directory
             The source code data to parse (including multiple files).
 
         Returns:
@@ -32,8 +32,8 @@ class ParserService:
             The parsed graph.
         """
         file_nodes = {}
-        Log.info(f"{source.source.items()}")
-        for item in source.source.items():
+        Log.info(f"{source.root.items()}")
+        for item in source.root.items():
             value = item[1]
             if isinstance(value, File):
                 Log.info(f"File: {value}")
@@ -116,12 +116,12 @@ class ParserService:
                         if import_node_id and other_node_id:
                             self.graph.add_edge(import_node_id[0], other_node_id[0])
 
-    # def parse(self, source: Source) -> DiGraph:
+    # def parse(self, source: Directory) -> DiGraph:
     #     """Parse the source code to a graph.
 
     #     Parameters:
     #     -----------
-    #     source: Source
+    #     source: Directory
     #         The source code data to parse.
 
     #     Returns:

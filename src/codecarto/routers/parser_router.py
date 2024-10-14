@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from models.source_data import File, Source
+from models.source_data import Directory, File, RepoInfo
 from util.exceptions import CodeCartoException, proc_exception
 from util.utilities import Log, generate_return
 
@@ -16,13 +16,7 @@ async def read_github_repo(url: str) -> dict:
         # Initialize the parser and parse the entire repository
         data = await get_raw_from_repo(url)
         parser = ParserService(PythonAST())
-        graph = parser.parse(
-            Source(
-                name=f"{data.info.owner}/{data.info.repo}",
-                size=data.size,
-                source=data.raw,
-            )
-        )
+        graph = parser.parse(data)
         return generate_return(200, "Repository parsed successfully", {"graph": graph})
     except CodeCartoException as exc:
         return proc_exception(exc.source, exc.message, exc.params, exc)
@@ -58,29 +52,31 @@ async def read_github_url(url: str) -> dict:
 @ParserRouter.post("/raw")
 async def parse_raw(raw: str) -> dict:
     file = File(name="raw", size=len(raw), raw=raw)
-    source = Source(name="raw", size=len(raw), source={"files": file})
-    return parse(source)
+    info = RepoInfo(owner="local", name="raw", url="NA")
+    data = Directory(info=info, size=len(raw), root={"files": file})
+    return parse(data)
 
 
 @ParserRouter.post("/file")
 async def parse_file(file: File) -> dict:
-    source = Source(name=file.name, size=file.size, source={"files": file})
-    return parse(source)
+    info = RepoInfo(owner="local", name=file.name, url="NA")
+    data = Directory(info=info, size=file.size, root={"files": file})
+    return parse(data)
 
 
-@ParserRouter.post("/source")
-async def parse_source(source: Source) -> dict:
-    return parse(source)
+@ParserRouter.post("/directory")
+async def parse_source(data: Directory) -> dict:
+    return parse(data)
 
 
-def parse(source: Source) -> dict:
+def parse(data: Directory) -> dict:
     from services.ASTs.python_ast import PythonAST
     from services.parser_service import ParserService
     from services.polygraph_service import graph_to_json_data
 
     try:
         parser_service = ParserService(visitor=PythonAST())
-        graph = parser_service.parse(source)
+        graph = parser_service.parse(data)
         result = graph_to_json_data(graph)
 
         return generate_return(200, "parse - Success", {"contents": result})
@@ -89,7 +85,7 @@ def parse(source: Source) -> dict:
     except Exception as exc:
         return proc_exception(
             "parse",
-            "Error when parsing source",
-            {"source": source.dict()},
+            "Error when parsing data",
+            {"data": data.dict()},
             exc,
         )

@@ -1,3 +1,123 @@
+import { Vnode } from "mithril";
+
+/**
+ * The controller for a directory navigation component.
+ */
+export class DirectoryController {
+  public isLocal: boolean = false;
+  public isMenuOpen: boolean = false;
+  public selectedURL: string = "";
+  public selectedFile: RawFile = new RawFile();
+  public selectedFolder: RawFolder = new RawFolder();
+  public content: Directory = new Directory();
+  public component: Vnode[] = [];
+
+  constructor(isLocal: boolean) {
+    this.isLocal = isLocal;
+  }
+
+  public toggleNav() {
+    this.isMenuOpen = !this.isMenuOpen;
+  }
+
+  public clearSelectedFile() {
+    this.selectedFile = new RawFile();
+  }
+
+  public clearSelectedFolder() {
+    this.selectedFolder = new RawFolder();
+  }
+
+  public clearContent() {
+    this.content = new Directory();
+    this.clearSelectedFile();
+  }
+}
+
+/**
+ * Holds the folders and or files of a directory.
+ *
+ * As well as the repository information [ owner, name, url ].
+ */
+export class Directory {
+  info: RepoInfo;
+  size: number;
+  root: Root;
+
+  constructor(
+    info: RepoInfo = new RepoInfo(),
+    size: number = 0,
+    root: Root = { root: [] }
+  ) {
+    this.info = info;
+    this.size = size;
+    this.root = root;
+  }
+
+  get isEmpty() {
+    return Object.keys(this.root).length === 0;
+  }
+}
+
+/**
+ * The repository information. [ owner, name, url ]
+ */
+export class RepoInfo {
+  owner: string;
+  name: string;
+  url: string;
+
+  constructor(owner: string = "", name: string = "", url: string = "") {
+    this.owner = owner;
+    this.name = name;
+    this.url = url;
+  }
+}
+
+/**
+ * A dictionary of the directory files and folders.
+ * * Key: The folder name
+ * * Value: Either a sub folder or a collection of files.
+ */
+export type Root = Record<string, RawFile[] | RawFolder>;
+
+/**
+ * A folder in the directory.
+ * * name - The name of the folder
+ * * size - The size of the folder
+ * * files - A dictionary of files in the folder
+ *   - Key: The file name
+ *   - Value: The file object
+ * * folders - A dictionary of sub folders in the folder
+ *   - Key: The sub folder name
+ *   - Value: The sub folder object
+ */
+export class RawFolder {
+  name: string;
+  size: number;
+  files: Record<string, RawFile>;
+  folders: Record<string, RawFolder>;
+
+  constructor(
+    name: string = "",
+    size: number = 0,
+    files: Record<string, RawFile> = {},
+    folders: Record<string, RawFolder> = {}
+  ) {
+    this.name = name;
+    this.size = size;
+    this.files = files;
+    this.folders = folders;
+  }
+}
+
+/**
+ * A file in the directory.
+ * * url - A URL pointing to the file
+ * * name - The name of the file
+ * * size - The size of the file
+ * * raw - The content of the file
+ */
 export class RawFile {
   url: string;
   name: string;
@@ -14,54 +134,5 @@ export class RawFile {
     this.size = size;
     this.raw = raw;
     this.url = url;
-  }
-}
-
-export class RawFolder {
-  name: string;
-  size: number;
-  files: Record<string, RawFile>;
-  folders: Record<string, RawFolder>;
-
-  constructor(
-    name: string,
-    size: number,
-    files: Record<string, RawFile>,
-    folders: Record<string, RawFolder>
-  ) {
-    this.name = name;
-    this.size = size;
-    this.files = files;
-    this.folders = folders;
-  }
-}
-
-export type Raw = Record<string, RawFile[] | RawFolder>;
-
-export class RepoInfo {
-  owner: string;
-  repo: string;
-  url: string;
-
-  constructor(owner: string = "", repo: string = "", url: string = "") {
-    this.owner = owner;
-    this.repo = repo;
-    this.url = url;
-  }
-}
-
-export class Repo {
-  info: RepoInfo;
-  size: number;
-  raw: Raw;
-
-  constructor(
-    info: RepoInfo = new RepoInfo(),
-    size: number = 0,
-    raw: Raw = {}
-  ) {
-    this.info = info;
-    this.size = size;
-    this.raw = raw;
   }
 }

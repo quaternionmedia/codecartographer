@@ -9,6 +9,7 @@ output/
 docker.sh
 token.txt
 secrets.txt
+dev.sh
 
 # package files
 config.json

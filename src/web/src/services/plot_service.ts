@@ -1,23 +1,23 @@
-import { RequestHandler } from "./request_handler";
-import { RawFile, Repo } from "../components/models/source";
+import { RequestHandler } from './request_handler';
+import { RawFile, Directory } from '../components/models/source';
 
 export class PlotService {
   /** Plot the content of the repo URL. */
   public static async plotGithubWhole(
     url: string,
-    proc_url: string
+    plotterUrl: string
   ): Promise<any> {
-    const repo_url = `/plotter/repo?url=${encodeURIComponent(url)}`;
+    const repo_url = `/repo?url=${encodeURIComponent(url)}`;
     const body = {
       options: {
         palette_id: 0,
-        layout: "Spring",
-        type: "d3",
+        layout: 'Spring',
+        type: 'd3',
       },
     };
-    const data = await this.sendPlotRequest(proc_url, repo_url, body);
-    if (typeof data === "string") {
-      console.log("Error plotGithubUrl");
+    const data = await this.sendPlotRequest(plotterUrl, repo_url, body);
+    if (typeof data === 'string') {
+      console.log('Error plotGithubUrl');
       return null;
     }
     return data;
@@ -26,39 +26,38 @@ export class PlotService {
   /** Plot the content of the selected URL. */
   public static async plotGithubFile(
     url: string,
-    proc_url: string
+    plotterUrl: string
   ): Promise<any> {
-    const repo_url = `/plotter/url?url=${encodeURIComponent(url)}`;
+    const repo_url = `/url?url=${encodeURIComponent(url)}`;
     const body = {
       options: {
         palette_id: 0,
-        layout: "Spring",
-        type: "d3",
+        layout: 'Spring',
+        type: 'd3',
       },
     };
-    const data = await this.sendPlotRequest(proc_url, repo_url, body);
-    if (typeof data === "string") {
-      console.log("Error plotGithubUrl");
+    const data = await this.sendPlotRequest(plotterUrl, repo_url, body);
+    if (typeof data === 'string') {
+      console.log('Error plotGithubUrl');
       return null;
     }
     return data;
   }
 
   /** Plot the content of the selected file. */
-  public static async plotFile(file: RawFile, proc_url: string): Promise<any> {
+  public static async plotFile(
+    file: RawFile,
+    plotterUrl: string
+  ): Promise<any> {
     // temporary solution to send raw data to the plotter
-    console.log("plotFile: ", file);
+    console.log('plotFile: ', file);
     const plotBody = {
       file: file,
-      options: { layout: "Spectral" },
+      options: { layout: 'Spectral' },
     };
-    const data = await this.sendPlotRequest(
-      proc_url,
-      "/plotter/file",
-      plotBody
-    );
-    if (typeof data === "string") {
-      console.log("Error plotFile: plotter");
+    const data = await this.sendPlotRequest(plotterUrl, '/file', plotBody);
+    if (typeof data === 'string') {
+      console.log('Error plotFile: plotter');
       return null;
     }
     return data;
@@ -66,15 +65,15 @@ export class PlotService {
 
   /** Send Source to the processor to plot the data. */
   public static async plotSourceData(
-    source: Repo,
-    proc_url: string
+    source: Directory,
+    plotterUrl: string
   ): Promise<any> {
     const body = new FormData();
-    body.append("json_graph", JSON.stringify(source));
-    body.append("options", JSON.stringify({ layout: "Spectral" }));
-    const data = await this.sendPlotRequest(proc_url, "/plotter/json", body);
-    if (typeof data === "string") {
-      console.log("Error plotSourceData");
+    body.append('json_graph', JSON.stringify(source));
+    body.append('options', JSON.stringify({ layout: 'Spectral' }));
+    const data = await this.sendPlotRequest(plotterUrl, '/json', body);
+    if (typeof data === 'string') {
+      console.log('Error plotSourceData');
       return null;
     }
     return data;
@@ -82,14 +81,14 @@ export class PlotService {
 
   /** Plot the content of the selected file. */
   private static async sendPlotRequest(
-    proc_url: string,
+    plotterUrl: string,
     endpoint: string,
     body: any
   ): Promise<any> {
-    const url = `${proc_url}${endpoint}`;
+    const url = `${plotterUrl}${endpoint}`;
     const data = await RequestHandler.postRequest(url, body);
-    if (typeof data === "string") {
-      console.log("Error sendPlotRequest");
+    if (typeof data === 'string') {
+      console.log('Error sendPlotRequest');
       return null;
     }
     return data;

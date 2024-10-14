@@ -1,36 +1,36 @@
 import m, { Vnode } from "mithril";
-import { Raw, RawFile, RawFolder, Repo } from "../../models/source";
+import { Root, RawFile, Directory } from "../../models/source";
 
 import "./directory_nav.css";
 
 export class DirectoryState {
   navContent: Vnode[];
   selectedUrl: string;
-  repo: Repo;
+  repo: Directory;
   onUrlFileClicked: (url: string) => void;
   onWholeRepoClicked: () => void;
-  UpdateCell: (upload: DirectoryState) => void;
+  updateCell: (upload: DirectoryState) => void;
 
   constructor(
     navContent: Vnode[] = [],
     selectedUrl: string = "",
-    repo: Repo = new Repo(),
+    repo: Directory = new Directory(),
     onUrlFileClicked: (url: string) => void,
     onWholeRepoClicked: () => void,
-    UpdateCell: (upload: DirectoryState) => void
+    updateCell: (upload: DirectoryState) => void
   ) {
     this.navContent = navContent;
     this.selectedUrl = selectedUrl;
     this.repo = repo;
     this.onUrlFileClicked = onUrlFileClicked;
     this.onWholeRepoClicked = onWholeRepoClicked;
-    this.UpdateCell = UpdateCell;
+    this.updateCell = updateCell;
   }
 
   // Arrow function to automatically bind `this`
   public setSelectedUrl = (url: string) => {
     this.selectedUrl = url;
-    this.UpdateCell(this);
+    this.updateCell(this);
     this.onUrlFileClicked(url);
   };
 }
@@ -38,7 +38,7 @@ export class DirectoryState {
 export const DirectoryNav = (directory: DirectoryState) => {
   if (directory.selectedUrl !== "") {
     var tree = recursiveDirectoryParse(
-      directory.repo.raw,
+      directory.repo.root,
       "root",
       directory.setSelectedUrl
     );
@@ -59,7 +59,7 @@ export const DirectoryNav = (directory: DirectoryState) => {
 };
 
 export function recursiveDirectoryParse(
-  data: Raw,
+  data: Root,
   name: string,
   onUrlFileClicked: (url: string) => void
 ): m.Vnode<any, any>[] {

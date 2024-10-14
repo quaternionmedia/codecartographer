@@ -1,6 +1,5 @@
-from typing import Union, List
 from fastapi import APIRouter
-from models.source_data import File, Folder
+from models.source_data import File, Folder, Directory, RepoInfo
 from models.plot_data import DefaultPalette, PlotOptions
 from util.exceptions import proc_error, proc_exception
 from util.utilities import Log, generate_return
@@ -10,7 +9,6 @@ PlotterRouter = APIRouter()
 
 @PlotterRouter.post("/repo")
 async def plot_whole_repo(url: str, options: PlotOptions):
-    from models.source_data import File, Source
     from notebooks.notebook import run_notebook
     from services.ASTs.python_ast import PythonAST
     from services.github_service import get_raw_from_repo
@@ -31,7 +29,7 @@ async def plot_whole_repo(url: str, options: PlotOptions):
 
         pprint("######################  repo  ######################")
         raw: dict[str, File | Folder] = {}
-        for item, value in repo.raw.items():
+        for item, value in repo.root.items():
             pprint(f"Item: {item}")
             # see if value has attribute raw
             if hasattr(value, "raw"):
@@ -46,11 +44,8 @@ async def plot_whole_repo(url: str, options: PlotOptions):
             raw[item] = value
         pprint(raw)
 
-        source_data = Source(
-            name=f"{repo.info.owner}/{repo.info.repo}",
-            size=repo.size,
-            source=raw,
-        )
+        info = RepoInfo(owner=repo.info.owner, name=repo.info.name, url=url)
+        source_data = Directory(info=info, size=repo.size, root=raw)
 
         pprint("######################  source_data  ######################")
         pprint(source_data)
@@ -63,7 +58,7 @@ async def plot_whole_repo(url: str, options: PlotOptions):
         pprint(graph.nodes(data=True))
 
         results = await run_notebook(
-            graph_name=repo.info.repo,
+            graph_name=repo.info.name,
             graph=apply_styles(graph),
             title=options.layout,
             type="d3",
@@ -93,14 +88,14 @@ async def plot_raw(file: File, options: PlotOptions) -> dict:
     # and then plot from plotter service using that id
     from notebooks.notebook import run_notebook
     from services.palette_service import apply_styles
-    from models.source_data import Source, File
     from services.ASTs.python_ast import PythonAST
     from services.parser_service import ParserService
 
     try:
         # parse the raw data
         file = File(name=file.name, size=file.size, raw=file.raw)
-        source = Source(name=file.name, size=file.size, source={file.name: file})
+        info = RepoInfo(owner="local", name=file.name, url="NA")
+        source = Directory(info=info, size=file.size, root={file.name: file})
         parser = ParserService(PythonAST())
         graph = parser.parse(source)
 
@@ -127,20 +122,17 @@ async def plot_url(url: str, options: PlotOptions) -> dict:
     # really this should parse from parser service
     # save it to the database and return an id
     # and then plot from plotter service using that id
-    from database.database import DatabaseContext
-    from models.graph_data import GraphBase
-    from models.source_data import File, Source
     from notebooks.notebook import run_notebook
     from services.ASTs.python_ast import PythonAST
     from services.github_service import get_raw_from_url
     from services.palette_service import apply_styles
     from services.parser_service import ParserService
-    from services.plotter_service import PlotterService
 
     try:
         raw = await get_raw_from_url(url)
         file = File(name="raw", size=0, raw=raw)
-        source = Source(name=file.name, size=file.size, source={file.name: file})
+        info = RepoInfo(owner="local", name=file.name, url="NA")
+        source = Directory(info=info, size=file.size, root={file.name: file})
         parser = ParserService(PythonAST())
         graph = parser.parse(source)
 

@@ -5,37 +5,37 @@ import { RawFile } from "../../models/source";
 
 export class UploadState {
   nav_content: Vnode[];
-  selected_file: RawFile | null;
+  selected_file: RawFile;
   files: RawFile[];
   onFileClick: (file: RawFile) => void;
   onWholeSourceClick: () => void;
-  update_cell: (upload: UploadState) => void;
+  updateCell: (upload: UploadState) => void;
 
   constructor(
     nav_content: Vnode[] = [],
-    selected_file: RawFile | null = null,
+    selected_file: RawFile = new RawFile(),
     files: RawFile[] = [],
     onFileClick: (file: RawFile) => void,
     onWholeSourceClick: () => void,
-    update_cell: (upload: UploadState) => void
+    updateCell: (upload: UploadState) => void
   ) {
     this.nav_content = nav_content;
     this.selected_file = selected_file;
     this.files = files;
     this.onFileClick = onFileClick;
     this.onWholeSourceClick = onWholeSourceClick;
-    this.update_cell = update_cell;
+    this.updateCell = updateCell;
   }
 
   public setSelectedFile(file: RawFile) {
     this.selected_file = file;
-    this.update_cell(this);
+    this.updateCell(this);
     this.onFileClick(file);
   }
 
   public addFile(file: RawFile) {
     this.files.push(file);
-    this.update_cell(this);
+    this.updateCell(this);
   }
 }
 

@@ -1,23 +1,26 @@
 import m from 'mithril';
 import { meiosisSetup } from 'meiosis-setup';
-
-import './styles/index.css';
-import { InitialState, ICell, State } from './state';
-import { CodeCarto } from './components/codecarto/codecarto';
 import { getViewPortSize } from './utility';
+import { ICell, ICellState, CellState } from './state/cell_state';
+import './styles/index.css';
+import { CodeCarto } from './components/codecarto/codecarto';
+
+var intiialState = new CellState();
 
 // Initialize the app
 const App = {
-  initial: InitialState,
+  initial: intiialState,
   services: [],
   view: (cell: ICell) => [
     //m('div.ui', [Nav(cell, 'debugActive', 'right', DebugNavContent(cell))]),
     CodeCarto(cell),
+    //var codecarto = new CodeCarto();
+    //codecarto.View(cell),
   ],
 };
 
 // Initialize Meiosis
-const cells = meiosisSetup<State>({ app: App });
+const cells = meiosisSetup<ICellState>({ app: App });
 cells.map(() => {
   m.redraw();
 });

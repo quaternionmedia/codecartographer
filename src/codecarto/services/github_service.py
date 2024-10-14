@@ -1,6 +1,6 @@
-from typing import Any
+from typing import Any, List
 import httpx
-from models.source_data import Repo, File, Folder, RepoInfo
+from models.source_data import Directory, File, Folder, RepoInfo
 from util.utilities import Log
 from util.exceptions import (
     GithubError,
@@ -12,15 +12,25 @@ from util.exceptions import (
 )
 
 
-async def get_raw_from_repo(url: str) -> Repo:
+async def get_raw_from_repo(url: str) -> Directory:
     """Read raw data from a repo URL"""
     # Fetch the repo content and reduce the structure
     owner, repo = get_owner_repo_from_url(url)
     content = await get_repo_content(url, owner, repo, first=True)
-    directory = await build_content_tree(content, owner, repo)
-    structure, size = await reduce_repo_structure(directory)
-    repoInfo = RepoInfo(owner=owner, repo=repo, url=url)
-    return Repo(repoInfo, size, structure)
+    data = await build_content_tree(content, owner, repo)
+    root = await reduce_repo_structure(data)
+
+    # Calculate the total size of the repo files
+    size = sum(file.size for file in root.files)
+
+    # Add the repo folder sizes
+    size += sum(folder.size for folder in root.folders)
+
+    return Directory(
+        info=RepoInfo(owner=owner, name=repo, url=url),
+        size=size,
+        root=root,
+    )
 
 
 async def get_repo_content(
@@ -98,63 +108,69 @@ async def build_content_tree(content: dict, owner: str, repo: str) -> dict:
     return results
 
 
-async def reduce_repo_structure(
-    repo_data: dict, repo_size: int = 0
-) -> tuple[dict[str, Any], int]:
+async def reduce_repo_structure(repo_data: dict) -> Folder:
     """Go through the repo structure and reduce it to just needed content"""
-
-    reduced_structure = {}
+    data = Folder(size=0, name="", files=[], folders=[])
+    folders_size = 0
+    files_size = 0
 
     for key, value in repo_data.items():
         if key == "files":
             files = []
+
             for file in value:
-                file_size = file.get("size", 0)
-                repo_size += file_size
+                size = file.get("size", 0)
 
                 # Ensure the file has the required attributes
                 if file.get("name") and file.get("download_url"):
                     file_type = (
                         "python" if file["download_url"].endswith(".py") else "other"
                     )
-                    raw_data = (
+
+                    raw = (
                         await get_raw_from_url(file["download_url"])
                         if file_type == "python"
                         else file["download_url"]
                     )
+
+                    files_size += size
 
                     # Construct a File object
                     files.append(
                         File(
                             url=file.get("download_url"),
                             name=file.get("name"),
-                            size=file_size,
-                            raw=raw_data,
+                            size=size,
+                            raw=raw,
                         )
                     )
 
-            reduced_structure["files"] = files
+            data.files = files
 
-        else:  # This is a directory
-            sub_dir_structure, repo_size = await reduce_repo_structure(value, repo_size)
+        else:  # Everything else would be a directory
+            sub_dir = await reduce_repo_structure(value)
 
-            # Gather files and calculate folder size
-            size = sum(file.size for file in sub_dir_structure.get("files", []))
-            folder = {
-                "name": key,
-                "size": size,
-                "files": sub_dir_structure.get("files", []),
-            }
+            # Gather files and calculate total files size
+            size = sum(file.size for file in sub_dir.files)
 
-            # Directly assign the subfolder structure by folder name
-            for sub_key, sub_value in sub_dir_structure.items():
-                if sub_key != "files":
-                    folder[sub_key] = sub_value
+            # Gather folders and calculate folder size
+            size += sum(folder.size for folder in sub_dir.folders)
 
-            # Assign this folder directly to the reduced structure by its name
-            reduced_structure[key] = folder
+            folders_size += size
 
-    return reduced_structure, repo_size
+            # Construct a Folder object
+            folder = Folder(
+                name=key,  # name of folder
+                size=size,
+                files=sub_dir.files,
+                folders=sub_dir.folders,
+            )
+
+            # Add the folder to the directory root's list of folders
+            data.folders.append(folder)
+
+    data.size = folders_size + files_size
+    return data
 
 
 def get_owner_repo_from_url(url: str) -> tuple[str, str]:

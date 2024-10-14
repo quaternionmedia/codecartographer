@@ -1,204 +1,204 @@
-import m from "mithril";
+import m from 'mithril';
 
-import { ICell, StateController } from "../../state";
-import { Nav } from "../navigation/nav";
-import { UrlInput, InputState } from "../url_input/url_input";
-import { Plot } from "../plot/plot";
+import { StateController } from '../../state/state_controller';
+import { ICell } from '../../state/cell_state';
+import { Nav } from '../navigation/nav';
+import { UrlInput, InputState } from '../url_input/url_input';
+import { Plot } from '../plot/plot';
 import {
   DirectoryState,
   DirectoryNav,
-} from "../nav_content/directory/directory_nav";
-import { UploadState, UploadNav } from "../nav_content/upload/upload_nav";
-import { RepoService } from "../../services/repo_service";
-import { PlotService } from "../../services/plot_service";
-import { handleDemoData } from "../../services/demo_service";
-import { displayError } from "../../utility";
-import "./codecarto.css";
-import { RawFile, Repo } from "../models/source";
+} from '../nav_content/directory/directory_nav';
+import { UploadState, UploadNav } from '../nav_content/upload/upload_nav';
+import { RepoService } from '../../services/repo_service';
+import { PlotService } from '../../services/plot_service';
+import { handleDemoData } from '../../services/demo_service';
+import { displayError } from '../../utility';
+import { Directory, RawFile, RepoInfo } from '../models/source';
+import './codecarto.css';
 
+/** The Code Cartographer app component */
 export const CodeCarto = (cell: ICell) => {
-  StateController.initialize(cell);
+  var appState = new StateController(cell);
 
-  function get_proc_url(): string {
-    const proc_url =
-      StateController.currentCell.state.configurations.processorUrl;
-    if (!proc_url) displayError("Server is unavailable. Try again later.");
-    return proc_url as string;
-  }
-
+  /** Create an iframe for each output */
   const handlePlotData = (data: Array<object>) => {
-    // Create an iframe for each output
     let nbFrame: m.Vnode[] = [];
+
+    // Check if the output is an HTML file
     if (data && data.length > 0) {
       data.forEach((output) => {
-        if (output["text/html"]) {
+        if (output['text/html']) {
           nbFrame.push(
-            m("iframe.graph_content.nbFrame", {
-              srcdoc: output["text/html"],
+            m('iframe.graph_content.nbFrame', {
+              srcdoc: output['text/html'],
             })
           );
         }
       });
     }
-    StateController.update({
-      graphContent: nbFrame,
-      showDirectoryNav: false,
-      showUploadNav: false,
-    });
+
+    // Update the app state with the new graph content
+    appState.toggleNavs();
+    appState.update({ graphContent: nbFrame });
     m.redraw();
   };
 
-  const handleUrlInput = (data: Repo, url: string) => {
-    StateController.update({
-      repoData: data,
-      selectedUrl: url,
-      showDirectoryNav: true,
-    });
-    m.redraw();
-  };
-
+  /** Check the inputted URL to be processed */
   const onUrlInput = async (url: string) => {
-    // Check the URL to be processed
-    if (!url || url === "") {
-      displayError("Please enter a URL");
-    }
-    const parts = url.split("/");
-    if (parts.length < 5 || parts[2] !== "github.com") {
-      displayError("Invalid GitHub URL format");
+    // Check if the URL is valid GitHub URL
+    if (!url || url === '') {
+      displayError('Please enter a URL');
+    } else if (url.includes('github.com') || url.split('/').length < 5) {
+      displayError('Invalid GitHub URL format');
     }
 
-    StateController.clearGithubData();
-    StateController.clearGraphContent();
+    // Clear the current repo data and graph content
+    appState.clearRepoData();
+    appState.clearGraphContent();
     m.redraw();
 
     // Get the data from the URL
-    const repoData = await RepoService.getGithubRepo(url, get_proc_url());
-    if (repoData !== undefined) handleUrlInput(repoData, url);
+    const repoData = await RepoService.getGithubRepo(url, appState.api.parser);
+    if (repoData !== undefined) {
+      appState.update({
+        repo: { selectedURL: url, content: repoData, isMenuOpen: true },
+      });
+      m.redraw();
+    }
   };
 
+  /** Plot the file using the file's URL */
   const onUrlFileClicked = async () => {
-    if (
-      !StateController.currentCell.state.selectedUrl ||
-      StateController.currentCell.state.selectedUrl === ""
-    ) {
-      displayError("Please select a file");
+    // Check if the file is selected
+    if (!appState.repo.selectedFile || appState.repo.selectedFile.size === 0) {
+      displayError('Please select a file');
       return;
     }
 
-    StateController.clearGraphContent();
+    // Clear the current graph content
+    appState.clearGraphContent();
     m.redraw();
 
+    // Plot the file using the file's URL
     const data = await PlotService.plotGithubFile(
-      StateController.currentCell.state.selectedUrl,
-      get_proc_url()
+      appState.repo.selectedFile.url,
+      appState.api.plotter
     );
     if (data !== null) handlePlotData(data);
   };
 
-  const onWholeRepoClicked = async () => {
-    if (
-      !StateController.currentCell.state.selectedUrl ||
-      StateController.currentCell.state.selectedUrl === ""
-    ) {
-      displayError("Please enter a URL");
-      return;
-    }
-
-    StateController.clearGraphContent();
-    m.redraw();
-
-    const data = await PlotService.plotGithubWhole(
-      StateController.currentCell.state.selectedUrl,
-      get_proc_url()
-    );
-    if (data !== null) handlePlotData(data);
-  };
-
+  /** Plot the file using the file's raw data */
   const onUploadedFileClick = async (file: RawFile) => {
+    // Check if the file is selected
     if (!file) {
-      displayError("Please select a file");
+      displayError('Please select a file');
       return;
     }
 
-    StateController.clearGraphContent();
+    // Clear the current graph content
+    appState.clearGraphContent();
     m.redraw();
 
-    const data = await PlotService.plotFile(file, get_proc_url());
+    // Plot the file using the file
+    const data = await PlotService.plotFile(file, appState.api.plotter);
     if (data !== null) handlePlotData(data);
   };
 
+  /** Plot the entire loaded repo */
+  const onWholeRepoClicked = async () => {
+    // Check if the file is selected
+    if (!appState.repo.selectedFile || appState.repo.selectedFile.size === 0) {
+      displayError('Please enter a URL');
+      return;
+    }
+
+    // Clear the current graph content
+    appState.clearGraphContent();
+    m.redraw();
+
+    // Plot the entire repo
+    const data = await PlotService.plotGithubWhole(
+      appState.repo.selectedFile.url,
+      appState.api.plotter
+    );
+    if (data !== null) handlePlotData(data);
+  };
+
+  /** Plot the entire uploaded files as a single source */
   const onWholeSourceClicked = async () => {};
 
-  const demo_button = m("button", {
-    class: "demo_btn",
-    innerText: "Demo",
+  /** Plot the demo data */
+  const demo_button = m('button', {
+    class: 'demo_btn',
+    innerText: 'Demo',
     onclick: async () => {
-      StateController.clearGraphContent();
+      appState.clearGraphContent();
       m.redraw();
 
       handleDemoData(handlePlotData);
     },
   });
-  const title = m("div.header.app_header", ["Code Cartographer", demo_button]);
+
+  /** The app's title component */
+  const title = m('div.header.app_header', ['Code Cartographer', demo_button]);
 
   return [
     Nav(
-      "left",
-      StateController.currentCell.state.showDirectoryNav,
+      'left',
+      appState.cell.state.repo.isMenuOpen,
       DirectoryNav(
         new DirectoryState(
-          StateController.currentCell.state.dirNavContent,
-          StateController.currentCell.state.selectedUrl,
-          StateController.currentCell.state.repoData,
+          appState.repo.component,
+          appState.repo.selectedFile.url,
+          appState.repo.content,
           onUrlFileClicked,
           onWholeRepoClicked,
           (directory: DirectoryState) => {
-            StateController.update({
-              dirNavContent: directory.navContent,
-              selectedUrl: directory.selectedUrl,
+            appState.update({
+              repo: {
+                selectedURL: directory.selectedUrl,
+                component: directory.navContent,
+              },
             });
           }
         )
       ),
       () => {
-        StateController.toggleDirectoryNav();
+        appState.toggleDirectoryNav();
       }
     ),
     Nav(
-      "right",
-      StateController.currentCell.state.showUploadNav,
+      'right',
+      appState.local.isMenuOpen,
       UploadNav(
         new UploadState(
-          StateController.currentCell.state.uploadNavContent,
-          StateController.currentCell.state.selectedFile,
-          StateController.currentCell.state.uploadedFiles,
+          appState.local.component,
+          appState.local.selectedFile,
+          appState.local.content.root.files as RawFile[],
           onUploadedFileClick,
           onWholeSourceClicked,
           (upload: UploadState) => {
-            StateController.update({
-              uploadNavContent: upload.nav_content,
-              uploadedFiles: upload.files,
-              selectedFile: upload.selected_file,
+            appState.update({
+              local: {
+                selectedFile: upload.selected_file,
+                component: upload.nav_content,
+                content: new Directory(new RepoInfo(), upload.files.length, {
+                  files: upload.files,
+                }),
+              },
             });
           }
         )
       ),
       () => {
-        StateController.toggleUploadNav();
+        appState.toggleUploadNav();
       }
     ),
-    m("div.codecarto", [
+    m('div.codecarto', [
       title,
-      UrlInput(
-        new InputState(
-          StateController.currentCell.state.inputUrl,
-          onUrlInput,
-          (input: InputState) => {
-            StateController.update({ inputUrl: input.url });
-          }
-        )
-      ),
-      Plot(StateController.currentCell.state.graphContent),
+      UrlInput(new InputState(onUrlInput)),
+      Plot(appState.cell.state.graphContent),
     ]),
   ];
 };
