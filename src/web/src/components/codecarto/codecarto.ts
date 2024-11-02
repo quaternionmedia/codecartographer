@@ -2,19 +2,19 @@ import m from 'mithril';
 
 import { StateController } from '../../state/state_controller';
 import { ICell } from '../../state/cell_state';
-import { Nav } from '../navigation/nav';
+import { Nav } from '../navigation/base/nav';
 import { UrlInput, InputState } from '../url_input/url_input';
 import { Plot } from '../plot/plot';
 import {
-  DirectoryState,
+  DirectoryNavState,
   DirectoryNav,
-} from '../nav_content/directory/directory_nav';
-import { UploadState, UploadNav } from '../nav_content/upload/upload_nav';
+} from '../navigation/directory/directory_nav';
+import { UploadState, UploadNav } from '../navigation/upload/upload_nav';
 import { RepoService } from '../../services/repo_service';
 import { PlotService } from '../../services/plot_service';
 import { handleDemoData } from '../../services/demo_service';
 import { displayError } from '../../utility';
-import { Directory, RawFile, RepoInfo } from '../models/source';
+import { Directory, RawFile, RawFolder, RepoInfo } from '../models/source';
 import './codecarto.css';
 
 /** The Code Cartographer app component */
@@ -41,7 +41,7 @@ export const CodeCarto = (cell: ICell) => {
     // Update the app state with the new graph content
     appState.toggleNavs();
     appState.update({ graphContent: nbFrame });
-    m.redraw();
+    appState.redraw();
   };
 
   /** Check the inputted URL to be processed */
@@ -49,21 +49,25 @@ export const CodeCarto = (cell: ICell) => {
     // Check if the URL is valid GitHub URL
     if (!url || url === '') {
       displayError('Please enter a URL');
-    } else if (url.includes('github.com') || url.split('/').length < 5) {
+    } else if (!url.includes('github.com') || url.split('/').length < 5) {
       displayError('Invalid GitHub URL format');
     }
 
     // Clear the current repo data and graph content
     appState.clearRepoData();
     appState.clearGraphContent();
-    m.redraw();
+    appState.cell.state.redraw();
 
     // Get the data from the URL
     const repoData = await RepoService.getGithubRepo(url, appState.api.parser);
     if (repoData !== undefined) {
-      appState.update({
-        repo: { selectedURL: url, content: repoData, isMenuOpen: true },
-      });
+      appState.setRepoContent(repoData);
+      appState.toggleDirectoryNav();
+      // appState.update({
+      //   repo: { selectedURL: url, content: repoData, isMenuOpen: true },
+      // });
+
+      appState.cell.state.redraw();
       m.redraw();
     }
   };
@@ -78,7 +82,7 @@ export const CodeCarto = (cell: ICell) => {
 
     // Clear the current graph content
     appState.clearGraphContent();
-    m.redraw();
+    appState.redraw();
 
     // Plot the file using the file's URL
     const data = await PlotService.plotGithubFile(
@@ -98,7 +102,7 @@ export const CodeCarto = (cell: ICell) => {
 
     // Clear the current graph content
     appState.clearGraphContent();
-    m.redraw();
+    appState.redraw();
 
     // Plot the file using the file
     const data = await PlotService.plotFile(file, appState.api.plotter);
@@ -115,7 +119,7 @@ export const CodeCarto = (cell: ICell) => {
 
     // Clear the current graph content
     appState.clearGraphContent();
-    m.redraw();
+    appState.redraw();
 
     // Plot the entire repo
     const data = await PlotService.plotGithubWhole(
@@ -134,7 +138,7 @@ export const CodeCarto = (cell: ICell) => {
     innerText: 'Demo',
     onclick: async () => {
       appState.clearGraphContent();
-      m.redraw();
+      appState.redraw();
 
       handleDemoData(handlePlotData);
     },
@@ -148,17 +152,17 @@ export const CodeCarto = (cell: ICell) => {
       'left',
       appState.cell.state.repo.isMenuOpen,
       DirectoryNav(
-        new DirectoryState(
+        new DirectoryNavState(
           appState.repo.component,
           appState.repo.selectedFile.url,
           appState.repo.content,
           onUrlFileClicked,
           onWholeRepoClicked,
-          (directory: DirectoryState) => {
+          (directory: DirectoryNavState) => {
             appState.update({
               repo: {
                 selectedURL: directory.selectedUrl,
-                component: directory.navContent,
+                component: directory.navChildComp,
               },
             });
           }
@@ -181,11 +185,13 @@ export const CodeCarto = (cell: ICell) => {
           (upload: UploadState) => {
             appState.update({
               local: {
-                selectedFile: upload.selected_file,
-                component: upload.nav_content,
-                content: new Directory(new RepoInfo(), upload.files.length, {
-                  files: upload.files,
-                }),
+                selectedFile: upload.selectedFile,
+                component: upload.navContent,
+                content: new Directory(
+                  new RepoInfo(),
+                  upload.files.length,
+                  new RawFolder('root', 0, upload.files)
+                ),
               },
             });
           }
@@ -197,7 +203,7 @@ export const CodeCarto = (cell: ICell) => {
     ),
     m('div.codecarto', [
       title,
-      UrlInput(new InputState(onUrlInput)),
+      UrlInput(new InputState(onUrlInput, appState.cell.state.inputRepoUrl)),
       Plot(appState.cell.state.graphContent),
     ]),
   ];

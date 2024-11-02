@@ -1,4 +1,5 @@
 import m from 'mithril';
+
 import { MeiosisCell } from 'meiosis-setup/types';
 import { DirectoryController } from '../components/models/source';
 import { ConfigManager, DebugManager } from './config_manager';
@@ -12,6 +13,7 @@ export interface ICellState {
   local: DirectoryController;
   graphContent: m.Vnode[];
   inputRepoUrl: string;
+  redraw: () => void;
 }
 
 // Used for initial app state
@@ -22,4 +24,11 @@ export class CellState implements ICellState {
   public local = new DirectoryController(true);
   public graphContent: m.Vnode[] = [];
   public inputRepoUrl: string = '';
+  public redraw: () => void = () => {
+    m.redraw();
+  };
+
+  constructor(inputRepoUrl: string) {
+    this.inputRepoUrl = inputRepoUrl;
+  }
 }

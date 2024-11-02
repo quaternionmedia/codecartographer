@@ -7,6 +7,7 @@ import {
 } from '../components/models/source';
 import { ICell, ICellState } from './cell_state';
 import { API } from './api_base';
+import { Vnode } from 'mithril';
 
 /**
  * The state controller tracks the state of the application.
@@ -23,6 +24,20 @@ export class StateController {
     this._api = new API(this._cell.state.config.backendUrl);
   }
 
+  public update(state: Patch<ICellState>) {
+    this._cell.update(state);
+    this._cell.state = this._cell.getState();
+    console.log('StateController.update - updated state: ', this._cell.state);
+  }
+
+  public redraw() {
+    this._cell.state.redraw();
+  }
+
+  // Getter methods
+
+  // TODO: At some point, we may hide the cell
+  //       and expose the state directly
   get cell(): ICell {
     return this._cell;
   }
@@ -32,62 +47,65 @@ export class StateController {
   }
 
   get repo(): DirectoryController {
+    this._cell.state = this._cell.getState();
     return this._cell.state.repo;
   }
 
   get local(): DirectoryController {
+    this._cell.state = this._cell.getState();
     return this._cell.state.local;
   }
 
-  public update(state: Patch<ICellState>) {
-    this._cell.update(state);
-    console.log('StateController.update: passed state: \n', state);
-    this._cell.update(state);
-    console.log('StateController.update: updated state: ', this._cell.state);
-  }
+  // Setter methods
 
-  public updateRepoContent(data: Directory) {
-    this._cell.state.repo.content = data;
+  public setRepoContent(data: Directory) {
     this.update({ repo: { content: data } });
   }
 
+  public setDirectoryComponent(component: Vnode[]) {
+    this.update({ repo: { component: component } });
+  }
+
   public setSelectedRepoFile(file: RawFile) {
-    this._cell.state.repo.selectedFile = file;
     this.update({ repo: { selectedFile: file } });
   }
 
   public setSelectedRepoFolder(folder: RawFolder) {
-    this._cell.state.repo.selectedFolder = folder;
     this.update({ repo: { selectedFolder: folder } });
   }
 
+  public setUploadComponent(component: Vnode[]) {
+    this.update({ local: { component: component } });
+  }
+
   public setSelectedLocalFile(file: RawFile) {
-    this._cell.state.local.selectedFile = file;
     this.update({ local: { selectedFile: file } });
   }
 
   public setSelectedLocalFolder(folder: RawFolder) {
-    this._cell.state.local.selectedFolder = folder;
+    this.update({ local: { selectedFolder: folder } });
   }
 
+  // Clear methods
+
   public clearSelectedRepoFile() {
-    this._cell.state.repo.clearSelectedFile();
+    this.update({ repo: { selectedFile: new RawFile() } });
   }
 
   public clearSelectedLocalFile() {
-    this._cell.state.local.clearSelectedFile();
+    this.update({ local: { selectedFile: new RawFile() } });
   }
 
   public clearRepoData() {
-    this._cell.state.repo.clearContent();
+    this.update({ repo: { content: new Directory() } });
   }
 
   public clearLocalData() {
-    this._cell.state.local.clearContent();
+    this.update({ local: { content: new Directory() } });
   }
 
   public clearGraphContent() {
-    this._cell.state.graphContent = [];
+    this.update({ graphContent: [] });
   }
 
   public clear() {
@@ -96,12 +114,16 @@ export class StateController {
     this.clearGraphContent();
   }
 
+  // Toggle methods
+
   public toggleDirectoryNav() {
-    this._cell.state.repo.toggleNav();
+    let currIsOpen = this._cell.state.repo.isMenuOpen;
+    this.update({ repo: { isMenuOpen: !currIsOpen } });
   }
 
   public toggleUploadNav() {
-    this._cell.state.local.toggleNav();
+    let currIsOpen = this._cell.state.local.isMenuOpen;
+    this.update({ local: { isMenuOpen: !currIsOpen } });
   }
 
   public toggleNavs() {

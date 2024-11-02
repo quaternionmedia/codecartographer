@@ -1,26 +1,26 @@
-import m, { Vnode } from "mithril";
+import m, { Vnode } from 'mithril';
 
-import "./upload_nav.css";
-import { RawFile } from "../../models/source";
+import './upload_nav.css';
+import { RawFile } from '../../models/source';
 
 export class UploadState {
-  nav_content: Vnode[];
-  selected_file: RawFile;
+  navContent: Vnode[];
+  selectedFile: RawFile;
   files: RawFile[];
   onFileClick: (file: RawFile) => void;
   onWholeSourceClick: () => void;
   updateCell: (upload: UploadState) => void;
 
   constructor(
-    nav_content: Vnode[] = [],
-    selected_file: RawFile = new RawFile(),
+    navContent: Vnode[] = [],
+    selectedFile: RawFile = new RawFile(),
     files: RawFile[] = [],
     onFileClick: (file: RawFile) => void,
     onWholeSourceClick: () => void,
     updateCell: (upload: UploadState) => void
   ) {
-    this.nav_content = nav_content;
-    this.selected_file = selected_file;
+    this.navContent = navContent;
+    this.selectedFile = selectedFile;
     this.files = files;
     this.onFileClick = onFileClick;
     this.onWholeSourceClick = onWholeSourceClick;
@@ -28,7 +28,7 @@ export class UploadState {
   }
 
   public setSelectedFile(file: RawFile) {
-    this.selected_file = file;
+    this.selectedFile = file;
     this.updateCell(this);
     this.onFileClick(file);
   }
@@ -43,36 +43,36 @@ export const UploadNav = (upload: UploadState) => {
   var tree = Files(upload, (file: RawFile) => {
     upload.setSelectedFile(file);
   });
-  var plot_all = m(
-    "button.plot_all_files_btn",
+  var plotAll = m(
+    'button.plot_all_files_btn',
     {
       onclick: function () {
         upload.onWholeSourceClick();
       },
     },
-    "Plot Uploaded Files"
+    'Plot Uploaded Files'
   );
 
-  upload.nav_content = [m("div.upload_tree", [UploadHeader(upload), tree])];
+  upload.navContent = [m('div.upload_tree', [UploadHeader(upload), tree])];
 
-  return m("div.upload_nav", [upload.nav_content]);
+  return m('div.upload_nav', [upload.navContent]);
 };
 
 export const UploadHeader = (upload: UploadState) => {
-  return m("div.upload_header", [
-    m("div.upload_header_title", "Uploaded Files"),
+  return m('div.upload_header', [
+    m('div.upload_header_title', 'Uploaded Files'),
     UploadButton(upload),
   ]);
 };
 
 export const UploadButton = (upload: UploadState) => {
-  return m("div.upload_header_button", [
-    m("input.upload_header_button_input", {
-      type: "file",
-      id: "fileInput",
-      style: "display:none",
-      accept: ".py",
-      onchange: async function (e) {
+  return m('div.upload_header_button', [
+    m('input.upload_header_button_input', {
+      type: 'file',
+      id: 'fileInput',
+      style: 'display:none',
+      accept: '.py',
+      onchange: async function (e: any) {
         if (e.target.files !== null) {
           let exists = false;
           const uploadedFile = e.target.files[0];
@@ -93,11 +93,11 @@ export const UploadButton = (upload: UploadState) => {
         }
       },
     }),
-    m("button", {
-      class: "upload_header_button_view",
-      innerText: "Browse",
+    m('button', {
+      class: 'upload_header_button_view',
+      innerText: 'Browse',
       onclick: () => {
-        document.getElementById("fileInput")?.click();
+        document.getElementById('fileInput')?.click();
       },
     }),
   ]);
@@ -107,7 +107,7 @@ export const Files = (
   upload: UploadState,
   onFileClick: (file: RawFile) => void
 ) => {
-  return m("div.upload_files", [
+  return m('div.upload_files', [
     upload.files.map((file: RawFile) =>
       m(File_Btn, {
         file: file,
@@ -121,19 +121,19 @@ export const File_Btn = {
   view: function (vnode) {
     const { file, onFileClick } = vnode.attrs;
     let isDisabled = true;
-    let ext = file.name.split(".").pop();
+    let ext = file.name.split('.').pop();
 
     // Check if the file extension is compatible
-    const compatibleExtensions = ["py"];
+    const compatibleExtensions = ['py'];
     if (compatibleExtensions.includes(ext)) {
       isDisabled = false;
     }
 
-    return m("div.file_container", [
+    return m('div.file_container', [
       m(
-        "div.file",
+        'div.file',
         {
-          class: `file__${ext} ${isDisabled ? "disabled" : ""}`,
+          class: `file__${ext} ${isDisabled ? 'disabled' : ''}`,
           file: file,
           onclick: function () {
             if (!isDisabled) {

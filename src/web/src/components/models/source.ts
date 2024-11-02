@@ -1,4 +1,4 @@
-import { Vnode } from "mithril";
+import m from 'mithril';
 
 /**
  * The controller for a directory navigation component.
@@ -6,11 +6,11 @@ import { Vnode } from "mithril";
 export class DirectoryController {
   public isLocal: boolean = false;
   public isMenuOpen: boolean = false;
-  public selectedURL: string = "";
+  public selectedURL: string = '';
   public selectedFile: RawFile = new RawFile();
   public selectedFolder: RawFolder = new RawFolder();
   public content: Directory = new Directory();
-  public component: Vnode[] = [];
+  public component: m.Vnode[] = [];
 
   constructor(isLocal: boolean) {
     this.isLocal = isLocal;
@@ -42,12 +42,12 @@ export class DirectoryController {
 export class Directory {
   info: RepoInfo;
   size: number;
-  root: Root;
+  root: RawFolder;
 
   constructor(
     info: RepoInfo = new RepoInfo(),
     size: number = 0,
-    root: Root = { root: [] }
+    root: RawFolder = new RawFolder()
   ) {
     this.info = info;
     this.size = size;
@@ -67,7 +67,7 @@ export class RepoInfo {
   name: string;
   url: string;
 
-  constructor(owner: string = "", name: string = "", url: string = "") {
+  constructor(owner: string = '', name: string = '', url: string = '') {
     this.owner = owner;
     this.name = name;
     this.url = url;
@@ -79,7 +79,7 @@ export class RepoInfo {
  * * Key: The folder name
  * * Value: Either a sub folder or a collection of files.
  */
-export type Root = Record<string, RawFile[] | RawFolder>;
+export type Root = RawFile[] | RawFolder[] | RawFolder;
 
 /**
  * A folder in the directory.
@@ -95,14 +95,14 @@ export type Root = Record<string, RawFile[] | RawFolder>;
 export class RawFolder {
   name: string;
   size: number;
-  files: Record<string, RawFile>;
-  folders: Record<string, RawFolder>;
+  files: RawFile[];
+  folders: RawFolder[];
 
   constructor(
-    name: string = "",
+    name: string = '',
     size: number = 0,
-    files: Record<string, RawFile> = {},
-    folders: Record<string, RawFolder> = {}
+    files: RawFile[] = [],
+    folders: RawFolder[] = []
   ) {
     this.name = name;
     this.size = size;
@@ -125,10 +125,10 @@ export class RawFile {
   raw: string;
 
   constructor(
-    name: string = "",
+    name: string = '',
     size: number = 0,
-    raw: string = "",
-    url: string = ""
+    raw: string = '',
+    url: string = ''
   ) {
     this.name = name;
     this.size = size;

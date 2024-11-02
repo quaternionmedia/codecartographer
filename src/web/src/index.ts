@@ -1,15 +1,17 @@
 import m from 'mithril';
 import { meiosisSetup } from 'meiosis-setup';
+
 import { getViewPortSize } from './utility';
 import { ICell, ICellState, CellState } from './state/cell_state';
 import './styles/index.css';
 import { CodeCarto } from './components/codecarto/codecarto';
 
-var intiialState = new CellState();
+var debugDefaultUrl = 'https://github.com/quaternionmedia/moe';
+var intialState = new CellState(debugDefaultUrl);
 
 // Initialize the app
 const App = {
-  initial: intiialState,
+  initial: intialState,
   services: [],
   view: (cell: ICell) => [
     //m('div.ui', [Nav(cell, 'debugActive', 'right', DebugNavContent(cell))]),
