@@ -1,0 +1,105 @@
+/* ############ TRACER ############ */
+:root {
+  --c-tracer-header-background: #3a3a3af3;
+  --c-tracer-background: #3a3a3ac3;
+}
+
+#tracer {
+  position: fixed;
+  bottom: 0.25em;
+  right: 0.25em;
+  max-width: 25em;
+  color: var(--c-white);
+}
+
+#tracerHide,
+#tracerStreamHide_0,
+#tracer.hide {
+  display: none;
+}
+
+#tracer > div {
+  border: var(--border-size-thin) solid var(--c-grey-light) !important;
+  background-color: var(--c-tracer-background);
+}
+
+/* ############ HEADER ############ */
+/* tracerSettingsContainer's parent */
+div:has(> #tracerSettingsContainer) {
+  padding: 0.5rem;
+  border-bottom: 0 solid var(--c-grey-light) !important;
+  background-color: var(--c-tracer-header-background);
+}
+#tracerSettingsContainer {
+  display: grid;
+  grid-template-columns: repeat(7, auto);
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ############ ABOVE STATE ############ */
+/* tracerStreamBox_ 0 */
+#tracerStreamContainer > div > div {
+  display: grid;
+  grid-template-rows: repeat(3, auto);
+  gap: 0.5rem;
+  padding: 0.5rem !important;
+  border: none !important;
+}
+#tracerStreamContainer > div > div > div:first-of-type {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+
+/* ############ STATE ############ */
+#tracerModel_0 {
+  width: 23.5rem;
+  border: var(--border-size-thin) solid var(--c-grey-mid);
+  background-color: var(--c-grey-dark);
+  color: var(--c-grey-light);
+}
+
+/* ############ BELOW STATE ############ */
+/* tracerSlider_0's parent */
+div:has(> #tracerSlider_0) {
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  grid-template-rows: repeat(2, auto);
+  gap: 0.5rem;
+  align-items: center;
+  text-align: center;
+}
+#tracerSlider_0 {
+  grid-column: 1 / span 5;
+  width: 23.5rem !important;
+  margin-inline: 0.25rem;
+}
+
+/* ############ HTML ############ */
+#tracer input[type='text'] {
+  border: var(--border-size-thin) solid var(--c-grey-light);
+  background-color: var(--c-grey-dark);
+  color: var(--c-grey-light);
+  text-align: center;
+}
+
+#tracer input[type='text']:focus {
+  background-color: var(--c-white);
+  color: var(--c-grey-dark);
+}
+
+#tracer button {
+  height: 2.5rem;
+  width: 4.5rem;
+  border: var(--border-size-med) solid var(--c-grey-mid) !important;
+  border-radius: var(--border-radius);
+  background-color: var(--c-grey-dark);
+  color: var(--c-white);
+  cursor: pointer;
+}
+
+#tracer button:hover {
+  background-color: var(--c-grey-light);
+  color: var(--c-black);
+}

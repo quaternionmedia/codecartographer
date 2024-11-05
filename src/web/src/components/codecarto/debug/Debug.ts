@@ -1,4 +1,4 @@
-import { m } from '../component';
+import m from 'mithril';
 import meiosisTracer from 'meiosis-tracer';
 import './tracer.css';
 import './debug.css';

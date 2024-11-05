@@ -1,33 +1,40 @@
 import m, { Vnode } from 'mithril';
 
-import './upload_nav.css';
+import { displayError } from '../../../utility';
 import { RawFile } from '../../models/source';
+import { DirectoryNavController } from '../directory/directory_nav';
+import './upload_nav.css';
 
-export class UploadState {
+export class UploadNavState {
   navContent: Vnode[];
   selectedFile: RawFile;
   files: RawFile[];
+  controller: DirectoryNavController;
   onFileClick: (file: RawFile) => void;
   onWholeSourceClick: () => void;
-  updateCell: (upload: UploadState) => void;
+  updateCell: (upload: UploadNavState) => void;
 
+  // TODO: Remove the navContent, selectedFile, and files now that they are using the controller directly
   constructor(
-    navContent: Vnode[] = [],
-    selectedFile: RawFile = new RawFile(),
-    files: RawFile[] = [],
+    controller: DirectoryNavController,
     onFileClick: (file: RawFile) => void,
     onWholeSourceClick: () => void,
-    updateCell: (upload: UploadState) => void
+    updateCell: (upload: UploadNavState) => void
   ) {
-    this.navContent = navContent;
-    this.selectedFile = selectedFile;
-    this.files = files;
+    this.controller = controller;
+    this.navContent = controller.component;
+    this.selectedFile = controller.selectedFile;
+    this.files = controller.content.root.files;
     this.onFileClick = onFileClick;
     this.onWholeSourceClick = onWholeSourceClick;
     this.updateCell = updateCell;
   }
 
   public setSelectedFile(file: RawFile) {
+    if (!file) {
+      displayError('Please select a file');
+      return;
+    }
     this.selectedFile = file;
     this.updateCell(this);
     this.onFileClick(file);
@@ -39,7 +46,7 @@ export class UploadState {
   }
 }
 
-export const UploadNav = (upload: UploadState) => {
+export const UploadNav = (upload: UploadNavState) => {
   var tree = Files(upload, (file: RawFile) => {
     upload.setSelectedFile(file);
   });
@@ -58,14 +65,14 @@ export const UploadNav = (upload: UploadState) => {
   return m('div.upload_nav', [upload.navContent]);
 };
 
-export const UploadHeader = (upload: UploadState) => {
+export const UploadHeader = (upload: UploadNavState) => {
   return m('div.upload_header', [
     m('div.upload_header_title', 'Uploaded Files'),
     UploadButton(upload),
   ]);
 };
 
-export const UploadButton = (upload: UploadState) => {
+export const UploadButton = (upload: UploadNavState) => {
   return m('div.upload_header_button', [
     m('input.upload_header_button_input', {
       type: 'file',
@@ -104,7 +111,7 @@ export const UploadButton = (upload: UploadState) => {
 };
 
 export const Files = (
-  upload: UploadState,
+  upload: UploadNavState,
   onFileClick: (file: RawFile) => void
 ) => {
   return m('div.upload_files', [

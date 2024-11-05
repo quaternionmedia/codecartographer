@@ -47,26 +47,18 @@ export class RequestHandler {
 
       return this.handleResponse(response);
     } catch (error) {
-      displayError(error.message);
+      displayError(error);
       return null;
     }
   }
 
   /** Handle the response from the API. */
   private static async handleResponse(response: Response): Promise<Object> {
-    // Check if the response is ok
-    if (!response.ok) {
-      const errorResponse = await response.text();
-      throw new Error(
-        `Error: ${response.status} ${response.statusText} - ${errorResponse}`
-      );
-    }
-
     // Check if the response data is null
     const responseData = await response.json();
     if (!responseData) {
       throw new Error(
-        `Error: Request - Error with response data - No content received`
+        `Request: Error with response data - No content received`
       );
     }
 
@@ -75,8 +67,14 @@ export class RequestHandler {
       if (responseData.message.includes('GithubNoDataError')) {
         throw new Error('Could not read Github url');
       } else {
+        // Extract the error message from the response data
+        let message = responseData.message
+          .split('\n\tmessage:')[2]
+          .split('\n\t')[0]
+          .trim();
+        displayError(message);
         throw new Error(
-          `Error: Request - ${responseData.message} - ${responseData.detail}`
+          `Request: ${responseData.message} - ${responseData.detail}`
         );
       }
     }

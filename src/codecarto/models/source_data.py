@@ -6,7 +6,7 @@
 # the folders will have names and a list of files and/or folders
 
 from pydantic import BaseModel
-from typing import List, Dict, Union
+from typing import List
 
 
 class File(BaseModel):

@@ -3,9 +3,9 @@ from .base_ast import BaseASTVisitor
 
 
 class PythonAST(BaseASTVisitor):
-    def __init__(self, module_list: list = [], *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.module_list = module_list
+        self.module_list = []
 
     # region Visits
 

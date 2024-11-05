@@ -1,6 +1,7 @@
 import logging
+from pprint import pprint
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 
 class Log:
@@ -15,6 +16,18 @@ class Log:
     @staticmethod
     def error(message: str):
         logger.error(message)
+
+    @staticmethod
+    def warning(message: str):
+        logger.warning(message)
+
+    @staticmethod
+    def critical(message: str):
+        logger.critical(message)
+
+    @staticmethod
+    def pprint(message: object):
+        pprint(message)
 
 
 def generate_return(

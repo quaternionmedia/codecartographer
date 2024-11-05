@@ -1,7 +1,5 @@
-from typing import Any, List
 import httpx
 from models.source_data import Directory, File, Folder, RepoInfo
-from util.utilities import Log
 from util.exceptions import (
     GithubError,
     Github404Error,
@@ -12,13 +10,28 @@ from util.exceptions import (
 )
 
 
+async def get_raw_from_url(url: str) -> str:
+    """Fetch raw content from a specific URL."""
+    if not url.endswith(".py"):
+        raise ImportSourceUrlError("Not a valid Python file URL", {"url": url})
+
+    client = httpx.AsyncClient()
+    response = await client.get(url)
+
+    if response.status_code == 200:
+        return response.text
+
+    raise handle_status_code(response, url)
+
+
 async def get_raw_from_repo(url: str) -> Directory:
     """Read raw data from a repo URL"""
     # Fetch the repo content and reduce the structure
     owner, repo = get_owner_repo_from_url(url)
-    content = await get_repo_content(url, owner, repo, first=True)
+    content = await get_repo_content(url, owner, repo, isFirst=True)
     data = await build_content_tree(content, owner, repo)
     root = await reduce_repo_structure(data)
+    root.name = f"{owner}/{repo}"
 
     # Calculate the total size of the repo files
     size = sum(file.size for file in root.files)
@@ -34,13 +47,13 @@ async def get_raw_from_repo(url: str) -> Directory:
 
 
 async def get_repo_content(
-    url: str, owner: str, repo: str, path: str = "", first: bool = False
+    url: str, owner: str, repo: str, path: str = "", isFirst: bool = False
 ) -> dict:
     """Fetches content of a GitHub repo (files and directories)."""
     headers = create_headers(url)
 
-    # Check repo size first
-    if first:
+    # Check repo size only for the first call
+    if isFirst:
         await check_repo_size(owner, repo, url, headers)
 
     # Fetch content from the repo
@@ -53,8 +66,8 @@ async def get_repo_content(
         if not json_data:
             raise GithubNoDataError("No content in the repo", {"github_url": url})
         return json_data
-
-    raise handle_status_code(response, url, api_url)
+    else:
+        raise handle_status_code(response, url, api_url)
 
 
 async def check_repo_size(owner: str, repo: str, url: str, headers: dict):
@@ -66,27 +79,12 @@ async def check_repo_size(owner: str, repo: str, url: str, headers: dict):
     if response.status_code == 200:
         json_data = response.json()
         size = json_data.get("size", 0)
-        Log.info(f"Repo Size: {size} bytes")
         if size > 1000000:
             raise GithubSizeError(
                 f"Repo is too large: {size} bytes", {"github_url": url}
             )
     else:
         raise handle_status_code(response, url, api_url)
-
-
-async def get_raw_from_url(url: str) -> str:
-    """Fetch raw content from a specific URL."""
-    if not url.endswith(".py"):
-        raise ImportSourceUrlError("Not a valid Python file URL", {"url": url})
-
-    client = httpx.AsyncClient()
-    response = await client.get(url)
-
-    if response.status_code == 200:
-        return response.text
-
-    raise handle_status_code(response, url)
 
 
 async def build_content_tree(content: dict, owner: str, repo: str) -> dict:
@@ -127,11 +125,10 @@ async def reduce_repo_structure(repo_data: dict) -> Folder:
                         "python" if file["download_url"].endswith(".py") else "other"
                     )
 
-                    raw = (
-                        await get_raw_from_url(file["download_url"])
-                        if file_type == "python"
-                        else file["download_url"]
-                    )
+                    if file_type == "python":
+                        raw = await get_raw_from_url(file["download_url"])
+                    else:
+                        raw = file["download_url"]
 
                     files_size += size
 

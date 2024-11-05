@@ -1,6 +1,7 @@
 import m from 'mithril';
 
 import './url_input.css';
+import { displayError } from '../../../utility';
 
 export class InputState {
   onUrlInput: (url: string) => void;
@@ -9,6 +10,17 @@ export class InputState {
   constructor(onUrlInput: (url: string) => void, defaultUrl: string = '') {
     this.onUrlInput = onUrlInput;
     this.url = defaultUrl; // Used during development & testing
+  }
+
+  private processInput(url: string) {
+    if (!url || url === '') {
+      displayError('Please enter a URL');
+      return;
+    } else if (!url.includes('github.com') || url.split('/').length < 5) {
+      displayError('Invalid GitHub URL format');
+      return;
+    }
+    this.onUrlInput(this.url);
   }
 
   input = () =>
@@ -20,7 +32,7 @@ export class InputState {
       onkeyup: (e: any) => {
         this.url = e.target.value;
         if (e.key === 'Enter') {
-          this.onUrlInput(this.url);
+          this.processInput(this.url);
         }
       },
     });
@@ -30,7 +42,7 @@ export class InputState {
       class: 'url_btn',
       innerText: 'Submit',
       onclick: () => {
-        this.onUrlInput(this.url);
+        this.processInput(this.url);
       },
     });
 }

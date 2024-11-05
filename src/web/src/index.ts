@@ -1,24 +1,21 @@
+import './styles/index.css';
+
 import m from 'mithril';
 import { meiosisSetup } from 'meiosis-setup';
 
-import { getViewPortSize } from './utility';
+import { qmComponentSetup } from './utility';
 import { ICell, ICellState, CellState } from './state/cell_state';
-import './styles/index.css';
 import { CodeCarto } from './components/codecarto/codecarto';
 
-var debugDefaultUrl = 'https://github.com/quaternionmedia/moe';
-var intialState = new CellState(debugDefaultUrl);
+qmComponentSetup();
+
+var debugDefaultUrl = 'https://github.com/quaternionmedia/codecartographer';
 
 // Initialize the app
 const App = {
-  initial: intialState,
+  initial: new CellState(debugDefaultUrl),
   services: [],
-  view: (cell: ICell) => [
-    //m('div.ui', [Nav(cell, 'debugActive', 'right', DebugNavContent(cell))]),
-    CodeCarto(cell),
-    //var codecarto = new CodeCarto();
-    //codecarto.View(cell),
-  ],
+  view: (cell: ICell) => [CodeCarto(cell)],
 };
 
 // Initialize Meiosis
@@ -34,9 +31,8 @@ if (app) {
     view: () => App.view!(cells()),
   });
 }
-getViewPortSize();
 
-// Debug
+// DEBUG
 declare global {
   interface Window {
     cells: any;

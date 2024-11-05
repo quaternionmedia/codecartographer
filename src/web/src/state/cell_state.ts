@@ -1,7 +1,7 @@
 import m from 'mithril';
 
 import { MeiosisCell } from 'meiosis-setup/types';
-import { DirectoryController } from '../components/models/source';
+import { DirectoryNavController } from '../components/codecarto/directory/directory_nav';
 import { ConfigManager, DebugManager } from './config_manager';
 
 export interface ICell extends MeiosisCell<ICellState> {}
@@ -9,8 +9,8 @@ export interface ICell extends MeiosisCell<ICellState> {}
 export interface ICellState {
   debug: DebugManager;
   config: ConfigManager;
-  repo: DirectoryController;
-  local: DirectoryController;
+  repo: DirectoryNavController;
+  local: DirectoryNavController;
   graphContent: m.Vnode[];
   inputRepoUrl: string;
   redraw: () => void;
@@ -20,8 +20,8 @@ export interface ICellState {
 export class CellState implements ICellState {
   public debug = new DebugManager();
   public config = new ConfigManager();
-  public repo = new DirectoryController(false);
-  public local = new DirectoryController(true);
+  public repo = new DirectoryNavController(false);
+  public local = new DirectoryNavController(true);
   public graphContent: m.Vnode[] = [];
   public inputRepoUrl: string = '';
   public redraw: () => void = () => {

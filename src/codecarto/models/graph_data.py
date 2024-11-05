@@ -14,6 +14,7 @@ class Edge(BaseModel):
 class Node(BaseModel):
     id: int
     type: str
+    filename: str = ""
     label: str = ""
     base: str = ""
     parent: int
@@ -36,7 +37,11 @@ class GraphBuilder:
 
     def add_node(self, node: Node):
         self.graph.add_node(
-            node.id, type=node.type, label=node.label, parent=node.parent
+            node.id,
+            type=node.type,
+            filename=node.filename,
+            label=node.label,
+            parent=node.parent,
         )
         if node.parent is not None:
             self.graph.add_edge(node.parent, node.id)

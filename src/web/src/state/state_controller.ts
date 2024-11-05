@@ -1,10 +1,6 @@
 import { Patch } from 'meiosis-setup/types';
-import {
-  RawFile,
-  RawFolder,
-  Directory,
-  DirectoryController,
-} from '../components/models/source';
+import { RawFile, RawFolder, Directory } from '../components/models/source';
+import { DirectoryNavController } from '../components/codecarto/directory/directory_nav';
 import { ICell, ICellState } from './cell_state';
 import { API } from './api_base';
 import { Vnode } from 'mithril';
@@ -27,7 +23,7 @@ export class StateController {
   public update(state: Patch<ICellState>) {
     this._cell.update(state);
     this._cell.state = this._cell.getState();
-    console.log('StateController.update - updated state: ', this._cell.state);
+    //console.log('StateController.update - updated state: ', this._cell.state);
   }
 
   public redraw() {
@@ -35,29 +31,23 @@ export class StateController {
   }
 
   // Getter methods
-
-  // TODO: At some point, we may hide the cell
-  //       and expose the state directly
-  get cell(): ICell {
-    return this._cell;
-  }
-
   get api(): API {
     return this._api;
   }
 
-  get repo(): DirectoryController {
-    this._cell.state = this._cell.getState();
-    return this._cell.state.repo;
+  get state(): ICellState {
+    return this._cell.state;
   }
 
-  get local(): DirectoryController {
-    this._cell.state = this._cell.getState();
-    return this._cell.state.local;
+  get repo(): DirectoryNavController {
+    return this.state.repo;
+  }
+
+  get local(): DirectoryNavController {
+    return this.state.local;
   }
 
   // Setter methods
-
   public setRepoContent(data: Directory) {
     this.update({ repo: { content: data } });
   }
@@ -87,7 +77,6 @@ export class StateController {
   }
 
   // Clear methods
-
   public clearSelectedRepoFile() {
     this.update({ repo: { selectedFile: new RawFile() } });
   }
@@ -108,26 +97,62 @@ export class StateController {
     this.update({ graphContent: [] });
   }
 
-  public clear() {
-    this.clearRepoData();
-    this.clearLocalData();
+  /** Clear the graph and optionally the repo and uploaded files */
+  public clear(clearRepo: boolean = false, clearLocal: boolean = false) {
+    if (clearRepo) this.clearRepoData();
+    if (clearLocal) this.clearLocalData();
     this.clearGraphContent();
+    this.redraw();
   }
 
-  // Toggle methods
-
+  // Nav Methods
   public toggleDirectoryNav() {
-    let currIsOpen = this._cell.state.repo.isMenuOpen;
+    let currIsOpen = this.repo.isMenuOpen;
     this.update({ repo: { isMenuOpen: !currIsOpen } });
   }
 
   public toggleUploadNav() {
-    let currIsOpen = this._cell.state.local.isMenuOpen;
+    let currIsOpen = this.local.isMenuOpen;
     this.update({ local: { isMenuOpen: !currIsOpen } });
   }
 
-  public toggleNavs() {
-    this.toggleDirectoryNav();
-    this.toggleUploadNav();
+  public openDirectoryNav() {
+    this.update({ repo: { isMenuOpen: true } });
+  }
+
+  public openUploadNav() {
+    this.update({ local: { isMenuOpen: true } });
+  }
+
+  public openNavs() {
+    this.openDirectoryNav();
+    this.openUploadNav();
+  }
+
+  public closeDirectoryNav() {
+    this.update({ repo: { isMenuOpen: false } });
+  }
+
+  public closeUploadNav() {
+    this.update({ local: { isMenuOpen: false } });
+  }
+
+  public closeNavs() {
+    this.closeDirectoryNav();
+    this.closeUploadNav();
+  }
+
+  // Specific Control Methods
+  public updatePlotFrame(frame: Vnode[]) {
+    this.update({ graphContent: frame });
+    this.closeNavs();
+    this.redraw();
+  }
+
+  public updateRepoContent(data: Directory) {
+    this.setRepoContent(data);
+    this.closeUploadNav();
+    this.openDirectoryNav();
+    this.redraw();
   }
 }

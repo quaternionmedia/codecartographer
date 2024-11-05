@@ -3,7 +3,7 @@ import { RawFile, Directory } from '../components/models/source';
 
 export class PlotService {
   /** Plot the content of the repo URL. */
-  public static async plotGithubWhole(
+  public static async plotRepoWhole(
     url: string,
     plotterUrl: string
   ): Promise<any> {
@@ -24,7 +24,7 @@ export class PlotService {
   }
 
   /** Plot the content of the selected URL. */
-  public static async plotGithubFile(
+  public static async plotUrlFile(
     url: string,
     plotterUrl: string
   ): Promise<any> {

@@ -1,39 +1,3 @@
-import m from 'mithril';
-
-/**
- * The controller for a directory navigation component.
- */
-export class DirectoryController {
-  public isLocal: boolean = false;
-  public isMenuOpen: boolean = false;
-  public selectedURL: string = '';
-  public selectedFile: RawFile = new RawFile();
-  public selectedFolder: RawFolder = new RawFolder();
-  public content: Directory = new Directory();
-  public component: m.Vnode[] = [];
-
-  constructor(isLocal: boolean) {
-    this.isLocal = isLocal;
-  }
-
-  public toggleNav() {
-    this.isMenuOpen = !this.isMenuOpen;
-  }
-
-  public clearSelectedFile() {
-    this.selectedFile = new RawFile();
-  }
-
-  public clearSelectedFolder() {
-    this.selectedFolder = new RawFolder();
-  }
-
-  public clearContent() {
-    this.content = new Directory();
-    this.clearSelectedFile();
-  }
-}
-
 /**
  * Holds the folders and or files of a directory.
  *

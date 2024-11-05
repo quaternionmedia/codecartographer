@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from models.source_data import Directory, File, RepoInfo
+from models.source_data import Directory, Folder, File, RepoInfo
 from util.exceptions import CodeCartoException, proc_exception
 from util.utilities import Log, generate_return
 
@@ -53,14 +53,16 @@ async def read_github_url(url: str) -> dict:
 async def parse_raw(raw: str) -> dict:
     file = File(name="raw", size=len(raw), raw=raw)
     info = RepoInfo(owner="local", name="raw", url="NA")
-    data = Directory(info=info, size=len(raw), root={"files": file})
+    folder = Folder(name="raw", files=[file])
+    data = Directory(info=info, size=len(raw), root=folder)
     return parse(data)
 
 
 @ParserRouter.post("/file")
 async def parse_file(file: File) -> dict:
     info = RepoInfo(owner="local", name=file.name, url="NA")
-    data = Directory(info=info, size=file.size, root={"files": file})
+    folder = Folder(name="raw", files=[file])
+    data = Directory(info=info, size=file.size, root=folder)
     return parse(data)
 
 
