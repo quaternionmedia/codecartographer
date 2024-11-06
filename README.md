@@ -26,7 +26,7 @@ pip install codecarto
 ### Clone the repo
 
 ```
-git clone git@github.com:quaternionmedia/codecarto.git
+git clone https://github.com/quaternionmedia/codecartographer.git
 git submodule init
 git submodule update
 ```

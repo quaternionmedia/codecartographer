@@ -8,12 +8,15 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Turns off buffering for easier container logging
 ENV PYTHONUNBUFFERED=1
 
+# Define a local variable for the codecarto path
+ARG CODECARTO_PATH=./src/codecarto
+
 # Install Jupyter Notebook and create a kernel for Python 3
 RUN pip install jupyter
 RUN python -m ipykernel install --user --name python3
 
 # Install pip requirements
-COPY ./src/codecarto/requirements.txt .
+COPY ${CODECARTO_PATH}/requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
         python -m pip install -r requirements.txt
 
@@ -22,7 +25,7 @@ WORKDIR /app
 COPY ./graphbase /app/graphbase
 RUN --mount=type=cache,target=/root/.cache/pip \
         python -m pip install -e /app/graphbase
-COPY ./src/codecarto /app
+COPY ${CODECARTO_PATH} /app
 ENV PYTHONPATH=/app
 
 # # Creates a non-root user with an explicit UID and adds permission to access the /app folder
