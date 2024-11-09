@@ -3,9 +3,9 @@ from .base_ast import BaseASTVisitor
 
 
 class PythonAST(BaseASTVisitor):
-    def __init__(self, module_list: list = [], *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.module_list = module_list
+        self.module_list = []
 
     # region Visits
 
@@ -233,7 +233,7 @@ class PythonAST(BaseASTVisitor):
         # see if any of the imports are in the module list
         for module in self.module_list:
             if module in self.imports:
-                self.relations.append((module, self.module))
+                self.relations.append((self.module, module))
                 self.generic_visit(node)
 
     def visit_ImportFrom(self, node):
@@ -243,7 +243,7 @@ class PythonAST(BaseASTVisitor):
         # see if any of the imports are in the module list
         for module in self.module_list:
             if module in self.imports:
-                self.relations.append((module, self.module))
+                self.relations.append((self.module, module))
                 self.generic_visit(node)
 
     # endregion

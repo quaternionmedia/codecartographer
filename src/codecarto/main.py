@@ -5,6 +5,7 @@ from routers.palette_router import PaletteRouter
 from routers.parser_router import ParserRouter
 from routers.plotter_router import PlotterRouter
 from routers.polygraph_router import PolygraphRouter
+from routers.repo_router import RepoReaderRouter
 
 
 # Debug
@@ -44,4 +45,5 @@ app.include_router(PaletteRouter, prefix="/palette", tags=["palette"])
 app.include_router(PlotterRouter, prefix="/plotter", tags=["plotter"])
 app.include_router(ParserRouter, prefix="/parser", tags=["parser"])
 app.include_router(PolygraphRouter, prefix="/polygraph", tags=["polygraph"])
+app.include_router(RepoReaderRouter, prefix="/repo", tags=["repo"])
 # app.include_router(GraphBaseRouter, prefix="/db", tags=["db"])

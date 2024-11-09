@@ -2,11 +2,14 @@
 # debug
 output/
 .dev/
+.vs/
 .vscode/
 ..vscode/
 .git/
+docker.sh
 token.txt
 secrets.txt
+dev.sh
 
 # package files
 config.json

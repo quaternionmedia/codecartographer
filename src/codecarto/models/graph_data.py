@@ -1,6 +1,7 @@
-from fileinput import filename
 from networkx import DiGraph
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+from models.source_data import File, Folder
 
 
 class Edge(BaseModel):
@@ -13,6 +14,7 @@ class Edge(BaseModel):
 class Node(BaseModel):
     id: int
     type: str
+    filename: str = ""
     label: str = ""
     base: str = ""
     parent: int
@@ -35,7 +37,11 @@ class GraphBuilder:
 
     def add_node(self, node: Node):
         self.graph.add_node(
-            node.id, type=node.type, label=node.label, parent=node.parent
+            node.id,
+            type=node.type,
+            filename=node.filename,
+            label=node.label,
+            parent=node.parent,
         )
         if node.parent is not None:
             self.graph.add_edge(node.parent, node.id)
@@ -45,3 +51,13 @@ class GraphBuilder:
 
     def get_graph(self):
         return self.graph
+
+
+class Repo:
+    """The data of a file. [name, size, raw (files, folders)]"""
+
+    def __init__(self, owner: str, repo: str, size: int, raw: dict[str, File | Folder]):
+        self.owner = owner
+        self.repo = repo
+        self.size = size
+        self.raw = raw

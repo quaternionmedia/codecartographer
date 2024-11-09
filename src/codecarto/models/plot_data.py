@@ -9,13 +9,6 @@ class RawData:
         self.raw = raw
 
 
-class FileGraphData(BaseModel):
-    name: str = ""
-    size: int = 0
-    raw: str = ""
-    layout: str = "Spring"
-
-
 class LayoutType(dict):
     name: str
     func: Callable
@@ -26,6 +19,7 @@ class PlotOptions(BaseModel):
     palette_id: str = "0"
     layout: str = "Spring"
     type: str = "d3"
+    parse_by: str = "code"
 
 
 class Palette(BaseModel):

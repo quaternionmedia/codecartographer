@@ -1,0 +1,30 @@
+@startuml
+
+title Frontend to Backend Sequence Diagram
+
+' Define the participants
+' in order of appearance
+participant PlotterClient
+participant PlotterServer
+participant GithubServer
+
+' Define the activities 
+group Plotter
+    PlotterClient -> PlotterServer: plotGithubWhole( /repo)
+    PlotterServer -> GithubServer: get_raw_data_from_github_repo() 
+    GithubServer -> GithubServer: get_repo_content() 
+    GithubServer -> PlotterServer: Repo
+    PlotterServer -> PlotterServer: Repo to Source 
+    PlotterServer -> PlotterClient: run_notebook( parse(Source) )
+
+    PlotterClient -> PlotterServer: plotFile( /file)
+    PlotterServer -> PlotterServer: file to Source 
+    PlotterServer -> PlotterClient: run_notebook( parse(Source) )
+
+    PlotterClient -> PlotterServer: plotGithubFile( /url)
+    PlotterServer -> GithubServer: get_raw_from_url(url)
+    GithubServer -> PlotterServer: raw to Source 
+    PlotterServer -> PlotterClient: run_notebook( parse(Source) )
+end
+
+@enduml

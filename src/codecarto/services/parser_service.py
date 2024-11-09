@@ -2,9 +2,10 @@ import ast
 
 from networkx import DiGraph
 from models.graph_data import Node, Edge, GraphBuilder
-from models.source_data import Folder, File, SourceData
+from models.source_data import Directory, Folder, File
 from random import randint
 from services.ASTs.base_ast import BaseASTVisitor
+from util.utilities import Log
 
 
 class ParserService:
@@ -13,146 +14,169 @@ class ParserService:
     ):
         self.visitor = visitor
         self.graph_builder = graph_builder
+        self.current_parent = None
         self.module_list = []
+        self.graph = DiGraph()
 
-    def parse(self, source: SourceData) -> DiGraph:
-        """Parse the source code to a graph.
+    def parse(self, source: Directory, linkImports: bool = False) -> DiGraph:
+        """Parse the entire repository and link imports between files.
 
         Parameters:
         -----------
-        source: SourceData
-            The source code data to parse.
+        source: Directory
+            The source code data to parse (including multiple files).
 
         Returns:
         --------
         DiGraph
             The parsed graph.
         """
-        # Set the current parent to the source name
-        self.current_parent = id(source.name)
+        file_nodes = {}
 
-        # Add the source name to the module list
-        self.module_list.append(source.name)
+        for file in source.root.files:
+            if file.name.endswith(".py"):
+                self.parse_file(file)
+                file_nodes[file.name] = self.visitor.imports
 
-        # Parse the Python code to AST
-        if isinstance(source.source[0], File):
-            parsed_ast = self.parse_py_to_ast(source.source[0].raw)
-            self.visitor.generic_visit(parsed_ast)
+        for folder in source.root.folders:
+            self.parse_folder(folder, file_nodes)
 
-        return self.create_graph()
+        if linkImports:
+            self.link_imports(file_nodes)
 
-    def parse_py_to_ast(self, python_code: str):
+        return self.graph
+
+    def parse_folder(self, folder: Folder, file_nodes: dict):
+        for file in folder.files:
+            self.parse_file(file)
+            file_nodes[file.name] = (
+                self.visitor.imports
+            )  # Store the imports for later linking
+
+        for sub_folder in folder.folders:
+            if isinstance(sub_folder, Folder):
+                self.parse_folder(sub_folder, file_nodes)
+
+    def parse_file(self, file: File):
+        """Parse a single file and add the nodes to the graph."""
+        if not file.name.endswith(".py"):
+            return
+        parsed_ast = self.parse_py_to_ast(file.raw)
+        self.visitor.generic_visit(parsed_ast)
+        # self.build_graph(file.name)
+        self.create_graph()
+
+    def build_graph(self, filename: str):
+        """Add the parsed nodes from the visitor to the graph."""
+        # node_types = {
+        #     "interactive": self.visitor.interactives,
+        #     "expression": self.visitor.expressions,
+        #     "function": self.visitor.functions,
+        #     "asyncfunction": self.visitor.asyncfunctions,
+        #     "class": self.visitor.classes,
+        #     "import": self.visitor.imports,
+        # }
+
+        node_types = self.visitor.getNodeTypes()
+        Log.pprint(node_types)
+
+        for node_type, nodes in node_types.items():
+            for node in nodes:
+                node_label = (
+                    str(node)
+                    if node_type in ["function", "class", "import"]
+                    else node_type
+                )
+                self.create_node(
+                    graph=self.graph,
+                    node_id=id(str(node)),
+                    node_type=node_type,
+                    node_label=node_label,
+                    node_parent_id=id(self.current_parent),
+                    filename=filename,
+                )
+
+    def link_imports(self, file_nodes: dict):
+        """Link imports in one file to the corresponding class/function in another file."""
+        Log.pprint("####################  LINKING  ########################")
+
+        for filename, imports in file_nodes.items():
+            Log.info(f"Checking imports in {filename}")
+            for import_node in imports:
+                imported_module_name = str(import_node)
+
+                # Check if any file matches the imported module name
+                for other_filename, other_imports in file_nodes.items():
+                    if other_filename != filename and other_filename.endswith(
+                        f"{imported_module_name}.py"
+                    ):
+                        Log.info(f"Found {imported_module_name} in {other_filename}")
+                        # Create an edge between the import in `filename`
+                        # and the corresponding module in `other_filename`
+
+                        d: dict
+                        for n, d in self.graph.nodes(data=True):
+                            import_node_id = []
+                            other_node_id = []
+                            node_filename = d.get("filename")
+                            if (
+                                node_filename
+                                and node_filename == filename
+                                and d["label"].startswith(imported_module_name)
+                            ):
+                                import_node_id.append(n)
+                                break
+                            elif node_filename == other_filename:
+                                other_node_id.append(n)
+
+                        if import_node_id and other_node_id:
+                            Log.info(
+                                f"Adding edge between {imported_module_name} in {filename} and {other_filename}"
+                            )
+                            self.graph.add_edge(import_node_id[0], other_node_id[0])
+
+    # def parse(self, source: Directory) -> DiGraph:
+    #     """Parse the source code to a graph.
+
+    #     Parameters:
+    #     -----------
+    #     source: Directory
+    #         The source code data to parse.
+
+    #     Returns:
+    #     --------
+    #     DiGraph
+    #         The parsed graph.
+    #     """
+    #     # Set the current parent to the source name
+    #     self.current_parent = id(source.name)
+
+    #     # Add the source name to the module list
+    #     self.module_list.append(source.name)
+
+    #     # Parse the Python code to AST
+    #     file_nodes = {}
+    #     for item in source.source:
+    #         if isinstance(item, File):
+    #             self.parse_file(item)
+    #             file_nodes[item.name] = (
+    #                 self.visitor.imports
+    #             )  # Store the imports for later linking
+    #         elif isinstance(item, Folder):
+    #             self.parse_folder(item, file_nodes)
+
+    #         parsed_ast = self.parse_py_to_ast(source.source[0].raw)
+    #         self.visitor.generic_visit(parsed_ast)
+
+    #     return self.create_graph()
+
+    def parse_py_to_ast(self, python_code: str) -> ast.AST:
         return ast.parse(python_code)
 
     def create_graph(self) -> DiGraph:
         try:
             # Define types and corresponding attributes
-            node_types = {
-                "interactive": self.visitor.interactives,
-                "expression": self.visitor.expressions,
-                "function": self.visitor.functions,
-                "asyncfunction": self.visitor.asyncfunctions,
-                "class": self.visitor.classes,
-                "return": self.visitor.returns,
-                "delete": self.visitor.deletes,
-                "assign": self.visitor.assigns,
-                "typealias": self.visitor.typealiases,
-                "augassign": self.visitor.augassigns,
-                "annassign": self.visitor.annassigns,
-                "forloop": self.visitor.forloops,
-                "asyncforloop": self.visitor.asyncforloops,
-                "whileloop": self.visitor.whileloops,
-                "if": self.visitor.ifs,
-                "with": self.visitor.withs,
-                "asyncwith": self.visitor.asyncwiths,
-                "match": self.visitor.matches,
-                "raise": self.visitor.raises,
-                "try": self.visitor.trys,
-                "trystar": self.visitor.trystars,
-                "assert": self.visitor.asserts,
-                "import": self.visitor.imports,
-                "importfrom": self.visitor.importfroms,
-                "global": self.visitor.globals,
-                "nonlocal": self.visitor.nonlocals,
-                "expr": self.visitor.exprs,
-                "pass": self.visitor.passes,
-                "break": self.visitor.breaks,
-                "continue": self.visitor.continues,
-                "boolop": self.visitor.boolops,
-                "namedexpr": self.visitor.namedexprs,
-                "binop": self.visitor.binops,
-                "unaryop": self.visitor.uarynops,
-                "lambda": self.visitor.lambdas,
-                "ifexp": self.visitor.ifexps,
-                "dict": self.visitor.dicts,
-                "set": self.visitor.sets,
-                "listcomp": self.visitor.listcomps,
-                "setcomp": self.visitor.setcomps,
-                "dictcomp": self.visitor.dictcomps,
-                "generatorexp": self.visitor.generatorexps,
-                "await": self.visitor.awaits,
-                "yield": self.visitor.yields,
-                "yieldfrom": self.visitor.yieldfroms,
-                "comparison": self.visitor.comparisons,
-                "call": self.visitor.calls,
-                "formattedvalue": self.visitor.formattedvalues,
-                "joinedstr": self.visitor.joinedstrs,
-                "constant": self.visitor.constats,
-                "attribute": self.visitor.attribuetes,
-                "subscript": self.visitor.subscripts,
-                "starred": self.visitor.starreds,
-                "name": self.visitor.names,
-                "list": self.visitor.lists,
-                "tuple": self.visitor.tuples,
-                "slice": self.visitor.slices,
-                "load": self.visitor.loads,
-                "store": self.visitor.stores,
-                "del": self.visitor.dels,
-                "and": self.visitor.ands,
-                "or": self.visitor.ors,
-                "add": self.visitor.adds,
-                "sub": self.visitor.subs,
-                "mult": self.visitor.mults,
-                "matmult": self.visitor.matmults,
-                "div": self.visitor.divs,
-                "mod": self.visitor.mods,
-                "pow": self.visitor.pows,
-                "lshift": self.visitor.lshifts,
-                "rshift": self.visitor.rshifts,
-                "bitor": self.visitor.bitors,
-                "bitxor": self.visitor.bitxors,
-                "bitand": self.visitor.bitands,
-                "floordiv": self.visitor.floordivs,
-                "invert": self.visitor.inverts,
-                "not": self.visitor.nots,
-                "uadd": self.visitor.uaddss,
-                "usub": self.visitor.usubss,
-                "eq": self.visitor.eqss,
-                "not_eq": self.visitor.not_eqss,
-                "lt": self.visitor.lts,
-                "lte": self.visitor.ltes,
-                "gt": self.visitor.gts,
-                "gte": self.visitor.gtes,
-                "is": self.visitor.iss,
-                "isnot": self.visitor.isnots,
-                "in": self.visitor.ins,
-                "notin": self.visitor.notins,
-                "excepthandler": self.visitor.excepthandlers,
-                "matchvalue": self.visitor.matchvalues,
-                "matchsingleton": self.visitor.matchsingleton,
-                "matchsequence": self.visitor.matchsequences,
-                "matchmapping": self.visitor.matchmappings,
-                "matchclass": self.visitor.matchclasses,
-                "matchstar": self.visitor.matchstars,
-                "matchas": self.visitor.matchases,
-                "machor": self.visitor.machors,
-                "typeignore": self.visitor.typeignores,
-                "typevar": self.visitor.typevars,
-                "paramspec": self.visitor.paramspecs,
-                "typevartuple": self.visitor.typevartuples,
-                "relation": self.visitor.relations,
-                "variables": self.visitor.variables,
-            }
+            node_types = self.visitor.getNodeTypes()
 
             # Add nodes and edges to the graph
             graph = DiGraph()
@@ -172,6 +196,7 @@ class ParserService:
                         node_type=node_type,
                         node_label=node_label,
                         node_parent_id=id(self.current_parent),
+                        filename=node,
                     )
                     # add the edge to the parent
                     graph.add_edge(id(self.current_parent), id(str(node)))
@@ -187,17 +212,20 @@ class ParserService:
         node_id: int,
         node_type: str,
         node_label: str,
-        node_parent_id: int | None,
+        node_parent_id: int,
+        filename: str,
     ):
         # Check params
         if not node_label or node_label == "":
             node_label = f"{node_type} (u)"
 
         # Add the node
+        label = f"{node_label}"  #: {node_type}"
         graph.add_node(
             node_id,
+            filename=filename,
             type=node_type,
-            label=f"{node_label}: {node_type}",
+            label=label,
             parent=node_parent_id,
         )
         # Add the edge

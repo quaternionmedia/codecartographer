@@ -6,23 +6,38 @@
 # the folders will have names and a list of files and/or folders
 
 from pydantic import BaseModel
-from typing import List, Union
+from typing import List
 
 
 class File(BaseModel):
-    name: str
-    size: int
-    raw: str
+    """The data of a file. [name, size, raw]"""
+
+    url: str = ""
+    name: str = ""
+    size: int = 0
+    raw: str = ""
 
 
 class Folder(BaseModel):
-    name: str
-    size: int
-    files: list[File]
-    folders: list["Folder"]
+    """The data of a file. [name, size, files, folders]"""
+
+    name: str = ""
+    size: int = 0
+    files: List[File] = []
+    folders: List["Folder"] = []
 
 
-class SourceData(BaseModel):
-    name: str
-    size: int
-    source: List[Union[File, Folder]]
+class RepoInfo(BaseModel):
+    """The data of a file. [owner, name, url]"""
+
+    owner: str = ""
+    name: str = ""
+    url: str = ""
+
+
+class Directory(BaseModel):
+    """The data of a file. [info, size, root (files, folders)]"""
+
+    info: RepoInfo
+    size: int = 0
+    root: Folder
