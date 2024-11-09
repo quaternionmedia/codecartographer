@@ -42,6 +42,10 @@ export class InputState {
       class: 'url_btn',
       innerText: 'Submit',
       onclick: () => {
+        // Ensure the input's latest value is processed
+        const inputElement = document.querySelector('.url_input');
+        this.url = inputElement ? inputElement.value : this.url; // Use .value to get input text
+        this.processInput(this.url);
         this.processInput(this.url);
       },
     });

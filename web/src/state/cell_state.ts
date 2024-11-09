@@ -29,8 +29,4 @@ export class CellState implements ICellState {
   public redraw: () => void = () => {
     m.redraw();
   };
-
-  constructor(inputRepoUrl: string) {
-    this.inputRepoUrl = inputRepoUrl;
-  }
 }

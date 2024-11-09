@@ -13,7 +13,7 @@ var debugDefaultUrl = 'https://github.com/quaternionmedia/codecartographer';
 
 // Initialize the app
 const App = {
-  initial: new CellState(debugDefaultUrl),
+  initial: new CellState(),
   services: [],
   view: (cell: ICell) => [CodeCarto(cell)],
 };
