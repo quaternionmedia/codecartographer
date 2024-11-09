@@ -1,7 +1,7 @@
 import m from 'mithril';
 
-import './url_input.css';
 import { displayError } from '../../../utility';
+import './url_input.css';
 
 export class InputState {
   onUrlInput: (url: string) => void;
@@ -45,6 +45,22 @@ export class InputState {
         this.processInput(this.url);
       },
     });
+
+  // create a slider switch whose text changes based on checked state
+  mode = () =>
+    m('div', { class: 'mode_slide_switch' }, [
+      m('label.switch', [
+        m('input.mode', {
+          type: 'checkbox',
+          onclick: (e: any) => {
+            e.target.checked
+              ? (document.querySelector('.switch_text')!.textContent = 'File')
+              : (document.querySelector('.switch_text')!.textContent = 'Code');
+          },
+        }),
+        m('span.slider.round', m('.switch_text', 'Code')),
+      ]),
+    ]);
 }
 
 const title = m('div.header', {
@@ -58,4 +74,10 @@ const message = m('div', {
 });
 
 export const UrlInput = (urlInput: InputState) =>
-  m('section.url', [title, urlInput.input(), urlInput.submit(), message]);
+  m('section.url', [
+    title,
+    urlInput.input(),
+    urlInput.submit(),
+    message,
+    //urlInput.mode(),
+  ]);

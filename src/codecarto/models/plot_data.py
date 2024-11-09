@@ -19,6 +19,7 @@ class PlotOptions(BaseModel):
     palette_id: str = "0"
     layout: str = "Spring"
     type: str = "d3"
+    parse_by: str = "code"
 
 
 class Palette(BaseModel):

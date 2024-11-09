@@ -27,11 +27,11 @@ async def get_raw_from_url(url: str) -> str:
 async def get_raw_from_repo(url: str) -> Directory:
     """Read raw data from a repo URL"""
     # Fetch the repo content and reduce the structure
-    owner, repo = get_owner_repo_from_url(url)
-    content = await get_repo_content(url, owner, repo, isFirst=True)
-    data = await build_content_tree(content, owner, repo)
-    root = await reduce_repo_structure(data)
-    root.name = f"{owner}/{repo}"
+    owner, repo_name = get_owner_repo_from_url(url)
+    content = await get_repo_content(url, owner, repo_name, isFirst=True)
+    tree = await build_content_tree(content, owner, repo_name)
+    root = await reduce_repo_structure(tree)
+    root.name = f"{owner}/{repo_name}"
 
     # Calculate the total size of the repo files
     size = sum(file.size for file in root.files)
@@ -40,7 +40,7 @@ async def get_raw_from_repo(url: str) -> Directory:
     size += sum(folder.size for folder in root.folders)
 
     return Directory(
-        info=RepoInfo(owner=owner, name=repo, url=url),
+        info=RepoInfo(owner=owner, name=repo_name, url=url),
         size=size,
         root=root,
     )

@@ -31,7 +31,7 @@ class Log:
 
 
 def generate_return(
-    status: int = 200, message: str = "", results: str | dict | list = {}
+    status: int = 200, message: str = "Success", results: str | dict | list = {}
 ):
     return {
         "status": status,

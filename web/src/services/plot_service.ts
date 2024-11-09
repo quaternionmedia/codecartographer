@@ -4,18 +4,20 @@ import { RawFile, Directory } from '../components/models/source';
 export class PlotService {
   /** Plot the content of the repo URL. */
   public static async plotRepoWhole(
-    url: string,
+    directory: Directory,
     plotterUrl: string
   ): Promise<any> {
-    const repo_url = `/repo?url=${encodeURIComponent(url)}`;
+    const mode = document.querySelector('.switch_text')!.textContent;
     const body = {
+      directory: directory,
       options: {
-        palette_id: 0,
+        palette_id: '0',
         layout: 'Spring',
         type: 'd3',
+        parse_by: mode,
       },
     };
-    const data = await this.sendPlotRequest(plotterUrl, repo_url, body);
+    const data = await this.sendPlotRequest(plotterUrl, `/whole_repo`, body);
     if (typeof data === 'string') {
       console.log('Error plotGithubUrl');
       return null;
@@ -31,7 +33,7 @@ export class PlotService {
     const repo_url = `/url?url=${encodeURIComponent(url)}`;
     const body = {
       options: {
-        palette_id: 0,
+        palette_id: '0',
         layout: 'Spring',
         type: 'd3',
       },

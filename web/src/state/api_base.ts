@@ -5,6 +5,7 @@ export class API {
   private _palette: string = 'palette';
   private _plotter: string = 'plotter';
   private _polygraph: string = 'polygraph';
+  private _repoReader: string = 'repo';
 
   constructor(base: string) {
     this._base = base;
@@ -28,5 +29,9 @@ export class API {
 
   get polygraph(): string {
     return `${this._base}/${this._polygraph}`;
+  }
+
+  get repoReader(): string {
+    return `${this._base}/${this._repoReader}`;
   }
 }

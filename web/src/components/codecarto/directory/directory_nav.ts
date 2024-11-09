@@ -36,13 +36,13 @@ export class DirectoryNavController {
 export class DirectoryNavState {
   public controller: DirectoryNavController;
   private onUrlClicked: (url: string) => void;
-  private onWholeRepoClicked: (url: string) => void;
+  private onWholeRepoClicked: () => void;
   private updateCell: (upload: DirectoryNavState) => void;
 
   constructor(
     controller: DirectoryNavController,
     onUrlFileClicked: (url: string) => void,
-    onWholeRepoClicked: (url: string) => void,
+    onWholeRepoClicked: () => void,
     updateCell: (upload: DirectoryNavState) => void
   ) {
     this.controller = controller;
@@ -60,10 +60,7 @@ export class DirectoryNavState {
   };
 
   public wholeRepoClicked = () => {
-    const inputUrl = this.controller.content.info.url;
-    if (this.checkUrl(inputUrl)) {
-      this.onWholeRepoClicked(inputUrl);
-    }
+    this.onWholeRepoClicked();
   };
 
   private checkUrl(url: string): boolean {

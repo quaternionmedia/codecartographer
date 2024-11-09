@@ -38,7 +38,7 @@ export const CodeCarto = (cell: ICell) => {
   async function onUrlInput(url: string) {
     appState.clear();
     appState.updateRepoContent(
-      await RepoService.getGithubRepo(url, appState.api.parser)
+      await RepoService.getGithubRepo(url, appState.api.repoReader)
     );
   }
 
@@ -47,9 +47,14 @@ export const CodeCarto = (cell: ICell) => {
     handlePlotData(await PlotService.plotUrlFile(url, appState.api.plotter));
   }
 
-  async function onWholeRepoClicked(url: string) {
+  async function onWholeRepoClicked() {
     appState.clear();
-    handlePlotData(await PlotService.plotRepoWhole(url, appState.api.plotter));
+    handlePlotData(
+      await PlotService.plotRepoWhole(
+        appState.repo.content,
+        appState.api.plotter
+      )
+    );
   }
 
   async function onUploadedFileClick(file: RawFile) {
@@ -83,7 +88,7 @@ export const CodeCarto = (cell: ICell) => {
 const RepoNav = (
   appState: StateController,
   fileClicked: (url: string) => void,
-  wholeRepoClicked: (url: string) => void
+  wholeRepoClicked: () => void
 ) => {
   function handleRepoUpdated(directory: DirectoryNavState) {
     appState.update({
