@@ -2,7 +2,8 @@ import time
 from fastapi import APIRouter
 from pprint import pprint
 from database.database import DatabaseContext
-from models.demo_data import DemoGraph
+
+# from models.demo_data import DemoGraph
 from models.plot_data import DefaultPalette, PlotOptions
 from models.source_data import File, Folder, Directory, RepoInfo
 from notebooks.notebook import run_notebook
@@ -33,8 +34,11 @@ async def plot_whole_repo(url: str, options: PlotOptions):
             return proc_error("read_github_repo", "Could not read GitHub repo")
 
         # Initialize the parser and parse the entire repository
+        from services.ASTs.python_ast_again import PythonAST as PythonAST2
+
         parser = ParserService(PythonAST())
-        graph = parser.parse(repo)
+        parser2 = PythonAST2()
+        graph = parser2.parse(repo.root)
 
         Log.pprint("######################  GRAPH  ######################")
         Log.pprint(graph.nodes(data=True))
@@ -110,8 +114,11 @@ async def plot_url(url: str, options: PlotOptions) -> dict:
         info = RepoInfo(owner="local", name=file.name, url="NA")
         folder = Folder(name="root", size=0, files=[file], folders=[])
         source = Directory(info=info, size=file.size, root=folder)
+        from services.ASTs.python_ast_again import PythonAST as PythonAST2
+
         parser = ParserService(PythonAST())
-        graph = parser.parse(source)
+        parser2 = PythonAST2()
+        graph = parser2.parse(folder)
 
         Log.pprint("######################  GRAPH  ######################")
         datass = graph.nodes(data=True)
@@ -181,20 +188,20 @@ async def plot_db(graph_id: str, options: PlotOptions) -> dict:
         )
 
 
-@PlotterRouter.post("/demo")
-async def plot_demo(options: PlotOptions) -> dict:
+# @PlotterRouter.post("/demo")
+# async def plot_demo(options: PlotOptions) -> dict:
 
-    try:
-        graph = DemoGraph
-        palette = DefaultPalette
-        results = PlotterService.plot_graph(
-            graph=graph, palette=palette, options=options
-        )
-        return generate_return(message="plot_demo - Success", results=results)
-    except Exception as e:
-        return proc_exception(
-            "plot_db",
-            "Error generating plot",
-            {"": ""},
-            e,
-        )
+#     try:
+#         graph = DemoGraph
+#         palette = DefaultPalette
+#         results = PlotterService.plot_graph(
+#             graph=graph, palette=palette, options=options
+#         )
+#         return generate_return(message="plot_demo - Success", results=results)
+#     except Exception as e:
+#         return proc_exception(
+#             "plot_db",
+#             "Error generating plot",
+#             {"": ""},
+#             e,
+#         )

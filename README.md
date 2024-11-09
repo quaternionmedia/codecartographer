@@ -90,6 +90,7 @@ Once Docker containers are up, run the site by going to the codecartographer/web
 
 ```
 cd web
+npm install (only the first time)
 npm run dev
 ```
 
