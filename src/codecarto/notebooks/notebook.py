@@ -1,20 +1,11 @@
-import gravis as gv
 import nbformat
-from nbconvert.preprocessors import ExecutePreprocessor
+import gravis as gv
 import networkx as nx
+from nbconvert.preprocessors import ExecutePreprocessor
+
 from models.graph_data import GraphBase
-from models.plot_data import DefaultPalette, PlotOptions
-from services.plotter_service import PlotterService
 from services.position_service import Positions
 from util.exceptions import NotebookError
-
-import igraph as ig
-
-graph = nx.DiGraph()
-graph.add_node(1, label="root")
-g = ig.Graph()
-g.from_networkx(graph)
-g.vs.attributes()
 
 
 async def run_notebook(
@@ -53,9 +44,6 @@ async def run_notebook(
     graphBase.graph = ntxGraph
     root = "notebooks/"
 
-    # Set and scale up the postiions
-    plot = PlotterService()
-    plot.plot_graph(graphBase, DefaultPalette, PlotOptions())
     pos = Positions().get_node_positions(
         graph=graph, layout_name=f"{title.lower()}_layout"
     )
