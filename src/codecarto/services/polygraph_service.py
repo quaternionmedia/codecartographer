@@ -308,8 +308,8 @@ def gJGF_to_nx(graph_name: str, graph_data: dict) -> tuple:
     if not graph:
         raise PolyGraphError(
             "gJGF_to_nxGraph",
-            "Graph not provided",
             {"graph_name": graph_name, "graph": graph},
+            "Graph not provided",
         )
     elif graph.number_of_nodes() == 0:
         raise PolyGraphError(

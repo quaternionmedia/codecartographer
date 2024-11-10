@@ -14,7 +14,8 @@ export class UploadNavState {
   onWholeSourceClick: () => void;
   updateCell: (upload: UploadNavState) => void;
 
-  // TODO: Remove the navContent, selectedFile, and files now that they are using the controller directly
+  // TODO: Remove the this.navContent, this.selectedFile, and this.files
+  // now that we could use the controller directly
   constructor(
     controller: DirectoryNavController,
     onFileClick: (file: RawFile) => void,
