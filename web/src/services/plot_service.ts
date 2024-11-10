@@ -7,14 +7,14 @@ export class PlotService {
     directory: Directory,
     plotterUrl: string
   ): Promise<any> {
-    const mode = document.querySelector('.switch_text')!.textContent;
+    //const mode = document.querySelector('.switch_text')!.textContent;
     const body = {
       directory: directory,
       options: {
         palette_id: '0',
         layout: 'Spring',
         type: 'd3',
-        parse_by: mode,
+        //parse_by: mode,
       },
     };
     const data = await this.sendPlotRequest(plotterUrl, `/whole_repo`, body);
