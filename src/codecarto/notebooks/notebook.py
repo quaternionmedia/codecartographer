@@ -8,6 +8,14 @@ from services.plotter_service import PlotterService
 from services.position_service import Positions
 from util.exceptions import NotebookError
 
+import igraph as ig
+
+graph = nx.DiGraph()
+graph.add_node(1, label="root")
+g = ig.Graph()
+g.from_networkx(graph)
+g.vs.attributes()
+
 
 async def run_notebook(
     graph_name: str, graph: nx.DiGraph, title: str = "Spectral", type: str = "d3"

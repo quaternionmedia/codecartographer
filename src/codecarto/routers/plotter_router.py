@@ -123,13 +123,13 @@ async def get_plot(file: File, options: PlotOptions) -> dict:
     # really this should parse from parser service
     # save it to the database and return an id
     # and then plot from plotter service using that id
-    from services.ASTs.python_ast_again import PythonAST as PythonAST2
+    from services.parsers.ASTs.python_custom_ast import PythonCustomAST
 
     info = RepoInfo(owner="local", name=file.name, url="NA")
     folder = Folder(name="root", size=0, files=[file], folders=[])
     source = Directory(info=info, size=file.size, root=folder)
 
-    parser2 = PythonAST2()
+    parser2 = PythonCustomAST()
     graph = parser2.parse(folder)
 
     # graphbase = GraphBase(graph)

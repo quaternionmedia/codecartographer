@@ -4,7 +4,7 @@ from networkx import DiGraph
 from models.graph_data import Node, Edge, GraphBuilder
 from models.source_data import Directory, Folder, File
 from random import randint
-from services.ASTs.base_ast import BaseASTVisitor
+from services.parsers.ASTs.base_ast import BaseASTVisitor
 from util.utilities import Log
 
 

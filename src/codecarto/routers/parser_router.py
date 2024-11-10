@@ -38,12 +38,12 @@ async def parse_raw(raw: str) -> dict:
 
 
 def parse(data: Directory) -> dict:
-    from services.ASTs.python_ast import PythonAST
+    from services.parsers.ASTs.python_list_ast import PythonListAST
     from services.parser_service import ParserService
     from services.polygraph_service import graph_to_json_data
 
     try:
-        parser_service = ParserService(visitor=PythonAST())
+        parser_service = ParserService(visitor=PythonListAST())
         graph = parser_service.parse(data)
         result = graph_to_json_data(graph)
 
