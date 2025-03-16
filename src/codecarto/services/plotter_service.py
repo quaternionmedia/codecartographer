@@ -1,4 +1,5 @@
 import networkx as nx
+
 from models.graph_data import GraphBase
 from models.plot_data import PlotOptions, Palette, RawData
 from notebooks.notebook import run_notebook
@@ -9,15 +10,23 @@ from util.utilities import Log
 class PlotterService:
 
     @staticmethod
-    async def plot_nx_graph(graph_name: str, graph: nx.DiGraph, options: PlotOptions):
-        Log.pprint("######################  GRAPH  ######################")
+    async def plot_nx_graph(
+        graph_name: str,
+        graph: nx.DiGraph,
+        options: PlotOptions,
+        isDependencyPlot: bool = False,
+    ):
+        Log.pprint("######################  NODES  ######################")
         Log.pprint(graph.nodes(data=True))
+        Log.pprint("######################  EDGES  ######################")
+        Log.pprint(graph.edges(data=True))
 
         return await run_notebook(
             graph_name=graph_name,
             graph=apply_styles(graph),
             title=options.layout,
             type=options.type,
+            isDependencyPlot=isDependencyPlot,
         )
 
     @staticmethod

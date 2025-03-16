@@ -26,6 +26,22 @@ async def plot_whole_repo(directory: Directory, options: PlotOptions):
         )
 
 
+@PlotterRouter.post("/whole_repo_deps")
+async def plot_whole_repo_deps(directory: Directory, options: PlotOptions):
+    try:
+        graph_name = directory.info.name
+        graph = await ParserService.parse_dependancy(directory)
+        results = await PlotterService.plot_nx_graph(graph_name, graph, options, True)
+        return generate_return(results=results)
+    except Exception as exc:
+        proc_exception(
+            "plot_whole_repo",
+            "Error when plotting GitHub repo",
+            {"directory": directory},
+            exc,
+        )
+
+
 @PlotterRouter.post("/folder")
 async def plot_folder(folder: Folder, options: PlotOptions) -> dict:
     try:

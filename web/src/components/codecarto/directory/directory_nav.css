@@ -113,11 +113,12 @@
 }
 
 /* ###########  PLOT LINKS  ######### */
-.directory_nav_plot_whole_repo_btn {
+.plot_whole_repo_btn {
+  width: calc(100% - 11px);
   margin-top: 1em;
 }
-.directory_nav_plot_whole_repo_btn:hover {
-  background-color: var(--cb-file-hover);
+.plot_whole_repo_deps_btn {
+  width: calc(100% - 11px);
 }
 
 /* ###########  UNUSED  ######### */

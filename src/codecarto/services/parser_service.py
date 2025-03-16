@@ -3,7 +3,8 @@ import networkx as nx
 from models.source_data import Directory, Folder, File
 from services.github_service import get_raw_from_url
 from services.parsers.ASTs.python_custom_ast import PythonCustomAST
-from services.parsers.directory_parser import DirectoryParser
+from services.parsers.python.directory_parser import DirectoryParser
+from services.parsers.python.dependency_parser import DependencyParser
 
 
 class ParserService:
@@ -30,5 +31,12 @@ class ParserService:
     async def parse_directory(directory: Directory) -> nx.DiGraph:
         dir_parser = DirectoryParser()
         graph = dir_parser.parse(directory)
+        graph.name = directory.info.name
+        return graph
+
+    @staticmethod
+    async def parse_dependancy(directory: Directory) -> nx.DiGraph:
+        dep_parser = DependencyParser()
+        graph = dep_parser.parse(directory)
         graph.name = directory.info.name
         return graph
