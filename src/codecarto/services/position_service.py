@@ -1,6 +1,7 @@
-from models.plot_data import LayoutType
 import networkx as nx
 from typing import Callable
+
+from models.plot_data import LayoutType
 
 
 ########################   OLD CODE   ########################
@@ -49,6 +50,7 @@ class Positions:
         self.add_layout("random_layout", nx.layout.random_layout, ["graph", "seed"])
         self.add_layout("spectral_layout", nx.layout.spectral_layout, ["graph"])
         self.add_layout("shell_layout", nx.layout.shell_layout, ["graph", "nshells"])
+        self.add_layout("kamada_kawai_layout", nx.layout.kamada_kawai_layout, ["graph"])
         # self.add_layout("planar_layout", nx.layout.planar_layout, ["graph"])
 
     def add_custom_layouts(self) -> None:
@@ -142,12 +144,14 @@ class Positions:
         # get the layout function
         layout_func: Callable
         layout_params: list
+
         for layout in self._layouts:
             if layout["name"] == name:
                 layout_func = layout["func"]
                 layout_params = layout["params"]
                 break
         layout_kwargs: dict = {}
+
         for param in layout_params:
             if param == "seed" and seed != -1:
                 # Set the seed if it is not -1
@@ -170,9 +174,10 @@ class Positions:
             elif param != "G":
                 # TODO Handle other parameters here
                 pass
+
         return layout_func(G=_graph, **layout_kwargs)
 
-    def get_node_positions(self, graph: nx.DiGraph, layout_name: str) -> dict:
+    def get_node_positions(self, graph: nx.DiGraph, layout_name: str):
         """Gets the node positions for a given layout.
 
         Parameters:
@@ -196,6 +201,9 @@ class Positions:
 
                 seed = random.randint(0, 1000)
                 layout_kwargs["seed"] = seed
+            elif param == "prog" and layout_name == "dot_layout":
+                # Set the program to use for graphviz
+                layout_kwargs["prog"] = "dot"
             elif param == "nshells" and layout_name == "shell_layout":
                 # Group nodes by parent
                 grouped_nodes: dict[str, list] = {}

@@ -57,6 +57,16 @@ export const CodeCarto = (cell: ICell) => {
     );
   }
 
+  async function onWholeRepoDepsClicked() {
+    appState.clear();
+    handlePlotData(
+      await PlotService.plotRepoWholeDeps(
+        appState.repo.content,
+        appState.api.plotter
+      )
+    );
+  }
+
   async function onUploadedFileClick(file: RawFile) {
     appState.clear();
     handlePlotData(await PlotService.plotFile(file, appState.api.plotter));
@@ -79,7 +89,12 @@ export const CodeCarto = (cell: ICell) => {
   ]);
 
   return [
-    RepoNav(appState, onUrlFileClicked, onWholeRepoClicked),
+    RepoNav(
+      appState,
+      onUrlFileClicked,
+      onWholeRepoClicked,
+      onWholeRepoDepsClicked
+    ),
     UploadFileNav(appState, onUploadedFileClick, onWholeSourceClicked),
     codeCarto,
   ];
@@ -88,7 +103,8 @@ export const CodeCarto = (cell: ICell) => {
 const RepoNav = (
   appState: StateController,
   fileClicked: (url: string) => void,
-  wholeRepoClicked: () => void
+  wholeRepoClicked: () => void,
+  wholeRepoDepsClicked: () => void
 ) => {
   function handleRepoUpdated(directory: DirectoryNavState) {
     appState.update({
@@ -107,6 +123,7 @@ const RepoNav = (
     appState.repo,
     fileClicked,
     wholeRepoClicked,
+    wholeRepoDepsClicked,
     handleRepoUpdated
   );
 

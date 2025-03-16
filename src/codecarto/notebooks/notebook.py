@@ -9,7 +9,11 @@ from util.exceptions import NotebookError
 
 
 async def run_notebook(
-    graph_name: str, graph: nx.DiGraph, title: str = "Spectral", type: str = "d3"
+    graph_name: str,
+    graph: nx.DiGraph,
+    title: str = "Spectral",
+    type: str = "d3",
+    isDependencyPlot: bool = False,
 ) -> list:
     """Extract the outputs from a notebook.
 
@@ -44,11 +48,12 @@ async def run_notebook(
     graphBase.graph = ntxGraph
     root = "notebooks/"
 
-    pos = Positions().get_node_positions(
-        graph=graph, layout_name=f"{title.lower()}_layout"
-    )
+    layout = f"{title.lower()}_layout"
+    pos = Positions().get_node_positions(graph=graph, layout_name=layout)
     spread = 100
     if title == "Spectral":
+        spread = 500
+    elif layout == "kamada_kawai_layout":
         spread = 500
     for id, (x, y) in pos.items():
         node = graph.nodes[id]
@@ -57,10 +62,18 @@ async def run_notebook(
 
     # Scale nodes based on edges
     for node, data in graph.nodes(data=True):
+        # Calculate the number of edges
+        outEdgesCount = len(graph.out_edges(node)) * 10
+        inEdgesCount = len(graph.in_edges(node)) * 10
         # Set size based on the number of outgoing edges
-        data["size"] = (
-            1 + (len(graph.out_edges(node)) * 10) + (len(graph.in_edges(node)) * 10)
-        )
+        data["size"] = 1 + outEdgesCount + inEdgesCount
+
+        # Set color based on type for dependency plot
+        if isDependencyPlot:
+            if data.get("type") == "external":
+                data["color"] = "red"  # External dependencies
+            else:
+                data["color"] = "blue"  # Internal project files
 
     # Convert the graph to gJGF for the notebook
     gJFG = gv.convert.any_to_gjgf(graph)
@@ -69,10 +82,8 @@ async def run_notebook(
     nb_path = f"{root}gravis_{type}.ipynb"
     with open(nb_path, "r", encoding="utf-8") as f:
         nb = nbformat.read(f, as_version=4)
-
         # Create a new code cell with the graph_data (g)
         param_cell = nbformat.v4.new_code_cell(f"g = {gJFG}")
-
         # Insert the cell at the beginning of the notebook
         nb.cells.insert(0, param_cell)
 

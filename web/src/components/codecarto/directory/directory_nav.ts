@@ -37,17 +37,20 @@ export class DirectoryNavState {
   public controller: DirectoryNavController;
   private onUrlClicked: (url: string) => void;
   private onWholeRepoClicked: () => void;
+  private onWholeRepoDepsClicked: () => void;
   private updateCell: (upload: DirectoryNavState) => void;
 
   constructor(
     controller: DirectoryNavController,
     onUrlFileClicked: (url: string) => void,
     onWholeRepoClicked: () => void,
+    onWholeRepoDepsClicked: () => void,
     updateCell: (upload: DirectoryNavState) => void
   ) {
     this.controller = controller;
     this.onUrlClicked = onUrlFileClicked;
     this.onWholeRepoClicked = onWholeRepoClicked;
+    this.onWholeRepoDepsClicked = onWholeRepoDepsClicked;
     this.updateCell = updateCell;
   }
 
@@ -61,6 +64,10 @@ export class DirectoryNavState {
 
   public wholeRepoClicked = () => {
     this.onWholeRepoClicked();
+  };
+
+  public wholeRepoDepsClicked = () => {
+    this.onWholeRepoDepsClicked();
   };
 
   private checkUrl(url: string): boolean {
@@ -92,10 +99,24 @@ export const DirectoryNav = (state: DirectoryNavState) => {
           state.wholeRepoClicked();
         },
       },
-      'Plot Whole Repo'
+      'Plot Directory Tree'
     );
 
-    state.controller.component = [m('div.directory_tree', tree), plotAll];
+    const plotAllDeps = m(
+      'button.plot_whole_repo_deps_btn',
+      {
+        onclick: function () {
+          state.wholeRepoDepsClicked();
+        },
+      },
+      'Plot Dependency Tree'
+    );
+
+    state.controller.component = [
+      m('div.directory_tree', tree),
+      plotAll,
+      plotAllDeps,
+    ];
   }
 
   return m('div.directory_nav', [state.controller.component]);

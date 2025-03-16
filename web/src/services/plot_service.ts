@@ -25,6 +25,33 @@ export class PlotService {
     return data;
   }
 
+  /** Plot the content of the repo URL. */
+  public static async plotRepoWholeDeps(
+    directory: Directory,
+    plotterUrl: string
+  ): Promise<any> {
+    //const mode = document.querySelector('.switch_text')!.textContent;
+    const body = {
+      directory: directory,
+      options: {
+        palette_id: '0',
+        layout: 'Kamada_Kawai',
+        type: 'd3',
+        //parse_by: mode,
+      },
+    };
+    const data = await this.sendPlotRequest(
+      plotterUrl,
+      `/whole_repo_deps`,
+      body
+    );
+    if (typeof data === 'string') {
+      console.log('Error plotGithubUrl');
+      return null;
+    }
+    return data;
+  }
+
   /** Plot the content of the selected URL. */
   public static async plotUrlFile(
     url: string,
