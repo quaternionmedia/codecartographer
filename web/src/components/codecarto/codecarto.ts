@@ -26,7 +26,7 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
   // Control panel local state - persists across redraws
   let panelState: ControlPanelState = {
     isOpen: false,
-    activeTab: 'code',
+    activeTab: 'source',
     codeSourceMode: 'upload',
     repoUrl: '',
     currentTheme: 'terminal',
@@ -52,6 +52,7 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
       mode: 'ast',
       fileExtensions: ['.py'],
     },
+    selectedRenderer: 'd3',
   };
 
   // Helper to update panel state and trigger redraw
@@ -309,6 +310,26 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
           updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch (error) {
           updatePanelState({ isLoading: false, statusMessage: `Error parsing with ${newMode} mode` });
+        }
+      }
+    },
+
+    // Renderer change
+    onRendererChange: (renderer) => {
+      // Update local panel state for UI
+      updatePanelState({ selectedRenderer: renderer });
+
+      // Update global state
+      const currentCell = getCell();
+      currentCell.update({ selectedRenderer: renderer });
+
+      console.log('Renderer changed to:', renderer);
+
+      // Trigger re-render with new renderer if graph data exists
+      if (currentCell.state.graphData) {
+        const currentPlotActions = getCell().state.plot;
+        if (currentPlotActions && currentPlotActions.createGraphVnode) {
+          currentPlotActions.createGraphVnode();
         }
       }
     },

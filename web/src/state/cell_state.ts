@@ -3,7 +3,7 @@ import m from 'mithril';
 import { MeiosisCell } from 'meiosis-setup/types';
 import { DirectoryNavController } from '../components/codecarto/directory/directory_nav';
 import { ConfigManager, DebugManager } from './config_manager';
-import { GraphStylingOptions, ParserOptions } from './types';
+import { GraphStylingOptions, ParserOptions, GraphRendererType } from './types';
 import { GraphData } from '../features/graph';
 
 export interface ICell extends MeiosisCell<ICellState> {}
@@ -17,6 +17,7 @@ export interface ICellState {
   graphData: GraphData | null;
   graphStyling: GraphStylingOptions;
   parserOptions: ParserOptions;
+  selectedRenderer: GraphRendererType;
   inputRepoUrl: string;
   prompt: string;
   redraw: () => void;
@@ -50,6 +51,7 @@ export class CellState implements ICellState {
     mode: 'ast',
     fileExtensions: ['.py'],
   };
+  public selectedRenderer: GraphRendererType = 'd3';
   public inputRepoUrl: string = '';
   public prompt: string = '';
   public redraw: () => void = () => {

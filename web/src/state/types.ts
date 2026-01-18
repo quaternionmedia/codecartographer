@@ -89,12 +89,16 @@ export interface GraphStylingOptions {
   interactionProfile: string;  // Profile ID (default, cad, gaming, touch)
 }
 
+/** Graph renderer type */
+export type GraphRendererType = 'd3' | 'gravis' | 'notebook';
+
 /** Graph visualization state */
 export interface GraphState {
   content: m.Vnode[];
   isRendering: boolean;
   styling: GraphStylingOptions;
   parserOptions: ParserOptions;
+  selectedRenderer: GraphRendererType;
 }
 
 /** Complete application state */
@@ -159,4 +163,5 @@ export const DEFAULT_GRAPH_STATE: GraphState = {
     mode: 'ast',
     fileExtensions: ['.py'],
   },
+  selectedRenderer: 'd3',
 };

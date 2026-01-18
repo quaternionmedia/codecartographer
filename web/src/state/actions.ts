@@ -3,7 +3,8 @@ import { StateController } from '../state/state_controller';
 import { PlotService } from '../services/plot_service';
 import { RepoService } from '../features/repository';
 import { handleDemoData as getDemoData } from '../services/demo_service';
-import { GraphRenderer, GraphData } from '../features/graph';
+import { GraphData } from '../features/graph';
+import { GraphRendererRegistry } from '../features/graph/services/renderers';
 import { Directory, RawFile } from '../components/models/source';
 import { logger } from '../core/logger';
 
@@ -35,7 +36,7 @@ export class PlotActions {
 
   /**
    * Process plot data from backend and update state
-   * Handles both new JSON graph format and legacy HTML iframe format
+   * Auto-detects format and uses appropriate renderer
    */
   handlePlotData(data: unknown): void {
     logger.debug('PlotActions.handlePlotData - raw data:', data);
@@ -45,45 +46,49 @@ export class PlotActions {
       return;
     }
 
-    // Check if this is new JSON format (graph + metadata)
-    if (typeof data === 'object' && !Array.isArray(data) && 'graph' in data && 'metadata' in data) {
-      logger.info('PlotActions.handlePlotData - detected new JSON format');
-      this.renderGraphData(data as GraphData);
+    // Auto-detect and select appropriate renderer
+    const renderer = GraphRendererRegistry.findForData(data);
+
+    if (!renderer) {
+      logger.error('PlotActions.handlePlotData - no suitable renderer found for data format');
       return;
     }
 
-    // Legacy HTML format - render in iframe
-    logger.info('PlotActions.handlePlotData - using legacy HTML format');
+    logger.info(`PlotActions.handlePlotData - using renderer: ${renderer.name} (${renderer.type})`);
 
-    // Convert to array if needed
-    let dataArray: unknown[];
-    if (!Array.isArray(data)) {
-      logger.error('PlotActions.handlePlotData - invalid data format, not an array:', typeof data);
-      // Try wrapping in array if it's an object with text/html
-      if (typeof data === 'object' && data !== null && 'text/html' in data) {
-        dataArray = [data];
-      } else {
-        return;
-      }
+    // Store data and render based on type
+    if (renderer.type === 'd3' || renderer.type === 'gravis') {
+      // For graph-based renderers, store data in state for re-rendering
+      this.renderGraphData(data as GraphData);
     } else {
-      dataArray = data;
+      // For notebook/HTML renderers, render directly
+      this.renderWithRenderer(renderer, data);
     }
+  }
 
-    const frames: m.Vnode[] = dataArray
-      .filter((output: unknown): output is Record<string, unknown> => {
-        if (typeof output !== 'object' || output === null) return false;
-        const hasHtml = 'text/html' in output;
-        logger.debug('PlotActions.handlePlotData - checking output:', output ? Object.keys(output) : null, 'hasHtml:', !!hasHtml);
-        return hasHtml;
-      })
-      .map((output: Record<string, unknown>) =>
-        m('iframe.graph_content.nbFrame', {
-          srcdoc: output['text/html'] as string,
-        })
-      );
+  /**
+   * Render data using a specific renderer (for notebook/HTML renderers)
+   */
+  private renderWithRenderer(renderer: ReturnType<typeof GraphRendererRegistry.findForData>, data: unknown): void {
+    if (!renderer) return;
 
-    logger.debug('PlotActions.handlePlotData - created frames:', frames.length);
-    this.stateController.updatePlotFrame(frames);
+    // Create container element
+    const container = m('div.graph_content.graphRenderer', {
+      oncreate: (vnode: m.VnodeDOM) => {
+        const element = vnode.dom as HTMLElement;
+        element.style.height = '100%';
+        element.style.width = '100%';
+
+        try {
+          renderer.render(element, data);
+        } catch (error) {
+          logger.error('Error rendering with renderer:', error);
+          element.innerHTML = '<div style="padding: 20px; color: red;">Error rendering visualization. Check console for details.</div>';
+        }
+      }
+    });
+
+    this.stateController.updatePlotFrame([container]);
   }
 
   /**
@@ -122,34 +127,60 @@ export class PlotActions {
         element.style.width = '100%';
       }
 
-      // Render based on visualization type
+      // Use renderer registry to get appropriate renderer
       try {
-        switch (graphData.metadata.type) {
-          case 'd3':
-            GraphRenderer.renderD3(element, graphData, stylingOptions);
-            break;
-          case 'three':
-            GraphRenderer.renderThree(element, graphData);
-            break;
-          case 'vis':
-            GraphRenderer.renderVis(element, graphData);
-            break;
-          default:
-            logger.warn('Unknown renderer type:', graphData.metadata.type, 'defaulting to d3');
-            GraphRenderer.renderD3(element, graphData, stylingOptions);
+        // Priority 1: Use user-selected renderer from state
+        let renderer;
+        const selectedRenderer = this.stateController.state.selectedRenderer;
+
+        if (selectedRenderer) {
+          try {
+            renderer = GraphRendererRegistry.get(selectedRenderer);
+            logger.debug(`Using user-selected renderer: ${renderer.name} (${selectedRenderer})`);
+          } catch (error) {
+            logger.warn(`Selected renderer '${selectedRenderer}' not found, falling back...`);
+          }
         }
+
+        // Priority 2: Try to get renderer by type from metadata
+        if (!renderer && graphData.metadata?.type) {
+          try {
+            renderer = GraphRendererRegistry.get(graphData.metadata.type);
+            logger.debug(`Using metadata renderer type: ${graphData.metadata.type}`);
+          } catch {
+            logger.warn(`Renderer type '${graphData.metadata.type}' not found, auto-detecting...`);
+          }
+        }
+
+        // Priority 3: Fall back to auto-detection
+        if (!renderer) {
+          renderer = GraphRendererRegistry.findForData(graphData);
+          logger.debug(`Auto-detected renderer: ${renderer?.name}`);
+        }
+
+        // Priority 4: Final fallback to default (D3)
+        if (!renderer) {
+          logger.warn('No suitable renderer found, using default (D3)');
+          renderer = GraphRendererRegistry.getDefault();
+        }
+
+        logger.info(`Rendering with: ${renderer.name} (${renderer.type})`);
+        renderer.render(element, graphData, stylingOptions);
       } catch (error) {
         logger.error('Error rendering graph:', error);
         element.innerHTML = '<div style="padding: 20px; color: red;">Error rendering graph. Check console for details.</div>';
       }
     };
 
-    // Create container element for D3 rendering
-    // Use styling options as key to force re-render when they change
-    const stylingKey = JSON.stringify(this.stateController.state.graphStyling);
+    // Create container element for rendering
+    // Use styling + renderer as key to force re-render when they change
+    const renderKey = JSON.stringify({
+      styling: this.stateController.state.graphStyling,
+      renderer: this.stateController.state.selectedRenderer
+    });
 
     const container = m('div.graph_content.graphRenderer', {
-      key: stylingKey,
+      key: renderKey,
       oncreate: (vnode: m.VnodeDOM) => {
         renderGraph(vnode.dom as HTMLElement);
       }
