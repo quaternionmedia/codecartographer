@@ -183,17 +183,34 @@ def get_owner_repo_from_url(url: str) -> tuple[str, str]:
 
 
 def create_headers(url: str) -> dict:
-    """Create headers for GitHub API request with authorization token."""
-    with open("/run/secrets/github_token", "r") as file:
-        GIT_API_KEY = file.read().strip()
+    """Create headers for GitHub API request with optional authorization token."""
+    import os
 
+    # Try multiple sources for GitHub token (in order of priority):
+    # 1. Environment variable
+    # 2. Docker secrets file
+    # 3. No token (unauthenticated - limited rate)
+    GIT_API_KEY = None
+
+    # Try environment variable first
+    GIT_API_KEY = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+
+    # Try Docker secrets file if env var not found
     if not GIT_API_KEY:
-        raise GithubAPIError("Missing GitHub token", {"github_url": url})
+        try:
+            with open("/run/secrets/github_token", "r") as file:
+                GIT_API_KEY = file.read().strip()
+        except (FileNotFoundError, PermissionError):
+            pass  # File doesn't exist or can't be read - will use unauthenticated
 
-    return {
-        "Accept": "application/vnd.github.v3+json",
-        "Authorization": f"token {GIT_API_KEY}",
-    }
+    # Build headers
+    headers = {"Accept": "application/vnd.github.v3+json"}
+
+    # Add authorization if token found
+    if GIT_API_KEY:
+        headers["Authorization"] = f"token {GIT_API_KEY}"
+
+    return headers
 
 
 def handle_status_code(
