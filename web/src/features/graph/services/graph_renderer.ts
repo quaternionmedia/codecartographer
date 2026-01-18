@@ -88,6 +88,7 @@ export class GraphRenderer {
   private static currentNodes: GraphNode[] = [];
   private static selectedNodes: Set<GraphNode> = new Set();
   private static onGraphChange: (() => void) | null = null;
+  private static currentUpdatePositions: (() => void) | null = null;
 
   // Extensions system
   private static dragExtension: DragExtension | null = null;
@@ -362,6 +363,9 @@ export class GraphRenderer {
     // State for node selection and interaction (use static reference)
     const selectedNodes = this.selectedNodes;
 
+    // Forward declare updatePositions function (will be fully defined after nodes/edges/labels are created)
+    let updatePositions: (() => void) | null = null;
+
     // Helper function to get SVG path for node shape
     const getNodePath = (shape: string | undefined, size: number): string => {
       const s = size;
@@ -484,7 +488,7 @@ export class GraphRenderer {
               // No simulation - directly update position and redraw
               d.x = event.x;
               d.y = event.y;
-              updatePositions();
+              if (updatePositions) updatePositions();
             }
           })
           .on('end', (event: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode) => {
@@ -535,8 +539,8 @@ export class GraphRenderer {
     // Add tooltips
     node.append('title').text((d) => d.label || d.id);
 
-    // Update positions
-    const updatePositions = () => {
+    // Define update positions function (now that all elements are created)
+    updatePositions = () => {
       link
         .attr('x1', (d: GraphEdge) => (d.source as GraphNode).x || 0)
         .attr('y1', (d: GraphEdge) => (d.source as GraphNode).y || 0)
@@ -563,6 +567,9 @@ export class GraphRenderer {
           });
       }
     };
+
+    // Store reference for radial menu callbacks
+    this.currentUpdatePositions = updatePositions;
 
     if (simulation) {
       // Use simulation ticks to update positions
@@ -1109,7 +1116,7 @@ export class GraphRenderer {
           selectedArray.forEach(n => { n.y = avgY; n.fy = avgY; });
         }
 
-        updatePositions();
+        if (this.currentUpdatePositions) this.currentUpdatePositions();
         logger.debug('Aligned nodes:', direction);
       },
       onDistributeNodes: (direction: 'horizontal' | 'vertical') => {
@@ -1137,7 +1144,7 @@ export class GraphRenderer {
           });
         }
 
-        updatePositions();
+        if (this.currentUpdatePositions) this.currentUpdatePositions();
         logger.debug('Distributed nodes:', direction);
       },
       onGroupSelection: (nodes: any[]) => {

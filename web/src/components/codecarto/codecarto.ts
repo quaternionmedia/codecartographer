@@ -29,7 +29,7 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
     activeTab: 'source',
     codeSourceMode: 'upload',
     repoUrl: '',
-    currentTheme: 'terminal',
+    currentTheme: 'forest',
     isLoading: false,
     statusMessage: 'Ready',
     panelHeight: 300,
@@ -327,10 +327,8 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
 
       // Trigger re-render with new renderer if graph data exists
       if (currentCell.state.graphData) {
-        const currentPlotActions = getCell().state.plot;
-        if (currentPlotActions && currentPlotActions.createGraphVnode) {
-          currentPlotActions.createGraphVnode();
-        }
+        actions.plot.createGraphVnode();
+        m.redraw();
       }
     },
   };

@@ -32,7 +32,16 @@ export class NotebookGraphRenderer implements IGraphRenderer {
   ): void {
     // Validate data format
     if (!this.canHandle(data)) {
-      throw new Error('NotebookGraphRenderer: Invalid data format');
+      logger.warn('NotebookGraphRenderer: Data is GraphData JSON, not pre-rendered HTML');
+      container.innerHTML = `
+        <div style="padding: 40px; text-align: center; color: var(--c-warning, #ffa500);">
+          <h3>⚠️ Notebook Renderer Unavailable</h3>
+          <p>The Notebook renderer only works with pre-rendered HTML visualizations.</p>
+          <p>Current data is in GraphData JSON format (from backend).</p>
+          <p><strong>Please select D3 or Gravis renderer instead.</strong></p>
+        </div>
+      `;
+      return;
     }
 
     logger.debug('NotebookGraphRenderer.render - rendering notebook outputs');
@@ -44,7 +53,14 @@ export class NotebookGraphRenderer implements IGraphRenderer {
     } else if (typeof data === 'object' && data !== null && 'text/html' in data) {
       dataArray = [data as NotebookOutput];
     } else {
-      throw new Error('NotebookGraphRenderer: Data is not in expected format');
+      logger.error('NotebookGraphRenderer: Unexpected data format');
+      container.innerHTML = `
+        <div style="padding: 40px; text-align: center; color: var(--c-error, #ff0000);">
+          <h3>Error: Invalid Data Format</h3>
+          <p>Expected notebook output with 'text/html' field.</p>
+        </div>
+      `;
+      return;
     }
 
     // Filter outputs that have HTML content
