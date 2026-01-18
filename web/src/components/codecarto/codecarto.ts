@@ -240,6 +240,8 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
     onGraphStylingChange: async (options) => {
       const oldLayout = panelState.graphStyling.layout;
       const newLayout = options.layout;
+      const oldPhysics = panelState.graphStyling.enablePhysics;
+      const newPhysics = options.enablePhysics;
 
       // Update local panel state for UI
       updatePanelState({
@@ -262,6 +264,14 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
         } catch (error) {
           updatePanelState({ isLoading: false, statusMessage: 'Error applying layout' });
         }
+        return;
+      }
+
+      // If physics toggle changed, re-render graph with new physics setting
+      if (newPhysics !== undefined && newPhysics !== oldPhysics && currentState.graphData) {
+        console.log(`Physics ${newPhysics ? 'enabled' : 'disabled'} - re-rendering graph`);
+        actions.plot.createGraphVnode();
+        m.redraw();
         return;
       }
 

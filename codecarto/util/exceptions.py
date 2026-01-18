@@ -72,20 +72,6 @@ class CodeCartoException(Exception):
         self.exc = exc
 
 
-class NotebookError(CodeCartoException):
-    """Base class for notebook exceptions."""
-
-    def __init__(
-        self,
-        source: str,
-        params: dict,
-        message: str = "Jupyter Notebook error",
-        status_code: int = 500,
-        exc: Exception | None = None,
-    ):
-        super().__init__(source, params, message, status_code, exc)
-
-
 class ImportSourceUrlError(CodeCartoException):
     """Import Source Url error"""
 

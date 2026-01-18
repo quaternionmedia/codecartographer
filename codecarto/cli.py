@@ -24,6 +24,29 @@ def get_repo_root() -> Path:
     return REPO_ROOT
 
 
+def _ensure_npm_dependencies() -> bool:
+    """Ensure npm dependencies are installed. Returns True if successful."""
+    node_modules = WEB_DIR / "node_modules"
+    if not node_modules.is_dir():
+        click.secho("  → Installing frontend dependencies (npm install)...", fg="yellow")
+        try:
+            result = subprocess.run(
+                ["npm", "install"], 
+                cwd=WEB_DIR, 
+                shell=True,
+                capture_output=True,
+                text=True
+            )
+            if result.returncode != 0:
+                click.secho(f"  ✗ npm install failed: {result.stderr}", fg="red")
+                return False
+            click.secho("  ✓ Dependencies installed", fg="green")
+        except FileNotFoundError:
+            click.secho("  ✗ npm not found in PATH", fg="red")
+            return False
+    return True
+
+
 @click.group()
 @click.version_option(version="0.3.0", prog_name="codecarto")
 def cli():
@@ -79,26 +102,9 @@ def dev(host: str, port: int, no_frontend: bool):
             return
         
         # Check if node_modules exists, if not run npm install
-        node_modules = WEB_DIR / "node_modules"
-        if not node_modules.is_dir():
-            click.secho("  → Installing frontend dependencies (npm install)...", fg="yellow")
-            try:
-                result = subprocess.run(
-                    ["npm", "install"], 
-                    cwd=WEB_DIR, 
-                    shell=True,
-                    capture_output=True,
-                    text=True
-                )
-                if result.returncode != 0:
-                    click.secho(f"  ✗ npm install failed: {result.stderr}", fg="red")
-                    backend_proc.terminate()
-                    return
-                click.secho("  ✓ Dependencies installed", fg="green")
-            except FileNotFoundError:
-                click.secho("  ✗ npm not found in PATH", fg="red")
-                backend_proc.terminate()
-                return
+        if not _ensure_npm_dependencies():
+            backend_proc.terminate()
+            return
         
         click.echo("  → Frontend: http://localhost:1234")
         try:
@@ -177,6 +183,11 @@ def web():
         return
     
     click.secho("🌍 Starting frontend dev server...", fg="green", bold=True)
+    
+    # Check if node_modules exists, if not run npm install
+    if not _ensure_npm_dependencies():
+        return
+    
     click.echo("  → http://localhost:1234")
     click.echo()
     

@@ -14,7 +14,7 @@ services/
 ├── local_repo_service.py   # Local filesystem parsing
 ├── palette_service.py      # Color management
 ├── parser_service.py       # Parse orchestration
-├── plotter_service.py      # Graph visualization
+├── graph_serializer.py     # Graph JSON serialization
 ├── polygraph_service.py    # Graph operations
 ├── position_service.py     # Node positioning
 └── parsers/
@@ -265,37 +265,58 @@ graph = parser.parse(directory)
 
 ---
 
-## PlotterService
+## GraphSerializer
 
-**File:** `plotter_service.py`
+**File:** `graph_serializer.py`
 
-Generates visualizations from graphs.
+Serializes NetworkX graphs to JSON format for client-side rendering.
 
 ### Methods
 
-#### `plot(graph, layout, settings)`
+#### `serialize_to_gjgf(graph, options, isDependencyPlot)`
 
-Generate visualization HTML.
+Convert NetworkX graph to Graph JSON Format (gJGF) with layout positions.
 
 ```python
-from codecarto.services.plotter_service import PlotterService
+from codecarto.services.graph_serializer import GraphSerializer
 
-result = PlotterService.plot(
-    graph=graph,
-    layout="spring",
-    settings={"node_size": 10}
+gjgf = GraphSerializer.serialize_to_gjgf(
+    graph=nx_graph,
+    options=plot_options,
+    isDependencyPlot=False
 )
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `graph` | `nx.DiGraph` | NetworkX directed graph |
+| `options` | `PlotOptions` | Layout, type, palette settings |
+| `isDependencyPlot` | `bool` | Whether to color external dependencies |
+
+**Returns:** Graph in gJGF format with node positions and styling
+
+#### `create_metadata(graph, options)`
+
+Generate metadata about the graph.
+
+```python
+metadata = GraphSerializer.create_metadata(graph, options)
+# {'layout': 'Spectral', 'type': 'd3', 'nodeCount': 50, 'edgeCount': 75}
 ```
 
 **Layouts Available:**
 
 | Layout | Description |
 |--------|-------------|
-| `spring` | Force-directed (default) |
-| `circular` | Circular arrangement |
-| `shell` | Concentric circles |
-| `kamada_kawai` | Energy-based layout |
-| `spectral` | Eigenvector-based |
+| `Spring` | Force-directed (default) |
+| `Circular` | Circular arrangement |
+| `Shell` | Concentric circles |
+| `Kamada_Kawai` | Energy-based layout |
+| `Spectral` | Eigenvector-based |
+
+**Client-side Rendering:** The gJGF format is consumed by the frontend D3.js renderer for interactive visualization.
 
 ---
 
@@ -406,7 +427,7 @@ async def my_endpoint(param: str):
 ┌─────────────────┐
 │    Services     │
 │  (ParserService,│
-│   PlotterService)│
+│GraphSerializer) │
 └────────┬────────┘
          │
          ▼

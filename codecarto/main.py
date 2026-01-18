@@ -21,6 +21,7 @@ app = FastAPI()
 # TODO: this is here to test moe calling the api
 origins = [
     "http://localhost:1234",  # web
+    "http://localhost:1235",  # web (vite default)
     "http://localhost:5000",  # moe
 ]
 app.add_middleware(

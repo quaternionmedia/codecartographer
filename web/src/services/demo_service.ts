@@ -1,3 +1,5 @@
+import { logger } from '../core/logger';
+
 export async function handleDemoData(): Promise<Object[]> {
   const data_file = '/demo/demo.txt';
   const data = (await fetch(data_file)
@@ -8,7 +10,7 @@ export async function handleDemoData(): Promise<Object[]> {
       return response.json();
     })
     .catch((error) => {
-      console.error('Error fetching the data file:', error);
+      logger.error('Error fetching the data file:', error);
     })) as Object[];
   return data;
 }

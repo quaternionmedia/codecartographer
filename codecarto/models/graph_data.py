@@ -23,10 +23,10 @@ class Node(BaseModel):
 
 
 class GraphBase:
-    # TODO: Flesh this out a bit more
-    # gravis graphs need a bit more
-    # structure than just a networkx graph
-    #   look in notebook around X and Y
+    """Wrapper for NetworkX DiGraph.
+
+    Note: Graph serialization and positioning is now handled by GraphSerializer.
+    """
     def __init__(self, graph=DiGraph()):
         self.graph = graph
 

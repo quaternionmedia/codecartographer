@@ -1,13 +1,16 @@
 import { displayError } from '../utility';
 
+type RequestData = Record<string, unknown> | FormData | string;
+
 export class RequestHandler {
   /** Request data from the given API url. */
-  public static async getRequest(url: string): Promise<any> {
+  public static async getRequest(url: string): Promise<unknown> {
     try {
       const response = await fetch(url);
       return this.handleResponse(response);
     } catch (error) {
-      displayError(error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      displayError(errorMessage);
       return null;
     }
   }
@@ -15,11 +18,11 @@ export class RequestHandler {
   /** Send a POST request to the given API url with customizable body and headers. */
   public static async postRequest(
     url: string,
-    data: any,
+    data: RequestData,
     headers: Record<string, string> = {}
-  ): Promise<any> {
+  ): Promise<unknown> {
     // Determine the default Content-Type based on the data type
-    let body: any;
+    let body: FormData | string;
     let defaultHeaders: Record<string, string> = {
       Accept: 'application/json',
     };
@@ -47,7 +50,8 @@ export class RequestHandler {
 
       return this.handleResponse(response);
     } catch (error) {
-      displayError(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      displayError(errorMessage);
       return null;
     }
   }

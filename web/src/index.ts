@@ -15,11 +15,12 @@ var debugDefaultUrl = 'https://github.com/quaternionmedia/codecartographer';
 const App = {
   initial: new CellState(),
   services: [],
-  view: (cell: ICell) => [CodeCarto(cell)],
 };
 
 // Initialize Meiosis
 const cells = meiosisSetup<ICellState>({ app: App });
+
+// Redraw on every state change
 cells.map(() => {
   m.redraw();
 });
@@ -27,15 +28,17 @@ cells.map(() => {
 // Mount the app
 const app = document.getElementById('app');
 if (app) {
-  m.mount(app, {
-    view: () => App.view!(cells()),
-  });
+  // Create the CodeCarto component with a cell getter
+  // This ensures the component always has access to the current cell
+  const appComponent = CodeCarto(() => cells());
+  
+  m.mount(app, appComponent);
 }
 
 // DEBUG
 declare global {
   interface Window {
-    cells: any;
+    cells: ReturnType<typeof cells>;
   }
 }
 window.cells = cells;

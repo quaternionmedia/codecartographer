@@ -1,6 +1,7 @@
 import m from 'mithril';
 
 import { displayError } from '../../../utility';
+import { animations } from '../../../core/animations';
 import './url_input.css';
 
 export class InputState {
@@ -13,11 +14,15 @@ export class InputState {
   }
 
   private processInput(url: string) {
+    const inputElement = document.querySelector('.url_input') as HTMLElement;
+    
     if (!url || url === '') {
       displayError('Please enter a URL');
+      if (inputElement) animations.shake(inputElement);
       return;
     } else if (!url.includes('github.com') || url.split('/').length < 5) {
       displayError('Invalid GitHub URL format');
+      if (inputElement) animations.shake(inputElement);
       return;
     }
     this.onUrlInput(this.url);
@@ -29,8 +34,9 @@ export class InputState {
       class: 'url_input',
       placeholder: 'Enter a GitHub URL',
       // needs to be keyup up to set value after something like ctrl+v
-      onkeyup: (e: any) => {
-        this.url = e.target.value;
+      onkeyup: (e: KeyboardEvent) => {
+        const target = e.target as HTMLInputElement;
+        this.url = target.value;
         if (e.key === 'Enter') {
           this.processInput(this.url);
         }
@@ -41,11 +47,13 @@ export class InputState {
     m('button', {
       class: 'url_btn',
       innerText: 'Submit',
-      onclick: () => {
+      onclick: (e: MouseEvent) => {
+        // Add button press feedback
+        animations.buttonPress(e.currentTarget as Element);
+        
         // Ensure the input's latest value is processed
-        const inputElement = document.querySelector('.url_input');
-        this.url = inputElement ? inputElement.value : this.url; // Use .value to get input text
-        this.processInput(this.url);
+        const inputElement = document.querySelector('.url_input') as HTMLInputElement;
+        this.url = inputElement ? inputElement.value : this.url;
         this.processInput(this.url);
       },
     });
@@ -56,8 +64,9 @@ export class InputState {
       m('label.switch', [
         m('input.mode', {
           type: 'checkbox',
-          onclick: (e: any) => {
-            e.target.checked
+          onclick: (e: MouseEvent) => {
+            const target = e.target as HTMLInputElement;
+            target.checked
               ? (document.querySelector('.switch_text')!.textContent = 'File')
               : (document.querySelector('.switch_text')!.textContent = 'Code');
           },

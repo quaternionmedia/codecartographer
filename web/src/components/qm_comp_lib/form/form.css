@@ -1,0 +1,320 @@
+/* Form Components Styles */
+
+/* ========== Input ========== */
+.form-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.form-input__label {
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--c-font-muted);
+}
+
+.form-input__field {
+  width: 100%;
+  padding: var(--spacing-sm);
+  background-color: var(--c-primary-light);
+  color: var(--c-font);
+  border: var(--border-size-thin) solid var(--c-border);
+  border-radius: var(--border-radius);
+  font-family: var(--f-root-font);
+  font-size: 0.95em;
+  transition: border-color var(--t-transition-fast), box-shadow var(--t-transition-fast);
+}
+
+.form-input__field:focus {
+  outline: none;
+  border-color: var(--c-secondary);
+  box-shadow: 0 0 8px var(--c-secondary);
+}
+
+.form-input__field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-input--error .form-input__field {
+  border-color: var(--c-error);
+}
+.form-input--error .form-input__field:focus {
+  box-shadow: 0 0 8px var(--c-error);
+}
+
+.form-input__error {
+  font-size: 0.8em;
+  color: var(--c-error);
+}
+
+/* ========== Button ========== */
+.form-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--f-root-font);
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: var(--border-size-thin) solid var(--c-border);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all var(--t-transition-fast);
+  background-color: transparent;
+  color: var(--c-font);
+}
+
+.form-btn:hover:not(:disabled) {
+  background-color: var(--c-secondary);
+  color: var(--c-font-inverse);
+  border-color: var(--c-secondary);
+  box-shadow: 0 0 10px var(--c-secondary);
+}
+
+.form-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.form-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Button Variants */
+.form-btn--primary {
+  background-color: var(--c-secondary);
+  color: var(--c-font-inverse);
+  border-color: var(--c-secondary);
+}
+.form-btn--primary:hover:not(:disabled) {
+  background-color: var(--c-secondary-light);
+  box-shadow: 0 0 15px var(--c-secondary);
+}
+
+.form-btn--danger {
+  border-color: var(--c-error);
+  color: var(--c-error);
+}
+.form-btn--danger:hover:not(:disabled) {
+  background-color: var(--c-error);
+  color: var(--c-font-inverse);
+  box-shadow: 0 0 10px var(--c-error);
+}
+
+.form-btn--ghost {
+  border-color: transparent;
+  background-color: transparent;
+}
+.form-btn--ghost:hover:not(:disabled) {
+  background-color: var(--c-primary-light);
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--c-font);
+}
+
+/* Button Sizes */
+.form-btn--small {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.8em;
+  min-height: 28px;
+}
+
+.form-btn--large {
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 1em;
+  min-height: 48px;
+}
+
+/* Button Loading State */
+.form-btn--loading {
+  pointer-events: none;
+}
+
+.form-btn__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: btn-spin 0.8s linear infinite;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+.form-btn__icon {
+  font-size: 1.1em;
+}
+
+/* ========== Select ========== */
+.form-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  position: relative;
+}
+
+.form-select__label {
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--c-font-muted);
+}
+
+.form-select__field {
+  width: 100%;
+  padding: var(--spacing-sm);
+  padding-right: var(--spacing-xl);
+  background-color: var(--c-primary-light);
+  color: var(--c-font);
+  border: var(--border-size-thin) solid var(--c-border);
+  border-radius: var(--border-radius);
+  font-family: var(--f-root-font);
+  font-size: 0.95em;
+  cursor: pointer;
+  appearance: none;
+  transition: border-color var(--t-transition-fast), box-shadow var(--t-transition-fast);
+}
+
+.form-select__field:focus {
+  outline: none;
+  border-color: var(--c-secondary);
+  box-shadow: 0 0 8px var(--c-secondary);
+}
+
+.form-select__field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-select__field option {
+  background-color: var(--c-primary);
+  color: var(--c-font);
+}
+
+.form-select__arrow {
+  position: absolute;
+  right: var(--spacing-sm);
+  bottom: var(--spacing-sm);
+  font-size: 0.7em;
+  color: var(--c-font-muted);
+  pointer-events: none;
+}
+
+.form-select__label + .form-select__field ~ .form-select__arrow {
+  bottom: calc(var(--spacing-sm) + 2px);
+}
+
+/* ========== Toggle ========== */
+.form-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.form-toggle__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.form-toggle__track {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background-color: var(--c-primary-light);
+  border: var(--border-size-thin) solid var(--c-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all var(--t-transition-fast);
+}
+
+.form-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background-color: var(--c-font-muted);
+  border-radius: 50%;
+  transition: all var(--t-transition-fast);
+}
+
+.form-toggle__input:checked + .form-toggle__track {
+  background-color: var(--c-secondary);
+  border-color: var(--c-secondary);
+}
+
+.form-toggle__input:checked + .form-toggle__track .form-toggle__thumb {
+  left: 22px;
+  background-color: var(--c-font-inverse);
+}
+
+.form-toggle__input:focus + .form-toggle__track {
+  box-shadow: 0 0 8px var(--c-secondary);
+}
+
+.form-toggle--disabled {
+  opacity: 0.5;
+}
+.form-toggle--disabled .form-toggle__track {
+  cursor: not-allowed;
+}
+
+.form-toggle__label {
+  font-size: 0.9em;
+  color: var(--c-font);
+  cursor: pointer;
+}
+
+/* ========== Textarea ========== */
+.form-textarea {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.form-textarea__label {
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--c-font-muted);
+}
+
+.form-textarea__field {
+  width: 100%;
+  padding: var(--spacing-sm);
+  background-color: var(--c-primary-light);
+  color: var(--c-font);
+  border: var(--border-size-thin) solid var(--c-border);
+  border-radius: var(--border-radius);
+  font-family: var(--f-root-font);
+  font-size: 0.95em;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color var(--t-transition-fast), box-shadow var(--t-transition-fast);
+}
+
+.form-textarea__field:focus {
+  outline: none;
+  border-color: var(--c-secondary);
+  box-shadow: 0 0 8px var(--c-secondary);
+}
+
+.form-textarea__field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  resize: none;
+}
+
+.form-textarea__counter {
+  font-size: 0.75em;
+  color: var(--c-font-muted);
+  text-align: right;
+}
