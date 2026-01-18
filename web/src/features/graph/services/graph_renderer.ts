@@ -14,7 +14,7 @@ import {
   ColorExtension,
 } from '../extensions';
 
-interface GraphNode {
+export interface GraphNode {
   id: string;
   label?: string;
   color?: string;
@@ -27,7 +27,7 @@ interface GraphNode {
   [key: string]: unknown;
 }
 
-interface GraphEdge {
+export interface GraphEdge {
   source: string | GraphNode;
   target: string | GraphNode;
   label?: string;
@@ -131,6 +131,57 @@ export class GraphRenderer {
 
     // Clear existing content
     container.innerHTML = '';
+
+    // Create legend module
+    const legendContainer = document.createElement('div');
+    legendContainer.className = 'graph-legend';
+    legendContainer.innerHTML = `
+      <div class="legend-header">
+        <span class="legend-title">${metadata.layout || 'Graph'} - ${metadata.nodeCount || 0} nodes, ${metadata.edgeCount || 0} edges</span>
+        <button class="legend-toggle" aria-label="Toggle legend">▼</button>
+      </div>
+      <div class="legend-content">
+        <div class="legend-section">
+          <h4>Node Shapes</h4>
+          <div class="legend-items">
+            <div class="legend-item"><svg width="16" height="16"><path d="M 8 2 L 14.928 6 L 14.928 10 L 8 14 L 1.072 10 L 1.072 6 Z" fill="var(--c-secondary)" stroke="#fff" stroke-width="1"></path></svg> Function</div>
+            <div class="legend-item"><svg width="16" height="16"><rect x="4" y="4" width="8" height="8" fill="var(--c-accent)" stroke="#fff" stroke-width="1"></rect></svg> Class</div>
+            <div class="legend-item"><svg width="16" height="16"><path d="M 8 4 L 12 8 L 8 12 L 4 8 Z" fill="#9b59b6" stroke="#fff" stroke-width="1"></path></svg> File/Module</div>
+            <div class="legend-item"><svg width="16" height="16"><path d="M 8 4 L 12 12 L 4 12 Z" fill="#e74c3c" stroke="#fff" stroke-width="1"></path></svg> Import/Dependency</div>
+            <div class="legend-item"><svg width="16" height="16"><circle cx="8" cy="8" r="4" fill="#95a5a6" stroke="#fff" stroke-width="1"></circle></svg> Variable</div>
+            <div class="legend-item"><svg width="16" height="16"><path d="M 8 2 L 8 14 M 2 8 L 14 8" stroke="#f39c12" stroke-width="2" fill="none"></path></svg> Control Flow</div>
+          </div>
+        </div>
+        <div class="legend-section">
+          <h4>Interactions</h4>
+          <div class="legend-items">
+            <div class="legend-item">Click - Select node</div>
+            <div class="legend-item">Drag - Move node</div>
+            <div class="legend-item">Shift+Drag - Box select</div>
+            <div class="legend-item">Right-click - Context menu</div>
+            <div class="legend-item">Scroll - Zoom</div>
+          </div>
+        </div>
+      </div>
+    `;
+    container.appendChild(legendContainer);
+
+    // Add legend toggle functionality
+    const legendHeader = legendContainer.querySelector('.legend-header') as HTMLDivElement;
+    const legendToggle = legendContainer.querySelector('.legend-toggle') as HTMLButtonElement;
+    const legendContent = legendContainer.querySelector('.legend-content') as HTMLDivElement;
+    let legendExpanded = false;
+
+    const toggleLegend = () => {
+      legendExpanded = !legendExpanded;
+      legendContent.style.display = legendExpanded ? 'block' : 'none';
+      legendToggle.textContent = legendExpanded ? '▲' : '▼';
+    };
+
+    legendHeader.addEventListener('click', toggleLegend);
+
+    // Start collapsed
+    legendContent.style.display = 'none';
 
     // Convert gJGF nodes object to array if needed
     let nodes: GraphNode[];
@@ -521,10 +572,20 @@ export class GraphRenderer {
       updatePositions();
     }
 
-    // Add zoom and pan
+    // Shift-drag box selection (must be set up BEFORE zoom)
+    let selectionBox: d3.Selection<SVGRectElement, unknown, null, undefined> | null = null;
+    let selectionStartPoint: { x: number; y: number } | null = null;
+    let isShiftDragging = false;
+
+    // Add zoom and pan with filter to allow shift-drag
     const zoom = d3
       .zoom()
       .scaleExtent([0.1, 10])
+      .filter((event: any) => {
+        // Prevent zoom from interfering with shift-drag box selection
+        // Allow zoom only when NOT shift-dragging
+        return !event.shiftKey && !event.button;
+      })
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
       });
@@ -534,12 +595,8 @@ export class GraphRenderer {
     // Store zoom reference for radial menu callbacks (now that it's created)
     this.currentZoom = zoom;
 
-    // Shift-drag box selection
-    let selectionBox: d3.Selection<SVGRectElement, unknown, null, undefined> | null = null;
-    let selectionStartPoint: { x: number; y: number } | null = null;
-    let isShiftDragging = false;
-
-    svg.on('mousedown', (event: MouseEvent) => {
+    // Set up shift-drag box selection handlers
+    svg.on('mousedown.selection', (event: MouseEvent) => {
       // Only start box selection if shift is pressed and clicking on canvas (not a node)
       if (event.shiftKey && (event.target === svg.node() || (event.target as Element).tagName === 'svg')) {
         isShiftDragging = true;
@@ -559,13 +616,15 @@ export class GraphRenderer {
           .attr('fill', 'rgba(0, 255, 65, 0.1)')
           .attr('stroke', '#00ff41')
           .attr('stroke-width', 1)
-          .attr('stroke-dasharray', '4,4');
+          .attr('stroke-dasharray', '4,4')
+          .style('pointer-events', 'none'); // Don't interfere with other events
 
         event.preventDefault();
+        event.stopPropagation();
       }
     });
 
-    svg.on('mousemove', (event: MouseEvent) => {
+    svg.on('mousemove.selection', (event: MouseEvent) => {
       if (isShiftDragging && selectionBox && selectionStartPoint) {
         // Get current mouse position
         const [mouseX, mouseY] = d3.pointer(event, g.node());
@@ -582,10 +641,12 @@ export class GraphRenderer {
           .attr('y', y)
           .attr('width', width)
           .attr('height', height);
+
+        event.preventDefault();
       }
     });
 
-    svg.on('mouseup', (event: MouseEvent) => {
+    svg.on('mouseup.selection', (event: MouseEvent) => {
       if (isShiftDragging && selectionBox && selectionStartPoint) {
         // Get final mouse position
         const [mouseX, mouseY] = d3.pointer(event, g.node());
