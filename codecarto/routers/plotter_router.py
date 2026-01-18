@@ -185,3 +185,52 @@ async def plot_local_directory(path: str, options: PlotOptions) -> dict:
             {"path": path},
             e,
         )
+
+
+@PlotterRouter.post("/demo")
+async def plot_demo(options: PlotOptions) -> dict:
+    """
+    Generate demo graph data using the codecarto project itself.
+    Returns GraphData JSON format that can be rendered with any client-side renderer.
+    """
+    try:
+        from pathlib import Path
+        import os
+
+        # Use the codecarto project directory as demo data
+        project_root = Path(__file__).parent.parent.parent
+        codecarto_dir = project_root / "codecarto"
+
+        # Check if codecarto directory exists, otherwise use current directory
+        if not codecarto_dir.exists():
+            codecarto_dir = project_root
+
+        Log.debug(f"Generating demo from directory: {codecarto_dir}")
+
+        # Convert filesystem directory to Directory model
+        directory = await ParserService.parse_local_directory(str(codecarto_dir))
+
+        # Select parser based on parse_by option (default to directory structure)
+        if options.parse_by == "ast":
+            graph = await ParserService.parse_code_directory(directory)
+        elif options.parse_by == "dependencies":
+            graph = await ParserService.parse_dependancy(directory)
+        else:
+            graph = await ParserService.parse_directory(directory)
+
+        styled_graph = apply_styles(graph)
+
+        gjgf = GraphSerializer.serialize_to_gjgf(styled_graph, options)
+        metadata = GraphSerializer.create_metadata(styled_graph, options)
+
+        return generate_return(results={
+            "graph": gjgf,
+            "metadata": metadata
+        })
+    except Exception as e:
+        return proc_exception(
+            "plot_demo",
+            "Error generating demo",
+            {"options": options},
+            e,
+        )

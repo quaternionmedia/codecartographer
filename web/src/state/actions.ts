@@ -2,7 +2,6 @@ import m from 'mithril';
 import { StateController } from '../state/state_controller';
 import { PlotService } from '../services/plot_service';
 import { RepoService } from '../features/repository';
-import { handleDemoData as getDemoData } from '../services/demo_service';
 import { GraphData } from '../features/graph';
 import { GraphRendererRegistry } from '../features/graph/services/renderers';
 import { Directory, RawFile } from '../components/models/source';
@@ -195,8 +194,14 @@ export class PlotActions {
   async loadDemo(): Promise<void> {
     this.stateController.clear();
     try {
-      console.log('PlotActions.loadDemo - fetching demo data...');
-      const data = await getDemoData();
+      console.log('PlotActions.loadDemo - fetching demo data from backend...');
+      const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
+      const parseMode = this.stateController.state.parserOptions.mode;
+      const data = await PlotService.loadDemo(
+        this.stateController.api.plotter,
+        layout,
+        parseMode
+      );
       console.log('PlotActions.loadDemo - received data:', data);
       this.handlePlotData(data);
     } catch (error) {

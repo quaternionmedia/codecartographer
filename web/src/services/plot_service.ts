@@ -133,6 +133,28 @@ export class PlotService {
     return data;
   }
 
+  /** Load demo data from backend. */
+  public static async loadDemo(
+    plotterUrl: string,
+    layout: string = 'Spring',
+    parseMode: string = 'directory'
+  ): Promise<unknown> {
+    const body = {
+      options: {
+        palette_id: '0',
+        layout: layout,
+        type: 'd3',
+        parse_by: parseMode,
+      },
+    };
+    const data = await this.sendPlotRequest(plotterUrl, '/demo', body);
+    if (typeof data === 'string') {
+      logger.error('Error loading demo');
+      return null;
+    }
+    return data;
+  }
+
   /** Plot the content of the selected file. */
   private static async sendPlotRequest(
     plotterUrl: string,

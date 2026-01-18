@@ -182,7 +182,13 @@ export function ControlPanel(
   };
 
   const setActiveTab = (tabId: TabId) => {
-    onStateChange({ activeTab: tabId });
+    // If clicking the already-active tab, toggle panel open/closed
+    if (state.activeTab === tabId) {
+      onStateChange({ isOpen: !state.isOpen });
+    } else {
+      // Switching to a different tab - ensure panel is open
+      onStateChange({ activeTab: tabId, isOpen: true });
+    }
   };
 
   const handleRepoUrlChange = (e: Event) => {
@@ -255,38 +261,16 @@ export function ControlPanel(
       // Quick Start section
       m('div.panel-source__quickstart', [
         m('span.panel-settings__label-compact', 'Quick Start'),
-        m('div.panel-settings__button-group', [
-          m('button.panel-settings__button-option', {
-            onclick: (e: MouseEvent) => {
-              animations.buttonPress(e.currentTarget as Element);
-              // Load demo data and set terminal theme
-              callbacks.onDemo();
-              callbacks.onThemeChange('terminal');
-            }
-          }, [
-            m('span', '⚡'),
-            m('span', 'Demo (Terminal)'),
-          ]),
-          m('button.panel-settings__button-option', {
-            onclick: (e: MouseEvent) => {
-              animations.buttonPress(e.currentTarget as Element);
-              callbacks.onDemo();
-              callbacks.onThemeChange('ocean');
-            }
-          }, [
-            m('span', '🌊'),
-            m('span', 'Demo (Ocean)'),
-          ]),
-          m('button.panel-settings__button-option', {
-            onclick: (e: MouseEvent) => {
-              animations.buttonPress(e.currentTarget as Element);
-              callbacks.onDemo();
-              callbacks.onThemeChange('cyberpunk');
-            }
-          }, [
-            m('span', '🔮'),
-            m('span', 'Demo (Cyberpunk)'),
-          ]),
+        m('button.panel-settings__button-option', {
+          onclick: (e: MouseEvent) => {
+            animations.buttonPress(e.currentTarget as Element);
+            // Load demo data - will use current parser mode and renderer
+            callbacks.onDemo();
+          },
+          style: 'width: 100%;'
+        }, [
+          m('span', '⚡'),
+          m('span', 'Load Demo'),
         ]),
       ]),
 
