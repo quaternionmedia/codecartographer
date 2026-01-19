@@ -20,6 +20,7 @@
   --mar-nav-toggle-btn-open: calc(var(--w-nav-content) - 0.2em);
   --z-plot: 1;
   --z-nav: 2;
+  --control-panel-height: 120px;
 }
 
 .app {
@@ -83,7 +84,8 @@
   flex-direction: column;
   overflow: hidden;
   padding: var(--spacing-md);
-  padding-bottom: 120px; /* Space for control panel */
+  padding-bottom: var(--control-panel-height, 120px);
+  min-height: 0;
 }
 
 /* Legacy header styles (kept for compatibility) */

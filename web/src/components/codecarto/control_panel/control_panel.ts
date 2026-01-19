@@ -59,9 +59,8 @@ export interface ControlPanelState {
   isLoading: boolean;
   statusMessage: string;
   panelHeight: number;
-  graphStyling: GraphStylingOptions;
-  parserOptions: ParserOptions;
-  selectedRenderer: GraphRendererType;
+  // Note: graphStyling, parserOptions, selectedRenderer are now in ControlPanelContent
+  // They come from cell.state (single source of truth)
 }
 
 export interface ControlPanelCallbacks {
@@ -82,6 +81,10 @@ export interface ControlPanelCallbacks {
 export interface ControlPanelContent {
   repoDirectory: Directory | null;
   uploadedFiles: RawFile[];
+  // Settings from cell.state (single source of truth)
+  graphStyling: GraphStylingOptions;
+  parserOptions: ParserOptions;
+  selectedRenderer: GraphRendererType;
 }
 
 const TABS: Tab[] = [
@@ -147,6 +150,12 @@ export function ControlPanel(
   let isDragging = false;
   let startY = 0;
   let startHeight = 0;
+
+  const updatePanelHeightVar = (element?: HTMLElement) => {
+    if (!element) return;
+    const height = Math.ceil(element.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--control-panel-height', `${height}px`);
+  };
 
   const handleResizeStart = (e: MouseEvent) => {
     if (!state.isOpen) return;
@@ -421,7 +430,7 @@ export function ControlPanel(
 
   // Parser Tab - Parser mode and file extensions
   const renderParserTab = () => {
-    const parser = state.parserOptions;
+    const parser = content.parserOptions;
 
     return m('div.panel-section.panel-parse', { class: state.activeTab === 'parse' ? 'panel-section--active' : '' }, [
       m('div.panel-settings__group', [
@@ -457,14 +466,15 @@ export function ControlPanel(
 
   // Layout Tab - Layout algorithms and physics
   const renderLayoutTab = () => {
-    const styling = state.graphStyling;
+    const styling = content.graphStyling;
+    const selectedRenderer = content.selectedRenderer;
 
     return m('div.panel-section.panel-layout', { class: state.activeTab === 'layout' ? 'panel-section--active' : '' }, [
       // Renderer selection (TOP - this is the first choice)
       m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Renderer'),
         m('select.panel-settings__select', {
-          value: state.selectedRenderer,
+          value: selectedRenderer,
           onchange: (e: Event) => {
             const renderer = (e.target as HTMLSelectElement).value as GraphRendererType;
             callbacks.onRendererChange(renderer);
@@ -477,7 +487,7 @@ export function ControlPanel(
       ]),
 
       // Layout algorithm (only show if NOT notebook renderer)
-      state.selectedRenderer !== 'notebook' ? m('div.panel-settings__group', [
+      selectedRenderer !== 'notebook' ? m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Algorithm'),
         m('select.panel-settings__select', {
           value: styling.layout,
@@ -491,7 +501,7 @@ export function ControlPanel(
       ]) : null,
 
       // Physics settings (only show if NOT notebook renderer)
-      state.selectedRenderer !== 'notebook' ? m('div.panel-settings__group', [
+      selectedRenderer !== 'notebook' ? m('div.panel-settings__group', [
         m('div.panel-settings__toggle-row', [
           m('span.panel-settings__label-compact', 'Physics'),
           m('label.panel-settings__toggle-compact.panel-settings__toggle', [
@@ -508,7 +518,7 @@ export function ControlPanel(
       ]) : null,
 
       // Repulsion force slider (only if physics enabled AND not notebook)
-      state.selectedRenderer !== 'notebook' && styling.enablePhysics ? m('div.panel-settings__group', [
+      selectedRenderer !== 'notebook' && styling.enablePhysics ? m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Repulsion Force'),
         m('div.panel-settings__slider-group', [
           m('input.panel-settings__slider[type=range]', {
@@ -526,7 +536,7 @@ export function ControlPanel(
       ]) : null,
 
       // Link distance slider (only if physics enabled AND not notebook)
-      state.selectedRenderer !== 'notebook' && styling.enablePhysics ? m('div.panel-settings__group', [
+      selectedRenderer !== 'notebook' && styling.enablePhysics ? m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Link Distance'),
         m('div.panel-settings__slider-group', [
           m('input.panel-settings__slider[type=range]', {
@@ -547,7 +557,7 @@ export function ControlPanel(
 
   // Style Tab - Visual appearance (nodes, edges, labels)
   const renderStyleTab = () => {
-    const styling = state.graphStyling;
+    const styling = content.graphStyling;
 
     return m('div.panel-section.panel-visual', { class: state.activeTab === 'visual' ? 'panel-section--active' : '' }, [
       // 2-column grid layout for nodes/edges/labels
@@ -731,7 +741,10 @@ export function ControlPanel(
     ]);
   };
 
-  return m('div.control-panel', [
+  return m('div.control-panel', {
+    oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
+    onupdate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
+  }, [
     // Resize handle at top (only when open)
     state.isOpen ? m('div.control-panel__resize', {
       onmousedown: handleResizeStart,
@@ -761,7 +774,7 @@ export function ControlPanel(
     // Body (collapsible) - use inline style for dynamic height
     m('div.control-panel__body', {
       class: state.isOpen ? 'control-panel__body--open' : '',
-      style: state.isOpen ? { maxHeight: `${state.panelHeight}px` } : {},
+      style: state.isOpen ? { height: `${state.panelHeight}px` } : { height: '0px' },
     }, [
       m('div.control-panel__content', [
         renderCodeTab(),

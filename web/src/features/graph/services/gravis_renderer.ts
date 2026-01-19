@@ -14,6 +14,7 @@ export class GravisGraphRenderer implements IGraphRenderer {
   readonly name = 'Gravis-style (vis-network) Renderer';
 
   private network: Network | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
   /**
    * Render graph data using vis-network
@@ -27,14 +28,30 @@ export class GravisGraphRenderer implements IGraphRenderer {
       throw new Error('GravisGraphRenderer: Invalid data format');
     }
 
+    this.cleanup();
+
     const graphData = data as GraphData;
     logger.debug('GravisGraphRenderer.render - rendering with vis-network');
 
     // Clear container
     container.innerHTML = '';
 
+    // vis-network requires explicit pixel dimensions, not just CSS percentages
+    // Get the parent dimensions and set them explicitly
+    const parentRect = container.parentElement?.getBoundingClientRect();
+    const width = parentRect?.width || container.clientWidth || 800;
+    const height = parentRect?.height || container.clientHeight || 600;
+    container.style.width = '100%';
+    container.style.height = '100%';
+    logger.debug(`GravisGraphRenderer: Container dimensions set to ${width}x${height}`);
+
+    // Apply optional background color
+    if (styling?.backgroundColor) {
+      container.style.backgroundColor = styling.backgroundColor;
+    }
+
     // Convert data to vis-network format
-    const { nodes, edges } = this.convertToVisFormat(graphData);
+    const { nodes, edges } = this.convertToVisFormat(graphData, styling);
 
     // Create DataSets
     const nodesDataSet = new DataSet(nodes);
@@ -53,8 +70,35 @@ export class GravisGraphRenderer implements IGraphRenderer {
       options
     );
 
+    if (this.network) {
+      this.network.setSize(`${width}px`, `${height}px`);
+    }
+
     // Add event listeners
     this.addEventListeners();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      let resizeRaf = 0;
+      const resizeTarget = container.parentElement || container;
+      const handleResize = () => {
+        if (resizeRaf) {
+          cancelAnimationFrame(resizeRaf);
+        }
+        resizeRaf = requestAnimationFrame(() => {
+          resizeRaf = 0;
+          if (!this.network) return;
+          const rect = resizeTarget.getBoundingClientRect();
+          const nextWidth = rect.width || container.clientWidth;
+          const nextHeight = rect.height || container.clientHeight;
+          if (!nextWidth || !nextHeight) return;
+          this.network.setSize(`${nextWidth}px`, `${nextHeight}px`);
+          this.network.redraw();
+        });
+      };
+
+      this.resizeObserver = new ResizeObserver(handleResize);
+      this.resizeObserver.observe(resizeTarget);
+    }
 
     logger.debug('GravisGraphRenderer: Rendering complete');
   }
@@ -87,7 +131,7 @@ export class GravisGraphRenderer implements IGraphRenderer {
   /**
    * Convert gJGF to vis-network format
    */
-  private convertToVisFormat(graphData: GraphData): {
+  private convertToVisFormat(graphData: GraphData, styling?: GraphStylingOptions): {
     nodes: Array<{
       id: string;
       label?: string;
@@ -110,22 +154,56 @@ export class GravisGraphRenderer implements IGraphRenderer {
     const visNodes: any[] = [];
     const visEdges: any[] = [];
 
-    // Convert nodes
-    const nodes = Array.isArray(graphData.graph.nodes)
-      ? graphData.graph.nodes
-      : Object.values(graphData.graph.nodes);
+    // Convert nodes - handle both array format and gJGF object format
+    let nodes: GraphNode[];
+    if (Array.isArray(graphData.graph.nodes)) {
+      nodes = graphData.graph.nodes;
+    } else {
+      // gJGF format: nodes is an object with node IDs as keys
+      // Each node has attributes nested under 'metadata'
+      nodes = Object.entries(graphData.graph.nodes).map(([id, nodeData]: [string, any]) => {
+        const metadata = nodeData.metadata || {};
+        return {
+          id,
+          label: nodeData.label || id,
+          ...metadata,
+        } as GraphNode;
+      });
+    }
+
+    logger.debug(`GravisGraphRenderer: Converting ${nodes.length} nodes to vis-network format`);
+
+    const nodeSize = styling?.nodeSize;
+    const nodeOpacity = styling?.nodeOpacity ?? 1;
+    const nodeColorOverride = styling?.nodeColorOverride;
 
     nodes.forEach((node: GraphNode) => {
-      visNodes.push({
+      const baseColor = nodeColorOverride || node.color;
+      const colorWithOpacity = this.applyOpacity(baseColor, nodeOpacity);
+
+      const visNode: Record<string, unknown> = {
         id: node.id,
         label: node.label || node.id,
         title: node.label || node.id, // Tooltip
-        color: node.color || undefined,
         shape: this.convertNodeShape(node.shape),
-        size: node.size ? Math.sqrt(node.size) / 2 : undefined,
         x: node.x,
         y: node.y
-      });
+      };
+
+      if (colorWithOpacity) {
+        visNode.color = {
+          background: colorWithOpacity,
+          border: colorWithOpacity
+        };
+      }
+
+      if (nodeSize !== undefined) {
+        visNode.size = nodeSize * 3;
+      } else if (node.size) {
+        visNode.size = Math.sqrt(node.size) / 2;
+      }
+
+      visNodes.push(visNode);
     });
 
     // Convert edges
@@ -133,12 +211,16 @@ export class GravisGraphRenderer implements IGraphRenderer {
       const sourceId = typeof edge.source === 'string' ? edge.source : edge.source.id;
       const targetId = typeof edge.target === 'string' ? edge.target : edge.target.id;
 
+      const edgeColor = edge.color;
+      const edgeOpacity = styling?.edgeOpacity ?? 0.7;
+      const colorWithOpacity = this.applyOpacity(edgeColor, edgeOpacity);
+
       visEdges.push({
         id: `edge-${index}`,
         from: sourceId,
         to: targetId,
         label: edge.label,
-        color: edge.color ? { color: edge.color } : undefined,
+        color: colorWithOpacity ? { color: colorWithOpacity } : undefined,
         arrows: graphData.graph.directed !== false ? 'to' : undefined
       });
     });
@@ -165,6 +247,49 @@ export class GravisGraphRenderer implements IGraphRenderer {
   }
 
   /**
+   * Apply opacity to a color string when possible.
+   */
+  private applyOpacity(color: string | undefined, opacity: number): string | undefined {
+    if (!color || opacity >= 1) {
+      return color;
+    }
+
+    const hexMatch = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hexMatch) {
+      const hex = hexMatch[1];
+      const normalized = hex.length === 3
+        ? hex.split('').map((c) => c + c).join('')
+        : hex;
+      const r = parseInt(normalized.slice(0, 2), 16);
+      const g = parseInt(normalized.slice(2, 4), 16);
+      const b = parseInt(normalized.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+
+    const rgbMatch = color.match(/^rgb\\((\\d+),\\s*(\\d+),\\s*(\\d+)\\)$/i);
+    if (rgbMatch) {
+      const [, r, g, b] = rgbMatch;
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+
+    return color;
+  }
+
+  /**
+   * Map edge style to vis-network dashes configuration.
+   */
+  private getEdgeDashes(style?: GraphStylingOptions['edgeStyle']): boolean | number[] {
+    switch (style) {
+      case 'dashed':
+        return [6, 6];
+      case 'dotted':
+        return [2, 4];
+      default:
+        return false;
+    }
+  }
+
+  /**
    * Get vis-network options based on styling
    */
   private getNetworkOptions(graphData: GraphData, styling?: GraphStylingOptions): any {
@@ -172,39 +297,48 @@ export class GravisGraphRenderer implements IGraphRenderer {
     const edgeWidth = styling?.edgeWidth || 1.5;
     const labelColor = styling?.labelColor || '#00ff41';
     const enablePhysics = styling?.enablePhysics !== false;
+    const showNodeLabels = styling?.showNodeLabels ?? true;
+    const showEdgeLabels = styling?.showEdgeLabels ?? false;
+    const edgeColor = styling?.edgeColor || '#666666';
+    const edgeDashes = this.getEdgeDashes(styling?.edgeStyle);
+    const nodeOpacity = styling?.nodeOpacity ?? 1;
+    const defaultNodeColor = this.applyOpacity('#00ff41', nodeOpacity) || '#00ff41';
+    const defaultNodeHighlight = this.applyOpacity('#00d4ff', nodeOpacity) || '#00d4ff';
+    const defaultNodeHover = this.applyOpacity('#33ff66', nodeOpacity) || '#33ff66';
 
     return {
       nodes: {
         shape: 'dot',
         size: nodeSize * 3,
         font: {
-          size: styling?.labelSize || 11,
-          color: labelColor,
+          size: showNodeLabels ? (styling?.labelSize || 11) : 0,
+          color: showNodeLabels ? labelColor : 'transparent',
           face: 'Consolas, Monaco, monospace'
         },
         borderWidth: styling?.nodeBorderWidth || 2,
         borderWidthSelected: (styling?.nodeBorderWidth || 2) * 1.5,
         color: {
-          border: '#00ff41',
-          background: '#00ff41',
+          border: defaultNodeColor,
+          background: defaultNodeColor,
           highlight: {
-            border: '#00d4ff',
-            background: '#00d4ff'
+            border: defaultNodeHighlight,
+            background: defaultNodeHighlight
           },
           hover: {
-            border: '#33ff66',
-            background: '#33ff66'
+            border: defaultNodeHover,
+            background: defaultNodeHover
           }
         }
       },
       edges: {
         width: edgeWidth,
         color: {
-          color: '#666666',
+          color: edgeColor,
           highlight: '#00ff41',
           hover: '#00ff41',
           opacity: styling?.edgeOpacity || 0.7
         },
+        dashes: edgeDashes,
         arrows: {
           to: {
             enabled: graphData.graph.directed !== false,
@@ -216,8 +350,8 @@ export class GravisGraphRenderer implements IGraphRenderer {
           roundness: 0.5
         },
         font: {
-          size: (styling?.labelSize || 11) - 2,
-          color: labelColor,
+          size: showEdgeLabels ? (styling?.labelSize || 11) - 2 : 0,
+          color: showEdgeLabels ? labelColor : 'transparent',
           face: 'Consolas, Monaco, monospace',
           align: 'middle'
         }
@@ -295,6 +429,10 @@ export class GravisGraphRenderer implements IGraphRenderer {
    * Cleanup vis-network instance
    */
   cleanup(): void {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
     if (this.network) {
       this.network.destroy();
       this.network = null;

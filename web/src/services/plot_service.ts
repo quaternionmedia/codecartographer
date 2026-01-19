@@ -104,7 +104,9 @@ export class PlotService {
         raw: file.raw,
       },
       options: {
+        palette_id: '0',
         layout: layout,
+        type: 'd3',
         parse_by: parseMode,
       },
     };
@@ -147,12 +149,43 @@ export class PlotService {
         parse_by: parseMode,
       },
     };
+    console.log(`[PARSE MODE] PlotService.loadDemo - sending request with parse_by=${parseMode}`);
     const data = await this.sendPlotRequest(plotterUrl, '/demo', body);
     if (typeof data === 'string') {
       logger.error('Error loading demo');
       return null;
     }
     return data;
+  }
+
+  /**
+   * Convert GraphData JSON to pre-rendered HTML for Notebook renderer.
+   * Sends graph data to backend which renders it using gravis and returns HTML.
+   */
+  public static async renderToHtml(
+    plotterUrl: string,
+    graphData: unknown,
+    layout: string = 'Spring'
+  ): Promise<{ 'text/html': string } | null> {
+    const body = {
+      graph_data: graphData,
+      options: {
+        layout: layout,
+      },
+    };
+    const data = await this.sendPlotRequest(plotterUrl, '/render/html', body);
+    if (typeof data === 'string' || !data) {
+      logger.error('Error rendering to HTML');
+      return null;
+    }
+    // RequestHandler already extracts responseData.results, so data IS the results object
+    // Expected format: { "text/html": "<html>..." }
+    const result = data as { 'text/html'?: string };
+    if (result['text/html']) {
+      return { 'text/html': result['text/html'] };
+    }
+    logger.error('Invalid response format from renderToHtml:', data);
+    return null;
   }
 
   /** Plot the content of the selected file. */

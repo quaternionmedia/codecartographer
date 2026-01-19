@@ -131,14 +131,14 @@
 .control-panel__body {
   background-color: var(--c-primary);
   border-top: var(--border-size-thin) solid var(--c-border);
-  max-height: 0;
+  height: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease-out;
+  transition: height 0.3s ease-out;
 }
 .control-panel__body--open {
   overflow-y: auto;
   transition: none; /* Disable transition when open for smooth resize */
-  /* max-height is set via inline style from state.panelHeight */
+  /* height is set via inline style from state.panelHeight */
 }
 
 .control-panel__content {

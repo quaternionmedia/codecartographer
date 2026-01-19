@@ -39,12 +39,16 @@ export class CellState implements ICellState {
     nodeSize: 6,
     nodeOpacity: 0.9,
     nodeBorderWidth: 2.0,
+    nodeColorOverride: undefined,
     edgeWidth: 1.5,
     edgeOpacity: 0.7,
+    edgeColor: '#666666',
+    edgeStyle: 'solid',
     showNodeLabels: false,
     showEdgeLabels: false,
     labelSize: 11,
     labelColor: '#00ff41',
+    backgroundColor: 'transparent',
     interactionProfile: 'default',
   };
   public parserOptions: ParserOptions = {

@@ -60,6 +60,9 @@ export interface ParserOptions {
   fileExtensions: string[];    // File extensions to parse (e.g., ['.py', '.js'])
 }
 
+/** Edge line style */
+export type EdgeStyle = 'solid' | 'dashed' | 'dotted';
+
 /** Graph styling options */
 export interface GraphStylingOptions {
   // Layout Algorithm
@@ -74,10 +77,13 @@ export interface GraphStylingOptions {
   nodeSize: number;            // in pixels (radius)
   nodeOpacity: number;         // 0.0 to 1.0
   nodeBorderWidth: number;     // in pixels
+  nodeColorOverride?: string;  // Optional override for automatic node coloring
 
   // Edge Appearance
   edgeWidth: number;           // in pixels
   edgeOpacity: number;         // 0.0 to 1.0
+  edgeColor?: string;          // Edge line color (default: theme-based)
+  edgeStyle?: EdgeStyle;       // Edge line style (solid, dashed, dotted)
 
   // Label Appearance
   showNodeLabels: boolean;
@@ -85,8 +91,14 @@ export interface GraphStylingOptions {
   labelSize: number;           // in pixels (font size)
   labelColor: string;          // hex color
 
+  // Canvas Appearance
+  backgroundColor?: string;    // Graph canvas background color
+
   // Interactions
   interactionProfile: string;  // Profile ID (default, cad, gaming, touch)
+
+  // Allow dynamic properties for extensibility
+  [key: string]: unknown;
 }
 
 /** Graph renderer type */

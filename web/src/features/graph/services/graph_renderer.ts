@@ -41,14 +41,23 @@ export interface GraphData {
     edges: GraphEdge[];
     directed?: boolean;
   };
-  metadata: {
-    layout: string;
-    type: string;
-    nodeCount: number;
-    edgeCount: number;
-    palette_id: string;
-  };
-}
+    metadata: {
+      layout: string;
+      type: string;
+      nodeCount: number;
+      edgeCount: number;
+      palette_id: string;
+      background_color?: string;
+      edge_color?: string;
+      node_label_color?: string;
+      edge_label_color?: string;
+      arrow_color?: string;
+      node_border_color?: string;
+      node_label_size?: number;
+      edge_label_size?: number;
+      [key: string]: unknown;
+    };
+  }
 
 export interface GraphStylingOptions {
   // Layout Algorithm
@@ -89,6 +98,7 @@ export class GraphRenderer {
   private static selectedNodes: Set<GraphNode> = new Set();
   private static onGraphChange: (() => void) | null = null;
   private static currentUpdatePositions: (() => void) | null = null;
+  private static currentResizeObserver: ResizeObserver | null = null;
 
   // Extensions system
   private static dragExtension: DragExtension | null = null;
@@ -129,6 +139,11 @@ export class GraphRenderer {
     logger.debug('GraphRenderer.renderD3 - rendering graph:', metadata);
     logger.debug('GraphRenderer.renderD3 - graph structure:', graph);
     logger.debug('GraphRenderer.renderD3 - styling options:', styling);
+
+    if (this.currentResizeObserver) {
+      this.currentResizeObserver.disconnect();
+      this.currentResizeObserver = null;
+    }
 
     // Clear existing content
     container.innerHTML = '';
@@ -271,13 +286,14 @@ export class GraphRenderer {
     const width = container.clientWidth || 800;
     const height = container.clientHeight || 600;
 
-    // Create SVG
+    // Create SVG with optional background color
     const svg = d3
       .select(container)
       .append('svg')
       .attr('width', width)
       .attr('height', height)
-      .attr('viewBox', [0, 0, width, height]);
+      .attr('viewBox', [0, 0, width, height])
+      .style('background-color', styling.backgroundColor || 'transparent');
 
     // Create a group for zoom/pan
     const g = svg.append('g');
@@ -342,6 +358,15 @@ export class GraphRenderer {
       });
     }
 
+    // Helper to get stroke-dasharray for edge style
+    const getEdgeDashArray = (style?: string): string | null => {
+      switch (style) {
+        case 'dashed': return '5,5';
+        case 'dotted': return '2,2';
+        default: return null;
+      }
+    };
+
     // Draw edges with styling
     const link = g
       .append('g')
@@ -350,9 +375,10 @@ export class GraphRenderer {
       .data(edges)
       .enter()
       .append('line')
-      .attr('stroke', (d) => d.color || '#999')
+      .attr('stroke', (d) => d.color || styling.edgeColor || '#999')
       .attr('stroke-opacity', styling.edgeOpacity * 0.6)
-      .attr('stroke-width', styling.edgeWidth);
+      .attr('stroke-width', styling.edgeWidth)
+      .attr('stroke-dasharray', getEdgeDashArray(styling.edgeStyle));
 
     // Store references for radial menu callbacks (except zoom - will be set later)
     this.currentSvg = svg;
@@ -425,7 +451,7 @@ export class GraphRenderer {
     nodeGroup
       .append('path')
       .attr('d', (d) => getNodePath(d.shape as string, styling.nodeSize))
-      .attr('fill', (d) => d.color || 'steelblue')
+      .attr('fill', (d) => styling.nodeColorOverride || d.color || 'steelblue')
       .attr('fill-opacity', styling.nodeOpacity)
       .attr('stroke', '#fff')
       .attr('stroke-width', styling.nodeBorderWidth);
@@ -481,13 +507,20 @@ export class GraphRenderer {
             }
           })
           .on('drag', (event: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode) => {
+            // Update both regular and fixed positions for consistent behavior
+            d.x = event.x;
+            d.y = event.y;
+            d.fx = event.x;
+            d.fy = event.y;
+
+            // Immediate visual update for the dragged node (don't wait for tick)
+            d3.select(event.currentTarget as SVGGElement)
+              .attr('transform', `translate(${event.x}, ${event.y})`);
+
             if (simulation) {
-              d.fx = event.x;
-              d.fy = event.y;
+              // Simulation will handle edge updates via tick
             } else {
-              // No simulation - directly update position and redraw
-              d.x = event.x;
-              d.y = event.y;
+              // No simulation - update edges manually
               if (updatePositions) updatePositions();
             }
           })
@@ -786,6 +819,39 @@ export class GraphRenderer {
     });
 
     this.currentInteractionManager.initialize(container, svg, zoom);
+
+    if (typeof ResizeObserver !== 'undefined') {
+      let resizeRaf = 0;
+      const handleResize = () => {
+        if (resizeRaf) {
+          cancelAnimationFrame(resizeRaf);
+        }
+        resizeRaf = requestAnimationFrame(() => {
+          resizeRaf = 0;
+          const nextWidth = container.clientWidth || width;
+          const nextHeight = container.clientHeight || height;
+          if (!nextWidth || !nextHeight) return;
+
+          svg
+            .attr('width', nextWidth)
+            .attr('height', nextHeight)
+            .attr('viewBox', [0, 0, nextWidth, nextHeight]);
+
+          if (simulation) {
+            simulation.force('center', d3.forceCenter(nextWidth / 2, nextHeight / 2));
+            simulation.alpha(0.3).restart();
+          }
+
+          if (updatePositions) {
+            updatePositions();
+          }
+        });
+      };
+
+      const resizeObserver = new ResizeObserver(handleResize);
+      resizeObserver.observe(container);
+      this.currentResizeObserver = resizeObserver;
+    }
 
     logger.debug('GraphRenderer.renderD3 - render complete with interactive controls');
   }

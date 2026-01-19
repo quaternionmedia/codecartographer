@@ -28,7 +28,7 @@ export class NotebookGraphRenderer implements IGraphRenderer {
   render(
     container: HTMLElement,
     data: unknown,
-    _styling?: GraphStylingOptions
+    styling?: GraphStylingOptions
   ): void {
     // Validate data format
     if (!this.canHandle(data)) {
@@ -84,16 +84,19 @@ export class NotebookGraphRenderer implements IGraphRenderer {
     // Clear container
     container.innerHTML = '';
 
+    const background = this.getThemeBackground(styling);
+
     // Create iframes for each HTML output
     htmlOutputs.forEach((output) => {
       const iframe = document.createElement('iframe');
       iframe.className = 'graph_content nbFrame';
-      iframe.srcdoc = output['text/html'] as string;
+      iframe.srcdoc = this.injectThemeStyles(output['text/html'] as string, styling);
 
       // Style iframe to fill container
       iframe.style.width = '100%';
       iframe.style.height = '100%';
       iframe.style.border = 'none';
+      iframe.style.backgroundColor = background;
 
       container.appendChild(iframe);
     });
@@ -133,5 +136,116 @@ export class NotebookGraphRenderer implements IGraphRenderer {
    */
   cleanup(): void {
     // No-op
+  }
+
+  /**
+   * Inject theme CSS variables and base styles into HTML.
+   */
+  private injectThemeStyles(html: string, styling?: GraphStylingOptions): string {
+    const rootStyle = getComputedStyle(document.documentElement);
+    const themeVars = [
+      '--c-primary',
+      '--c-secondary',
+      '--c-accent',
+      '--c-font',
+      '--c-font-muted',
+      '--f-root-font',
+      '--f-heading-font'
+    ];
+
+    const cssVars = themeVars
+      .map((name) => `${name}: ${rootStyle.getPropertyValue(name).trim()};`)
+      .join(' ');
+
+    const themeBackground = rootStyle.getPropertyValue('--c-primary').trim() || '#0a0a0a';
+    const themeFont = rootStyle.getPropertyValue('--c-font').trim() || '#00ff41';
+    const fallbackFont = rootStyle.getPropertyValue('--f-root-font').trim() || 'Consolas, Monaco, monospace';
+    const background = this.getThemeBackground(styling);
+
+    const styleBlock = `
+<style>
+:root { ${cssVars} }
+html, body {
+  margin: 0;
+  height: 100%;
+  background: ${background} !important;
+  color: ${themeFont};
+  font-family: ${fallbackFont};
+}
+body, .vis-network, .vis-network canvas, canvas, svg {
+  background: ${background} !important;
+}
+div[id$="-main-div"],
+div[id$="-left-div"],
+div[id$="-left-inner-div"],
+div[id$="-graph-div"] {
+  height: 100% !important;
+}
+div[id$="-graph-div"] {
+  resize: none !important;
+}
+div[id$="-main-div"],
+div[id$="-left-div"],
+div[id$="-right-div"],
+div[id$="-left-inner-div"],
+div[id$="-right-inner-div"],
+div[id$="-graph-div"],
+div[id$="-details-div"] {
+  background: ${background} !important;
+}
+</style>`;
+
+    const scriptBlock = `
+<script>
+(function () {
+  function resizeGraph() {
+    try {
+      if (typeof ui !== 'undefined' && ui.composites && ui.composites.responsiveContainer && ui.composites.graph) {
+        ui.composites.responsiveContainer.adaptToResize();
+        ui.composites.graph.updateGraphDrawingArea();
+      }
+    } catch (err) {
+      // Ignore errors from unknown notebook content.
+    }
+  }
+
+  window.addEventListener('resize', resizeGraph);
+  window.addEventListener('load', function () {
+    setTimeout(resizeGraph, 0);
+  });
+
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(function () {
+      resizeGraph();
+    });
+    ro.observe(document.body);
+  }
+})();
+</script>`;
+
+    const injection = `${styleBlock}${scriptBlock}`;
+
+    if (html.includes('</body>')) {
+      return html.replace('</body>', `${injection}</body>`);
+    }
+
+    if (html.includes('</head>')) {
+      return html.replace('</head>', `${injection}</head>`);
+    }
+
+    if (html.includes('<body')) {
+      return html.replace(/<body([^>]*)>/i, `<body$1>${injection}`);
+    }
+
+    return `${injection}${html}`;
+  }
+
+  private getThemeBackground(styling?: GraphStylingOptions): string {
+    const rootStyle = getComputedStyle(document.documentElement);
+    const themeBackground = rootStyle.getPropertyValue('--c-primary').trim() || '#0a0a0a';
+    if (styling?.backgroundColor && styling.backgroundColor !== 'transparent') {
+      return styling.backgroundColor;
+    }
+    return themeBackground;
   }
 }

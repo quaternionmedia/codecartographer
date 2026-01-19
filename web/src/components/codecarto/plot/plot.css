@@ -4,12 +4,13 @@
   flex-direction: column;
   width: 100%;
   background-color: var(--c-primary-light);
-  justify-content: center;
-  align-items: center;
   border-radius: var(--border-radius);
   border: var(--border-size-thin) solid var(--c-border);
   z-index: var(--z-plot);
   overflow: hidden;
+  min-height: 0;
+  align-items: stretch;
+  justify-content: stretch;
 }
 
 .plot--empty {
@@ -20,6 +21,8 @@
   gap: var(--spacing-md);
   color: var(--c-font-muted);
   font-size: 0.9em;
+  width: 100%;
+  height: 100%;
 }
 
 .plot__empty-icon {
@@ -37,6 +40,10 @@
   height: 100%;
   width: 100%;
   border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .graph_content {
@@ -45,6 +52,9 @@
   border: none;
   overflow: auto;
   background-color: var(--c-primary);
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
 }
 
 .nbFrame {

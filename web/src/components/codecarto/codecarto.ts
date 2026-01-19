@@ -23,7 +23,8 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
   // Track last plot action for re-executing when layout changes
   let lastPlotAction: (() => Promise<void>) | null = null;
 
-  // Control panel local state - persists across redraws
+  // Control panel local state - UI-only state, persists across redraws
+  // Note: graphStyling, parserOptions, selectedRenderer come from cell.state (single source of truth)
   let panelState: ControlPanelState = {
     isOpen: false,
     activeTab: 'source',
@@ -33,26 +34,6 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
     isLoading: false,
     statusMessage: 'Ready',
     panelHeight: 300,
-    graphStyling: {
-      layout: 'spring_layout',
-      enablePhysics: true,
-      chargeStrength: -100,
-      linkDistance: 55,
-      nodeSize: 5,
-      nodeOpacity: 1.0,
-      nodeBorderWidth: 1.5,
-      edgeWidth: 1.0,
-      edgeOpacity: 1.0,
-      showNodeLabels: true,
-      showEdgeLabels: false,
-      labelSize: 10,
-      labelColor: '#333333',
-    },
-    parserOptions: {
-      mode: 'ast',
-      fileExtensions: ['.py'],
-    },
-    selectedRenderer: 'd3',
   };
 
   // Helper to update panel state and trigger redraw
@@ -235,26 +216,30 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
     // Settings - theme change
     onThemeChange: (theme: string) => {
       // Theme is handled by CSS variables via data-theme attribute in control panel
+      if (appState.state.selectedRenderer === 'notebook' && appState.state.graphData) {
+        actions.plot.createGraphVnode();
+      }
     },
 
-    // Graph styling change
+    // Graph styling change - use appState for consistent updates
     onGraphStylingChange: async (options) => {
-      const oldLayout = panelState.graphStyling.layout;
+      console.log('[VISUAL] onGraphStylingChange called with options:', JSON.stringify(options));
+
+      // Read old values from appState (single source of truth)
+      const currentState = appState.state;
+      const oldLayout = currentState.graphStyling.layout;
       const newLayout = options.layout;
-      const oldPhysics = panelState.graphStyling.enablePhysics;
+      const oldPhysics = currentState.graphStyling.enablePhysics;
       const newPhysics = options.enablePhysics;
 
-      // Update local panel state for UI
-      updatePanelState({
-        graphStyling: { ...panelState.graphStyling, ...options }
-      });
+      console.log('[VISUAL] Before update - appState.state.graphStyling:', JSON.stringify(currentState.graphStyling));
 
-      // Update global state so it's available to the renderer
-      const currentCell = getCell();
-      const currentState = currentCell.state;
-      currentCell.update({
+      // Update through appState (single source of truth)
+      appState.update({
         graphStyling: { ...currentState.graphStyling, ...options }
       });
+
+      console.log('[VISUAL] After update - appState.state.graphStyling:', JSON.stringify(appState.state.graphStyling));
 
       // If layout changed, trigger a re-fetch from backend
       if (newLayout && newLayout !== oldLayout && lastPlotAction) {
@@ -269,83 +254,90 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
       }
 
       // If physics toggle changed, re-render graph with new physics setting
-      if (newPhysics !== undefined && newPhysics !== oldPhysics && currentState.graphData) {
+      if (newPhysics !== undefined && newPhysics !== oldPhysics && appState.state.graphData) {
         console.log(`Physics ${newPhysics ? 'enabled' : 'disabled'} - re-rendering graph`);
         actions.plot.createGraphVnode();
-        m.redraw();
         return;
       }
 
       // For other styling changes, just re-render with existing data
-      if (currentState.graphData) {
+      if (appState.state.graphData) {
+        console.log('[VISUAL] Calling createGraphVnode() for non-layout styling change');
         actions.plot.createGraphVnode();
-        m.redraw();
+      } else {
+        console.log('[VISUAL] No graphData in state - skipping createGraphVnode()');
       }
     },
 
-    // Parser options change
+    // Parser options change - use appState for consistent updates
     onParserOptionsChange: async (options) => {
-      const oldMode = panelState.parserOptions.mode;
+      // Read old values from appState (single source of truth)
+      const currentState = appState.state;
+      const oldMode = currentState.parserOptions.mode;
       const newMode = options.mode;
 
-      // Update local panel state for UI
-      updatePanelState({
-        parserOptions: { ...panelState.parserOptions, ...options }
-      });
+      console.log(`[PARSE MODE] onParserOptionsChange called`);
+      console.log(`[PARSE MODE] - oldMode=${oldMode}, newMode=${newMode}`);
+      console.log(`[PARSE MODE] - lastPlotAction exists=${!!lastPlotAction}`);
 
-      // Update global state so it's available to plot actions
-      const currentCell = getCell();
-      const currentState = currentCell.state;
-      currentCell.update({
+      // Update through appState (single source of truth)
+      appState.update({
         parserOptions: { ...currentState.parserOptions, ...options }
       });
 
-      console.log('Parser options updated:', { ...panelState.parserOptions, ...options });
+      console.log(`[PARSE MODE] After appState.update(), appState.state.parserOptions =`, JSON.stringify(appState.state.parserOptions));
 
-      // If parser mode changed, trigger a re-fetch from backend with new mode
-      if (newMode && newMode !== oldMode && lastPlotAction) {
-        updatePanelState({ isLoading: true, statusMessage: `Parsing with ${newMode} mode...` });
-        try {
-          await lastPlotAction();
-          updatePanelState({ isLoading: false, statusMessage: 'Ready' });
-        } catch (error) {
-          updatePanelState({ isLoading: false, statusMessage: `Error parsing with ${newMode} mode` });
+      // Provide consistent feedback regardless of data state
+      if (newMode && newMode !== oldMode) {
+        if (lastPlotAction) {
+          console.log(`[PARSE MODE] Calling lastPlotAction() to re-fetch with new parse mode...`);
+          updatePanelState({ isLoading: true, statusMessage: `Applying ${newMode} parser...` });
+          try {
+            await lastPlotAction();
+            console.log(`[PARSE MODE] lastPlotAction() completed successfully`);
+            updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          } catch (error) {
+            console.error('[PARSE MODE] Error in lastPlotAction:', error);
+            updatePanelState({ isLoading: false, statusMessage: `Error applying ${newMode} parser` });
+          }
+        } else {
+          console.log('[PARSE MODE] No lastPlotAction set - cannot re-fetch');
+          // No data loaded yet - provide feedback that mode is set
+          updatePanelState({ statusMessage: `Parser: ${newMode}. Load source to apply.` });
         }
       }
     },
 
-    // Renderer change
+    // Renderer change - use appState for consistent updates
     onRendererChange: (renderer) => {
-      // Update local panel state for UI
-      updatePanelState({ selectedRenderer: renderer });
+      // Update through appState (single source of truth)
+      appState.update({ selectedRenderer: renderer });
 
-      // Update global state
-      const currentCell = getCell();
-      currentCell.update({ selectedRenderer: renderer });
-
-      console.log('Renderer changed to:', renderer);
+      console.log('Renderer changed to:', renderer, '- current state:', appState.state.selectedRenderer);
 
       // Trigger re-render with new renderer if graph data exists
-      if (currentCell.state.graphData) {
+      if (appState.state.graphData) {
+        updatePanelState({ statusMessage: `Switching to ${renderer} renderer...` });
         actions.plot.createGraphVnode();
-        m.redraw();
+        updatePanelState({ statusMessage: 'Ready' });
+      } else {
+        // No data loaded yet - provide feedback that renderer is set
+        updatePanelState({ statusMessage: `Renderer: ${renderer}. Load source to apply.` });
       }
     },
   };
 
-  // Build content for control panel
-  const getContent = (): ControlPanelContent => ({
-    repoDirectory: appState.repo.content,
-    uploadedFiles: uploadedFiles,
-  });
-
   // Return a closure component - view is called on each redraw, but closures are preserved
   return {
+    oncreate: () => {
+      // Apply default theme on initial load
+      const theme = panelState.currentTheme;
+      document.documentElement.setAttribute('data-theme', theme === 'terminal' ? '' : theme);
+    },
     view: () => {
-      // Get fresh state from cell on each render
-      const currentCell = getCell();
-      const currentState = currentCell.state;
-      
+      // Use appState for consistent state access (single source of truth)
+      const currentState = appState.state;
+
       // Build header
       const header = m('div.codecarto__header', [
         m('h1.codecarto__title', [
@@ -360,10 +352,13 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
         m(Plot, { graphs: currentState.graphContent }),
       ]);
 
-      // Control panel - update content with fresh repo data
+      // Control panel - pass fresh state values (single source of truth)
       const content: ControlPanelContent = {
         repoDirectory: currentState.repo.content,
         uploadedFiles: uploadedFiles,
+        graphStyling: currentState.graphStyling,
+        parserOptions: currentState.parserOptions,
+        selectedRenderer: currentState.selectedRenderer,
       };
       
       const controlPanel = ControlPanel(
