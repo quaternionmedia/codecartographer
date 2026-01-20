@@ -468,6 +468,8 @@ export function ControlPanel(
   const renderLayoutTab = () => {
     const styling = content.graphStyling;
     const selectedRenderer = content.selectedRenderer;
+    const supportsLayout = selectedRenderer === 'd3';
+    const supportsPhysics = selectedRenderer !== 'notebook';
 
     return m('div.panel-section.panel-layout', { class: state.activeTab === 'layout' ? 'panel-section--active' : '' }, [
       // Renderer selection (TOP - this is the first choice)
@@ -486,8 +488,8 @@ export function ControlPanel(
         ]),
       ]),
 
-      // Layout algorithm (only show if NOT notebook renderer)
-      selectedRenderer !== 'notebook' ? m('div.panel-settings__group', [
+      // Layout algorithm (only supported by D3 renderer)
+      supportsLayout ? m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Algorithm'),
         m('select.panel-settings__select', {
           value: styling.layout,
@@ -500,8 +502,8 @@ export function ControlPanel(
         )),
       ]) : null,
 
-      // Physics settings (only show if NOT notebook renderer)
-      selectedRenderer !== 'notebook' ? m('div.panel-settings__group', [
+      // Physics settings (not available for notebook renderer)
+      supportsPhysics ? m('div.panel-settings__group', [
         m('div.panel-settings__toggle-row', [
           m('span.panel-settings__label-compact', 'Physics'),
           m('label.panel-settings__toggle-compact.panel-settings__toggle', [
@@ -518,7 +520,7 @@ export function ControlPanel(
       ]) : null,
 
       // Repulsion force slider (only if physics enabled AND not notebook)
-      selectedRenderer !== 'notebook' && styling.enablePhysics ? m('div.panel-settings__group', [
+      supportsPhysics && styling.enablePhysics ? m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Repulsion Force'),
         m('div.panel-settings__slider-group', [
           m('input.panel-settings__slider[type=range]', {
@@ -536,7 +538,7 @@ export function ControlPanel(
       ]) : null,
 
       // Link distance slider (only if physics enabled AND not notebook)
-      selectedRenderer !== 'notebook' && styling.enablePhysics ? m('div.panel-settings__group', [
+      supportsPhysics && styling.enablePhysics ? m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Link Distance'),
         m('div.panel-settings__slider-group', [
           m('input.panel-settings__slider[type=range]', {
@@ -558,6 +560,28 @@ export function ControlPanel(
   // Style Tab - Visual appearance (nodes, edges, labels)
   const renderStyleTab = () => {
     const styling = content.graphStyling;
+    const selectedRenderer = content.selectedRenderer;
+    const supportsVisual = selectedRenderer !== 'notebook';
+
+    const renderLabelColorGroup = (includeHelpText: boolean) => m('div.panel-settings__group', [
+      m('span.panel-settings__label-compact', 'Label Color'),
+      m('input.panel-settings__color[type=color]', {
+        value: styling.labelColor,
+        oninput: (e: Event) => {
+          const value = (e.target as HTMLInputElement).value;
+          callbacks.onGraphStylingChange({ labelColor: value });
+        },
+      }),
+      includeHelpText
+        ? m('div.panel-settings__help-text', 'Notebook renderer only supports label color in this tab.')
+        : null,
+    ]);
+
+    if (!supportsVisual) {
+      return m('div.panel-section.panel-visual', { class: state.activeTab === 'visual' ? 'panel-section--active' : '' }, [
+        renderLabelColorGroup(true),
+      ]);
+    }
 
     return m('div.panel-section.panel-visual', { class: state.activeTab === 'visual' ? 'panel-section--active' : '' }, [
       // 2-column grid layout for nodes/edges/labels
@@ -701,16 +725,7 @@ export function ControlPanel(
             ]),
           ]),
 
-          m('div.panel-settings__group', [
-            m('span.panel-settings__label-compact', 'Label Color'),
-            m('input.panel-settings__color[type=color]', {
-              value: styling.labelColor,
-              oninput: (e: Event) => {
-                const value = (e.target as HTMLInputElement).value;
-                callbacks.onGraphStylingChange({ labelColor: value });
-              },
-            }),
-          ]),
+          renderLabelColorGroup(false),
         ]),
       ]),
     ]);
