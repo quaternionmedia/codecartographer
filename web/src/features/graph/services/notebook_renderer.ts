@@ -84,7 +84,22 @@ export class NotebookGraphRenderer implements IGraphRenderer {
     // Clear container
     container.innerHTML = '';
 
+    const holder = container as HTMLElement & {
+      __codecartoNotebookResizeObserver?: ResizeObserver;
+      __codecartoNotebookResizeRaf?: number;
+    };
+
+    if (holder.__codecartoNotebookResizeObserver) {
+      holder.__codecartoNotebookResizeObserver.disconnect();
+      holder.__codecartoNotebookResizeObserver = undefined;
+    }
+    if (holder.__codecartoNotebookResizeRaf) {
+      cancelAnimationFrame(holder.__codecartoNotebookResizeRaf);
+      holder.__codecartoNotebookResizeRaf = undefined;
+    }
+
     const background = this.getThemeBackground(styling);
+    const frames: HTMLIFrameElement[] = [];
 
     // Create iframes for each HTML output
     htmlOutputs.forEach((output) => {
@@ -93,13 +108,55 @@ export class NotebookGraphRenderer implements IGraphRenderer {
       iframe.srcdoc = this.injectThemeStyles(output['text/html'] as string, styling);
 
       // Style iframe to fill container
+      iframe.style.display = 'block';
       iframe.style.width = '100%';
       iframe.style.height = '100%';
       iframe.style.border = 'none';
       iframe.style.backgroundColor = background;
 
       container.appendChild(iframe);
+      frames.push(iframe);
     });
+
+    const updateFrameSizes = () => {
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      if (!width || !height) {
+        return;
+      }
+
+      frames.forEach((frame) => {
+        frame.style.width = `${width}px`;
+        frame.style.height = `${height}px`;
+        try {
+          frame.contentWindow?.dispatchEvent(new Event('resize'));
+        } catch {
+          // Ignore resize dispatch failures for cross-origin or missing frames.
+        }
+      });
+    };
+
+    frames.forEach((frame) => {
+      frame.addEventListener('load', updateFrameSizes);
+    });
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const handleResize = () => {
+        if (holder.__codecartoNotebookResizeRaf) {
+          cancelAnimationFrame(holder.__codecartoNotebookResizeRaf);
+        }
+        holder.__codecartoNotebookResizeRaf = requestAnimationFrame(() => {
+          holder.__codecartoNotebookResizeRaf = undefined;
+          updateFrameSizes();
+        });
+      };
+
+      const resizeObserver = new ResizeObserver(handleResize);
+      resizeObserver.observe(container);
+      holder.__codecartoNotebookResizeObserver = resizeObserver;
+    }
+
+    updateFrameSizes();
 
     logger.debug(`NotebookGraphRenderer: Created ${htmlOutputs.length} iframe(s)`);
   }
@@ -162,6 +219,13 @@ export class NotebookGraphRenderer implements IGraphRenderer {
     const fallbackFont = rootStyle.getPropertyValue('--f-root-font').trim() || 'Consolas, Monaco, monospace';
     const background = this.getThemeBackground(styling);
 
+    let patchedHtml = html;
+    const appStartPattern = /app\.start\(\)\s*;?/;
+    const gravisUiHook = 'window.__gravis_ui = ui;';
+    if (appStartPattern.test(patchedHtml)) {
+      patchedHtml = patchedHtml.replace(appStartPattern, `${gravisUiHook}\n$&`);
+    }
+
     const styleBlock = `
 <style>
 :root { ${cssVars} }
@@ -184,6 +248,9 @@ div[id$="-graph-div"] {
 div[id$="-graph-div"] {
   resize: none !important;
 }
+div[id$="-details-div"] {
+  resize: none !important;
+}
 div[id$="-main-div"],
 div[id$="-left-div"],
 div[id$="-right-div"],
@@ -198,25 +265,60 @@ div[id$="-details-div"] {
     const scriptBlock = `
 <script>
 (function () {
+  var MAX_ATTEMPTS = 12;
+  var attempt = 0;
+  var retryTimer = null;
+
+  function getUi() {
+    if (window.__gravis_ui) {
+      return window.__gravis_ui;
+    }
+    try {
+      if (typeof ui !== 'undefined') {
+        window.__gravis_ui = ui;
+        return ui;
+      }
+    } catch (err) {
+      // Ignore missing ui reference.
+    }
+    return null;
+  }
+
   function resizeGraph() {
     try {
-      if (typeof ui !== 'undefined' && ui.composites && ui.composites.responsiveContainer && ui.composites.graph) {
-        ui.composites.responsiveContainer.adaptToResize();
-        ui.composites.graph.updateGraphDrawingArea();
+      var uiRef = getUi();
+      if (uiRef && uiRef.composites && uiRef.composites.responsiveContainer && uiRef.composites.graph) {
+        uiRef.composites.responsiveContainer.adaptToResize();
+        uiRef.composites.graph.updateGraphDrawingArea();
+        return true;
       }
     } catch (err) {
       // Ignore errors from unknown notebook content.
     }
+    return false;
+  }
+
+  function scheduleRetry() {
+    if (retryTimer) return;
+    retryTimer = setInterval(function () {
+      attempt += 1;
+      if (resizeGraph() || attempt >= MAX_ATTEMPTS) {
+        clearInterval(retryTimer);
+        retryTimer = null;
+      }
+    }, 200);
   }
 
   window.addEventListener('resize', resizeGraph);
   window.addEventListener('load', function () {
-    setTimeout(resizeGraph, 0);
+    scheduleRetry();
   });
 
   if (typeof ResizeObserver !== 'undefined') {
     const ro = new ResizeObserver(function () {
-      resizeGraph();
+      if (!resizeGraph()) {
+        scheduleRetry();
+      }
     });
     ro.observe(document.body);
   }
@@ -225,19 +327,19 @@ div[id$="-details-div"] {
 
     const injection = `${styleBlock}${scriptBlock}`;
 
-    if (html.includes('</body>')) {
-      return html.replace('</body>', `${injection}</body>`);
+    if (patchedHtml.includes('</body>')) {
+      return patchedHtml.replace('</body>', `${injection}</body>`);
     }
 
-    if (html.includes('</head>')) {
-      return html.replace('</head>', `${injection}</head>`);
+    if (patchedHtml.includes('</head>')) {
+      return patchedHtml.replace('</head>', `${injection}</head>`);
     }
 
-    if (html.includes('<body')) {
-      return html.replace(/<body([^>]*)>/i, `<body$1>${injection}`);
+    if (patchedHtml.includes('<body')) {
+      return patchedHtml.replace(/<body([^>]*)>/i, `<body$1>${injection}`);
     }
 
-    return `${injection}${html}`;
+    return `${injection}${patchedHtml}`;
   }
 
   private getThemeBackground(styling?: GraphStylingOptions): string {

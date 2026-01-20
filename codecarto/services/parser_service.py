@@ -84,8 +84,8 @@ class ParserService:
     async def parse_code_directory(directory: Directory) -> nx.DiGraph:
         """Parse entire directory using AST (code structure) parser"""
         parser = PythonCustomAST()
-        # Convert directory to folder structure for AST parser
-        root_folder = directory.info
+        # Use the root folder from directory structure
+        root_folder = directory.root
         graph = parser.parse(root_folder)
         graph.name = directory.info.name
         return graph

@@ -24,8 +24,8 @@ export class StateController {
 
   public update(state: Patch<ICellState>) {
     this._cell.update(state);
-    this._cell.state = this._cell.getState();
-    //console.log('StateController.update - updated state: ', this._cell.state);
+    const newState = this._cell.getState();
+    this._cell.state = newState;
   }
 
   public redraw() {
