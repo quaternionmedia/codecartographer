@@ -1,0 +1,115 @@
+/* Radial Menu Styles - Theme-aware */
+
+.radial-menu {
+  position: fixed;
+  pointer-events: all;
+  user-select: none;
+  animation: radialMenuFadeIn var(--t-transition-fast, 0.15s) ease-out;
+  z-index: 1001;
+}
+
+@keyframes radialMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.radial-menu svg {
+  overflow: visible;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
+}
+
+.menu-segment {
+  cursor: pointer;
+  transition: all var(--t-transition-fast, 0.15s) ease-out;
+}
+
+.menu-arc {
+  transition: all var(--t-transition-fast, 0.15s) ease-out;
+}
+
+.menu-label {
+  text-shadow:
+    0 0 4px var(--c-primary-dark, #000),
+    0 0 8px var(--c-primary-dark, #000),
+    0 2px 4px rgba(0, 0, 0, 0.8);
+  font-family: var(--f-root-font, 'Consolas', 'Monaco', monospace);
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.menu-icon {
+  text-shadow:
+    0 0 4px var(--c-primary-dark, #000),
+    0 0 8px var(--c-primary-dark, #000);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+}
+
+.back-button {
+  transition: transform var(--t-transition-fast, 0.15s) ease-out;
+}
+
+.back-button:hover {
+  transform: scale(1.15);
+}
+
+/* Radial menu container overlay */
+.radial-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--c-transparent-half, rgba(10, 10, 10, 0.6));
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  pointer-events: all;
+  animation: overlayFadeIn var(--t-transition-fast, 0.15s) ease-out;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Touch-friendly larger hit areas */
+@media (pointer: coarse) {
+  .menu-segment {
+    stroke-width: 3;
+  }
+
+  .menu-label {
+    font-size: 14px;
+  }
+
+  .menu-icon {
+    font-size: 22px;
+  }
+}
+
+/* Accessibility - keyboard focus */
+.menu-segment:focus-visible {
+  outline: 3px solid var(--c-secondary, #00ff41);
+  outline-offset: 2px;
+}
+
+/* Theme-specific adjustments */
+[data-theme="light"] .radial-menu svg {
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.2));
+}
+
+[data-theme="light"] .menu-label,
+[data-theme="light"] .menu-icon {
+  text-shadow:
+    0 0 2px var(--c-primary-light, #fff),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}

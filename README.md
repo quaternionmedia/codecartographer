@@ -1,137 +1,160 @@
-# Codecarto:
+# Codecarto
 
-Development tool for mapping source code
-Visualize source code through graphs
+**Development tool for mapping and visualizing source code as graphs.**
 
-# Installation
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-<details>
-<summary>PyPi not implemented yet</summary>
+## Overview
 
-## From pypi:
+Codecarto parses source code and generates interactive graph visualizations, helping developers understand code structure, dependencies, and relationships.
 
-```
-python -m venv venv
+## Quick Start
 
-.\venv\Scripts\activate
+### Prerequisites
 
-pip install codecarto
+- Python 3.10+
+- [uv](https://github.com/astral-sh/uv) (recommended) or pip
+- Node.js 18+ (for frontend)
 
-```
+### Installation
 
-</details>
-
-## From Git (dev):
-
-### Clone the repo
-
-```
+```bash
+# Clone the repository
 git clone https://github.com/quaternionmedia/codecartographer.git
-git submodule init
-git submodule update
+cd codecartographer
+git submodule init && git submodule update
+
+# Create virtual environment and install
+uv venv
+source .venv/bin/activate      # Linux/macOS
+# .venv\Scripts\activate       # Windows PowerShell
+# source .venv/Scripts/activate  # Windows Git Bash
+
+uv pip install -e ".[dev]"
 ```
 
-### Create a Github API token
+### Start Development
 
-<details>
-<summary>Create a Github API token</summary>
-  
-1. Login to Github 
-2. Click Profile Image
-3. Go to **Settings > Developer Settings (at the bottom of left pane) > Personal Access Tokens > Tokens (classic)**
-    - Or go here https://github.com/settings/tokens
-4. Click "Generate New Token" dropdown
-5. Choose one of the token options
-6. Check the "public_repo" checkbox
-7. Copy the ghp token generated
-8. Go to your local codecartographer repo in file explorer
-9. At the root, create a new text file named "token.txt"
-    - PATH\TO\codecartographer\token.txt
-10. Paste your ghp token into token.txt and save
-    
-</details>
+```bash
+# Start full dev environment (backend + frontend)
+uv run codecarto dev
 
-### Start the project
-
-Open a shell terminal, navigate to codecartographer repo folder
-
-Setup virtual environment
-
-```
-python -m venv venv
-.\venv\Scripts\activate
+# Or start components separately
+uv run codecarto serve    # Backend only (http://127.0.0.1:8000)
+uv run codecarto web      # Frontend only (http://localhost:1234)
 ```
 
-Install dependencies
+## CLI Commands
 
-```
-poetry install
-```
+```bash
+# Development
+uv run codecarto dev              # Start backend + frontend
+uv run codecarto serve            # Start API server
+uv run codecarto web              # Start frontend
 
-Install graphbase module
+# Local Repository Analysis
+uv run codecarto repo scan .      # Scan repo structure
+uv run codecarto repo tree .      # Display directory tree
+uv run codecarto repo graph .     # Generate code graph
 
-```
-pip install -m graphbase
-```
+# Utilities
+uv run codecarto parse FILE       # Parse a Python file
+uv run codecarto info             # Show environment info
+uv run codecarto lint             # Run linter
 
-Docker Up
-
-```
-docker-compose -f ./graphbase/docker-compose.yml up --build -d && docker-compose -f ./docker-compose.yml up --build -d
-```
-
-_If you have problems with the above command, docker compose up graphbase, then docker compose up codecartographer_
-
-# Usage (dev)
-
-### Site
-
-Once Docker containers are up, run the site by going to the codecartographer/web directory and running npm run dev.
-
-```
-cd web
-npm install (only the first time)
-npm run dev
+# Docker
+uv run codecarto docker           # Start containers
+uv run codecarto docker-down      # Stop containers
 ```
 
-Site will be running on localhost:1234
+### Local Repo Commands
 
-### Demo
+```bash
+# Scan with different extensions
+uv run codecarto repo scan . -e .py -e .js
 
-Click the Demo button in the top right to see a plot of a simple code graph.
+# Generate different graph types
+uv run codecarto repo graph . -t ast         # AST graph (default)
+uv run codecarto repo graph . -t directory   # Directory structure
+uv run codecarto repo graph . -t dependency  # Import dependencies
 
-### Parse Github Repo
-
-Input a public github repository into the text field.
-
-Click 'Submit'
-
-The service will parse out the necessary information from the repo and open the file directory panel.
-
-You can collapse the panel by clicking the yellow arrow button attached to the side of the panel.
-
-You can open the panel by clicking the same yellow arrow button on the left hand side.
-
-### Plot Code Files
-
-Once the file directory panel has been populated and opened, click any compatible file (the highlighted ones).
-
-The service will begin reading the file url and plot a graph representing the file.
-
-The graph is created using the Gravis library.
-
-### Saved Graphs
-
-Not implemented quite yet
-
-### Docker Down
-
-```
-docker-compose -f docker-compose.yml down -v && docker-compose -f ./graphbase/docker-compose.yml down -v
+# Output as JSON
+uv run codecarto repo scan . -o json
 ```
 
-_If you have problems with the above command, docker compose down codecartographer, then docker compose down graphbase_
+## API Endpoints
 
-# Test (dev)
+Once the server is running, access:
+- **API Docs**: http://127.0.0.1:8000/docs
+- **Frontend**: http://localhost:1234
 
-**Note:** Tests are not implemented yet.
+| Endpoint | Description |
+|----------|-------------|
+| `/palette` | Color palette management |
+| `/parser` | Source code parsing |
+| `/plotter` | Graph visualization |
+| `/polygraph` | Graph operations |
+| `/repo` | GitHub repository reading |
+| `/local` | Local repository analysis |
+
+## Project Structure
+
+```
+codecartographer/
+├── codecarto/           # Main Python package
+│   ├── cli.py           # CLI entry point
+│   ├── main.py          # FastAPI application
+│   ├── routers/         # API route handlers
+│   ├── services/        # Business logic
+│   ├── models/          # Pydantic models
+│   └── util/            # Utilities
+├── web/                 # Frontend (Vite + TypeScript)
+├── graphbase/           # Database submodule
+├── docs/                # Documentation
+└── pyproject.toml       # Project configuration
+```
+
+## GitHub Token (Optional)
+
+For parsing public GitHub repositories:
+
+1. Go to [GitHub Settings > Tokens](https://github.com/settings/tokens)
+2. Generate a new token with `public_repo` scope
+3. Create `token.txt` in the project root with your token
+
+## Development
+
+```bash
+# Install dev dependencies
+uv pip install -e ".[dev]"
+
+# Run linter
+uv run codecarto lint
+uv run codecarto lint --fix   # Auto-fix issues
+
+# Run tests (coming soon)
+uv run pytest
+```
+
+## Docker (Optional)
+
+```bash
+# Start database containers
+uv run codecarto docker
+
+# Stop containers
+uv run codecarto docker-down
+```
+
+## Documentation
+
+- [Development Guide](docs/llm/uv_migration.md) - Full dev cycle documentation
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Contributing
+
+Contributions welcome! Please read the development guide before submitting PRs.

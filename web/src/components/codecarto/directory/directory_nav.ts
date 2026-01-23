@@ -1,6 +1,7 @@
 import m from 'mithril';
 
 import { displayError } from '../../../utility';
+import { animations } from '../../../core/animations';
 import { Directory, RawFile, RawFolder } from '../../models/source';
 import { DirectoryContent } from '../../qm_comp_lib/directory/directory';
 import './directory_nav.css';
@@ -95,7 +96,8 @@ export const DirectoryNav = (state: DirectoryNavState) => {
     const plotAll = m(
       'button.plot_whole_repo_btn',
       {
-        onclick: function () {
+        onclick: function (e: MouseEvent) {
+          animations.buttonPress(e.currentTarget as Element);
           state.wholeRepoClicked();
         },
       },
@@ -105,7 +107,8 @@ export const DirectoryNav = (state: DirectoryNavState) => {
     const plotAllDeps = m(
       'button.plot_whole_repo_deps_btn',
       {
-        onclick: function () {
+        onclick: function (e: MouseEvent) {
+          animations.buttonPress(e.currentTarget as Element);
           state.wholeRepoDepsClicked();
         },
       },

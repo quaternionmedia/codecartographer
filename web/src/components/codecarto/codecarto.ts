@@ -2,173 +2,377 @@ import m from 'mithril';
 
 import { ICell } from '../../state/cell_state';
 import { StateController } from '../../state/state_controller';
+import { createActions, AppActions } from '../../state/actions';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../models/source';
 
-import { Nav, NavSide } from '../qm_comp_lib/navigation/base/nav';
-import { DirectoryNavState, DirectoryNav } from './directory/directory_nav';
-import { UploadNavState, UploadNav } from './upload/upload_nav';
-import { UrlInput, InputState } from './url_input/url_input';
-import { Plot } from './plot/plot';
-
-import { RepoService } from '../../services/repo_service';
-import { PlotService } from '../../services/plot_service';
-import { handleDemoData as getDemoData } from '../../services/demo_service';
+import { ControlPanel, ControlPanelState, ControlPanelCallbacks, ControlPanelContent } from './control_panel';
+import { Plot } from '../../features/graph';
 
 import './codecarto.css';
 
-/** The Code Cartographer app component */
-export const CodeCarto = (cell: ICell) => {
-  var appState = new StateController(cell);
+/** The Code Cartographer app component - returns a Mithril closure component */
+export const CodeCarto = (getCell: () => ICell): m.Component => {
+  // Get initial cell for setting up actions (they need cell.update)
+  const initialCell = getCell();
+  const appState = new StateController(initialCell);
+  const actions: AppActions = createActions(appState);
 
-  function handlePlotData(data: Array<object>) {
-    // Create an iframe for each output
-    let nbFrame: m.Vnode[] = [];
-    data.forEach((output) => {
-      if (output['text/html']) {
-        nbFrame.push(
-          m('iframe.graph_content.nbFrame', {
-            srcdoc: output['text/html'],
-          })
-        );
+  // Local uploaded files storage (not in global state yet)
+  let uploadedFiles: RawFile[] = [];
+
+  // Track last plot action for re-executing when layout changes
+  let lastPlotAction: (() => Promise<void>) | null = null;
+
+  // Control panel local state - UI-only state, persists across redraws
+  // Note: graphStyling, parserOptions, selectedRenderer come from cell.state (single source of truth)
+  let panelState: ControlPanelState = {
+    isOpen: false,
+    activeTab: 'source',
+    codeSourceMode: 'upload',
+    repoUrl: '',
+    currentTheme: 'forest',
+    isLoading: false,
+    statusMessage: 'Ready',
+    panelHeight: 300,
+  };
+
+  // Helper to update panel state and trigger redraw
+  const updatePanelState = (updates: Partial<ControlPanelState>) => {
+    panelState = { ...panelState, ...updates };
+    m.redraw();
+  };
+
+  // Control panel callbacks - fully wired
+  const panelCallbacks: ControlPanelCallbacks = {
+    // Demo
+    onDemo: async () => {
+      updatePanelState({ isLoading: true, statusMessage: 'Loading demo...' });
+
+      // Store this action for re-execution when layout changes
+      lastPlotAction = async () => {
+        await actions.plot.loadDemo();
+      };
+
+      try {
+        await lastPlotAction();
+        updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+      } catch (error) {
+        updatePanelState({ isLoading: false, statusMessage: 'Error loading demo' });
       }
-    });
-    appState.updatePlotFrame(nbFrame);
-  }
+    },
+    
+    // Repository - fetch
+    onRepoSubmit: async (url: string) => {
+      updatePanelState({ isLoading: true, statusMessage: 'Fetching repository...' });
+      try {
+        await actions.repo.fetchRepository(url);
+        updatePanelState({ isLoading: false, statusMessage: 'Repository loaded' });
+      } catch (error) {
+        updatePanelState({ isLoading: false, statusMessage: 'Error fetching repository' });
+      }
+    },
+    
+    // Repository - click file in tree
+    onRepoFileClick: async (url: string) => {
+      updatePanelState({ isLoading: true, statusMessage: 'Plotting file...' });
+      try {
+        await actions.plot.plotUrlFile(url);
+        updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+      } catch (error) {
+        updatePanelState({ isLoading: false, statusMessage: 'Error plotting file' });
+      }
+    },
+    
+    // Repository - plot whole directory
+    onPlotWholeRepo: async () => {
+      const repoContent = appState.repo.content;
+      if (repoContent && repoContent.size > 0) {
+        updatePanelState({ isLoading: true, statusMessage: 'Plotting directory tree...' });
 
-  async function onUrlInput(url: string) {
-    appState.clear();
-    appState.updateRepoContent(
-      await RepoService.getGithubRepo(url, appState.api.repoReader)
-    );
-  }
+        // Store this action for re-execution when layout changes
+        lastPlotAction = async () => {
+          const content = appState.repo.content;
+          if (content && content.size > 0) {
+            await actions.plot.plotWholeRepo(content);
+          }
+        };
 
-  async function onUrlFileClicked(url: string) {
-    appState.clear();
-    handlePlotData(await PlotService.plotUrlFile(url, appState.api.plotter));
-  }
+        try {
+          await lastPlotAction();
+          updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+        } catch (error) {
+          updatePanelState({ isLoading: false, statusMessage: 'Error plotting repository' });
+        }
+      }
+    },
+    
+    // Repository - plot dependencies
+    onPlotRepoDeps: async () => {
+      const repoContent = appState.repo.content;
+      if (repoContent && repoContent.size > 0) {
+        updatePanelState({ isLoading: true, statusMessage: 'Plotting dependencies...' });
 
-  async function onWholeRepoClicked() {
-    appState.clear();
-    handlePlotData(
-      await PlotService.plotRepoWhole(
-        appState.repo.content,
-        appState.api.plotter
-      )
-    );
-  }
+        // Store this action for re-execution when layout changes
+        lastPlotAction = async () => {
+          const content = appState.repo.content;
+          if (content && content.size > 0) {
+            await actions.plot.plotRepoDeps(content);
+          }
+        };
 
-  async function onWholeRepoDepsClicked() {
-    appState.clear();
-    handlePlotData(
-      await PlotService.plotRepoWholeDeps(
-        appState.repo.content,
-        appState.api.plotter
-      )
-    );
-  }
+        try {
+          await lastPlotAction();
+          updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+        } catch (error) {
+          updatePanelState({ isLoading: false, statusMessage: 'Error plotting dependencies' });
+        }
+      }
+    },
+    
+    // Upload - file upload handler
+    onFileUpload: (files: FileList) => {
+      updatePanelState({ isLoading: true, statusMessage: 'Processing files...' });
+      
+      const newFiles: RawFile[] = [];
+      let processed = 0;
+      
+      Array.from(files).forEach(file => {
+        // Check if file already exists
+        const exists = uploadedFiles.some(f => f.name === file.name);
+        if (exists) {
+          processed++;
+          if (processed === files.length) {
+            updatePanelState({ isLoading: false, statusMessage: `${newFiles.length} new file(s) added` });
+          }
+          return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = e.target?.result as string;
+          const newFile = new RawFile(file.name, file.size, content, file.webkitRelativePath || file.name);
+          newFiles.push(newFile);
+          uploadedFiles.push(newFile);
+          processed++;
+          
+          // Update state when all files are processed
+          if (processed === files.length) {
+            // Also update the global state for consistency
+            appState.update({
+              local: {
+                content: new Directory(
+                  new RepoInfo(),
+                  uploadedFiles.length,
+                  new RawFolder('uploads', 0, uploadedFiles)
+                ),
+              },
+            });
+            updatePanelState({ isLoading: false, statusMessage: `${newFiles.length} file(s) added` });
+          }
+        };
+        reader.readAsText(file);
+      });
+    },
+    
+    // Upload - click uploaded file
+    onUploadedFileClick: async (file: RawFile) => {
+      updatePanelState({ isLoading: true, statusMessage: 'Plotting file...' });
 
-  async function onUploadedFileClick(file: RawFile) {
-    appState.clear();
-    handlePlotData(await PlotService.plotFile(file, appState.api.plotter));
-  }
+      // Store this action for re-execution when layout changes
+      lastPlotAction = async () => {
+        await actions.plot.plotUploadedFile(file);
+      };
 
-  async function onWholeSourceClicked() {}
+      try {
+        await lastPlotAction();
+        updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+      } catch (error) {
+        updatePanelState({ isLoading: false, statusMessage: 'Error plotting file' });
+      }
+    },
 
-  async function plotDemo() {
-    appState.clear();
-    handlePlotData(await getDemoData());
-  }
+    // Upload - plot all uploaded files
+    onPlotAllUploads: async () => {
+      if (uploadedFiles.length > 0) {
+        updatePanelState({ isLoading: true, statusMessage: 'Plotting all files...' });
 
-  const demo_button = m('button.demo_btn', { onclick: plotDemo }, 'Demo');
-  const title = m('div.header.app_header', ['Code Cartographer', demo_button]);
-  const inputState = new InputState(onUrlInput, appState.state.inputRepoUrl);
-  const codeCarto = m('div.codecarto', [
-    title,
-    UrlInput(inputState),
-    Plot(appState.state.graphContent),
-  ]);
+        // Store this action for re-execution when layout changes
+        lastPlotAction = async () => {
+          if (uploadedFiles.length > 0) {
+            // For now, plot the first file - TODO: implement multi-file plotting
+            await actions.plot.plotUploadedFile(uploadedFiles[0]);
+          }
+        };
 
-  return [
-    RepoNav(
-      appState,
-      onUrlFileClicked,
-      onWholeRepoClicked,
-      onWholeRepoDepsClicked
-    ),
-    UploadFileNav(appState, onUploadedFileClick, onWholeSourceClicked),
-    codeCarto,
-  ];
-};
+        try {
+          await lastPlotAction();
+          updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+        } catch (error) {
+          updatePanelState({ isLoading: false, statusMessage: 'Error plotting files' });
+        }
+      }
+    },
+    
+    // Settings - theme change
+    onThemeChange: (theme: string) => {
+      // Theme is handled by CSS variables via data-theme attribute in control panel
+      if (appState.state.selectedRenderer === 'notebook' && appState.state.graphData) {
+        actions.plot.createGraphVnode();
+      }
+    },
 
-const RepoNav = (
-  appState: StateController,
-  fileClicked: (url: string) => void,
-  wholeRepoClicked: () => void,
-  wholeRepoDepsClicked: () => void
-) => {
-  function handleRepoUpdated(directory: DirectoryNavState) {
-    appState.update({
-      repo: {
-        selectedUrl: directory.controller.selectedUrl,
-        component: directory.controller.component,
-      },
-    });
-  }
+    // Graph styling change - use appState for consistent updates
+    onGraphStylingChange: async (options) => {
+      console.log('[VISUAL] onGraphStylingChange called with options:', JSON.stringify(options));
 
-  function toggleNav() {
-    appState.toggleDirectoryNav();
-  }
+      // Read old values from appState (single source of truth)
+      const currentState = appState.state;
+      const oldLayout = currentState.graphStyling.layout;
+      const newLayout = options.layout;
+      const oldPhysics = currentState.graphStyling.enablePhysics;
+      const newPhysics = options.enablePhysics;
 
-  let dirNavState = new DirectoryNavState(
-    appState.repo,
-    fileClicked,
-    wholeRepoClicked,
-    wholeRepoDepsClicked,
-    handleRepoUpdated
-  );
+      console.log('[VISUAL] Before update - appState.state.graphStyling:', JSON.stringify(currentState.graphStyling));
 
-  return Nav(
-    NavSide.LEFT,
-    appState.repo.isMenuOpen,
-    DirectoryNav(dirNavState),
-    toggleNav
-  );
-};
+      // Update through appState (single source of truth)
+      appState.update({
+        graphStyling: { ...currentState.graphStyling, ...options }
+      });
 
-const UploadFileNav = (
-  appState: StateController,
-  fileClicked: (file: RawFile) => void,
-  wholeSourceClicked: () => void
-) => {
-  function handleFileUpload(upload: UploadNavState) {
-    appState.update({
-      local: {
-        selectedFile: upload.selectedFile,
-        component: upload.navContent,
-        content: new Directory(
-          new RepoInfo(),
-          upload.files.length,
-          new RawFolder('root', 0, upload.files)
-        ),
-      },
-    });
-  }
+      console.log('[VISUAL] After update - appState.state.graphStyling:', JSON.stringify(appState.state.graphStyling));
 
-  function toggleNav() {
-    appState.toggleUploadNav();
-  }
+      // If layout changed, trigger a re-fetch from backend
+      if (newLayout && newLayout !== oldLayout && lastPlotAction) {
+        updatePanelState({ isLoading: true, statusMessage: 'Applying new layout...' });
+        try {
+          await lastPlotAction();
+          updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+        } catch (error) {
+          updatePanelState({ isLoading: false, statusMessage: 'Error applying layout' });
+        }
+        return;
+      }
 
-  let uploadNavState = new UploadNavState(
-    appState.local,
-    fileClicked,
-    wholeSourceClicked,
-    handleFileUpload
-  );
+      // If physics toggle changed, re-render graph with new physics setting
+      if (newPhysics !== undefined && newPhysics !== oldPhysics && appState.state.graphData) {
+        console.log(`Physics ${newPhysics ? 'enabled' : 'disabled'} - re-rendering graph`);
+        actions.plot.createGraphVnode();
+        return;
+      }
 
-  return Nav(
-    NavSide.RIGHT,
-    appState.local.isMenuOpen,
-    UploadNav(uploadNavState),
-    toggleNav
-  );
+      // For other styling changes, just re-render with existing data
+      if (appState.state.graphData) {
+        console.log('[VISUAL] Calling createGraphVnode() for non-layout styling change');
+        actions.plot.createGraphVnode();
+      } else {
+        console.log('[VISUAL] No graphData in state - skipping createGraphVnode()');
+      }
+    },
+
+    // Parser options change - use appState for consistent updates
+    onParserOptionsChange: async (options) => {
+      // Read old values from appState (single source of truth)
+      const currentState = appState.state;
+      const oldMode = currentState.parserOptions.mode;
+      const newMode = options.mode;
+
+      console.log(`[PARSE MODE] onParserOptionsChange called`);
+      console.log(`[PARSE MODE] - oldMode=${oldMode}, newMode=${newMode}`);
+      console.log(`[PARSE MODE] - lastPlotAction exists=${!!lastPlotAction}`);
+
+      // Update through appState (single source of truth)
+      appState.update({
+        parserOptions: { ...currentState.parserOptions, ...options }
+      });
+
+      console.log(`[PARSE MODE] After appState.update(), appState.state.parserOptions =`, JSON.stringify(appState.state.parserOptions));
+
+      // Provide consistent feedback regardless of data state
+      if (newMode && newMode !== oldMode) {
+        if (lastPlotAction) {
+          console.log(`[PARSE MODE] Calling lastPlotAction() to re-fetch with new parse mode...`);
+          updatePanelState({ isLoading: true, statusMessage: `Applying ${newMode} parser...` });
+          try {
+            await lastPlotAction();
+            console.log(`[PARSE MODE] lastPlotAction() completed successfully`);
+            updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          } catch (error) {
+            console.error('[PARSE MODE] Error in lastPlotAction:', error);
+            updatePanelState({ isLoading: false, statusMessage: `Error applying ${newMode} parser` });
+          }
+        } else {
+          console.log('[PARSE MODE] No lastPlotAction set - cannot re-fetch');
+          // No data loaded yet - provide feedback that mode is set
+          updatePanelState({ statusMessage: `Parser: ${newMode}. Load source to apply.` });
+        }
+      }
+    },
+
+    // Renderer change - use appState for consistent updates
+    onRendererChange: (renderer) => {
+      // Update through appState (single source of truth)
+      appState.update({ selectedRenderer: renderer });
+
+      console.log('Renderer changed to:', renderer, '- current state:', appState.state.selectedRenderer);
+
+      // Trigger re-render with new renderer if graph data exists
+      if (appState.state.graphData) {
+        updatePanelState({ statusMessage: `Switching to ${renderer} renderer...` });
+        actions.plot.createGraphVnode();
+        updatePanelState({ statusMessage: 'Ready' });
+      } else {
+        // No data loaded yet - provide feedback that renderer is set
+        updatePanelState({ statusMessage: `Renderer: ${renderer}. Load source to apply.` });
+      }
+    },
+  };
+
+  // Return a closure component - view is called on each redraw, but closures are preserved
+  return {
+    oncreate: () => {
+      // Apply default theme on initial load
+      const theme = panelState.currentTheme;
+      document.documentElement.setAttribute('data-theme', theme === 'terminal' ? '' : theme);
+    },
+    view: () => {
+      // Use appState for consistent state access (single source of truth)
+      const currentState = appState.state;
+
+      // Build header
+      const header = m('div.codecarto__header', [
+        m('h1.codecarto__title', [
+          m('span.codecarto__title-icon', '◈'),
+          'Code Cartographer',
+        ]),
+        m('p.codecarto__subtitle', 'Visualize code architecture and dependencies'),
+      ]);
+
+      // Main content area - use fresh graphContent from current state
+      const mainContent = m('div.codecarto__main', [
+        m(Plot, { graphs: currentState.graphContent }),
+      ]);
+
+      // Control panel - pass fresh state values (single source of truth)
+      const content: ControlPanelContent = {
+        repoDirectory: currentState.repo.content,
+        uploadedFiles: uploadedFiles,
+        graphStyling: currentState.graphStyling,
+        parserOptions: currentState.parserOptions,
+        selectedRenderer: currentState.selectedRenderer,
+      };
+      
+      const controlPanel = ControlPanel(
+        panelState,
+        panelCallbacks,
+        updatePanelState,
+        content
+      );
+
+      return m('div.codecarto', [
+        header,
+        mainContent,
+        controlPanel,
+      ]);
+    },
+  };
 };

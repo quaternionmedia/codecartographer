@@ -13,10 +13,15 @@
     "defaults"
   ],
   "dependencies": {
+    "animejs": "^4.2.2",
+    "d3": "^7.9.0",
+    "d3-force": "^3.0.0",
     "meiosis": "^2.0.0",
     "meiosis-setup": "^6.2.3",
     "meiosis-tracer": "^6.0.1",
-    "mithril": "^2.2.2"
+    "mithril": "^2.2.2",
+    "vis-data": "^8.0.3",
+    "vis-network": "^10.0.2"
   },
   "devDependencies": {
     "@types/mithril": "^2.2.6",

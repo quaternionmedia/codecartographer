@@ -1,6 +1,7 @@
 import m from 'mithril';
 import { RawFile, RawFolder } from '../../models/source';
 import { FileList } from './files';
+import { animations } from '../../../core/animations';
 
 interface FolderAttrs {
   folderName: string;
@@ -14,23 +15,47 @@ interface FolderState {
 }
 
 export const Folder: m.Component<FolderAttrs> = {
+  oninit(vnode) {
+    (vnode.state as FolderState).isOpen = false;
+  },
+
   view(vnode) {
     const { folderName, folders, files, onUrlFileClicked } = vnode.attrs;
-    let state = vnode.state as FolderState; // Type assertion for state
+    let state = vnode.state as FolderState;
 
     return m(`div.folder.folder__${folderName}`, [
       m(
         'div.folder_button',
         {
-          onclick: function () {
-            this.classList.toggle('active');
+          onclick: function (e: MouseEvent) {
+            const button = e.currentTarget as HTMLElement;
+            button.classList.toggle('active');
             state.isOpen = !state.isOpen;
-            m.redraw(); // Trigger a redraw to update the view
+            
+            // Animate button press
+            animations.buttonPress(button);
+            
+            // Animate folder content
+            const folderContent = button.nextElementSibling as HTMLElement;
+            if (folderContent) {
+              if (state.isOpen) {
+                folderContent.style.display = 'block';
+                animations.fadeIn(folderContent, { duration: 200, translateY: -10 });
+              } else {
+                animations.fadeOut(folderContent, { duration: 150 }).finished.then(() => {
+                  if (!state.isOpen) {
+                    folderContent.style.display = 'none';
+                  }
+                });
+              }
+            }
+            
+            m.redraw();
           },
         },
         folderName
       ),
-      m('div.folder_content', {}, [
+      m('div.folder_content', { style: { display: state.isOpen ? 'block' : 'none' } }, [
         foldersParse(folders, onUrlFileClicked),
         m(FileList, { folderName, files: files, onUrlFileClicked }),
       ]),

@@ -1,44 +1,94 @@
+/* CodeCarto Theme Variables - Terminal Style */
 :root {
-  --c-primary: #2c221a;
-  --c-primary-light: #4c3e32;
-  --c-secondary: #d7b073;
-  --c-secondary-light: #e8dbad;
   --c-folder-active-border: var(--c-secondary-light);
-  --c-folder: var(--c-black);
-  --c-file-disabled: var(--cb-file-disabled);
-  --c-file-active: var(--c-black);
-  --c-file-hover: var(--c-black);
-  --c-file: var(--c-secondary);
-  --c-font: #e1c48f;
-  --c-graph: #705d50;
-  --cb-directory: #3a2d23;
-  --cb-folder-active: #433920;
-  --cb-folder-hover: var(--c-secondary-light);
-  --cb-folder: var(--c-secondary);
-  --cb-file-disabled: #9d9282;
-  --cb-file-active: var(--c-secondary-light);
-  --cb-file-hover: var(--c-secondary-light);
-  --cb-file: var(--cb-directory);
+  --c-folder: var(--c-primary-light);
+  --c-file-disabled: var(--c-disabled);
+  --c-file-active: var(--c-secondary);
+  --c-file-hover: var(--c-secondary-light);
+  --c-file: var(--c-font);
+  --c-graph: var(--c-primary-light);
+  --cb-directory: var(--c-primary-light);
+  --cb-folder-active: var(--c-primary);
+  --cb-folder-hover: var(--c-secondary);
+  --cb-folder: var(--c-primary-light);
+  --cb-file-disabled: var(--c-disabled);
+  --cb-file-active: var(--c-secondary);
+  --cb-file-hover: var(--c-secondary);
+  --cb-file: var(--c-primary-light);
   --w-nav-content: 15em;
   --mar-nav-content: calc(var(--w-nav-content) * -1);
   --mar-nav-toggle-btn-open: calc(var(--w-nav-content) - 0.2em);
   --z-plot: 1;
   --z-nav: 2;
+  --control-panel-height: 120px;
 }
 
 .app {
-  height: calc(100vh - 20px) !important;
-}
-
-.codecarto {
-  display: grid;
-  grid-template-rows: auto auto 1fr;
+  height: 100vh;
+  display: flex;
   flex-direction: column;
-  height: 100%;
-  padding-inline: 10%;
-  font-size: 20px;
 }
 
+/* Main CodeCarto Container */
+.codecarto {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Header Section */
+.codecarto__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg) var(--spacing-md);
+  text-align: center;
+  border-bottom: var(--border-size-thin) solid var(--c-border);
+  background: linear-gradient(180deg, var(--c-primary-light) 0%, var(--c-primary) 100%);
+}
+
+.codecarto__title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 1.8em;
+  margin: 0;
+  color: var(--c-secondary);
+  text-shadow: 0 0 20px var(--c-secondary);
+}
+
+.codecarto__title-icon {
+  font-size: 1.2em;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.codecarto__subtitle {
+  margin: var(--spacing-xs) 0 0 0;
+  font-size: 0.9em;
+  color: var(--c-font-muted);
+  letter-spacing: 1px;
+}
+
+/* Main Content Area */
+.codecarto__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--spacing-md);
+  padding-bottom: var(--control-panel-height, 120px);
+  min-height: 0;
+}
+
+/* Legacy header styles (kept for compatibility) */
 .header {
   font-weight: bold;
   margin-bottom: 5px;
@@ -53,18 +103,20 @@
   margin-left: 5px;
 }
 
-/* ###########  CODECARTO CUSTOM NAV  ######### */
+/* Legacy Nav Styles - deprecated but kept for reference */
 .nav {
   position: absolute;
   height: calc(100vh - 10.05em) !important;
   top: 9.3em;
-  border-radius: 5px;
+  border-radius: var(--border-radius);
   z-index: var(--z-nav);
 }
 .nav__content {
   position: absolute;
   height: 100%;
   width: var(--w-nav-content);
+  background-color: var(--c-primary-light);
+  border: var(--border-size-thin) solid var(--c-border);
 }
 .nav__toggle_btn {
   position: relative;
@@ -74,7 +126,7 @@
   width: 2em;
 }
 
-/* ###########  DIRECTORY NAV TOGGLE  ######### */
+/* Left Nav Toggle */
 .nav--left {
   left: 0;
   justify-content: left;
@@ -96,7 +148,7 @@
   margin-left: 0;
 }
 
-/* ###########  UPLOAD NAV TOGGLE  ######### */
+/* Right Nav Toggle */
 .nav--right {
   right: 0;
   justify-content: right;
@@ -117,15 +169,23 @@
   margin-right: 0;
 }
 
-/* ###########  DEMO BUTTON  ######### */
+/* Demo Button - legacy */
 .demo_btn {
   float: right;
   margin-right: 0;
 }
 
-/* check if vw is of a certain width */
+/* Responsive adjustments */
 @media (max-width: 700px) {
-  .codecarto {
-    padding-inline: 0;
+  .codecarto__header {
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+  
+  .codecarto__title {
+    font-size: 1.4em;
+  }
+  
+  .codecarto__main {
+    padding: var(--spacing-sm);
   }
 }

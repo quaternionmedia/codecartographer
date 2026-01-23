@@ -5,6 +5,7 @@ import { ICell, ICellState } from './cell_state';
 import { API } from './api_base';
 import { Vnode } from 'mithril';
 import { clearError } from '../utility';
+import { logger } from '../core/logger';
 
 /**
  * The state controller tracks the state of the application.
@@ -23,8 +24,8 @@ export class StateController {
 
   public update(state: Patch<ICellState>) {
     this._cell.update(state);
-    this._cell.state = this._cell.getState();
-    //console.log('StateController.update - updated state: ', this._cell.state);
+    const newState = this._cell.getState();
+    this._cell.state = newState;
   }
 
   public redraw() {
@@ -146,8 +147,10 @@ export class StateController {
 
   // Specific Control Methods
   public updatePlotFrame(frame: Vnode[]) {
+    logger.debug('StateController.updatePlotFrame - updating with frames:', frame.length);
     this.update({ graphContent: frame });
     this.closeNavs();
+    logger.debug('StateController.updatePlotFrame - state after update:', this._cell.state.graphContent);
     this.redraw();
   }
 

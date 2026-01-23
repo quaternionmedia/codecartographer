@@ -7,7 +7,7 @@ interface FileAttrs {
 }
 
 export const File: m.Component<FileAttrs> = {
-  view(vnode: any) {
+  view(vnode: m.Vnode<FileAttrs>) {
     const { fileName, fileUrl, onUrlFileClicked } = vnode.attrs;
     const ext = fileName.split('.').pop() ?? '';
     const isDisabled = !['py'].includes(ext);

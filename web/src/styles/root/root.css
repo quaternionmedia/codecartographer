@@ -1,27 +1,209 @@
 :root {
+  /* Theme: Terminal (default) */
+  --c-primary: #0a0a0a;
+  --c-primary-light: #1a1a1a;
+  --c-primary-dark: #000000;
+  --c-secondary: #00ff41;
+  --c-secondary-light: #33ff66;
+  --c-secondary-dark: #00cc33;
+  --c-accent: #00d4ff;
+  --c-accent-light: #33ddff;
+  --c-warning: #ffcc00;
+  --c-error: #ff3333;
+  --c-font: #00ff41;
+  --c-font-muted: #00aa2a;
+  --c-font-inverse: #0a0a0a;
+  --c-disabled: #333333;
+  --c-border: #00ff4140;
+  --c-border-active: #00ff41;
+
+  /* Transparency variants */
   --c-transparent-full: #00000000;
-  --c-transparent-qurt: #3a3a3a3c;
-  --c-transparent-half: #3a3a3a8a;
-  --c-transparent-3qurt: #3a3a3ac3;
+  --c-transparent-qurt: #0a0a0a3c;
+  --c-transparent-half: #0a0a0a8a;
+  --c-transparent-3qurt: #0a0a0ac3;
+  
+  /* Legacy mappings */
   --c-white: #eee;
   --c-grey-lighter: #b4b4b4;
   --c-grey-light: #999;
   --c-grey-mid: #666;
   --c-grey-dark: #333;
   --c-grey-dark-rbg: rgb(51, 51, 51);
-  --c-black: #222;
-  --c-page-dark: #ccc;
-  --c-page-dark-border: #aaa;
-  --c-page-dark-shadow: rgb(136, 134, 136);
-  --c-page-light: floralwhite;
-  --c-page-light-border: #ccc;
-  --c-page-light-shadow: rgb(204, 198, 204);
+  --c-black: #0a0a0a;
+  --c-page-dark: #1a1a1a;
+  --c-page-dark-border: #00ff4140;
+  --c-page-dark-shadow: rgba(0, 255, 65, 0.2);
+  --c-page-light: #0a0a0a;
+  --c-page-light-border: #00ff4140;
+  --c-page-light-shadow: rgba(0, 255, 65, 0.1);
+  --c-focus-color: #00d4ff;
 
-  --c-focus-color: #1ebaf7;
-
-  --f-root-font: 'Calibri', sans-serif;
-  --t-transition-time: 0.5s;
+  /* Typography */
+  --f-root-font: 'Consolas', 'Monaco', 'Courier New', monospace;
+  --f-heading-font: 'Consolas', 'Monaco', monospace;
+  
+  /* Timing */
+  --t-transition-time: 0.3s;
+  --t-transition-fast: 0.15s;
+  --t-transition-slow: 0.5s;
+  
+  /* Borders */
   --border-size-thin: 1px;
-  --border-size-med: 1.5px;
-  --border-radius: 5px;
+  --border-size-med: 2px;
+  --border-radius: 4px;
+  --border-radius-lg: 8px;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Panel dimensions */
+  --panel-height: 300px;
+  --nav-width: 280px;
+}
+
+/* Theme: Light */
+[data-theme="light"] {
+  --c-primary: #f5f5f5;
+  --c-primary-light: #ffffff;
+  --c-primary-dark: #e0e0e0;
+  --c-secondary: #2196f3;
+  --c-secondary-light: #64b5f6;
+  --c-secondary-dark: #1976d2;
+  --c-accent: #ff9800;
+  --c-font: #212121;
+  --c-font-muted: #757575;
+  --c-font-inverse: #ffffff;
+  --c-disabled: #bdbdbd;
+  --c-border: #e0e0e0;
+  --c-border-active: #2196f3;
+  --c-black: #212121;
+  --c-focus-color: #2196f3;
+  --f-root-font: 'Calibri', 'Segoe UI', sans-serif;
+}
+
+/* Theme: Cyberpunk */
+[data-theme="cyberpunk"] {
+  --c-primary: #0d0221;
+  --c-primary-light: #1a0533;
+  --c-primary-dark: #060111;
+  --c-secondary: #ff00ff;
+  --c-secondary-light: #ff66ff;
+  --c-secondary-dark: #cc00cc;
+  --c-accent: #00ffff;
+  --c-font: #ff00ff;
+  --c-font-muted: #aa00aa;
+  --c-font-inverse: #0d0221;
+  --c-border: #ff00ff40;
+  --c-border-active: #ff00ff;
+  --c-focus-color: #00ffff;
+}
+
+/* Theme: Ocean */
+[data-theme="ocean"] {
+  --c-primary: #0a1628;
+  --c-primary-light: #162638;
+  --c-primary-dark: #050b14;
+  --c-secondary: #00d4ff;
+  --c-secondary-light: #33ddff;
+  --c-secondary-dark: #00a6cc;
+  --c-accent: #4ecdc4;
+  --c-accent-light: #81d8d0;
+  --c-font: #a8dadc;
+  --c-font-muted: #6b9fa3;
+  --c-font-inverse: #0a1628;
+  --c-disabled: #1d3557;
+  --c-border: #00d4ff40;
+  --c-border-active: #00d4ff;
+  --c-focus-color: #4ecdc4;
+  --c-warning: #f1c40f;
+  --c-error: #e74c3c;
+}
+
+/* Theme: Sunset */
+[data-theme="sunset"] {
+  --c-primary: #1a0f0a;
+  --c-primary-light: #2d1814;
+  --c-primary-dark: #0d0805;
+  --c-secondary: #ff6b35;
+  --c-secondary-light: #ff8c5e;
+  --c-secondary-dark: #cc5529;
+  --c-accent: #f7931e;
+  --c-accent-light: #ffb55f;
+  --c-font: #ffe0cc;
+  --c-font-muted: #cc9e85;
+  --c-font-inverse: #1a0f0a;
+  --c-disabled: #443328;
+  --c-border: #ff6b3540;
+  --c-border-active: #ff6b35;
+  --c-focus-color: #f7931e;
+  --c-warning: #ffd60a;
+  --c-error: #d62828;
+}
+
+/* Theme: Forest */
+[data-theme="forest"] {
+  --c-primary: #0f1a0f;
+  --c-primary-light: #1a2b1a;
+  --c-primary-dark: #080d08;
+  --c-secondary: #52b788;
+  --c-secondary-light: #74c69d;
+  --c-secondary-dark: #40916c;
+  --c-accent: #95d5b2;
+  --c-accent-light: #b7e4c7;
+  --c-font: #d8f3dc;
+  --c-font-muted: #95d5b2;
+  --c-font-inverse: #0f1a0f;
+  --c-disabled: #2d4a2d;
+  --c-border: #52b78840;
+  --c-border-active: #52b788;
+  --c-focus-color: #95d5b2;
+  --c-warning: #ffb703;
+  --c-error: #dc2f02;
+}
+
+/* Theme: Noir */
+[data-theme="noir"] {
+  --c-primary: #0d0d0d;
+  --c-primary-light: #1a1a1a;
+  --c-primary-dark: #000000;
+  --c-secondary: #ffffff;
+  --c-secondary-light: #ffffff;
+  --c-secondary-dark: #cccccc;
+  --c-accent: #b8b8b8;
+  --c-accent-light: #d4d4d4;
+  --c-font: #e8e8e8;
+  --c-font-muted: #888888;
+  --c-font-inverse: #0d0d0d;
+  --c-disabled: #444444;
+  --c-border: #ffffff20;
+  --c-border-active: #ffffff;
+  --c-focus-color: #ffffff;
+  --c-warning: #ffd700;
+  --c-error: #ff4444;
+}
+
+/* Theme: Candy */
+[data-theme="candy"] {
+  --c-primary: #1a0a1f;
+  --c-primary-light: #2d1533;
+  --c-primary-dark: #0d0510;
+  --c-secondary: #ff69eb;
+  --c-secondary-light: #ff9af2;
+  --c-secondary-dark: #cc54bc;
+  --c-accent: #00f5d4;
+  --c-accent-light: #33f7de;
+  --c-font: #ffe5f9;
+  --c-font-muted: #cc99c6;
+  --c-font-inverse: #1a0a1f;
+  --c-disabled: #4a2952;
+  --c-border: #ff69eb40;
+  --c-border-active: #ff69eb;
+  --c-focus-color: #00f5d4;
+  --c-warning: #fee440;
+  --c-error: #f15bb5;
 }

@@ -1,0 +1,52 @@
+.plot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background-color: var(--c-primary-light);
+  justify-content: center;
+  align-items: center;
+  border-radius: var(--border-radius);
+  border: var(--border-size-thin) solid var(--c-border);
+  z-index: var(--z-plot);
+  overflow: hidden;
+}
+
+.plot--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  color: var(--c-font-muted);
+  font-size: 0.9em;
+}
+
+.plot__empty-icon {
+  font-size: 3em;
+  opacity: 0.5;
+}
+
+.plot__empty-text {
+  text-align: center;
+  max-width: 300px;
+  line-height: 1.6;
+}
+
+.graph {
+  height: 100%;
+  width: 100%;
+  border-radius: var(--border-radius);
+}
+
+.graph_content {
+  height: 100%;
+  width: 100%;
+  border: none;
+  overflow: auto;
+  background-color: var(--c-primary);
+}
+
+.nbFrame {
+  background-color: var(--c-primary);
+}

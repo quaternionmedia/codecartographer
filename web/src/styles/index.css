@@ -1,34 +1,142 @@
+@import url('./root/root.css');
+
+* {
+  box-sizing: border-box;
+}
+
 /* body */
 body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
   background-color: var(--c-primary);
   color: var(--c-font);
   font-family: var(--f-root-font);
   font-size: 16px;
+  overflow: hidden;
+}
+
+/* Terminal-style headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--f-heading-font);
+  color: var(--c-font);
+  margin: 0 0 var(--spacing-sm) 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+a {
+  color: var(--c-accent);
+  text-decoration: none;
+  transition: color var(--t-transition-fast);
+}
+a:hover {
+  color: var(--c-secondary-light);
+  text-decoration: underline;
 }
 
 /* button */
 button {
-  height: 25px;
-  padding-inline: 1em;
-  background-color: var(--c-secondary);
-  margin: 5px;
-  outline: none;
-  border: none;
-  border-radius: var(--border-radius);
-  align-items: center;
+  display: flex;
+  flex-direction: row;
   justify-content: center;
-  font-size: 16px;
-  color: var(--c-black);
+  align-items: center;
+  gap: var(--spacing-xs);
+  height: auto;
+  min-height: 32px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.9em;
+  font-family: var(--f-root-font);
+  background-color: transparent;
+  color: var(--c-font);
+  border: var(--border-size-thin) solid var(--c-border);
+  border-radius: var(--border-radius);
   cursor: pointer;
+  transition: all var(--t-transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+  outline: none;
 }
 button:hover {
-  background-color: var(--c-secondary-light);
+  background-color: var(--c-secondary);
+  color: var(--c-font-inverse);
+  border-color: var(--c-secondary);
+  box-shadow: 0 0 10px var(--c-secondary);
+}
+button:active {
+  transform: scale(0.98);
 }
 button:disabled {
-  background-color: var(--c-disabled);
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Primary button variant */
+button.primary {
+  background-color: var(--c-secondary);
+  color: var(--c-font-inverse);
+  border-color: var(--c-secondary);
+}
+button.primary:hover {
+  background-color: var(--c-secondary-light);
+  box-shadow: 0 0 15px var(--c-secondary);
+}
+
+/* Icon-only button */
+button.icon-btn {
+  padding: var(--spacing-xs);
+  min-width: 32px;
+  min-height: 32px;
+}
+
+/* Input styles */
+input, textarea, select {
+  background-color: var(--c-primary-light);
+  color: var(--c-font);
+  border: var(--border-size-thin) solid var(--c-border);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-family: var(--f-root-font);
+  font-size: 0.9em;
+  transition: border-color var(--t-transition-fast), box-shadow var(--t-transition-fast);
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--c-secondary);
+  box-shadow: 0 0 5px var(--c-secondary);
+}
+input::placeholder {
+  color: var(--c-font-muted);
 }
 
 /* list */
 ul {
   list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--c-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--c-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c-secondary);
+}
+
+/* Selection styling */
+::selection {
+  background-color: var(--c-secondary);
+  color: var(--c-font-inverse);
 }

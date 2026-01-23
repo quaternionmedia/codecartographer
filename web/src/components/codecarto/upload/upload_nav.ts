@@ -1,6 +1,7 @@
 import m, { Vnode } from 'mithril';
 
 import { displayError } from '../../../utility';
+import { animations } from '../../../core/animations';
 import { RawFile } from '../../models/source';
 import { DirectoryNavController } from '../directory/directory_nav';
 import './upload_nav.css';
@@ -44,6 +45,15 @@ export class UploadNavState {
   public addFile(file: RawFile) {
     this.files.push(file);
     this.updateCell(this);
+    
+    // Animate the new file entry after redraw
+    setTimeout(() => {
+      const fileContainers = document.querySelectorAll('.upload_files .file_container');
+      const lastFile = fileContainers[fileContainers.length - 1];
+      if (lastFile) {
+        animations.fadeIn(lastFile, { translateY: 10 });
+      }
+    }, 0);
   }
 }
 
@@ -54,7 +64,8 @@ export const UploadNav = (upload: UploadNavState) => {
   var plotAll = m(
     'button.plot_all_files_btn',
     {
-      onclick: function () {
+      onclick: function (e: MouseEvent) {
+        animations.buttonPress(e.currentTarget as Element);
         upload.onWholeSourceClick();
       },
     },
@@ -80,10 +91,11 @@ export const UploadButton = (upload: UploadNavState) => {
       id: 'fileInput',
       style: 'display:none',
       accept: '.py',
-      onchange: async function (e: any) {
-        if (e.target.files !== null) {
+      onchange: async function (e: Event) {
+        const target = e.target as HTMLInputElement;
+        if (target.files !== null) {
           let exists = false;
-          const uploadedFile = e.target.files[0];
+          const uploadedFile = target.files[0];
           upload.files.forEach((file: RawFile) => {
             if (file.name === uploadedFile.name) {
               exists = true;
@@ -104,7 +116,8 @@ export const UploadButton = (upload: UploadNavState) => {
     m('button', {
       class: 'upload_header_button_view',
       innerText: 'Browse',
-      onclick: () => {
+      onclick: (e: MouseEvent) => {
+        animations.buttonPress(e.currentTarget as Element);
         document.getElementById('fileInput')?.click();
       },
     }),
@@ -125,7 +138,7 @@ export const Files = (
   ]);
 };
 
-export const File_Btn = {
+export const File_Btn: m.Component<{ file: RawFile; onFileClick: (file: RawFile) => void }> = {
   view: function (vnode) {
     const { file, onFileClick } = vnode.attrs;
     let isDisabled = true;
@@ -143,8 +156,9 @@ export const File_Btn = {
         {
           class: `file__${ext} ${isDisabled ? 'disabled' : ''}`,
           file: file,
-          onclick: function () {
+          onclick: function (e: MouseEvent) {
             if (!isDisabled) {
+              animations.buttonPress(e.currentTarget as Element);
               onFileClick(file);
             }
           },
