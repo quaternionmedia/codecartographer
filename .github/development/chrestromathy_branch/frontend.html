@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAM Auth Visualizer — Live</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<style>
+:root {
+  --bg:#05080d; --surface:#08111a; --card:#0b1520;
+  --border:#132030; --dim:#1e3448; --dimtext:#3a5570;
+  --accent:#00ffb3; --cyan:#00d4ff; --orange:#ff6b35;
+  --purple:#b060ff; --yellow:#ffd600; --red:#ff2d55; --green:#00ffb3;
+  --text:#7a9db8; --texthi:#cce4f5;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);font-family:'Share Tech Mono',monospace;color:var(--text)}
+
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:radial-gradient(rgba(0,255,179,0.035) 1px,transparent 1px);
+  background-size:32px 32px;pointer-events:none;z-index:0
+}
+
+/* ── Top bar ─────────────────────────────────────────────────── */
+#topbar{
+  position:fixed;top:0;left:0;right:0;height:50px;
+  background:rgba(5,8,13,0.97);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;z-index:200;backdrop-filter:blur(8px)
+}
+#topbar h1{font-family:'Syncopate',sans-serif;font-size:.72rem;letter-spacing:5px;
+  color:var(--accent);text-shadow:0 0 18px rgba(0,255,179,.5)}
+.topbar-mid{display:flex;align-items:center;gap:8px;flex:1;justify-content:center}
+.topbar-right{display:flex;align-items:center;gap:8px}
+
+/* connection badge */
+#connBadge{font-size:.58rem;padding:3px 10px;border:1px solid;letter-spacing:2px;transition:all .3s}
+#connBadge.live{color:var(--accent);border-color:var(--accent);text-shadow:0 0 8px var(--accent)}
+#connBadge.demo{color:var(--yellow);border-color:var(--yellow)}
+#connBadge.connecting{color:var(--cyan);border-color:var(--cyan)}
+#connBadge.error{color:var(--red);border-color:var(--red)}
+
+.btn{font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:2px;
+  padding:5px 14px;border:1px solid var(--dimtext);background:transparent;
+  color:var(--text);cursor:pointer;transition:all .15s;text-transform:uppercase;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,.06)}
+.btn.primary{border-color:var(--accent);color:var(--accent)}
+.btn.danger{border-color:var(--red);color:var(--red)}
+.btn.danger:hover{background:var(--red);color:#fff}
+
+input[type=text],select{
+  background:var(--card);border:1px solid var(--border);color:var(--cyan);
+  font-family:'Share Tech Mono',monospace;font-size:.62rem;
+  padding:5px 10px;outline:none;letter-spacing:1px;min-width:120px
+}
+input[type=text]::placeholder{color:var(--dimtext)}
+
+/* ── Mode tabs ─────────────────────────────────────────────────── */
+.mode-tabs{display:flex;gap:2px}
+.mode-tab{font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:2px;
+  padding:4px 12px;border:1px solid var(--border);background:transparent;
+  color:var(--dimtext);cursor:pointer;transition:all .15s;text-transform:uppercase}
+.mode-tab.active{background:rgba(0,212,255,.08);border-color:var(--cyan);color:var(--cyan)}
+
+/* ── Side panels ───────────────────────────────────────────────── */
+#leftPanel{
+  position:fixed;top:50px;left:0;width:220px;bottom:140px;
+  z-index:50;background:rgba(5,8,13,.92);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;backdrop-filter:blur(6px)
+}
+#rightPanel{
+  position:fixed;top:50px;right:0;width:200px;bottom:140px;
+  z-index:50;background:rgba(5,8,13,.92);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;backdrop-filter:blur(6px)
+}
+.panel-header{
+  font-size:.55rem;letter-spacing:3px;text-transform:uppercase;
+  color:var(--dimtext);padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0
+}
+
+/* Session list */
+#sessionList{flex:1;overflow-y:auto;padding:4px}
+#sessionList::-webkit-scrollbar{width:3px}
+#sessionList::-webkit-scrollbar-thumb{background:var(--dim)}
+
+.session-item{
+  padding:7px 8px;margin-bottom:3px;border:1px solid var(--border);
+  cursor:pointer;transition:all .15s;position:relative
+}
+.session-item:hover{border-color:var(--cyan);background:rgba(0,212,255,.04)}
+.session-item.selected{border-color:var(--accent);background:rgba(0,255,179,.04)}
+.si-service{font-size:.68rem;color:var(--texthi);font-weight:700;margin-bottom:2px}
+.si-user{font-size:.58rem;color:var(--cyan)}
+.si-meta{font-size:.52rem;color:var(--dimtext);margin-top:2px}
+.si-result{position:absolute;top:5px;right:6px;font-size:.5rem;padding:1px 4px;border:1px solid}
+.si-result.granted{color:var(--green);border-color:var(--green)}
+.si-result.denied{color:var(--red);border-color:var(--red)}
+.si-result.unknown{color:var(--dimtext);border-color:var(--dimtext)}
+
+/* Context info */
+#ctxPanel{flex:1;overflow-y:auto;padding:10px}
+.ctx-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(19,32,48,.5)}
+.ctx-k{font-size:.58rem;color:var(--dimtext)}
+.ctx-v{font-size:.58rem;color:var(--texthi);font-weight:700;text-align:right;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+
+#bigStatus{
+  font-family:'Syncopate',sans-serif;font-size:.85rem;font-weight:700;
+  letter-spacing:4px;text-align:center;margin:10px;padding:8px;
+  border:1px solid var(--dim);color:var(--dimtext);transition:all .4s
+}
+#bigStatus.running{color:var(--cyan);border-color:var(--cyan);text-shadow:0 0 12px var(--cyan)}
+#bigStatus.granted{color:var(--green);border-color:var(--green);text-shadow:0 0 12px var(--green)}
+#bigStatus.denied{color:var(--red);border-color:var(--red);text-shadow:0 0 12px var(--red)}
+
+/* Phase strip */
+#phaseStrip{padding:8px;border-top:1px solid var(--border)}
+.phase-item{display:flex;align-items:center;gap:6px;padding:3px 6px;margin-bottom:2px;
+  border:1px solid var(--border);font-size:.55rem;color:var(--dimtext);transition:all .2s}
+.phase-item.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,.05)}
+.phase-item.done{border-color:var(--green);color:var(--green)}
+.phase-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+/* ── Graph canvas ──────────────────────────────────────────────── */
+#graphWrap{
+  position:fixed;top:50px;left:220px;right:200px;bottom:140px;z-index:1;overflow:hidden
+}
+#svgCanvas{position:absolute;inset:0;width:100%;height:100%}
+#nodeLayer{position:absolute;inset:0;pointer-events:none}
+#packetLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+
+/* Node styles */
+.node{position:absolute;transform:translate(-50%,-50%);pointer-events:all;cursor:default}
+.node-box{
+  background:var(--card);border:1px solid var(--border);padding:9px 12px;
+  min-width:110px;text-align:center;position:relative;transition:all .3s
+}
+.node-box::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--border);transition:all .3s
+}
+.ttag{font-size:.5rem;padding:1px 5px;border:1px solid;letter-spacing:1px;
+  margin-bottom:3px;display:inline-block}
+.ttag.service{color:var(--yellow);border-color:rgba(255,214,0,.35);background:rgba(255,214,0,.06)}
+.ttag.core{color:var(--accent);border-color:rgba(0,255,179,.35);background:rgba(0,255,179,.06)}
+.ttag.auth{color:var(--cyan);border-color:rgba(0,212,255,.35);background:rgba(0,212,255,.06)}
+.ttag.account{color:var(--purple);border-color:rgba(176,96,255,.35);background:rgba(176,96,255,.06)}
+.ttag.session{color:var(--orange);border-color:rgba(255,107,53,.35);background:rgba(255,107,53,.06)}
+.ttag.backend{color:var(--orange);border-color:rgba(255,107,53,.35);background:rgba(255,107,53,.06)}
+.node-name{font-size:.68rem;font-weight:700;color:var(--texthi);letter-spacing:.5px;margin-bottom:1px}
+.node-sub{font-size:.52rem;color:var(--dimtext);line-height:1.3}
+.node-badge{position:absolute;top:-7px;right:-7px;font-size:.45rem;
+  padding:1px 4px;border:1px solid;background:var(--bg);opacity:0;transition:opacity .3s}
+
+/* Node states */
+.node.active .node-box{border-color:var(--cyan);background:rgba(0,212,255,.05);
+  box-shadow:0 0 16px rgba(0,212,255,.12)}
+.node.active .node-box::before{background:var(--cyan);box-shadow:0 0 6px var(--cyan);
+  animation:tp .7s ease-in-out infinite alternate}
+.node.active .node-name{color:var(--cyan)}
+.node.success .node-box{border-color:var(--green);background:rgba(0,255,179,.04);
+  box-shadow:0 0 12px rgba(0,255,179,.1)}
+.node.success .node-box::before{background:var(--green);box-shadow:0 0 6px var(--green)}
+.node.success .node-name{color:var(--green)}
+.node.success .node-badge{opacity:1;color:var(--green);border-color:var(--green)}
+.node.failed .node-box{border-color:var(--red);background:rgba(255,45,85,.05);
+  box-shadow:0 0 12px rgba(255,45,85,.1)}
+.node.failed .node-box::before{background:var(--red)}
+.node.failed .node-name{color:var(--red)}
+.node.failed .node-badge{opacity:1;color:var(--red);border-color:var(--red)}
+.node.warn .node-box{border-color:var(--yellow)}
+.node.warn .node-box::before{background:var(--yellow)}
+.node.warn .node-name{color:var(--yellow)}
+
+@keyframes tp{from{opacity:1}to{opacity:.3}}
+
+/* ── Log panel ─────────────────────────────────────────────────── */
+#logPanel{
+  position:fixed;bottom:0;left:0;right:0;height:140px;
+  background:rgba(3,6,12,.97);border-top:1px solid var(--border);z-index:100;
+  display:flex;flex-direction:column;backdrop-filter:blur(6px)
+}
+#logHeader{
+  display:flex;align-items:center;gap:10px;padding:5px 14px;
+  border-bottom:1px solid var(--border);flex-shrink:0
+}
+#logHeader span{font-size:.55rem;letter-spacing:3px;text-transform:uppercase;color:var(--accent)}
+#liveIndicator{width:6px;height:6px;border-radius:50%;background:var(--dimtext);
+  transition:background .3s;flex-shrink:0}
+#liveIndicator.live{background:var(--accent);box-shadow:0 0 6px var(--accent);
+  animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{50%{opacity:.3}}
+#logLines{flex:1;overflow-y:auto;padding:4px 14px;font-size:.6rem;line-height:1.7}
+#logLines::-webkit-scrollbar{width:3px}
+#logLines::-webkit-scrollbar-thumb{background:var(--dim)}
+.ll{opacity:0;white-space:nowrap}
+.lt{color:var(--dimtext)}.li{color:var(--cyan)}.ld{color:#1a3040}
+.lw{color:var(--yellow)}.le{color:var(--red)}.lok{color:var(--accent)}
+
+/* ── Config modal ───────────────────────────────────────────────── */
+#configModal{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+  z-index:500;align-items:center;justify-content:center
+}
+#configModal.show{display:flex}
+#configBox{
+  background:var(--surface);border:1px solid var(--border);padding:24px;
+  min-width:400px;max-width:520px;
+}
+#configBox h2{font-family:'Syncopate',sans-serif;font-size:.7rem;letter-spacing:4px;
+  color:var(--accent);margin-bottom:16px}
+.cfg-row{margin-bottom:12px}
+.cfg-label{font-size:.6rem;color:var(--dimtext);letter-spacing:1px;margin-bottom:4px}
+.cfg-row input,.cfg-row select{width:100%}
+.cfg-hint{font-size:.54rem;color:var(--dimtext);margin-top:4px;line-height:1.5}
+.cfg-btns{display:flex;gap:8px;margin-top:18px;justify-content:flex-end}
+
+/* ── Packet ─────────────────────────────────────────────────────── */
+.pkt{position:absolute;width:9px;height:9px;border-radius:50%;
+  transform:translate(-50%,-50%);opacity:0;pointer-events:none;z-index:30}
+
+/* speed control */
+#speedWrap{display:flex;align-items:center;gap:6px;font-size:.58rem;color:var(--dimtext)}
+#speedRange{-webkit-appearance:none;width:70px;height:3px;background:var(--dim);outline:none;cursor:pointer}
+#speedRange::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;
+  border-radius:50%;background:var(--cyan);cursor:pointer}
+
+/* stats bar */
+#statsBar{display:flex;gap:14px;align-items:center}
+.stat{font-size:.56rem;color:var(--dimtext)}
+.stat span{color:var(--cyan);font-weight:700}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div id="topbar">
+  <h1>PAM LIVE · GRAPH</h1>
+  <div class="topbar-mid">
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab-live" onclick="setMode('live')">LIVE</button>
+      <button class="mode-tab" id="tab-replay" onclick="setMode('replay')">REPLAY</button>
+      <button class="mode-tab" id="tab-demo" onclick="setMode('demo')">DEMO</button>
+    </div>
+    <div id="connBadge" class="connecting">CONNECTING…</div>
+    <div id="statsBar">
+      <div class="stat">events <span id="statEvents">0</span></div>
+      <div class="stat">sessions <span id="statSessions">0</span></div>
+      <div class="stat">host <span id="statHost">—</span></div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div id="speedWrap">
+      <label>SPD</label>
+      <input type="range" id="speedRange" min="0.2" max="5" step="0.1" value="1">
+      <span id="speedVal">1×</span>
+    </div>
+    <button class="btn" onclick="clearGraph()">↺ CLEAR</button>
+    <button class="btn primary" onclick="showConfig()">⚙ CONFIG</button>
+  </div>
+</div>
+
+<!-- Left panel: sessions -->
+<div id="leftPanel">
+  <div class="panel-header">◎ Sessions</div>
+  <div id="sessionList"><div style="color:var(--dimtext);font-size:.58rem;padding:10px">No sessions yet…</div></div>
+</div>
+
+<!-- Right panel: context + status -->
+<div id="rightPanel">
+  <div id="ctxPanel">
+    <div class="ctx-row"><span class="ctx-k">service</span><span class="ctx-v" id="cv-service">—</span></div>
+    <div class="ctx-row"><span class="ctx-k">user</span><span class="ctx-v" id="cv-user">—</span></div>
+    <div class="ctx-row"><span class="ctx-k">rhost</span><span class="ctx-v" id="cv-rhost">—</span></div>
+    <div class="ctx-row"><span class="ctx-k">tty</span><span class="ctx-v" id="cv-tty">—</span></div>
+    <div class="ctx-row"><span class="ctx-k">uid</span><span class="ctx-v" id="cv-uid">—</span></div>
+    <div class="ctx-row"><span class="ctx-k">phase</span><span class="ctx-v" id="cv-phase">—</span></div>
+    <div class="ctx-row" style="border:none"><span class="ctx-k">elapsed</span><span class="ctx-v" id="cv-elapsed">—</span></div>
+  </div>
+  <div id="bigStatus">IDLE</div>
+  <div id="phaseStrip">
+    <div class="phase-item" id="ph-auth"><div class="phase-dot"></div>AUTH</div>
+    <div class="phase-item" id="ph-account"><div class="phase-dot"></div>ACCOUNT</div>
+    <div class="phase-item" id="ph-session"><div class="phase-dot"></div>SESSION</div>
+    <div class="phase-item" id="ph-result"><div class="phase-dot"></div>RESULT</div>
+  </div>
+</div>
+
+<!-- Graph area -->
+<div id="graphWrap">
+  <svg id="svgCanvas" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="a-c" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#00d4ff" opacity=".7"/>
+      </marker>
+      <marker id="a-g" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#00ffb3" opacity=".8"/>
+      </marker>
+      <marker id="a-r" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#ff2d55" opacity=".8"/>
+      </marker>
+      <marker id="a-o" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#ff6b35" opacity=".7"/>
+      </marker>
+      <marker id="a-d" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#1e3448" opacity=".5"/>
+      </marker>
+    </defs>
+    <g id="edgeG"></g>
+    <g id="lblG"></g>
+  </svg>
+  <div id="nodeLayer"></div>
+  <div id="packetLayer"></div>
+</div>
+
+<!-- Log panel -->
+<div id="logPanel">
+  <div id="logHeader">
+    <div id="liveIndicator"></div>
+    <span id="logSrc">auth.log · awaiting connection…</span>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn" onclick="clearLog()" style="padding:2px 8px;font-size:.52rem">CLEAR</button>
+      <button class="btn" id="pauseBtn" onclick="togglePause()" style="padding:2px 8px;font-size:.52rem">PAUSE</button>
+    </div>
+  </div>
+  <div id="logLines"></div>
+</div>
+
+<!-- Config modal -->
+<div id="configModal">
+  <div id="configBox">
+    <h2>SERVER CONNECTION</h2>
+    <div class="cfg-row">
+      <div class="cfg-label">BACKEND URL</div>
+      <input type="text" id="cfgUrl" placeholder="ws://localhost:8765/ws/live" value="ws://localhost:8765/ws/live">
+      <div class="cfg-hint">The PAM visualizer backend must be running on the target Linux host.<br>
+        Start it with: <code style="color:var(--accent)">python server.py</code><br>
+        For remote: SSH tunnel → <code style="color:var(--cyan)">ssh -L 8765:localhost:8765 user@host</code></div>
+    </div>
+    <div class="cfg-row">
+      <div class="cfg-label">HISTORY (minutes)</div>
+      <input type="number" id="cfgHistory" value="30" min="1" max="1440" style="width:80px">
+    </div>
+    <div class="cfg-btns">
+      <button class="btn" onclick="closeConfig()">CANCEL</button>
+      <button class="btn primary" onclick="applyConfig()">CONNECT</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+let CFG = {
+  wsUrl: 'ws://localhost:8765/ws/live',
+  apiBase: 'http://localhost:8765',
+  historyMinutes: 30,
+};
+
+// ═══════════════════════════════════════════════════════════════
+// GRAPH LAYOUT
+// ═══════════════════════════════════════════════════════════════
+// Positions as fraction of graph area [0..1]
+const NODES = {
+  app:       {label:'Application',    sub:'sshd / login / su',icon:'⬡',type:'service', px:.08,py:.20},
+  pamconf:   {label:'/etc/pam.d/',    sub:'stack config',     icon:'⟁',type:'core',    px:.08,py:.50},
+  libpam:    {label:'libpam.so',      sub:'orchestrator',     icon:'◈',type:'core',    px:.08,py:.80},
+
+  mod_env:   {label:'pam_env',        sub:'auth',             icon:'◻',type:'auth',    px:.32,py:.12},
+  mod_unix_a:{label:'pam_unix',       sub:'auth / shadow',    icon:'◻',type:'auth',    px:.32,py:.30},
+  mod_sss_a: {label:'pam_sss',        sub:'auth / sssd',      icon:'◻',type:'auth',    px:.32,py:.48},
+  mod_ga:    {label:'pam_ga / TOTP',  sub:'MFA auth',         icon:'◻',type:'auth',    px:.32,py:.65},
+  mod_deny:  {label:'pam_deny',       sub:'fallback',         icon:'◻',type:'auth',    px:.32,py:.82},
+
+  mod_sss_ac:{label:'pam_sss',        sub:'account',          icon:'◻',type:'account', px:.56,py:.18},
+  mod_unix_ac:{label:'pam_unix',      sub:'account / expiry', icon:'◻',type:'account', px:.56,py:.36},
+  mod_nologin:{label:'pam_nologin',   sub:'account',          icon:'◻',type:'account', px:.56,py:.52},
+  mod_access: {label:'pam_access',    sub:'account / ACL',    icon:'◻',type:'account', px:.56,py:.68},
+  mod_limits: {label:'pam_limits',    sub:'session / ulimit', icon:'◻',type:'session', px:.56,py:.84},
+  mod_mkhome: {label:'pam_mkhomedir', sub:'session',          icon:'◻',type:'session', px:.56,py:.97},
+
+  sssd:      {label:'sssd',           sub:'identity daemon',  icon:'⬡',type:'backend', px:.82,py:.25},
+  sssd_nss:  {label:'sssd_nss',       sub:'nss responder',    icon:'◈',type:'backend', px:.82,py:.50},
+  krb:       {label:'Kerberos KDC',   sub:'TGT / AS-REQ',     icon:'⬡',type:'backend', px:.82,py:.70},
+  ldap:      {label:'LDAP / AD',      sub:'directory service',icon:'⬡',type:'backend', px:.82,py:.88},
+};
+
+const EDGES = [
+  ['app','pamconf','dim','loads'],
+  ['app','libpam','dim','pam_start()'],
+  ['pamconf','libpam','dim','stack'],
+  ['libpam','mod_env','dashed',''],
+  ['libpam','mod_unix_a','dashed',''],
+  ['libpam','mod_sss_a','dashed',''],
+  ['libpam','mod_ga','dashed',''],
+  ['libpam','mod_deny','dashed',''],
+  ['libpam','mod_sss_ac','dashed',''],
+  ['libpam','mod_unix_ac','dashed',''],
+  ['libpam','mod_nologin','dashed',''],
+  ['libpam','mod_access','dashed',''],
+  ['libpam','mod_limits','dashed',''],
+  ['libpam','mod_mkhome','dashed',''],
+  ['mod_sss_a','sssd','dim','pam_request'],
+  ['mod_sss_ac','sssd','dim','acct_check'],
+  ['sssd','sssd_nss','dim','nss_resolve'],
+  ['sssd','krb','dim','TGT verify'],
+  ['sssd','ldap','dim','attr lookup'],
+  ['mod_unix_a','sssd_nss','dashed','/etc/shadow'],
+  ['mod_unix_ac','sssd_nss','dashed','/etc/passwd'],
+];
+
+let nodeEls = {}, edgePaths = {};
+let GW, GH;
+
+function graphDims() {
+  const wrap = document.getElementById('graphWrap');
+  GW = wrap.offsetWidth;
+  GH = wrap.offsetHeight;
+}
+
+function nx(n){ return n.px * GW; }
+function ny(n){ return n.py * GH; }
+
+function renderGraph() {
+  graphDims();
+  const nl = document.getElementById('nodeLayer');
+  nl.innerHTML = '';
+  nodeEls = {};
+  Object.entries(NODES).forEach(([id, n], i) => {
+    const el = document.createElement('div');
+    el.className = 'node idle';
+    el.id = 'nd-'+id;
+    el.style.left = nx(n)+'px';
+    el.style.top  = ny(n)+'px';
+    el.innerHTML = `<div class="node-box">
+      <div class="node-badge" id="nb-${id}">OK</div>
+      <div class="ttag ${n.type}">${n.type.toUpperCase()}</div>
+      <div class="node-name">${n.label}</div>
+      <div class="node-sub">${n.sub}</div>
+    </div>`;
+    nl.appendChild(el);
+    nodeEls[id] = el;
+    anime({targets:el,opacity:[0,1],scale:[.8,1],delay:i*30,duration:350,easing:'easeOutBack'});
+  });
+
+  renderEdges();
+}
+
+function renderEdges() {
+  const svg = document.getElementById('edgeG');
+  svg.innerHTML = '';
+  document.getElementById('lblG').innerHTML = '';
+  edgePaths = {};
+
+  EDGES.forEach(([from,to,style,lbl]) => {
+    const fn = NODES[from], tn = NODES[to];
+    if (!fn||!tn) return;
+    const x1=nx(fn),y1=ny(fn),x2=nx(tn),y2=ny(tn);
+    const dx=x2-x1;
+    const d = `M ${x1} ${y1} C ${x1+dx*.5} ${y1}, ${x1+dx*.5} ${y2}, ${x2} ${y2}`;
+    const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const strokeC = style==='dashed'?'#0c1e2e': '#0e2535';
+    p.setAttribute('d',d);
+    p.setAttribute('stroke',strokeC);
+    p.setAttribute('stroke-width',style==='dashed'?'1':'1.5');
+    p.setAttribute('fill','none');
+    p.setAttribute('stroke-dasharray',style==='dashed'?'3 6':'none');
+    p.setAttribute('marker-end','url(#a-d)');
+    p.setAttribute('opacity',style==='dashed'?'.35':'.55');
+    p.id='ep-'+from+'-'+to;
+    svg.appendChild(p);
+    edgePaths[from+'-'+to] = p;
+
+    if (lbl) {
+      const lg = document.getElementById('lblG');
+      const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',(x1+x2)/2+6);
+      t.setAttribute('y',(y1+y2)/2);
+      t.setAttribute('text-anchor','middle');
+      t.setAttribute('font-family','Share Tech Mono');
+      t.setAttribute('font-size','7.5');
+      t.setAttribute('fill','#142030');
+      t.setAttribute('letter-spacing','0.3');
+      t.textContent = lbl;
+      t.id='el-'+from+'-'+to;
+      lg.appendChild(t);
+    }
+  });
+}
+
+function activateEdge(from,to,color) {
+  const p = edgePaths[from+'-'+to];
+  if (!p) return;
+  const cmap={cyan:'#00d4ff',green:'#00ffb3',red:'#ff2d55',orange:'#ff6b35'};
+  const amap={cyan:'url(#a-c)',green:'url(#a-g)',red:'url(#a-r)',orange:'url(#a-o)'};
+  const c = cmap[color]||cmap.cyan;
+  p.setAttribute('stroke',c);
+  p.setAttribute('stroke-width','2');
+  p.setAttribute('opacity','1');
+  p.setAttribute('stroke-dasharray','none');
+  p.setAttribute('marker-end',amap[color]||amap.cyan);
+  const len=p.getTotalLength();
+  p.style.strokeDasharray=len;
+  p.style.strokeDashoffset=len;
+  anime({targets:p,strokeDashoffset:[len,0],duration:500,easing:'easeInOutSine'});
+  const lbl = document.getElementById('el-'+from+'-'+to);
+  if(lbl){lbl.setAttribute('fill',c);lbl.setAttribute('opacity','0.85')}
+}
+
+function firePacket(from,to,color,done) {
+  const fn=NODES[from],tn=NODES[to];
+  if(!fn||!tn){if(done)done();return}
+  const cmap={cyan:'#00d4ff',green:'#00ffb3',red:'#ff2d55',orange:'#ff6b35'};
+  const c=cmap[color]||cmap.cyan;
+  const dot=document.createElement('div');
+  dot.className='pkt';
+  dot.style.background=c;
+  dot.style.boxShadow=`0 0 10px ${c},0 0 20px ${c}`;
+  document.getElementById('packetLayer').appendChild(dot);
+  const x1=nx(fn),y1=ny(fn),x2=nx(tn),y2=ny(tn);
+  const dx=x2-x1;
+  const cx1=x1+dx*.5,cy1=y1,cx2=x1+dx*.5,cy2=y2;
+  function bez(t,a,b,c,d){return Math.pow(1-t,3)*a+3*Math.pow(1-t,2)*t*b+3*(1-t)*t*t*c+Math.pow(t,3)*d}
+  const N=36;
+  const frames=[];
+  for(let i=0;i<=N;i++){
+    const t=i/N;
+    frames.push({left:bez(t,x1,cx1,cx2,x2)+'px',top:bez(t,y1,cy1,cy2,y2)+'px'});
+  }
+  dot.style.left=x1+'px'; dot.style.top=y1+'px';
+  const spd = parseFloat(document.getElementById('speedRange').value)||1;
+  anime({targets:dot,keyframes:[{opacity:1},...frames,{opacity:0}],
+    duration:500/spd,easing:'linear',complete:()=>{dot.remove();if(done)done()}});
+}
+
+function setNode(id,state,badge){
+  const el=nodeEls[id]; if(!el)return;
+  el.className='node '+state;
+  if(badge){const b=document.getElementById('nb-'+id);if(b){b.textContent=badge;b.style.opacity='1'}}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOGGING
+// ═══════════════════════════════════════════════════════════════
+let logPaused = false;
+let logBuffer = [];
+
+function togglePause(){
+  logPaused=!logPaused;
+  document.getElementById('pauseBtn').textContent=logPaused?'RESUME':'PAUSE';
+  if(!logPaused){logBuffer.forEach(a=>addLog(...a));logBuffer=[]}
+}
+
+function addLog(level,msg,ts){
+  if(logPaused){logBuffer.push([level,msg,ts]);return}
+  const p=document.getElementById('logLines');
+  const t=ts?new Date(ts*1000).toTimeString().slice(0,8):new Date().toTimeString().slice(0,8);
+  const cls={INFO:'li',DEBUG:'ld',WARN:'lw',ERR:'le',OK:'lok'}[level]||'li';
+  const d=document.createElement('div');
+  d.className='ll';
+  d.innerHTML=`<span class="lt">${t} </span><span class="${cls}">[${level.padEnd(5)}]</span> ${msg}`;
+  p.appendChild(d);
+  anime({targets:d,opacity:[0,1],translateX:[-6,0],duration:180,easing:'easeOutQuad'});
+  p.scrollTop=p.scrollHeight;
+  // keep log bounded
+  while(p.children.length>300) p.removeChild(p.firstChild);
+}
+
+function clearLog(){ document.getElementById('logLines').innerHTML='' }
+
+// ═══════════════════════════════════════════════════════════════
+// PHASE / STATUS
+// ═══════════════════════════════════════════════════════════════
+const PHASES=['auth','account','session','result'];
+
+function setPhase(phase){
+  document.getElementById('cv-phase').textContent=phase.toUpperCase();
+  PHASES.forEach(p=>{
+    const el=document.getElementById('ph-'+p);
+    if(!el)return;
+    const ord=PHASES.indexOf(p), cur=PHASES.indexOf(phase);
+    el.className='phase-item '+(ord<cur?'done':ord===cur?'active':'');
+  });
+}
+
+function setStatus(s){
+  const el=document.getElementById('bigStatus');
+  el.className=s; el.textContent=s.toUpperCase();
+  if(s==='granted'||s==='denied'){
+    anime({targets:el,scale:[1,1.05,1],duration:600,easing:'easeOutElastic(1,.5)'});
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EVENT → GRAPH MAPPING
+// Maps parsed PAM events from backend to node/edge animations
+// ═══════════════════════════════════════════════════════════════
+
+const _activated = new Set();
+let _sessionStart = {};  // session_id → start time
+
+function processEvent(ev) {
+  if (!ev) return;
+  const sid = ev.session_id || '';
+  const svc = ev.service || '';
+  const mod = ev.module || '';
+  const etype = ev.event_type || '';
+  const phase = ev.phase || '';
+  const ok = ev.success;
+  const ts = ev.timestamp;
+
+  // Update context panel
+  if (ev.user) document.getElementById('cv-user').textContent = ev.user;
+  if (ev.service) document.getElementById('cv-service').textContent = ev.service;
+  if (ev.rhost) document.getElementById('cv-rhost').textContent = ev.rhost;
+  if (ev.tty) document.getElementById('cv-tty').textContent = ev.tty;
+  if (ts) {
+    if (!_sessionStart[sid]) _sessionStart[sid] = ts;
+    document.getElementById('cv-elapsed').textContent =
+      Math.round((ts - _sessionStart[sid]) * 1000) + 'ms';
+  }
+
+  // Phase
+  if (phase) setPhase(phase);
+
+  // Log the raw detail
+  const lvl = ok === true ? 'OK' : ok === false ? 'ERR' : 'INFO';
+  const msg = ev.detail || `${etype} [${mod||svc}]`;
+  addLog(lvl, sanitize(msg), ts);
+
+  // ── Node + edge logic based on event type ──
+
+  if (etype === 'pam_start') {
+    setStatus('running');
+    setNode('app', 'active');
+    setNode('pamconf', 'active');
+    setNode('libpam', 'active');
+    activateEdge('app','pamconf','cyan');
+    activateEdge('pamconf','libpam','cyan');
+    firePacket('app','libpam','cyan');
+    _activated.clear();
+  }
+
+  if (etype === 'session_open' || phase === 'session') {
+    setPhase('session');
+  }
+
+  // Module call — map module name to node id
+  const nodeId = moduleToNode(mod, phase);
+  if (nodeId && !_activated.has(nodeId)) {
+    _activated.add(nodeId);
+    setNode(nodeId, 'active');
+    firePacket('libpam', nodeId, 'cyan');
+    activateEdge('libpam', nodeId, 'cyan');
+  } else if (nodeId && _activated.has(nodeId) && ok !== null) {
+    // Result for already-active node
+    const state = ok ? 'success' : 'failed';
+    const badge = ok ? 'OK' : 'FAIL';
+    setNode(nodeId, state, badge);
+    activateEdge('libpam', nodeId, ok ? 'green' : 'red');
+  }
+
+  // Module result
+  if (etype === 'module_result' && nodeId) {
+    const state = ok ? 'success' : 'failed';
+    setNode(nodeId, state, ok ? 'OK' : 'FAIL');
+    activateEdge('libpam', nodeId, ok ? 'green' : 'red');
+    if (!ok) firePacket(nodeId, 'libpam', 'red');
+    else firePacket(nodeId, 'libpam', 'green');
+  }
+
+  // SSSD events
+  if (etype === 'sssd_call' || etype === 'sssd_cache' || etype === 'sssd_result') {
+    setNode('sssd', ok === false ? 'failed' : ok === true ? 'success' : 'active');
+    setNode('sssd_nss', 'active');
+    if (!_activated.has('sssd')) {
+      _activated.add('sssd');
+      activateEdge('mod_sss_a', 'sssd', 'cyan');
+      firePacket('mod_sss_a', 'sssd', 'cyan');
+      activateEdge('sssd', 'sssd_nss', 'cyan');
+    }
+    if (etype === 'sssd_result') {
+      const c = ok ? 'green' : 'red';
+      setNode('sssd', ok ? 'success' : 'failed', ok ? 'OK' : 'FAIL');
+      firePacket('sssd', 'mod_sss_a', c);
+    }
+  }
+
+  // Kerberos events
+  if (etype === 'krb_call' || etype === 'krb_result') {
+    if (!_activated.has('krb')) {
+      _activated.add('krb');
+      setNode('krb', 'active');
+      activateEdge('sssd', 'krb', 'cyan');
+      firePacket('sssd', 'krb', 'cyan');
+    }
+    if (etype === 'krb_result') {
+      const c = ok ? 'green' : 'red';
+      setNode('krb', ok ? 'success' : 'failed', ok ? 'OK' : 'FAIL');
+      activateEdge('sssd', 'krb', c);
+      firePacket('krb', 'sssd', c);
+    }
+  }
+
+  // Session events
+  if (etype === 'session_open') {
+    ['mod_limits','mod_mkhome'].forEach(n => {
+      if (!_activated.has(n)) {
+        _activated.add(n);
+        setNode(n, 'active');
+        firePacket('libpam', n, 'orange');
+        activateEdge('libpam', n, 'orange');
+      }
+    });
+  }
+
+  // Final result
+  if (etype === 'access_granted') {
+    setStatus('granted');
+    setPhase('result');
+    ['app','pamconf','libpam'].forEach(n => setNode(n,'success','OK'));
+    document.getElementById('ph-result').className='phase-item done';
+    _sessionStart[sid] = null;
+  }
+  if (etype === 'access_denied') {
+    setStatus('denied');
+    setPhase('result');
+    setNode('app','failed','DENY');
+    setNode('libpam','failed','ERR');
+    document.getElementById('ph-result').className='phase-item done';
+    _sessionStart[sid] = null;
+  }
+
+  // Stats counter
+  statEvCount++;
+  document.getElementById('statEvents').textContent = statEvCount;
+}
+
+function moduleToNode(mod, phase) {
+  if (!mod) return null;
+  const m = mod.replace(/\.so$/,'');
+  const phMap = {
+    'pam_env': 'mod_env',
+    'pam_deny': 'mod_deny',
+    'pam_google_authenticator': 'mod_ga',
+    'pam_ga': 'mod_ga',
+  };
+  if (phMap[m]) return phMap[m];
+  // Phase-disambiguated
+  if (m === 'pam_sss' || m === 'pam_sssd') {
+    return (phase==='account') ? 'mod_sss_ac' : 'mod_sss_a';
+  }
+  if (m === 'pam_unix') {
+    return (phase==='account') ? 'mod_unix_ac' : 'mod_unix_a';
+  }
+  if (m === 'pam_nologin') return 'mod_nologin';
+  if (m === 'pam_access') return 'mod_access';
+  if (m === 'pam_limits') return 'mod_limits';
+  if (m === 'pam_mkhomedir') return 'mod_mkhome';
+  if (m === 'pam_securetty' || m === 'pam_rootok' || m === 'pam_cap') return 'mod_env';
+  return null;
+}
+
+function sanitize(s) {
+  return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;').slice(0,200);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SESSION PANEL
+// ═══════════════════════════════════════════════════════════════
+let statEvCount = 0;
+let sessionMeta = {};
+
+function refreshSessions() {
+  fetch(`${CFG.apiBase}/api/sessions`)
+    .then(r=>r.json())
+    .then(data=>{
+      const sessions = data.sessions || [];
+      document.getElementById('statSessions').textContent = sessions.length;
+      const list = document.getElementById('sessionList');
+      if (!sessions.length) {
+        list.innerHTML = '<div style="color:var(--dimtext);font-size:.58rem;padding:10px">No sessions captured yet…</div>';
+        return;
+      }
+      list.innerHTML = '';
+      sessions.forEach(s => {
+        const d = document.createElement('div');
+        d.className = 'session-item';
+        d.dataset.sid = s.session_id;
+        const dt = s.start_ts ? new Date(s.start_ts*1000).toTimeString().slice(0,8) : '?';
+        const dur = (s.start_ts && s.end_ts) ? Math.round(s.end_ts-s.start_ts)+'s' : '?';
+        d.innerHTML = `
+          <div class="si-service">${s.service||'?'}</div>
+          <div class="si-user">${s.user||'?'}</div>
+          <div class="si-meta">${dt} · ${s.event_count} events · ${dur}</div>
+          <div class="si-result ${s.result}">${s.result.toUpperCase()}</div>
+        `;
+        d.onclick = () => replaySession(s.session_id, d);
+        list.appendChild(d);
+      });
+    }).catch(()=>{});
+}
+
+function replaySession(sid, el) {
+  document.querySelectorAll('.session-item').forEach(x=>x.classList.remove('selected'));
+  if (el) el.classList.add('selected');
+
+  setMode('replay');
+  clearGraph();
+
+  const wsUrl = CFG.wsUrl.replace('/ws/live', `/ws/replay?session_id=${encodeURIComponent(sid)}`);
+  addLog('INFO', `Replaying session: ${sid}`);
+  connectWs(wsUrl);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WEBSOCKET
+// ═══════════════════════════════════════════════════════════════
+let ws = null;
+let wsMode = 'live';
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+
+function connectWs(url) {
+  if (ws) { ws.close(); ws = null; }
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer=null; }
+
+  setBadge('connecting', 'CONNECTING…');
+  document.getElementById('liveIndicator').className = '';
+
+  try {
+    ws = new WebSocket(url || CFG.wsUrl);
+  } catch(e) {
+    setBadge('error', 'WS ERROR');
+    addLog('ERR', 'WebSocket failed: ' + e.message);
+    fallbackDemo();
+    return;
+  }
+
+  ws.onopen = () => {
+    reconnectAttempts = 0;
+    setBadge('live', 'LIVE');
+    document.getElementById('liveIndicator').className = 'live';
+    addLog('INFO', `Connected to ${url||CFG.wsUrl}`);
+  };
+
+  ws.onmessage = (e) => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
+    handleWsMessage(msg);
+  };
+
+  ws.onerror = () => {};
+
+  ws.onclose = () => {
+    document.getElementById('liveIndicator').className = '';
+    if (wsMode === 'live') {
+      setBadge('error', 'DISCONNECTED');
+      reconnectAttempts++;
+      const delay = Math.min(2000 * reconnectAttempts, 30000);
+      addLog('WARN', `Connection lost. Reconnecting in ${delay/1000}s…`);
+      reconnectTimer = setTimeout(() => connectWs(), delay);
+      if (reconnectAttempts === 1) fallbackDemo();
+    } else {
+      setBadge('demo', 'REPLAY END');
+      addLog('INFO', 'Replay complete.');
+    }
+  };
+}
+
+function handleWsMessage(msg) {
+  if (msg.type === 'ping') return;
+
+  if (msg.type === 'connected') {
+    const host = msg.hostname || 'unknown';
+    document.getElementById('statHost').textContent = host;
+    document.getElementById('logSrc').textContent =
+      `${msg.log_path||'auth.log'} · ${host}`;
+    if (!msg.log_available) {
+      addLog('WARN', 'Log not readable: ' + (msg.log_error||'unknown error'));
+      addLog('INFO', 'Run: sudo chmod a+r /var/log/auth.log');
+    }
+    // Load history
+    loadHistory();
+    return;
+  }
+
+  if (msg.type === 'backfill') {
+    addLog('DEBUG', `Backfill: ${msg.events.length} recent events`);
+    msg.events.forEach(ev => processEvent(ev));
+    return;
+  }
+
+  if (msg.type === 'error') {
+    addLog('ERR', msg.message || 'Unknown error');
+    setBadge('error', 'ERROR');
+    return;
+  }
+
+  if (msg.type === 'event' && msg.data) {
+    processEvent(msg.data);
+    return;
+  }
+
+  if (msg.type === 'replay_start') {
+    addLog('INFO', `Replay start — ${msg.total} events`);
+    setStatus('running');
+    return;
+  }
+
+  if (msg.type === 'replay_end') {
+    addLog('OK', 'Replay complete');
+    refreshSessions();
+    return;
+  }
+}
+
+function loadHistory() {
+  fetch(`${CFG.apiBase}/api/history?minutes=${CFG.historyMinutes}`)
+    .then(r=>r.json())
+    .then(data=>{
+      if (data.error) { addLog('WARN', data.error); return; }
+      addLog('INFO', `History loaded: ${data.count} events from last ${CFG.historyMinutes}min`);
+      (data.events||[]).forEach(ev => processEvent(ev));
+      refreshSessions();
+    }).catch(()=>{
+      addLog('WARN', 'History load failed — backend may not be running');
+    });
+}
+
+function setBadge(cls, text) {
+  const b = document.getElementById('connBadge');
+  b.className = cls;
+  b.textContent = text;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODE SWITCHING
+// ═══════════════════════════════════════════════════════════════
+function setMode(mode) {
+  wsMode = mode;
+  ['live','replay','demo'].forEach(m => {
+    document.getElementById('tab-'+m).className = 'mode-tab' + (m===mode?' active':'');
+  });
+  if (mode === 'live') {
+    clearGraph();
+    connectWs();
+  } else if (mode === 'demo') {
+    if (ws) { ws.close(); ws=null; }
+    setBadge('demo', 'DEMO');
+    clearGraph();
+    runDemo();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO MODE (built-in scenarios when no backend)
+// ═══════════════════════════════════════════════════════════════
+const DEMO_EVENTS = [
+  {event_type:'pam_start',service:'sshd',user:'alice',rhost:'192.168.1.50',tty:'pts/0',session_id:'sshd:1234',detail:'sshd[1234]: pam_start() — user=alice',timestamp:0},
+  {event_type:'module_call',module:'pam_env.so',phase:'auth',session_id:'sshd:1234',detail:'AUTH: pam_env.so [required] — /etc/environment',timestamp:.5},
+  {event_type:'module_result',module:'pam_env.so',phase:'auth',success:true,session_id:'sshd:1234',detail:'pam_env.so → PAM_SUCCESS',timestamp:.9},
+  {event_type:'module_call',module:'pam_sss.so',phase:'auth',session_id:'sshd:1234',detail:'AUTH: pam_sss.so [sufficient] — calling sssd',timestamp:1.3},
+  {event_type:'sssd_call',module:'pam_sss.so',session_id:'sshd:1234',detail:'sssd[pam]: pam_sss_request — user=alice',timestamp:1.7},
+  {event_type:'sssd_cache',success:true,session_id:'sshd:1234',detail:'sssd: cache hit (TTL 32s)',timestamp:2.0},
+  {event_type:'krb_call',session_id:'sshd:1234',detail:'sssd: validating Kerberos TGT via ccache',timestamp:2.4},
+  {event_type:'krb_result',success:true,session_id:'sshd:1234',detail:'Kerberos TGT valid — PAM_SUCCESS',timestamp:3.0},
+  {event_type:'sssd_result',success:true,session_id:'sshd:1234',detail:'sssd[pam]: PAM_SUCCESS → pam_sss returns SUCCESS',timestamp:3.4},
+  {event_type:'module_result',module:'pam_sss.so',phase:'auth',success:true,session_id:'sshd:1234',detail:'pam_sss [sufficient] → PAM_SUCCESS, short-circuit auth',timestamp:3.7},
+  {event_type:'module_call',module:'pam_sss.so',phase:'account',session_id:'sshd:1234',detail:'ACCOUNT: pam_sss.so — checking account validity',timestamp:4.2},
+  {event_type:'sssd_call',module:'pam_sss.so',phase:'account',session_id:'sshd:1234',detail:'sssd: account check — no lockout, expiry OK',timestamp:4.5},
+  {event_type:'module_result',module:'pam_sss.so',phase:'account',success:true,session_id:'sshd:1234',detail:'pam_sss account → PAM_SUCCESS',timestamp:4.9},
+  {event_type:'session_open',session_id:'sshd:1234',detail:'SESSION: pam_limits.so + pam_mkhomedir — applying session',timestamp:5.4},
+  {event_type:'access_granted',service:'sshd',user:'alice',session_id:'sshd:1234',detail:'sshd[1234]: pam_end() — ACCESS GRANTED for alice',timestamp:6.0},
+];
+
+let demoTimers = [];
+let demoT0 = 0;
+
+function runDemo() {
+  demoTimers.forEach(clearTimeout); demoTimers=[];
+  addLog('INFO', '[DEMO MODE] Simulating SSSD domain login for alice');
+  setStatus('running');
+  demoT0 = Date.now() / 1000;
+
+  DEMO_EVENTS.forEach(ev => {
+    const spd = parseFloat(document.getElementById('speedRange').value)||1;
+    const delay = ev.timestamp * 1000 / spd;
+    const tid = setTimeout(() => {
+      processEvent({...ev, timestamp: demoT0 + ev.timestamp});
+    }, delay);
+    demoTimers.push(tid);
+  });
+}
+
+function fallbackDemo() {
+  if (wsMode !== 'live') return;
+  // Only auto-fall to demo on first failure
+  if (reconnectAttempts === 1) {
+    addLog('INFO', '→ Showing DEMO MODE. Connect backend to see live events.');
+    setBadge('demo', 'DEMO');
+    runDemo();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIG MODAL
+// ═══════════════════════════════════════════════════════════════
+function showConfig(){ document.getElementById('configModal').className='show' }
+function closeConfig(){ document.getElementById('configModal').className='' }
+function applyConfig(){
+  const url = document.getElementById('cfgUrl').value.trim();
+  const mins = parseInt(document.getElementById('cfgHistory').value)||30;
+  CFG.wsUrl = url;
+  CFG.apiBase = url.replace(/^ws/,'http').replace(/\/ws\/.*/,'');
+  CFG.historyMinutes = mins;
+  closeConfig();
+  clearGraph();
+  connectWs();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════════════
+function clearGraph() {
+  demoTimers.forEach(clearTimeout); demoTimers=[];
+  _activated.clear();
+  Object.assign(_sessionStart, {});
+  statEvCount = 0;
+  document.getElementById('statEvents').textContent = 0;
+  document.getElementById('packetLayer').innerHTML = '';
+  clearLog();
+  setStatus('idle');
+  setPhase('');
+  PHASES.forEach(p=>{const el=document.getElementById('ph-'+p);if(el)el.className='phase-item'});
+  ['cv-user','cv-service','cv-rhost','cv-tty','cv-uid','cv-phase','cv-elapsed']
+    .forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—'});
+  renderGraph();
+  // Reset edges
+  Object.values(edgePaths).forEach(p=>{
+    p.setAttribute('stroke','#0e2535');
+    p.setAttribute('stroke-width','1.5');
+    p.setAttribute('opacity','.55');
+    p.setAttribute('marker-end','url(#a-d)');
+  });
+}
+
+// Speed control
+document.getElementById('speedRange').addEventListener('input', e=>{
+  document.getElementById('speedVal').textContent = parseFloat(e.target.value).toFixed(1)+'×';
+});
+
+// Resize handler
+window.addEventListener('resize', ()=>{ renderGraph(); });
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+renderGraph();
+
+// Try live first, fall back to demo automatically
+connectWs();
+
+// Poll sessions every 5s when connected
+setInterval(()=>{ if(wsMode==='live') refreshSessions(); }, 5000);
+</script>
+</body>
+</html>
