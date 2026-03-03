@@ -188,6 +188,120 @@ export class PlotService {
     return null;
   }
 
+  /** Parse a C/C++ file via the c-parser backend endpoint. */
+  public static async plotCFile(
+    cParserUrl: string,
+    path: string
+  ): Promise<unknown> {
+    const url = `${cParserUrl}/file`;
+    const body = { path };
+    const data = await RequestHandler.postRequest(url, body);
+    if (typeof data === 'string') {
+      logger.error('Error plotCFile');
+      return null;
+    }
+    return data;
+  }
+
+  /** Download a GitHub repo and parse it as a C/C++ semantic graph. */
+  public static async plotCGithub(
+    cParserUrl: string,
+    repoUrl: string,
+    maxFiles: number = 200
+  ): Promise<unknown> {
+    const url = `${cParserUrl}/github`;
+    const body = { url: repoUrl, max_files: maxFiles };
+    const data = await RequestHandler.postRequest(url, body);
+    if (typeof data === 'string') {
+      logger.error('Error plotCGithub');
+      return null;
+    }
+    return data;
+  }
+
+  /** Parse a C/C++ directory via the c-parser backend endpoint. */
+  public static async plotCDirectory(
+    cParserUrl: string,
+    path: string
+  ): Promise<unknown> {
+    const url = `${cParserUrl}/directory`;
+    const body = { path };
+    const data = await RequestHandler.postRequest(url, body);
+    if (typeof data === 'string') {
+      logger.error('Error plotCDirectory');
+      return null;
+    }
+    return data;
+  }
+
+  /** Fetch the registered language extensions from the backend. */
+  public static async fetchLanguages(
+    parseUrl: string
+  ): Promise<Record<string, string[]> | null> {
+    const data = await RequestHandler.getRequest(`${parseUrl}/languages`) as Record<string, unknown> | null;
+    return (data?.['languages'] as Record<string, string[]>) ?? null;
+  }
+
+  /** Parse a directory using the unified schema (depth-based hierarchy). */
+  public static async plotUnified(
+    parseUrl: string,
+    directory: Directory,
+    depth: number = 2,
+    extensions: string[] | null = null,
+    layout: string = 'Spring',
+    mode?: string
+  ): Promise<unknown> {
+    const url = `${parseUrl}/unified`;
+    const body: Record<string, unknown> = {
+      directory: {
+        info: directory.info,
+        size: directory.size,
+        root: directory.root,
+        is_partial: directory.is_partial,
+      },
+      depth,
+      layout,
+    };
+    if (extensions) {
+      body['extensions'] = extensions;
+    }
+    if (mode) {
+      body['mode'] = mode;
+    }
+    const data = await RequestHandler.postRequest(url, body);
+    if (typeof data === 'string') {
+      logger.error('Error plotUnified');
+      return null;
+    }
+    return data;
+  }
+
+  /** Expand a single file node to reveal its symbols. */
+  public static async expandNode(
+    parseUrl: string,
+    directory: Directory,
+    nodeId: string,
+    depth: number = 2
+  ): Promise<unknown> {
+    const url = `${parseUrl}/expand`;
+    const body = {
+      directory: {
+        info: directory.info,
+        size: directory.size,
+        root: directory.root,
+        is_partial: directory.is_partial,
+      },
+      node_id: nodeId,
+      depth,
+    };
+    const data = await RequestHandler.postRequest(url, body);
+    if (typeof data === 'string') {
+      logger.error('Error expandNode');
+      return null;
+    }
+    return data;
+  }
+
   /** Plot the content of the selected file. */
   private static async sendPlotRequest(
     plotterUrl: string,

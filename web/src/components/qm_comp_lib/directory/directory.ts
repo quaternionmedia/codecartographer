@@ -8,14 +8,15 @@ interface DirectoryAttrs {
   folders: RawFolder[];
   files: RawFile[];
   onUrlFileClicked: (url: string) => void;
+  onFolderExpand?: (path: string) => void;
 }
 
 export const DirectoryContent: m.Component<DirectoryAttrs> = {
   view(vnode) {
-    const { folderName, folders, files, onUrlFileClicked } = vnode.attrs;
+    const { folderName, folders, files, onUrlFileClicked, onFolderExpand } = vnode.attrs;
 
     return m('div.directory_content', {}, [
-      foldersParse(folders, onUrlFileClicked),
+      foldersParse(folders, onUrlFileClicked, onFolderExpand, ''),
       m(FileList, {
         folderName: folderName,
         files: files,

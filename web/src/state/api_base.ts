@@ -6,6 +6,8 @@ export class API {
   private _plotter: string = 'plotter';
   private _polygraph: string = 'polygraph';
   private _repoReader: string = 'repo';
+  private _cParser: string = 'c-parser';
+  private _parse: string = 'parse';
 
   constructor(base: string) {
     this._base = base;
@@ -33,5 +35,13 @@ export class API {
 
   get repoReader(): string {
     return `${this._base}/${this._repoReader}`;
+  }
+
+  get cParser(): string {
+    return `${this._base}/${this._cParser}`;
+  }
+
+  get parse(): string {
+    return `${this._base}/${this._parse}`;
   }
 }

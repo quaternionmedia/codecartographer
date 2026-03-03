@@ -33,7 +33,8 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
     currentTheme: 'forest',
     isLoading: false,
     statusMessage: 'Ready',
-    panelHeight: 300,
+    panelHeight: 380,
+    graphSections: { layout: true, visual: false, theme: false },
   };
 
   // Helper to update panel state and trigger redraw
@@ -261,7 +262,7 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
       }
 
       // For other styling changes, just re-render with existing data
-      if (appState.state.graphData) {
+      if (appState.state.graphData || appState.state.selectedRenderer === 'system') {
         console.log('[VISUAL] Calling createGraphVnode() for non-layout styling change');
         actions.plot.createGraphVnode();
       } else {
@@ -308,6 +309,45 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
       }
     },
 
+    // Repository - lazily expand a stub folder (large repo shallow mode)
+    onFolderExpand: async (path: string) => {
+      updatePanelState({ isLoading: true, statusMessage: `Loading ${path}...` });
+      try {
+        await actions.repo.expandPath(panelState.repoUrl, path);
+        updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+      } catch (error) {
+        updatePanelState({ isLoading: false, statusMessage: `Error expanding ${path}` });
+      }
+    },
+
+    // Repository - expand all stub folders (structure only, no file content)
+    onExpandAll: async () => {
+      updatePanelState({ isLoading: true, statusMessage: 'Expanding all folders...' });
+      try {
+        await actions.repo.expandAll(panelState.repoUrl);
+        updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+      } catch (error) {
+        updatePanelState({ isLoading: false, statusMessage: 'Error expanding tree' });
+      }
+    },
+
+    // C Parser - download GitHub repo and parse C/C++ files
+    onCParserGithub: async (repoUrl: string) => {
+      updatePanelState({ isLoading: true, statusMessage: `Fetching & parsing C repo: ${repoUrl}` });
+      appState.update({ selectedRenderer: 'd3' });
+
+      lastPlotAction = async () => {
+        await actions.plot.plotCGithub(repoUrl);
+      };
+
+      try {
+        await lastPlotAction();
+        updatePanelState({ isLoading: false, statusMessage: 'C repo parsed' });
+      } catch (error) {
+        updatePanelState({ isLoading: false, statusMessage: 'Error: ' + String(error) });
+      }
+    },
+
     // Renderer change - use appState for consistent updates
     onRendererChange: (renderer) => {
       // Update through appState (single source of truth)
@@ -315,8 +355,8 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
 
       console.log('Renderer changed to:', renderer, '- current state:', appState.state.selectedRenderer);
 
-      // Trigger re-render with new renderer if graph data exists
-      if (appState.state.graphData) {
+      // System renderer has its own built-in demo — no graph data required
+      if (renderer === 'system' || appState.state.graphData) {
         updatePanelState({ statusMessage: `Switching to ${renderer} renderer...` });
         actions.plot.createGraphVnode();
         updatePanelState({ statusMessage: 'Ready' });
@@ -329,10 +369,12 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
 
   // Return a closure component - view is called on each redraw, but closures are preserved
   return {
-    oncreate: () => {
+    oncreate: async () => {
       // Apply default theme on initial load
       const theme = panelState.currentTheme;
       document.documentElement.setAttribute('data-theme', theme === 'terminal' ? '' : theme);
+      // Fetch available languages from backend (non-fatal)
+      try { await actions.plot.initializeLanguages(); m.redraw(); } catch { /* non-fatal */ }
     },
     view: () => {
       // Use appState for consistent state access (single source of truth)
@@ -359,6 +401,7 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
         graphStyling: currentState.graphStyling,
         parserOptions: currentState.parserOptions,
         selectedRenderer: currentState.selectedRenderer,
+        availableLanguages: currentState.availableLanguages ?? null,
       };
       
       const controlPanel = ControlPanel(

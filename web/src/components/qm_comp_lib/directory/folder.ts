@@ -5,36 +5,62 @@ import { animations } from '../../../core/animations';
 
 interface FolderAttrs {
   folderName: string;
+  /** Full path from repo root, e.g. "kernel" or "kernel/drivers" */
+  folderPath: string;
   folders: RawFolder[];
   files: RawFile[];
   onUrlFileClicked: (url: string) => void;
+  /** Called when a stub folder (no children) is opened — triggers lazy load */
+  onFolderExpand?: (path: string) => void;
 }
 
 interface FolderState {
   isOpen: boolean;
+  isLoading: boolean;
 }
 
 export const Folder: m.Component<FolderAttrs> = {
   oninit(vnode) {
     (vnode.state as FolderState).isOpen = false;
+    (vnode.state as FolderState).isLoading = false;
+  },
+
+  onupdate(vnode) {
+    const state = vnode.state as FolderState;
+    if (state.isLoading) {
+      const { folders, files } = vnode.attrs;
+      // Reset spinner once the expansion has delivered content
+      if (folders.length > 0 || files.length > 0) {
+        state.isLoading = false;
+        m.redraw();
+      }
+    }
   },
 
   view(vnode) {
-    const { folderName, folders, files, onUrlFileClicked } = vnode.attrs;
-    let state = vnode.state as FolderState;
+    const { folderName, folderPath, folders, files, onUrlFileClicked, onFolderExpand } = vnode.attrs;
+    const state = vnode.state as FolderState;
+    const isStub = folders.length === 0 && files.length === 0;
 
     return m(`div.folder.folder__${folderName}`, [
       m(
         'div.folder_button',
         {
+          class: isStub ? 'folder_button--stub' : '',
           onclick: function (e: MouseEvent) {
             const button = e.currentTarget as HTMLElement;
             button.classList.toggle('active');
             state.isOpen = !state.isOpen;
-            
+
             // Animate button press
             animations.buttonPress(button);
-            
+
+            // If this is a stub folder being opened, request lazy expansion
+            if (state.isOpen && isStub && onFolderExpand && !state.isLoading) {
+              state.isLoading = true;
+              onFolderExpand(folderPath);
+            }
+
             // Animate folder content
             const folderContent = button.nextElementSibling as HTMLElement;
             if (folderContent) {
@@ -49,14 +75,18 @@ export const Folder: m.Component<FolderAttrs> = {
                 });
               }
             }
-            
+
             m.redraw();
           },
         },
-        folderName
+        [
+          folderName,
+          isStub && !state.isLoading ? m('span.folder_stub_indicator', ' …') : null,
+          state.isLoading ? m('span.folder_loading_indicator', ' ↻') : null,
+        ]
       ),
       m('div.folder_content', { style: { display: state.isOpen ? 'block' : 'none' } }, [
-        foldersParse(folders, onUrlFileClicked),
+        foldersParse(folders, onUrlFileClicked, onFolderExpand, folderPath),
         m(FileList, { folderName, files: files, onUrlFileClicked }),
       ]),
     ]);
@@ -65,20 +95,20 @@ export const Folder: m.Component<FolderAttrs> = {
 
 export function foldersParse(
   folders: RawFolder[],
-  onUrlFileClicked: (url: string) => void
+  onUrlFileClicked: (url: string) => void,
+  onFolderExpand?: (path: string) => void,
+  parentPath: string = ''
 ): m.Children {
-  let folderElements: m.Children = [];
-
-  folders.forEach((folder) => {
-    folderElements.push(
-      m(Folder, {
-        folderName: folder.name,
-        folders: folder.folders,
-        files: folder.files,
-        onUrlFileClicked: onUrlFileClicked,
-      })
-    );
+  return folders.map(folder => {
+    const folderPath = parentPath ? `${parentPath}/${folder.name}` : folder.name;
+    return m(Folder, {
+      key: folder.name,
+      folderName: folder.name,
+      folderPath: folderPath,
+      folders: folder.folders,
+      files: folder.files,
+      onUrlFileClicked: onUrlFileClicked,
+      onFolderExpand: onFolderExpand,
+    });
   });
-
-  return folderElements;
 }

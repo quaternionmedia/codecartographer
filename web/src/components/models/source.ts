@@ -7,15 +7,19 @@ export class Directory {
   info: RepoInfo;
   size: number;
   root: RawFolder;
+  /** True when only the top-level structure was fetched (large repo shallow mode). */
+  is_partial: boolean;
 
   constructor(
     info: RepoInfo = new RepoInfo(),
     size: number = 0,
-    root: RawFolder = new RawFolder()
+    root: RawFolder = new RawFolder(),
+    is_partial: boolean = false
   ) {
     this.info = info;
     this.size = size;
     this.root = root;
+    this.is_partial = is_partial;
   }
 
   get isEmpty() {

@@ -5,7 +5,7 @@ import { RepoService } from '../features/repository';
 import { GraphData } from '../features/graph';
 import { GraphStylingOptions } from './types';
 import { GraphRendererRegistry } from '../features/graph/services/renderers';
-import { Directory, RawFile } from '../components/models/source';
+import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
 import { logger } from '../core/logger';
 
 /**
@@ -105,17 +105,52 @@ export class PlotActions {
   }
 
   /**
+   * Create vnode for the system renderer (PAM Auth Monitor).
+   * Does not require graph data — the renderer has its own built-in demo.
+   */
+  public createSystemVnode(): void {
+    const styling     = this.stateController.state.graphStyling;
+    const httpBase    = this.stateController.api.base;
+    const wsBase      = httpBase.replace(/^http/, 'ws');
+    const systemStyling = {
+      ...styling,
+      systemId:      styling.systemId ?? 'pam',
+      systemWsBase:  wsBase,
+      // Legacy fields kept for backwards compatibility
+      pamHttpBase:   `${httpBase}/pam`,
+      pamWsUrl:      `${wsBase}/pam/ws/live`,
+    };
+
+    const renderer = GraphRendererRegistry.get('system');
+    const container = m('div.graph_content.graphRenderer', {
+      key: `system-${Date.now()}`,
+      oncreate: (vnode: m.VnodeDOM) => {
+        const element = vnode.dom as HTMLElement;
+        element.style.height = '100%';
+        element.style.width  = '100%';
+        renderer.render(element, null, systemStyling);
+      },
+    });
+    this.stateController.updatePlotFrame([container]);
+  }
+
+  /**
    * Create graph vnode from stored graph data
    * This can be called when graph data changes OR when styling changes
    */
   public createGraphVnode(): void {
+    // System renderer has its own built-in demo — no graph data required
+    const selectedRenderer = this.stateController.state.selectedRenderer;
+    if (selectedRenderer === 'system') {
+      this.createSystemVnode();
+      return;
+    }
+
     const graphData = this.stateController.state.graphData;
     if (!graphData) {
       logger.warn('createGraphVnode called but no graph data in state');
       return;
     }
-
-    const selectedRenderer = this.stateController.state.selectedRenderer;
 
     // Special handling for notebook renderer - needs async HTML conversion
     if (selectedRenderer === 'notebook') {
@@ -366,6 +401,19 @@ export class PlotActions {
     }
 
   /**
+   * Fetch the registered language extensions and store in state.
+   * Non-fatal: called on startup; failure is silently ignored.
+   */
+  async initializeLanguages(): Promise<void> {
+    try {
+      const langs = await PlotService.fetchLanguages(this.stateController.api.parse);
+      if (langs) this.stateController.update({ availableLanguages: langs });
+    } catch {
+      // non-fatal — backend may not be running yet
+    }
+  }
+
+  /**
    * Load and display demo visualization
    */
   async loadDemo(): Promise<void> {
@@ -407,17 +455,19 @@ export class PlotActions {
   }
 
   /**
-   * Plot entire repository structure
+   * Plot entire repository structure via /parse/unified
    */
   async plotWholeRepo(content: Directory): Promise<void> {
     this.stateController.clear();
     try {
-      console.log('PlotActions.plotWholeRepo - plotting repo:', content);
       const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const parseMode = this.stateController.state.parserOptions.mode;
-      console.log('PlotActions.plotWholeRepo - using parser mode:', parseMode);
-      const data = await PlotService.plotRepoWhole(content, this.stateController.api.plotter, layout, parseMode);
-      console.log('PlotActions.plotWholeRepo - received data:', data);
+      const opts   = this.stateController.state.parserOptions;
+      const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
+      const data   = await PlotService.plotUnified(
+        this.stateController.api.parse, content, 2, exts, layout, opts.mode
+      );
+      if (!data) throw new Error('No data returned from parse/unified');
+      this.stateController.update({ parseDirectory: content });
       this.handlePlotData(data);
     } catch (error) {
       console.error('Failed to plot repository:', error);
@@ -426,17 +476,19 @@ export class PlotActions {
   }
 
   /**
-   * Plot repository with dependencies
+   * Plot repository with dependencies via /parse/unified
    */
   async plotRepoDeps(content: Directory): Promise<void> {
     this.stateController.clear();
     try {
-      console.log('PlotActions.plotRepoDeps - plotting deps for:', content);
       const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const parseMode = this.stateController.state.parserOptions.mode;
-      console.log('PlotActions.plotRepoDeps - using parser mode:', parseMode);
-      const data = await PlotService.plotRepoWholeDeps(content, this.stateController.api.plotter, layout, parseMode);
-      console.log('PlotActions.plotRepoDeps - received data:', data);
+      const opts   = this.stateController.state.parserOptions;
+      const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
+      const data   = await PlotService.plotUnified(
+        this.stateController.api.parse, content, 2, exts, layout, 'dependencies'
+      );
+      if (!data) throw new Error('No data returned from parse/unified');
+      this.stateController.update({ parseDirectory: content });
       this.handlePlotData(data);
     } catch (error) {
       console.error('Failed to plot repository dependencies:', error);
@@ -445,23 +497,139 @@ export class PlotActions {
   }
 
   /**
-   * Plot a single uploaded file
+   * Fetch a GitHub repo and parse all C/H files using the c-parser backend
+   */
+  async plotCGithub(repoUrl: string): Promise<void> {
+    this.stateController.clear();
+    try {
+      const data = await PlotService.plotCGithub(
+        this.stateController.api.cParser,
+        repoUrl
+      );
+      if (!data) throw new Error('No data returned from c-parser/github');
+      const result = (data as Record<string, unknown>);
+      const graph = result['graph'] ?? data;
+      this.handlePlotData(graph);
+    } catch (error) {
+      console.error('Failed to parse GitHub C repo:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Parse a C/C++ file at the given local path using the c-parser backend
+   */
+  async plotCFile(path: string): Promise<void> {
+    this.stateController.clear();
+    try {
+      const data = await PlotService.plotCFile(
+        this.stateController.api.cParser,
+        path
+      );
+      if (!data) throw new Error('No data returned from c-parser');
+      // Extract graph from results wrapper if present
+      const result = (data as Record<string, unknown>);
+      const graph = result['graph'] ?? data;
+      this.handlePlotData(graph);
+    } catch (error) {
+      console.error('Failed to plot C file:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Parse a C/C++ directory at the given local path using the c-parser backend
+   */
+  async plotCDirectory(path: string): Promise<void> {
+    this.stateController.clear();
+    try {
+      const data = await PlotService.plotCDirectory(
+        this.stateController.api.cParser,
+        path
+      );
+      if (!data) throw new Error('No data returned from c-parser');
+      const result = (data as Record<string, unknown>);
+      const graph = result['graph'] ?? data;
+      this.handlePlotData(graph);
+    } catch (error) {
+      console.error('Failed to plot C directory:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Parse a directory using the unified schema (depth-based hierarchy).
+   * Any renderer (D3, Gravis, …) can display the result.
+   */
+  async plotUnified(
+    directory: Directory,
+    depth: number = 2,
+    extensions?: string[]
+  ): Promise<void> {
+    this.stateController.clear();
+    try {
+      const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
+      const data = await PlotService.plotUnified(
+        this.stateController.api.parse,
+        directory,
+        depth,
+        extensions ?? null,
+        layout
+      );
+      if (!data) throw new Error('No data returned from parse/unified');
+      // Backend wraps result in { results: { graph, metadata } }
+      const result = data as Record<string, unknown>;
+      const graphData = result['graph'] !== undefined ? result : data;
+      // Store directory so subsequent expandGraphNode() calls can reuse it
+      this.stateController.update({ parseDirectory: directory });
+      this.handlePlotData(graphData);
+    } catch (error) {
+      console.error('Failed to plot unified:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Plot a single uploaded file via /parse/unified
    */
   async plotUploadedFile(file: RawFile): Promise<void> {
     this.stateController.clear();
     try {
-      console.log('PlotActions.plotUploadedFile - plotting file:', file);
       const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const parseMode = this.stateController.state.parserOptions.mode;
-      console.log('PlotActions.plotUploadedFile - using parser mode:', parseMode);
-      const data = await PlotService.plotFile(file, this.stateController.api.plotter, layout, parseMode);
-      console.log('PlotActions.plotUploadedFile - received data:', data);
+      const opts   = this.stateController.state.parserOptions;
+      const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
+      const dir    = new Directory(new RepoInfo(), 1, new RawFolder('upload', file.size, [file]));
+      const data   = await PlotService.plotUnified(
+        this.stateController.api.parse, dir, opts.mode === 'directory' ? 1 : 2, exts, layout, opts.mode
+      );
+      if (!data) throw new Error('No data returned from parse/unified');
+      this.stateController.update({ parseDirectory: dir });
       this.handlePlotData(data);
     } catch (error) {
       console.error('Failed to plot uploaded file:', error);
       throw error;
     }
   }
+}
+
+/**
+ * Recursively merge an expanded folder into the directory tree at the given path.
+ */
+function mergeFolderAtPath(
+  root: RawFolder,
+  pathParts: string[],
+  expanded: RawFolder
+): RawFolder {
+  if (pathParts.length === 0) return expanded;
+  const [head, ...rest] = pathParts;
+  return new RawFolder(
+    root.name,
+    root.size,
+    root.files,
+    root.folders.map(f =>
+      f.name === head ? mergeFolderAtPath(f, rest, expanded) : f
+    )
+  );
 }
 
 /**
@@ -480,6 +648,48 @@ export class RepoActions {
       this.stateController.updateRepoContent(data);
     } catch (error) {
       console.error('Failed to fetch repository:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Lazily expand a stub folder in the current repo tree.
+   * Fetches one level of content for the given path and merges it into the tree.
+   */
+  async expandPath(repoUrl: string, path: string): Promise<void> {
+    const current = this.stateController.repo.content;
+    if (!current) return;
+    try {
+      const folder = await RepoService.getSubtree(
+        repoUrl,
+        path,
+        this.stateController.api.repoReader
+      );
+      const pathParts = path.split('/').filter(p => p.length > 0);
+      const newRoot = mergeFolderAtPath(current.root, pathParts, folder);
+      this.stateController.setRepoContent({ ...current, root: newRoot });
+    } catch (error) {
+      console.error('Failed to expand path:', path, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Expand all stub folders in the current repo tree to the given depth.
+   * Replaces the entire directory with a fully-expanded version (no file content).
+   */
+  async expandAll(repoUrl: string, maxDepth = 3): Promise<void> {
+    try {
+      const result = await RepoService.expandAllTree(
+        repoUrl,
+        this.stateController.api.repoReader,
+        maxDepth
+      );
+      if (result) {
+        this.stateController.updateRepoContent(result);
+      }
+    } catch (error) {
+      console.error('Failed to expand all folders:', error);
       throw error;
     }
   }
