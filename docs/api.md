@@ -2,7 +2,7 @@
 
 REST API documentation for Codecarto backend.
 
-**Base URL:** `http://127.0.0.1:8000`  
+**Base URL:** `http://127.0.0.1:8000`
 **Interactive Docs:** `http://127.0.0.1:8000/docs`
 
 ---
@@ -11,98 +11,79 @@ REST API documentation for Codecarto backend.
 
 | Prefix | Tag | Description |
 |--------|-----|-------------|
-| `/local` | local | Local repository operations |
+| `/parse` | parse | **Unified parse (all languages, recommended)** |
+| `/plotter` | plotter | Legacy graph visualization |
+| `/parser` | parser | Legacy Python code parsing |
+| `/c-parser` | c-parser | C/H semantic parsing (requires `[c-parsing]` optional dep) |
 | `/repo` | repo | GitHub repository operations |
-| `/parser` | parser | Source code parsing |
-| `/plotter` | plotter | Graph visualization |
-| `/polygraph` | polygraph | Graph operations |
+| `/local` | local | Local repository operations |
+| `/pam` | pam | PAM auth log monitor |
+| `/polygraph` | polygraph | Graph transformation operations |
 | `/palette` | palette | Color palette management |
 
 ---
 
-## Local Repository Endpoints
+## Unified Parse Endpoints
 
-### GET `/local/scan`
+These are the recommended endpoints. They work across all registered languages
+(.py via Python parser, .c/.h via C parser) and produce gJGF output that any renderer
+can display.
 
-Scan a local repository and return structure with statistics.
+### POST `/parse/unified`
 
-**Query Parameters:**
+Parse a directory tree to the requested depth and return a gJGF graph.
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `path` | string | Yes | - | Absolute path to repository |
-| `extensions` | array[string] | No | `[".py"]` | File extensions to include |
-
-**Example Request:**
-```bash
-curl "http://127.0.0.1:8000/local/scan?path=/path/to/project&extensions=.py&extensions=.js"
-```
-
-**Response:**
+**Request Body:**
 ```json
 {
-  "code": 200,
-  "message": "scan_local_repo - Success",
-  "data": {
-    "info": {
-      "owner": "username",
-      "name": "project",
-      "url": "/path/to/project"
-    },
-    "stats": {
-      "total_files": 45,
-      "total_size": 156234,
-      "python_files": 45,
-      "folders": 12
-    },
-    "structure": {
-      "name": "project",
-      "size": 156234,
-      "files": [...],
-      "folders": [...]
-    }
-  }
-}
-```
-
----
-
-### GET `/local/tree`
-
-Get directory tree structure.
-
-**Query Parameters:**
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `path` | string | Yes | - | Path to repository |
-| `extensions` | array[string] | No | `[".py"]` | Extensions to include |
-
-**Example Request:**
-```bash
-curl "http://127.0.0.1:8000/local/tree?path=/path/to/project"
-```
-
-**Response:**
-```json
-{
-  "code": 200,
-  "message": "get_local_repo_tree - Success",
-  "data": {
-    "info": {
-      "owner": "username",
-      "name": "project",
-      "url": "/path/to/project"
-    },
+  "directory": {
+    "info": { "owner": "user", "name": "myrepo", "url": "..." },
+    "size": 12345,
     "root": {
-      "name": "project",
-      "size": 156234,
-      "files": [
-        {"name": "main.py", "size": 1234, "url": "/path/to/project/main.py", "raw": "..."}
+      "name": "myrepo",
+      "files": [{ "name": "main.py", "size": 1234, "raw": "..." }],
+      "folders": []
+    },
+    "is_partial": false
+  },
+  "depth": 2,
+  "extensions": [".py", ".c"],
+  "layout": "Spring"
+}
+```
+
+**depth values:**
+| depth | output |
+|-------|--------|
+| 0 | directories only |
+| 1 | directories + files |
+| 2 | + top-level symbols (class, function, struct, …) |
+| 3 | + sub-symbols (arguments, fields, enum constants) |
+
+**Response:**
+```json
+{
+  "code": 200,
+  "message": "parse/unified - Success",
+  "data": {
+    "graph": {
+      "nodes": {
+        "dir::myrepo": { "metadata": { "depth": 0, "kind": "directory", "label": "myrepo", "language": "unknown" }},
+        "file::myrepo/main.py": { "metadata": { "depth": 1, "kind": "file", "label": "main.py", "language": "python" }},
+        "main.MyClass": { "metadata": { "depth": 2, "kind": "class", "label": "MyClass", "language": "python", "line": 5 }}
+      },
+      "edges": [
+        { "source": "dir::myrepo", "target": "file::myrepo/main.py", "metadata": { "kind": "contains" }},
+        { "source": "file::myrepo/main.py", "target": "main.MyClass", "metadata": { "kind": "contains" }}
       ],
-      "folders": [
-        {"name": "src", "size": 45000, "files": [...], "folders": [...]}
-      ]
+      "directed": true
+    },
+    "metadata": {
+      "layout": "Spring",
+      "type": "d3",
+      "nodeCount": 3,
+      "edgeCount": 2,
+      "palette_id": "0"
     }
   }
 }
@@ -110,74 +91,178 @@ curl "http://127.0.0.1:8000/local/tree?path=/path/to/project"
 
 ---
 
-### GET `/local/graph/ast`
+### POST `/parse/expand`
 
-Generate AST graph from local repository.
+Expand a single file node to reveal its symbols (depth-2/3 nodes).
+Useful for lazy-loading symbol details after an initial depth-1 parse.
 
-**Query Parameters:**
-
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `path` | string | Yes | - | Path to repository |
-| `extensions` | array[string] | No | `[".py"]` | Extensions to include |
-
-**Example Request:**
-```bash
-curl "http://127.0.0.1:8000/local/graph/ast?path=/path/to/project"
+**Request Body:**
+```json
+{
+  "directory": { "...same as /parse/unified..." },
+  "node_id": "file::src/main.py",
+  "depth": 2
+}
 ```
+
+**Response:** Same shape as `/parse/unified` but contains only the sub-graph
+rooted at `node_id` and its descendants.
+
+---
+
+### GET `/parse/languages`
+
+List all registered language parsers and their file extensions.
 
 **Response:**
 ```json
 {
   "code": 200,
-  "message": "get_local_repo_ast_graph - Success",
+  "message": "parse/languages - Success",
   "data": {
-    "name": "project",
-    "nodes": [
-      {"id": "node_1", "type": "Module", "name": "main.py"},
-      {"id": "node_2", "type": "Function", "name": "process"}
-    ],
-    "edges": [
-      {"source": "node_1", "target": "node_2", "relationship": "contains"}
-    ]
+    "languages": {
+      "python": [".py"],
+      "c": [".c", ".h"]
+    }
   }
 }
 ```
 
 ---
 
-### GET `/local/graph/directory`
+## Legacy Plotter Endpoints
 
-Generate directory structure graph.
+These endpoints are Python-only and use the older parser modes.
 
-**Query Parameters:**
+### POST `/plotter/whole_repo`
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `path` | string | Yes | - | Path to repository |
-| `extensions` | array[string] | No | `[".py"]` | Extensions to include |
+Parse an entire repository using a legacy parser mode.
 
-**Example Request:**
-```bash
-curl "http://127.0.0.1:8000/local/graph/directory?path=/path/to/project"
+**Request Body:**
+```json
+{
+  "directory": { "info": {...}, "size": 0, "root": {...} },
+  "options": {
+    "palette_id": "0",
+    "layout": "Spring",
+    "type": "d3",
+    "parse_by": "ast"
+  }
+}
+```
+
+**`parse_by` values:** `"ast"` | `"directory"` | `"dependencies"`
+
+**Response:** gJGF `{ graph: {...}, metadata: {...} }` (same shape as `/parse/unified`)
+
+---
+
+### POST `/plotter/demo`
+
+Generate a demo graph from the codecarto source code itself.
+
+**Request Body:**
+```json
+{
+  "options": { "palette_id": "0", "layout": "Spring", "type": "d3", "parse_by": "ast" }
+}
 ```
 
 ---
 
-### GET `/local/graph/dependency`
+### POST `/plotter/file`
 
-Generate import dependency graph.
+Parse a single uploaded file.
 
-**Query Parameters:**
+**Request Body:**
+```json
+{
+  "file": { "url": "", "name": "main.py", "size": 500, "raw": "def hello(): pass" },
+  "options": { "palette_id": "0", "layout": "Spectral", "type": "d3", "parse_by": "ast" }
+}
+```
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `path` | string | Yes | - | Path to repository |
-| `extensions` | array[string] | No | `[".py"]` | Extensions to include |
+---
 
-**Example Request:**
-```bash
-curl "http://127.0.0.1:8000/local/graph/dependency?path=/path/to/project"
+### POST `/plotter/render/html`
+
+Convert GraphData JSON to pre-rendered HTML for the Notebook renderer.
+
+**Request Body:**
+```json
+{
+  "graph_data": { "graph": {...}, "metadata": {...} },
+  "options": { "layout": "Spring" }
+}
+```
+
+**Response:**
+```json
+{
+  "code": 200,
+  "data": { "text/html": "<html>...</html>" }
+}
+```
+
+---
+
+## C Parser Endpoints
+
+Require the optional `[c-parsing]` dependency group (libclang).
+Install with: `uv pip install 'codecarto[c-parsing]'`
+
+### POST `/c-parser/file`
+
+Parse a single C/H source file.
+
+**Request Body:**
+```json
+{ "path": "/absolute/path/to/file.c", "cache_dir": null }
+```
+
+**Response:**
+```json
+{
+  "code": 200,
+  "data": {
+    "graph": {
+      "nodes": [...],
+      "edges": [...],
+      "meta": { "files": ["file"], "node_count": 12, "kind_counts": { "function": 3 } }
+    }
+  }
+}
+```
+
+> **Note:** `/c-parser/*` returns a legacy `{nodes, edges, meta}` dict. Use
+> `/parse/unified` with `.c`/`.h` extensions to get gJGF output compatible with D3/Gravis.
+
+---
+
+### POST `/c-parser/directory`
+
+Parse all C/H files in a directory.
+
+**Request Body:**
+```json
+{
+  "path": "/absolute/path/to/dir",
+  "compile_commands": null,
+  "subsystem": null,
+  "max_files": 200,
+  "cache_dir": null
+}
+```
+
+---
+
+### POST `/c-parser/github`
+
+Download a GitHub repository and parse all C/H files.
+
+**Request Body:**
+```json
+{ "url": "https://github.com/owner/repo", "max_files": 200 }
 ```
 
 ---
@@ -186,15 +271,15 @@ curl "http://127.0.0.1:8000/local/graph/dependency?path=/path/to/project"
 
 ### GET `/repo/tree`
 
-Get directory tree from a GitHub repository.
+Fetch the top-level directory tree of a GitHub repository.
 
 **Query Parameters:**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `url` | string | Yes | GitHub repository URL |
+| `url` | string | yes | GitHub repository URL |
 
-**Example Request:**
+**Example:**
 ```bash
 curl "http://127.0.0.1:8000/repo/tree?url=https://github.com/fastapi/fastapi"
 ```
@@ -205,122 +290,83 @@ curl "http://127.0.0.1:8000/repo/tree?url=https://github.com/fastapi/fastapi"
   "code": 200,
   "message": "read_github_url - Success",
   "data": {
-    "info": {
-      "owner": "fastapi",
-      "name": "fastapi",
-      "url": "https://github.com/fastapi/fastapi"
-    },
+    "info": { "owner": "fastapi", "name": "fastapi", "url": "..." },
     "size": 1234567,
-    "root": {
-      "name": "fastapi/fastapi",
-      "files": [...],
-      "folders": [...]
-    }
+    "root": { "name": "fastapi", "files": [...], "folders": [...] },
+    "is_partial": false
   }
 }
 ```
 
 **Notes:**
-- Requires GitHub token for private repos
-- Large repos (>1GB) are rejected
+- Repos > 1 GB are rejected
+- Requires GitHub token for private repos (place in `/run/secrets/github_token` or `token.txt`)
 
 ---
 
-## Parser Endpoints
+### GET `/repo/subtree`
 
-### POST `/parser/raw`
+Lazily expand a single folder path within a previously fetched repository.
 
-Parse raw source code from a GitHub URL.
-
-**Request Body:**
-```json
-{
-  "url": "https://raw.githubusercontent.com/user/repo/main/file.py"
-}
-```
-
-**Response:**
-```json
-{
-  "code": 200,
-  "message": "Success",
-  "data": {
-    "name": "file.py",
-    "nodes": [...],
-    "edges": [...]
-  }
-}
-```
+**Query Parameters:** `url`, `path`
 
 ---
 
-### POST `/parser/code`
+## Local Repository Endpoints
 
-Parse source code from a Folder structure.
+### GET `/local/scan`
 
-**Request Body:**
-```json
-{
-  "folder": {
-    "name": "root",
-    "size": 1234,
-    "files": [
-      {"name": "main.py", "size": 1234, "raw": "def main(): pass"}
-    ],
-    "folders": []
-  }
-}
+Scan a local repository and return structure with statistics.
+
+**Query Parameters:** `path`, `extensions` (array)
+
+**Example:**
+```bash
+curl "http://127.0.0.1:8000/local/scan?path=/path/to/project&extensions=.py"
 ```
+
+### GET `/local/tree`
+
+Get directory tree structure for a local path.
+
+**Query Parameters:** `path`, `extensions` (array)
 
 ---
 
-## Plotter Endpoints
+## PAM Monitor Endpoints
 
-### POST `/plotter/plot`
+### GET `/pam/ui`
 
-Generate visualization data for a graph.
+Serve the PAM auth log monitor HTML frontend (URL-patched for current server).
 
-**Request Body:**
+### GET `/pam/status`
+
+Check PAM monitor status (running, log source, event count).
+
+### WebSocket `/pam/ws/live`
+
+Stream real-time PAM events as JSON objects:
 ```json
-{
-  "graph": {
-    "nodes": [...],
-    "edges": [...]
-  },
-  "layout": "spring",
-  "settings": {
-    "node_size": 10,
-    "edge_width": 1
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "code": 200,
-  "data": {
-    "html": "<div>...</div>",
-    "positions": {...}
-  }
-}
+{ "timestamp": "...", "user": "alice", "event_type": "accepted", "rhost": "192.168.1.10" }
 ```
 
 ---
 
 ## Polygraph Endpoints
 
+Graph transformation utilities operating on in-memory graphs.
+
 ### POST `/polygraph/merge`
 
-Merge multiple graphs.
+Merge two or more graphs into one.
 
 ### POST `/polygraph/filter`
 
-Filter graph by node type or attributes.
+Filter graph nodes by type or attribute predicate.
 
 ### POST `/polygraph/subgraph`
 
-Extract subgraph around specific nodes.
+Extract a subgraph around a set of seed nodes.
 
 ---
 
@@ -328,116 +374,86 @@ Extract subgraph around specific nodes.
 
 ### GET `/palette/list`
 
-List available color palettes.
+List all available color palette IDs.
 
-**Response:**
-```json
-{
-  "palettes": ["default", "dark", "light", "colorblind"]
-}
-```
+### GET `/palette/{id}`
 
-### GET `/palette/{name}`
-
-Get specific palette colors.
+Get a specific palette definition (bases, colors, shapes, sizes).
 
 ---
 
 ## Response Format
 
-All endpoints return a consistent response format:
-
-### Success Response
+All endpoints use a consistent envelope:
 
 ```json
 {
   "code": 200,
-  "message": "operation - Success",
+  "message": "route/action - Success",
   "data": { ... }
 }
 ```
 
 ### Error Response
-
 ```json
 {
-  "code": 400,
+  "code": 404,
   "message": "Error description",
-  "data": {
-    "source": "function_name",
-    "params": { ... }
-  }
+  "data": { "source": "function_name", "params": { ... } }
 }
 ```
 
-## Error Codes
+### Error Codes
 
 | Code | Meaning |
 |------|---------|
 | 200 | Success |
-| 400 | Bad Request |
-| 404 | Not Found |
-| 403 | Forbidden (rate limit) |
+| 400 | Bad Request (invalid params) |
+| 404 | Not Found (missing file/dir) |
+| 403 | Forbidden (GitHub rate limit) |
 | 500 | Internal Server Error |
+| 502 | Bad Gateway (GitHub download failed) |
 
-## Rate Limiting
-
-GitHub API has rate limits:
-- **Without token:** 60 requests/hour
-- **With token:** 5000 requests/hour
+---
 
 ## CORS
 
-Allowed origins:
-- `http://localhost:1234` (frontend)
-- `http://localhost:5000` (development)
-
-## Authentication
-
-### GitHub Token
-
-For GitHub operations, place token in `/run/secrets/github_token` (Docker) or `token.txt` (local).
+Allowed origins (configurable in `main.py`):
+- `http://localhost:1234` (Vite dev / parcel)
+- `http://localhost:1235` (Vite alt)
+- `http://localhost:5000` (development tools)
 
 ---
 
 ## Example Workflows
 
-### Analyze Local Project
+### Parse a GitHub Python repo (unified)
 
 ```bash
-# 1. Scan structure
-curl "http://127.0.0.1:8000/local/scan?path=/my/project"
+# 1. Fetch directory tree
+curl "http://127.0.0.1:8000/repo/tree?url=https://github.com/user/myrepo"
 
-# 2. Generate AST graph
-curl "http://127.0.0.1:8000/local/graph/ast?path=/my/project"
-
-# 3. Generate dependency graph
-curl "http://127.0.0.1:8000/local/graph/dependency?path=/my/project"
-```
-
-### Analyze GitHub Repository
-
-```bash
-# 1. Get repo tree
-curl "http://127.0.0.1:8000/repo/tree?url=https://github.com/user/repo"
-
-# 2. Parse specific file
-curl -X POST "http://127.0.0.1:8000/parser/raw" \
+# 2. Parse to depth-2 (symbols) with the unified parser
+curl -X POST "http://127.0.0.1:8000/parse/unified" \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://raw.githubusercontent.com/user/repo/main/main.py"}'
+  -d '{
+    "directory": { <paste /repo/tree response data> },
+    "depth": 2,
+    "layout": "Spring"
+  }'
 ```
 
-### Using with JavaScript
+### Check available language parsers
 
-```javascript
-// Fetch local repo graph
-const response = await fetch(
-  'http://127.0.0.1:8000/local/graph/ast?path=/my/project'
-);
-const data = await response.json();
+```bash
+curl "http://127.0.0.1:8000/parse/languages"
+# -> { "languages": { "python": [".py"], "c": [".c", ".h"] } }
+```
 
-// Process nodes
-data.data.nodes.forEach(node => {
-  console.log(`${node.type}: ${node.name}`);
-});
+### Parse a local C directory (legacy endpoint)
+
+```bash
+curl -X POST "http://127.0.0.1:8000/c-parser/directory" \
+  -H "Content-Type: application/json" \
+  -d '{ "path": "/home/user/linux/kernel/sched", "max_files": 50 }'
 ```
