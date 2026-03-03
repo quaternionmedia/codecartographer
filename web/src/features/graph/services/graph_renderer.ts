@@ -24,6 +24,11 @@ export interface GraphNode {
   y?: number;
   fx?: number | null;
   fy?: number | null;
+  // Unified schema fields (depth 0=dir, 1=file, 2=symbol, 3=sub-symbol)
+  depth?: number;
+  language?: string;    // 'python' | 'c' | 'unknown'
+  kind?: string;        // 'directory' | 'file' | 'class' | 'function' | ...
+  meta?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -233,43 +238,80 @@ export class GraphRenderer {
     const themeAccent = getThemeColor('--c-accent', '#00d4ff');
     const themeFontMuted = getThemeColor('--c-font-muted', '#00aa2a');
 
-    // Auto-assign shapes and colors based on node type/kind if not already specified
+    // Auto-assign shapes and colors based on node type/kind/depth if not already specified
     nodes.forEach(node => {
       const kind = node.kind as string | undefined;
       const type = node.type as string | undefined;
+      const depth = node.depth as number | undefined;
 
-      // Assign shapes based on node type
+      // ── Depth-first shape assignment (unified schema) ──────────────────────
       if (!node.shape) {
-        if (kind === 'function' || kind === 'async_function' || type === 'function') {
-          node.shape = 'hexagon';
-        } else if (kind === 'class' || type === 'class') {
-          node.shape = 'square';
-        } else if (kind === 'module' || kind === 'file' || type === 'file') {
+        if (depth === 0) {
+          // Directory nodes → large diamond
           node.shape = 'diamond';
-        } else if (kind === 'import' || kind === 'call' || type === 'dependency') {
-          node.shape = 'triangle';
-        } else if (kind === 'variable' || kind === 'literal') {
-          node.shape = 'circle';
-        } else if (kind === 'control_flow' || kind === 'if' || kind === 'for' || kind === 'while') {
-          node.shape = 'cross';
+        } else if (depth === 1) {
+          // File nodes → square
+          node.shape = 'square';
+        } else if (depth === 2 || depth === 3) {
+          // Symbol / sub-symbol → kind-based
+          if (kind === 'function' || kind === 'async_function' || type === 'function') {
+            node.shape = 'hexagon';
+          } else if (kind === 'class' || type === 'class') {
+            node.shape = 'square';
+          } else if (kind === 'struct' || kind === 'union') {
+            node.shape = 'hexagon';
+          } else if (kind === 'enum') {
+            node.shape = 'diamond';
+          } else if (kind === 'import' || kind === 'call' || type === 'dependency') {
+            node.shape = 'triangle';
+          } else if (kind === 'field' || kind === 'argument' || kind === 'enum_constant') {
+            node.shape = 'circle';
+          } else {
+            node.shape = 'circle';
+          }
         } else {
-          node.shape = 'circle';
+          // Legacy / unknown depth — fall back to kind-based
+          if (kind === 'function' || kind === 'async_function' || type === 'function') {
+            node.shape = 'hexagon';
+          } else if (kind === 'class' || type === 'class') {
+            node.shape = 'square';
+          } else if (kind === 'module' || kind === 'file' || type === 'file') {
+            node.shape = 'diamond';
+          } else if (kind === 'import' || kind === 'call' || type === 'dependency') {
+            node.shape = 'triangle';
+          } else if (kind === 'variable' || kind === 'literal') {
+            node.shape = 'circle';
+          } else if (kind === 'control_flow' || kind === 'if' || kind === 'for' || kind === 'while') {
+            node.shape = 'cross';
+          } else {
+            node.shape = 'circle';
+          }
         }
       }
 
-      // Assign colors based on node type (if not already colored)
+      // ── Depth-first color assignment (unified schema) ──────────────────────
       if (!node.color || node.color === 'steelblue') {
-        if (kind === 'function' || kind === 'async_function' || type === 'function') {
+        if (depth === 0) {
+          node.color = '#7f8c8d'; // Directory: muted grey
+        } else if (depth === 1) {
+          node.color = '#9b59b6'; // File: purple
+        } else if (kind === 'function' || kind === 'async_function' || type === 'function') {
           node.color = themeSecondary;
         } else if (kind === 'class' || type === 'class') {
           node.color = themeAccent;
+        } else if (kind === 'struct' || kind === 'union') {
+          node.color = '#4a90d9'; // Blue
+        } else if (kind === 'enum') {
+          node.color = '#9b59b6'; // Purple
+        } else if (kind === 'typedef') {
+          node.color = '#1abc9c'; // Teal
         } else if (kind === 'module' || kind === 'file' || type === 'file') {
           node.color = '#9b59b6'; // Purple
         } else if (kind === 'import' || type === 'dependency') {
           node.color = '#e74c3c'; // Red
         } else if (kind === 'call') {
           node.color = themeFontMuted;
-        } else if (kind === 'variable' || kind === 'literal') {
+        } else if (kind === 'variable' || kind === 'literal' || kind === 'field') {
           node.color = '#95a5a6'; // Gray
         } else if (kind === 'control_flow' || kind === 'if' || kind === 'for' || kind === 'while') {
           node.color = '#f39c12'; // Orange
@@ -392,10 +434,10 @@ export class GraphRenderer {
     // Forward declare updatePositions function (will be fully defined after nodes/edges/labels are created)
     let updatePositions: (() => void) | null = null;
 
-    // Helper function to get SVG path for node shape
-    const getNodePath = (shape: string | undefined, size: number): string => {
+    // Helper function to get SVG path for node shape.
+    // `data` is passed for shapes that depend on node metadata (e.g. ngon reads meta.sides).
+    const getNodePath = (shape: string | undefined, size: number, data?: GraphNode): string => {
       const s = size;
-      const s2 = size * 2;
 
       switch (shape) {
         case 'square':
@@ -413,6 +455,19 @@ export class GraphRenderer {
           const a = s * 0.866; // cos(30°)
           const b = s * 0.5;   // sin(30°)
           return `M 0 ${-s} L ${a} ${-b} L ${a} ${b} L 0 ${s} L ${-a} ${b} L ${-a} ${-b} Z`;
+
+        case 'ngon': {
+          // Generic N-gon. Sides come from meta.sides (set by the parser).
+          // Falls back to meta.field_count, then 5.
+          const meta = (data?.meta ?? {}) as Record<string, unknown>;
+          const sides = Math.max(3, Math.min(Number(meta['sides'] ?? meta['field_count'] ?? 5), 12));
+          let path = '';
+          for (let i = 0; i < sides; i++) {
+            const angle = (2 * Math.PI * i) / sides - Math.PI / 2;
+            path += `${i === 0 ? 'M' : 'L'} ${s * Math.cos(angle)} ${s * Math.sin(angle)} `;
+          }
+          return path + 'Z';
+        }
 
         case 'star':
           const outerR = s;
@@ -447,10 +502,18 @@ export class GraphRenderer {
       .append('g')
       .attr('class', 'graph-node');
 
-    // Add shape paths to nodes
+    // Add shape paths to nodes — size scales by depth when present
+    const depthSizeMultiplier = (d: GraphNode): number => {
+      const dep = d.depth as number | undefined;
+      if (dep === 0) return 3.0;   // directory: 3× larger
+      if (dep === 1) return 1.8;   // file: 1.8×
+      if (dep === 3) return 0.6;   // sub-symbol: 0.6×
+      return 1.0;                  // symbol (depth=2) and legacy: base size
+    };
+
     nodeGroup
       .append('path')
-      .attr('d', (d) => getNodePath(d.shape as string, styling.nodeSize))
+      .attr('d', (d) => getNodePath(d.shape as string, styling.nodeSize * depthSizeMultiplier(d), d))
       .attr('fill', (d) => styling.nodeColorOverride || d.color || 'steelblue')
       .attr('fill-opacity', styling.nodeOpacity)
       .attr('stroke', '#fff')

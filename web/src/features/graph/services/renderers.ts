@@ -29,12 +29,15 @@ export { GraphRendererRegistry } from './base_renderer';
 export { D3GraphRenderer } from './d3_renderer';
 export { NotebookGraphRenderer } from './notebook_renderer';
 export { GravisGraphRenderer } from './gravis_renderer';
+export { SystemRenderer, SystemDefinitionRegistry } from './system_renderer';
+export { PamRenderer } from './pam_renderer';
 
 // Import for initialization
 import { GraphRendererRegistry } from './base_renderer';
 import { D3GraphRenderer } from './d3_renderer';
 import { NotebookGraphRenderer } from './notebook_renderer';
 import { GravisGraphRenderer } from './gravis_renderer';
+import { PamRenderer } from './pam_renderer';
 
 /**
  * Initialize all renderers and register them
@@ -49,6 +52,10 @@ function initializeRenderers(): void {
 
   // Register gravis renderer (future implementation)
   GraphRendererRegistry.register('gravis', () => new GravisGraphRenderer());
+
+  // Register PAM system renderer as 'system' — the concrete subclass owns all
+  // PAM-specific data/logic; extend SystemRenderer for additional system types
+  GraphRendererRegistry.register('system', () => new PamRenderer());
 
   // Set D3 as default for new graphs
   GraphRendererRegistry.setDefault('d3');
