@@ -1,4 +1,5 @@
 import httpx
+from pathlib import Path
 from codecarto.models.source_data import Directory, File, Folder, RepoInfo
 from codecarto.util.exceptions import (
     GithubError,
@@ -9,12 +10,16 @@ from codecarto.util.exceptions import (
     ImportSourceUrlError,
 )
 
+# Size tiers (GitHub reports repo size in KB):
+#   < _CONTENT_FETCH_LIMIT_KB  → full recursive fetch with file content (registered exts only)
+#   < _STRUCTURE_FETCH_LIMIT_KB → full recursive fetch, structure only (no file content)
+#   ≥ _STRUCTURE_FETCH_LIMIT_KB → shallow root listing only (is_partial=True)
+_CONTENT_FETCH_LIMIT_KB   = 5_000   # ~5 MB
+_STRUCTURE_FETCH_LIMIT_KB = 50_000  # ~50 MB
+
 
 async def get_raw_from_url(url: str) -> str:
-    """Fetch raw content from a specific URL."""
-    if not url.endswith(".py"):
-        raise ImportSourceUrlError("Not a valid Python file URL", {"url": url})
-
+    """Fetch raw content from a URL (any file type)."""
     client = httpx.AsyncClient()
     response = await client.get(url)
 
@@ -25,18 +30,35 @@ async def get_raw_from_url(url: str) -> str:
 
 
 async def get_raw_from_repo(url: str) -> Directory:
-    """Read raw data from a repo URL"""
-    # Fetch the repo content and reduce the structure
+    """Read raw data from a repo URL.
+
+    For repos within the size limit, fetches the full tree with file content.
+    For large repos, falls back to a shallow top-level listing marked ``is_partial=True``.
+    """
     owner, repo_name = get_owner_repo_from_url(url)
-    content = await get_repo_content(url, owner, repo_name, isFirst=True)
+    headers = create_headers(url)
+
+    size_kb = await check_repo_size(owner, repo_name, url, headers)
+
+    if size_kb >= _STRUCTURE_FETCH_LIMIT_KB:
+        # Very large repo (≥ 50 MB): return only the root-level structure
+        root = await get_shallow_root(owner, repo_name, url, headers)
+        root.name = f"{owner}/{repo_name}"
+        return Directory(
+            info=RepoInfo(owner=owner, name=repo_name, url=url),
+            size=size_kb,
+            root=root,
+            is_partial=True,
+        )
+
+    # Medium/small repo: full recursive fetch
+    fetch_content = size_kb < _CONTENT_FETCH_LIMIT_KB
+    content = await get_repo_content(url, owner, repo_name)
     tree = await build_content_tree(content, owner, repo_name)
-    root = await reduce_repo_structure(tree)
+    root = await reduce_repo_structure(tree, fetch_content=fetch_content)
     root.name = f"{owner}/{repo_name}"
 
-    # Calculate the total size of the repo files
     size = sum(file.size for file in root.files)
-
-    # Add the repo folder sizes
     size += sum(folder.size for folder in root.folders)
 
     return Directory(
@@ -46,15 +68,117 @@ async def get_raw_from_repo(url: str) -> Directory:
     )
 
 
+async def get_shallow_root(
+    owner: str, repo: str, url: str, headers: dict
+) -> Folder:
+    """Fetch only the root-level listing of a repo without recursing into subdirectories.
+
+    Directories become stub Folders with no children; files are listed without
+    downloading their raw content.
+    """
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/"
+    async with httpx.AsyncClient() as client:
+        response = await client.get(api_url, headers=headers)
+
+    if response.status_code != 200:
+        raise handle_status_code(response, url, api_url)
+
+    items = response.json()
+    files: list[File] = []
+    folders: list[Folder] = []
+
+    for item in items:
+        if item["type"] == "file":
+            files.append(
+                File(
+                    url=item.get("download_url", ""),
+                    name=item["name"],
+                    size=item.get("size", 0),
+                    raw="",  # not downloaded in shallow mode
+                )
+            )
+        elif item["type"] == "dir":
+            # Stub folder — no children fetched yet
+            folders.append(
+                Folder(
+                    name=item["name"],
+                    size=0,
+                    files=[],
+                    folders=[],
+                )
+            )
+
+    return Folder(name="", size=0, files=files, folders=folders)
+
+
+async def get_subtree(
+    owner: str, repo: str, path: str, url: str, headers: dict
+) -> Folder:
+    """Fetch one level of content at a specific path in the repo (shallow).
+
+    Returns a Folder containing the immediate children (files + stub sub-folders).
+    Python files have their raw content downloaded; other files are listed with URL only.
+    """
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
+    async with httpx.AsyncClient() as client:
+        response = await client.get(api_url, headers=headers)
+
+    if response.status_code != 200:
+        raise handle_status_code(response, url, api_url)
+
+    items = response.json()
+    if not isinstance(items, list):
+        raise GithubNoDataError(
+            "Expected directory listing",
+            {"github_url": url, "path": path},
+        )
+
+    from codecarto.services.parsers.language_parser import ParserRegistry
+    import codecarto.services.parsers.python_language_parser  # noqa: F401
+    import codecarto.services.parsers.c_language_parser  # noqa: F401
+    registered_exts = set(ParserRegistry.all_extensions())
+
+    files: list[File] = []
+    folders: list[Folder] = []
+
+    for item in items:
+        if item["type"] == "file":
+            download_url = item.get("download_url", "")
+            ext = Path(item["name"]).suffix.lower()
+            if download_url and ext in registered_exts:
+                try:
+                    raw = await get_raw_from_url(download_url)
+                except Exception:
+                    raw = ""
+            else:
+                raw = ""
+            files.append(
+                File(
+                    url=download_url,
+                    name=item["name"],
+                    size=item.get("size", 0),
+                    raw=raw,
+                )
+            )
+        elif item["type"] == "dir":
+            folders.append(
+                Folder(
+                    name=item["name"],
+                    size=0,
+                    files=[],
+                    folders=[],
+                )
+            )
+
+    folder_name = path.split("/")[-1] if path else ""
+    return Folder(name=folder_name, size=0, files=files, folders=folders)
+
+
 async def get_repo_content(
-    url: str, owner: str, repo: str, path: str = "", isFirst: bool = False
+    url: str, owner: str, repo: str, path: str = ""
 ) -> dict:
     """Fetches content of a GitHub repo (files and directories)."""
     headers = create_headers(url)
-
-    # Check repo size only for the first call
-    if isFirst:
-        await check_repo_size(owner, repo, url, headers)
 
     # Fetch content from the repo
     api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
@@ -70,19 +194,15 @@ async def get_repo_content(
         raise handle_status_code(response, url, api_url)
 
 
-async def check_repo_size(owner: str, repo: str, url: str, headers: dict):
-    """Check the size of the GitHub repo."""
+async def check_repo_size(owner: str, repo: str, url: str, headers: dict) -> int:
+    """Return the GitHub repo size in KB. Raises on API error."""
     api_url = f"https://api.github.com/repos/{owner}/{repo}"
     client = httpx.AsyncClient()
     response = await client.get(api_url, headers=headers)
 
     if response.status_code == 200:
         json_data = response.json()
-        size = json_data.get("size", 0)
-        if size > 1000000:
-            raise GithubSizeError(
-                f"Repo is too large: {size} bytes", {"github_url": url}
-            )
+        return json_data.get("size", 0)
     else:
         raise handle_status_code(response, url, api_url)
 
@@ -106,8 +226,23 @@ async def build_content_tree(content: dict, owner: str, repo: str) -> dict:
     return results
 
 
-async def reduce_repo_structure(repo_data: dict) -> Folder:
-    """Go through the repo structure and reduce it to just needed content"""
+async def reduce_repo_structure(repo_data: dict, fetch_content: bool = True) -> Folder:
+    """Go through the repo structure and reduce it to just needed content.
+
+    Parameters
+    ----------
+    repo_data : dict
+        Tree dict from build_content_tree().
+    fetch_content : bool
+        When True (small repos), download raw file content for registered
+        parser extensions.  When False (medium repos), include file nodes
+        but leave raw=''.
+    """
+    from codecarto.services.parsers.language_parser import ParserRegistry
+    import codecarto.services.parsers.python_language_parser  # noqa: F401
+    import codecarto.services.parsers.c_language_parser  # noqa: F401
+    registered_exts = set(ParserRegistry.all_extensions())
+
     data = Folder(size=0, name="", files=[], folders=[])
     folders_size = 0
     files_size = 0
@@ -121,14 +256,14 @@ async def reduce_repo_structure(repo_data: dict) -> Folder:
 
                 # Ensure the file has the required attributes
                 if file.get("name") and file.get("download_url"):
-                    file_type = (
-                        "python" if file["download_url"].endswith(".py") else "other"
-                    )
-
-                    if file_type == "python":
-                        raw = await get_raw_from_url(file["download_url"])
+                    ext = Path(file["name"]).suffix.lower()
+                    if fetch_content and ext in registered_exts:
+                        try:
+                            raw = await get_raw_from_url(file["download_url"])
+                        except Exception:
+                            raw = ""
                     else:
-                        raw = file["download_url"]
+                        raw = ""
 
                     files_size += size
 
@@ -145,7 +280,7 @@ async def reduce_repo_structure(repo_data: dict) -> Folder:
             data.files = files
 
         else:  # Everything else would be a directory
-            sub_dir = await reduce_repo_structure(value)
+            sub_dir = await reduce_repo_structure(value, fetch_content=fetch_content)
 
             # Gather files and calculate total files size
             size = sum(file.size for file in sub_dir.files)
@@ -168,6 +303,69 @@ async def reduce_repo_structure(repo_data: dict) -> Folder:
 
     data.size = folders_size + files_size
     return data
+
+
+async def _expand_folder(
+    owner: str,
+    repo: str,
+    path: str,
+    headers: dict,
+    max_depth: int,
+    current_depth: int,
+) -> Folder:
+    """Recursively fetch directory structure without file content.
+
+    Files are included as stubs (raw='').  Sub-folders beyond *max_depth* are
+    returned as empty stub Folders (no children fetched).
+    """
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(api_url, headers=headers)
+
+    if resp.status_code != 200:
+        # Return a stub on error rather than crashing the whole expansion
+        folder_name = path.split("/")[-1] if path else repo
+        return Folder(name=folder_name, size=0, files=[], folders=[])
+
+    items = resp.json()
+    if not isinstance(items, list):
+        folder_name = path.split("/")[-1] if path else repo
+        return Folder(name=folder_name, size=0, files=[], folders=[])
+
+    files: list[File] = []
+    folders: list[Folder] = []
+
+    for item in items:
+        if item["type"] == "file":
+            files.append(
+                File(
+                    url=item.get("download_url", ""),
+                    name=item["name"],
+                    size=item.get("size", 0),
+                    raw="",
+                )
+            )
+        elif item["type"] == "dir":
+            if current_depth + 1 < max_depth:
+                sub = await _expand_folder(
+                    owner, repo, item["path"], headers, max_depth, current_depth + 1
+                )
+            else:
+                sub = Folder(name=item["name"], size=0, files=[], folders=[])
+            folders.append(sub)
+
+    folder_name = path.split("/")[-1] if path else repo
+    return Folder(name=folder_name, size=len(files), files=files, folders=folders)
+
+
+async def expand_all_tree(
+    owner: str, repo: str, github_token: str | None = None, max_depth: int = 3
+) -> Folder:
+    """Expand all folders in a repo tree to *max_depth* without downloading file content."""
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    if github_token:
+        headers["Authorization"] = f"token {github_token}"
+    return await _expand_folder(owner, repo, "", headers, max_depth, 0)
 
 
 def get_owner_repo_from_url(url: str) -> tuple[str, str]:

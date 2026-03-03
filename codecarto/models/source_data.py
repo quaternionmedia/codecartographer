@@ -34,3 +34,4 @@ class Directory(BaseModel):
     info: RepoInfo
     size: int = 0
     root: Folder
+    is_partial: bool = False  # True when only top-level structure was fetched (large repo)
