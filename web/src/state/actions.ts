@@ -420,16 +420,10 @@ export class PlotActions {
     this.stateController.clear();
     try {
       const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const parseMode = this.stateController.state.parserOptions.mode;
-      console.log(`[PARSE MODE] PlotActions.loadDemo called`);
-      console.log(`[PARSE MODE] - stateController.state.parserOptions =`, JSON.stringify(this.stateController.state.parserOptions));
-      console.log(`[PARSE MODE] - layout=${layout}, parseMode=${parseMode}`);
       const data = await PlotService.loadDemo(
         this.stateController.api.plotter,
-        layout,
-        parseMode
+        layout
       );
-      console.log('[PARSE MODE] PlotActions.loadDemo - received data metadata:', (data as any)?.metadata);
       this.handlePlotData(data);
     } catch (error) {
       console.error('Failed to load demo:', error);
@@ -464,7 +458,7 @@ export class PlotActions {
       const opts   = this.stateController.state.parserOptions;
       const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
       const data   = await PlotService.plotUnified(
-        this.stateController.api.parse, content, 2, exts, layout, opts.mode
+        this.stateController.api.parse, content, 2, exts, layout
       );
       if (!data) throw new Error('No data returned from parse/unified');
       this.stateController.update({ parseDirectory: content });
@@ -600,7 +594,7 @@ export class PlotActions {
       const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
       const dir    = new Directory(new RepoInfo(), 1, new RawFolder('upload', file.size, [file]));
       const data   = await PlotService.plotUnified(
-        this.stateController.api.parse, dir, opts.mode === 'directory' ? 1 : 2, exts, layout, opts.mode
+        this.stateController.api.parse, dir, 2, exts, layout
       );
       if (!data) throw new Error('No data returned from parse/unified');
       this.stateController.update({ parseDirectory: dir });

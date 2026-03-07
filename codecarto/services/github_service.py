@@ -174,6 +174,109 @@ async def get_subtree(
     return Folder(name=folder_name, size=0, files=files, folders=folders)
 
 
+async def fetch_tree_fast(
+    owner: str,
+    repo: str,
+    headers: dict,
+    url: str,
+) -> tuple[list[tuple[str, str, str]], str]:
+    """Fetch the complete repo tree in TWO GitHub API calls.
+
+    Call 1: GET /repos/{owner}/{repo} → default branch name.
+    Call 2: GET /repos/{owner}/{repo}/git/trees/{sha}?recursive=1 → full flat tree.
+
+    Returns
+    -------
+    items : list of (path, type, download_url)
+        type is ``"blob"`` (file) or ``"tree"`` (directory).
+        download_url is the raw.githubusercontent.com URL for blobs, ``""`` for trees.
+    default_branch : str
+        e.g. ``"main"`` or ``"master"``
+    """
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        # Call 1: repo metadata → default branch
+        resp = await client.get(
+            f"https://api.github.com/repos/{owner}/{repo}", headers=headers
+        )
+    if resp.status_code != 200:
+        raise handle_status_code(resp, url)
+
+    default_branch = resp.json().get("default_branch", "main")
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # Call 2: full recursive tree
+        resp = await client.get(
+            f"https://api.github.com/repos/{owner}/{repo}/git/trees/{default_branch}?recursive=1",
+            headers=headers,
+        )
+    if resp.status_code != 200:
+        raise handle_status_code(resp, url)
+
+    data = resp.json()
+    tree = data.get("tree", [])
+    base = f"https://raw.githubusercontent.com/{owner}/{repo}/{default_branch}/"
+
+    items: list[tuple[str, str, str]] = []
+    for item in tree:
+        path = item.get("path", "")
+        item_type = item.get("type", "")  # "blob" or "tree"
+        dl_url = (base + path) if item_type == "blob" else ""
+        items.append((path, item_type, dl_url))
+
+    return items, default_branch
+
+
+def build_folder_from_tree_items(
+    items: list[tuple[str, str, str]],
+    owner: str,
+    repo: str,
+) -> Folder:
+    """Build a Folder hierarchy from the flat Git Trees API item list.
+
+    Parameters
+    ----------
+    items : list of (path, type, download_url)
+        As returned by ``fetch_tree_fast``.
+
+    Returns
+    -------
+    Folder
+        Root folder named ``"{owner}/{repo}"`` containing the full tree.
+        File objects have ``raw=""`` (content is fetched later).
+    """
+    root = Folder(name=f"{owner}/{repo}", size=0, files=[], folders=[])
+    folder_map: dict[str, Folder] = {"": root}
+
+    # Process tree entries first (dirs), then blobs (files), maintaining depth order
+    for path, item_type, dl_url in sorted(items, key=lambda x: (x[0].count("/"), x[1] != "tree", x[0])):
+        parts = path.split("/")
+        name = parts[-1]
+        parent_path = "/".join(parts[:-1])
+
+        # Ensure all ancestor folders exist
+        for depth in range(1, len(parts)):
+            anc_path = "/".join(parts[:depth])
+            if anc_path not in folder_map:
+                anc_name = parts[depth - 1]
+                anc_parent = "/".join(parts[:depth - 1])
+                f = Folder(name=anc_name, size=0, files=[], folders=[])
+                folder_map[anc_path] = f
+                folder_map.get(anc_parent, root).folders.append(f)
+
+        if item_type == "tree":
+            if path not in folder_map:
+                f = Folder(name=name, size=0, files=[], folders=[])
+                folder_map[path] = f
+                folder_map.get(parent_path, root).folders.append(f)
+        elif item_type == "blob":
+            parent_folder = folder_map.get(parent_path, root)
+            parent_folder.files.append(
+                File(url=dl_url, name=name, size=0, raw="")
+            )
+
+    return root
+
+
 async def get_repo_content(
     url: str, owner: str, repo: str, path: str = ""
 ) -> dict:

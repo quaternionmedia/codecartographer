@@ -86,6 +86,83 @@
   padding: var(--spacing-md);
   padding-bottom: var(--control-panel-height, 120px);
   min-height: 0;
+  position: relative;   /* anchor for graph-estop and loading overlays */
+}
+
+/* ── E-stop: kill-stream button ──────────────────────────────────────────── */
+.graph-estop {
+  position: absolute;
+  bottom: calc(var(--control-panel-height, 120px) + 20px);
+  right: 28px;
+  z-index: 50;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.graph-estop__btn {
+  pointer-events: all;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #b80000;
+  border: 3px solid #ff3333;
+  color: #fff;
+  font-size: 1.3em;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 0 0 4px rgba(184, 0, 0, 0.25),
+    0 0 18px rgba(255, 50, 50, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.graph-estop__btn:hover {
+  transform: scale(1.12);
+  box-shadow:
+    0 0 0 6px rgba(184, 0, 0, 0.3),
+    0 0 28px rgba(255, 50, 50, 0.8),
+    0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.graph-estop__btn:active {
+  transform: scale(0.93);
+}
+
+/* ── Streaming-renderer loading overlay ─────────────────────────────────── */
+
+/* Applied to the container element passed to StreamingGraphRenderer */
+.sr-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+  transition: opacity 0.3s ease;
+}
+
+.sr-loading-icon {
+  font-size: 3.5em;
+  color: var(--c-secondary, #00ff41);
+  animation: pulse 1.4s ease-in-out infinite;
+  text-shadow: 0 0 24px var(--c-secondary, #00ff41);
+}
+
+.sr-loading-label {
+  margin-top: 0.6em;
+  font-size: 0.95em;
+  letter-spacing: 3px;
+  color: var(--c-font-muted, #888);
+  text-transform: uppercase;
 }
 
 /* Legacy header styles (kept for compatibility) */

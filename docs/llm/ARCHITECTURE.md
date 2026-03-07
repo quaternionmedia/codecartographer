@@ -133,33 +133,44 @@ into the node data. To add a new language, create an adapter and import it in
 
 ## Data Flow
 
-### Unified parse path (recommended, all languages)
+### Unified parse path (all languages, depth=2)
+
+The UI always uses `depth=2` to produce a single combined graph that includes
+directories, files, symbols, and dependency edges in one pass. There is no
+separate mode selector — one plot shows everything.
 
 ```
-User clicks Plot (Source tab)
+User fetches repo / clicks Plot
   |
   v
-PlotActions.plotUnified(directory, depth, extensions?)
-PlotService.plotUnified() -> POST /parse/unified
+PlotService.streamUnified() -> POST /parse/stream  (SSE)
   |
   v
-UnifiedParserService.parse(directory, depth, extensions)
+UnifiedParserService.stream_parse(directory, depth=2, extensions?)
   |-- Walk folder tree -> depth-0 dir + depth-1 file nodes
-  |-- For each file:
+  |-- For each file with content:
   |     ParserRegistry.get(ext) -> language parser
-  |     parser.parse_files([file], depth) -> unified nx.DiGraph
-  |-- Merge all subgraphs
-  `-- GraphSerializer.serialize_to_gjgf() -> gJGF
+  |     parser.parse_files([file], depth=2) -> unified nx.DiGraph
+  |        (adds depth-2 symbol nodes + dependency edges)
+  |-- Compute layout (NetworkX)
+  |-- Yield SSE: meta → nodes (BFS order) → edges → done
   |
   v
-Response: { graph: <gJGF>, metadata: { nodeCount, edgeCount, layout } }
+StreamingGraphRenderer (frontend rAF loop)
+  |-- addNode() per SSE 'node' event → pop-in animation
+  |-- addEdge() per SSE 'edge' event
+  |-- finalize() on 'done' → fit view
   |
   v
-PlotActions.handlePlotData(data)
-GraphRendererRegistry.findForData() -> D3 (default)
-D3 renderer: reads node.shape / node.color from parser; falls back to
-             depth/kind heuristics for nodes without parser-set values
+D3 canvas: reads node.shape / node.color from parser; falls back to
+           depth/kind heuristics for nodes without parser-set values
 ```
+
+**File click**: clicking a file in the tree creates a single-file Directory
+and streams it through the same pipeline, fetching raw content if needed.
+
+**Auto-plot**: fetching a repository immediately triggers streaming — no
+separate "Plot" button click required.
 
 ### Lazy node expansion
 
@@ -192,7 +203,7 @@ ICellState {
   graphData: GraphData | null;          // Parsed graph data (gJGF)
   graphContent: m.Vnode[];              // Rendered graph elements
   graphStyling: GraphStylingOptions;    // Visual styling
-  parserOptions: ParserOptions;         // Legacy parser config
+  parserOptions: { fileExtensions: string[] };  // Extension filter (no mode selector)
   selectedRenderer: GraphRendererType;  // 'd3' | 'gravis' | 'notebook' | 'system'
   repo: DirectoryNavController;         // GitHub repo state
   local: DirectoryNavController;        // Local file state

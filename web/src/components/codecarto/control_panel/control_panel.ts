@@ -7,7 +7,6 @@ import './control_panel.css';
 
 export type TabId = 'source' | 'graph';
 export type CodeSourceMode = 'upload' | 'repo';
-export type ParserMode = 'ast' | 'directory' | 'dependencies';
 export type GraphRendererType = 'd3' | 'gravis' | 'notebook' | 'system';
 
 export interface Tab {
@@ -49,8 +48,13 @@ export interface GraphStylingOptions {
 }
 
 export interface ParserOptions {
-  mode: ParserMode;            // Parser type (ast, directory, dependencies)
   fileExtensions: string[];    // File extensions to parse (e.g., ['.py', '.js'])
+}
+
+export interface LoadingProgress {
+  loaded: number;
+  total: number;
+  phase: 'parsing' | 'layout' | 'streaming' | 'done';
 }
 
 export interface ControlPanelState {
@@ -61,8 +65,10 @@ export interface ControlPanelState {
   currentTheme: string;
   isLoading: boolean;
   statusMessage: string;
+  progress: LoadingProgress | null;
   panelHeight: number;
   graphSections: { layout: boolean; visual: boolean; theme: boolean };
+  parseDepth: number;  // 1 = files only, 2 = symbols, 3 = sub-symbols
 }
 
 export interface ControlPanelCallbacks {
@@ -70,7 +76,6 @@ export interface ControlPanelCallbacks {
   onRepoSubmit: (url: string) => void;
   onRepoFileClick: (url: string) => void;
   onPlotWholeRepo: () => void;
-  onPlotRepoDeps: () => void;
   onFileUpload: (files: FileList) => void;
   onUploadedFileClick: (file: RawFile) => void;
   onPlotAllUploads: () => void;
@@ -81,6 +86,20 @@ export interface ControlPanelCallbacks {
   onCParserGithub: (repoUrl: string) => void;
   onFolderExpand: (path: string) => void;
   onExpandAll?: () => Promise<void>;
+  onCancel?: () => void;
+  onLoadFromCache?: (key: string) => void;
+  onEvictCache?: (key: string) => void;
+}
+
+export interface CachedEntry {
+  key: string;
+  label: string;
+  url: string;
+  mode: string;
+  layout: string;
+  ts: number;
+  age_seconds: number;
+  size_bytes: number;
 }
 
 export interface ControlPanelContent {
@@ -91,6 +110,7 @@ export interface ControlPanelContent {
   parserOptions: ParserOptions;
   selectedRenderer: GraphRendererType;
   availableLanguages: Record<string, string[]> | null;
+  cachedGraphs: CachedEntry[] | null;
 }
 
 const TABS: Tab[] = [
@@ -118,27 +138,6 @@ const THEMES = [
   { id: 'forest',    label: 'Forest',    preview: '#52b788' },
   { id: 'noir',      label: 'Noir',      preview: '#ffffff' },
   { id: 'candy',     label: 'Candy',     preview: '#ff69eb' },
-];
-
-const PARSER_MODES = [
-  {
-    value: 'ast',
-    label: 'AST',
-    icon: '🔍',
-    description: 'Full AST analysis — classes, functions, structs, imports (requires file content)'
-  },
-  {
-    value: 'directory',
-    label: 'Directory',
-    icon: '📁',
-    description: 'Filesystem hierarchy — folder and file structure (works with large/partial repos)'
-  },
-  {
-    value: 'dependencies',
-    label: 'Deps',
-    icon: '◈',
-    description: 'Import and include relationships — how files depend on each other'
-  },
 ];
 
 /** Creates the slide-up control panel */
@@ -349,6 +348,36 @@ export function ControlPanel(
           }, state.isLoading ? '...' : '→ Fetch'),
         ]),
 
+        // Recent cached graphs (when no repo loaded and cache exists)
+        !hasRepo && content.cachedGraphs && content.cachedGraphs.length > 0
+          ? m('div.panel-source__cached', [
+              m('span.panel-settings__label-compact', 'Recent'),
+              m('div.panel-source__cached-list',
+                content.cachedGraphs.slice(0, 5).map(entry => {
+                  const ageMins = Math.round(entry.age_seconds / 60);
+                  const ageStr = ageMins < 60
+                    ? `${ageMins}m ago`
+                    : `${Math.round(ageMins / 60)}h ago`;
+                  return m('div.panel-source__cached-entry', [
+                    m('button.panel-source__cached-chip', {
+                      onclick: () => callbacks.onLoadFromCache?.(entry.key),
+                      title: `${entry.url}\n${entry.mode} · ${entry.layout}`,
+                      disabled: state.isLoading,
+                    }, [
+                      m('span.panel-source__cached-label', entry.label),
+                      m('span.panel-source__cached-age', ageStr),
+                    ]),
+                    m('button.panel-source__cached-evict', {
+                      onclick: () => callbacks.onEvictCache?.(entry.key),
+                      title: 'Remove from cache',
+                      disabled: state.isLoading,
+                    }, '✕'),
+                  ]);
+                })
+              ),
+            ])
+          : null,
+
         // Example chips (when no repo loaded)
         !hasRepo ? m('div.panel-source__examples', [
           m('span.panel-settings__label-compact', 'Examples'),
@@ -396,6 +425,9 @@ export function ControlPanel(
               files: content.repoDirectory?.root.files || [],
               onUrlFileClicked: callbacks.onRepoFileClick,
               onFolderExpand: callbacks.onFolderExpand,
+              allowedExtensions: content.availableLanguages
+                ? Object.values(content.availableLanguages).flat()
+                : null,
             }),
           ]),
         ]) : null,
@@ -408,24 +440,8 @@ export function ControlPanel(
     const hasUploads = content.uploadedFiles.length > 0;
     const hasSource = hasRepo || hasUploads;
     const parser = content.parserOptions;
-    const activeParserDesc = PARSER_MODES.find(m => m.value === parser.mode)?.description ?? '';
 
     return m('div.panel-source__right', [
-      // Parse Mode
-      m('div.panel-settings__group', [
-        m('span.panel-settings__label-compact', 'Parse Mode'),
-        m('div.panel-settings__button-group',
-          PARSER_MODES.map(mode =>
-            m('button.panel-settings__button-option', {
-              class: parser.mode === mode.value ? 'panel-settings__button-option--active' : '',
-              onclick: () => callbacks.onParserOptionsChange({ mode: mode.value as ParserMode }),
-              title: mode.description,
-            }, [m('span', mode.icon), ' ', m('span', mode.label)])
-          )
-        ),
-        m('div.panel-settings__hint', activeParserDesc),
-      ]),
-
       // File Extensions
       m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Extensions'),
@@ -456,26 +472,27 @@ export function ControlPanel(
         }),
       ]),
 
-      m('div.panel-source__divider'),
+      // Parse Depth
+      m('div.panel-settings__group', [
+        m('span.panel-settings__label-compact', 'Parse Depth'),
+        m('div.panel-settings__chips',
+          [
+            { value: 1, label: 'Files' },
+            { value: 2, label: 'Symbols' },
+            { value: 3, label: 'Deep' },
+          ].map(opt =>
+            m('button.panel-settings__chip', {
+              class: state.parseDepth === opt.value ? 'panel-settings__chip--active' : '',
+              onclick: () => onStateChange({ parseDepth: opt.value }),
+              title: opt.value === 1 ? 'Depth 1: directory + file nodes'
+                   : opt.value === 2 ? 'Depth 2: + top-level symbols (classes, functions)'
+                   : 'Depth 3: + sub-symbols (args, fields)',
+            }, opt.label)
+          )
+        ),
+      ]),
 
-      // Repo action buttons (only when repo is loaded)
-      hasRepo ? m('div.panel-settings__group', [
-        m('span.panel-settings__label-compact', 'Actions'),
-        m('div.panel-source__action-list', [
-          m('button', {
-            onclick: (e: MouseEvent) => {
-              animations.buttonPress(e.currentTarget as Element);
-              callbacks.onPlotWholeRepo();
-            },
-          }, '◇ Directory Tree'),
-          m('button', {
-            onclick: (e: MouseEvent) => {
-              animations.buttonPress(e.currentTarget as Element);
-              callbacks.onPlotRepoDeps();
-            },
-          }, '◈ Dependencies'),
-        ]),
-      ]) : null,
+      m('div.panel-source__divider'),
 
       m('div.panel-source__spacer'),
 
@@ -832,14 +849,41 @@ export function ControlPanel(
 
     // Status bar
     m('div.control-panel__status', [
+      // Progress bar (thin line at top, visible during loading)
+      state.isLoading && state.progress
+        ? m('div.control-panel__progress-bar', {
+            style: {
+              width: state.progress.total > 0
+                ? `${Math.round((state.progress.loaded / state.progress.total) * 100)}%`
+                : '0%',
+            },
+          })
+        : state.isLoading
+          ? m('div.control-panel__progress-bar.control-panel__progress-bar--indeterminate')
+          : null,
+
       m('span.control-panel__status-item', [
         m('span.control-panel__status-dot', {
           class: state.isLoading ? 'control-panel__status-dot--warning' : '',
         }),
-        state.isLoading ? state.statusMessage : 'Ready',
+        state.isLoading && state.progress && state.progress.phase === 'streaming'
+          ? `Streaming ${state.progress.loaded}/${state.progress.total} nodes`
+          : state.isLoading && state.progress
+            ? `${state.progress.phase.charAt(0).toUpperCase() + state.progress.phase.slice(1)}…`
+            : state.isLoading
+              ? state.statusMessage
+              : state.statusMessage || 'Ready',
       ]),
+
+      state.isLoading && callbacks.onCancel
+        ? m('button.control-panel__cancel-btn', {
+            onclick: callbacks.onCancel,
+            title: 'Cancel',
+          }, '✕')
+        : null,
+
       m('span.control-panel__status-context',
-        `${content.parserOptions.mode} · ${content.selectedRenderer} · ${state.currentTheme}`
+        `${content.selectedRenderer} · ${state.currentTheme}`
       ),
     ]),
   ]);

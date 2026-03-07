@@ -4,6 +4,25 @@ import { logger } from '../core/logger';
 
 type PlotRequestBody = Record<string, unknown> | FormData;
 
+export interface StreamMeta {
+  nodeCount: number;
+  edgeCount: number;
+  layout: string;
+  from_cache?: boolean;
+}
+export interface StreamNode { id: string; x?: number; y?: number; [k: string]: unknown; }
+export interface StreamEdge { source: string; target: string; [k: string]: unknown; }
+
+export interface StreamCallbacks {
+  onMeta: (meta: StreamMeta) => void;
+  onNode: (node: StreamNode, index: number) => void;
+  onEdge: (edge: StreamEdge) => void;
+  onDone: (elapsed_ms: number, from_cache?: boolean) => void;
+  onError: (msg: string) => void;
+  /** Called on 'fetching' events (stream-url only): status message updates before nodes arrive. */
+  onFetching?: (message: string) => void;
+}
+
 export class PlotService {
   /** Plot the content of the repo URL. */
   public static async plotRepoWhole(
@@ -149,7 +168,6 @@ export class PlotService {
         parse_by: parseMode,
       },
     };
-    console.log(`[PARSE MODE] PlotService.loadDemo - sending request with parse_by=${parseMode}`);
     const data = await this.sendPlotRequest(plotterUrl, '/demo', body);
     if (typeof data === 'string') {
       logger.error('Error loading demo');
@@ -300,6 +318,182 @@ export class PlotService {
       return null;
     }
     return data;
+  }
+
+  /**
+   * Stream a parse result via POST + SSE.
+   * Returns a cancel function; call it to abort the stream.
+   */
+  static streamUnified(
+    parseUrl: string,
+    directory: Directory,
+    opts: {
+      depth?: number;
+      extensions?: string[] | null;
+      layout?: string;
+      mode?: string;
+    },
+    callbacks: StreamCallbacks
+  ): () => void {
+    const controller = new AbortController();
+    const { depth = 2, extensions = null, layout = 'Spring', mode } = opts;
+
+    const body: Record<string, unknown> = {
+      directory: {
+        info: directory.info,
+        size: directory.size,
+        root: directory.root,
+        is_partial: directory.is_partial,
+      },
+      depth,
+      layout,
+    };
+    if (extensions) body['extensions'] = extensions;
+    if (mode)       body['mode'] = mode;
+
+    let nodeIndex = 0;
+
+    (async () => {
+      try {
+        const resp = await fetch(`${parseUrl}/stream`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+
+        if (!resp.ok || !resp.body) {
+          callbacks.onError(`HTTP ${resp.status}`);
+          return;
+        }
+
+        const reader = resp.body.pipeThrough(new TextDecoderStream()).getReader();
+        let buf = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += value;
+
+          // Parse complete SSE events (terminated by double newline)
+          const parts = buf.split('\n\n');
+          buf = parts.pop() ?? '';
+
+          for (const part of parts) {
+            const lines = part.trim().split('\n');
+            let eventType = 'message';
+            let dataStr = '';
+            for (const line of lines) {
+              if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+              if (line.startsWith('data: '))  dataStr  = line.slice(6).trim();
+            }
+            if (!dataStr) continue;
+
+            try {
+              const payload = JSON.parse(dataStr);
+              switch (eventType) {
+                case 'meta':  callbacks.onMeta(payload as StreamMeta); break;
+                case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
+                case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
+                case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, payload.from_cache); break;
+                case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
+              }
+            } catch {
+              // ignore malformed events
+            }
+          }
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;  // cancelled
+        callbacks.onError(String(err));
+      }
+    })();
+
+    return () => controller.abort();
+  }
+
+  /**
+   * Stream a parse result directly from a GitHub URL (two-phase: structure first, symbols second).
+   * Returns a cancel function; call it to abort.
+   */
+  static streamFromUrl(
+    parseUrl: string,
+    githubUrl: string,
+    opts: {
+      depth?: number;
+      extensions?: string[] | null;
+      layout?: string;
+      mode?: string;
+    },
+    callbacks: StreamCallbacks
+  ): () => void {
+    const controller = new AbortController();
+    const { depth = 2, extensions = null, layout = 'Spring', mode } = opts;
+
+    const body: Record<string, unknown> = { url: githubUrl, depth, layout };
+    if (extensions) body['extensions'] = extensions;
+    if (mode)       body['mode'] = mode;
+
+    let nodeIndex = 0;
+
+    (async () => {
+      try {
+        const resp = await fetch(`${parseUrl}/stream-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+
+        if (!resp.ok || !resp.body) {
+          callbacks.onError(`HTTP ${resp.status}`);
+          return;
+        }
+
+        const reader = resp.body.pipeThrough(new TextDecoderStream()).getReader();
+        let buf = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += value;
+
+          const parts = buf.split('\n\n');
+          buf = parts.pop() ?? '';
+
+          for (const part of parts) {
+            const lines = part.trim().split('\n');
+            let eventType = 'message';
+            let dataStr = '';
+            for (const line of lines) {
+              if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+              if (line.startsWith('data: '))  dataStr  = line.slice(6).trim();
+            }
+            if (!dataStr) continue;
+
+            try {
+              const payload = JSON.parse(dataStr);
+              switch (eventType) {
+                case 'fetching': callbacks.onFetching?.(payload.message ?? ''); break;
+                case 'meta':  callbacks.onMeta(payload as StreamMeta); break;
+                case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
+                case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
+                case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, payload.from_cache); break;
+                case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
+                // 'phase' events are informational — ignored silently
+              }
+            } catch {
+              // ignore malformed events
+            }
+          }
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        callbacks.onError(String(err));
+      }
+    })();
+
+    return () => controller.abort();
   }
 
   /** Plot the content of the selected file. */

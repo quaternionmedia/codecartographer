@@ -1,0 +1,186 @@
+/* ── Modal backdrop ─────────────────────────────────────────────────────────── */
+.cc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  animation: cc-fade-in 0.15s ease;
+}
+
+@keyframes cc-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Modal box ───────────────────────────────────────────────────────────────── */
+.cc-modal {
+  position: relative;
+  background: var(--c-primary-dark, #0d1117);
+  border: 1px solid var(--c-border, #2a3040);
+  border-radius: 10px;
+  padding: 36px 32px 28px;
+  width: min(440px, 92vw);
+  text-align: center;
+  animation: cc-slide-up 0.2s ease;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes cc-slide-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.cc-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: var(--c-font-muted, #888);
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+  border-radius: 4px;
+}
+.cc-modal__close:hover { color: var(--c-font, #fff); background: rgba(255,255,255,0.07); }
+
+.cc-modal__step-icon {
+  font-size: 2.4em;
+  margin-bottom: 12px;
+}
+
+.cc-modal__title {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--c-font, #e8e8e8);
+  margin: 0 0 10px;
+}
+
+.cc-modal__body {
+  font-size: 0.9em;
+  color: var(--c-font-muted, #aaa);
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+/* ── Step dots ───────────────────────────────────────────────────────────────── */
+.cc-modal__dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.cc-modal__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-border, #444);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.cc-modal__dot--active {
+  background: var(--c-accent, #00ff41);
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────────────── */
+.cc-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cc-modal__btn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.88em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.cc-modal__btn:active { transform: scale(0.97); }
+
+.cc-modal__btn--primary {
+  background: var(--c-accent, #00ff41);
+  color: #000;
+}
+.cc-modal__btn--primary:hover { opacity: 0.88; }
+
+.cc-modal__btn--secondary {
+  background: transparent;
+  color: var(--c-font-muted, #aaa);
+  border: 1px solid var(--c-border, #444);
+}
+.cc-modal__btn--secondary:hover { color: var(--c-font, #fff); border-color: var(--c-font-muted, #888); }
+
+/* ── Toasts ──────────────────────────────────────────────────────────────────── */
+.cc-toasts {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  z-index: 8000;
+  pointer-events: none;
+}
+
+.cc-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--c-primary-dark, #151b24);
+  border: 1px solid var(--c-border, #2a3040);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.82em;
+  color: var(--c-font-muted, #bbb);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  pointer-events: auto;
+  animation: cc-fade-in 0.2s ease;
+  max-width: 320px;
+}
+
+.cc-toast__msg { flex: 1; }
+
+.cc-toast__close {
+  background: none;
+  border: none;
+  color: var(--c-font-muted, #888);
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 1em;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.cc-toast__close:hover { color: var(--c-font, #fff); }
+
+/* ── Help button ─────────────────────────────────────────────────────────────── */
+.cc-help-btn {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--c-primary-dark, #151b24);
+  border: 1px solid var(--c-border, #2a3040);
+  color: var(--c-font-muted, #888);
+  font-size: 0.85em;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 7000;
+  transition: color 0.15s, border-color 0.15s;
+}
+.cc-help-btn:hover {
+  color: var(--c-font, #fff);
+  border-color: var(--c-accent, #00ff41);
+}

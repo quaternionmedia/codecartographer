@@ -12,6 +12,7 @@ interface FolderAttrs {
   onUrlFileClicked: (url: string) => void;
   /** Called when a stub folder (no children) is opened — triggers lazy load */
   onFolderExpand?: (path: string) => void;
+  allowedExtensions?: string[] | null;
 }
 
 interface FolderState {
@@ -38,7 +39,7 @@ export const Folder: m.Component<FolderAttrs> = {
   },
 
   view(vnode) {
-    const { folderName, folderPath, folders, files, onUrlFileClicked, onFolderExpand } = vnode.attrs;
+    const { folderName, folderPath, folders, files, onUrlFileClicked, onFolderExpand, allowedExtensions } = vnode.attrs;
     const state = vnode.state as FolderState;
     const isStub = folders.length === 0 && files.length === 0;
 
@@ -46,37 +47,37 @@ export const Folder: m.Component<FolderAttrs> = {
       m(
         'div.folder_button',
         {
-          class: isStub ? 'folder_button--stub' : '',
+          class: [
+            isStub ? 'folder_button--stub' : '',
+            state.isOpen ? 'active' : '',
+          ].filter(Boolean).join(' '),
           onclick: function (e: MouseEvent) {
             const button = e.currentTarget as HTMLElement;
-            button.classList.toggle('active');
-            state.isOpen = !state.isOpen;
+            const folderContent = button.nextElementSibling as HTMLElement;
 
             // Animate button press
             animations.buttonPress(button);
 
-            // If this is a stub folder being opened, request lazy expansion
-            if (state.isOpen && isStub && onFolderExpand && !state.isLoading) {
-              state.isLoading = true;
-              onFolderExpand(folderPath);
-            }
-
-            // Animate folder content
-            const folderContent = button.nextElementSibling as HTMLElement;
-            if (folderContent) {
-              if (state.isOpen) {
-                folderContent.style.display = 'block';
-                animations.fadeIn(folderContent, { duration: 200, translateY: -10 });
-              } else {
+            if (state.isOpen) {
+              // Closing: animate out first, then let Mithril hide via state
+              if (folderContent) {
                 animations.fadeOut(folderContent, { duration: 150 }).finished.then(() => {
-                  if (!state.isOpen) {
-                    folderContent.style.display = 'none';
-                  }
+                  state.isOpen = false;
+                  m.redraw();
                 });
+              } else {
+                state.isOpen = false;
+                m.redraw();
               }
+            } else {
+              // Opening: set state so Mithril renders the content (oncreate animates it in)
+              state.isOpen = true;
+              if (isStub && onFolderExpand && !state.isLoading) {
+                state.isLoading = true;
+                onFolderExpand(folderPath);
+              }
+              m.redraw();
             }
-
-            m.redraw();
           },
         },
         [
@@ -85,10 +86,16 @@ export const Folder: m.Component<FolderAttrs> = {
           state.isLoading ? m('span.folder_loading_indicator', ' ↻') : null,
         ]
       ),
-      m('div.folder_content', { style: { display: state.isOpen ? 'block' : 'none' } }, [
-        foldersParse(folders, onUrlFileClicked, onFolderExpand, folderPath),
-        m(FileList, { folderName, files: files, onUrlFileClicked }),
-      ]),
+      state.isOpen
+        ? m('div.folder_content', {
+            oncreate: (vnode: m.VnodeDOM<unknown, unknown>) => {
+              animations.fadeIn(vnode.dom as HTMLElement, { duration: 200, translateY: -10 });
+            },
+          }, [
+            foldersParse(folders, onUrlFileClicked, onFolderExpand, folderPath, allowedExtensions),
+            m(FileList, { folderName, files: files, onUrlFileClicked, allowedExtensions }),
+          ])
+        : null,
     ]);
   },
 };
@@ -97,7 +104,8 @@ export function foldersParse(
   folders: RawFolder[],
   onUrlFileClicked: (url: string) => void,
   onFolderExpand?: (path: string) => void,
-  parentPath: string = ''
+  parentPath: string = '',
+  allowedExtensions?: string[] | null
 ): m.Children {
   return folders.map(folder => {
     const folderPath = parentPath ? `${parentPath}/${folder.name}` : folder.name;
@@ -109,6 +117,7 @@ export function foldersParse(
       files: folder.files,
       onUrlFileClicked: onUrlFileClicked,
       onFolderExpand: onFolderExpand,
+      allowedExtensions: allowedExtensions,
     });
   });
 }

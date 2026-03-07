@@ -7,6 +7,7 @@ interface FileListAttrs {
   folderName: string;
   files: RawFile[];
   onUrlFileClicked: (url: string) => void;
+  allowedExtensions?: string[] | null;
 }
 
 function animateInvisibleContainers(dom: Element): void {
@@ -30,7 +31,7 @@ export const FileList: m.Component<FileListAttrs> = {
   },
 
   view(vnode) {
-    const { folderName, files, onUrlFileClicked } = vnode.attrs;
+    const { folderName, files, onUrlFileClicked, allowedExtensions } = vnode.attrs;
 
     return m(`div.files.files__${folderName}`, [
       files.map((file: RawFile) =>
@@ -39,6 +40,7 @@ export const FileList: m.Component<FileListAttrs> = {
             fileName: file.name,
             fileUrl: file.url,
             onUrlFileClicked: onUrlFileClicked,
+            allowedExtensions: allowedExtensions,
           }),
           m('a.file_raw_btn', { href: file.url, target: '_blank' }, 'raw'),
         ])

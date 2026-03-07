@@ -317,18 +317,20 @@ class TestGjgfOutputShape:
         assert "edges" in graph
 
 
-# ── mode parameter (depth translation) ───────────────────────────────────────
+# ── depth parameter ───────────────────────────────────────────────────────────
 
-class TestModeParameter:
-    """Tests that mode='directory' → depth=1 and mode='ast' → depth=2.
+class TestDepthParameter:
+    """Tests for the depth parameter controlling graph detail level.
 
-    Drives the service directly (using the translated depth) rather than
-    through the HTTP router, so no TestClient is needed.
+    depth=1 → directory + file nodes only (no symbols)
+    depth=2 → full combined graph: dirs, files, symbols, and dependencies
+
+    The UI always uses depth=2 to produce the unified graph; depth=1 is
+    available for lightweight structure-only views.
     """
 
-    def test_mode_directory_produces_depth1_only(self):
-        """depth=1 (what mode='directory' maps to) should produce no depth-2
-        symbol nodes, even for a .py file with real content."""
+    def test_depth1_produces_no_symbols(self):
+        """depth=1 should produce no symbol nodes, even for a .py file with real content."""
         code = "class Foo:\n    def bar(self): pass\n"
         d = _simple_dir([_file("foo.py", code)])
         result = UnifiedParserService.parse(d, depth=1)
@@ -336,12 +338,11 @@ class TestModeParameter:
         for nid, nd in result["graph"]["nodes"].items():
             meta = nd.get("metadata", {})
             assert meta.get("depth", 0) <= 1, (
-                f"depth-2+ node {nid!r} appeared in directory-mode parse"
+                f"depth-2+ node {nid!r} appeared in depth=1 parse"
             )
 
-    def test_mode_ast_produces_symbols(self):
-        """depth=2 (what mode='ast' maps to) should produce depth-2 symbol
-        nodes for a .py file with real content."""
+    def test_depth2_produces_symbols(self):
+        """depth=2 (unified graph) should produce symbol nodes for a .py file."""
         code = "class Foo:\n    def bar(self): pass\n"
         d = _simple_dir([_file("foo.py", code)])
         result = UnifiedParserService.parse(d, depth=2)
@@ -350,10 +351,10 @@ class TestModeParameter:
             nid for nid, nd in result["graph"]["nodes"].items()
             if nd.get("metadata", {}).get("depth", 0) == 2
         ]
-        assert len(depth2_nodes) > 0, "mode=ast (depth=2) produced no symbol nodes"
+        assert len(depth2_nodes) > 0, "depth=2 produced no symbol nodes"
 
-    def test_mode_default_uses_depth_param(self):
-        """depth=1 → no symbol nodes; depth=2 → symbol nodes (direct param use)."""
+    def test_depth_controls_symbol_presence(self):
+        """depth=1 → no symbol nodes; depth=2 → symbol nodes."""
         code = "def standalone(): pass\n"
         d = _simple_dir([_file("x.py", code)])
 

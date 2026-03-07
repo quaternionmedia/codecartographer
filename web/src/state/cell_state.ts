@@ -42,9 +42,9 @@ export class CellState implements ICellState {
   public graphStyling: GraphStylingOptions = {
     layout: 'spring_layout',
     enablePhysics: true,
-    chargeStrength: -150,
-    linkDistance: 75,
-    nodeSize: 6,
+    chargeStrength: -350,
+    linkDistance: 120,
+    nodeSize: 4,
     nodeOpacity: 0.9,
     nodeBorderWidth: 2.0,
     nodeColorOverride: undefined,
@@ -60,7 +60,6 @@ export class CellState implements ICellState {
     interactionProfile: 'default',
   };
   public parserOptions: ParserOptions = {
-    mode: 'directory',
     fileExtensions: [],
   };
   public selectedRenderer: GraphRendererType = 'd3';

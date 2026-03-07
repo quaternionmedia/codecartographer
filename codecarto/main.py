@@ -55,7 +55,16 @@ app.include_router(LocalRepoRouter, prefix="/local", tags=["local"])
 app.include_router(CParserRouter, prefix="/c-parser", tags=["c-parser"])
 app.include_router(PamRouter, prefix="/pam", tags=["pam"])
 app.include_router(UnifiedParserRouter, prefix="/parse", tags=["parse"])
-# app.include_router(GraphBaseRouter, prefix="/db", tags=["db"])
+
+# Optional: Graphbase MongoDB router — activated when MONGODB_URI env var is set
+import os as _os
+if _os.getenv("MONGODB_URI"):
+    try:
+        from graphbase.src.main import graphdb as GraphBaseRouter
+        app.include_router(GraphBaseRouter, prefix="/db", tags=["db"])
+    except Exception as _e:
+        import logging as _logging
+        _logging.warning(f"Graphbase router could not be loaded: {_e}")
 
 
 @app.get("/", include_in_schema=False)

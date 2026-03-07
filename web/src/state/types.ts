@@ -51,12 +51,8 @@ export interface LocalState {
   component: m.Vnode[] | null;
 }
 
-/** Parser modes for analyzing code */
-export type ParserMode = 'ast' | 'directory' | 'dependencies';
-
 /** Parser configuration options */
 export interface ParserOptions {
-  mode: ParserMode;            // Parser type (ast, directory, dependencies)
   fileExtensions: string[];    // File extensions to parse (e.g., ['.py', '.js'])
 }
 
@@ -182,7 +178,6 @@ export const DEFAULT_GRAPH_STATE: GraphState = {
     interactionProfile: 'default',
   },
   parserOptions: {
-    mode: 'directory',
     fileExtensions: [],
   },
   selectedRenderer: 'd3',
