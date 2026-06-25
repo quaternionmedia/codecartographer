@@ -49,13 +49,20 @@ class GraphSerializer:
             node["x"] = float(x) * spread
             node["y"] = float(y) * spread
 
-        # Scale nodes based on edge count
+        # Scale nodes based on depth (unified schema) and edge count
         for node, data in ntxGraph.nodes(data=True):
             # Calculate the number of edges
             out_edges_count = len(ntxGraph.out_edges(node)) * 10
             in_edges_count = len(ntxGraph.in_edges(node)) * 10
-            # Set size based on the number of edges
-            data["size"] = 1 + out_edges_count + in_edges_count
+
+            # Depth-based base size (unified schema: 0=dir, 1=file, 2=symbol, 3=sub)
+            node_depth = data.get("depth")
+            if node_depth is not None:
+                depth_base = {0: 40, 1: 20, 2: 10, 3: 6}.get(int(node_depth), 10)
+                data["size"] = depth_base + out_edges_count + in_edges_count
+            else:
+                # Legacy nodes without depth: use edge-count heuristic
+                data["size"] = 1 + out_edges_count + in_edges_count
 
             # Set color based on type for dependency plot
             if isDependencyPlot:

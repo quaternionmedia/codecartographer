@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C Semantic Visualizer — linux/mm/</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b10;--bg2:#0d1017;--bg3:#111620;
+  --border:#1a2030;--text:#b8c4d8;--dim:#3d4d68;--bright:#dde4f0;
+  --struct:#4a9eff;--fn:#ff9d3d;--enum:#a855f7;--typedef:#22d3ee;
+  --field:#3d5070;--econst:#6d28d9;
+}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
+  font-family:'Courier New',Courier,monospace;overflow:hidden}
+#app{width:100vw;height:100vh;display:grid;
+  grid-template-rows:46px 1fr;grid-template-columns:1fr 280px;
+  grid-template-areas:"hd hd""cv sb"}
+#hd{grid-area:hd;background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:12px;z-index:10;flex-wrap:wrap}
+#hd h1{font-size:11px;font-weight:bold;color:var(--bright);letter-spacing:.1em;text-transform:uppercase}
+.pill{font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid;white-space:nowrap}
+.pill.sub{color:var(--struct);border-color:rgba(74,158,255,.3);background:rgba(74,158,255,.07)}
+.pill.stat{color:var(--dim);border-color:var(--border)}
+.pill.stat span{color:var(--text);margin-left:3px}
+#filters{margin-left:auto;display:flex;gap:5px;flex-wrap:wrap}
+.fb{background:none;border:1px solid var(--border);color:var(--dim);
+  font-family:'Courier New',monospace;font-size:9px;padding:2px 8px;
+  border-radius:3px;cursor:pointer;display:flex;align-items:center;gap:3px;transition:all .15s}
+.fb .dot{width:5px;height:5px;border-radius:50%}
+.fb.on{opacity:1}
+.fb.off{opacity:.25}
+#cv{grid-area:cv;position:relative;overflow:hidden;background:var(--bg)}
+canvas{display:block}
+#sb{grid-area:sb;background:var(--bg2);border-left:1px solid var(--border);
+  overflow-y:auto;font-size:10px}
+#sb::-webkit-scrollbar{width:3px}
+#sb::-webkit-scrollbar-thumb{background:var(--border)}
+.sec{padding:12px 13px;border-bottom:1px solid var(--border)}
+.sec h3{font-size:8px;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);margin-bottom:8px}
+#det-empty{color:var(--dim);font-style:italic;font-size:9px}
+#det-name{font-size:12px;color:var(--bright);margin-bottom:4px;word-break:break-all}
+#det-badge{display:inline-block;font-size:8px;text-transform:uppercase;letter-spacing:.08em;
+  padding:2px 5px;border-radius:2px;border:1px solid currentColor;margin-bottom:8px}
+.dr{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);gap:6px;font-size:9px}
+.dr .k{color:var(--dim)}.dr .v{color:var(--bright);text-align:right;word-break:break-all;max-width:150px}
+.qt{display:inline-block;font-size:8px;padding:1px 5px;border:1px solid var(--border);
+  border-radius:2px;margin:2px;color:#4ade80}
+.ei{display:flex;align-items:center;gap:4px;padding:4px 0;
+  border-bottom:1px solid var(--border);cursor:pointer;font-size:9px}
+.ei:hover{background:rgba(255,255,255,.03)}
+.ei .ek{font-size:7px;padding:1px 3px;border-radius:2px;border:1px solid currentColor;white-space:nowrap}
+.ei .en{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lg{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.li{display:flex;align-items:center;gap:5px;font-size:8px;color:var(--dim)}
+#hint{position:absolute;bottom:10px;left:12px;font-size:8px;color:var(--dim);pointer-events:none}
+#tip{position:absolute;background:var(--bg3);border:1px solid var(--border);
+  padding:5px 8px;font-size:9px;pointer-events:none;opacity:0;
+  transition:opacity .1s;z-index:50;border-radius:3px;color:var(--bright);max-width:200px;top:0;left:0}
+.tip-kind{font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="hd">
+    <h1>C Semantic Visualizer</h1>
+    <span class="pill sub">linux/mm/</span>
+    <span class="pill stat">nodes<span id="sn">—</span></span>
+    <span class="pill stat">edges<span id="se">—</span></span>
+    <div id="filters">
+      <button class="fb on" data-k="struct"   style="color:var(--struct);  border-color:rgba(74,158,255,.4)"><span class="dot" style="background:var(--struct)"></span>struct</button>
+      <button class="fb on" data-k="function" style="color:var(--fn);      border-color:rgba(255,157,61,.4)"><span class="dot" style="background:var(--fn)"></span>fn</button>
+      <button class="fb on" data-k="enum"     style="color:var(--enum);    border-color:rgba(168,85,247,.4)"><span class="dot" style="background:var(--enum)"></span>enum</button>
+      <button class="fb on" data-k="typedef"  style="color:var(--typedef); border-color:rgba(34,211,238,.4)"><span class="dot" style="background:var(--typedef)"></span>typedef</button>
+      <button class="fb on" data-k="field"    style="color:var(--field);   border-color:rgba(61,80,112,.6)"><span class="dot"  style="background:var(--field)"></span>field</button>
+    </div>
+  </header>
+  <div id="cv">
+    <canvas id="c"></canvas>
+    <div id="tip"><div class="tip-kind" id="tip-k"></div><div id="tip-n"></div></div>
+    <div id="hint">scroll=zoom · drag=pan · drag nodes · click=inspect</div>
+  </div>
+  <aside id="sb">
+    <div class="sec">
+      <h3>Selected Node</h3>
+      <div id="det-empty">Click a node to inspect</div>
+      <div id="det" style="display:none">
+        <div id="det-name"></div>
+        <div id="det-badge"></div>
+        <div id="det-rows"></div>
+        <div style="margin-top:5px" id="det-quals"></div>
+      </div>
+    </div>
+    <div class="sec"><h3>Relationships</h3><div id="edge-list"></div></div>
+    <div class="sec">
+      <h3>Visual Grammar</h3>
+      <div class="lg" id="leg"></div>
+    </div>
+    <div class="sec">
+      <h3>Edge Types</h3>
+      <div style="display:flex;flex-direction:column;gap:5px;font-size:8px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <svg width="28" height="8"><line x1="0" y1="4" x2="20" y2="4" stroke="#ff9d3d" stroke-width="1.5"/><polygon points="18,1 18,7 26,4" fill="#ff9d3d"/></svg>
+          <span style="color:#ff9d3d">CALLS</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <svg width="28" height="8"><line x1="0" y1="4" x2="20" y2="4" stroke="#3d7fff" stroke-width="1" stroke-dasharray="4 3"/><polygon points="18,1 18,7 26,4" fill="#3d7fff"/></svg>
+          <span style="color:#4a9eff">POINTS_TO</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="#1e2e50" stroke-width="1"/></svg>
+          <span style="color:var(--dim)">FIELD_OF</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+// ── GRAPH DATA ───────────────────────────────────────────────────────────────
+const GRAPH = {
+  nodes:[
+    {id:"mm_types::pgd_t",    kind:"typedef", name:"pgd_t",    file:"mm_types",line:8, qualifiers:[],type_str:"pgd_t"},
+    {id:"mm_types::pte_t",    kind:"typedef", name:"pte_t",    file:"mm_types",line:9, qualifiers:[],type_str:"pte_t"},
+    {id:"mm_types::gfp_t",    kind:"typedef", name:"gfp_t",    file:"mm_types",line:10,qualifiers:[],type_str:"gfp_t"},
+    {id:"mm_types::atomic_t", kind:"typedef", name:"atomic_t", file:"mm_types",line:11,qualifiers:[],type_str:"atomic_t"},
+    {id:"mm_types::migratetype_t",kind:"enum",name:"migratetype_t",file:"mm_types",line:18,qualifiers:[],type_str:"migratetype_t",member_count:6},
+    {id:"mm_types::MIGRATE_UNMOVABLE",  kind:"enum_constant",name:"MIGRATE_UNMOVABLE",  file:"mm_types",line:19,qualifiers:[],type_str:"int"},
+    {id:"mm_types::MIGRATE_MOVABLE",    kind:"enum_constant",name:"MIGRATE_MOVABLE",    file:"mm_types",line:20,qualifiers:[],type_str:"int"},
+    {id:"mm_types::MIGRATE_RECLAIMABLE",kind:"enum_constant",name:"MIGRATE_RECLAIMABLE",file:"mm_types",line:21,qualifiers:[],type_str:"int"},
+    {id:"mm_types::MIGRATE_PCPTYPES",   kind:"enum_constant",name:"MIGRATE_PCPTYPES",   file:"mm_types",line:22,qualifiers:[],type_str:"int"},
+    {id:"mm_types::MIGRATE_HIGHATOMIC", kind:"enum_constant",name:"MIGRATE_HIGHATOMIC", file:"mm_types",line:23,qualifiers:[],type_str:"int"},
+    {id:"mm_types::MIGRATE_ISOLATE",    kind:"enum_constant",name:"MIGRATE_ISOLATE",    file:"mm_types",line:24,qualifiers:[],type_str:"int"},
+    {id:"mm_types::zone_type_t",kind:"enum",name:"zone_type_t",file:"mm_types",line:27,qualifiers:[],type_str:"zone_type_t",member_count:6},
+    {id:"mm_types::ZONE_DMA",    kind:"enum_constant",name:"ZONE_DMA",    file:"mm_types",line:28,qualifiers:[],type_str:"int"},
+    {id:"mm_types::ZONE_DMA32",  kind:"enum_constant",name:"ZONE_DMA32",  file:"mm_types",line:29,qualifiers:[],type_str:"int"},
+    {id:"mm_types::ZONE_NORMAL", kind:"enum_constant",name:"ZONE_NORMAL", file:"mm_types",line:30,qualifiers:[],type_str:"int"},
+    {id:"mm_types::ZONE_HIGHMEM",kind:"enum_constant",name:"ZONE_HIGHMEM",file:"mm_types",line:31,qualifiers:[],type_str:"int"},
+    {id:"mm_types::ZONE_MOVABLE",kind:"enum_constant",name:"ZONE_MOVABLE",file:"mm_types",line:32,qualifiers:[],type_str:"int"},
+    {id:"mm_types::__MAX_NR_ZONES",kind:"enum_constant",name:"__MAX_NR_ZONES",file:"mm_types",line:33,qualifiers:[],type_str:"int"},
+    {id:"mm_types::page",         kind:"struct",name:"page",         file:"mm_types",line:52,qualifiers:[],type_str:"struct page",         field_count:6},
+    {id:"mm_types::vm_area_struct",kind:"struct",name:"vm_area_struct",file:"mm_types",line:97,qualifiers:[],type_str:"struct vm_area_struct",field_count:8},
+    {id:"mm_types::mm_struct",    kind:"struct",name:"mm_struct",    file:"mm_types",line:108,qualifiers:[],type_str:"struct mm_struct",    field_count:18},
+    {id:"mm_types::zone",         kind:"struct",name:"zone",         file:"mm_types",line:70,qualifiers:[],type_str:"struct zone",         field_count:13},
+    {id:"mm_types::page_flags",   kind:"struct",name:"page_flags",   file:"mm_types",line:41,qualifiers:[],type_str:"struct page_flags",   field_count:8},
+    {id:"mm_types::free_area",    kind:"struct",name:"free_area",    file:"mm_types",line:65,qualifiers:[],type_str:"struct free_area",    field_count:2},
+    {id:"mm_types::pglist_data",  kind:"struct",name:"pglist_data",  file:"mm_types",line:87,qualifiers:[],type_str:"struct pglist_data",  field_count:7},
+    {id:"mm_core::init_zone",           kind:"function",name:"init_zone",           file:"mm_core",line:6,  qualifiers:["static"],type_str:"void(zone*,char*,ulong,ulong)",param_count:4,is_definition:true},
+    {id:"mm_core::init_free_area",      kind:"function",name:"init_free_area",      file:"mm_core",line:15, qualifiers:["static"],type_str:"void(free_area*)",             param_count:1,is_definition:true},
+    {id:"mm_core::setup_zones",         kind:"function",name:"setup_zones",         file:"mm_core",line:22, qualifiers:["static"],type_str:"void(pglist_data*)",           param_count:1,is_definition:true},
+    {id:"mm_core::zone_is_empty",       kind:"function",name:"zone_is_empty",       file:"mm_core",line:31, qualifiers:["static"],type_str:"int(const zone*)",            param_count:1,is_definition:true},
+    {id:"mm_core::add_page_to_freelist",kind:"function",name:"add_page_to_freelist",file:"mm_core",line:35, qualifiers:["static"],type_str:"void(zone*,page*,int,int)",  param_count:4,is_definition:true},
+    {id:"mm_core::get_page_from_freelist",kind:"function",name:"get_page_from_freelist",file:"mm_core",line:43,qualifiers:["static"],type_str:"page*(zone*,int,int)",    param_count:3,is_definition:true},
+    {id:"mm_core::alloc_page_from_zone",kind:"function",name:"alloc_page_from_zone",file:"mm_core",line:57, qualifiers:["static"],type_str:"page*(zone*,gfp_t,int)",     param_count:3,is_definition:true},
+    {id:"mm_core::alloc_pages",         kind:"function",name:"alloc_pages",         file:"mm_core",line:73, qualifiers:[],        type_str:"page*(gfp_t,uint)",           param_count:2,is_definition:true},
+    {id:"mm_core::free_pages",          kind:"function",name:"free_pages",          file:"mm_core",line:86, qualifiers:[],        type_str:"void(page*,uint)",            param_count:2,is_definition:true},
+    {id:"mm_core::vma_is_anonymous",    kind:"function",name:"vma_is_anonymous",    file:"mm_core",line:92, qualifiers:["static"],type_str:"int(const vma*)",             param_count:1,is_definition:true},
+    {id:"mm_core::find_vma",            kind:"function",name:"find_vma",            file:"mm_core",line:96, qualifiers:["static"],type_str:"vma*(mm_struct*,ulong)",      param_count:2,is_definition:true},
+    {id:"mm_core::mmap_region",         kind:"function",name:"mmap_region",         file:"mm_core",line:106,qualifiers:[],        type_str:"int(mm_struct*,ulong,ulong,ulong)",param_count:4,is_definition:true},
+    {id:"mm_core::do_munmap",           kind:"function",name:"do_munmap",           file:"mm_core",line:129,qualifiers:[],        type_str:"int(mm_struct*,ulong,ulong)", param_count:3,is_definition:true},
+    {id:"mm_core::pglist_data_init",    kind:"function",name:"pglist_data_init",    file:"mm_core",line:142,qualifiers:[],        type_str:"void(pglist_data*,int)",      param_count:2,is_definition:true},
+  ],
+  edges:[
+    {src:"mm_types::page",         dst:"mm_types::page_flags",     kind:"FIELD_OF"},
+    {src:"mm_types::free_area",    dst:"mm_types::page",           kind:"FIELD_OF"},
+    {src:"mm_types::zone",         dst:"mm_types::free_area",      kind:"FIELD_OF"},
+    {src:"mm_types::zone",         dst:"mm_types::pglist_data",    kind:"FIELD_OF"},
+    {src:"mm_types::pglist_data",  dst:"mm_types::zone",           kind:"FIELD_OF"},
+    {src:"mm_types::vm_area_struct",dst:"mm_types::mm_struct",     kind:"FIELD_OF"},
+    {src:"mm_types::mm_struct",    dst:"mm_types::vm_area_struct", kind:"FIELD_OF"},
+    {src:"mm_types::migratetype_t",dst:"mm_types::MIGRATE_UNMOVABLE",   kind:"FIELD_OF"},
+    {src:"mm_types::migratetype_t",dst:"mm_types::MIGRATE_MOVABLE",     kind:"FIELD_OF"},
+    {src:"mm_types::migratetype_t",dst:"mm_types::MIGRATE_RECLAIMABLE", kind:"FIELD_OF"},
+    {src:"mm_types::migratetype_t",dst:"mm_types::MIGRATE_PCPTYPES",    kind:"FIELD_OF"},
+    {src:"mm_types::migratetype_t",dst:"mm_types::MIGRATE_HIGHATOMIC",  kind:"FIELD_OF"},
+    {src:"mm_types::migratetype_t",dst:"mm_types::MIGRATE_ISOLATE",     kind:"FIELD_OF"},
+    {src:"mm_types::zone_type_t",  dst:"mm_types::ZONE_DMA",      kind:"FIELD_OF"},
+    {src:"mm_types::zone_type_t",  dst:"mm_types::ZONE_DMA32",    kind:"FIELD_OF"},
+    {src:"mm_types::zone_type_t",  dst:"mm_types::ZONE_NORMAL",   kind:"FIELD_OF"},
+    {src:"mm_types::zone_type_t",  dst:"mm_types::ZONE_HIGHMEM",  kind:"FIELD_OF"},
+    {src:"mm_types::zone_type_t",  dst:"mm_types::ZONE_MOVABLE",  kind:"FIELD_OF"},
+    {src:"mm_types::zone_type_t",  dst:"mm_types::__MAX_NR_ZONES",kind:"FIELD_OF"},
+    {src:"mm_core::setup_zones",          dst:"mm_core::init_free_area",        kind:"CALLS"},
+    {src:"mm_core::alloc_page_from_zone", dst:"mm_core::get_page_from_freelist",kind:"CALLS"},
+    {src:"mm_core::alloc_pages",          dst:"mm_core::alloc_page_from_zone",  kind:"CALLS"},
+    {src:"mm_core::mmap_region",          dst:"mm_core::find_vma",              kind:"CALLS"},
+    {src:"mm_core::do_munmap",            dst:"mm_core::find_vma",              kind:"CALLS"},
+    {src:"mm_core::pglist_data_init",     dst:"mm_core::setup_zones",           kind:"CALLS"},
+    {src:"mm_core::pglist_data_init",     dst:"mm_core::init_zone",             kind:"CALLS"},
+    {src:"mm_types::zone",         dst:"mm_types::pglist_data",    kind:"POINTS_TO"},
+    {src:"mm_types::zone",         dst:"mm_types::page",           kind:"POINTS_TO"},
+    {src:"mm_types::vm_area_struct",dst:"mm_types::mm_struct",     kind:"POINTS_TO"},
+    {src:"mm_types::mm_struct",    dst:"mm_types::vm_area_struct", kind:"POINTS_TO"},
+    {src:"mm_types::free_area",    dst:"mm_types::page",           kind:"POINTS_TO"},
+  ]
+};
+
+// ── VISUAL CONFIG ────────────────────────────────────────────────────────────
+const K = {
+  struct:       {color:'#4a9eff',bg:'#06101e'},
+  function:     {color:'#ff9d3d',bg:'#1a0c00'},
+  enum:         {color:'#a855f7',bg:'#0e0018'},
+  enum_constant:{color:'#6d28d9',bg:'#0a0012'},
+  typedef:      {color:'#22d3ee',bg:'#001418'},
+  field:        {color:'#3d5070',bg:'#0a0e18'},
+  variable:     {color:'#607090',bg:'#0a0e18'},
+};
+const EC = {CALLS:'#ff9d3d',POINTS_TO:'#3d7fff',FIELD_OF:'#1e2e50',ALIASES:'#22d3ee'};
+function ks(kind){return K[kind]||{color:'#607090',bg:'#0a0e18'};}
+
+function nodeR(n){
+  if(n.kind==='struct')    return 16+Math.min((n.field_count||0)*1.8,18);
+  if(n.kind==='function')  return 14+(n.param_count||0)*2;
+  if(n.kind==='enum')      return 15;
+  if(n.kind==='typedef')   return 10;
+  if(n.kind==='enum_constant') return 6;
+  if(n.kind==='field')     return 6;
+  return 9;
+}
+
+// ── FILTER ───────────────────────────────────────────────────────────────────
+const filterKinds = {
+  struct:   ['struct'],
+  function: ['function'],
+  enum:     ['enum','enum_constant'],
+  typedef:  ['typedef'],
+  field:    ['field','variable'],
+};
+const filterOn = {struct:true,function:true,enum:true,typedef:true,field:true};
+
+document.querySelectorAll('.fb').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const k = btn.dataset.k;
+    filterOn[k] = !filterOn[k];
+    btn.className = 'fb '+(filterOn[k]?'on':'off');
+    heat(0.3);
+  });
+});
+
+function vis(kind){
+  for(const [fk,ks2] of Object.entries(filterKinds))
+    if(ks2.includes(kind)) return filterOn[fk];
+  return true;
+}
+
+// ── CANVAS SETUP ─────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W,H;
+function resize(){
+  const wrap = document.getElementById('cv');
+  W=wrap.offsetWidth; H=wrap.offsetHeight;
+  const dpr=devicePixelRatio||1;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+resize();
+window.addEventListener('resize',()=>{resize();draw();});
+
+let camX=0,camY=0,camZ=1;
+function tw(sx,sy){return[(sx-W/2-camX)/camZ,(sy-H/2-camY)/camZ];}
+function ts(wx,wy){return[wx*camZ+camX+W/2,wy*camZ+camY+H/2];}
+
+// ── PHYSICS ──────────────────────────────────────────────────────────────────
+const nmap={};
+GRAPH.nodes.forEach(n=>{
+  n.x=(Math.random()-.5)*600; n.y=(Math.random()-.5)*500;
+  n.vx=0; n.vy=0; n.r=nodeR(n);
+  nmap[n.id]=n;
+});
+
+const springs=[];
+GRAPH.edges.forEach(e=>{
+  if(e.src===e.dst) return;
+  const a=nmap[e.src],b=nmap[e.dst];
+  if(!a||!b) return;
+  const rest=e.kind==='CALLS'?130:e.kind==='FIELD_OF'?55:105;
+  const k=e.kind==='CALLS'?.06:e.kind==='FIELD_OF'?.1:.03;
+  springs.push({a,b,rest,k,kind:e.kind});
+});
+
+let alpha=1;
+function heat(v){alpha=Math.max(alpha,v);}
+
+function simulate(){
+  if(alpha<0.001) return;
+  const nodes=GRAPH.nodes.filter(n=>vis(n.kind));
+  const nset=new Set(nodes.map(n=>n.id));
+
+  for(let i=0;i<nodes.length;i++){
+    for(let j=i+1;j<nodes.length;j++){
+      const a=nodes[i],b=nodes[j];
+      const dx=b.x-a.x,dy=b.y-a.y;
+      const d2=dx*dx+dy*dy+1;
+      const d=Math.sqrt(d2);
+      const minD=a.r+b.r+18;
+      if(d<minD*3){
+        const str=(a.kind==='struct'||b.kind==='struct')?24000:9000;
+        const f=str/(d2+1);
+        const fx=dx/d*f,fy=dy/d*f;
+        a.vx-=fx;a.vy-=fy;b.vx+=fx;b.vy+=fy;
+      }
+    }
+  }
+
+  springs.forEach(({a,b,rest,k})=>{
+    if(!nset.has(a.id)||!nset.has(b.id)) return;
+    const dx=b.x-a.x,dy=b.y-a.y;
+    const d=Math.sqrt(dx*dx+dy*dy)+.01;
+    const f=(d-rest)*k;
+    const fx=dx/d*f,fy=dy/d*f;
+    a.vx+=fx;a.vy+=fy;b.vx-=fx;b.vy-=fy;
+  });
+
+  nodes.forEach(n=>{
+    n.vx-=n.x*.003; n.vy-=n.y*.003;
+  });
+
+  const damp=0.82;
+  nodes.forEach(n=>{
+    if(n.pinned) return;
+    n.vx*=damp; n.vy*=damp;
+    n.x+=n.vx*alpha; n.y+=n.vy*alpha;
+  });
+
+  alpha*=.996;
+}
+
+// ── POLYGON HELPER ───────────────────────────────────────────────────────────
+function polygon(x,y,r,s,rot=0){
+  ctx.beginPath();
+  for(let i=0;i<s;i++){
+    const a=2*Math.PI*i/s-Math.PI/2+rot;
+    i===0?ctx.moveTo(x+Math.cos(a)*r,y+Math.sin(a)*r):ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);
+  }
+  ctx.closePath();
+}
+
+// ── DRAW ─────────────────────────────────────────────────────────────────────
+function drawEdge(e){
+  if(e.src===e.dst) return;
+  const a=nmap[e.src],b=nmap[e.dst];
+  if(!a||!b||!vis(a.kind)||!vis(b.kind)) return;
+  const [ax,ay]=ts(a.x,a.y);
+  const [bx,by]=ts(b.x,b.y);
+  const dx=bx-ax,dy=by-ay,d=Math.sqrt(dx*dx+dy*dy);
+  if(d<2) return;
+  const ux=dx/d,uy=dy/d;
+  const col=EC[e.kind]||'#334';
+
+  ctx.save();
+  ctx.strokeStyle=col;
+  ctx.lineWidth=e.kind==='CALLS'?1.5:1;
+  ctx.globalAlpha=e.kind==='CALLS'?.65:e.kind==='POINTS_TO'?.45:.3;
+  if(e.kind==='POINTS_TO') ctx.setLineDash([4,3]);
+  ctx.beginPath();
+  ctx.moveTo(ax,ay);
+  ctx.lineTo(bx-ux*10,by-uy*10);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if(e.kind!=='FIELD_OF'){
+    ctx.globalAlpha=e.kind==='CALLS'?.85:.55;
+    ctx.fillStyle=col;
+    ctx.beginPath();
+    const tip=[bx-ux*2,by-uy*2];
+    const base=[bx-ux*12,by-uy*12];
+    ctx.moveTo(tip[0],tip[1]);
+    ctx.lineTo(base[0]-uy*4,base[1]+ux*4);
+    ctx.lineTo(base[0]+uy*4,base[1]-ux*4);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawNode(n,sel){
+  const [sx,sy]=ts(n.x,n.y);
+  if(sx<-150||sx>W+150||sy<-150||sy>H+150) return;
+  const r=n.r*camZ;
+  const st=ks(n.kind);
+  const isSel=sel&&sel.id===n.id;
+
+  ctx.save();
+  if(isSel){ctx.shadowColor=st.color;ctx.shadowBlur=16;}
+
+  if(n.kind==='struct'){
+    const sides=Math.max(4,Math.min(n.field_count||4,10));
+    polygon(sx,sy,r,sides);
+    ctx.fillStyle=st.bg;ctx.fill();
+    ctx.strokeStyle=st.color;ctx.lineWidth=isSel?2.5:1.5;ctx.stroke();
+  } else if(n.kind==='function'){
+    const w=r*1.0,h=r*0.65;
+    ctx.translate(sx,sy);ctx.rotate(Math.PI/4);
+    ctx.beginPath();ctx.rect(-w,-h,w*2,h*2);
+    ctx.fillStyle=st.bg;ctx.fill();
+    ctx.strokeStyle=st.color;
+    ctx.lineWidth=n.qualifiers&&n.qualifiers.includes('static')?1:isSel?2.5:2;
+    ctx.stroke();
+  } else if(n.kind==='enum'){
+    ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
+    ctx.fillStyle=st.bg;ctx.fill();
+    ctx.strokeStyle=st.color;ctx.lineWidth=isSel?2:1.5;ctx.stroke();
+    const mc=Math.min(n.member_count||0,8);
+    for(let i=0;i<mc;i++){
+      const a=2*Math.PI*i/mc;
+      ctx.beginPath();ctx.arc(sx+Math.cos(a)*r*.55,sy+Math.sin(a)*r*.55,Math.max(2,r*.13),0,Math.PI*2);
+      ctx.fillStyle=st.color;ctx.globalAlpha=.7;ctx.fill();ctx.globalAlpha=1;
+    }
+  } else if(n.kind==='enum_constant'){
+    polygon(sx,sy,r,4);
+    ctx.fillStyle=st.bg;ctx.fill();
+    ctx.strokeStyle=st.color;ctx.lineWidth=1;ctx.stroke();
+  } else if(n.kind==='typedef'){
+    const pw=r*2.2,ph=r*0.75;
+    ctx.setLineDash([5,3]);
+    ctx.beginPath();
+    ctx.moveTo(sx-pw+ph,sy-ph);
+    ctx.lineTo(sx+pw-ph,sy-ph);
+    ctx.arc(sx+pw-ph,sy,ph,-Math.PI/2,Math.PI/2);
+    ctx.lineTo(sx-pw+ph,sy+ph);
+    ctx.arc(sx-pw+ph,sy,ph,Math.PI/2,3*Math.PI/2);
+    ctx.closePath();
+    ctx.fillStyle=st.bg;ctx.fill();
+    ctx.strokeStyle=st.color;ctx.lineWidth=1;ctx.stroke();
+    ctx.setLineDash([]);
+  } else {
+    // field / variable / default: small square
+    ctx.beginPath();ctx.rect(sx-r,sy-r,r*2,r*2);
+    ctx.fillStyle=st.bg;ctx.fill();
+    ctx.strokeStyle=st.color;ctx.lineWidth=1;ctx.stroke();
+  }
+
+  ctx.restore();
+
+  // Label
+  if(n.kind!=='field'&&n.kind!=='enum_constant'&&n.kind!=='variable'&&(r>6||isSel)){
+    const fsz=Math.max(8,(['struct','function','enum'].includes(n.kind)?11:9)*Math.min(camZ,1.2));
+    ctx.save();
+    ctx.font=`${fsz}px 'Courier New',monospace`;
+    ctx.fillStyle=isSel?'#fff':st.color;
+    ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.globalAlpha=isSel?1:.85;
+    const label=n.name.length>16?n.name.slice(0,14)+'…':n.name;
+    ctx.fillText(label,sx,sy+r+4);
+    ctx.restore();
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // grid
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,.016)';ctx.lineWidth=1;
+  const gs=40*camZ;
+  const ox=(camX+W/2)%gs,oy=(camY+H/2)%gs;
+  for(let x=ox;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=oy;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.restore();
+
+  GRAPH.edges.forEach(drawEdge);
+  GRAPH.nodes.filter(n=>vis(n.kind)).forEach(n=>drawNode(n,selNode));
+
+  if(selNode&&vis(selNode.kind)){
+    const[sx,sy]=ts(selNode.x,selNode.y);
+    const r=selNode.r*camZ+8;
+    ctx.save();
+    ctx.strokeStyle=ks(selNode.kind).color;ctx.lineWidth=1.5;
+    ctx.globalAlpha=.35;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function tick(){simulate();draw();requestAnimationFrame(tick);}
+
+// ── INPUT ─────────────────────────────────────────────────────────────────────
+let drag=null,pan=null,selNode=null;
+const tip=document.getElementById('tip');
+
+function hit(wx,wy){
+  const nodes=GRAPH.nodes.filter(n=>vis(n.kind));
+  for(let i=nodes.length-1;i>=0;i--){
+    const n=nodes[i];
+    const dx=wx-n.x,dy=wy-n.y;
+    if(dx*dx+dy*dy<=n.r*n.r*2.5) return n;
+  }
+  return null;
+}
+
+canvas.addEventListener('mousedown',e=>{
+  const[wx,wy]=tw(e.offsetX,e.offsetY);
+  const h=hit(wx,wy);
+  if(h){drag={node:h,ox:wx-h.x,oy:wy-h.y};h.pinned=true;}
+  else pan={sx:e.offsetX,sy:e.offsetY,cx:camX,cy:camY};
+});
+
+canvas.addEventListener('mousemove',e=>{
+  if(drag){
+    const[wx,wy]=tw(e.offsetX,e.offsetY);
+    drag.node.x=wx-drag.ox;drag.node.y=wy-drag.oy;
+    drag.node.vx=drag.node.vy=0;heat(.05);return;
+  }
+  if(pan){camX=pan.cx+(e.offsetX-pan.sx);camY=pan.cy+(e.offsetY-pan.sy);return;}
+  const[wx,wy]=tw(e.offsetX,e.offsetY);
+  const h=hit(wx,wy);
+  if(h){
+    const st=ks(h.kind);
+    tip.querySelector('#tip-k').textContent=h.kind;
+    tip.querySelector('#tip-n').textContent=h.name;
+    tip.querySelector('#tip-n').style.color=st.color;
+    tip.style.opacity='1';
+    tip.style.left=(e.offsetX+14)+'px';
+    tip.style.top=(e.offsetY-28)+'px';
+    canvas.style.cursor='pointer';
+  } else {tip.style.opacity='0';canvas.style.cursor='grab';}
+});
+
+let dragMoved=false;
+canvas.addEventListener('mousedown',()=>{dragMoved=false;},{capture:true});
+canvas.addEventListener('mousemove',()=>{dragMoved=true;},{capture:true});
+
+canvas.addEventListener('mouseup',e=>{
+  if(drag){
+    drag.node.pinned=false;
+    if(!dragMoved) selectNode(drag.node);
+    drag=null;
+  } else if(!dragMoved){
+    const[wx,wy]=tw(e.offsetX,e.offsetY);
+    if(!hit(wx,wy)) selectNode(null);
+  }
+  pan=null;canvas.style.cursor='grab';
+});
+
+canvas.addEventListener('mouseleave',()=>{
+  if(drag){drag.node.pinned=false;drag=null;}
+  pan=null;tip.style.opacity='0';
+});
+
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const f=e.deltaY<0?1.12:.89;
+  const mx=e.offsetX,my=e.offsetY;
+  camX=mx-f*(mx-camX-W/2)-W/2;
+  camY=my-f*(my-camY-H/2)-H/2;
+  camZ=Math.max(.06,Math.min(8,camZ*f));
+},{passive:false});
+
+// ── SIDEBAR ──────────────────────────────────────────────────────────────────
+function selectNode(n){
+  selNode=n;
+  if(!n){
+    document.getElementById('det-empty').style.display='';
+    document.getElementById('det').style.display='none';
+    document.getElementById('edge-list').innerHTML='';
+    return;
+  }
+  document.getElementById('det-empty').style.display='none';
+  document.getElementById('det').style.display='';
+  const st=ks(n.kind);
+  document.getElementById('det-name').textContent=n.name;
+  const badge=document.getElementById('det-badge');
+  badge.textContent=n.kind;badge.style.color=st.color;
+
+  const rows=[['file',n.file],['line',n.line]];
+  if(n.field_count  !=null) rows.push(['fields',  n.field_count]);
+  if(n.member_count !=null) rows.push(['members', n.member_count]);
+  if(n.param_count  !=null) rows.push(['params',  n.param_count]);
+  if(n.is_definition!=null) rows.push(['def',     n.is_definition?'yes':'decl']);
+  rows.push(['type',n.type_str]);
+
+  document.getElementById('det-rows').innerHTML=rows
+    .map(([k,v])=>`<div class="dr"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+
+  const quals=n.qualifiers||[];
+  document.getElementById('det-quals').innerHTML=quals.length
+    ?quals.map(q=>`<span class="qt">${q}</span>`).join('')
+    :`<span style="color:var(--dim);font-size:9px">no qualifiers</span>`;
+
+  const rel=GRAPH.edges.filter(e=>e.src===n.id||e.dst===n.id);
+  document.getElementById('edge-list').innerHTML=rel.slice(0,25).map(e=>{
+    const isOut=e.src===n.id;
+    const oid=isOut?e.dst:e.src;
+    const other=nmap[oid];
+    const oname=other?other.name:(oid.split('::')[1]||oid);
+    const c=EC[e.kind]||'#607090';
+    return`<div class="ei" data-id="${oid}">
+      <span style="color:var(--dim)">${isOut?'→':'←'}</span>
+      <span class="ek" style="color:${c};border-color:${c}">${e.kind}</span>
+      <span class="en">${oname}</span>
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('.ei').forEach(el=>{
+    el.addEventListener('click',()=>{const n2=nmap[el.dataset.id];if(n2)selectNode(n2);});
+  });
+}
+
+// ── LEGEND ───────────────────────────────────────────────────────────────────
+const legItems=[
+  {label:'struct (N-gon)',fn:c=>{
+    c.strokeStyle='#4a9eff';c.fillStyle='#06101e';c.lineWidth=1.5;
+    c.beginPath();for(let i=0;i<6;i++){const a=2*Math.PI*i/6-Math.PI/2;i?c.lineTo(12+Math.cos(a)*10,12+Math.sin(a)*10):c.moveTo(12+Math.cos(a)*10,12+Math.sin(a)*10);}
+    c.closePath();c.fill();c.stroke();
+  }},
+  {label:'fn (diamond)',fn:c=>{
+    c.strokeStyle='#ff9d3d';c.fillStyle='#1a0c00';c.lineWidth=1.5;
+    c.save();c.translate(12,12);c.rotate(Math.PI/4);
+    c.beginPath();c.rect(-8,-5,16,10);c.fill();c.stroke();c.restore();
+  }},
+  {label:'enum (circle)',fn:c=>{
+    c.strokeStyle='#a855f7';c.fillStyle='#0e0018';c.lineWidth=1.5;
+    c.beginPath();c.arc(12,12,10,0,Math.PI*2);c.fill();c.stroke();
+    for(let i=0;i<4;i++){const a=2*Math.PI*i/4;c.fillStyle='#a855f7';c.globalAlpha=.7;c.beginPath();c.arc(12+Math.cos(a)*6,12+Math.sin(a)*6,2,0,Math.PI*2);c.fill();c.globalAlpha=1;}
+  }},
+  {label:'typedef (pill)',fn:c=>{
+    c.strokeStyle='#22d3ee';c.fillStyle='#001418';c.lineWidth=1;c.setLineDash([4,3]);
+    c.beginPath();c.moveTo(6,9);c.lineTo(18,9);c.arc(18,12,3,-Math.PI/2,Math.PI/2);c.lineTo(6,15);c.arc(6,12,3,Math.PI/2,3*Math.PI/2);c.closePath();
+    c.fill();c.stroke();c.setLineDash([]);
+  }},
+  {label:'field (square)',fn:c=>{
+    c.strokeStyle='#3d5070';c.fillStyle='#0a0e18';c.lineWidth=1;
+    c.beginPath();c.rect(7,7,10,10);c.fill();c.stroke();
+  }},
+  {label:'enum_const (◆)',fn:c=>{
+    c.strokeStyle='#6d28d9';c.fillStyle='#0a0012';c.lineWidth=1;
+    c.beginPath();c.moveTo(12,4);c.lineTo(18,12);c.lineTo(12,20);c.lineTo(6,12);c.closePath();c.fill();c.stroke();
+  }},
+];
+
+const legEl=document.getElementById('leg');
+legItems.forEach(item=>{
+  const wrap=document.createElement('div');wrap.className='li';
+  const cv2=document.createElement('canvas');cv2.width=24;cv2.height=24;cv2.style.flexShrink='0';
+  item.fn(cv2.getContext('2d'));
+  wrap.appendChild(cv2);
+  const lbl=document.createElement('span');lbl.textContent=item.label;wrap.appendChild(lbl);
+  legEl.appendChild(wrap);
+});
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+document.getElementById('sn').textContent=GRAPH.nodes.length;
+document.getElementById('se').textContent=GRAPH.edges.length;
+tick();
+</script>
+</body>
+</html>

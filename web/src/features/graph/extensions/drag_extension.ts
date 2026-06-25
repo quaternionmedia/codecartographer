@@ -41,7 +41,7 @@ export interface DragOptions {
 }
 
 export class DragExtension extends BaseExtension {
-  private dragBehavior: d3.DragBehavior<SVGCircleElement, any, any> | null = null;
+  private dragBehavior: d3.DragBehavior<SVGGraphicsElement, any, any> | null = null;
   private options: Required<DragOptions>;
   private draggedNodes: Set<any> = new Set();
   private initialPositions: Map<any, { x: number; y: number }> = new Map();
@@ -73,7 +73,7 @@ export class DragExtension extends BaseExtension {
 
     // Create drag behavior
     this.dragBehavior = d3
-      .drag<SVGCircleElement, any>()
+      .drag<SVGGraphicsElement, any>()
       .on('start', (event, d) => this.handleDragStart(event, d, context))
       .on('drag', (event, d) => this.handleDrag(event, d, context))
       .on('end', (event, d) => this.handleDragEnd(event, d, context));
@@ -121,7 +121,7 @@ export class DragExtension extends BaseExtension {
    * Handle drag start
    */
   private handleDragStart(
-    event: d3.D3DragEvent<SVGCircleElement, any, any>,
+    event: d3.D3DragEvent<SVGGraphicsElement, any, any>,
     node: any,
     context: ExtensionContext
   ): void {
@@ -162,7 +162,7 @@ export class DragExtension extends BaseExtension {
    * Handle drag
    */
   private handleDrag(
-    event: d3.D3DragEvent<SVGCircleElement, any, any>,
+    event: d3.D3DragEvent<SVGGraphicsElement, any, any>,
     node: any,
     context: ExtensionContext
   ): void {
@@ -211,7 +211,7 @@ export class DragExtension extends BaseExtension {
    * Handle drag end
    */
   private handleDragEnd(
-    event: d3.D3DragEvent<SVGCircleElement, any, any>,
+    event: d3.D3DragEvent<SVGGraphicsElement, any, any>,
     node: any,
     context: ExtensionContext
   ): void {
@@ -254,8 +254,15 @@ export class DragExtension extends BaseExtension {
    * Update visual positions of nodes and connected edges
    */
   private updateNodePositions(context: ExtensionContext): void {
+    const nodeElement = context.nodes.node();
+    const useTransform = !!nodeElement && nodeElement.tagName.toLowerCase() !== 'circle';
+
     // Update node positions
-    context.nodes.attr('cx', (d: any) => d.x).attr('cy', (d: any) => d.y);
+    if (useTransform) {
+      context.nodes.attr('transform', (d: any) => `translate(${d.x}, ${d.y})`);
+    } else {
+      context.nodes.attr('cx', (d: any) => d.x).attr('cy', (d: any) => d.y);
+    }
 
     // Update label positions
     context.labels.attr('x', (d: any) => d.x).attr('y', (d: any) => d.y);

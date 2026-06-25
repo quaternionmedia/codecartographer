@@ -51,12 +51,8 @@ export interface LocalState {
   component: m.Vnode[] | null;
 }
 
-/** Parser modes for analyzing code */
-export type ParserMode = 'ast' | 'directory' | 'dependencies';
-
 /** Parser configuration options */
 export interface ParserOptions {
-  mode: ParserMode;            // Parser type (ast, directory, dependencies)
   fileExtensions: string[];    // File extensions to parse (e.g., ['.py', '.js'])
 }
 
@@ -97,12 +93,15 @@ export interface GraphStylingOptions {
   // Interactions
   interactionProfile: string;  // Profile ID (default, cad, gaming, touch)
 
+  // System renderer — selects which SystemDefinition to render
+  systemId?: string;           // e.g. 'pam' (default)
+
   // Allow dynamic properties for extensibility
   [key: string]: unknown;
 }
 
 /** Graph renderer type */
-export type GraphRendererType = 'd3' | 'gravis' | 'notebook';
+export type GraphRendererType = 'd3' | 'gravis' | 'notebook' | 'system';
 
 /** Graph visualization state */
 export interface GraphState {
@@ -111,6 +110,12 @@ export interface GraphState {
   styling: GraphStylingOptions;
   parserOptions: ParserOptions;
   selectedRenderer: GraphRendererType;
+  /**
+   * The Directory object used for the most recent unified parse.
+   * Stored so that subsequent expand-node calls can reuse the same
+   * directory context without requiring the user to re-submit it.
+   */
+  parseDirectory: Directory | null;
 }
 
 /** Complete application state */
@@ -155,6 +160,7 @@ export const DEFAULT_LOCAL_STATE: LocalState = {
 export const DEFAULT_GRAPH_STATE: GraphState = {
   content: [],
   isRendering: false,
+  parseDirectory: null,
   styling: {
     layout: 'spring_layout',
     enablePhysics: true,
@@ -172,8 +178,7 @@ export const DEFAULT_GRAPH_STATE: GraphState = {
     interactionProfile: 'default',
   },
   parserOptions: {
-    mode: 'ast',
-    fileExtensions: ['.py'],
+    fileExtensions: [],
   },
   selectedRenderer: 'd3',
 };

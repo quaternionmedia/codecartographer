@@ -1,14 +1,13 @@
 import m from 'mithril';
-import { animate } from 'animejs';
 import { animations } from '../../../core/animations';
 import { Directory, RawFile } from '../../models/source';
 import { DirectoryContent } from '../../qm_comp_lib/directory/directory';
+import { SystemDefinitionRegistry } from '../../../features/graph/services/system_renderer';
 import './control_panel.css';
 
-export type TabId = 'source' | 'parse' | 'layout' | 'visual' | 'theme';
+export type TabId = 'source' | 'graph';
 export type CodeSourceMode = 'upload' | 'repo';
-export type ParserMode = 'ast' | 'directory' | 'dependencies';
-export type GraphRendererType = 'd3' | 'gravis' | 'notebook';
+export type GraphRendererType = 'd3' | 'gravis' | 'notebook' | 'system';
 
 export interface Tab {
   id: TabId;
@@ -43,11 +42,19 @@ export interface GraphStylingOptions {
 
   // Interactions
   interactionProfile: string;  // Profile ID (default, cad, gaming, touch)
+
+  // System renderer — selects which SystemDefinition to render
+  systemId?: string;
 }
 
 export interface ParserOptions {
-  mode: ParserMode;            // Parser type (ast, directory, dependencies)
   fileExtensions: string[];    // File extensions to parse (e.g., ['.py', '.js'])
+}
+
+export interface LoadingProgress {
+  loaded: number;
+  total: number;
+  phase: 'parsing' | 'layout' | 'streaming' | 'done';
 }
 
 export interface ControlPanelState {
@@ -58,9 +65,10 @@ export interface ControlPanelState {
   currentTheme: string;
   isLoading: boolean;
   statusMessage: string;
+  progress: LoadingProgress | null;
   panelHeight: number;
-  // Note: graphStyling, parserOptions, selectedRenderer are now in ControlPanelContent
-  // They come from cell.state (single source of truth)
+  graphSections: { layout: boolean; visual: boolean; theme: boolean };
+  parseDepth: number;  // 1 = files only, 2 = symbols, 3 = sub-symbols
 }
 
 export interface ControlPanelCallbacks {
@@ -68,7 +76,6 @@ export interface ControlPanelCallbacks {
   onRepoSubmit: (url: string) => void;
   onRepoFileClick: (url: string) => void;
   onPlotWholeRepo: () => void;
-  onPlotRepoDeps: () => void;
   onFileUpload: (files: FileList) => void;
   onUploadedFileClick: (file: RawFile) => void;
   onPlotAllUploads: () => void;
@@ -76,6 +83,23 @@ export interface ControlPanelCallbacks {
   onGraphStylingChange: (options: Partial<GraphStylingOptions>) => void;
   onParserOptionsChange: (options: Partial<ParserOptions>) => void;
   onRendererChange: (renderer: GraphRendererType) => void;
+  onCParserGithub: (repoUrl: string) => void;
+  onFolderExpand: (path: string) => void;
+  onExpandAll?: () => Promise<void>;
+  onCancel?: () => void;
+  onLoadFromCache?: (key: string) => void;
+  onEvictCache?: (key: string) => void;
+}
+
+export interface CachedEntry {
+  key: string;
+  label: string;
+  url: string;
+  mode: string;
+  layout: string;
+  ts: number;
+  age_seconds: number;
+  size_bytes: number;
 }
 
 export interface ControlPanelContent {
@@ -85,14 +109,13 @@ export interface ControlPanelContent {
   graphStyling: GraphStylingOptions;
   parserOptions: ParserOptions;
   selectedRenderer: GraphRendererType;
+  availableLanguages: Record<string, string[]> | null;
+  cachedGraphs: CachedEntry[] | null;
 }
 
 const TABS: Tab[] = [
-  { id: 'source', label: '1. Source', icon: '📁', helpText: 'Choose where to get your code' },
-  { id: 'parse', label: '2. Parse', icon: '🔍', helpText: 'Define how to analyze the code' },
-  { id: 'layout', label: '3. Layout', icon: '◈', helpText: 'Arrange nodes in space' },
-  { id: 'visual', label: '4. Visual', icon: '✦', helpText: 'Style the appearance' },
-  { id: 'theme', label: '5. Theme', icon: '🎨', helpText: 'Overall color scheme' },
+  { id: 'source', label: 'Source', icon: '📁', helpText: 'Load code and configure parsing' },
+  { id: 'graph',  label: 'Graph',  icon: '◈',  helpText: 'Renderer, layout, visual style and theme' },
 ];
 
 const LAYOUT_OPTIONS = [
@@ -107,35 +130,14 @@ const LAYOUT_OPTIONS = [
 ];
 
 const THEMES = [
-  { id: 'terminal', label: 'Terminal', preview: '#00ff41' },
-  { id: 'light', label: 'Light', preview: '#2196f3' },
+  { id: 'terminal',  label: 'Terminal',  preview: '#00ff41' },
+  { id: 'light',     label: 'Light',     preview: '#2196f3' },
   { id: 'cyberpunk', label: 'Cyberpunk', preview: '#ff00ff' },
-  { id: 'ocean', label: 'Ocean', preview: '#00d4ff' },
-  { id: 'sunset', label: 'Sunset', preview: '#ff6b35' },
-  { id: 'forest', label: 'Forest', preview: '#52b788' },
-  { id: 'noir', label: 'Noir', preview: '#ffffff' },
-  { id: 'candy', label: 'Candy', preview: '#ff69eb' },
-];
-
-const PARSER_MODES = [
-  {
-    value: 'ast',
-    label: 'AST (Code Structure)',
-    icon: '🔍',
-    description: 'Full Python abstract syntax tree analysis - shows classes, functions, imports, calls'
-  },
-  {
-    value: 'directory',
-    label: 'Directory Tree',
-    icon: '📁',
-    description: 'Filesystem hierarchy - shows folder and file structure'
-  },
-  {
-    value: 'dependencies',
-    label: 'Dependencies',
-    icon: '◈',
-    description: 'Import relationships - shows how files depend on each other'
-  },
+  { id: 'ocean',     label: 'Ocean',     preview: '#00d4ff' },
+  { id: 'sunset',    label: 'Sunset',    preview: '#ff6b35' },
+  { id: 'forest',    label: 'Forest',    preview: '#52b788' },
+  { id: 'noir',      label: 'Noir',      preview: '#ffffff' },
+  { id: 'candy',     label: 'Candy',     preview: '#ff69eb' },
 ];
 
 /** Creates the slide-up control panel */
@@ -145,7 +147,7 @@ export function ControlPanel(
   onStateChange: (updates: Partial<ControlPanelState>) => void,
   content: ControlPanelContent
 ): m.Vnode {
-  
+
   // Resize drag state
   let isDragging = false;
   let startY = 0;
@@ -153,8 +155,19 @@ export function ControlPanel(
 
   const updatePanelHeightVar = (element?: HTMLElement) => {
     if (!element) return;
-    const height = Math.ceil(element.getBoundingClientRect().height);
-    document.documentElement.style.setProperty('--control-panel-height', `${height}px`);
+    const totalHeight = Math.ceil(element.getBoundingClientRect().height);
+    let effectiveHeight = totalHeight;
+    if (!state.isOpen) {
+      // When the panel is closed the body may still be mid-transition (CSS
+      // `height 0.3s ease-out`). Measuring total − body gives the persistent
+      // chrome (handle + tab bar + status bar) regardless of transition state,
+      // because both values are read in the same synchronous layout flush.
+      const bodyEl = element.querySelector('.control-panel__body') as HTMLElement | null;
+      if (bodyEl) {
+        effectiveHeight = Math.max(0, totalHeight - Math.ceil(bodyEl.getBoundingClientRect().height));
+      }
+    }
+    document.documentElement.style.setProperty('--control-panel-height', `${effectiveHeight}px`);
   };
 
   const handleResizeStart = (e: MouseEvent) => {
@@ -168,7 +181,6 @@ export function ControlPanel(
     const handleMove = (e: MouseEvent) => {
       if (!isDragging) return;
       const delta = startY - e.clientY;
-      // Remove height limits - allow panel to be any size
       const newHeight = Math.max(150, startHeight + delta);
       onStateChange({ panelHeight: newHeight });
     };
@@ -186,16 +198,13 @@ export function ControlPanel(
   };
 
   const togglePanel = () => {
-    const newState = !state.isOpen;
-    onStateChange({ isOpen: newState });
+    onStateChange({ isOpen: !state.isOpen });
   };
 
   const setActiveTab = (tabId: TabId) => {
-    // If clicking the already-active tab, toggle panel open/closed
     if (state.activeTab === tabId) {
       onStateChange({ isOpen: !state.isOpen });
     } else {
-      // Switching to a different tab - ensure panel is open
       onStateChange({ activeTab: tabId, isOpen: true });
     }
   };
@@ -213,9 +222,7 @@ export function ControlPanel(
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleRepoSubmit();
-    }
+    if (e.key === 'Enter') handleRepoSubmit();
   };
 
   const handleThemeChange = (themeId: string) => {
@@ -229,10 +236,7 @@ export function ControlPanel(
     e.stopPropagation();
     const dropzone = e.currentTarget as HTMLElement;
     dropzone.classList.remove('panel-upload__dropzone--active');
-    
-    if (e.dataTransfer?.files.length) {
-      callbacks.onFileUpload(e.dataTransfer.files);
-    }
+    if (e.dataTransfer?.files.length) callbacks.onFileUpload(e.dataTransfer.files);
   };
 
   const handleDragOver = (e: DragEvent) => {
@@ -248,85 +252,45 @@ export function ControlPanel(
 
   const handleFileInput = (e: Event) => {
     const input = e.target as HTMLInputElement;
-    if (input.files?.length) {
-      callbacks.onFileUpload(input.files);
-    }
+    if (input.files?.length) callbacks.onFileUpload(input.files);
   };
 
-  // Unified Code tab - combines upload, repository, and demo
-  const renderCodeTab = () => {
-    const hasRepo = content.repoDirectory && content.repoDirectory.size > 0;
+  const toggleGraphSection = (section: keyof ControlPanelState['graphSections']) => {
+    onStateChange({
+      graphSections: {
+        ...state.graphSections,
+        [section]: !state.graphSections[section],
+      },
+    });
+  };
+
+  // ─── Source Tab (two-column) ───────────────────────────────────────────────
+
+  const renderSourceLeft = () => {
+    const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
     const hasUploads = content.uploadedFiles.length > 0;
     const repoInfo = content.repoDirectory?.info;
     const mode = state.codeSourceMode;
+    const activeExts = content.parserOptions.fileExtensions;
+    const supportedFiles = activeExts.length > 0
+      ? content.uploadedFiles.filter(f => activeExts.some(e => f.name.toLowerCase().endsWith(e.replace(/^\./, ''))))
+      : content.uploadedFiles;
 
-    // Count files ready for plotting
-    const uploadedPythonFiles = content.uploadedFiles.filter(f => f.name.endsWith('.py'));
-    const loadedFileCount = hasRepo
-      ? content.repoDirectory!.size
-      : uploadedPythonFiles.length;
-
-    return m('div.panel-section.panel-source', { class: state.activeTab === 'source' ? 'panel-section--active' : '' }, [
-      // Quick Start section
-      m('div.panel-source__quickstart', [
-        m('span.panel-settings__label-compact', 'Quick Start'),
-        m('button.panel-settings__button-option', {
-          onclick: (e: MouseEvent) => {
-            animations.buttonPress(e.currentTarget as Element);
-            // Load demo data - will use current parser mode and renderer
-            callbacks.onDemo();
-          },
-          style: 'width: 100%;'
-        }, [
-          m('span', '⚡'),
-          m('span', 'Load Demo'),
-        ]),
+    return m('div.panel-source__left', [
+      // Mode toggle
+      m('div.panel-source__mode-toggle', [
+        m('button.panel-source__mode-btn', {
+          class: mode === 'upload' ? 'panel-source__mode-btn--active' : '',
+          onclick: () => onStateChange({ codeSourceMode: 'upload' }),
+        }, [m('span', '↑'), ' Upload']),
+        m('button.panel-source__mode-btn', {
+          class: mode === 'repo' ? 'panel-source__mode-btn--active' : '',
+          onclick: () => onStateChange({ codeSourceMode: 'repo' }),
+        }, [m('span', '⬇'), ' Repository']),
       ]),
 
-      // Status feedback
-      m('div.panel-source__status', [
-        m('span.panel-source__status-indicator', {
-          class: loadedFileCount > 0 ? 'panel-source__status-indicator--ready' : '',
-        }),
-        m('span.panel-source__status-text',
-          loadedFileCount > 0
-            ? `${loadedFileCount} file(s) ready`
-            : mode === 'upload' ? 'Drop Python files or browse' : 'Enter a GitHub URL'
-        ),
-        // Add plot button when files are ready
-        loadedFileCount > 0 ? m('button.panel-source__plot-btn', {
-          onclick: (e: MouseEvent) => {
-            animations.buttonPress(e.currentTarget as Element);
-            if (hasRepo) {
-              callbacks.onPlotWholeRepo();
-            } else if (hasUploads) {
-              callbacks.onPlotAllUploads();
-            }
-          }
-        }, [
-          m('span', '▶'),
-          m('span', 'Plot'),
-        ]) : null,
-      ]),
-
-      // Mode toggle (Upload/Repository)
-      m('div.panel-source__header-row', [
-        // Source mode toggle
-        m('div.panel-source__mode-toggle', [
-          m('button.panel-source__mode-btn', {
-            class: mode === 'upload' ? 'panel-source__mode-btn--active' : '',
-            onclick: () => onStateChange({ codeSourceMode: 'upload' }),
-          }, [m('span', '↑'), ' Upload']),
-          m('button.panel-source__mode-btn', {
-            class: mode === 'repo' ? 'panel-source__mode-btn--active' : '',
-            onclick: () => onStateChange({ codeSourceMode: 'repo' }),
-          }, [m('span', '⬇'), ' Repository']),
-        ]),
-      ]),
-      
-      // Upload mode content
+      // Upload mode
       mode === 'upload' ? m('div.panel-source__upload', [
-        // Dropzone
         m('div.panel-upload__dropzone', {
           ondrop: handleDrop,
           ondragover: handleDragOver,
@@ -334,39 +298,31 @@ export function ControlPanel(
           onclick: () => document.getElementById('file-upload-input')?.click(),
         }, [
           m('span.panel-upload__icon', '📁'),
-          m('span.panel-upload__text', 'Drop .py files here or click to browse'),
-          m('input#file-upload-input[type=file][multiple][accept=.py]', {
+          m('span.panel-upload__text', 'Drop source files here or click to browse'),
+          m('input#file-upload-input[type=file][multiple]', {
             style: { display: 'none' },
+            attrs: activeExts.length > 0 ? { accept: activeExts.join(',') } : {},
             onchange: handleFileInput,
           }),
         ]),
-        
-        // Uploaded files list
         hasUploads ? m('div.panel-source__files', [
           m('div.panel-source__files-header', [
-            m('span', `${uploadedPythonFiles.length} Python file(s)`),
-            uploadedPythonFiles.length > 0 ? m('button', {
-              onclick: (e: MouseEvent) => {
-                animations.buttonPress(e.currentTarget as Element);
-                callbacks.onPlotAllUploads();
-              }
-            }, '◇ Plot All') : null,
+            m('span', `${supportedFiles.length} file(s)`),
           ]),
           m('div.panel-source__file-list', [
             content.uploadedFiles.map((file: RawFile) => {
-              const ext = file.name.split('.').pop() || '';
-              const isPython = ext === 'py';
-              
+              const isSupported = activeExts.length === 0 ||
+                activeExts.some(e => file.name.toLowerCase().endsWith(e.replace(/^\./, '')));
               return m('div.panel-source__file', {
-                class: isPython ? '' : 'panel-source__file--disabled',
+                class: isSupported ? '' : 'panel-source__file--disabled',
                 onclick: (e: MouseEvent) => {
-                  if (isPython) {
+                  if (isSupported) {
                     animations.buttonPress(e.currentTarget as Element);
                     callbacks.onUploadedFileClick(file);
                   }
                 },
               }, [
-                m('span.panel-source__file-icon', isPython ? '🐍' : '📄'),
+                m('span.panel-source__file-icon', isSupported ? '◈' : '📄'),
                 m('span.panel-source__file-name', file.name),
                 m('span.panel-source__file-size', `${Math.round(file.size / 1024) || '<1'}kb`),
               ]);
@@ -374,10 +330,10 @@ export function ControlPanel(
           ]),
         ]) : null,
       ]) : null,
-      
-      // Repository mode content
+
+      // Repository mode
       mode === 'repo' ? m('div.panel-source__repo', [
-        // URL Input
+        // URL input
         m('div.panel-source__url-input', [
           m('input[type=text]', {
             placeholder: 'https://github.com/user/repository',
@@ -386,74 +342,128 @@ export function ControlPanel(
             onkeydown: handleKeyDown,
             disabled: state.isLoading,
           }),
-          m('button.primary', { 
-            onclick: handleRepoSubmit, 
-            disabled: !state.repoUrl.trim() || state.isLoading 
+          m('button.primary', {
+            onclick: handleRepoSubmit,
+            disabled: !state.repoUrl.trim() || state.isLoading,
           }, state.isLoading ? '...' : '→ Fetch'),
         ]),
-        
-        // Loaded repository
-        hasRepo ? m('div.panel-source__repo-content', [
+
+        // Recent cached graphs (when no repo loaded and cache exists)
+        !hasRepo && content.cachedGraphs && content.cachedGraphs.length > 0
+          ? m('div.panel-source__cached', [
+              m('span.panel-settings__label-compact', 'Recent'),
+              m('div.panel-source__cached-list',
+                content.cachedGraphs.slice(0, 5).map(entry => {
+                  const ageMins = Math.round(entry.age_seconds / 60);
+                  const ageStr = ageMins < 60
+                    ? `${ageMins}m ago`
+                    : `${Math.round(ageMins / 60)}h ago`;
+                  return m('div.panel-source__cached-entry', [
+                    m('button.panel-source__cached-chip', {
+                      onclick: () => callbacks.onLoadFromCache?.(entry.key),
+                      title: `${entry.url}\n${entry.mode} · ${entry.layout}`,
+                      disabled: state.isLoading,
+                    }, [
+                      m('span.panel-source__cached-label', entry.label),
+                      m('span.panel-source__cached-age', ageStr),
+                    ]),
+                    m('button.panel-source__cached-evict', {
+                      onclick: () => callbacks.onEvictCache?.(entry.key),
+                      title: 'Remove from cache',
+                      disabled: state.isLoading,
+                    }, '✕'),
+                  ]);
+                })
+              ),
+            ])
+          : null,
+
+        // Example chips (when no repo loaded)
+        !hasRepo ? m('div.panel-source__examples', [
+          m('span.panel-settings__label-compact', 'Examples'),
+          m('div.panel-source__example-chips', [
+            ...[
+              { label: 'requests', url: 'https://github.com/psf/requests',    title: 'requests — small repo (~2 MB), full content' },
+              { label: 'Flask',    url: 'https://github.com/pallets/flask',   title: 'Flask — medium repo (~8 MB), structure only' },
+              { label: 'React',    url: 'https://github.com/facebook/react',  title: 'React — large repo (~25 MB), structure only' },
+              { label: 'CPython',  url: 'https://github.com/python/cpython',  title: 'CPython — xlarge repo (~200 MB), shallow root' },
+              { label: 'Linux',    url: 'https://github.com/torvalds/linux',  title: 'Linux — xxlarge repo (~1 GB+), shallow root' },
+            ].map(ex =>
+              m('button.panel-source__example-chip', {
+                title: ex.title,
+                onclick: (e: MouseEvent) => {
+                  animations.buttonPress(e.currentTarget as Element);
+                  onStateChange({ repoUrl: ex.url });
+                  callbacks.onRepoSubmit(ex.url);
+                },
+                disabled: state.isLoading,
+              }, ex.label)
+            ),
+          ]),
+        ]) : null,
+
+        // Loaded repo — header + tree fills remaining height
+        hasRepo ? m('div.panel-source__repo-loaded', [
           m('div.panel-source__repo-header', [
             m('span.panel-source__repo-name', `${repoInfo?.owner}/${repoInfo?.name}`),
             m('span.panel-source__repo-size', `${content.repoDirectory?.size} files`),
           ]),
-          m('div.panel-source__repo-actions', [
-            m('button', { 
+          content.repoDirectory?.is_partial ? m('div.panel-source__partial-banner', [
+            m('span', '⚠ Partial — click a folder ▶ to expand'),
+            callbacks.onExpandAll ? m('button.panel-source__expand-all-btn', {
               onclick: (e: MouseEvent) => {
                 animations.buttonPress(e.currentTarget as Element);
-                callbacks.onPlotWholeRepo();
-              }
-            }, '◇ Directory Tree'),
-            m('button', { 
-              onclick: (e: MouseEvent) => {
-                animations.buttonPress(e.currentTarget as Element);
-                callbacks.onPlotRepoDeps();
-              }
-            }, '◈ Dependencies'),
-          ]),
-          // Directory tree (compact)
+                callbacks.onExpandAll!();
+              },
+              title: 'Expand all folders (structure only, no file content)',
+            }, '⊞ Expand All') : null,
+          ]) : null,
           m('div.panel-source__directory', [
             m(DirectoryContent, {
               folderName: repoInfo ? `${repoInfo.owner}/${repoInfo.name}` : 'Repository',
               folders: content.repoDirectory?.root.folders || [],
               files: content.repoDirectory?.root.files || [],
               onUrlFileClicked: callbacks.onRepoFileClick,
+              onFolderExpand: callbacks.onFolderExpand,
+              allowedExtensions: content.availableLanguages
+                ? Object.values(content.availableLanguages).flat()
+                : null,
             }),
           ]),
-        ]) : m('p.panel-source__empty', 
-          'Enter a GitHub repository URL to fetch and visualize its structure.'
-        ),
+        ]) : null,
       ]) : null,
     ]);
   };
 
-  // Parser Tab - Parser mode and file extensions
-  const renderParserTab = () => {
+  const renderSourceRight = () => {
+    const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
+    const hasUploads = content.uploadedFiles.length > 0;
+    const hasSource = hasRepo || hasUploads;
     const parser = content.parserOptions;
 
-    return m('div.panel-section.panel-parse', { class: state.activeTab === 'parse' ? 'panel-section--active' : '' }, [
+    return m('div.panel-source__right', [
+      // File Extensions
       m('div.panel-settings__group', [
-        m('span.panel-settings__label-compact', 'Parse Mode'),
-        m('div.panel-settings__button-group',
-          PARSER_MODES.map(mode =>
-            m('button.panel-settings__button-option', {
-              class: parser.mode === mode.value ? 'panel-settings__button-option--active' : '',
-              onclick: () => callbacks.onParserOptionsChange({ mode: mode.value as ParserMode }),
-              title: mode.description,
-            }, [
-              m('span', mode.icon),
-              m('span', mode.label),
-            ])
-          )
-        ),
-      ]),
-
-      m('div.panel-settings__group', [
-        m('span.panel-settings__label-compact', 'File Extensions'),
+        m('span.panel-settings__label-compact', 'Extensions'),
+        content.availableLanguages ? m('div.panel-settings__chips',
+          Object.entries(content.availableLanguages).map(([lang, exts]) => {
+            const active = exts.length > 0 && exts.every(e => parser.fileExtensions.includes(e));
+            return m('button.panel-settings__chip', {
+              class: active ? 'panel-settings__chip--active' : '',
+              onclick: () => {
+                const cur = parser.fileExtensions;
+                callbacks.onParserOptionsChange({
+                  fileExtensions: active
+                    ? cur.filter(e => !exts.includes(e))
+                    : [...new Set([...cur, ...exts])],
+                });
+              },
+            }, lang);
+          })
+        ) : null,
         m('input.panel-settings__input-compact[type=text]', {
           value: parser.fileExtensions.join(', '),
-          placeholder: '.py, .js, .ts',
+          placeholder: 'Leave empty for all languages',
           onchange: (e: Event) => {
             const value = (e.target as HTMLInputElement).value;
             const extensions = value.split(',').map(ext => ext.trim()).filter(ext => ext.length > 0);
@@ -461,16 +471,103 @@ export function ControlPanel(
           },
         }),
       ]),
+
+      // Parse Depth
+      m('div.panel-settings__group', [
+        m('span.panel-settings__label-compact', 'Parse Depth'),
+        m('div.panel-settings__chips',
+          [
+            { value: 1, label: 'Files' },
+            { value: 2, label: 'Symbols' },
+            { value: 3, label: 'Deep' },
+          ].map(opt =>
+            m('button.panel-settings__chip', {
+              class: state.parseDepth === opt.value ? 'panel-settings__chip--active' : '',
+              onclick: () => onStateChange({ parseDepth: opt.value }),
+              title: opt.value === 1 ? 'Depth 1: directory + file nodes'
+                   : opt.value === 2 ? 'Depth 2: + top-level symbols (classes, functions)'
+                   : 'Depth 3: + sub-symbols (args, fields)',
+            }, opt.label)
+          )
+        ),
+      ]),
+
+      m('div.panel-source__divider'),
+
+      m('div.panel-source__spacer'),
+
+      // Plot button (when source loaded) — primary CTA
+      hasSource ? m('button.panel-source__plot-primary', {
+        onclick: (e: MouseEvent) => {
+          animations.buttonPress(e.currentTarget as Element);
+          if (hasRepo) callbacks.onPlotWholeRepo();
+          else callbacks.onPlotAllUploads();
+        },
+      }, [m('span', '▶'), m('span', 'Plot')]) : null,
+
+      m('div.panel-source__divider'),
+
+      // Quick Start (when nothing loaded)
+      m('div.panel-source__quickstart', [
+        m('span.panel-settings__label-compact', 'Quick Start'),
+        m('button.panel-settings__button-option', {
+          onclick: (e: MouseEvent) => {
+            animations.buttonPress(e.currentTarget as Element);
+            callbacks.onDemo();
+          },
+          style: 'width: 100%;',
+        }, [m('span', '⚡'), m('span', 'Load Demo')]),
+      ]),
     ]);
   };
 
-  // Layout Tab - Layout algorithms and physics
-  const renderLayoutTab = () => {
+  const renderSourceTab = () => {
+    return m('div.panel-section.panel-source', {
+      class: state.activeTab === 'source' ? 'panel-section--active' : '',
+    }, [
+      m('div.panel-source__2col', [
+        renderSourceLeft(),
+        renderSourceRight(),
+      ]),
+    ]);
+  };
+
+  // ─── Graph Tab (accordion) ─────────────────────────────────────────────────
+
+  const renderGraphTab = () => {
     const styling = content.graphStyling;
     const selectedRenderer = content.selectedRenderer;
+    const isSystem = selectedRenderer === 'system';
+    const supportsLayout  = selectedRenderer === 'd3';
+    const supportsPhysics = !['notebook', 'system'].includes(selectedRenderer);
+    const supportsVisual  = !['notebook', 'system'].includes(selectedRenderer);
+    const sections = state.graphSections;
 
-    return m('div.panel-section.panel-layout', { class: state.activeTab === 'layout' ? 'panel-section--active' : '' }, [
-      // Renderer selection (TOP - this is the first choice)
+    const renderSectionHeader = (label: string, key: keyof typeof sections) =>
+      m('div.panel-graph__section-header', {
+        onclick: () => toggleGraphSection(key),
+      }, [
+        m('span.panel-graph__section-label', label),
+        m('span.panel-graph__section-chevron', {
+          class: sections[key] ? 'panel-graph__section-chevron--open' : '',
+        }, '▶'),
+      ]);
+
+    const renderLabelColorGroup = () => m('div.panel-settings__group', [
+      m('span.panel-settings__label-compact', 'Label Color'),
+      m('input.panel-settings__color[type=color]', {
+        value: styling.labelColor,
+        oninput: (e: Event) => {
+          const value = (e.target as HTMLInputElement).value;
+          callbacks.onGraphStylingChange({ labelColor: value });
+        },
+      }),
+    ]);
+
+    return m('div.panel-section.panel-graph', {
+      class: state.activeTab === 'graph' ? 'panel-section--active' : '',
+    }, [
+      // Renderer selector — always visible at top
       m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Renderer'),
         m('select.panel-settings__select', {
@@ -483,244 +580,214 @@ export function ControlPanel(
           m('option', { value: 'd3' }, 'D3.js (Force-directed)'),
           m('option', { value: 'gravis' }, 'Gravis (vis-network)'),
           m('option', { value: 'notebook' }, 'Notebook (Static HTML)'),
+          m('option', { value: 'system' }, 'System Monitor (PAM)'),
         ]),
       ]),
 
-      // Layout algorithm (only show if NOT notebook renderer)
-      selectedRenderer !== 'notebook' ? m('div.panel-settings__group', [
-        m('span.panel-settings__label-compact', 'Algorithm'),
-        m('select.panel-settings__select', {
-          value: styling.layout,
-          onchange: (e: Event) => {
-            const value = (e.target as HTMLSelectElement).value;
-            callbacks.onGraphStylingChange({ layout: value });
-          },
-        }, LAYOUT_OPTIONS.map(opt =>
-          m('option', { value: opt.value }, opt.label)
-        )),
+      // System renderer controls (only visible when system renderer is active)
+      isSystem ? m('div.panel-settings__group', [
+        // Definition selector — only show when more than one definition is registered
+        SystemDefinitionRegistry.all().length > 1 ? m('div.panel-settings__group', [
+          m('span.panel-settings__label-compact', 'System'),
+          m('select.panel-settings__select', {
+            value: styling.systemId ?? 'pam',
+            onchange: (e: Event) => {
+              callbacks.onGraphStylingChange({ systemId: (e.target as HTMLSelectElement).value });
+            },
+          }, SystemDefinitionRegistry.all().map(def =>
+            m('option', { value: def.id }, def.name)
+          )),
+        ]) : null,
+
+        // Mode (demo / live) — always shown for system renderer
+        m('span.panel-settings__label-compact', 'Mode'),
+        m('div', { style: { display: 'flex', gap: '6px', marginTop: '6px' } }, [
+          m('button.panel-settings__option', {
+            class: (styling as Record<string, unknown>).pamMode !== 'live' ? 'panel-settings__option--active' : '',
+            onclick: () => callbacks.onGraphStylingChange({ pamMode: 'demo' }),
+          }, 'Demo'),
+          m('button.panel-settings__option', {
+            class: (styling as Record<string, unknown>).pamMode === 'live' ? 'panel-settings__option--active' : '',
+            onclick: () => callbacks.onGraphStylingChange({ pamMode: 'live' }),
+          }, 'Live'),
+        ]),
+        m('p.panel-settings__hint', 'Demo always works. Live streams system events via WebSocket.'),
       ]) : null,
 
-      // Physics settings (only show if NOT notebook renderer)
-      selectedRenderer !== 'notebook' ? m('div.panel-settings__group', [
-        m('div.panel-settings__toggle-row', [
-          m('span.panel-settings__label-compact', 'Physics'),
-          m('label.panel-settings__toggle-compact.panel-settings__toggle', [
-            m('input[type=checkbox]', {
-              checked: styling.enablePhysics,
-              onchange: (e: Event) => {
-                const checked = (e.target as HTMLInputElement).checked;
-                callbacks.onGraphStylingChange({ enablePhysics: checked });
-              },
-            }),
-            m('span.panel-settings__toggle-slider'),
+      // Layout section
+      renderSectionHeader('Layout', 'layout'),
+      sections.layout ? m('div.panel-graph__section-content', [
+        supportsLayout ? m('div.panel-settings__group', [
+          m('span.panel-settings__label-compact', 'Algorithm'),
+          m('select.panel-settings__select', {
+            value: styling.layout,
+            onchange: (e: Event) => {
+              const value = (e.target as HTMLSelectElement).value;
+              callbacks.onGraphStylingChange({ layout: value });
+            },
+          }, LAYOUT_OPTIONS.map(opt =>
+            m('option', { value: opt.value }, opt.label)
+          )),
+        ]) : m('p.panel-settings__hint', 'Layout algorithm is only available for the D3 renderer.'),
+
+        supportsPhysics ? m('div.panel-settings__group', [
+          m('div.panel-settings__toggle-row', [
+            m('span.panel-settings__label-compact', 'Physics'),
+            m('label.panel-settings__toggle-compact.panel-settings__toggle', [
+              m('input[type=checkbox]', {
+                checked: styling.enablePhysics,
+                onchange: (e: Event) => {
+                  const checked = (e.target as HTMLInputElement).checked;
+                  callbacks.onGraphStylingChange({ enablePhysics: checked });
+                },
+              }),
+              m('span.panel-settings__toggle-slider'),
+            ]),
           ]),
-        ]),
-      ]) : null,
+        ]) : null,
 
-      // Repulsion force slider (only if physics enabled AND not notebook)
-      selectedRenderer !== 'notebook' && styling.enablePhysics ? m('div.panel-settings__group', [
-        m('span.panel-settings__label-compact', 'Repulsion Force'),
-        m('div.panel-settings__slider-group', [
-          m('input.panel-settings__slider[type=range]', {
-            min: -500,
-            max: -10,
-            step: 10,
-            value: styling.chargeStrength,
-            oninput: (e: Event) => {
-              const value = parseFloat((e.target as HTMLInputElement).value);
-              callbacks.onGraphStylingChange({ chargeStrength: value });
-            },
-          }),
-          m('span.panel-settings__slider-value', `${styling.chargeStrength}px`),
-        ]),
-      ]) : null,
-
-      // Link distance slider (only if physics enabled AND not notebook)
-      selectedRenderer !== 'notebook' && styling.enablePhysics ? m('div.panel-settings__group', [
-        m('span.panel-settings__label-compact', 'Link Distance'),
-        m('div.panel-settings__slider-group', [
-          m('input.panel-settings__slider[type=range]', {
-            min: 10,
-            max: 300,
-            step: 5,
-            value: styling.linkDistance,
-            oninput: (e: Event) => {
-              const value = parseFloat((e.target as HTMLInputElement).value);
-              callbacks.onGraphStylingChange({ linkDistance: value });
-            },
-          }),
-          m('span.panel-settings__slider-value', `${styling.linkDistance}px`),
-        ]),
-      ]) : null,
-    ]);
-  };
-
-  // Style Tab - Visual appearance (nodes, edges, labels)
-  const renderStyleTab = () => {
-    const styling = content.graphStyling;
-
-    return m('div.panel-section.panel-visual', { class: state.activeTab === 'visual' ? 'panel-section--active' : '' }, [
-      // 2-column grid layout for nodes/edges/labels
-      m('div.panel-visual__2col', [
-        // Left column: Node settings
-        m('div.panel-visual__column', [
+        supportsPhysics && styling.enablePhysics ? m('div.panel-graph__slider-row', [
           m('div.panel-settings__group', [
-            m('div.panel-settings__toggle-row', [
-              m('span.panel-settings__label-compact', 'Node Labels'),
-              m('label.panel-settings__toggle-compact.panel-settings__toggle', [
-                m('input[type=checkbox]', {
-                  checked: styling.showNodeLabels,
-                  onchange: (e: Event) => {
-                    const checked = (e.target as HTMLInputElement).checked;
-                    callbacks.onGraphStylingChange({ showNodeLabels: checked });
-                  },
-                }),
-                m('span.panel-settings__toggle-slider'),
+            m('span.panel-settings__label-compact', 'Repulsion'),
+            m('div.panel-settings__slider-group', [
+              m('input.panel-settings__slider[type=range]', {
+                min: -500, max: -10, step: 10,
+                value: styling.chargeStrength,
+                oninput: (e: Event) => {
+                  const value = parseFloat((e.target as HTMLInputElement).value);
+                  callbacks.onGraphStylingChange({ chargeStrength: value });
+                },
+              }),
+              m('span.panel-settings__slider-value', `${styling.chargeStrength}px`),
+            ]),
+          ]),
+          m('div.panel-settings__group', [
+            m('span.panel-settings__label-compact', 'Link Distance'),
+            m('div.panel-settings__slider-group', [
+              m('input.panel-settings__slider[type=range]', {
+                min: 10, max: 300, step: 5,
+                value: styling.linkDistance,
+                oninput: (e: Event) => {
+                  const value = parseFloat((e.target as HTMLInputElement).value);
+                  callbacks.onGraphStylingChange({ linkDistance: value });
+                },
+              }),
+              m('span.panel-settings__slider-value', `${styling.linkDistance}px`),
+            ]),
+          ]),
+        ]) : null,
+      ]) : null,
+
+      // Visual section
+      renderSectionHeader('Visual', 'visual'),
+      sections.visual ? m('div.panel-graph__section-content', [
+        !supportsVisual
+          ? m('div.panel-settings__group', [
+              renderLabelColorGroup(),
+              m('div.panel-settings__help-text', 'Notebook renderer only supports label color.'),
+            ])
+          : m('div.panel-visual__2col', [
+              // Left column: Node settings
+              m('div.panel-visual__column', [
+                m('div.panel-settings__group', [
+                  m('div.panel-settings__toggle-row', [
+                    m('span.panel-settings__label-compact', 'Node Labels'),
+                    m('label.panel-settings__toggle-compact.panel-settings__toggle', [
+                      m('input[type=checkbox]', {
+                        checked: styling.showNodeLabels,
+                        onchange: (e: Event) => {
+                          callbacks.onGraphStylingChange({ showNodeLabels: (e.target as HTMLInputElement).checked });
+                        },
+                      }),
+                      m('span.panel-settings__toggle-slider'),
+                    ]),
+                  ]),
+                ]),
+                m('div.panel-settings__group', [
+                  m('span.panel-settings__label-compact', 'Node Size'),
+                  m('div.panel-settings__slider-group', [
+                    m('input.panel-settings__slider[type=range]', {
+                      min: 2, max: 30, step: 1, value: styling.nodeSize,
+                      oninput: (e: Event) => callbacks.onGraphStylingChange({ nodeSize: parseFloat((e.target as HTMLInputElement).value) }),
+                    }),
+                    m('span.panel-settings__slider-value', `${styling.nodeSize}px`),
+                  ]),
+                ]),
+                m('div.panel-settings__group', [
+                  m('span.panel-settings__label-compact', 'Node Opacity'),
+                  m('div.panel-settings__slider-group', [
+                    m('input.panel-settings__slider[type=range]', {
+                      min: 0.1, max: 1, step: 0.05, value: styling.nodeOpacity,
+                      oninput: (e: Event) => callbacks.onGraphStylingChange({ nodeOpacity: parseFloat((e.target as HTMLInputElement).value) }),
+                    }),
+                    m('span.panel-settings__slider-value', `${Math.round(styling.nodeOpacity * 100)}%`),
+                  ]),
+                ]),
+                m('div.panel-settings__group', [
+                  m('span.panel-settings__label-compact', 'Border Width'),
+                  m('div.panel-settings__slider-group', [
+                    m('input.panel-settings__slider[type=range]', {
+                      min: 0, max: 8, step: 0.5, value: styling.nodeBorderWidth,
+                      oninput: (e: Event) => callbacks.onGraphStylingChange({ nodeBorderWidth: parseFloat((e.target as HTMLInputElement).value) }),
+                    }),
+                    m('span.panel-settings__slider-value', `${styling.nodeBorderWidth}px`),
+                  ]),
+                ]),
+              ]),
+              // Right column: Edge + Label settings
+              m('div.panel-visual__column', [
+                m('div.panel-settings__group', [
+                  m('div.panel-settings__toggle-row', [
+                    m('span.panel-settings__label-compact', 'Edge Labels'),
+                    m('label.panel-settings__toggle-compact.panel-settings__toggle', [
+                      m('input[type=checkbox]', {
+                        checked: styling.showEdgeLabels,
+                        onchange: (e: Event) => {
+                          callbacks.onGraphStylingChange({ showEdgeLabels: (e.target as HTMLInputElement).checked });
+                        },
+                      }),
+                      m('span.panel-settings__toggle-slider'),
+                    ]),
+                  ]),
+                ]),
+                m('div.panel-settings__group', [
+                  m('span.panel-settings__label-compact', 'Edge Width'),
+                  m('div.panel-settings__slider-group', [
+                    m('input.panel-settings__slider[type=range]', {
+                      min: 0.5, max: 10, step: 0.5, value: styling.edgeWidth,
+                      oninput: (e: Event) => callbacks.onGraphStylingChange({ edgeWidth: parseFloat((e.target as HTMLInputElement).value) }),
+                    }),
+                    m('span.panel-settings__slider-value', `${styling.edgeWidth}px`),
+                  ]),
+                ]),
+                m('div.panel-settings__group', [
+                  m('span.panel-settings__label-compact', 'Edge Opacity'),
+                  m('div.panel-settings__slider-group', [
+                    m('input.panel-settings__slider[type=range]', {
+                      min: 0.1, max: 1, step: 0.05, value: styling.edgeOpacity,
+                      oninput: (e: Event) => callbacks.onGraphStylingChange({ edgeOpacity: parseFloat((e.target as HTMLInputElement).value) }),
+                    }),
+                    m('span.panel-settings__slider-value', `${Math.round(styling.edgeOpacity * 100)}%`),
+                  ]),
+                ]),
+                m('div.panel-settings__group', [
+                  m('span.panel-settings__label-compact', 'Label Size'),
+                  m('div.panel-settings__slider-group', [
+                    m('input.panel-settings__slider[type=range]', {
+                      min: 6, max: 24, step: 1, value: styling.labelSize,
+                      oninput: (e: Event) => callbacks.onGraphStylingChange({ labelSize: parseFloat((e.target as HTMLInputElement).value) }),
+                    }),
+                    m('span.panel-settings__slider-value', `${styling.labelSize}px`),
+                  ]),
+                ]),
+                renderLabelColorGroup(),
               ]),
             ]),
-          ]),
+      ]) : null,
 
-          m('div.panel-settings__group', [
-            m('span.panel-settings__label-compact', 'Node Size'),
-            m('div.panel-settings__slider-group', [
-              m('input.panel-settings__slider[type=range]', {
-                min: 2,
-                max: 30,
-                step: 1,
-                value: styling.nodeSize,
-                oninput: (e: Event) => {
-                  const value = parseFloat((e.target as HTMLInputElement).value);
-                  callbacks.onGraphStylingChange({ nodeSize: value });
-                },
-              }),
-              m('span.panel-settings__slider-value', `${styling.nodeSize}px`),
-            ]),
-          ]),
-
-          m('div.panel-settings__group', [
-            m('span.panel-settings__label-compact', 'Node Opacity'),
-            m('div.panel-settings__slider-group', [
-              m('input.panel-settings__slider[type=range]', {
-                min: 0.1,
-                max: 1,
-                step: 0.05,
-                value: styling.nodeOpacity,
-                oninput: (e: Event) => {
-                  const value = parseFloat((e.target as HTMLInputElement).value);
-                  callbacks.onGraphStylingChange({ nodeOpacity: value });
-                },
-              }),
-              m('span.panel-settings__slider-value', `${Math.round(styling.nodeOpacity * 100)}%`),
-            ]),
-          ]),
-
-          m('div.panel-settings__group', [
-            m('span.panel-settings__label-compact', 'Border Width'),
-            m('div.panel-settings__slider-group', [
-              m('input.panel-settings__slider[type=range]', {
-                min: 0,
-                max: 8,
-                step: 0.5,
-                value: styling.nodeBorderWidth,
-                oninput: (e: Event) => {
-                  const value = parseFloat((e.target as HTMLInputElement).value);
-                  callbacks.onGraphStylingChange({ nodeBorderWidth: value });
-                },
-              }),
-              m('span.panel-settings__slider-value', `${styling.nodeBorderWidth}px`),
-            ]),
-          ]),
-        ]),
-
-        // Right column: Edge and Label settings
-        m('div.panel-visual__column', [
-          m('div.panel-settings__group', [
-            m('div.panel-settings__toggle-row', [
-              m('span.panel-settings__label-compact', 'Edge Labels'),
-              m('label.panel-settings__toggle-compact.panel-settings__toggle', [
-                m('input[type=checkbox]', {
-                  checked: styling.showEdgeLabels,
-                  onchange: (e: Event) => {
-                    const checked = (e.target as HTMLInputElement).checked;
-                    callbacks.onGraphStylingChange({ showEdgeLabels: checked });
-                  },
-                }),
-                m('span.panel-settings__toggle-slider'),
-              ]),
-            ]),
-          ]),
-
-          m('div.panel-settings__group', [
-            m('span.panel-settings__label-compact', 'Edge Width'),
-            m('div.panel-settings__slider-group', [
-              m('input.panel-settings__slider[type=range]', {
-                min: 0.5,
-                max: 10,
-                step: 0.5,
-                value: styling.edgeWidth,
-                oninput: (e: Event) => {
-                  const value = parseFloat((e.target as HTMLInputElement).value);
-                  callbacks.onGraphStylingChange({ edgeWidth: value });
-                },
-              }),
-              m('span.panel-settings__slider-value', `${styling.edgeWidth}px`),
-            ]),
-          ]),
-
-          m('div.panel-settings__group', [
-            m('span.panel-settings__label-compact', 'Edge Opacity'),
-            m('div.panel-settings__slider-group', [
-              m('input.panel-settings__slider[type=range]', {
-                min: 0.1,
-                max: 1,
-                step: 0.05,
-                value: styling.edgeOpacity,
-                oninput: (e: Event) => {
-                  const value = parseFloat((e.target as HTMLInputElement).value);
-                  callbacks.onGraphStylingChange({ edgeOpacity: value });
-                },
-              }),
-              m('span.panel-settings__slider-value', `${Math.round(styling.edgeOpacity * 100)}%`),
-            ]),
-          ]),
-
-          m('div.panel-settings__group', [
-            m('span.panel-settings__label-compact', 'Label Size'),
-            m('div.panel-settings__slider-group', [
-              m('input.panel-settings__slider[type=range]', {
-                min: 6,
-                max: 24,
-                step: 1,
-                value: styling.labelSize,
-                oninput: (e: Event) => {
-                  const value = parseFloat((e.target as HTMLInputElement).value);
-                  callbacks.onGraphStylingChange({ labelSize: value });
-                },
-              }),
-              m('span.panel-settings__slider-value', `${styling.labelSize}px`),
-            ]),
-          ]),
-
-          m('div.panel-settings__group', [
-            m('span.panel-settings__label-compact', 'Label Color'),
-            m('input.panel-settings__color[type=color]', {
-              value: styling.labelColor,
-              oninput: (e: Event) => {
-                const value = (e.target as HTMLInputElement).value;
-                callbacks.onGraphStylingChange({ labelColor: value });
-              },
-            }),
-          ]),
-        ]),
-      ]),
-    ]);
-  };
-
-  // Theme Tab - Color themes
-  const renderThemeTab = () => {
-    return m('div.panel-section.panel-theme', { class: state.activeTab === 'theme' ? 'panel-section--active' : '' }, [
-      m('div.panel-settings__group', [
-        m('span.panel-settings__label', 'Color Theme'),
+      // Theme section
+      renderSectionHeader('Theme', 'theme'),
+      sections.theme ? m('div.panel-graph__section-content', [
         m('div.panel-settings__options',
           THEMES.map(theme =>
             m('button.panel-settings__option', {
@@ -730,16 +797,11 @@ export function ControlPanel(
             }, theme.label)
           )
         ),
-      ]),
-
-      m('div.panel-settings__group', { style: { marginTop: 'var(--spacing-lg)' } }, [
-        m('span.panel-settings__label', 'About'),
-        m('p', { style: { color: 'var(--c-font-muted)', fontSize: '0.85em', margin: 0 } },
-          'Code Cartographer — Visualize code architecture and dependencies'
-        ),
-      ]),
+      ]) : null,
     ]);
   };
+
+  // ─── Main render ───────────────────────────────────────────────────────────
 
   return m('div.control-panel', {
     oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
@@ -749,51 +811,80 @@ export function ControlPanel(
     state.isOpen ? m('div.control-panel__resize', {
       onmousedown: handleResizeStart,
     }) : null,
-    
-    // Handle bar to toggle open/close
-    m('div.control-panel__handle', { onclick: togglePanel }, [
-      m('span.control-panel__handle-label', state.isOpen ? 'Close Panel' : 'Open Panel'),
-      m('span.control-panel__handle-icon', { 
-        class: state.isOpen ? 'control-panel__handle-icon--open' : '' 
+
+    // Handle bar — icon only
+    m('div.control-panel__handle', {
+      onclick: togglePanel,
+      title: state.isOpen ? 'Close panel' : 'Open panel',
+    }, [
+      m('span.control-panel__handle-icon', {
+        class: state.isOpen ? 'control-panel__handle-icon--open' : '',
       }, '▲'),
     ]),
-    
-    // Tabs
+
+    // Tab bar
     m('div.control-panel__tabs',
       TABS.map(tab =>
         m('button.control-panel__tab', {
           class: state.activeTab === tab.id ? 'control-panel__tab--active' : '',
           onclick: () => setActiveTab(tab.id),
+          title: tab.helpText,
         }, [
           tab.icon ? m('span', tab.icon + ' ') : null,
           tab.label,
         ])
       )
     ),
-    
-    // Body (collapsible) - use inline style for dynamic height
+
+    // Body (collapsible)
     m('div.control-panel__body', {
       class: state.isOpen ? 'control-panel__body--open' : '',
       style: state.isOpen ? { height: `${state.panelHeight}px` } : { height: '0px' },
     }, [
       m('div.control-panel__content', [
-        renderCodeTab(),
-        renderParserTab(),
-        renderLayoutTab(),
-        renderStyleTab(),
-        renderThemeTab(),
+        renderSourceTab(),
+        renderGraphTab(),
       ]),
     ]),
-    
+
     // Status bar
     m('div.control-panel__status', [
+      // Progress bar (thin line at top, visible during loading)
+      state.isLoading && state.progress
+        ? m('div.control-panel__progress-bar', {
+            style: {
+              width: state.progress.total > 0
+                ? `${Math.round((state.progress.loaded / state.progress.total) * 100)}%`
+                : '0%',
+            },
+          })
+        : state.isLoading
+          ? m('div.control-panel__progress-bar.control-panel__progress-bar--indeterminate')
+          : null,
+
       m('span.control-panel__status-item', [
-        m('span.control-panel__status-dot', { 
-          class: state.isLoading ? 'control-panel__status-dot--warning' : '' 
+        m('span.control-panel__status-dot', {
+          class: state.isLoading ? 'control-panel__status-dot--warning' : '',
         }),
-        state.isLoading ? state.statusMessage : 'Ready',
+        state.isLoading && state.progress && state.progress.phase === 'streaming'
+          ? `Streaming ${state.progress.loaded}/${state.progress.total} nodes`
+          : state.isLoading && state.progress
+            ? `${state.progress.phase.charAt(0).toUpperCase() + state.progress.phase.slice(1)}…`
+            : state.isLoading
+              ? state.statusMessage
+              : state.statusMessage || 'Ready',
       ]),
-      m('span.control-panel__status-item', `Theme: ${state.currentTheme}`),
+
+      state.isLoading && callbacks.onCancel
+        ? m('button.control-panel__cancel-btn', {
+            onclick: callbacks.onCancel,
+            title: 'Cancel',
+          }, '✕')
+        : null,
+
+      m('span.control-panel__status-context',
+        `${content.selectedRenderer} · ${state.currentTheme}`
+      ),
     ]),
   ]);
 }
