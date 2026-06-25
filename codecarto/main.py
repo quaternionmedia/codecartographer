@@ -10,6 +10,7 @@ from codecarto.routers.repo_router import RepoReaderRouter
 from codecarto.routers.local_repo_router import LocalRepoRouter
 from codecarto.routers.pam_router import PamRouter
 from codecarto.routers.unified_parser_router import UnifiedParserRouter
+from codecarto.routers.lexicon_router import LexiconRouter
 
 
 # Debug
@@ -55,6 +56,7 @@ app.include_router(LocalRepoRouter, prefix="/local", tags=["local"])
 app.include_router(CParserRouter, prefix="/c-parser", tags=["c-parser"])
 app.include_router(PamRouter, prefix="/pam", tags=["pam"])
 app.include_router(UnifiedParserRouter, prefix="/parse", tags=["parse"])
+app.include_router(LexiconRouter, prefix="/lexicon", tags=["lexicon"])
 
 # Optional: Graphbase MongoDB router — activated when MONGODB_URI env var is set
 import os as _os

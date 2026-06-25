@@ -380,7 +380,7 @@ export function ControlPanel(
 
         // Example chips (when no repo loaded)
         !hasRepo ? m('div.panel-source__examples', [
-          m('span.panel-settings__label-compact', 'Examples'),
+          m('span.panel-settings__label-compact', 'Python'),
           m('div.panel-source__example-chips', [
             ...[
               { label: 'requests', url: 'https://github.com/psf/requests',    title: 'requests — small repo (~2 MB), full content' },
@@ -395,6 +395,25 @@ export function ControlPanel(
                   animations.buttonPress(e.currentTarget as Element);
                   onStateChange({ repoUrl: ex.url });
                   callbacks.onRepoSubmit(ex.url);
+                },
+                disabled: state.isLoading,
+              }, ex.label)
+            ),
+          ]),
+          m('span.panel-settings__label-compact', 'C'),
+          m('div.panel-source__example-chips', [
+            ...[
+              { label: 'git',     url: 'https://github.com/git/git',            title: 'git — the VCS itself, written in C (~30 MB), structure only' },
+              { label: 'curl',    url: 'https://github.com/curl/curl',         title: 'curl — ubiquitous networking library in C (~10 MB), full content' },
+              { label: 'Lua',     url: 'https://github.com/lua/lua',           title: 'Lua 5.x — reference VM in C (~1 MB), full content' },
+              { label: 'SQLite',  url: 'https://github.com/sqlite/sqlite',     title: 'SQLite — most deployed DB in C (~15 MB), structure only' },
+              { label: 'Redis',   url: 'https://github.com/redis/redis',       title: 'Redis — systems C data structures (~5 MB), full content' },
+            ].map(ex =>
+              m('button.panel-source__example-chip', {
+                title: ex.title,
+                onclick: (e: MouseEvent) => {
+                  animations.buttonPress(e.currentTarget as Element);
+                  callbacks.onCParserGithub(ex.url);
                 },
                 disabled: state.isLoading,
               }, ex.label)

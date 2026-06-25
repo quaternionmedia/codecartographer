@@ -324,6 +324,11 @@ export class GraphRenderer {
       }
     });
 
+    // Large-graph mode: > 200 nodes switches to performance-optimised defaults
+    const isLargeGraph = nodes.length > 200;
+    if (isLargeGraph && !stylingOptions?.chargeStrength) styling.chargeStrength = -20;
+    if (isLargeGraph && !stylingOptions?.linkDistance)   styling.linkDistance   = 30;
+
     // Set dimensions
     const width = container.clientWidth || 800;
     const height = container.clientHeight || 600;
@@ -370,7 +375,12 @@ export class GraphRenderer {
         )
         .force('charge', d3.forceManyBody().strength(styling.chargeStrength))
         .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('collision', d3.forceCollide().radius(20));
+        .force('collision', d3.forceCollide().radius(isLargeGraph ? 8 : 20));
+
+      if (isLargeGraph) {
+        // Settle in ~90 ticks instead of 300; more damping reduces thrashing
+        simulation.alphaDecay(0.05).velocityDecay(0.6);
+      }
     } else if (!hasPositions && !styling.enablePhysics) {
       // No positions and physics disabled - use simple circular layout
       nodes.forEach((n, i) => {
@@ -605,12 +615,19 @@ export class GraphRenderer {
       .data(nodes)
       .enter()
       .append('text')
-      .text((d) => d.label || d.id)
+      .text((d) => {
+        const name = d.label || d.id;
+        if (!isLargeGraph) return name;
+        // Strip file-path prefix (e.g. 'hiredis::redisConnect' → 'redisConnect')
+        const parts = name.split('::');
+        return parts[parts.length - 1] || name;
+      })
       .attr('font-size', styling.labelSize)
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
       .attr('fill', styling.labelColor)
-      .style('display', styling.showNodeLabels ? 'block' : 'none')
+      // Large graphs: hide labels initially; LOD zoom handler reveals them when zoomed in
+      .style('display', (styling.showNodeLabels && !isLargeGraph) ? 'block' : 'none')
       .style('pointer-events', 'none');
 
     // Add edge labels (if enabled)
@@ -668,7 +685,6 @@ export class GraphRenderer {
     this.currentUpdatePositions = updatePositions;
 
     if (simulation) {
-      // Use simulation ticks to update positions
       simulation.on('tick', updatePositions);
     } else {
       // Static layout - just update once
@@ -681,22 +697,47 @@ export class GraphRenderer {
     let isShiftDragging = false;
 
     // Add zoom and pan with filter to allow shift-drag
+    const labelThreshold = isLargeGraph ? 0.4 : 0.15;
     const zoom = d3
       .zoom()
-      .scaleExtent([0.1, 10])
+      .scaleExtent([isLargeGraph ? 0.01 : 0.05, 10])
       .filter((event: any) => {
         // Prevent zoom from interfering with shift-drag box selection
-        // Allow zoom only when NOT shift-dragging
         return !event.shiftKey && !event.button;
       })
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
+        // LOD: show labels only when zoomed in enough to read them
+        const k = event.transform.k;
+        label.style('display', k >= labelThreshold ? 'block' : 'none');
       });
 
     svg.call(zoom as any);
 
     // Store zoom reference for radial menu callbacks (now that it's created)
     this.currentZoom = zoom;
+
+    // Auto-fit large graphs once the simulation first settles
+    // (alphaDecay=0.05 → simulation.on('end') fires in ~1.5 s)
+    if (simulation && isLargeGraph) {
+      simulation.on('end', () => {
+        const svgW = parseFloat(svg.attr('width'));
+        const svgH = parseFloat(svg.attr('height'));
+        const xs = nodes.map(n => n.x || 0);
+        const ys = nodes.map(n => n.y || 0);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+        const bw = maxX - minX || 1;
+        const bh = maxY - minY || 1;
+        const s = Math.max(0.01, Math.min(0.9 * Math.min(svgW / bw, svgH / bh), 10));
+        const tx = svgW / 2 - s * ((minX + maxX) / 2);
+        const ty = svgH / 2 - s * ((minY + maxY) / 2);
+        svg.transition().duration(600).call(
+          zoom.transform as any,
+          d3.zoomIdentity.translate(tx, ty).scale(s)
+        );
+      });
+    }
 
     // Set up shift-drag box selection handlers
     svg.on('mousedown.selection', (event: MouseEvent) => {
