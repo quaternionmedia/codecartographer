@@ -5,15 +5,34 @@ Thin service layer wrapping CParser for use by the API router.
 """
 
 import io
+import json
 import os
 import re
 import shutil
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 from typing import Optional
 
 from codecarto.util.exceptions import CodeCartoException
+
+# Persistent cache for downloaded + extracted GitHub archives.
+# Layout: ~/.codecarto/cache/repos/{owner}-{repo}/src/   (extracted tree)
+#                                                /metadata.json  (ts, url)
+_REPO_CACHE_DIR = Path("~/.codecarto/cache/repos").expanduser()
+_REPO_TTL = int(os.getenv("CC_CACHE_TTL", "86400"))  # 24 h default, same var as graph cache
+
+
+def _repo_cache_is_fresh(cache_dir: Path) -> bool:
+    meta = cache_dir / "metadata.json"
+    if not meta.exists():
+        return False
+    try:
+        ts = json.loads(meta.read_text(encoding="utf-8")).get("ts", 0)
+        return (time.time() - ts) < _REPO_TTL
+    except Exception:
+        return False
 
 
 class CParserService:
@@ -200,6 +219,14 @@ class CParserService:
             )
         owner, repo = m.group(1), m.group(2)
 
+        cache_dir = _REPO_CACHE_DIR / f"{owner}-{repo}"
+        src_dir = cache_dir / "src"
+
+        # Cache hit — reuse the previously extracted tree
+        if src_dir.is_dir() and _repo_cache_is_fresh(cache_dir):
+            return CParserService.parse_directory(str(src_dir), max_files=max_files)
+
+        # Cache miss — download, extract into staging, promote to cache
         zip_url = f"https://github.com/{owner}/{repo}/archive/HEAD.zip"
         try:
             resp = requests.get(zip_url, timeout=60)
@@ -219,17 +246,19 @@ class CParserService:
                 status_code=404,
             )
 
-        tmp_dir = tempfile.mkdtemp(prefix="codecarto_c_")
+        # Extract to a throwaway staging dir, then move into the persistent cache.
+        # The staging dir is always cleaned up; the cache dir survives.
+        staging = tempfile.mkdtemp(prefix="codecarto_c_")
         try:
             with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
-                zf.extractall(tmp_dir)
+                zf.extractall(staging)
 
-            # GitHub archives extract to "{repo}-{sha}/" — pick the first dir
+            # GitHub archives extract to "{repo}-{sha}/" — pick the first subdir
             extracted = next(
                 (
                     d
-                    for d in sorted(os.listdir(tmp_dir))
-                    if os.path.isdir(os.path.join(tmp_dir, d))
+                    for d in sorted(os.listdir(staging))
+                    if os.path.isdir(os.path.join(staging, d))
                 ),
                 None,
             )
@@ -241,10 +270,17 @@ class CParserService:
                     status_code=500,
                 )
 
-            return CParserService.parse_directory(
-                os.path.join(tmp_dir, extracted),
-                max_files=max_files,
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            if src_dir.exists():
+                shutil.rmtree(src_dir)
+            shutil.move(os.path.join(staging, extracted), str(src_dir))
+
+            (cache_dir / "metadata.json").write_text(
+                json.dumps({"owner": owner, "repo": repo, "url": url, "ts": time.time()}),
+                encoding="utf-8",
             )
+
+            return CParserService.parse_directory(str(src_dir), max_files=max_files)
         except CodeCartoException:
             raise
         except Exception as exc:
@@ -255,4 +291,4 @@ class CParserService:
                 status_code=500,
             ) from exc
         finally:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+            shutil.rmtree(staging, ignore_errors=True)
