@@ -157,10 +157,10 @@ class CParserService:
                 status_code=404,
             )
 
-        c_files = sorted(
+        all_files = sorted(
             list(dir_path.rglob("*.c")) + list(dir_path.rglob("*.h"))
         )
-        if not c_files:
+        if not all_files:
             raise CodeCartoException(
                 source="CParserService.parse_directory",
                 params={"path": path},
@@ -168,11 +168,35 @@ class CParserService:
                 status_code=404,
             )
 
+        # Without a compile_commands.json we have no way to know which
+        # platform variant was actually meant to build, so every compat
+        # shim for every OS would otherwise get parsed unconditionally
+        # (e.g. git ships compat/apple-*, compat/mingw.c, compat/solaris/*
+        # that are never compiled together). Skip known single-platform
+        # files rather than let them parse-with-errors.
+        from codecarto.services.parsers.c_parser import is_platform_specific_path, default_parse_args
+
+        skipped_files = [
+            str(f.relative_to(dir_path)) for f in all_files
+            if is_platform_specific_path(f.relative_to(dir_path))
+        ]
+        skipped_set = set(skipped_files)
+        c_files = [f for f in all_files if str(f.relative_to(dir_path)) not in skipped_set]
+
         if max_files:
             c_files = c_files[:max_files]
 
         try:
-            return parser.parse_files(c_files, cache_dir=cache_dir)
+            # Always include the project root, not just each file's own
+            # directory — multi-directory projects (e.g. git's builtin/*.c
+            # including the root-level builtin.h) need both on the path.
+            result = parser.parse_files(
+                c_files,
+                extra_args=default_parse_args(project_root=dir_path),
+                cache_dir=cache_dir,
+            )
+            result.setdefault("meta", {})["skipped_files"] = skipped_files
+            return result
         except Exception as exc:
             raise CodeCartoException(
                 source="CParserService.parse_directory",

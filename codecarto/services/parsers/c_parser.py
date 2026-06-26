@@ -32,6 +32,58 @@ _LIBCLANG_CANDIDATES = [
     '/usr/lib/llvm-17/lib/libclang.so',
 ]
 
+# ── Parsing-without-a-build-system support ────────────────────────────────────
+# pip's libclang wheel ships no system/libc headers at all (not even the
+# compiler-provided stdint.h/stddef.h). Real-world C repos parsed file-by-file
+# (no compile_commands.json) hit constant "file not found" / "unknown type
+# name" cascades for POSIX headers. This stub set is a syntax-level aid only —
+# declarations exist so parsing doesn't cascade-fail, not a real libc.
+_STUB_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "c_stubs"
+
+# Best-effort platform defines so '#ifdef'-gated POSIX declarations in target
+# code take a real branch against our stub headers instead of an undefined one.
+_PLATFORM_DEFINES = ['-D__linux__', '-D_GNU_SOURCE', '-D_DEFAULT_SOURCE']
+
+# Path fragments identifying source meant for exactly one non-default platform.
+# parse_directory has no compile_commands.json to tell it which variant is
+# actually built, so it would otherwise parse every platform's compat shim
+# unconditionally. These are skipped and reported in meta['skipped_files'].
+_PLATFORM_SPECIFIC_PATTERNS = (
+    'apple', 'darwin', 'macos', 'solaris', 'aix', 'hpux', 'irix', 'sunos',
+    'win32', 'mingw', 'msvc', 'winnt', 'os400', 'vms', 'nonstop', 'vcbuild',
+)
+
+
+def is_platform_specific_path(path: str | Path) -> bool:
+    """True if `path` looks like a single-platform compat shim (see above)."""
+    lowered = str(path).replace('\\', '/').lower()
+    return any(pat in lowered for pat in _PLATFORM_SPECIFIC_PATTERNS)
+
+
+def default_parse_args(project_root: Optional[str | Path] = None) -> list:
+    """Base clang args: stub headers, platform defines, and (if given) the
+    project root on the include path — needed because multi-directory C
+    projects commonly do `#include "foo.h"` expecting the build's `-I.`
+    root include, not just the including file's own directory."""
+    args = ['-std=c11', '-isystem', str(_STUB_DIR), *_PLATFORM_DEFINES]
+    if project_root:
+        args += [f'-I{project_root}']
+    return args
+
+
+# Backwards-compatible private alias used internally in this module.
+_default_parse_args = default_parse_args
+
+
+# ── Diagnostic classification ─────────────────────────────────────────────────
+def _classify_diagnostic(message: str) -> str:
+    msg = message.lower()
+    if 'file not found' in msg:
+        return 'missing_header'
+    if 'unknown type name' in msg or 'unknown type' in msg:
+        return 'unknown_type'
+    return 'other'
+
 
 def _get_clang():
     """Lazy-initialise the clang module and index. Raises ImportError if unavailable."""
@@ -284,7 +336,7 @@ class CParser:
         filepaths = [Path(f) for f in filepaths]
         target_stems = {f.stem for f in filepaths}
         in_target = _make_in_target(target_stems)
-        extra_args = extra_args or ['-std=c11']
+        extra_args = extra_args or _default_parse_args()
 
         if cache_dir:
             Path(cache_dir).mkdir(parents=True, exist_ok=True)
@@ -293,6 +345,9 @@ class CParser:
         edges: list = []
         edge_set: set = set()
         call_counts: dict = {}
+        diag_counts = {'missing_header': 0, 'unknown_type': 0, 'other': 0}
+        files_with_warnings: set = set()
+        worst_files: dict = {}
 
         for fpath in filepaths:
             args = extra_args + [f'-I{fpath.parent}']
@@ -309,6 +364,11 @@ class CParser:
             tu = idx.parse(str(fpath), args=args)
 
             errors = [d for d in tu.diagnostics if d.severity >= cindex.Diagnostic.Error]
+            if errors:
+                files_with_warnings.add(fpath.stem)
+                worst_files[fpath.stem] = len(errors)
+            for e in errors:
+                diag_counts[_classify_diagnostic(e.spelling)] += 1
             for e in errors[:3]:
                 logger.warning("libclang: %s", e.spelling)
 
@@ -319,6 +379,12 @@ class CParser:
                 cp.write_bytes(pickle.dumps({
                     'nodes': {k: v for k, v in nodes.items() if v['file'] == fpath.stem}
                 }))
+
+        # Flag nodes whose source file produced parser diagnostics, so the
+        # frontend can render a visual cue (see graph_renderer.ts).
+        for n in nodes.values():
+            if n['file'] in files_with_warnings:
+                n['has_parse_warning'] = True
 
         for fpath in filepaths:
             args = extra_args + [f'-I{fpath.parent}']
@@ -331,7 +397,15 @@ class CParser:
 
         _derive_type_edges(nodes, edges, edge_set)
 
-        return self._build_result(list(nodes.values()), edges, [f.name for f in filepaths])
+        diagnostics = {
+            **diag_counts,
+            'files_with_warnings': len(files_with_warnings),
+            'worst_files': sorted(worst_files.items(), key=lambda kv: -kv[1])[:5],
+        }
+
+        return self._build_result(
+            list(nodes.values()), edges, [f.name for f in filepaths], diagnostics
+        )
 
     def parse_compile_commands(
         self,
@@ -373,6 +447,9 @@ class CParser:
         edges: list = []
         edge_set: set = set()
         call_counts: dict = {}
+        diag_counts = {'missing_header': 0, 'unknown_type': 0, 'other': 0}
+        files_with_warnings: set = set()
+        worst_files: dict = {}
 
         for entry in cmds:
             fpath = Path(entry['file'])
@@ -386,9 +463,19 @@ class CParser:
             logger.info("Parsing %s", fpath.name)
             try:
                 tu = idx.parse(str(fpath), args=args)
+                errors = [d for d in tu.diagnostics if d.severity >= cindex.Diagnostic.Error]
+                if errors:
+                    files_with_warnings.add(fpath.stem)
+                    worst_files[fpath.stem] = len(errors)
+                for e in errors:
+                    diag_counts[_classify_diagnostic(e.spelling)] += 1
                 _pass1_declarations(tu, in_target, nodes, edges, edge_set, cindex)
             except Exception as exc:
                 logger.warning("Failed to parse %s: %s", fpath.name, exc)
+
+        for n in nodes.values():
+            if n['file'] in files_with_warnings:
+                n['has_parse_warning'] = True
 
         for entry in cmds:
             fpath = Path(entry['file'])
@@ -410,14 +497,27 @@ class CParser:
 
         _derive_type_edges(nodes, edges, edge_set)
 
+        diagnostics = {
+            **diag_counts,
+            'files_with_warnings': len(files_with_warnings),
+            'worst_files': sorted(worst_files.items(), key=lambda kv: -kv[1])[:5],
+        }
+
         return self._build_result(
             list(nodes.values()),
             edges,
             [Path(c['file']).name for c in cmds],
+            diagnostics,
         )
 
     @staticmethod
-    def _build_result(nodes: list, edges: list, file_names: list) -> dict:
+    def _build_result(
+        nodes: list,
+        edges: list,
+        file_names: list,
+        diagnostics: Optional[dict] = None,
+        skipped_files: Optional[list] = None,
+    ) -> dict:
         kind_counts: dict = {}
         for n in nodes:
             kind_counts[n['kind']] = kind_counts.get(n['kind'], 0) + 1
@@ -435,10 +535,12 @@ class CParser:
             'nodes': nodes,
             'edges': edges,
             'meta': {
-                'files':       file_names,
-                'node_count':  len(nodes),
-                'edge_count':  len(edges),
-                'kind_counts': kind_counts,
-                'edge_kinds':  edge_kind_counts,
+                'files':        file_names,
+                'node_count':   len(nodes),
+                'edge_count':   len(edges),
+                'kind_counts':  kind_counts,
+                'edge_kinds':   edge_kind_counts,
+                'diagnostics':  diagnostics or {},
+                'skipped_files': skipped_files or [],
             },
         }

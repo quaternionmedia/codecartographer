@@ -113,6 +113,17 @@ export class GraphRenderer {
   private static tooltipExtension: TooltipExtension | null = null;
   private static colorExtension: ColorExtension | null = null;
 
+  /** Deselected-state border colour — amber for nodes whose source file had
+   * parser diagnostics (see c_parser.py has_parse_warning), white otherwise. */
+  private static nodeBorderColor(d: GraphNode): string {
+    return d.has_parse_warning ? '#f5a623' : '#fff';
+  }
+
+  /** Deselected-state border dasharray — dashed for parse-warning nodes. */
+  private static nodeBorderDash(d: GraphNode): string | null {
+    return d.has_parse_warning ? '3,2' : null;
+  }
+
   /**
    * Render graph data using D3.js with enhanced interactions
    */
@@ -419,6 +430,21 @@ export class GraphRenderer {
       }
     };
 
+    // Edge-kind visual mapping. `label` carries the semantic edge kind
+    // (e.g. C parser: CALLS/FIELD_OF/POINTS_TO/ALIASES — see c_parser.py).
+    // Unrecognised kinds (other languages, untyped edges) fall through to
+    // the existing default styling untouched.
+    const EDGE_KIND_COLOR: Record<string, string> = {
+      CALLS:     '#e67e22',
+      FIELD_OF:  '#555e6e',
+      POINTS_TO: '#1abc9c',
+      ALIASES:   '#1abc9c',
+    };
+    const EDGE_KIND_DASH: Record<string, string> = {
+      POINTS_TO: '5,4',
+      ALIASES:   '8,4',
+    };
+
     // Draw edges with styling
     const link = g
       .append('g')
@@ -427,10 +453,13 @@ export class GraphRenderer {
       .data(edges)
       .enter()
       .append('line')
-      .attr('stroke', (d) => d.color || styling.edgeColor || '#999')
+      .attr('stroke', (d) => (d.color as string) || EDGE_KIND_COLOR[d.label as string] || styling.edgeColor || '#999')
       .attr('stroke-opacity', styling.edgeOpacity * 0.6)
-      .attr('stroke-width', styling.edgeWidth)
-      .attr('stroke-dasharray', getEdgeDashArray(styling.edgeStyle));
+      .attr('stroke-width', (d) => {
+        const weight = (d.weight as number) ?? 1;
+        return d.label === 'CALLS' ? styling.edgeWidth * Math.min(3, 0.5 + weight * 0.4) : styling.edgeWidth;
+      })
+      .attr('stroke-dasharray', (d) => getEdgeDashArray(styling.edgeStyle) ?? EDGE_KIND_DASH[d.label as string] ?? null);
 
     // Store references for radial menu callbacks (except zoom - will be set later)
     this.currentSvg = svg;
@@ -526,8 +555,12 @@ export class GraphRenderer {
       .attr('d', (d) => getNodePath(d.shape as string, styling.nodeSize * depthSizeMultiplier(d), d))
       .attr('fill', (d) => styling.nodeColorOverride || d.color || 'steelblue')
       .attr('fill-opacity', styling.nodeOpacity)
-      .attr('stroke', '#fff')
-      .attr('stroke-width', styling.nodeBorderWidth);
+      // Parser diagnostics (e.g. C: missing header / unknown type in this
+      // node's source file — see c_parser.py has_parse_warning) get a
+      // dashed amber border instead of the default solid white.
+      .attr('stroke', (d) => this.nodeBorderColor(d))
+      .attr('stroke-width', styling.nodeBorderWidth)
+      .attr('stroke-dasharray', (d) => this.nodeBorderDash(d));
 
     // Add interaction handlers to node groups
     const node = nodeGroup
@@ -539,8 +572,9 @@ export class GraphRenderer {
         if (selectedNodes.has(d)) {
           selectedNodes.delete(d);
           path
-            .attr('stroke', '#fff')
-            .attr('stroke-width', styling.nodeBorderWidth);
+            .attr('stroke', this.nodeBorderColor(d))
+            .attr('stroke-width', styling.nodeBorderWidth)
+            .attr('stroke-dasharray', this.nodeBorderDash(d));
         } else {
           if (!event.ctrlKey && !event.metaKey) {
             // Clear other selections if not multi-select
@@ -548,8 +582,9 @@ export class GraphRenderer {
               d3.selectAll('.graph-node')
                 .filter((n: GraphNode) => n.id === node.id)
                 .select('path')
-                .attr('stroke', '#fff')
-                .attr('stroke-width', styling.nodeBorderWidth);
+                .attr('stroke', this.nodeBorderColor(node))
+                .attr('stroke-width', styling.nodeBorderWidth)
+                .attr('stroke-dasharray', this.nodeBorderDash(node));
             });
             selectedNodes.clear();
           }
@@ -820,8 +855,9 @@ export class GraphRenderer {
         // Update visual highlighting
         d3.selectAll('.graph-node')
           .select('path')
-          .attr('stroke', '#fff')
-          .attr('stroke-width', styling.nodeBorderWidth);
+          .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
+          .attr('stroke-width', styling.nodeBorderWidth)
+          .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
 
         selectedNodesInBox.forEach((node) => {
           d3.selectAll('.graph-node')
@@ -905,9 +941,10 @@ export class GraphRenderer {
       },
       onNodeDeselect: () => {
         selectedNodes.clear();
-        d3.selectAll('.graph-node')
-          .attr('stroke', '#fff')
-          .attr('stroke-width', styling.nodeBorderWidth);
+        d3.selectAll('.graph-node').select('path')
+          .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
+          .attr('stroke-width', styling.nodeBorderWidth)
+          .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
       },
     };
 
@@ -1186,8 +1223,9 @@ export class GraphRenderer {
 
         // Update visual selection
         d3.selectAll('.graph-node').select('path')
-          .attr('stroke', '#fff')
-          .attr('stroke-width', styling.nodeBorderWidth);
+          .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
+          .attr('stroke-width', styling.nodeBorderWidth)
+          .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
 
         neighbors.forEach(n => {
           d3.selectAll('.graph-node')
