@@ -234,6 +234,8 @@ async def stream_from_url(request: StreamUrlRequest):
     """
     from codecarto.services.unified_parser_service import UnifiedParserService
     from codecarto.services.cache_service import CacheService
+    from codecarto.services.github_service import is_github_url
+    from codecarto.services.local_repo_service import get_local_repo
 
     effective_depth = (
         MODE_TO_DEPTH.get(request.mode, request.depth)
@@ -284,24 +286,48 @@ async def stream_from_url(request: StreamUrlRequest):
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
-    async def generate():
+    # GitHub path 
+    if is_github_url(request.url):
+        async def generate():
+            try:
+                async for chunk in UnifiedParserService.stream_parse_url(
+                    url=request.url,
+                    depth=effective_depth,
+                    extensions=request.extensions,
+                    layout=request.layout,
+                ):
+                    yield chunk
+            except Exception as exc:
+                import json
+                yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+        
+    # Local path
+    async def generate_local():
+        import json
         try:
-            async for chunk in UnifiedParserService.stream_parse_url(
-                url=request.url,
+            directory = get_local_repo(request.url, extensions=request.extensions)
+            async for chunk in UnifiedParserService.stream_parse(
+                directory=directory,
                 depth=effective_depth,
                 extensions=request.extensions,
                 layout=request.layout,
             ):
                 yield chunk
         except Exception as exc:
-            import json
             yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
 
     return StreamingResponse(
-        generate(),
+        generate_local(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
 
 
 @UnifiedParserRouter.post("/expand")
@@ -341,9 +367,6 @@ async def expand_node(request: ExpandNodeRequest) -> dict:
 async def list_languages() -> dict:
     """Return the registered parser extensions and their language names."""
     from codecarto.services.parsers.language_parser import ParserRegistry
-    # Trigger registration
-    import codecarto.services.parsers.python_language_parser  # noqa: F401
-    import codecarto.services.parsers.c_language_parser       # noqa: F401
 
     parsers = ParserRegistry.all_parsers()
     data = {

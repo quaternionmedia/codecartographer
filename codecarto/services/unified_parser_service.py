@@ -35,11 +35,6 @@ from codecarto.services.parsers.language_parser import (
     make_edge,
 )
 
-# ── Ensure parsers are registered ────────────────────────────────────────────
-# Importing the adapters has the side-effect of calling ParserRegistry.register()
-import codecarto.services.parsers.python_language_parser  # noqa: F401
-import codecarto.services.parsers.c_language_parser       # noqa: F401
-import codecarto.services.parsers.regex_language_parser   # noqa: F401
 
 
 class UnifiedParserService:

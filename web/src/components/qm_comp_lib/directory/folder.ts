@@ -41,7 +41,8 @@ export const Folder: m.Component<FolderAttrs> = {
   view(vnode) {
     const { folderName, folderPath, folders, files, onUrlFileClicked, onFolderExpand, allowedExtensions } = vnode.attrs;
     const state = vnode.state as FolderState;
-    const isStub = folders.length === 0 && files.length === 0;
+    const isEmpty = folders.length === 0 && files.length === 0;
+    const isStub = isEmpty && !!onFolderExpand;  // empty AND can be lazy-loaded
 
     return m(`div.folder.folder__${folderName}`, [
       m(
@@ -49,9 +50,10 @@ export const Folder: m.Component<FolderAttrs> = {
         {
           class: [
             isStub ? 'folder_button--stub' : '',
+            isEmpty && !isStub ? 'folder_button--empty' : '',
             state.isOpen ? 'active' : '',
           ].filter(Boolean).join(' '),
-          onclick: function (e: MouseEvent) {
+          onclick: isEmpty && !isStub ? undefined : function (e: MouseEvent) {
             const button = e.currentTarget as HTMLElement;
             const folderContent = button.nextElementSibling as HTMLElement;
 
@@ -60,14 +62,15 @@ export const Folder: m.Component<FolderAttrs> = {
 
             if (state.isOpen) {
               // Closing: animate out first, then let Mithril hide via state
-              if (folderContent) {
-                animations.fadeOut(folderContent, { duration: 150 }).finished.then(() => {
-                  state.isOpen = false;
-                  m.redraw();
-                });
-              } else {
+              const close = () => {
                 state.isOpen = false;
                 m.redraw();
+              };
+              if (folderContent) {
+                const anim = animations.fadeOut(folderContent, { duration: 150 });
+                Promise.resolve(anim?.finished).then(close);
+              } else {
+                close();
               }
             } else {
               // Opening: set state so Mithril renders the content (oncreate animates it in)

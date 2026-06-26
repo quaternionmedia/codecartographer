@@ -671,7 +671,10 @@ export class RepoActions {
    * Fetch and load a GitHub repository
    */
   async fetchRepository(url: string): Promise<void> {
-    this.stateController.clear();
+    // TODO: This line prevents stream post call from firing. 
+    //       Commenting out for now to get init parsing working. 
+    //       Need to investigate intent with the below line.
+    //this.stateController.clear();
     try {
       const data = await RepoService.getGithubRepo(url, this.stateController.api.repoReader);
       this.stateController.updateRepoContent(data);

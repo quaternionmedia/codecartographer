@@ -17,6 +17,13 @@ from codecarto.util.exceptions import (
 _CONTENT_FETCH_LIMIT_KB   = 5_000   # ~5 MB
 _STRUCTURE_FETCH_LIMIT_KB = 50_000  # ~50 MB
 
+def is_github_url(input_str: str) -> bool:
+    """
+    True if input looks like a GitHub URL. False otherwise (local path).
+    Rule: GitHub URLs always contain 'github.com'. Everything else → local.
+    """
+    return 'github.com' in input_str.strip().lower()
+
 
 async def get_raw_from_url(url: str) -> str:
     """Fetch raw content from a URL (any file type)."""
@@ -134,8 +141,6 @@ async def get_subtree(
         )
 
     from codecarto.services.parsers.language_parser import ParserRegistry
-    import codecarto.services.parsers.python_language_parser  # noqa: F401
-    import codecarto.services.parsers.c_language_parser  # noqa: F401
     registered_exts = set(ParserRegistry.all_extensions())
 
     files: list[File] = []
@@ -342,8 +347,6 @@ async def reduce_repo_structure(repo_data: dict, fetch_content: bool = True) -> 
         but leave raw=''.
     """
     from codecarto.services.parsers.language_parser import ParserRegistry
-    import codecarto.services.parsers.python_language_parser  # noqa: F401
-    import codecarto.services.parsers.c_language_parser  # noqa: F401
     registered_exts = set(ParserRegistry.all_extensions())
 
     data = Folder(size=0, name="", files=[], folders=[])
