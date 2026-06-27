@@ -41,8 +41,9 @@
   display: block;
 }
 
-/* Stub folder — not yet expanded */
-.folder_button--stub {
+/* Stub folders (lazy-load) and truly empty folders both render dimmer */
+.folder_button--stub,
+.folder_button--empty{
   opacity: 0.75;
 }
 .folder_stub_indicator {

@@ -496,6 +496,10 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
 
     // Repository - lazily expand a stub folder (large repo shallow mode)
     onFolderExpand: async (path: string) => {
+      // No-op for fully-loaded trees (e.g. local paths): subtree is GitHub-only.
+      const content = appState.repo.content;
+      if (!content?.is_partial) return;
+
       updatePanelState({ isLoading: true, statusMessage: `Loading ${path}...` });
       try {
         await actions.repo.expandPath(panelState.repoUrl, path);
@@ -507,6 +511,9 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
 
     // Repository - expand all stub folders (structure only, no file content)
     onExpandAll: async () => {
+      // No-op for fully-loaded trees (e.g. local paths): subtree is GitHub-only.
+      const content = appState.repo.content;
+      if (!content?.is_partial) return;
       updatePanelState({ isLoading: true, statusMessage: 'Expanding all folders...' });
       try {
         await actions.repo.expandAll(panelState.repoUrl);

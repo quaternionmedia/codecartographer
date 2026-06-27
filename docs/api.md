@@ -228,7 +228,21 @@ Parse a single C/H source file.
     "graph": {
       "nodes": [...],
       "edges": [...],
-      "meta": { "files": ["file"], "node_count": 12, "kind_counts": { "function": 3 } }
+      "meta": {
+        "files": ["file"],
+        "node_count": 12,
+        "edge_count": 8,
+        "kind_counts": { "function": 3 },
+        "edge_kinds": { "CALLS": 5, "FIELD_OF": 2, "POINTS_TO": 1 },
+        "diagnostics": {
+          "missing_header": 0,
+          "unknown_type": 0,
+          "other": 0,
+          "files_with_warnings": 0,
+          "worst_files": []
+        },
+        "skipped_files": []
+      }
     }
   }
 }
@@ -236,6 +250,17 @@ Parse a single C/H source file.
 
 > **Note:** `/c-parser/*` returns a legacy `{nodes, edges, meta}` dict. Use
 > `/parse/unified` with `.c`/`.h` extensions to get gJGF output compatible with D3/Gravis.
+
+When parsing without a `compile_commands.json` (i.e. `parse_files`/`parse_directory`,
+which backs `/c-parser/file`, `/c-parser/directory`, and `/c-parser/github`), each
+file is parsed standalone against a bundled set of stub POSIX headers
+(`codecarto/data/c_stubs/`) rather than the project's real build setup — see
+`codecarto/services/parsers/c_parser.py`. `meta.diagnostics` reports how often that
+fell short (missing headers, unknown types), and `meta.skipped_files` lists
+source files skipped because they target a single non-default platform (e.g.
+`compat/apple-*.c`, `compat/mingw.c`). Nodes whose source file produced parser
+errors are flagged `has_parse_warning: true` and rendered with a dashed amber
+border in the graph view.
 
 ---
 
