@@ -69,10 +69,7 @@ async def parse_c_github(request: CGithubRequest) -> dict:
         )
 
 
-_VISUALIZER_HTML = (
-    Path(__file__).parent.parent.parent
-    / ".github" / "development" / "chrestromathy_branch" / "c-visualizer.html"
-)
+_VISUALIZER_HTML = Path(__file__).parent.parent / "static" / "c-visualizer.html"
 
 # Matches the entire `const GRAPH = { ... };` block (non-greedy across lines)
 _GRAPH_PATTERN = re.compile(r"const GRAPH = \{[\s\S]*?\};", re.MULTILINE)

@@ -282,14 +282,11 @@ async def pam_session_events(session_id: str):
 @PamRouter.get("/ui")
 async def pam_ui(request: Request):
     """Serve the PAM visualizer HTML frontend, with WS/API URLs patched for this server."""
-    html_path = (
-        Path(__file__).parent.parent.parent
-        / ".github" / "development" / "chrestromathy_branch" / "frontend.html"
-    )
+    html_path = Path(__file__).parent.parent / "static" / "pam-frontend.html"
     if not html_path.exists():
         return HTMLResponse(
             "<h1>PAM Visualizer frontend not found</h1>"
-            "<p>Expected at: chrestromathy_branch/frontend.html</p>",
+            f"<p>Expected at: {html_path}</p>",
             status_code=404,
         )
 

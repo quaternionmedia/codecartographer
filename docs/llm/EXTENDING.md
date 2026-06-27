@@ -293,7 +293,9 @@ get my(): string { return `${this._base}/${this._my}`; }
 
 ## Chrestromathy Integration Reference
 
-Two specialised visualization systems integrated from `.github/development/chrestromathy_branch/`.
+Two specialised visualization systems originally adapted from an external Chrestromathy
+reference project. HTML frontends now ship as packaged assets in `codecarto/static/`
+(`c-visualizer.html`, `pam-frontend.html`) so they're included in the built wheel.
 
 ### C Semantic Parser (`c-parsing` optional group)
 
@@ -313,6 +315,7 @@ dropdown.
 - REST router: `codecarto/routers/c_parser_router.py` — `POST /c-parser/file|directory|github`
 - Unified adapter: `codecarto/services/parsers/c_language_parser.py` — `CLangaugeParser`
 - Frontend renderer: `web/src/features/graph/services/c_semantic_renderer.ts` (opt-in)
+- Standalone visualizer HTML: `codecarto/static/c-visualizer.html` (served by `GET /c-parser/visualizer`)
 
 **Optional dependency pattern** (system-level libs):
 ```toml
@@ -355,6 +358,7 @@ over WebSocket. No gJGF output — events are raw JSON dicts.
 **Key files:**
 - Parser: `codecarto/services/parsers/pam_parser.py` — regex-based, pure stdlib
 - Router: `codecarto/routers/pam_router.py` — REST + WebSocket + HTML frontend serving
+- Frontend HTML: `codecarto/static/pam-frontend.html` (served by `GET /pam/ui`)
 - Frontend: "PAM Monitor" button in Tools tab -> `GET /pam/ui`
 
 **Background task pattern:**
