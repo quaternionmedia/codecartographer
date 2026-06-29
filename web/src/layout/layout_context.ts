@@ -342,7 +342,7 @@ export class LayoutContext {
 
   /** Stream a C/C++ GitHub repo via /c-parser/stream-github. */
   private _startStreamCGithub(githubUrl: string, maxFiles: number): void {
-    const _AVG_C_NODES_PER_FILE = 40;
+    const AVG_C_NODES_PER_FILE = 40;
     this.appState.update({ selectedRenderer: 'd3' });
     const layout = convertLayout(this.appState.state.graphStyling.layout);
 
@@ -358,9 +358,9 @@ export class LayoutContext {
         layout,
         {
           onFetching: (msg) => this.updatePanelState({ statusMessage: msg }),
-          onMeta: () => { /* unused — see onFileCount */ },
+          onMeta: (_meta) => { /* unused — see onFileCount */ },
           onFileCount: (fileCount) => {
-            const estimatedTotal = fileCount * _AVG_C_NODES_PER_FILE;
+            const estimatedTotal = fileCount * AVG_C_NODES_PER_FILE;
             renderer.setTotal(estimatedTotal);
             this.updatePanelState({ statusMessage: `Parsing ${fileCount} files…` });
             this._updateProgress({ loaded: 0, total: estimatedTotal, phase: 'streaming' });

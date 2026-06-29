@@ -48,12 +48,3 @@ declare global {
 }
 window.cells = cells;
 // Tracer(cells);
-
-// DEBUG
-declare global {
-  interface Window {
-    cells: ReturnType<typeof cells>;
-  }
-}
-window.cells = cells;
-// Tracer(cells);
