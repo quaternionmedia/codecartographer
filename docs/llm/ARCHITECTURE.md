@@ -203,22 +203,20 @@ POST /plotter/whole_repo  { parse_by: 'ast'|'directory'|'dependencies' }
 -> GraphSerializer -> gJGF
 ```
 
-### C semantic stream path (libclang, real per-file progress)
+### C semantic stream path (libclang, direct API path)
 
-Used by the "C" example chips (git, curl, Lua, SQLite, Redis) and any direct
-call to `/c-parser/stream-github`. Unlike the unified pipeline above, libclang
-parsing is synchronous CPU-bound work, so it runs in a background thread —
-the same pattern `pam_router.py` uses for its log tailer — while the request
-coroutine drains an `asyncio.Queue` the thread feeds via
-`asyncio.run_coroutine_threadsafe`. This keeps the event loop responsive and
-lets nodes reach the browser the moment each file finishes parsing, instead
-of after the whole repo is done.
+This path is now primarily for direct/manual callers of
+`/c-parser/stream-github`. The default web control-panel flow routes C
+example chips through unified `/parse/stream-url` like other languages.
+Unlike the unified pipeline above, libclang parsing here is synchronous
+CPU-bound work, so it runs in a background thread — the same pattern
+`pam_router.py` uses for its log tailer — while the request coroutine drains
+an `asyncio.Queue` the thread feeds via `asyncio.run_coroutine_threadsafe`.
+This keeps the event loop responsive and lets nodes reach the client the
+moment each file finishes parsing, instead of after the whole repo is done.
 
 ```
-User clicks a C example chip (e.g. "git")
-  |
-  v
-PlotService.streamCGithub() -> POST /c-parser/stream-github  (SSE)
+Caller posts directly to `/c-parser/stream-github` (SSE)
   |
   v
 c_parser_router.stream_c_github()

@@ -296,7 +296,8 @@ Parse all C/H files in a directory.
 
 Download a GitHub repository and parse all C/H files. Blocking — the
 response isn't sent until every file is parsed. For large repos, prefer
-`/c-parser/stream-github` below so the UI can show progress.
+`/c-parser/stream-github` below for direct API usage when you want
+file-by-file progress events.
 
 **Request Body:**
 ```json
@@ -308,10 +309,13 @@ response isn't sent until every file is parsed. For large repos, prefer
 ### POST `/c-parser/stream-github`
 
 Streamed variant of `/c-parser/github`, used by the "C" example chips
-(git, curl, Lua, SQLite, Redis). libclang parsing is synchronous CPU-bound
-work, so it runs in a background thread while this endpoint drains its
-progress queue and forwards SSE events in real time — see "C semantic
-stream path" in `docs/llm/ARCHITECTURE.md` for the full design rationale.
+(git, curl, Lua, SQLite, Redis) in earlier frontend builds. The current
+web UI routes those chips through the unified `/parse/stream-url` flow;
+this endpoint remains available for direct/manual callers. libclang parsing
+is synchronous CPU-bound work, so it runs in a background thread while this
+endpoint drains its progress queue and forwards SSE events in real time —
+see "C semantic stream path" in `docs/llm/ARCHITECTURE.md` for the full
+design rationale.
 
 **Request Body:** same as `/c-parser/github`.
 
