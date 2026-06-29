@@ -139,6 +139,7 @@ class CLangaugeParser:
             return nx.DiGraph()
 
         paths: list[Path] = []
+        real_paths: list[Path] = []   # real on-disk paths only (not virtual)
         contents: dict[str, str] = {}
 
         for f in files:
@@ -152,6 +153,7 @@ class CLangaugeParser:
             real_path = Path(f.url) if f.url else None
             if real_path is not None and real_path.exists():
                 paths.append(real_path)
+                real_paths.append(real_path)
             elif f.raw:
                 virtual_path = self._VIRTUAL_ROOT / f.name
                 paths.append(virtual_path)
@@ -160,9 +162,21 @@ class CLangaugeParser:
         if not paths:
             return nx.DiGraph()
 
+        # For local files, derive the project root so libclang gets `-I<root>`
+        # and resolves multi-directory `#include "foo.h"` correctly — the same
+        # way the dedicated /c-parser/directory endpoint does via
+        # CParserService.parse_directory(extra_args=default_parse_args(project_root=...)).
+        # For GitHub/virtual content there is no real project root, so the
+        # no-arg call (no -I flag) is still correct for that branch.
+        project_root: Path | None = None
+        if real_paths:
+            import os
+            common = Path(os.path.commonpath([str(p) for p in real_paths]))
+            project_root = common if common.is_dir() else common.parent
+
         raw: dict = CParser().parse_files(
             paths,
-            extra_args=default_parse_args(),
+            extra_args=default_parse_args(project_root=project_root),
             contents=contents or None,
         )
         return self._convert(raw, depth)

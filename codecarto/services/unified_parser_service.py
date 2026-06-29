@@ -22,7 +22,7 @@ import json
 import math
 import os
 from pathlib import Path
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, Callable, Iterable, Optional, TypeVar
 
 import networkx as nx
 
@@ -417,24 +417,14 @@ class UnifiedParserService:
 
         # Split into per-file (progressive) vs batch_whole_tree (correctness
         # over progressiveness — e.g. C, for cross-file CALLS resolution).
-        per_file: list[tuple[str, str, str, object]] = []
-        batched: dict[int, tuple[object, list[tuple[str, str, str]]]] = {}
-        for folder_name, file_name, dl_url in parseable:
-            ext = Path(file_name).suffix.lower()
-            parser = ParserRegistry.get(ext)
-            if parser is None:
-                continue
-            if getattr(parser, "batch_whole_tree", False):
-                key = id(parser)
-                if key not in batched:
-                    batched[key] = (parser, [])
-                batched[key][1].append((folder_name, file_name, dl_url))
-            else:
-                per_file.append((folder_name, file_name, dl_url, parser))
+        per_file, batched = _split_by_batch_mode(
+            parseable,
+            ext_of=lambda item: Path(item[1]).suffix.lower(),
+        )
 
         tasks = [
-            asyncio.create_task(fetch_and_parse_file(fn, fname, du, parser))
-            for fn, fname, du, parser in per_file
+            asyncio.create_task(fetch_and_parse_file(*item, parser))
+            for item, parser in per_file
         ] + [
             asyncio.create_task(fetch_and_parse_batch(parser, entries))
             for parser, entries in batched.values()
@@ -624,9 +614,10 @@ class UnifiedParserService:
                 continue
             files_by_ext.setdefault(ext, []).append(file)
 
+        # First pass: add all file nodes to the graph.
+        # Collect items that need depth-2 parsing for a separate dispatch step.
+        parseable_files: list[tuple[File, str]] = []
         for ext, file_list in files_by_ext.items():
-            parser = ParserRegistry.get(ext) if depth >= 2 else None
-
             for file in file_list:
                 file_id = f"file::{folder.name}/{file.name}"
 
@@ -644,19 +635,25 @@ class UnifiedParserService:
                 )
                 graph.add_edge(folder_id, file_id, **make_edge("contains"))
 
-                # Dispatch to language parser for depth-2+ nodes
-                if parser is not None and depth >= 2 and file.raw:
-                    if getattr(parser, "batch_whole_tree", False):
-                        key = id(parser)
-                        if key not in pending:
-                            pending[key] = (parser, [])
-                        pending[key][1].append((file, file_id))
-                    else:
-                        try:
-                            sub = parser.parse_files([file], depth=depth)
-                            _merge_subgraph(graph, sub, file_id)
-                        except Exception:
-                            pass  # Best-effort; directory structure still present
+                if depth >= 2 and file.raw:
+                    parseable_files.append((file, file_id))
+
+        # Second pass: split by batch mode and dispatch.
+        if parseable_files:
+            per_item, batch_items = _split_by_batch_mode(
+                parseable_files,
+                ext_of=lambda item: Path(item[0].name).suffix.lower(),
+            )
+            for (file, file_id), parser in per_item:
+                try:
+                    sub = parser.parse_files([file], depth=depth)
+                    _merge_subgraph(graph, sub, file_id)
+                except Exception:
+                    pass  # Best-effort; directory structure still present
+            for key, (parser, items) in batch_items.items():
+                if key not in pending:
+                    pending[key] = (parser, [])
+                pending[key][1].extend(items)
 
         # ── Subfolders ────────────────────────────────────────────────────────
         for subfolder in folder.folders:
@@ -668,6 +665,43 @@ class UnifiedParserService:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+_T = TypeVar("_T")
+
+
+def _split_by_batch_mode(
+    items: Iterable[_T],
+    ext_of: Callable[[_T], str],
+) -> tuple[list[tuple[_T, object]], dict[int, tuple[object, list[_T]]]]:
+    """Group items by whether their registered parser uses ``batch_whole_tree``.
+
+    Returns
+    -------
+    per_item : list of (item, parser)
+        Items whose parser should be dispatched file-by-file (progressive).
+    batched : dict mapping id(parser) → (parser, [items])
+        Items whose parser requires the full set at once (e.g. C, for
+        cross-file CALLS/type resolution — see CLangaugeParser.batch_whole_tree).
+
+    The two call sites' downstream handling is intentionally kept separate:
+    the GitHub-streaming path emits SSE events via ``node_events_for``; the
+    local-directory path merges into an ``nx.DiGraph`` via ``_merge_subgraph``
+    / ``_parse_pending_batches``.  Only the *grouping step* is shared here.
+    """
+    per_item: list[tuple[_T, object]] = []
+    batched: dict[int, tuple[object, list[_T]]] = {}
+    for item in items:
+        parser = ParserRegistry.get(ext_of(item))
+        if parser is None:
+            continue
+        if getattr(parser, "batch_whole_tree", False):
+            key = id(parser)
+            if key not in batched:
+                batched[key] = (parser, [])
+            batched[key][1].append(item)
+        else:
+            per_item.append((item, parser))
+    return per_item, batched
 
 def _collect_parseable(
     folder: Folder,
