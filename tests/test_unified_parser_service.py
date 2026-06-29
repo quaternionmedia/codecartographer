@@ -619,6 +619,75 @@ class TestStreamParseUrlDependencyEdges:
         assert not any(t == "edge" and d.get("kind") == "depends_on" for t, d in events)
 
 
+# ── _split_by_batch_mode: pure grouping helper, shared by both dispatch sites ──
+# Extracted so the GitHub-streaming path (stream_parse_url) and the
+# local-directory path (_walk_folder) don't each reimplement "group by
+# whether this item's parser wants batch_whole_tree" independently. Tested
+# directly here since it's pure (no I/O, no closures) — the end-to-end
+# behavior it enables is covered separately by TestCBatchWholeTree below.
+
+class TestSplitByBatchMode:
+    def _ext_of_name(self, item: str) -> str:
+        return "." + item.rsplit(".", 1)[-1].lower()
+
+    def test_python_files_go_to_per_item(self):
+        import codecarto.services.parsers.python_language_parser  # noqa: F401 (registers .py)
+        from codecarto.services.unified_parser_service import _split_by_batch_mode
+
+        per_item, batched = _split_by_batch_mode(["a.py", "b.py"], self._ext_of_name)
+
+        assert batched == {}
+        assert {item for item, _ in per_item} == {"a.py", "b.py"}
+
+    def test_c_files_go_to_batched_grouped_by_parser_identity(self):
+        # No libclang needed here — CLangaugeParser registers itself with
+        # ParserRegistry at import time regardless of whether libclang is
+        # installed; only parse_files() itself lazily needs it.
+        import codecarto.services.parsers.c_language_parser as clp
+        from codecarto.services.unified_parser_service import _split_by_batch_mode
+
+        per_item, batched = _split_by_batch_mode(["a.c", "b.h"], self._ext_of_name)
+
+        assert per_item == []
+        assert len(batched) == 1
+        parser, items = next(iter(batched.values()))
+        assert isinstance(parser, clp.CLangaugeParser)
+        assert set(items) == {"a.c", "b.h"}
+
+    def test_unregistered_extension_is_dropped(self):
+        from codecarto.services.unified_parser_service import _split_by_batch_mode
+
+        per_item, batched = _split_by_batch_mode(["data.csv"], self._ext_of_name)
+
+        assert per_item == []
+        assert batched == {}
+
+    def test_mixed_extensions_split_correctly(self):
+        import codecarto.services.parsers.python_language_parser  # noqa: F401
+        import codecarto.services.parsers.c_language_parser  # noqa: F401
+        from codecarto.services.unified_parser_service import _split_by_batch_mode
+
+        per_item, batched = _split_by_batch_mode(
+            ["a.py", "b.c", "c.py", "d.h"], self._ext_of_name
+        )
+
+        assert {item for item, _ in per_item} == {"a.py", "c.py"}
+        assert len(batched) == 1
+        _, items = next(iter(batched.values()))
+        assert set(items) == {"b.c", "d.h"}
+
+    def test_same_parser_instance_across_calls_groups_together(self):
+        """.c and .h are different extensions but the SAME CLangaugeParser
+        instance — must land in one batch group, not two (matches the
+        existing batch_whole_tree id(parser)-keying convention)."""
+        import codecarto.services.parsers.c_language_parser  # noqa: F401
+        from codecarto.services.unified_parser_service import _split_by_batch_mode
+
+        _, batched = _split_by_batch_mode(["x.c", "y.h", "z.c"], self._ext_of_name)
+
+        assert len(batched) == 1
+
+
 # ── batch_whole_tree: C files parsed together, not one-at-a-time ──────────────
 # Before this, _walk_folder dispatched parser.parse_files([file], depth) one
 # file at a time for every language. Fine for Python; structurally wrong for

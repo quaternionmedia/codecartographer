@@ -539,3 +539,77 @@ class TestCLanguageParserUnsavedFiles:
 
         names = {d["label"] for _, d in g.nodes(data=True)}
         assert "from_disk" in names
+
+
+@requires_libclang
+class TestCLanguageParserProjectRoot:
+    """CLangaugeParser.parse_files() derives a project root from real
+    on-disk file paths (os.path.commonpath) and passes it to libclang as
+    -I<root> — without this, a multi-directory C project's #include "foo.h"
+    expecting the build's root include (not just the including file's own
+    directory) silently fails to resolve, even for local repos where the
+    project root is fully knowable. Matches what the dedicated
+    /c-parser/directory endpoint already did via
+    CParserService.parse_directory(extra_args=default_parse_args(project_root=...))."""
+
+    def _write_project(self, tmp_path):
+        """foo.h at the project root, foo.c/main.c in a src/ subdirectory —
+        #include "foo.h" only resolves via -I<root>, not via the including
+        file's own directory (src/)."""
+        (tmp_path / "foo.h").write_text("int foo_fn(int x);\n")
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "foo.c").write_text(
+            '#include "foo.h"\nint foo_fn(int x) { return x * 2; }\n'
+        )
+        (src / "main.c").write_text(
+            '#include "foo.h"\nint main(void) { return foo_fn(5); }\n'
+        )
+        return tmp_path, src
+
+    def _files(self, root, src):
+        from codecarto.models.source_data import File
+        return [
+            File(url=str(root / "foo.h"), name="foo.h", size=0, raw=(root / "foo.h").read_text()),
+            File(url=str(src / "foo.c"), name="foo.c", size=0, raw=(src / "foo.c").read_text()),
+            File(url=str(src / "main.c"), name="main.c", size=0, raw=(src / "main.c").read_text()),
+        ]
+
+    def test_header_outside_including_files_own_directory_resolves(self, tmp_path):
+        from codecarto.services.parsers.c_language_parser import CLangaugeParser
+
+        root, src = self._write_project(tmp_path)
+        g = CLangaugeParser().parse_files(self._files(root, src), depth=2)
+
+        labels = {d.get("label") for _, d in g.nodes(data=True)}
+        assert "foo_fn" in labels and "main" in labels
+
+    def test_cross_file_call_resolves_through_root_include(self, tmp_path):
+        """The real payoff: without -I<root>, foo.h can't be found at all,
+        so foo_fn's declaration never reaches main.c and the cross-file
+        calls edge never resolves."""
+        from codecarto.services.parsers.c_language_parser import CLangaugeParser
+
+        root, src = self._write_project(tmp_path)
+        g = CLangaugeParser().parse_files(self._files(root, src), depth=2)
+
+        call_edges = [
+            (s, t) for s, t, d in g.edges(data=True) if d.get("kind") == "calls"
+        ]
+        assert any("main" in s and "foo_fn" in t for s, t in call_edges), (
+            f"expected main -> foo_fn calls edge, got: {call_edges}"
+        )
+
+    def test_single_file_project_root_falls_back_to_parent_dir(self, tmp_path):
+        """os.path.commonpath of a single path returns that file itself, not
+        a directory — must fall back to its parent, not pass a file as -I."""
+        from codecarto.services.parsers.c_language_parser import CLangaugeParser
+        from codecarto.models.source_data import File
+
+        (tmp_path / "solo.c").write_text("int solo_fn(void) { return 1; }\n")
+        f = File(url=str(tmp_path / "solo.c"), name="solo.c", size=0, raw="int solo_fn(void) { return 1; }\n")
+
+        g = CLangaugeParser().parse_files([f], depth=2)
+
+        labels = {d.get("label") for _, d in g.nodes(data=True)}
+        assert "solo_fn" in labels
