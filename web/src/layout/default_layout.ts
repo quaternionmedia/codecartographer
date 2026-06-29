@@ -6,7 +6,8 @@ import type { LayoutConfig } from 'golden-layout';
  * Panels:
  *   • file-tree   — left sidebar: repository / upload browser
  *   • graph       — main area: D3 / vis-network visualisation
- *   • control-panel — bottom drawer: source loader + graph controls
+ *   • source      — bottom tab: source loader
+ *   • graph-settings — bottom tab: graph styling controls
  */
 export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   settings: {
@@ -15,7 +16,17 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
     popoutWholeStack: false,
     blockedPopoutsThrowError: false,
     closePopoutsOnUnload: true,
+    popInOnClose: true,
     responsiveMode: 'none',
+  },
+  header: {
+    show: 'top',
+    popout: 'Pop out',
+    popin: 'Pop in',
+    maximise: 'Maximise',
+    close: 'Close',
+    minimise: 'Minimise',
+    tabDropdown: 'More tabs',
   },
   dimensions: {
     borderWidth: 4,
@@ -31,7 +42,7 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
         componentType: 'file-tree',
         title: '◉ Files',
         width: 22,
-        isClosable: false,
+        isClosable: true,
       },
       {
         type: 'column',
@@ -41,15 +52,29 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
             type: 'component',
             componentType: 'graph',
             title: '◈ Graph',
-            height: 70,
-            isClosable: false,
+            height: 68,
+            isClosable: true,
           },
           {
-            type: 'component',
-            componentType: 'control-panel',
-            title: '⚙ Controls',
-            height: 30,
-            isClosable: false,
+            type: 'stack',
+            height: 32,
+            id: 'dock-tab-stack',
+            content: [
+              {
+                type: 'component',
+                componentType: 'source-panel',
+                title: 'Source',
+                id: 'source-panel',
+                isClosable: true,
+              },
+              {
+                type: 'component',
+                componentType: 'graph-settings-panel',
+                title: 'Graph Settings',
+                id: 'graph-settings-panel',
+                isClosable: true,
+              },
+            ],
           },
         ],
       },

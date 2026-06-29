@@ -1,27 +1,26 @@
 /**
- * Control Panel (GL wrapper)
+ * Source Panel
  *
- * Mounts the source-loader + graph-settings control panel into a Golden Layout
- * panel. The panel is kept permanently open (no collapse toggle needed — GL
- * handles resize by dragging the splitter).
+ * Mounts the source-loader portion of the control panel into a dedicated
+ * Golden Layout panel.
  */
 
 import m from 'mithril';
 import type { LayoutContext } from '../layout_context';
 import { ControlPanel } from '../../components/codecarto/control_panel';
 
-export function createControlPanelWrapper(ctx: LayoutContext): m.Component {
+export function createSourcePanel(ctx: LayoutContext): m.Component {
   return {
     view: () => {
-      // Always open — GL handles sizing; override the collapse behaviour.
       const panelState = { ...ctx.panelState, isOpen: true };
 
-      return m('div.gl-panel.gl-panel--controls', [
+      return m('div.gl-panel.gl-panel--controls.gl-panel--controls-source', [
         ControlPanel(
           panelState,
           ctx.panelCallbacks,
           (updates) => ctx.updatePanelState(updates),
           ctx.getControlPanelContent(),
+          { mode: 'source' },
         ),
       ]);
     },

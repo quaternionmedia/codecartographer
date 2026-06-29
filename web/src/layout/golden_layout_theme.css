@@ -124,6 +124,11 @@
   overflow-y: auto;
 }
 
+.gl-panel--controls-source,
+.gl-panel--controls-graph-settings {
+  overflow: hidden;
+}
+
 /* Override collapse toggle — not needed when GL handles sizing. */
 .gl-panel--controls .control-panel__collapse-btn {
   display: none;
@@ -288,6 +293,29 @@
 
 .gl-app-header__spacer {
   flex: 1;
+}
+
+.gl-app-header__restore {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+}
+
+.gl-app-header__restore-btn {
+  padding: 4px 8px;
+  border: 1px solid var(--c-border, #00ff4140);
+  background: transparent;
+  color: var(--c-secondary, #00ff41);
+  font-size: 0.72em;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.gl-app-header__restore-btn:hover {
+  background: var(--c-primary-light, #1a1a1a);
+  border-color: var(--c-secondary, #00ff41);
 }
 
 .gl-app-header__help-btn {
