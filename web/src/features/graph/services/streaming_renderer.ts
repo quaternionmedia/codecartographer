@@ -41,6 +41,7 @@ export class StreamingGraphRenderer {
   private _streamDone = false;
   private _batchSize = 1;           // updated when total is known via setTotal()
   private _totalNodes = 0;
+  private _nodeCountByDepth = new Map<number, number>();
 
   // Loading overlay shown before first data arrives
   private _loadingOverlay: HTMLDivElement | null = null;
@@ -153,42 +154,6 @@ export class StreamingGraphRenderer {
     this._scheduleLoop();
   }
 
-  /**
-   * Smoothly move already-rendered nodes to new positions. Used by the
-   * dedicated C-parser stream (/c-parser/stream-github), which has to place
-   * nodes in a placeholder grid as they arrive (the chosen layout algorithm
-   * needs the complete edge set to mean anything, and edges aren't known
-   * until the whole repo is parsed) — once the real graph is known, this
-   * call transitions everything to its actual layout position. Call before
-   * finalize() so the fit-to-view uses final positions, not the grid.
-   */
-  repositionAll(positions: Record<string, { x: number; y: number }>): void {
-    for (const [nodeId, pos] of Object.entries(positions)) {
-      const node = this.nodeById.get(nodeId);
-      if (node) {
-        node.x = pos.x;
-        node.y = pos.y;
-      }
-    }
-
-    this.nodeGroup.selectAll<SVGGElement, unknown>('.graph-node')
-      .transition()
-      .duration(600)
-      .ease(d3.easeCubicInOut)
-      .attr('transform', function (this: SVGGElement) {
-        const nodeId = this.getAttribute('data-node-id');
-        const pos = nodeId ? positions[nodeId] : undefined;
-        return pos ? `translate(${pos.x},${pos.y}) scale(1)` : null;
-      });
-
-    for (const [nodeId, pos] of Object.entries(positions)) {
-      const node = this.nodeById.get(nodeId);
-      const size = node ? this.styling.nodeSize! * this._depthScale(node) : 0;
-      this._updateEdgesForNode(nodeId, pos.x, pos.y);
-      this._updateLabelForNode(nodeId, pos.x, pos.y, size);
-    }
-  }
-
   // ── Private: rAF drain loop ────────────────────────────────────────────────
 
   private _scheduleLoop(): void {
@@ -228,9 +193,30 @@ export class StreamingGraphRenderer {
 
   // ── Private: DOM rendering ─────────────────────────────────────────────────
 
+  private _getDepthAwarePosition(node: GraphNode): [number, number] {
+    const depth = (node.depth as number | undefined) ?? 0;
+    const nodeCountAtDepth = (this._nodeCountByDepth.get(depth) ?? 0) + 1;
+    this._nodeCountByDepth.set(depth, nodeCountAtDepth);
+
+    // Place each depth on a separate ring to reduce overlap across layers.
+    const radius = 100 + depth * 180;
+    const slots = Math.max(8, nodeCountAtDepth);
+    const angle = ((nodeCountAtDepth - 1) * 2 * Math.PI) / slots;
+
+    return [
+      this.width / 2 + radius * Math.cos(angle),
+      this.height / 2 + radius * Math.sin(angle),
+    ];
+  }
+
   private _renderNode(node: GraphNode): void {
-    const x = node.x ?? this.width / 2;
-    const y = node.y ?? this.height / 2;
+    let x = node.x;
+    let y = node.y;
+    if (x === undefined || y === undefined) {
+      [x, y] = this._getDepthAwarePosition(node);
+      node.x = x;
+      node.y = y;
+    }
     const size = this.styling.nodeSize! * this._depthScale(node);
 
     const group = this.nodeGroup
