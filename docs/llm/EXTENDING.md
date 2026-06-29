@@ -60,6 +60,30 @@ import codecarto.services.parsers.js_language_parser  # noqa: F401
 That's it. The new parser is now available via `/parse/unified` for `.js`/`.ts`/`.mjs` files.
 No router changes, no mode string additions.
 
+### Does your parser need the whole tree at once?
+
+By default `_walk_folder` dispatches one file at a time:
+`parser.parse_files([file], depth)`. That's fine when each file's nodes/edges
+are self-contained — true for Python (and for most languages, including the
+JavaScript example above). If your parser needs to resolve references
+*across* files in one call (the way `CLangaugeParser` resolves cross-file
+`CALLS` edges — see `docs/llm/ARCHITECTURE.md`'s `batch_whole_tree` section),
+set:
+
+```python
+class JavaScriptLanguageParser:
+    batch_whole_tree: ClassVar[bool] = True
+    ...
+```
+
+This changes nothing about `parse_files()`'s signature — it's still called
+with a list of files, just now with *every* file your parser owns across
+the whole tree, in one call, after the directory walk finishes instead of
+per-folder. You're responsible for attributing resulting nodes back to
+their origin file via each node's `file` attribute if you want correct
+`contains` edges — see `_merge_batch_subgraph` for the depth==2 convention
+the unified pipeline uses.
+
 ### Unified node schema helpers
 
 ```python
@@ -310,10 +334,18 @@ not in `renderers.ts`). It is a standalone deep-dive tool, not part of the main 
 dropdown.
 
 **Key files:**
-- Low-level parser: `codecarto/services/parsers/c_parser.py` — `CParser` class, lazy libclang
+- Low-level parser: `codecarto/services/parsers/c_parser.py` — `CParser` class, lazy libclang.
+  `parse_files()` takes an optional `contents: dict[path_str, text]` passed to
+  libclang as `unsaved_files`, so content with no real file on disk (e.g.
+  fetched from GitHub) can still be parsed.
 - Service layer: `codecarto/services/c_parser_service.py` — path validation + error wrapping
-- REST router: `codecarto/routers/c_parser_router.py` — `POST /c-parser/file|directory|github`
-- Unified adapter: `codecarto/services/parsers/c_language_parser.py` — `CLangaugeParser`
+  + the repo-extraction cache (`list_cached_repos`/`evict_repo_cache`)
+- REST router: `codecarto/routers/c_parser_router.py` — `POST /c-parser/file|directory|github` (blocking) + `POST /c-parser/stream-github` (SSE, real per-file libclang progress — see `docs/llm/ARCHITECTURE.md`'s "C semantic stream path") + `GET /c-parser/cache` / `DELETE /c-parser/cache/{key}`
+- Unified adapter: `codecarto/services/parsers/c_language_parser.py` — `CLangaugeParser`.
+  Sets `batch_whole_tree = True` so the unified pipeline collects every C/H
+  file across the whole tree before parsing (needed for cross-file `CALLS`
+  resolution) — see `docs/llm/ARCHITECTURE.md`'s `batch_whole_tree` section
+  if you're writing a new language adapter that also needs whole-tree context.
 - Frontend renderer: `web/src/features/graph/services/c_semantic_renderer.ts` (opt-in)
 - Standalone visualizer HTML: `codecarto/static/c-visualizer.html` (served by `GET /c-parser/visualizer`)
 
