@@ -290,7 +290,7 @@ class UnifiedParserService:
 
         # ── Phase 2: fetch content + parse symbols concurrently ───────────────
         parseable: list[tuple[str, str, str]] = []
-        _collect_parseable(structure_root, structure_root.name, allowed_exts, parseable)
+        _collect_parseable(structure_root, allowed_exts, parseable)
 
         if not parseable:
             elapsed = int((time.monotonic() - start) * 1000)
@@ -705,17 +705,14 @@ def _split_by_batch_mode(
 
 def _collect_parseable(
     folder: Folder,
-    folder_name: str,
     allowed_exts: set[str],
     result: list[tuple[str, str, str]],
 ) -> None:
-    """Recursively collect (folder_name, file_name, download_url) for parseable files."""
-    for f in folder.files:
+    """Collect (folder_name, file_name, download_url) for parseable files."""
+    for owning_folder, f in folder.iter_files():
         ext = Path(f.name).suffix.lower()
         if ext in allowed_exts and f.url:
-            result.append((folder_name, f.name, f.url))
-    for sub in folder.folders:
-        _collect_parseable(sub, sub.name, allowed_exts, result)
+            result.append((owning_folder.name, f.name, f.url))
 
 
 def _ext_to_language(ext: str) -> str:
@@ -807,18 +804,12 @@ def _add_python_dependency_edges(
         return
 
     raw_by_file_id: dict[str, str] = {}
-
-    def collect(folder: Folder) -> None:
-        for file in folder.files:
-            if Path(file.name).suffix.lower() != ".py" or not file.raw:
-                continue
-            file_id = file_id_by_stem.get(Path(file.name).stem)
-            if file_id:
-                raw_by_file_id[file_id] = file.raw
-        for sub in folder.folders:
-            collect(sub)
-
-    collect(root)
+    for _, file in root.iter_files():
+        if Path(file.name).suffix.lower() != ".py" or not file.raw:
+            continue
+        file_id = file_id_by_stem.get(Path(file.name).stem)
+        if file_id:
+            raw_by_file_id[file_id] = file.raw
 
     internal_edges, external_refs = _resolve_python_dependencies(file_id_by_stem, raw_by_file_id)
 

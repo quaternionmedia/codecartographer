@@ -64,16 +64,10 @@ async def _fetch_content_for_folder(folder: Folder, concurrency: int = 8) -> Non
     from codecarto.services.parsers.language_parser import ParserRegistry
     registered_exts = set(ParserRegistry.all_extensions())
 
-    targets: list[File] = []
-
-    def collect(f: Folder) -> None:
-        for file in f.files:
-            if file.url and Path(file.name).suffix.lower() in registered_exts:
-                targets.append(file)
-        for sub in f.folders:
-            collect(sub)
-
-    collect(folder)
+    targets: list[File] = [
+        file for _, file in folder.iter_files()
+        if file.url and Path(file.name).suffix.lower() in registered_exts
+    ]
 
     semaphore = asyncio.Semaphore(concurrency)
 
