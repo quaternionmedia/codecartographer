@@ -4,7 +4,6 @@ export class API {
   private _palette: string = 'palette';
   private _plotter: string = 'plotter';
   private _repoReader: string = 'repo';
-  private _cParser: string = 'c-parser';
   private _parse: string = 'parse';
 
   constructor(base: string) {
@@ -25,10 +24,6 @@ export class API {
 
   get repoReader(): string {
     return `${this._base}/${this._repoReader}`;
-  }
-
-  get cParser(): string {
-    return `${this._base}/${this._cParser}`;
   }
 
   get parse(): string {

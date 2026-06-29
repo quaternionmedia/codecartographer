@@ -83,7 +83,6 @@ export interface ControlPanelCallbacks {
   onGraphStylingChange: (options: Partial<GraphStylingOptions>) => void;
   onParserOptionsChange: (options: Partial<ParserOptions>) => void;
   onRendererChange: (renderer: GraphRendererType) => void;
-  onCParserGithub: (repoUrl: string) => void;
   onFolderExpand: (path: string) => void;
   onExpandAll?: () => Promise<void>;
   onCancel?: () => void;
@@ -423,7 +422,8 @@ export function ControlPanel(
                 title: ex.title,
                 onclick: (e: MouseEvent) => {
                   animations.buttonPress(e.currentTarget as Element);
-                  callbacks.onCParserGithub(ex.url);
+                  onStateChange({ repoUrl: ex.url });
+                  callbacks.onRepoSubmit(ex.url);
                 },
                 disabled: state.isLoading,
               }, ex.label)

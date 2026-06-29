@@ -21,21 +21,6 @@ export interface StreamCallbacks {
   onError: (msg: string) => void;
   /** Called on 'fetching' events (stream-url only): status message updates before nodes arrive. */
   onFetching?: (message: string) => void;
-  /**
-   * Called on 'meta' from /c-parser/stream-github (streamCGithub only), with
-   * the file count to be parsed. Unlike onMeta's nodeCount, the real node
-   * count isn't knowable until libclang finishes — the caller estimates a
-   * batch-size total from this instead.
-   */
-  onFileCount?: (fileCount: number) => void;
-  /**
-   * Called on 'reposition' from /c-parser/stream-github (streamCGithub
-   * only), once the full graph is known and the real layout algorithm has
-   * been run server-side. Nodes arrive in a placeholder grid because the
-   * layout needs the complete edge set; this moves them to their actual
-   * positions. Pass straight to StreamingGraphRenderer.repositionAll().
-   */
-  onReposition?: (positions: Record<string, { x: number; y: number }>) => void;
 }
 
 export class PlotService {
@@ -162,7 +147,7 @@ export class PlotService {
   /**
    * Read an SSE response body and dispatch (eventType, payload) to onEvent
    * as each complete `event: ...\ndata: ...\n\n` frame arrives. Shared by
-   * streamUnified/streamFromUrl/streamCGithub so each only needs to define
+    * streamUnified/streamFromUrl so each only needs to define
    * its request body and its event-type dispatch.
    */
   private static async _consumeSSE(
@@ -313,58 +298,6 @@ export class PlotService {
             case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, payload.from_cache); break;
             case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
             // 'phase' events are informational — ignored silently
-          }
-        });
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name === 'AbortError') return;
-        callbacks.onError(String(err));
-      }
-    })();
-
-    return () => controller.abort();
-  }
-
-  /**
-   * Stream a C/C++ GitHub repo parse via /c-parser/stream-github (SSE).
-   * Nodes arrive file-by-file as libclang parses them; edges arrive as one
-   * batch after the cross-file CALLS/type pass completes (see
-   * c_parser_router.py for why edges can't be partial). Returns a cancel
-   * function; call it to abort.
-   */
-  static streamCGithub(
-    cParserUrl: string,
-    repoUrl: string,
-    maxFiles: number,
-    layout: string,
-    callbacks: StreamCallbacks
-  ): () => void {
-    const controller = new AbortController();
-    const body = { url: repoUrl, max_files: maxFiles, layout };
-    let nodeIndex = 0;
-
-    (async () => {
-      try {
-        const resp = await fetch(`${cParserUrl}/stream-github`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-
-        if (!resp.ok || !resp.body) {
-          callbacks.onError(`HTTP ${resp.status}`);
-          return;
-        }
-
-        await this._consumeSSE(resp, (eventType, payload) => {
-          switch (eventType) {
-            case 'fetching': callbacks.onFetching?.(payload.message ?? ''); break;
-            case 'meta':  callbacks.onFileCount?.(payload.fileCount ?? 0); break;
-            case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
-            case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
-            case 'reposition': callbacks.onReposition?.(payload as Record<string, { x: number; y: number }>); break;
-            case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, false); break;
-            case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
           }
         });
       } catch (err: unknown) {

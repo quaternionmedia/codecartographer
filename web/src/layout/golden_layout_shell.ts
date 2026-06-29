@@ -39,7 +39,7 @@ import '../components/codecarto/help/help_modal.css';
  */
 export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
   const initialCell = getCell();
-  const ctx = new LayoutContext(initialCell, getCell);
+  const ctx = new LayoutContext(initialCell);
 
   let glInstance: GoldenLayout | null = null;
 

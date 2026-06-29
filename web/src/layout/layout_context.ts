@@ -6,7 +6,7 @@
  * actions, streaming state, and callbacks without duplicating business logic.
  *
  * Usage:
- *   const ctx = new LayoutContext(initialCell, getCell);
+ *   const ctx = new LayoutContext(initialCell);
  *   // pass ctx to each panel factory function
  */
 
@@ -126,7 +126,7 @@ export class LayoutContext {
 
   public readonly panelCallbacks: ControlPanelCallbacks;
 
-  constructor(initialCell: ICell, private readonly getCell: () => ICell) {
+  constructor(initialCell: ICell) {
     this.appState = new StateController(initialCell);
     this.actions = createActions(this.appState);
     this.panelCallbacks = this._buildCallbacks();
@@ -409,85 +409,6 @@ export class LayoutContext {
     );
   }
 
-  /** Stream a C/C++ GitHub repo via /c-parser/stream-github. */
-  private _startStreamCGithub(githubUrl: string, maxFiles: number): void {
-    const AVG_C_NODES_PER_FILE = 40;
-    this.appState.update({ selectedRenderer: 'd3' });
-    const layout = convertLayout(this.appState.state.graphStyling.layout);
-
-    const accNodes: { id: string; [k: string]: unknown }[] = [];
-    const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
-    let nodeCount = 0;
-
-    this._mountAndStream((renderer) =>
-      PlotService.streamCGithub(
-        this.appState.api.cParser,
-        githubUrl,
-        maxFiles,
-        layout,
-        {
-          onFetching: (msg) => this.updatePanelState({ statusMessage: msg }),
-          onMeta: (_meta) => { /* unused — see onFileCount */ },
-          onFileCount: (fileCount) => {
-            const estimatedTotal = fileCount * AVG_C_NODES_PER_FILE;
-            renderer.setTotal(estimatedTotal);
-            this.updatePanelState({ statusMessage: `Parsing ${fileCount} files…` });
-            this._updateProgress({ loaded: 0, total: estimatedTotal, phase: 'streaming' });
-          },
-          onNode: (node) => {
-            nodeCount++;
-            accNodes.push(node as any);
-            if (nodeCount % 5 === 0)
-              this._updateProgress({
-                loaded: nodeCount,
-                total: this.panelState.progress?.total ?? 0,
-                phase: 'streaming',
-              });
-            renderer.addNode(node as any);
-          },
-          onEdge: (edge) => {
-            accEdges.push(edge as any);
-            renderer.addEdge(edge as any);
-          },
-          onReposition: (positions) => {
-            for (const node of accNodes) {
-              const pos = positions[node.id];
-              if (pos) { node.x = pos.x; node.y = pos.y; }
-            }
-            renderer.repositionAll(positions);
-          },
-          onDone: (elapsed_ms) => {
-            this._cancelStream = null;
-            renderer.finalize();
-            this._streamingRenderer = null;
-            this.appState.update({
-              graphData: this._buildGraphData(accNodes, accEdges, {
-                nodeCount,
-                edgeCount: accEdges.length,
-                layout,
-              }) as any,
-            });
-            if (this.appState.state.selectedRenderer !== 'd3') {
-              this.actions.plot.createGraphVnode();
-            }
-            this.updatePanelState({
-              isLoading: false,
-              statusMessage: `Done in ${elapsed_ms}ms (${nodeCount} nodes)`,
-              progress: null,
-            });
-            ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
-          },
-          onError: (msg) => {
-            this._cancelStream = null;
-            this._streamingRenderer = null;
-            this.updatePanelState({ isLoading: false, statusMessage: `Error: ${msg}`, progress: null });
-          },
-        },
-      ),
-      `Fetching & parsing C repo: ${githubUrl}`,
-    );
-  }
-
   // ── Callback builder ───────────────────────────────────────────────────────
 
   private _buildCallbacks(): ControlPanelCallbacks {
@@ -667,11 +588,6 @@ export class LayoutContext {
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: 'Error expanding tree' });
         }
-      },
-
-      onCParserGithub: (repoUrl: string) => {
-        this._lastPlotAction = () => { this.panelCallbacks.onCParserGithub(repoUrl); };
-        this._startStreamCGithub(repoUrl, 200);
       },
 
       onLoadFromCache: async (key: string) => {
