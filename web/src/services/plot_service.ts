@@ -91,36 +91,6 @@ export class PlotService {
     return null;
   }
 
-  /** Parse a C/C++ file via the c-parser backend endpoint. */
-  public static async plotCFile(
-    cParserUrl: string,
-    path: string
-  ): Promise<unknown> {
-    const url = `${cParserUrl}/file`;
-    const body = { path };
-    const data = await RequestHandler.postRequest(url, body);
-    if (typeof data === 'string') {
-      logger.error('Error plotCFile');
-      return null;
-    }
-    return data;
-  }
-
-  /** Parse a C/C++ directory via the c-parser backend endpoint. */
-  public static async plotCDirectory(
-    cParserUrl: string,
-    path: string
-  ): Promise<unknown> {
-    const url = `${cParserUrl}/directory`;
-    const body = { path };
-    const data = await RequestHandler.postRequest(url, body);
-    if (typeof data === 'string') {
-      logger.error('Error plotCDirectory');
-      return null;
-    }
-    return data;
-  }
-
   /** Fetch the registered language extensions from the backend. */
   public static async fetchLanguages(
     parseUrl: string
