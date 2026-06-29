@@ -92,14 +92,37 @@ class CLangaugeParser:
     language: ClassVar[str] = "c"
     extensions: ClassVar[list[str]] = [".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hxx"]
 
+    # Tells the unified pipeline (unified_parser_service.py's build_graph)
+    # to collect every C/H file across the WHOLE directory tree and pass
+    # them to parse_files() in one batch, instead of dispatching one file
+    # at a time like every other language. Cross-file CALLS/type edges only
+    # resolve when CParser sees the full file set together — see
+    # docs/llm/ARCHITECTURE.md's "C semantic stream path" / "batch_whole_tree".
+    batch_whole_tree: ClassVar[bool] = True
+
+    # Shared parent directory assigned to every virtual (no-real-disk-path)
+    # file in a batch. They all need the SAME parent so libclang's quote-
+    # include search ("look in the including file's own directory first")
+    # finds sibling virtual headers via unsaved_files — a bare flat filename
+    # with no directory at all does NOT reliably resolve `#include "x.h"`.
+    _VIRTUAL_ROOT: ClassVar[Path] = Path("__virtual__")
+
     def parse_files(self, files: list[File], depth: int = 2) -> nx.DiGraph:
         """Parse C/H files and return a unified-schema graph.
 
         Parameters
         ----------
         files : list[File]
-            C/H source files. Each must have a non-empty ``url`` field
-            that is a valid filesystem path (the CParser needs real files).
+            C/H source files, ideally the *whole* repo's worth at once (see
+            batch_whole_tree above) so cross-file CALLS resolve. Each file
+            is read from disk when ``url`` is a real path (e.g. a locally
+            scanned repo); otherwise its ``raw`` content is parsed in-memory
+            via libclang's unsaved_files mechanism (e.g. content fetched
+            from GitHub, which never touches disk) under a shared virtual
+            directory — sibling `#include "x.h"` resolves within that flat
+            namespace, but real subdirectory structure is not reconstructed,
+            so includes that rely on subdirectories (`#include "sub/x.h"`)
+            won't resolve for no-disk content.
         depth : int
             Maximum depth (2 = top-level symbols, 3 = fields/enum constants).
 
@@ -108,22 +131,40 @@ class CLangaugeParser:
         nx.DiGraph with unified node schema.
         """
         try:
-            from codecarto.services.parsers.c_parser import CParser
+            from codecarto.services.parsers.c_parser import (
+                CParser, default_parse_args, is_platform_specific_path,
+            )
         except ImportError:
             # libclang not available; return empty graph
             return nx.DiGraph()
 
-        # Resolve filesystem paths from File.url (real paths) or File.name
-        paths = []
+        paths: list[Path] = []
+        contents: dict[str, str] = {}
+
         for f in files:
-            candidate = Path(f.url) if f.url else Path(f.name)
-            if candidate.exists():
-                paths.append(candidate)
+            # Works for both real disk paths and GitHub raw-content URLs —
+            # is_platform_specific_path is a plain substring match (e.g.
+            # 'compat/apple-only.c' matches whether 'compat/apple-only.c' is
+            # a local path or the tail of a raw.githubusercontent.com URL).
+            if is_platform_specific_path(f.url or f.name):
+                continue
+
+            real_path = Path(f.url) if f.url else None
+            if real_path is not None and real_path.exists():
+                paths.append(real_path)
+            elif f.raw:
+                virtual_path = self._VIRTUAL_ROOT / f.name
+                paths.append(virtual_path)
+                contents[str(virtual_path)] = f.raw
 
         if not paths:
             return nx.DiGraph()
 
-        raw: dict = CParser().parse_files(paths)
+        raw: dict = CParser().parse_files(
+            paths,
+            extra_args=default_parse_args(),
+            contents=contents or None,
+        )
         return self._convert(raw, depth)
 
     # ── Internal ──────────────────────────────────────────────────────────────
@@ -183,6 +224,11 @@ class CLangaugeParser:
                 shape=_C_SHAPE.get(c_kind),
                 color=_C_COLOR.get(c_kind),
             )
+            # Top-level (not nested in meta) to match the dedicated C-parser
+            # pipeline's shape — graph_renderer.ts reads node.has_parse_warning
+            # directly, regardless of which backend pipeline produced the node.
+            if n.get("has_parse_warning"):
+                attrs["has_parse_warning"] = True
             out.add_node(nid, **attrs)
 
         # ── Pass 2: edges ─────────────────────────────────────────────────────

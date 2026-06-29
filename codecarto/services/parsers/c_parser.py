@@ -12,11 +12,9 @@ libclang native library candidates are probed automatically on Linux.
 
 import json
 import os
-import hashlib
-import pickle
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -291,13 +289,6 @@ def _derive_type_edges(nodes, edges, edge_set):
                         _add_edge(edges, edge_set, nid, other_id, 'ALIASES', 0.8)
 
 
-# ── Cache helpers ─────────────────────────────────────────────────────────────
-def _cache_path_for(filepath, args, cache_dir) -> Path:
-    key = f"{filepath}::{os.path.getmtime(filepath)}::{' '.join(args)}"
-    digest = hashlib.md5(key.encode()).hexdigest()
-    return Path(cache_dir) / f"{digest}.pkl"
-
-
 # ── CParser class ─────────────────────────────────────────────────────────────
 class CParser:
     """
@@ -317,7 +308,8 @@ class CParser:
         self,
         filepaths: list[str | Path],
         extra_args: Optional[list[str]] = None,
-        cache_dir: Optional[str | Path] = None,
+        on_file_parsed: Optional[Callable[[str, list[dict]], None]] = None,
+        contents: Optional[dict[str, str]] = None,
     ) -> dict:
         """
         Parse a list of C/H source files and return the semantic graph.
@@ -325,8 +317,25 @@ class CParser:
         Parameters
         ----------
         filepaths : list of str or Path
+            Need not exist on disk for entries also present in *contents* —
+            libclang parses those from memory (see *contents* below).
         extra_args : extra compiler args (e.g. ['-I/usr/include'])
-        cache_dir : optional path for per-file result caching
+        on_file_parsed : optional callback invoked after each file's
+            declarations are parsed (pass 1), with (file_name, new_nodes).
+            Lets a caller stream nodes progressively instead of waiting for
+            the full two-pass parse (declarations + cross-file calls) to
+            finish. Edges are never partial here — they need the complete
+            node set — so callers that want progressive feedback should
+            stream nodes via this callback and stream edges from the final
+            returned dict once parse_files() returns.
+        contents : optional {path_str: source_text} overrides, passed to
+            libclang as `unsaved_files` instead of reading from disk. Lets
+            callers parse content fetched over the network (e.g. GitHub raw
+            content) without writing a temp file first. The *whole* map is
+            offered to every parse call in this batch (not just each file's
+            own entry), so a `#include "sibling.h"` between two files that
+            share this virtual, flat (no real directory) namespace still
+            resolves — real subdirectory structure is not reconstructed.
 
         Returns
         -------
@@ -337,9 +346,7 @@ class CParser:
         target_stems = {f.stem for f in filepaths}
         in_target = _make_in_target(target_stems)
         extra_args = extra_args or _default_parse_args()
-
-        if cache_dir:
-            Path(cache_dir).mkdir(parents=True, exist_ok=True)
+        unsaved_files = list(contents.items()) if contents else None
 
         nodes: dict = {}
         edges: list = []
@@ -352,19 +359,14 @@ class CParser:
         for fpath in filepaths:
             args = extra_args + [f'-I{fpath.parent}']
             logger.info("Parsing %s", fpath.name)
+            ids_before = set(nodes)
+            had_errors = False
 
-            if cache_dir:
-                cp = _cache_path_for(str(fpath), args, cache_dir)
-                if cp.exists():
-                    cached = pickle.loads(cp.read_bytes())
-                    nodes.update(cached['nodes'])
-                    logger.info("Loaded %d nodes from cache for %s", len(cached['nodes']), fpath.name)
-                    continue
-
-            tu = idx.parse(str(fpath), args=args)
+            tu = idx.parse(str(fpath), args=args, unsaved_files=unsaved_files)
 
             errors = [d for d in tu.diagnostics if d.severity >= cindex.Diagnostic.Error]
             if errors:
+                had_errors = True
                 files_with_warnings.add(fpath.stem)
                 worst_files[fpath.stem] = len(errors)
             for e in errors:
@@ -374,11 +376,12 @@ class CParser:
 
             _pass1_declarations(tu, in_target, nodes, edges, edge_set, cindex)
 
-            if cache_dir:
-                cp = _cache_path_for(str(fpath), args, cache_dir)
-                cp.write_bytes(pickle.dumps({
-                    'nodes': {k: v for k, v in nodes.items() if v['file'] == fpath.stem}
-                }))
+            if on_file_parsed:
+                new_nodes = [nodes[nid] for nid in nodes if nid not in ids_before]
+                if had_errors:
+                    for n in new_nodes:
+                        n['has_parse_warning'] = True
+                on_file_parsed(fpath.name, new_nodes)
 
         # Flag nodes whose source file produced parser diagnostics, so the
         # frontend can render a visual cue (see graph_renderer.ts).
@@ -388,7 +391,7 @@ class CParser:
 
         for fpath in filepaths:
             args = extra_args + [f'-I{fpath.parent}']
-            tu = idx.parse(str(fpath), args=args)
+            tu = idx.parse(str(fpath), args=args, unsaved_files=unsaved_files)
             _pass2_calls(tu, in_target, nodes, call_counts, cindex)
 
         for (src, dst), count in call_counts.items():
