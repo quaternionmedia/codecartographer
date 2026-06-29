@@ -1,13 +1,17 @@
+import asyncio
 import json
+import math
 import re
+import time
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 from codecarto.util.exceptions import CodeCartoException, proc_exception
+from codecarto.util.threaded_feeder import start_threaded_feeder
 from codecarto.util.utilities import generate_return
 
 CParserRouter = APIRouter()
@@ -15,7 +19,6 @@ CParserRouter = APIRouter()
 
 class CFileRequest(BaseModel):
     path: str
-    cache_dir: Optional[str] = None
 
 
 class CDirectoryRequest(BaseModel):
@@ -23,12 +26,17 @@ class CDirectoryRequest(BaseModel):
     compile_commands: Optional[str] = None
     subsystem: Optional[str] = None
     max_files: Optional[int] = None
-    cache_dir: Optional[str] = None
 
 
 class CGithubRequest(BaseModel):
     url: str
     max_files: Optional[int] = 200
+
+
+class CStreamGithubRequest(BaseModel):
+    url: str
+    max_files: Optional[int] = 200
+    layout: Optional[str] = "Spring"
 
 
 @CParserRouter.post("/file")
@@ -37,7 +45,7 @@ async def parse_c_file(request: CFileRequest) -> dict:
     from codecarto.services.c_parser_service import CParserService
 
     try:
-        graph = CParserService.parse_file(request.path, cache_dir=request.cache_dir)
+        graph = CParserService.parse_file(request.path)
         return generate_return(200, "c-parser/file - Success", {"graph": graph})
     except CodeCartoException as exc:
         return proc_exception(exc.source, exc.message, exc.params, exc, exc.status_code)
@@ -69,10 +77,207 @@ async def parse_c_github(request: CGithubRequest) -> dict:
         )
 
 
-_VISUALIZER_HTML = (
-    Path(__file__).parent.parent.parent
-    / ".github" / "development" / "chrestromathy_branch" / "c-visualizer.html"
-)
+@CParserRouter.get("/cache")
+async def list_c_repo_cache() -> dict:
+    """List extracted GitHub repos in the C-parser's repo cache (newest first).
+
+    Counterpart to GET /parse/cache — that one lists cached *parsed graphs*;
+    this one lists cached *extracted source trees* (a different cache, see
+    docs/llm/ARCHITECTURE.md). Repos here are re-parsed fresh on every
+    request; only the download+extract step is skipped on a hit.
+    """
+    from codecarto.services.c_parser_service import CParserService
+    entries = CParserService.list_cached_repos()
+    return generate_return(200, "c-parser/cache - Success", {"entries": entries})
+
+
+@CParserRouter.delete("/cache/{key}")
+async def evict_c_repo_cache(key: str) -> dict:
+    """Evict a single cached repo by its `{owner}-{repo}` key."""
+    from codecarto.services.c_parser_service import CParserService
+    deleted = CParserService.evict_repo_cache(key)
+    if deleted:
+        return generate_return(200, "c-parser/cache - Evicted", {"key": key})
+    return generate_return(404, "c-parser/cache - Not found", {"key": key})
+
+
+def _sse(event: str, payload: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
+
+def _file_cluster_center(file_index: int, cols: int, spacing: float = 220.0) -> tuple[float, float]:
+    """Deterministic grid position for the Nth file's symbol cluster.
+
+    The dedicated C pipeline streams bare symbol nodes with no directory/file
+    skeleton (unlike the unified pipeline, which precomputes a NetworkX
+    layout before streaming) — without this, every node arrives with no x/y
+    and StreamingGraphRenderer._renderNode() falls back to the exact center
+    of the canvas for ALL of them, so thousands of nodes stack on one pixel
+    and the graph looks empty even though nodes are "arriving".
+    """
+    row, col = divmod(file_index, cols)
+    return col * spacing, row * spacing
+
+
+def _position_file_nodes(nodes: list[dict], cx: float, cy: float) -> None:
+    """Arrange one file's symbols in a small circle around its cluster center."""
+    n = len(nodes)
+    for i, node in enumerate(nodes):
+        angle = 2 * math.pi * i / max(n, 1)
+        radius = 30 + 8 * (i % 3)
+        node["x"] = cx + radius * math.cos(angle)
+        node["y"] = cy + radius * math.sin(angle)
+
+
+def _compute_layout_positions(nodes: list[dict], edges: list[dict], layout: str) -> dict[str, dict[str, float]]:
+    """Run the user's selected layout algorithm on the complete C graph.
+
+    Reuses the same Positions service + scaling GraphSerializer applies for
+    every other parse path, so a C repo streamed through this endpoint ends
+    up laid out identically to one parsed through /parse/unified with the
+    same layout choice — see docs/llm/ARCHITECTURE.md.
+    """
+    if not nodes:
+        return {}
+
+    import networkx as nx
+    from codecarto.services.position_service import Positions
+
+    graph = nx.DiGraph()
+    for n in nodes:
+        graph.add_node(n["id"])
+    node_ids = {n["id"] for n in nodes}
+    for e in edges:
+        if e["src"] in node_ids and e["dst"] in node_ids:
+            graph.add_edge(e["src"], e["dst"])
+
+    layout_name = f"{layout.lower()}_layout"
+    try:
+        raw_positions = Positions().get_node_positions(graph=graph, layout_name=layout_name)
+    except Exception:
+        return {}
+
+    # Same spread scaling as GraphSerializer.serialize_to_gjgf, so a C repo
+    # streamed here visually matches one parsed via /parse/unified.
+    spread = 500 if layout_name in ("spectral_layout", "kamada_kawai_layout") else 100
+
+    return {
+        node_id: {"x": float(x) * spread, "y": float(y) * spread}
+        for node_id, (x, y) in raw_positions.items()
+    }
+
+
+@CParserRouter.post("/stream-github")
+async def stream_c_github(request: CStreamGithubRequest) -> StreamingResponse:
+    """Stream a GitHub C/H repo parse as Server-Sent Events.
+
+    libclang parsing is synchronous, CPU-bound work, so it runs in a
+    background thread (see util/threaded_feeder.py — same pattern as
+    pam_router.py's log tailer) while this coroutine drains an asyncio.Queue
+    the thread feeds via asyncio.run_coroutine_threadsafe. Nodes stream in
+    real time, file by file, as CParser.parse_files() works through pass 1.
+    Edges need the complete cross-file node set to resolve CALLS/FIELD_OF
+    targets, so they're only available — and only streamed — after the
+    thread finishes.
+    """
+    from codecarto.services.c_parser_service import CParserService
+
+    result_box: dict = {}
+    error_box: dict = {}
+    started_at = time.monotonic()
+
+    def make_worker(queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
+        def on_progress(event_type: str, payload: dict) -> None:
+            asyncio.run_coroutine_threadsafe(queue.put((event_type, payload)), loop)
+
+        def worker() -> None:
+            try:
+                result_box["value"] = CParserService.parse_github(
+                    request.url, max_files=request.max_files, on_progress=on_progress
+                )
+            except Exception as exc:
+                error_box["exc"] = exc
+            finally:
+                asyncio.run_coroutine_threadsafe(queue.put(("__done__", None)), loop)
+
+        return worker
+
+    queue = start_threaded_feeder(make_worker)
+
+    async def generate():
+        cols = 1
+        file_index_by_name: dict[str, int] = {}
+
+        while True:
+            event_type, payload = await queue.get()
+            if event_type == "__done__":
+                break
+            if event_type == "fetching":
+                yield _sse("fetching", payload)
+            elif event_type == "meta":
+                cols = max(1, math.ceil(math.sqrt(payload["total_files"])))
+                yield _sse("meta", {
+                    "fileCount": payload["total_files"],
+                    "skippedCount": len(payload["skipped_files"]),
+                })
+            elif event_type == "nodes":
+                file_name = payload["file"]
+                if file_name not in file_index_by_name:
+                    file_index_by_name[file_name] = len(file_index_by_name)
+                cx, cy = _file_cluster_center(file_index_by_name[file_name], cols)
+                _position_file_nodes(payload["nodes"], cx, cy)
+
+                for node in payload["nodes"]:
+                    yield _sse("node", {**node, "language": "c", "depth": 2})
+                    await asyncio.sleep(0)
+
+        if "exc" in error_box:
+            yield _sse("error", {"message": str(error_box["exc"])})
+            return
+
+        result = result_box.get("value") or {"nodes": [], "edges": [], "meta": {}}
+        node_ids = {n["id"] for n in result["nodes"]}
+
+        # Nodes were placed in a placeholder grid as they streamed in (see
+        # _file_cluster_center above) because the chosen layout algorithm
+        # needs the complete edge set to mean anything, and edges aren't
+        # known until every file has been parsed. Now that they are, compute
+        # the real layout and move everything there in one shot — see
+        # StreamingGraphRenderer.repositionAll on the frontend.
+        positions = _compute_layout_positions(result["nodes"], result["edges"], request.layout or "Spring")
+        if positions:
+            yield _sse("reposition", positions)
+            await asyncio.sleep(0)
+
+        # Same filter the frontend's adaptCGraphToGJGF applies for the
+        # non-streaming endpoints: the C parser can emit edges to nodes
+        # outside the target file set (e.g. a FIELD_OF edge whose parent
+        # struct lives in a system header).
+        for e in result["edges"]:
+            if e["src"] in node_ids and e["dst"] in node_ids:
+                yield _sse("edge", {
+                    "source": e["src"], "target": e["dst"],
+                    "label": e["kind"], "weight": e.get("weight"),
+                })
+                await asyncio.sleep(0)
+
+        meta = result.get("meta", {})
+        yield _sse("done", {
+            "elapsed_ms": int((time.monotonic() - started_at) * 1000),
+            "node_count": len(result["nodes"]),
+            "edge_count": len(result["edges"]),
+            "diagnostics": meta.get("diagnostics", {}),
+            "skipped_files": meta.get("skipped_files", []),
+        })
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+_VISUALIZER_HTML = Path(__file__).parent.parent / "static" / "c-visualizer.html"
 
 # Matches the entire `const GRAPH = { ... };` block (non-greedy across lines)
 _GRAPH_PATTERN = re.compile(r"const GRAPH = \{[\s\S]*?\};", re.MULTILINE)
@@ -135,7 +340,6 @@ async def parse_c_directory(request: CDirectoryRequest) -> dict:
             compile_commands=request.compile_commands,
             subsystem=request.subsystem,
             max_files=request.max_files,
-            cache_dir=request.cache_dir,
         )
         return generate_return(200, "c-parser/directory - Success", {"graph": graph})
     except CodeCartoException as exc:

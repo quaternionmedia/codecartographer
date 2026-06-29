@@ -34,10 +34,9 @@ codecartographer/
 |   |-- main.py                      # FastAPI application entry
 |   |-- routers/
 |   |   |-- unified_parser_router.py # /parse/* endpoints (all languages)
-|   |   |-- plotter_router.py        # Legacy graph visualization endpoints
-|   |   |-- parser_router.py         # Legacy Python parsing endpoints
+|   |   |-- plotter_router.py        # /demo + /render/html (Notebook renderer)
 |   |   |-- c_parser_router.py       # C/H semantic parse endpoints
-|   |   |-- repo_router.py           # GitHub repository endpoints
+|   |   |-- repo_router.py           # GitHub + local repository tree endpoints
 |   |   `-- pam_router.py            # PAM auth log monitor
 |   |-- services/
 |   |   |-- unified_parser_service.py  # Unified parse orchestration
@@ -129,6 +128,18 @@ Each adapter calls `make_node(..., shape=..., color=...)` to encode visual gramm
 into the node data. To add a new language, create an adapter and import it in
 `unified_parser_service.py` — no renderer changes required.
 
+**`batch_whole_tree` (optional, default off):** `unified_parser_service.py`'s
+`_build_graph`/`_walk_folder` dispatch one file at a time to a language
+parser (`parser.parse_files([file], depth)`) — fine when a parser's
+cross-file references don't matter, as with Python today. A parser that
+sets `batch_whole_tree: ClassVar[bool] = True` (see `CLangaugeParser`)
+instead gets every one of its files across the *whole* tree collected into
+one `parser.parse_files(all_files, depth)` call, made after the tree walk
+finishes (`_parse_pending_batches`). C needs this because cross-file `CALLS`
+resolution requires the complete file set in one `CParser` call — see
+"C semantic stream path" below for the full rationale, including why this
+trades some streaming progressiveness for correctness.
+
 ---
 
 ## Data Flow
@@ -191,6 +202,114 @@ POST /plotter/whole_repo  { parse_by: 'ast'|'directory'|'dependencies' }
 -> ParserService -> PythonCustomAST | DirectoryParser | DependencyParser
 -> GraphSerializer -> gJGF
 ```
+
+### C semantic stream path (libclang, real per-file progress)
+
+Used by the "C" example chips (git, curl, Lua, SQLite, Redis) and any direct
+call to `/c-parser/stream-github`. Unlike the unified pipeline above, libclang
+parsing is synchronous CPU-bound work, so it runs in a background thread —
+the same pattern `pam_router.py` uses for its log tailer — while the request
+coroutine drains an `asyncio.Queue` the thread feeds via
+`asyncio.run_coroutine_threadsafe`. This keeps the event loop responsive and
+lets nodes reach the browser the moment each file finishes parsing, instead
+of after the whole repo is done.
+
+```
+User clicks a C example chip (e.g. "git")
+  |
+  v
+PlotService.streamCGithub() -> POST /c-parser/stream-github  (SSE)
+  |
+  v
+c_parser_router.stream_c_github()
+  |-- threading.Thread(worker) starts:
+  |     CParserService.parse_github(url, on_progress=...)
+  |       |-- download + extract archive (or reuse cache)   -> 'fetching' events
+  |       |-- skip platform-specific compat files            -> 'meta' event (file/skip counts)
+  |       |-- CParser.parse_files(): pass 1, one file at a time
+  |             each file's declarations -> on_file_parsed(file, new_nodes)
+  |              asyncio.run_coroutine_threadsafe(queue.put(('nodes', ...)), loop)
+  |       |-- pass 2 (cross-file CALLS) + type-edge derivation
+  |             needs the COMPLETE node set, so this can't be partial
+  |
+  v
+Request coroutine drains the queue in real time:
+  |-- 'fetching'/'meta' -> forwarded as-is
+  |-- 'nodes'           -> one SSE 'node' event per node, AS THE THREAD PRODUCES THEM
+  |-- thread finishes    -> remap edges src/dst -> source/target, filter to known
+  |                         node ids, stream as 'edge' events, then 'done'
+  |
+  v
+StreamingGraphRenderer: same addNode/addEdge/finalize() as the unified path.
+Real total node count isn't known until the thread finishes, so onFileCount's
+file count is used to *estimate* a batch-size total (see
+plot_service.ts's StreamCallbacks.onFileCount) — the pacing is approximate,
+unlike the unified path's exact meta.nodeCount.
+```
+
+**Why nodes stream but edges don't**: pass 1 (declarations) is naturally
+per-file and already looped that way before streaming existed, so exposing
+it via a callback was a small change (`CParser.parse_files`'s
+`on_file_parsed` param). Pass 2 (CALLS) and the derived type edges
+(FIELD_OF/POINTS_TO) need to resolve symbols that may live in *other* files,
+so the full node set must exist first — there's no meaningful way to stream
+them earlier without risking a renderer trying to draw an edge whose
+endpoint hasn't arrived yet.
+
+### C support in the unified pipeline (`batch_whole_tree` + `unsaved_files`)
+
+Before the parser/cache unification pass, `CLangaugeParser` (the unified
+adapter C registers under `.c`/`.h`/`.cpp`/…) had two bugs that made it
+effectively useless for real multi-file C code:
+
+1. **No cross-file resolution.** `_walk_folder` dispatched one file at a
+   time (`parser.parse_files([file], depth)`), so `CParser`'s pass 2
+   (cross-file `CALLS`) never saw more than one file — every call looked
+   unresolved. Fixed by `batch_whole_tree` (see above): `CLangaugeParser`
+   opts in, and `_parse_pending_batches` collects every `.c`/`.h` file
+   across the *whole* tree — not just one folder — before calling
+   `parser.parse_files()` once.
+2. **Silently empty for any GitHub-sourced repo.** `CLangaugeParser.parse_files()`
+   required `File.url` to be a real filesystem path so libclang could open
+   it from disk. For local repos (`local_repo_service.py`) that's true. For
+   GitHub-fetched content (`github_service.get_raw_from_repo`,
+   `stream_parse_url`'s phase 2) `File.url` is a download URL and the
+   content only ever exists in `File.raw` — `Path(url).exists()` is always
+   False, so `paths` ended up empty and the adapter returned an empty graph,
+   silently, for every single GitHub C/H file. Fixed by giving
+   `CParser.parse_files()` an optional `contents: dict[path_str, text]`
+   parameter, passed to libclang as `unsaved_files` — content is parsed
+   from memory under a *virtual* path when no real file exists. Sibling
+   `#include "x.h"` between two virtual files resolves **only if they share
+   the same parent directory** in their virtual paths (libclang's
+   quote-include search looks in the including file's own directory first)
+   — `CLangaugeParser` uses one shared `_VIRTUAL_ROOT` for every virtual
+   file in a batch specifically so this resolves. Real subdirectory
+   structure is not reconstructed, so an include like `#include "sub/x.h"`
+   still won't resolve for no-disk content.
+
+**Where this plugs in for the streaming GitHub flow
+(`UnifiedParserService.stream_parse_url`, phase 2):** files are split into
+`batch_whole_tree` parsers (fetch everything first, parse once) vs.
+everyone else (fetch-and-parse-immediately per file, as before — fully
+unchanged for Python). The batch parse call is CPU-bound libclang work, so
+it runs via `asyncio.to_thread` — without this, a single C-heavy repo (e.g.
+CPython) would freeze the *entire server*, not just that one request, for
+as long as the parse takes. Trade-off: structure (dirs/files) still streams
+immediately, but C symbols for a batched extension arrive as one burst
+after every file in that extension has been fetched *and* parsed — there is
+currently no incremental progress signal during that gap (unlike the
+dedicated `/c-parser/stream-github` endpoint above, which streams nodes
+file-by-file via its background thread). Closing that gap would mean
+restructuring `fetch_and_parse_batch` into something that can yield partial
+progress mid-batch — not done here; flagged as a known limitation.
+
+`has_parse_warning` is emitted as a **top-level** node attribute (not
+nested under the unified schema's `meta` field) in both the unified and
+dedicated C pipelines, because `graph_renderer.ts` reads
+`node.has_parse_warning` directly regardless of which backend produced the
+node — keeping the attribute's location consistent across pipelines was
+the point, not an accident.
 
 ---
 
@@ -280,7 +399,14 @@ interface GraphNode {
 | `.py` | python | `PythonLanguageParser` |
 | `.c`, `.h` | c | `CLangaugeParser` (requires `[c-parsing]` optional dep) |
 
-### Legacy Python modes (`POST /plotter/whole_repo`)
+### Legacy Python modes (`POST /plotter/demo` only)
+
+`ParserService`/`PythonCustomAST`/`DirectoryParser`/`DependencyParser`
+predate the unified pipeline. The only route that still exercises them is
+`/plotter/demo` (the Demo button) — every other `/plotter/*` `parse_by`
+entry point (`whole_repo`, `whole_repo_deps`, `folder`, `file`, `url`,
+`local_directory`) was dead code (zero frontend callers) and was removed
+in the parser/cache unification pass.
 
 | `parse_by` | parser | output |
 |------------|--------|--------|
@@ -295,11 +421,9 @@ interface GraphNode {
 | Prefix | Tag | Description |
 |--------|-----|-------------|
 | `/parse` | parse | **Unified parse (all languages)** |
-| `/plotter` | plotter | Legacy graph visualization |
-| `/parser` | parser | Legacy Python code parsing |
+| `/plotter` | plotter | Demo data + Notebook-renderer HTML pre-render |
 | `/c-parser` | c-parser | C/H semantic parsing (libclang optional) |
-| `/repo` | repo | GitHub repository operations |
-| `/local` | local | Local filesystem scanning |
+| `/repo` | repo | GitHub + local repository tree operations |
 | `/pam` | pam | PAM auth log monitor |
 | `/palette` | palette | Color palette management |
 
@@ -307,9 +431,60 @@ interface GraphNode {
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/parse/unified` | POST | Parse directory tree to given depth |
+| `/parse/unified` | POST | Parse a pre-fetched directory tree to given depth (blocking) |
+| `/parse/stream` | POST | Same as above, streamed as SSE (`meta`/`node`/`edge`/`done`) |
+| `/parse/stream-url` | POST | Fetch a GitHub repo *and* stream its parse — no separate fetch step |
 | `/parse/expand` | POST | Expand a file node to reveal its symbols |
 | `/parse/languages` | GET | List registered parser extensions |
+| `/parse/cache` | GET | List cached parsed graphs (Cache A — see "Two C-parser caches") |
+| `/parse/cache/{key}` | DELETE | Evict one cached parsed graph |
+
+### C semantic parse endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/c-parser/file` | POST | Parse a single local C/H file (blocking) |
+| `/c-parser/directory` | POST | Parse a local directory or `compile_commands.json` (blocking) |
+| `/c-parser/github` | POST | Download + parse a GitHub repo's C/H files (blocking) |
+| `/c-parser/stream-github` | POST | Same as above, streamed as SSE — see "C semantic stream path" |
+| `/c-parser/visualizer` | GET | Standalone canvas-based C visualizer HTML |
+| `/c-parser/cache` | GET | List cached extracted repos (Cache B — different cache than `/parse/cache`) |
+| `/c-parser/cache/{key}` | DELETE | Evict one cached extracted repo, key = `{owner}-{repo}` |
+
+### Two C-parser caches
+
+`c_parser_service.py` caches two genuinely different things under
+`~/.codecarto/cache/`, deliberately kept separate rather than merged into
+one abstraction:
+
+| | Cache A (`CacheService`) | Cache B (`CParserService`'s repo cache) |
+|---|---|---|
+| Caches | **repo source trees + parsed graphs** (Python/unified path) | **extracted source trees** (unzipped GitHub archive, C path) |
+| Location | `~/.codecarto/cache/repos/{owner}-{repo}/tree.json` + `/graphs/{hash}.json` | `~/.codecarto/cache/repos/{owner}-{repo}/src/` + `metadata.json` |
+| Key | repo bucket `{owner}-{repo}` (or `SHA256(url)[:16]` for non-GitHub paths), graphs further keyed by `SHA256(url+mode+layout+exts)[:16]` | `{owner}-{repo}` |
+| TTL | `CC_CACHE_TTL` env var (default 24h) | same env var, same default |
+| List/evict | `GET /parse/cache`, `DELETE /parse/cache/{key}` (graphs only — see `CacheService.evict_repo` for nuking a whole repo's tree+graphs) | `GET /c-parser/cache`, `DELETE /c-parser/cache/{key}` |
+| Used by | `/repo/tree` (tree), `/parse/unified`, `/parse/stream`, `/parse/stream-url` (graphs; `/parse/stream-url` also opportunistically reads the tree cache to skip a live GitHub fetch) | `/c-parser/github`, `/c-parser/stream-github` |
+
+Cache A's tree and graph caches share the same per-repo directory
+(`repos/{owner}-{repo}/`) but are logically distinct: the tree cache holds
+whatever `github_service.get_raw_from_repo` fetched for that repo's size
+tier (full content for small repos, structure-only for medium, a shallow
+single-level listing for huge/truncated repos — see `_CONTENT_FETCH_LIMIT_KB`/
+`_STRUCTURE_FETCH_LIMIT_KB`), while the graph cache holds a fully parsed
+result for one specific (mode, layout, extensions) combination. A tree-cache
+hit only short-circuits parsing when it has full content baked in (small
+repos) — `stream_parse_url` checks `directory.is_partial` and `directory.size`
+before trusting it, and falls through to a live fetch otherwise.
+
+Cache B happens to live under the same `repos/{owner}-{repo}/` bucket as
+Cache A's tree cache (in a `src/` subfolder) without colliding, since they
+use different filenames — kept as two caches, not merged, because a repo
+cache (B) hit skips downloading+extracting the zip but still re-parses every
+time (parsing isn't cached there), whereas a graph cache (A) hit skips
+parsing entirely. `CParser.parse_files()` used to also support a third,
+per-file pickle cache via a `cache_dir` parameter; it was never wired to a
+real directory by any caller and was removed in the unification pass.
 
 ---
 
@@ -338,7 +513,7 @@ The D3 renderer supports extensions for enhanced interactivity:
 | `codecarto/services/parsers/c_language_parser.py` | C/H adapter |
 | `codecarto/services/graph_serializer.py` | NetworkX -> gJGF, depth-aware sizing |
 | `web/src/components/codecarto/control_panel/control_panel.ts` | 2-tab panel (Source / Graph) |
-| `web/src/state/actions.ts` | PlotActions: plotUnified, plotWholeRepo, plotCGithub, … |
+| `web/src/state/actions.ts` | PlotActions: plotUnified, plotWholeRepo, plotCFile, plotCDirectory, … |
 | `web/src/features/graph/services/graph_renderer.ts` | D3 renderer + GraphNode type |
 | `web/src/features/graph/services/renderers.ts` | Renderer registry |
 | `docs/llm/EXTENDING.md` | How to add renderers, language parsers, endpoints |

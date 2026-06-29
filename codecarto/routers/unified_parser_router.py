@@ -11,6 +11,8 @@ GET  /parse/cache         — list cached graphs
 DELETE /parse/cache/{key} — evict a cached graph
 """
 
+import json
+import asyncio
 from typing import Optional
 
 from fastapi import APIRouter, Query
@@ -22,6 +24,46 @@ from codecarto.util.exceptions import CodeCartoException, proc_exception
 from codecarto.util.utilities import generate_return
 
 UnifiedParserRouter = APIRouter()
+
+
+async def _stream_cached_graph(cached: dict, layout: str):
+    """Replay a cached graph as SSE events: meta → nodes (depth-sorted) → edges → done.
+
+    Shared between ``stream_parse`` and ``stream_from_url`` so the two
+    endpoints stay byte-for-byte identical on the cache-replay path —
+    prevents the kind of silent drift that would happen on the next edit if
+    each endpoint had its own copy.  Mirrors the frontend's ``_consumeSSE()``
+    in ``plot_service.ts``, which already serves as the single shared parser
+    for all three streaming callers.
+    """
+    nodes_raw = cached.get("graph", {}).get("nodes", {})
+    edges = cached.get("graph", {}).get("edges", [])
+    nodes_list: list[dict] = []
+    if isinstance(nodes_raw, dict):
+        for nid, nd in nodes_raw.items():
+            if not isinstance(nd, dict):
+                continue
+            flat: dict = {"id": nid}
+            for k, v in nd.items():
+                if k != "metadata":
+                    flat[k] = v
+            flat.update(nd.get("metadata", {}))
+            nodes_list.append(flat)
+    meta = {
+        "nodeCount": len(nodes_list),
+        "edgeCount": len(edges),
+        "layout": layout,
+        "from_cache": True,
+    }
+    yield f"event: meta\ndata: {json.dumps(meta)}\n\n"
+    await asyncio.sleep(0)
+    for node in sorted(nodes_list, key=lambda n: (n.get("depth", 9), n.get("id", ""))):
+        yield f"event: node\ndata: {json.dumps(node)}\n\n"
+        await asyncio.sleep(0)
+    for edge in edges:
+        yield f"event: edge\ndata: {json.dumps(edge)}\n\n"
+        await asyncio.sleep(0)
+    yield f"event: done\ndata: {json.dumps({'elapsed_ms': 0, 'from_cache': True})}\n\n"
 
 
 # ── Request bodies ─────────────────────────────────────────────────────────────
@@ -170,36 +212,8 @@ async def stream_parse(request: UnifiedParseRequest):
         )
         cached = CacheService.get(key)
         if cached is not None:
-            import json, asyncio
-
-            async def stream_cached():
-                nodes_raw = cached.get("graph", {}).get("nodes", {})
-                edges = cached.get("graph", {}).get("edges", [])
-                nodes_list = []
-                if isinstance(nodes_raw, dict):
-                    for nid, nd in nodes_raw.items():
-                        if not isinstance(nd, dict):
-                            continue
-                        meta_attrs = nd.get("metadata", {})
-                        flat: dict = {"id": nid}
-                        for k, v in nd.items():
-                            if k != "metadata":
-                                flat[k] = v
-                        flat.update(meta_attrs)
-                        nodes_list.append(flat)
-                meta = {"nodeCount": len(nodes_list), "edgeCount": len(edges), "layout": request.layout, "from_cache": True}
-                yield f"event: meta\ndata: {json.dumps(meta)}\n\n"
-                await asyncio.sleep(0)
-                for node in sorted(nodes_list, key=lambda n: (n.get("depth", 9), n.get("id", ""))):
-                    yield f"event: node\ndata: {json.dumps(node)}\n\n"
-                    await asyncio.sleep(0)
-                for edge in edges:
-                    yield f"event: edge\ndata: {json.dumps(edge)}\n\n"
-                    await asyncio.sleep(0)
-                yield f"event: done\ndata: {json.dumps({'elapsed_ms': 0, 'from_cache': True})}\n\n"
-
             return StreamingResponse(
-                stream_cached(),
+                _stream_cached_graph(cached, request.layout),
                 media_type="text/event-stream",
                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
             )
@@ -214,7 +228,6 @@ async def stream_parse(request: UnifiedParseRequest):
             ):
                 yield chunk
         except Exception as exc:
-            import json
             yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
 
     return StreamingResponse(
@@ -234,6 +247,8 @@ async def stream_from_url(request: StreamUrlRequest):
     """
     from codecarto.services.unified_parser_service import UnifiedParserService
     from codecarto.services.cache_service import CacheService
+    from codecarto.services.github_service import is_github_url
+    from codecarto.services.local_repo_service import get_local_repo
 
     effective_depth = (
         MODE_TO_DEPTH.get(request.mode, request.depth)
@@ -250,58 +265,54 @@ async def stream_from_url(request: StreamUrlRequest):
     )
     cached = CacheService.get(key)
     if cached is not None:
-        import json, asyncio
-
-        async def stream_cached_url():
-            nodes_raw = cached.get("graph", {}).get("nodes", {})
-            edges = cached.get("graph", {}).get("edges", [])
-            nodes_list = []
-            if isinstance(nodes_raw, dict):
-                for nid, nd in nodes_raw.items():
-                    if not isinstance(nd, dict):
-                        continue
-                    meta_attrs = nd.get("metadata", {})
-                    flat: dict = {"id": nid}
-                    for k, v in nd.items():
-                        if k != "metadata":
-                            flat[k] = v
-                    flat.update(meta_attrs)
-                    nodes_list.append(flat)
-            meta = {"nodeCount": len(nodes_list), "edgeCount": len(edges), "layout": request.layout, "from_cache": True}
-            yield f"event: meta\ndata: {json.dumps(meta)}\n\n"
-            await asyncio.sleep(0)
-            for node in sorted(nodes_list, key=lambda n: (n.get("depth", 9), n.get("id", ""))):
-                yield f"event: node\ndata: {json.dumps(node)}\n\n"
-                await asyncio.sleep(0)
-            for edge in edges:
-                yield f"event: edge\ndata: {json.dumps(edge)}\n\n"
-                await asyncio.sleep(0)
-            yield f"event: done\ndata: {json.dumps({'elapsed_ms': 0, 'from_cache': True})}\n\n"
-
         return StreamingResponse(
-            stream_cached_url(),
+            _stream_cached_graph(cached, request.layout),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
-    async def generate():
+    # GitHub path
+    if is_github_url(request.url):
+        async def generate():
+            try:
+                async for chunk in UnifiedParserService.stream_parse_url(
+                    url=request.url,
+                    depth=effective_depth,
+                    extensions=request.extensions,
+                    layout=request.layout,
+                ):
+                    yield chunk
+            except Exception as exc:
+                import json
+                yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+        
+    # Local path
+    async def generate_local():
+        import json
         try:
-            async for chunk in UnifiedParserService.stream_parse_url(
-                url=request.url,
+            directory = get_local_repo(request.url, extensions=request.extensions)
+            async for chunk in UnifiedParserService.stream_parse(
+                directory=directory,
                 depth=effective_depth,
                 extensions=request.extensions,
                 layout=request.layout,
             ):
                 yield chunk
         except Exception as exc:
-            import json
             yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
 
     return StreamingResponse(
-        generate(),
+        generate_local(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
 
 
 @UnifiedParserRouter.post("/expand")
@@ -341,9 +352,6 @@ async def expand_node(request: ExpandNodeRequest) -> dict:
 async def list_languages() -> dict:
     """Return the registered parser extensions and their language names."""
     from codecarto.services.parsers.language_parser import ParserRegistry
-    # Trigger registration
-    import codecarto.services.parsers.python_language_parser  # noqa: F401
-    import codecarto.services.parsers.c_language_parser       # noqa: F401
 
     parsers = ParserRegistry.all_parsers()
     data = {

@@ -1,10 +1,14 @@
+import asyncio
 import httpx
 from pathlib import Path
 from codecarto.models.source_data import Directory, File, Folder, RepoInfo
+from codecarto.services.cache_service import CacheService
 from codecarto.util.exceptions import (
     GithubError,
+    Github403Error,
     Github404Error,
     GithubNoDataError,
+    GithubRateLimitError,
     GithubSizeError,
     GithubAPIError,
     ImportSourceUrlError,
@@ -16,6 +20,31 @@ from codecarto.util.exceptions import (
 #   ≥ _STRUCTURE_FETCH_LIMIT_KB → shallow root listing only (is_partial=True)
 _CONTENT_FETCH_LIMIT_KB   = 5_000   # ~5 MB
 _STRUCTURE_FETCH_LIMIT_KB = 50_000  # ~50 MB
+
+async def _api_get(client: httpx.AsyncClient, url: str, headers: dict) -> httpx.Response:
+    """GET an api.github.com URL, retrying once without auth on a bad token.
+
+    A stale/expired GITHUB_TOKEN makes api.github.com hard-reject every call
+    with 401 "Bad credentials" — even for public repos that need no auth at
+    all. GitHub's archive-download endpoint (codeload.github.com, used by
+    the C parser path) instead silently ignores a bad token and serves the
+    repo unauthenticated. This brings api.github.com calls in line with
+    that behavior so a bad token degrades to "unauthenticated rate limit"
+    instead of "nothing works", matching the C path.
+    """
+    response = await client.get(url, headers=headers)
+    if response.status_code == 401 and "Authorization" in headers:
+        fallback_headers = {k: v for k, v in headers.items() if k != "Authorization"}
+        response = await client.get(url, headers=fallback_headers)
+    return response
+
+
+def is_github_url(input_str: str) -> bool:
+    """
+    True if input looks like a GitHub URL. False otherwise (local path).
+    Rule: GitHub URLs always contain 'github.com'. Everything else → local.
+    """
+    return 'github.com' in input_str.strip().lower()
 
 
 async def get_raw_from_url(url: str) -> str:
@@ -29,43 +58,75 @@ async def get_raw_from_url(url: str) -> str:
     raise handle_status_code(response, url)
 
 
+async def _fetch_content_for_folder(folder: Folder, concurrency: int = 8) -> None:
+    """Fill in ``File.raw`` for every registered-extension file under *folder*,
+    fetched concurrently. Mutates the tree in place."""
+    from codecarto.services.parsers.language_parser import ParserRegistry
+    registered_exts = set(ParserRegistry.all_extensions())
+
+    targets: list[File] = [
+        file for _, file in folder.iter_files()
+        if file.url and Path(file.name).suffix.lower() in registered_exts
+    ]
+
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def fetch_one(file: File) -> None:
+        async with semaphore:
+            try:
+                file.raw = await get_raw_from_url(file.url)
+            except Exception:
+                file.raw = ""
+
+    await asyncio.gather(*(fetch_one(f) for f in targets))
+
+
 async def get_raw_from_repo(url: str) -> Directory:
-    """Read raw data from a repo URL.
+    """Read raw data from a repo URL (cached — see CacheService.get_tree).
 
     For repos within the size limit, fetches the full tree with file content.
-    For large repos, falls back to a shallow top-level listing marked ``is_partial=True``.
+    For medium repos, structure only (no content). For huge/truncated repos,
+    falls back to a shallow top-level listing marked ``is_partial=True``.
     """
+    cached = CacheService.get_tree(url)
+    if cached is not None:
+        return Directory.model_validate(cached)
+
     owner, repo_name = get_owner_repo_from_url(url)
     headers = create_headers(url)
 
-    size_kb = await check_repo_size(owner, repo_name, url, headers)
+    items, _default_branch, size_kb, truncated = await fetch_tree_fast(
+        owner, repo_name, headers, url
+    )
 
-    if size_kb >= _STRUCTURE_FETCH_LIMIT_KB:
-        # Very large repo (≥ 50 MB): return only the root-level structure
+    if truncated or size_kb >= _STRUCTURE_FETCH_LIMIT_KB:
+        # Very large repo (≥ 50 MB, or the recursive tree call itself got
+        # truncated by GitHub): return only the root-level structure
         root = await get_shallow_root(owner, repo_name, url, headers)
         root.name = f"{owner}/{repo_name}"
-        return Directory(
+        directory = Directory(
             info=RepoInfo(owner=owner, name=repo_name, url=url),
             size=size_kb,
             root=root,
             is_partial=True,
         )
+        CacheService.set_tree(url, directory.model_dump())
+        return directory
 
-    # Medium/small repo: full recursive fetch
-    fetch_content = size_kb < _CONTENT_FETCH_LIMIT_KB
-    content = await get_repo_content(url, owner, repo_name)
-    tree = await build_content_tree(content, owner, repo_name)
-    root = await reduce_repo_structure(tree, fetch_content=fetch_content)
+    root = build_folder_from_tree_items(items, owner, repo_name)
     root.name = f"{owner}/{repo_name}"
 
-    size = sum(file.size for file in root.files)
-    size += sum(folder.size for folder in root.folders)
+    if size_kb < _CONTENT_FETCH_LIMIT_KB:
+        await _fetch_content_for_folder(root)
 
-    return Directory(
+    directory = Directory(
         info=RepoInfo(owner=owner, name=repo_name, url=url),
-        size=size,
+        size=size_kb,
         root=root,
+        is_partial=False,
     )
+    CacheService.set_tree(url, directory.model_dump())
+    return directory
 
 
 async def get_shallow_root(
@@ -78,7 +139,7 @@ async def get_shallow_root(
     """
     api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/"
     async with httpx.AsyncClient() as client:
-        response = await client.get(api_url, headers=headers)
+        response = await _api_get(client, api_url, headers)
 
     if response.status_code != 200:
         raise handle_status_code(response, url, api_url)
@@ -121,7 +182,7 @@ async def get_subtree(
     """
     api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
     async with httpx.AsyncClient() as client:
-        response = await client.get(api_url, headers=headers)
+        response = await _api_get(client, api_url, headers)
 
     if response.status_code != 200:
         raise handle_status_code(response, url, api_url)
@@ -134,8 +195,6 @@ async def get_subtree(
         )
 
     from codecarto.services.parsers.language_parser import ParserRegistry
-    import codecarto.services.parsers.python_language_parser  # noqa: F401
-    import codecarto.services.parsers.c_language_parser  # noqa: F401
     registered_exts = set(ParserRegistry.all_extensions())
 
     files: list[File] = []
@@ -174,15 +233,27 @@ async def get_subtree(
     return Folder(name=folder_name, size=0, files=files, folders=folders)
 
 
+# In-process memo for fetch_tree_fast — every /parse/stream-url call hits
+# api.github.com twice with zero caching today, so re-streaming the same
+# repo seconds apart (re-clicking a chip, a page reload, repeated manual
+# testing) burns 2 calls each time against the 60/hour unauthenticated
+# budget for no reason. This is deliberately a short-TTL in-memory dict, not
+# a new persistent cache — it's pure rate-limit protection against
+# redundant rapid repeats, not a feature in its own right. Cleared on
+# process restart, which is fine for that purpose.
+_TREE_CACHE_TTL = 120  # seconds
+_tree_cache: dict[str, tuple[float, list[tuple[str, str, str]], str, int, bool]] = {}
+
+
 async def fetch_tree_fast(
     owner: str,
     repo: str,
     headers: dict,
     url: str,
-) -> tuple[list[tuple[str, str, str]], str]:
-    """Fetch the complete repo tree in TWO GitHub API calls.
+) -> tuple[list[tuple[str, str, str]], str, int, bool]:
+    """Fetch the complete repo tree in TWO GitHub API calls (memoized).
 
-    Call 1: GET /repos/{owner}/{repo} → default branch name.
+    Call 1: GET /repos/{owner}/{repo} → default branch name + repo size.
     Call 2: GET /repos/{owner}/{repo}/git/trees/{sha}?recursive=1 → full flat tree.
 
     Returns
@@ -192,27 +263,45 @@ async def fetch_tree_fast(
         download_url is the raw.githubusercontent.com URL for blobs, ``""`` for trees.
     default_branch : str
         e.g. ``"main"`` or ``"master"``
+    size_kb : int
+        Repo size as reported by GitHub (from call 1 — avoids a separate
+        check_repo_size call).
+    truncated : bool
+        True if GitHub truncated the recursive tree response (repo too large
+        for one call — >100k entries or >7MB) — caller should fall back to a
+        shallow listing rather than trust this as the complete tree.
     """
+    import time
+
+    cache_key = f"{owner}/{repo}"
+    cached = _tree_cache.get(cache_key)
+    if cached and (time.monotonic() - cached[0]) < _TREE_CACHE_TTL:
+        return cached[1], cached[2], cached[3], cached[4]
+
     async with httpx.AsyncClient(timeout=30.0) as client:
-        # Call 1: repo metadata → default branch
-        resp = await client.get(
-            f"https://api.github.com/repos/{owner}/{repo}", headers=headers
+        # Call 1: repo metadata → default branch + size
+        resp = await _api_get(
+            client, f"https://api.github.com/repos/{owner}/{repo}", headers
         )
     if resp.status_code != 200:
         raise handle_status_code(resp, url)
 
-    default_branch = resp.json().get("default_branch", "main")
+    meta = resp.json()
+    default_branch = meta.get("default_branch", "main")
+    size_kb = meta.get("size", 0)
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         # Call 2: full recursive tree
-        resp = await client.get(
+        resp = await _api_get(
+            client,
             f"https://api.github.com/repos/{owner}/{repo}/git/trees/{default_branch}?recursive=1",
-            headers=headers,
+            headers,
         )
     if resp.status_code != 200:
         raise handle_status_code(resp, url)
 
     data = resp.json()
+    truncated = bool(data.get("truncated", False))
     tree = data.get("tree", [])
     base = f"https://raw.githubusercontent.com/{owner}/{repo}/{default_branch}/"
 
@@ -223,7 +312,8 @@ async def fetch_tree_fast(
         dl_url = (base + path) if item_type == "blob" else ""
         items.append((path, item_type, dl_url))
 
-    return items, default_branch
+    _tree_cache[cache_key] = (time.monotonic(), items, default_branch, size_kb, truncated)
+    return items, default_branch, size_kb, truncated
 
 
 def build_folder_from_tree_items(
@@ -277,137 +367,6 @@ def build_folder_from_tree_items(
     return root
 
 
-async def get_repo_content(
-    url: str, owner: str, repo: str, path: str = ""
-) -> dict:
-    """Fetches content of a GitHub repo (files and directories)."""
-    headers = create_headers(url)
-
-    # Fetch content from the repo
-    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
-    client = httpx.AsyncClient()
-    response = await client.get(api_url, headers=headers)
-
-    if response.status_code == 200:
-        json_data = response.json()
-        if not json_data:
-            raise GithubNoDataError("No content in the repo", {"github_url": url})
-        return json_data
-    else:
-        raise handle_status_code(response, url, api_url)
-
-
-async def check_repo_size(owner: str, repo: str, url: str, headers: dict) -> int:
-    """Return the GitHub repo size in KB. Raises on API error."""
-    api_url = f"https://api.github.com/repos/{owner}/{repo}"
-    client = httpx.AsyncClient()
-    response = await client.get(api_url, headers=headers)
-
-    if response.status_code == 200:
-        json_data = response.json()
-        return json_data.get("size", 0)
-    else:
-        raise handle_status_code(response, url, api_url)
-
-
-async def build_content_tree(content: dict, owner: str, repo: str) -> dict:
-    """Build a content directory tree from the GitHub API response."""
-    results = {}
-
-    for item in content:
-        item.pop("sha", None)
-        item.pop("url", None)
-        item.pop("git_url", None)
-        item.pop("_links", None)
-        if item["type"] == "dir":
-            dir_content = await get_repo_content("", owner, repo, item["path"])
-            parsed_content = await build_content_tree(dir_content, owner, repo)
-            results[item["name"]] = parsed_content
-        elif item["type"] == "file":
-            results.setdefault("files", []).append(item)
-
-    return results
-
-
-async def reduce_repo_structure(repo_data: dict, fetch_content: bool = True) -> Folder:
-    """Go through the repo structure and reduce it to just needed content.
-
-    Parameters
-    ----------
-    repo_data : dict
-        Tree dict from build_content_tree().
-    fetch_content : bool
-        When True (small repos), download raw file content for registered
-        parser extensions.  When False (medium repos), include file nodes
-        but leave raw=''.
-    """
-    from codecarto.services.parsers.language_parser import ParserRegistry
-    import codecarto.services.parsers.python_language_parser  # noqa: F401
-    import codecarto.services.parsers.c_language_parser  # noqa: F401
-    registered_exts = set(ParserRegistry.all_extensions())
-
-    data = Folder(size=0, name="", files=[], folders=[])
-    folders_size = 0
-    files_size = 0
-
-    for key, value in repo_data.items():
-        if key == "files":
-            files = []
-
-            for file in value:
-                size = file.get("size", 0)
-
-                # Ensure the file has the required attributes
-                if file.get("name") and file.get("download_url"):
-                    ext = Path(file["name"]).suffix.lower()
-                    if fetch_content and ext in registered_exts:
-                        try:
-                            raw = await get_raw_from_url(file["download_url"])
-                        except Exception:
-                            raw = ""
-                    else:
-                        raw = ""
-
-                    files_size += size
-
-                    # Construct a File object
-                    files.append(
-                        File(
-                            url=file.get("download_url"),
-                            name=file.get("name"),
-                            size=size,
-                            raw=raw,
-                        )
-                    )
-
-            data.files = files
-
-        else:  # Everything else would be a directory
-            sub_dir = await reduce_repo_structure(value, fetch_content=fetch_content)
-
-            # Gather files and calculate total files size
-            size = sum(file.size for file in sub_dir.files)
-
-            # Gather folders and calculate folder size
-            size += sum(folder.size for folder in sub_dir.folders)
-
-            folders_size += size
-
-            # Construct a Folder object
-            folder = Folder(
-                name=key,  # name of folder
-                size=size,
-                files=sub_dir.files,
-                folders=sub_dir.folders,
-            )
-
-            # Add the folder to the directory root's list of folders
-            data.folders.append(folder)
-
-    data.size = folders_size + files_size
-    return data
-
-
 async def _expand_folder(
     owner: str,
     repo: str,
@@ -423,7 +382,7 @@ async def _expand_folder(
     """
     api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
     async with httpx.AsyncClient() as client:
-        resp = await client.get(api_url, headers=headers)
+        resp = await _api_get(client, api_url, headers)
 
     if resp.status_code != 200:
         # Return a stub on error rather than crashing the whole expansion
@@ -517,19 +476,48 @@ def create_headers(url: str) -> dict:
 def handle_status_code(
     response: httpx.Response, url: str, api_url: str = ""
 ) -> Exception:
-    """Handle GitHub API response status codes."""
+    """Handle GitHub API response status codes.
+
+    Always carries the REAL status code and response body into the
+    exception/message — a previous version defaulted everything outside
+    404/403 to a generic "GitHub API returned 500", which made an invalid
+    GITHUB_TOKEN (401) or a genuine rate limit (429) indistinguishable from
+    an actual server error. See docs/api.md's GitHub error notes.
+    """
+    params = {"github_url": url, "api_url": api_url, "status_code": response.status_code}
+    body = response.text[:500]  # avoid dumping huge HTML error pages into logs
+
+    retry_after = response.headers.get("retry-after")
+    reset = response.headers.get("x-ratelimit-reset")
+    retry_hint = f" Retry after {retry_after}s." if retry_after else (
+        f" Resets at unix ts {reset}." if reset else ""
+    )
+
     if response.status_code == 404:
         return GithubNoDataError(
-            "Resource not found", {"github_url": url, "api_url": api_url}
+            "Resource not found", params, f"GitHub API returned 404: {body}"
         )
-    elif response.status_code == 403:
-        error_message = f"GitHub API returned 403: {response.text}"
-        if "rate_limit" in response.text:
-            error_message = f"GitHub API rate limit exceeded: {response.text}"
-        return Github404Error(
-            "API rate limit", {"github_url": url, "api_url": api_url}, error_message
+    if response.status_code == 401:
+        return GithubAPIError(
+            "Invalid GitHub credentials", params,
+            "GitHub API returned 401 (Unauthorized) — the GITHUB_TOKEN/GH_TOKEN "
+            f"env var is set but invalid or expired. Response: {body}",
         )
-    else:
-        return GithubError(
-            "GitHub API error", {"url": url, "status_code": response.status_code}
+    if response.status_code == 429 or (
+        response.status_code == 403 and (
+            "rate limit" in body.lower() or "abuse" in body.lower()
         )
+    ):
+        return GithubRateLimitError(
+            "GitHub API rate limit", params,
+            f"GitHub API rate limit exceeded (HTTP {response.status_code}).{retry_hint} {body}",
+        )
+    if response.status_code == 403:
+        return Github403Error(
+            "GitHub API access denied", params, f"GitHub API returned 403: {body}"
+        )
+    return GithubError(
+        "GitHub API error", params,
+        f"GitHub API returned {response.status_code}: {body}",
+        status_code=response.status_code,
+    )

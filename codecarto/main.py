@@ -3,11 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from codecarto.routers.c_parser_router import CParserRouter
 from codecarto.routers.palette_router import PaletteRouter
-from codecarto.routers.parser_router import ParserRouter
 from codecarto.routers.plotter_router import PlotterRouter
-from codecarto.routers.polygraph_router import PolygraphRouter
 from codecarto.routers.repo_router import RepoReaderRouter
-from codecarto.routers.local_repo_router import LocalRepoRouter
 from codecarto.routers.pam_router import PamRouter
 from codecarto.routers.unified_parser_router import UnifiedParserRouter
 from codecarto.routers.lexicon_router import LexiconRouter
@@ -49,10 +46,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # Add the routers
 app.include_router(PaletteRouter, prefix="/palette", tags=["palette"])
 app.include_router(PlotterRouter, prefix="/plotter", tags=["plotter"])
-app.include_router(ParserRouter, prefix="/parser", tags=["parser"])
-app.include_router(PolygraphRouter, prefix="/polygraph", tags=["polygraph"])
 app.include_router(RepoReaderRouter, prefix="/repo", tags=["repo"])
-app.include_router(LocalRepoRouter, prefix="/local", tags=["local"])
 app.include_router(CParserRouter, prefix="/c-parser", tags=["c-parser"])
 app.include_router(PamRouter, prefix="/pam", tags=["pam"])
 app.include_router(UnifiedParserRouter, prefix="/parse", tags=["parse"])

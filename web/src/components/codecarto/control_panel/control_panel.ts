@@ -443,7 +443,9 @@ export function ControlPanel(
               folders: content.repoDirectory?.root.folders || [],
               files: content.repoDirectory?.root.files || [],
               onUrlFileClicked: callbacks.onRepoFileClick,
-              onFolderExpand: callbacks.onFolderExpand,
+              // Only enable lazy-expand for partial (GitHub shallow) trees.
+              // Local trees are always fully loaded, so empty folders shouldn't trigger expansion.
+              onFolderExpand: content.repoDirectory?.is_partial ? callbacks.onFolderExpand : undefined,
               allowedExtensions: content.availableLanguages
                 ? Object.values(content.availableLanguages).flat()
                 : null,

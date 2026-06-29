@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from fastapi import APIRouter
 from codecarto.models.source_data import Directory, RepoInfo
 from codecarto.services.github_service import (
@@ -7,7 +8,9 @@ from codecarto.services.github_service import (
     create_headers,
     get_subtree,
     expand_all_tree,
+    is_github_url
 )
+from codecarto.services.local_repo_service import get_local_repo
 from codecarto.util.exceptions import CodeCartoException, proc_exception
 from codecarto.util.utilities import Log, generate_return
 
@@ -16,18 +19,27 @@ RepoReaderRouter = APIRouter()
 
 @RepoReaderRouter.get("/tree")
 async def get_repo_directory_tree(url: str) -> dict:
+    """
+    Read a directory tree from either a GitHub repo URL or a local filesystem path.
+    The 'url' query param is parsed to decide which.
+    """
     # Get the GitHub repo directory tree (falls back to shallow mode for large repos)
     try:
-        Log.info(f"Reading GitHub URL: {url}")
-        data = await get_raw_from_repo(url)
-        return generate_return(200, "read_github_url - Success", data.model_dump())
+        if is_github_url(url):
+            Log.info(f"Reading GitHub URL: {url}")
+            data = await get_raw_from_repo(url)
+            return generate_return(200, "read_github_url - Success", data.model_dump())
+        else:
+            Log.info(f"Reading local path: {url}")
+            data = get_local_repo(url)
+            return generate_return(200, "read_local_path - Success", data.model_dump())
     except CodeCartoException as exc:
-        return proc_exception(exc.source, exc.message, exc.params, exc)
+        return proc_exception(exc.source, exc.message, exc.params, exc, exc.status_code)
     except Exception as exc:
         return proc_exception(
-            "read_github_url",
-            "Error when reading GitHub URL",
-            {"github_url": url},
+            "get_repo_directory_tree",
+            "Error reading source",
+            {"input": url},
             exc,
         )
 
@@ -51,7 +63,7 @@ async def expand_all_repo(url: str, max_depth: int = 3) -> dict:
         directory = Directory(info=info, size=root_folder.size, root=root_folder, is_partial=False)
         return generate_return(200, "expand_all_repo - Success", directory.model_dump())
     except CodeCartoException as exc:
-        return proc_exception(exc.source, exc.message, exc.params, exc)
+        return proc_exception(exc.source, exc.message, exc.params, exc, exc.status_code)
     except Exception as exc:
         return proc_exception(
             "expand_all_repo",
@@ -68,15 +80,24 @@ async def get_repo_subtree(url: str, path: str = "") -> dict:
     Used to lazily expand stub folders returned by the shallow-mode /tree endpoint.
     """
     try:
-        Log.info(f"Fetching subtree: {url} @ {path!r}")
-        if url[len(url) - 1] != "/":
-            url += "/"
-        owner, repo_name = get_owner_repo_from_url(url)
-        headers = create_headers(url)
-        folder = await get_subtree(owner, repo_name, path, url, headers)
-        return generate_return(200, "get_repo_subtree - Success", folder.model_dump())
+        if is_github_url(url):
+            # existing github logic
+            Log.info(f"Fetching subtree: {url} @ {path!r}")
+            if url[len(url) - 1] != "/":
+                url += "/"
+            owner, repo_name = get_owner_repo_from_url(url)
+            headers = create_headers(url)
+            folder = await get_subtree(owner, repo_name, path, url, headers)
+            return generate_return(200, "get_repo_subtree - Success", folder.model_dump())
+        else:
+            # Local: re-walk the subdirectory and return it as a Folder
+            full_path = (Path(url) / path).resolve()
+            sub_dir = get_local_repo(str(full_path))
+            folder = sub_dir.root
+            folder.name = full_path.name
+            return generate_return(200, "get_repo_subtree - Success", folder.model_dump())
     except CodeCartoException as exc:
-        return proc_exception(exc.source, exc.message, exc.params, exc)
+        return proc_exception(exc.source, exc.message, exc.params, exc, exc.status_code)
     except Exception as exc:
         return proc_exception(
             "get_repo_subtree",

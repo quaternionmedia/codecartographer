@@ -1,5 +1,5 @@
 import { RequestHandler } from './request_handler';
-import { RawFile, Directory } from '../components/models/source';
+import { Directory } from '../components/models/source';
 import { logger } from '../core/logger';
 
 type PlotRequestBody = Record<string, unknown> | FormData;
@@ -21,139 +21,24 @@ export interface StreamCallbacks {
   onError: (msg: string) => void;
   /** Called on 'fetching' events (stream-url only): status message updates before nodes arrive. */
   onFetching?: (message: string) => void;
+  /**
+   * Called on 'meta' from /c-parser/stream-github (streamCGithub only), with
+   * the file count to be parsed. Unlike onMeta's nodeCount, the real node
+   * count isn't knowable until libclang finishes — the caller estimates a
+   * batch-size total from this instead.
+   */
+  onFileCount?: (fileCount: number) => void;
+  /**
+   * Called on 'reposition' from /c-parser/stream-github (streamCGithub
+   * only), once the full graph is known and the real layout algorithm has
+   * been run server-side. Nodes arrive in a placeholder grid because the
+   * layout needs the complete edge set; this moves them to their actual
+   * positions. Pass straight to StreamingGraphRenderer.repositionAll().
+   */
+  onReposition?: (positions: Record<string, { x: number; y: number }>) => void;
 }
 
 export class PlotService {
-  /** Plot the content of the repo URL. */
-  public static async plotRepoWhole(
-    directory: Directory,
-    plotterUrl: string,
-    layout: string = 'Spring',
-    parseMode: string = 'directory'
-  ): Promise<unknown> {
-    const body = {
-      directory: {
-        info: directory.info,
-        size: directory.size,
-        root: directory.root,
-      },
-      options: {
-        palette_id: '0',
-        layout: layout,
-        type: 'd3',
-        parse_by: parseMode,
-      },
-    };
-    const data = await this.sendPlotRequest(plotterUrl, `/whole_repo`, body);
-    if (typeof data === 'string') {
-      logger.error('Error plotGithubUrl');
-      return null;
-    }
-    return data;
-  }
-
-  /** Plot the content of the repo URL dependencies. */
-  public static async plotRepoWholeDeps(
-    directory: Directory,
-    plotterUrl: string,
-    layout: string = 'Kamada_Kawai',
-    parseMode: string = 'dependencies'
-  ): Promise<unknown> {
-    const body = {
-      directory: {
-        info: directory.info,
-        size: directory.size,
-        root: directory.root,
-      },
-      options: {
-        palette_id: '0',
-        layout: layout,
-        type: 'd3',
-        parse_by: parseMode,
-      },
-    };
-    const data = await this.sendPlotRequest(
-      plotterUrl,
-      `/whole_repo`,
-      body
-    );
-    if (typeof data === 'string') {
-      logger.error('Error plotGithubUrl');
-      return null;
-    }
-    return data;
-  }
-
-  /** Plot the content of the selected URL. */
-  public static async plotUrlFile(
-    url: string,
-    plotterUrl: string,
-    layout: string = 'Spring'
-  ): Promise<unknown> {
-    const repo_url = `/url?url=${encodeURIComponent(url)}`;
-    const body = {
-      options: {
-        palette_id: '0',
-        layout: layout,
-        type: 'd3',
-      },
-    };
-    const data = await this.sendPlotRequest(plotterUrl, repo_url, body);
-    if (typeof data === 'string') {
-      logger.error('Error plotGithubUrl');
-      return null;
-    }
-    return data;
-  }
-
-  /** Plot the content of the selected file. */
-  public static async plotFile(
-    file: RawFile,
-    plotterUrl: string,
-    layout: string = 'Spectral',
-    parseMode: string = 'ast'
-  ): Promise<unknown> {
-    // temporary solution to send raw data to the plotter
-    logger.debug('plotFile: ', file);
-    const plotBody = {
-      file: {
-        url: file.url,
-        name: file.name,
-        size: file.size,
-        raw: file.raw,
-      },
-      options: {
-        palette_id: '0',
-        layout: layout,
-        type: 'd3',
-        parse_by: parseMode,
-      },
-    };
-    const data = await this.sendPlotRequest(plotterUrl, '/file', plotBody);
-    if (typeof data === 'string') {
-      logger.error('Error plotFile: plotter');
-      return null;
-    }
-    return data;
-  }
-
-  /** Send Source to the processor to plot the data. */
-  public static async plotSourceData(
-    source: Directory,
-    plotterUrl: string,
-    layout: string = 'Spectral'
-  ): Promise<unknown> {
-    const body = new FormData();
-    body.append('json_graph', JSON.stringify(source));
-    body.append('options', JSON.stringify({ layout: layout }));
-    const data = await this.sendPlotRequest(plotterUrl, '/json', body);
-    if (typeof data === 'string') {
-      logger.error('Error plotSourceData');
-      return null;
-    }
-    return data;
-  }
-
   /** Load demo data from backend. */
   public static async loadDemo(
     plotterUrl: string,
@@ -204,52 +89,6 @@ export class PlotService {
     }
     logger.error('Invalid response format from renderToHtml:', data);
     return null;
-  }
-
-  /** Parse a C/C++ file via the c-parser backend endpoint. */
-  public static async plotCFile(
-    cParserUrl: string,
-    path: string
-  ): Promise<unknown> {
-    const url = `${cParserUrl}/file`;
-    const body = { path };
-    const data = await RequestHandler.postRequest(url, body);
-    if (typeof data === 'string') {
-      logger.error('Error plotCFile');
-      return null;
-    }
-    return data;
-  }
-
-  /** Download a GitHub repo and parse it as a C/C++ semantic graph. */
-  public static async plotCGithub(
-    cParserUrl: string,
-    repoUrl: string,
-    maxFiles: number = 200
-  ): Promise<unknown> {
-    const url = `${cParserUrl}/github`;
-    const body = { url: repoUrl, max_files: maxFiles };
-    const data = await RequestHandler.postRequest(url, body);
-    if (typeof data === 'string') {
-      logger.error('Error plotCGithub');
-      return null;
-    }
-    return data;
-  }
-
-  /** Parse a C/C++ directory via the c-parser backend endpoint. */
-  public static async plotCDirectory(
-    cParserUrl: string,
-    path: string
-  ): Promise<unknown> {
-    const url = `${cParserUrl}/directory`;
-    const body = { path };
-    const data = await RequestHandler.postRequest(url, body);
-    if (typeof data === 'string') {
-      logger.error('Error plotCDirectory');
-      return null;
-    }
-    return data;
   }
 
   /** Fetch the registered language extensions from the backend. */
@@ -321,6 +160,48 @@ export class PlotService {
   }
 
   /**
+   * Read an SSE response body and dispatch (eventType, payload) to onEvent
+   * as each complete `event: ...\ndata: ...\n\n` frame arrives. Shared by
+   * streamUnified/streamFromUrl/streamCGithub so each only needs to define
+   * its request body and its event-type dispatch.
+   */
+  private static async _consumeSSE(
+    resp: Response,
+    onEvent: (eventType: string, payload: any) => void,
+  ): Promise<void> {
+    if (!resp.body) return;
+    const reader = resp.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += value;
+
+      // Parse complete SSE events (terminated by double newline)
+      const parts = buf.split('\n\n');
+      buf = parts.pop() ?? '';
+
+      for (const part of parts) {
+        const lines = part.trim().split('\n');
+        let eventType = 'message';
+        let dataStr = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+          if (line.startsWith('data: '))  dataStr  = line.slice(6).trim();
+        }
+        if (!dataStr) continue;
+
+        try {
+          onEvent(eventType, JSON.parse(dataStr));
+        } catch {
+          // ignore malformed events
+        }
+      }
+    }
+  }
+
+  /**
    * Stream a parse result via POST + SSE.
    * Returns a cancel function; call it to abort the stream.
    */
@@ -367,42 +248,15 @@ export class PlotService {
           return;
         }
 
-        const reader = resp.body.pipeThrough(new TextDecoderStream()).getReader();
-        let buf = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += value;
-
-          // Parse complete SSE events (terminated by double newline)
-          const parts = buf.split('\n\n');
-          buf = parts.pop() ?? '';
-
-          for (const part of parts) {
-            const lines = part.trim().split('\n');
-            let eventType = 'message';
-            let dataStr = '';
-            for (const line of lines) {
-              if (line.startsWith('event: ')) eventType = line.slice(7).trim();
-              if (line.startsWith('data: '))  dataStr  = line.slice(6).trim();
-            }
-            if (!dataStr) continue;
-
-            try {
-              const payload = JSON.parse(dataStr);
-              switch (eventType) {
-                case 'meta':  callbacks.onMeta(payload as StreamMeta); break;
-                case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
-                case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
-                case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, payload.from_cache); break;
-                case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
-              }
-            } catch {
-              // ignore malformed events
-            }
+        await this._consumeSSE(resp, (eventType, payload) => {
+          switch (eventType) {
+            case 'meta':  callbacks.onMeta(payload as StreamMeta); break;
+            case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
+            case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
+            case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, payload.from_cache); break;
+            case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
           }
-        }
+        });
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;  // cancelled
         callbacks.onError(String(err));
@@ -450,43 +304,69 @@ export class PlotService {
           return;
         }
 
-        const reader = resp.body.pipeThrough(new TextDecoderStream()).getReader();
-        let buf = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += value;
-
-          const parts = buf.split('\n\n');
-          buf = parts.pop() ?? '';
-
-          for (const part of parts) {
-            const lines = part.trim().split('\n');
-            let eventType = 'message';
-            let dataStr = '';
-            for (const line of lines) {
-              if (line.startsWith('event: ')) eventType = line.slice(7).trim();
-              if (line.startsWith('data: '))  dataStr  = line.slice(6).trim();
-            }
-            if (!dataStr) continue;
-
-            try {
-              const payload = JSON.parse(dataStr);
-              switch (eventType) {
-                case 'fetching': callbacks.onFetching?.(payload.message ?? ''); break;
-                case 'meta':  callbacks.onMeta(payload as StreamMeta); break;
-                case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
-                case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
-                case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, payload.from_cache); break;
-                case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
-                // 'phase' events are informational — ignored silently
-              }
-            } catch {
-              // ignore malformed events
-            }
+        await this._consumeSSE(resp, (eventType, payload) => {
+          switch (eventType) {
+            case 'fetching': callbacks.onFetching?.(payload.message ?? ''); break;
+            case 'meta':  callbacks.onMeta(payload as StreamMeta); break;
+            case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
+            case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
+            case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, payload.from_cache); break;
+            case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
+            // 'phase' events are informational — ignored silently
           }
+        });
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+        callbacks.onError(String(err));
+      }
+    })();
+
+    return () => controller.abort();
+  }
+
+  /**
+   * Stream a C/C++ GitHub repo parse via /c-parser/stream-github (SSE).
+   * Nodes arrive file-by-file as libclang parses them; edges arrive as one
+   * batch after the cross-file CALLS/type pass completes (see
+   * c_parser_router.py for why edges can't be partial). Returns a cancel
+   * function; call it to abort.
+   */
+  static streamCGithub(
+    cParserUrl: string,
+    repoUrl: string,
+    maxFiles: number,
+    layout: string,
+    callbacks: StreamCallbacks
+  ): () => void {
+    const controller = new AbortController();
+    const body = { url: repoUrl, max_files: maxFiles, layout };
+    let nodeIndex = 0;
+
+    (async () => {
+      try {
+        const resp = await fetch(`${cParserUrl}/stream-github`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+
+        if (!resp.ok || !resp.body) {
+          callbacks.onError(`HTTP ${resp.status}`);
+          return;
         }
+
+        await this._consumeSSE(resp, (eventType, payload) => {
+          switch (eventType) {
+            case 'fetching': callbacks.onFetching?.(payload.message ?? ''); break;
+            case 'meta':  callbacks.onFileCount?.(payload.fileCount ?? 0); break;
+            case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
+            case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
+            case 'reposition': callbacks.onReposition?.(payload as Record<string, { x: number; y: number }>); break;
+            case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, false); break;
+            case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
+          }
+        });
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
         callbacks.onError(String(err));

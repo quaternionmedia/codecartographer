@@ -56,6 +56,37 @@ def _ast_type_to_kind_depth(ast_type: str) -> tuple[str, int]:
     return _TYPE_MAP.get(ast_type, ("symbol", 3))
 
 
+def extract_python_imports(raw: str) -> list[str]:
+    """Return the dotted module names referenced by this file's
+    import/from-import statements (e.g. ``"os.path"``, ``"requests"``).
+
+    Used by unified_parser_service.py's _add_python_dependency_edges to
+    resolve real file-to-file dependency edges — kept separate from
+    PythonCustomAST's own import bookkeeping (self.imports /
+    _resolve_cross_module_links), which tracks each file's *last-seen*
+    module name for its own cross-reference purposes and isn't a reliable
+    source of "what did file X import" once multiple files have been
+    visited. Relative imports (``from . import x``) are skipped — there's
+    no absolute dotted name to resolve without full package context.
+    """
+    import ast
+
+    try:
+        tree = ast.parse(raw)
+    except SyntaxError:
+        return []
+
+    modules: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                modules.append(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0 and node.module:
+                modules.append(node.module)
+    return modules
+
+
 # ── Python visual grammar ─────────────────────────────────────────────────────
 # Shape and colour per Python kind.  Parsers own visual intent; renderers just
 # draw whatever shape/color arrives on the node.
