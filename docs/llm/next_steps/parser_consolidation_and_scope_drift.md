@@ -9,12 +9,13 @@ Each finding has file:line references, a concrete reproduction of the
 duplication/drift, and a suggested direction. Ranked roughly by impact
 within each category.
 
-**Status (2026-06-28, later same day): 1.1 implemented**, including a
-same-day follow-up extending dependency-edge resolution to the
-GitHub-streaming path (see its own section below for what actually shipped
-— the real picture turned out different from the initial survey finding).
-Everything else in this document is still just documentation — 1.2–1.4 and
-all of section 2 are not yet implemented.
+**Status (2026-06-29): everything in this document is now implemented.**
+1.1 shipped 2026-06-28 (see its own section — the real picture turned out
+different from the initial survey finding). 1.2/1.3/2.1/2.3 were
+implemented by PR #70 (`copilot-swe-agent`) on `caching-and-parser-consolidation`
+and verified+cherry-picked here (see each section for what was checked and
+what tests were added — the original PR shipped zero tests). 1.4 and 2.2
+were implemented in this same pass. Branch: `followup-lifts-completion`.
 
 ---
 
@@ -115,9 +116,18 @@ two different packages' `__init__.py`) can't be disambiguated; the
 last-visited one wins. Pre-existing characteristic of this id scheme, not
 newly introduced, and not addressed by this update.
 
-### 1.2 `batch_whole_tree` dispatch-splitting logic is duplicated, not shared
+### 1.2 `batch_whole_tree` dispatch-splitting logic is duplicated, not shared [DONE 2026-06-29]
 
 **Impact: medium — same ~15-line algorithm reimplemented twice with different data shapes.**
+
+**Shipped via PR #70, exactly as suggested below**: `_split_by_batch_mode(items, ext_of)`
+in `unified_parser_service.py`, used by both `stream_parse_url` and
+`_walk_folder` (the latter restructured into two passes: collect file
+nodes, then split-and-dispatch). PR #70 added no tests; added 5 direct
+unit tests (`TestSplitByBatchMode` in `test_unified_parser_service.py`) —
+pure function, no I/O, exactly as easy to test in isolation as hoped.
+Confirmed no regression: all pre-existing `TestCBatchWholeTree` end-to-end
+tests still pass unchanged.
 
 Both code paths in `unified_parser_service.py` need to split a list of
 files into "dispatch one-at-a-time" vs "dispatch as one batch per parser"
@@ -163,9 +173,22 @@ to extract the extension from an item. Low risk — it's pure grouping logic
 with no I/O, easy to unit test in isolation from the two call sites' very
 different downstream handling.
 
-### 1.3 Functional parity gap between the two C parsing entry points (`-I<project root>`)
+### 1.3 Functional parity gap between the two C parsing entry points (`-I<project root>`) [DONE 2026-06-29]
 
 **Impact: medium — silently wrong output for multi-directory C projects parsed via the generic path, not just a style issue.**
+
+**Shipped via PR #70**: `c_language_parser.py`'s `parse_files` now tracks
+real on-disk paths separately, computes `os.path.commonpath` over them,
+and passes the result (or its parent, if commonpath itself resolves to a
+single file rather than a directory) as `project_root` to
+`default_parse_args`. PR #70 added no tests; live-verified by hand before
+trusting it — built a real multi-directory project (`foo.h` at the root,
+`foo.c`/`main.c` in `src/`, `#include "foo.h"` only resolvable via
+`-I<root>`), confirmed the OLD code fails (`libclang: 'foo.h' file not
+found`, zero `calls` edges) and the NEW code resolves it correctly
+(`main -> foo_fn` edge present). Added 3 regression tests
+(`TestCLanguageParserProjectRoot` in `test_c_parser_service.py`), including
+the single-file commonpath-returns-a-file-not-a-dir edge case.
 
 There are two independent entry points into `CParser`, and they don't pass
 the same compiler args:
@@ -203,29 +226,37 @@ at line 152-154) — their common ancestor directory could be computed and
 passed through as `project_root`. For GitHub/virtual files there's no real
 project root, so the current no-arg call stays correct for that branch.
 
-### 1.4 (Minor) Recursive Folder-tree walking reimplemented at ~4 call sites
+### 1.4 (Minor) Recursive Folder-tree walking reimplemented at ~4 call sites [DONE 2026-06-29]
 
 **Impact: low — small, but a `Folder.walk_files()` method would remove repetition.**
 
-`Folder` (`models/source_data.py`) has no traversal helper, so each
-consumer hand-rolls its own recursive walk:
-`_collect_parseable` (`unified_parser_service.py:605`), the `pending`-dict
-walk inside `_walk_folder` (`unified_parser_service.py:522`),
-`_fetch_content_for_folder`'s `collect()` (`github_service.py:69`, added
-this session), and `parser_service.py`'s `read_directory_recursive`
-(filesystem-specific, not `Folder`-based, so not directly affected). A
-`Folder.iter_files() -> Iterator[tuple[Folder, File]]` generator method
-would let three of these collapse to a one-line `for` loop. Not urgent —
-flagging since it'll keep recurring as more call sites need "every file in
-this tree" until someone adds it.
+Added `Folder.iter_files() -> Iterator[tuple[Folder, File]]`
+(`models/source_data.py`) and collapsed the 3 genuine matches:
+`_collect_parseable` and `_add_python_dependency_edges`
+(`unified_parser_service.py`), `_fetch_content_for_folder`'s `collect()`
+(`github_service.py`). `parser_service.py`'s `read_directory_recursive`
+no longer exists (deleted in 1.1). Deliberately did **not** touch
+`_walk_folder`'s own recursion — on closer look it builds graph nodes/
+edges with per-level parent-id/depth context as it descends, which isn't
+actually a "give me a flat list of files" pattern; forcing it through this
+iterator would be a worse fit, not a cleaner one. 5 new tests
+(`test_source_data.py`).
 
 ---
 
 ## 2. Other scope drift
 
-### 2.1 SSE cache-replay block duplicated verbatim across two router endpoints
+### 2.1 SSE cache-replay block duplicated verbatim across two router endpoints [DONE 2026-06-29]
 
 **Impact: medium — ~25 identical lines, the kind of duplication that silently diverges on the next edit.**
+
+**Shipped via PR #70, exactly as suggested below**: `_stream_cached_graph(cached, layout)`
+in `unified_parser_router.py`, called from both `stream_parse` and
+`stream_from_url`. PR #70 added no tests; added `test_unified_parser_router.py`
+covering the generator directly (event order, depth-sort, `from_cache`
+marking, malformed-entry handling) plus an end-to-end test that actually
+proves the point of the extraction — `/parse/stream` and `/parse/stream-url`
+produce **byte-for-byte identical** SSE output for the same cached entry.
 
 `unified_parser_router.py` has two nearly byte-for-byte identical inner
 functions for replaying a cached graph as SSE:
@@ -249,9 +280,24 @@ equivalent for the cache-replay side.
 (module-level in `unified_parser_router.py`, or a method on
 `UnifiedParserService`) and call it from both endpoints.
 
-### 2.2 Thread → `asyncio.Queue` → SSE bridge hand-rolled independently twice
+### 2.2 Thread → `asyncio.Queue` → SSE bridge hand-rolled independently twice [DONE 2026-06-29]
 
 **Impact: low-medium — same wiring pattern, not literally copy-pasted, so a shared helper needs to fit both shapes.**
+
+**Shipped**: new `codecarto/util/threaded_feeder.py` —
+`start_threaded_feeder(worker_factory)` creates the queue, captures the
+running loop, and starts the daemon thread; `worker_factory(queue, loop)`
+returns the zero-arg thread target, accommodating both call sites' very
+different worker shapes (one fully closure-based, one taking a log path)
+without forcing either into an awkward signature. `pam_router.py`'s
+`_tail_thread`/`_journald_thread` became inline closures built by a
+factory inside `on_pam_startup` rather than top-level functions taking
+explicit `(queue, loop)` args — preserves the "no log file found" fallback
+exactly (`_event_queue` still gets a real, just unfed, `Queue`). 5 new
+direct unit tests (`test_threaded_feeder.py`); live-verified
+`on_pam_startup()` against a real `PAM_LOG_FILE` and the "no log available"
+path; existing `/c-parser/stream-github` test coverage
+(`test_c_parser_router.py`) passes unchanged.
 
 `c_parser_router.py`'s `/stream-github`
 ([c_parser_router.py:170-203](../../../codecarto/routers/c_parser_router.py#L170-L203))
@@ -278,9 +324,14 @@ daemon thread, returning the queue for the caller to drain however it
 needs. Lower priority than 2.1 — the win is smaller and the two call sites'
 draining logic genuinely differs.
 
-### 2.3 Frontend: confirmed-still-present dead `actions.ts` methods
+### 2.3 Frontend: confirmed-still-present dead `actions.ts` methods [DONE 2026-06-29]
 
 **Impact: low — already identified in a previous session ([memory: Architectural Unification Pass](../ARCHITECTURE.md)), re-verified here, still not removed.**
+
+**Shipped via PR #70.** Re-verified via repo-wide grep after cherry-picking:
+zero remaining references to `UIActions`, `adaptCGraphToGJGF`, `plotCFile`,
+`plotCDirectory`, or `clearUploads` anywhere in `web/src`. Frontend build
+(`npm run build`) passes cleanly.
 
 Zero call sites anywhere in `web/src` (checked via grep for
 `actions.<ns>.<method>(` across all components) for:
@@ -301,15 +352,19 @@ only to keep one place that confirms it's still true as of 2026-06-28.
 
 ---
 
-## Suggested order of attack
+## Status: all items shipped
 
-1. ~~**1.1** (consolidate `ParserService` + build a real dependency view)~~
-   — **done 2026-06-28.**
-2. **1.3** (C project-root parity) — small diff, fixes a real correctness
-   gap rather than just tidying.
-3. **2.1** (SSE cache-replay extraction) — small diff, removes the
-   duplication most likely to silently diverge next time someone touches
-   either streaming endpoint.
-4. **1.2**, **2.2**, **1.4** — lower urgency, take when touching adjacent
-   code rather than as standalone work.
-5. **2.3** — trivial deletion, bundle with any of the above.
+1. ~~**1.1**~~ — done 2026-06-28 (`caching-and-parser-consolidation`).
+2. ~~**1.2, 1.3, 2.1, 2.3**~~ — implemented by PR #70
+   (`copilot/frontend-integration-golden-layout`, `copilot-swe-agent`),
+   verified and cherry-picked clean onto `followup-lifts-completion`
+   2026-06-29. PR #70 itself also carries an unrelated Golden Layout
+   frontend integration mixed into the same branch — only the
+   "followups" commit (`d0e685f`) was cherry-picked; the Golden Layout
+   work is a separate concern not covered by this survey.
+3. ~~**1.4, 2.2**~~ — implemented 2026-06-29, same branch.
+
+Every item shipped with tests added in this pass (PR #70's own commit had
+none) and either a live manual verification or a full-suite pass
+confirming no regression. Nothing outstanding from this survey as of
+2026-06-29.
