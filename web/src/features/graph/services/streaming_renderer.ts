@@ -153,6 +153,42 @@ export class StreamingGraphRenderer {
     this._scheduleLoop();
   }
 
+  /**
+   * Smoothly move already-rendered nodes to new positions. Used by the
+   * dedicated C-parser stream (/c-parser/stream-github), which has to place
+   * nodes in a placeholder grid as they arrive (the chosen layout algorithm
+   * needs the complete edge set to mean anything, and edges aren't known
+   * until the whole repo is parsed) — once the real graph is known, this
+   * call transitions everything to its actual layout position. Call before
+   * finalize() so the fit-to-view uses final positions, not the grid.
+   */
+  repositionAll(positions: Record<string, { x: number; y: number }>): void {
+    for (const [nodeId, pos] of Object.entries(positions)) {
+      const node = this.nodeById.get(nodeId);
+      if (node) {
+        node.x = pos.x;
+        node.y = pos.y;
+      }
+    }
+
+    this.nodeGroup.selectAll<SVGGElement, unknown>('.graph-node')
+      .transition()
+      .duration(600)
+      .ease(d3.easeCubicInOut)
+      .attr('transform', function (this: SVGGElement) {
+        const nodeId = this.getAttribute('data-node-id');
+        const pos = nodeId ? positions[nodeId] : undefined;
+        return pos ? `translate(${pos.x},${pos.y}) scale(1)` : null;
+      });
+
+    for (const [nodeId, pos] of Object.entries(positions)) {
+      const node = this.nodeById.get(nodeId);
+      const size = node ? this.styling.nodeSize! * this._depthScale(node) : 0;
+      this._updateEdgesForNode(nodeId, pos.x, pos.y);
+      this._updateLabelForNode(nodeId, pos.x, pos.y, size);
+    }
+  }
+
   // ── Private: rAF drain loop ────────────────────────────────────────────────
 
   private _scheduleLoop(): void {
@@ -200,6 +236,7 @@ export class StreamingGraphRenderer {
     const group = this.nodeGroup
       .append('g')
       .attr('class', 'graph-node')
+      .attr('data-node-id', node.id)
       .attr('transform', `translate(${x},${y}) scale(0)`)
       .attr('opacity', 0);
 

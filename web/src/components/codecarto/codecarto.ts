@@ -264,6 +264,76 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
     );
   }
 
+  // Rough estimate used only to size the streaming renderer's batch rate
+  // before parsing finishes — see StreamCallbacks.onFileCount in plot_service.ts.
+  // The real total isn't known until libclang has parsed every file.
+  const _AVG_C_NODES_PER_FILE = 40;
+
+  /** Stream a C/C++ GitHub repo via /c-parser/stream-github (real per-file libclang progress). */
+  function _startStreamCGithub(githubUrl: string, maxFiles: number): void {
+    appState.update({ selectedRenderer: 'd3' });
+    const layout = _convertLayout(appState.state.graphStyling.layout);
+
+    const accNodes: { id: string; [k: string]: unknown }[] = [];
+    const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
+    let nodeCount = 0;
+
+    _mountAndStream(
+      (renderer) => PlotService.streamCGithub(
+        appState.api.cParser, githubUrl, maxFiles, layout,
+        {
+          onFetching: (msg) => updatePanelState({ statusMessage: msg }),
+          onMeta: () => { /* unused for C streaming — see onFileCount */ },
+          onFileCount: (fileCount) => {
+            const estimatedTotal = fileCount * _AVG_C_NODES_PER_FILE;
+            renderer.setTotal(estimatedTotal);
+            updatePanelState({ statusMessage: `Parsing ${fileCount} files…` });
+            updateProgress({ loaded: 0, total: estimatedTotal, phase: 'streaming' });
+          },
+          onNode: (node) => {
+            nodeCount++;
+            accNodes.push(node as any);
+            if (nodeCount % 5 === 0)
+              updateProgress({ loaded: nodeCount, total: panelState.progress?.total ?? 0, phase: 'streaming' });
+            renderer.addNode(node as any);
+          },
+          onEdge: (edge) => { accEdges.push(edge as any); renderer.addEdge(edge as any); },
+          onReposition: (positions) => {
+            // Real layout positions, computed server-side once the whole
+            // graph was known (placeholder grid until now — see
+            // c_parser_router.py's _compute_layout_positions). Update the
+            // accumulated nodes too so renderer-switching after the stream
+            // (createGraphVnode) reflects the same positions, not the grid.
+            for (const node of accNodes) {
+              const pos = positions[node.id];
+              if (pos) { node.x = pos.x; node.y = pos.y; }
+            }
+            renderer.repositionAll(positions);
+          },
+          onDone: (elapsed_ms) => {
+            cancelStream = null;
+            renderer.finalize();
+            streamingRenderer = null;
+            appState.update({
+              graphData: _buildGraphData(accNodes, accEdges, { nodeCount, edgeCount: accEdges.length, layout }) as any,
+            });
+            if (appState.state.selectedRenderer !== 'd3') {
+              actions.plot.createGraphVnode();
+            }
+            updatePanelState({ isLoading: false, statusMessage: `Done in ${elapsed_ms}ms (${nodeCount} nodes)`, progress: null });
+            ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
+          },
+          onError: (msg) => {
+            cancelStream = null;
+            streamingRenderer = null;
+            updatePanelState({ isLoading: false, statusMessage: `Error: ${msg}`, progress: null });
+          },
+        }
+      ),
+      `Fetching & parsing C repo: ${githubUrl}`,
+    );
+  }
+
   // Control panel callbacks - fully wired
   const panelCallbacks: ControlPanelCallbacks = {
     // Demo
@@ -523,21 +593,10 @@ export const CodeCarto = (getCell: () => ICell): m.Component => {
       }
     },
 
-    // C Parser - download GitHub repo and parse C/C++ files
-    onCParserGithub: async (repoUrl: string) => {
-      updatePanelState({ isLoading: true, statusMessage: `Fetching & parsing C repo: ${repoUrl}` });
-      appState.update({ selectedRenderer: 'd3' });
-
-      lastPlotAction = async () => {
-        await actions.plot.plotCGithub(repoUrl);
-      };
-
-      try {
-        await lastPlotAction();
-        updatePanelState({ isLoading: false, statusMessage: 'C repo parsed' });
-      } catch (error) {
-        updatePanelState({ isLoading: false, statusMessage: 'Error: ' + String(error) });
-      }
+    // C Parser - stream a GitHub repo's C/H files as libclang parses each one
+    onCParserGithub: (repoUrl: string) => {
+      lastPlotAction = () => { panelCallbacks.onCParserGithub(repoUrl); };
+      _startStreamCGithub(repoUrl, 200);
     },
 
     // Cache - load a cached graph (uses /parse/unified which checks cache first)
