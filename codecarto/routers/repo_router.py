@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from fastapi import APIRouter
 from codecarto.models.source_data import Directory, RepoInfo
 from codecarto.services.github_service import (
@@ -33,7 +34,7 @@ async def get_repo_directory_tree(url: str) -> dict:
             data = get_local_repo(url)
             return generate_return(200, "read_local_path - Success", data.model_dump())
     except CodeCartoException as exc:
-        return proc_exception(exc.source, exc.message, exc.params, exc)
+        return proc_exception(exc.source, exc.message, exc.params, exc, exc.status_code)
     except Exception as exc:
         return proc_exception(
             "get_repo_directory_tree",
@@ -62,7 +63,7 @@ async def expand_all_repo(url: str, max_depth: int = 3) -> dict:
         directory = Directory(info=info, size=root_folder.size, root=root_folder, is_partial=False)
         return generate_return(200, "expand_all_repo - Success", directory.model_dump())
     except CodeCartoException as exc:
-        return proc_exception(exc.source, exc.message, exc.params, exc)
+        return proc_exception(exc.source, exc.message, exc.params, exc, exc.status_code)
     except Exception as exc:
         return proc_exception(
             "expand_all_repo",
@@ -90,14 +91,13 @@ async def get_repo_subtree(url: str, path: str = "") -> dict:
             return generate_return(200, "get_repo_subtree - Success", folder.model_dump())
         else:
             # Local: re-walk the subdirectory and return it as a Folder
-            from codecarto.services.local_repo_service import get_local_repo
             full_path = (Path(url) / path).resolve()
             sub_dir = get_local_repo(str(full_path))
             folder = sub_dir.root
             folder.name = full_path.name
             return generate_return(200, "get_repo_subtree - Success", folder.model_dump())
     except CodeCartoException as exc:
-        return proc_exception(exc.source, exc.message, exc.params, exc)
+        return proc_exception(exc.source, exc.message, exc.params, exc, exc.status_code)
     except Exception as exc:
         return proc_exception(
             "get_repo_subtree",
