@@ -13,6 +13,8 @@ Covers:
   - Nested folders produce correctly linked nodes
 """
 
+import json
+
 import pytest
 import networkx as nx
 
@@ -422,3 +424,319 @@ class TestPartialDirectory:
         assert any("parser.c" in nid for nid in file_nodes), (
             f".c file not found in file nodes: {file_nodes}"
         )
+
+
+# ── Python dependency edges (depends_on) ──────────────────────────────────────
+# unified-pipeline counterpart to the old standalone DependencyParser: at
+# depth>=2, Python imports are resolved to real file-to-file 'depends_on'
+# edges (internal) or a synthetic 'external_module' node (stdlib/third-party).
+
+class TestPythonDependencyEdges:
+    def _edge_kind(self, e: dict) -> str:
+        return e.get("metadata", e).get("kind")
+
+    def test_internal_import_creates_depends_on_edge(self):
+        a = _file("a.py", "import b\n")
+        b = _file("b.py", "x = 1\n")
+        d = _simple_dir([a, b])
+        result = UnifiedParserService.parse(d, depth=2)
+
+        edges = result["graph"]["edges"]
+        depends_on = [e for e in edges if self._edge_kind(e) == "depends_on"]
+        assert any(
+            "a.py" in e["source"] and "b.py" in e["target"] for e in depends_on
+        ), f"expected a.py -> b.py depends_on edge, got: {depends_on}"
+
+    def test_from_import_creates_depends_on_edge(self):
+        a = _file("a.py", "from b import x\n")
+        b = _file("b.py", "x = 1\n")
+        d = _simple_dir([a, b])
+        result = UnifiedParserService.parse(d, depth=2)
+
+        edges = result["graph"]["edges"]
+        depends_on = [e for e in edges if self._edge_kind(e) == "depends_on"]
+        assert any(
+            "a.py" in e["source"] and "b.py" in e["target"] for e in depends_on
+        )
+
+    def test_stdlib_import_creates_external_node(self):
+        a = _file("a.py", "import os\n")
+        d = _simple_dir([a])
+        result = UnifiedParserService.parse(d, depth=2)
+
+        nodes = result["graph"]["nodes"]
+        assert "external::os" in nodes, f"expected external::os node, got: {list(nodes)}"
+
+        edges = result["graph"]["edges"]
+        depends_on = [e for e in edges if self._edge_kind(e) == "depends_on"]
+        assert any(
+            "a.py" in e["source"] and e["target"] == "external::os" for e in depends_on
+        )
+
+    def test_submodule_import_groups_under_top_level_external_node(self):
+        a = _file("a.py", "import os.path\n")
+        d = _simple_dir([a])
+        result = UnifiedParserService.parse(d, depth=2)
+
+        nodes = result["graph"]["nodes"]
+        assert "external::os" in nodes
+        assert "external::os.path" not in nodes
+
+    def test_no_self_loop_for_self_import(self):
+        """A file that imports a stdlib module sharing no name collisions
+        with itself should never get a depends_on edge to itself."""
+        a = _file("a.py", "import a\n")  # pathological but shouldn't crash/self-loop
+        d = _simple_dir([a])
+        result = UnifiedParserService.parse(d, depth=2)
+
+        edges = result["graph"]["edges"]
+        depends_on = [e for e in edges if self._edge_kind(e) == "depends_on"]
+        assert not any(e["source"] == e["target"] for e in depends_on)
+
+    def test_no_depends_on_edges_at_depth1(self):
+        a = _file("a.py", "import b\n")
+        b = _file("b.py", "x = 1\n")
+        d = _simple_dir([a, b])
+        result = UnifiedParserService.parse(d, depth=1)
+
+        edges = result["graph"]["edges"]
+        assert not any(self._edge_kind(e) == "depends_on" for e in edges)
+
+    def test_unrelated_files_get_no_depends_on_edge(self):
+        a = _file("a.py", "x = 1\n")
+        b = _file("b.py", "y = 2\n")
+        d = _simple_dir([a, b])
+        result = UnifiedParserService.parse(d, depth=2)
+
+        edges = result["graph"]["edges"]
+        assert not any(self._edge_kind(e) == "depends_on" for e in edges)
+
+
+# ── Python dependency edges via stream_parse_url (GitHub-streaming path) ──────
+# Extends the same _resolve_python_dependencies resolution used by
+# _add_python_dependency_edges to the two-phase GitHub-streaming pipeline.
+# Dependency edges can't be resolved per-file (an earlier-completing file's
+# import target might not have arrived yet), so they're emitted as a final
+# batch of edge/node SSE events after every file has been fetched+parsed —
+# the same deferred-until-complete approach C's cross-file 'calls' edges
+# already use in the batch_whole_tree path.
+
+def _parse_sse_chunk(chunk: str) -> tuple[str, dict]:
+    lines = chunk.strip().split("\n")
+    event_type = lines[0].split("event: ", 1)[1]
+    data_line = next(l for l in lines if l.startswith("data: "))
+    return event_type, json.loads(data_line[len("data: "):])
+
+
+class TestStreamParseUrlDependencyEdges:
+    @staticmethod
+    def _patch_github_fetch(monkeypatch, items, contents: dict[str, str]):
+        import codecarto.services.github_service as gh_svc
+
+        async def fake_fetch_tree_fast(owner, repo, headers, url):
+            return items, "main", 1, False
+
+        async def fake_get_raw_from_url(dl_url):
+            return contents[dl_url]
+
+        monkeypatch.setattr(gh_svc, "fetch_tree_fast", fake_fetch_tree_fast)
+        monkeypatch.setattr(gh_svc, "get_raw_from_url", fake_get_raw_from_url)
+
+    async def _collect_events(self, url: str, depth: int = 2) -> list[tuple[str, dict]]:
+        events = []
+        async for chunk in UnifiedParserService.stream_parse_url(url, depth=depth):
+            events.append(_parse_sse_chunk(chunk))
+        return events
+
+    @pytest.mark.asyncio
+    async def test_internal_import_creates_depends_on_edge(self, monkeypatch):
+        items = [
+            ("a.py", "blob", "https://raw.example/streamdeps/a.py"),
+            ("b.py", "blob", "https://raw.example/streamdeps/b.py"),
+        ]
+        contents = {
+            "https://raw.example/streamdeps/a.py": "import b\n",
+            "https://raw.example/streamdeps/b.py": "x = 1\n",
+        }
+        self._patch_github_fetch(monkeypatch, items, contents)
+
+        events = await self._collect_events("https://github.com/test/streamdeps-internal")
+
+        depends_on = [d for t, d in events if t == "edge" and d.get("kind") == "depends_on"]
+        assert any(
+            "a.py" in e["source"] and "b.py" in e["target"] for e in depends_on
+        ), f"expected a.py -> b.py depends_on edge, got: {depends_on}"
+
+    @pytest.mark.asyncio
+    async def test_stdlib_import_creates_external_node_and_edge(self, monkeypatch):
+        items = [("a.py", "blob", "https://raw.example/streamdeps/a.py")]
+        contents = {"https://raw.example/streamdeps/a.py": "import os\n"}
+        self._patch_github_fetch(monkeypatch, items, contents)
+
+        events = await self._collect_events("https://github.com/test/streamdeps-external")
+
+        node_ids = {d.get("id") for t, d in events if t == "node"}
+        assert "external::os" in node_ids
+
+        depends_on = [d for t, d in events if t == "edge" and d.get("kind") == "depends_on"]
+        assert any(
+            "a.py" in e["source"] and e["target"] == "external::os" for e in depends_on
+        )
+
+    @pytest.mark.asyncio
+    async def test_no_duplicate_edge_for_repeated_import(self, monkeypatch):
+        """A file importing the same module via two statements (or two
+        submodules of the same package) must not produce duplicate
+        depends_on edges — SSE events have no has_edge() backing store to
+        dedupe against, unlike the in-memory path."""
+        items = [("a.py", "blob", "https://raw.example/streamdeps/a.py")]
+        contents = {"https://raw.example/streamdeps/a.py": "import os\nimport os.path\n"}
+        self._patch_github_fetch(monkeypatch, items, contents)
+
+        events = await self._collect_events("https://github.com/test/streamdeps-dedup")
+
+        depends_on = [d for t, d in events if t == "edge" and d.get("kind") == "depends_on"]
+        external_edges = [e for e in depends_on if e["target"] == "external::os"]
+        assert len(external_edges) == 1, f"expected exactly one deduped edge, got: {external_edges}"
+
+        node_events = [d for t, d in events if t == "node" and d.get("id") == "external::os"]
+        assert len(node_events) == 1, "external node should only be emitted once"
+
+    @pytest.mark.asyncio
+    async def test_no_depends_on_edges_at_depth1(self, monkeypatch):
+        items = [
+            ("a.py", "blob", "https://raw.example/streamdeps/a.py"),
+            ("b.py", "blob", "https://raw.example/streamdeps/b.py"),
+        ]
+        contents = {
+            "https://raw.example/streamdeps/a.py": "import b\n",
+            "https://raw.example/streamdeps/b.py": "x = 1\n",
+        }
+        self._patch_github_fetch(monkeypatch, items, contents)
+
+        events = await self._collect_events("https://github.com/test/streamdeps-depth1", depth=1)
+
+        assert not any(t == "edge" and d.get("kind") == "depends_on" for t, d in events)
+
+
+# ── batch_whole_tree: C files parsed together, not one-at-a-time ──────────────
+# Before this, _walk_folder dispatched parser.parse_files([file], depth) one
+# file at a time for every language. Fine for Python; structurally wrong for
+# C, whose CALLS edges need the whole file set in one CParser call to
+# resolve cross-file references. CLangaugeParser.batch_whole_tree=True opts
+# into a second pass (_parse_pending_batches) that collects every C/H file
+# across the WHOLE tree (not just one folder) before parsing.
+
+import importlib.util
+requires_libclang = pytest.mark.skipif(
+    importlib.util.find_spec("clang") is None,
+    reason="libclang not installed — install with: uv sync --extra c-parsing",
+)
+
+
+@requires_libclang
+class TestCBatchWholeTree:
+    def _c_file(self, name: str, raw: str) -> File:
+        return File(name=name, size=len(raw), raw=raw, url="")
+
+    def test_cross_file_calls_resolve_through_full_parse(self):
+        import codecarto.services.parsers.c_language_parser  # noqa: F401  (registers .c/.h)
+
+        header = self._c_file("helper.h", "int helper_fn(int x);")
+        main_c = self._c_file("main.c", '#include "helper.h"\nint main(void) { return helper_fn(5); }')
+        helper_c = self._c_file("helper.c", '#include "helper.h"\nint helper_fn(int x) { return x * 2; }')
+
+        d = _simple_dir([header, main_c, helper_c])
+        result = UnifiedParserService.parse(d, depth=2)
+
+        edges = result["graph"]["edges"]
+        call_edges = [
+            e for e in edges
+            if e.get("metadata", e).get("kind") == "calls"
+        ]
+        assert any(
+            "main" in e["source"] and "helper_fn" in e["target"]
+            for e in call_edges
+        ), f"expected a cross-file calls edge main -> helper_fn, got: {call_edges}"
+
+    def test_files_split_across_subfolders_still_batch_together(self):
+        """The whole point of batch_whole_tree: files in DIFFERENT folders
+        must still land in the same CParser call (same-folder batching
+        alone would not resolve this cross-folder call)."""
+        import codecarto.services.parsers.c_language_parser  # noqa: F401
+
+        header = self._c_file("helper.h", "int helper_fn(int x);")
+        helper_sub = Folder(name="lib", size=0, files=[header], folders=[])
+        main_c = self._c_file("main.c", '#include "helper.h"\nint main(void) { return helper_fn(5); }')
+        helper_c = self._c_file("helper.c", '#include "helper.h"\nint helper_fn(int x) { return x * 2; }')
+        root = Folder(name="repo", size=0, files=[main_c, helper_c], folders=[helper_sub])
+        d = _dir(root, "repo")
+
+        result = UnifiedParserService.parse(d, depth=2)
+
+        call_edges = [
+            e for e in result["graph"]["edges"]
+            if e.get("metadata", e).get("kind") == "calls"
+        ]
+        assert call_edges, "cross-folder cross-file call did not resolve"
+
+    def test_c_and_h_extensions_batch_into_one_call_not_two(self):
+        """.c and .h are different extensions but the SAME parser instance —
+        regression test for a bug where pending was keyed by extension,
+        splitting a .h declaration and its .c definition into separate
+        CParser calls and breaking #include resolution between them."""
+        import codecarto.services.parsers.c_language_parser as clp
+
+        calls: list[list[str]] = []
+        orig = clp.CLangaugeParser.parse_files
+
+        def traced(self, files, depth=2):
+            calls.append([f.name for f in files])
+            return orig(self, files, depth)
+
+        clp.CLangaugeParser.parse_files = traced
+        try:
+            header = self._c_file("helper.h", "int helper_fn(int x);")
+            main_c = self._c_file("main.c", '#include "helper.h"\nint main(void) { return helper_fn(5); }')
+            d = _simple_dir([header, main_c])
+
+            UnifiedParserService.parse(d, depth=2)
+        finally:
+            clp.CLangaugeParser.parse_files = orig
+
+        assert len(calls) == 1, f"expected one batched call, got {len(calls)}: {calls}"
+        assert set(calls[0]) == {"helper.h", "main.c"}
+
+    def test_depth2_node_gets_contains_edge_from_correct_file(self):
+        import codecarto.services.parsers.c_language_parser  # noqa: F401
+
+        a_c = self._c_file("a.c", "int fn_a(void) { return 1; }")
+        b_c = self._c_file("b.c", "int fn_b(void) { return 2; }")
+        d = _simple_dir([a_c, b_c])
+
+        result = UnifiedParserService.parse(d, depth=2)
+        edges = result["graph"]["edges"]
+
+        def contains_target(source_substr, target_substr):
+            return any(
+                source_substr in e["source"] and target_substr in e["target"]
+                for e in edges
+            )
+
+        assert contains_target("a.c", "fn_a")
+        assert contains_target("b.c", "fn_b")
+        assert not contains_target("a.c", "fn_b")
+        assert not contains_target("b.c", "fn_a")
+
+    def test_python_files_unaffected_by_batching(self):
+        """Python has no batch_whole_tree flag — must still dispatch one
+        file at a time, unchanged."""
+        f1 = _file("a.py", "class A: pass\n")
+        f2 = _file("b.py", "class B: pass\n")
+        d = _simple_dir([f1, f2])
+
+        result = UnifiedParserService.parse(d, depth=2)
+
+        labels = {nd["label"] for nd in result["graph"]["nodes"].values()}
+        assert "A" in labels
+        assert "B" in labels

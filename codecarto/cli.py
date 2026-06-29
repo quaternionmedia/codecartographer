@@ -490,9 +490,12 @@ def repo_graph(path: str, ext: tuple, output: str, graph_type: str):
 
     \b
     Graph types:
-        ast        - Parse Python AST for all files (default)
-        directory  - Directory structure graph
-        dependency - Import dependency graph
+        ast        - Symbols (classes/functions/imports) + resolved
+                     file-to-file dependency edges (default)
+        directory  - Directory structure graph only
+        dependency - Same output as 'ast' — the unified pipeline always
+                     resolves dependency edges alongside symbols at this
+                     depth, there's no separate deps-only view
 
     \b
     Examples:
@@ -501,31 +504,26 @@ def repo_graph(path: str, ext: tuple, output: str, graph_type: str):
         codecarto repo graph . -o json
     """
     from codecarto.services.local_repo_service import get_local_repo
-    from codecarto.services.parser_service import ParserService
-    from codecarto.services.parsers.ASTs.python_custom_ast import PythonCustomAST
-    import asyncio
+    from codecarto.services.unified_parser_service import UnifiedParserService
     import json
-    
+
     extensions = list(ext) if ext else [".py"]
-    
+
     click.secho(f"📊 Generating {graph_type} graph: {Path(path).resolve()}", fg="green")
     click.echo()
-    
+
     try:
         directory = get_local_repo(path, extensions=extensions)
-        
-        if graph_type == "ast":
-            # Parse all files with AST
-            parser = PythonCustomAST()
-            graph = parser.parse(directory.root)
-            graph.name = directory.info.name
-        elif graph_type == "directory":
-            # Use directory parser
-            graph = asyncio.run(ParserService.parse_directory(directory))
-        elif graph_type == "dependency":
-            # Use dependency parser
-            graph = asyncio.run(ParserService.parse_dependancy(directory))
-        
+
+        # "ast" and "dependency" both resolve to depth=2 — the unified
+        # pipeline emits symbols AND resolved file-to-file dependency edges
+        # together at that depth (see build_graph's
+        # _add_python_dependency_edges), there's no separate symbols-only
+        # vs deps-only mode. "directory" stays depth=1 (folders/files only).
+        depth = 1 if graph_type == "directory" else 2
+        graph = UnifiedParserService.build_graph(directory, depth, extensions)
+        graph.name = directory.info.name
+
         nodes = list(graph.nodes(data=True))
         edges = list(graph.edges(data=True))
         
@@ -547,7 +545,7 @@ def repo_graph(path: str, ext: tuple, output: str, graph_type: str):
             # Show node type breakdown
             node_types = {}
             for node_id, node_data in nodes:
-                ntype = node_data.get("type", "unknown")
+                ntype = node_data.get("kind", "unknown")
                 node_types[ntype] = node_types.get(ntype, 0) + 1
             
             if node_types:
