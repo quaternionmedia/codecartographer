@@ -2,7 +2,6 @@ import asyncio
 import json
 import math
 import re
-import threading
 import time
 from pathlib import Path
 from typing import Optional
@@ -12,6 +11,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 from codecarto.util.exceptions import CodeCartoException, proc_exception
+from codecarto.util.threaded_feeder import start_threaded_feeder
 from codecarto.util.utilities import generate_return
 
 CParserRouter = APIRouter()
@@ -172,35 +172,37 @@ async def stream_c_github(request: CStreamGithubRequest) -> StreamingResponse:
     """Stream a GitHub C/H repo parse as Server-Sent Events.
 
     libclang parsing is synchronous, CPU-bound work, so it runs in a
-    background thread (same pattern as pam_router.py's log tailer) while
-    this coroutine drains an asyncio.Queue the thread feeds via
-    asyncio.run_coroutine_threadsafe. Nodes stream in real time, file by
-    file, as CParser.parse_files() works through pass 1. Edges need the
-    complete cross-file node set to resolve CALLS/FIELD_OF targets, so
-    they're only available — and only streamed — after the thread finishes.
+    background thread (see util/threaded_feeder.py — same pattern as
+    pam_router.py's log tailer) while this coroutine drains an asyncio.Queue
+    the thread feeds via asyncio.run_coroutine_threadsafe. Nodes stream in
+    real time, file by file, as CParser.parse_files() works through pass 1.
+    Edges need the complete cross-file node set to resolve CALLS/FIELD_OF
+    targets, so they're only available — and only streamed — after the
+    thread finishes.
     """
     from codecarto.services.c_parser_service import CParserService
 
-    loop = asyncio.get_running_loop()
-    queue: asyncio.Queue = asyncio.Queue()
     result_box: dict = {}
     error_box: dict = {}
     started_at = time.monotonic()
 
-    def on_progress(event_type: str, payload: dict) -> None:
-        asyncio.run_coroutine_threadsafe(queue.put((event_type, payload)), loop)
+    def make_worker(queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
+        def on_progress(event_type: str, payload: dict) -> None:
+            asyncio.run_coroutine_threadsafe(queue.put((event_type, payload)), loop)
 
-    def worker() -> None:
-        try:
-            result_box["value"] = CParserService.parse_github(
-                request.url, max_files=request.max_files, on_progress=on_progress
-            )
-        except Exception as exc:
-            error_box["exc"] = exc
-        finally:
-            asyncio.run_coroutine_threadsafe(queue.put(("__done__", None)), loop)
+        def worker() -> None:
+            try:
+                result_box["value"] = CParserService.parse_github(
+                    request.url, max_files=request.max_files, on_progress=on_progress
+                )
+            except Exception as exc:
+                error_box["exc"] = exc
+            finally:
+                asyncio.run_coroutine_threadsafe(queue.put(("__done__", None)), loop)
 
-    threading.Thread(target=worker, daemon=True).start()
+        return worker
+
+    queue = start_threaded_feeder(make_worker)
 
     async def generate():
         cols = 1
