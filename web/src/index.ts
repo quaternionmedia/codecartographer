@@ -5,7 +5,6 @@ import { meiosisSetup } from 'meiosis-setup';
 
 import { qmComponentSetup } from './utility';
 import { ICell, ICellState, CellState } from './state/cell_state';
-import { CodeCarto } from './components/codecarto/codecarto';
 import { GoldenLayoutShell } from './layout/golden_layout_shell';
 
 qmComponentSetup();
@@ -29,15 +28,7 @@ cells.map(() => {
 // Mount the app
 const app = document.getElementById('app');
 if (app) {
-  // Opt-in to the Golden Layout shell via ?layout=golden in the URL.
-  // The classic CodeCarto layout remains the default.
-  const useGoldenLayout = new URLSearchParams(window.location.search).get('layout') === 'golden';
-
-  const appComponent = useGoldenLayout
-    ? GoldenLayoutShell(() => cells())
-    : CodeCarto(() => cells());
-
-  m.mount(app, appComponent);
+  m.mount(app, GoldenLayoutShell(() => cells()));
 }
 
 // DEBUG

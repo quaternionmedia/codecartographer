@@ -2,9 +2,8 @@
  * LayoutContext
  *
  * Central state-management hub for the Golden Layout integration.
- * Mirrors the logic inside the original `CodeCarto` closure component so that
- * every GL panel can share the same actions, streaming state, and callbacks
- * without duplicating business logic.
+ * Shared state hub for the Golden Layout panels so they can use the same
+ * actions, streaming state, and callbacks without duplicating business logic.
  *
  * Usage:
  *   const ctx = new LayoutContext(initialCell, getCell);
@@ -12,6 +11,7 @@
  */
 
 import m from 'mithril';
+import type { ComponentItemConfig, LayoutManager } from 'golden-layout';
 
 import { ICell, ICellState } from '../state/cell_state';
 import { StateController } from '../state/state_controller';
@@ -29,6 +29,39 @@ import { StreamingGraphRenderer } from '../features/graph/services/streaming_ren
 import { ToastManager } from '../components/codecarto/help/toast';
 
 // ── Layout helpers ───────────────────────────────────────────────────────────
+
+export type DockPanelId = 'graph' | 'file-tree' | 'source-panel' | 'graph-settings-panel';
+
+const DOCK_PANEL_CONFIGS: Record<DockPanelId, ComponentItemConfig> = {
+  graph: {
+    type: 'component',
+    componentType: 'graph',
+    id: 'graph',
+    title: '◈ Graph',
+    isClosable: true,
+  },
+  'file-tree': {
+    type: 'component',
+    componentType: 'file-tree',
+    id: 'file-tree',
+    title: '◉ Files',
+    isClosable: true,
+  },
+  'source-panel': {
+    type: 'component',
+    componentType: 'source-panel',
+    id: 'source-panel',
+    title: 'Source',
+    isClosable: true,
+  },
+  'graph-settings-panel': {
+    type: 'component',
+    componentType: 'graph-settings-panel',
+    id: 'graph-settings-panel',
+    title: 'Graph Settings',
+    isClosable: true,
+  },
+};
 
 function convertLayout(frontendLayout: string): string {
   const map: Record<string, string> = {
@@ -60,9 +93,9 @@ function findFileByUrl(folder: RawFolder, url: string): RawFile | null {
 export class LayoutContext {
   public readonly appState: StateController;
   public readonly actions: AppActions;
+  private _layoutManager: LayoutManager | null = null;
 
-  // Reactive UI-only state for the control panel; mutating this then calling
-  // m.redraw() is the same pattern used in the original CodeCarto component.
+  // Reactive UI-only state shared by the docked panels.
   public panelState: ControlPanelState = {
     isOpen: true,
     activeTab: 'source',
@@ -83,6 +116,9 @@ export class LayoutContext {
   /** Cached graph entries fetched from the backend cache endpoint. */
   public cachedGraphs: CachedEntry[] | null = null;
 
+  /** Dock panels that have been closed and can be restored. */
+  public hiddenDockPanels: DockPanelId[] = [];
+
   // Streaming lifecycle refs
   private _cancelStream: (() => void) | null = null;
   private _streamingRenderer: StreamingGraphRenderer | null = null;
@@ -102,6 +138,39 @@ export class LayoutContext {
   public updatePanelState(updates: Partial<ControlPanelState>): void {
     this.panelState = { ...this.panelState, ...updates };
     m.redraw();
+  }
+
+  /** Attach the live Golden Layout manager for add/restore operations. */
+  public attachLayoutManager(layoutManager: LayoutManager | null): void {
+    this._layoutManager = layoutManager;
+  }
+
+  public hideDockPanel(panelId: DockPanelId): void {
+    if (!this.hiddenDockPanels.includes(panelId)) {
+      this.hiddenDockPanels = [...this.hiddenDockPanels, panelId];
+      m.redraw();
+    }
+  }
+
+  public showDockPanel(panelId: DockPanelId): void {
+    if (this.hiddenDockPanels.includes(panelId)) {
+      this.hiddenDockPanels = this.hiddenDockPanels.filter((id) => id !== panelId);
+      m.redraw();
+    }
+  }
+
+  public restoreDockPanel(panelId: DockPanelId): void {
+    if (!this._layoutManager) return;
+    const config = DOCK_PANEL_CONFIGS[panelId];
+
+    if (this._layoutManager.findFirstComponentItemById(panelId)) {
+      this.showDockPanel(panelId);
+      return;
+    }
+
+    this._layoutManager.newItemAtLocation(config, LayoutManager.defaultLocationSelectors);
+    this.showDockPanel(panelId);
+    this._layoutManager.updateRootSize(true);
   }
 
   /** Build the ControlPanelContent object from the current cell state. */

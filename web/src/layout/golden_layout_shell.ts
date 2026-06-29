@@ -6,11 +6,9 @@
  *
  * Panels registered:
  *   • 'graph'         — D3 / vis-network visualisation canvas
- *   • 'control-panel' — Source loader + graph settings drawer
  *   • 'file-tree'     — Repository / uploaded-file browser
  *
- * Activate via URL flag: append  ?layout=golden  to any app URL.
- * The classic CodeCarto layout remains the default.
+ * Golden Layout is now the primary shell.
  */
 
 import m from 'mithril';
@@ -20,8 +18,9 @@ import type { ICell } from '../state/cell_state';
 import { LayoutContext } from './layout_context';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { createGraphPanel } from './panels/graph_panel';
-import { createControlPanelWrapper } from './panels/control_panel_wrapper';
 import { createFileTreePanel } from './panels/file_tree_panel';
+import { createSourcePanel } from './panels/source_panel';
+import { createGraphSettingsPanel } from './panels/graph_settings_panel';
 
 import { HelpModal, HelpModalComponent } from '../components/codecarto/help/help_modal';
 import { ToastContainer } from '../components/codecarto/help/toast';
@@ -33,8 +32,8 @@ import './golden_layout_theme.css';
 import '../components/codecarto/help/help_modal.css';
 
 /**
- * Factory function that returns a closure Mithril component, following the
- * same pattern as the existing `CodeCarto` component.
+ * Factory function that returns the Mithril component for the Golden Layout
+ * shell.
  *
  * @param getCell  Accessor for the current Meiosis cell (state atom).
  */
@@ -44,22 +43,37 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
 
   let glInstance: GoldenLayout | null = null;
 
+  const registerDockPanelLifecycle = (container: any, panelId: 'graph' | 'file-tree' | 'source-panel' | 'graph-settings-panel'): void => {
+    container.on('close', () => ctx.hideDockPanel(panelId));
+    container.on('show', () => ctx.showDockPanel(panelId));
+  };
+
   /** Mount GL panels after the host element exists in the DOM. */
   function initGoldenLayout(hostElement: HTMLElement): void {
     glInstance = new GoldenLayout(hostElement);
+    ctx.attachLayoutManager(glInstance);
 
     glInstance.registerComponentFactoryFunction('graph', (container) => {
       container.element.style.cssText = 'width:100%;height:100%;overflow:hidden;';
+      registerDockPanelLifecycle(container, 'graph');
       m.mount(container.element, createGraphPanel(ctx));
     });
 
-    glInstance.registerComponentFactoryFunction('control-panel', (container) => {
+    glInstance.registerComponentFactoryFunction('source-panel', (container) => {
       container.element.style.cssText = 'width:100%;height:100%;overflow:auto;';
-      m.mount(container.element, createControlPanelWrapper(ctx));
+      registerDockPanelLifecycle(container, 'source-panel');
+      m.mount(container.element, createSourcePanel(ctx));
+    });
+
+    glInstance.registerComponentFactoryFunction('graph-settings-panel', (container) => {
+      container.element.style.cssText = 'width:100%;height:100%;overflow:auto;';
+      registerDockPanelLifecycle(container, 'graph-settings-panel');
+      m.mount(container.element, createGraphSettingsPanel(ctx));
     });
 
     glInstance.registerComponentFactoryFunction('file-tree', (container) => {
       container.element.style.cssText = 'width:100%;height:100%;overflow:auto;';
+      registerDockPanelLifecycle(container, 'file-tree');
       m.mount(container.element, createFileTreePanel(ctx));
     });
 
@@ -82,6 +96,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
     ondestroy: () => {
       glInstance?.destroy();
       glInstance = null;
+      ctx.attachLayoutManager(null);
     },
 
     view: () => {
@@ -94,6 +109,22 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
           ]),
           m('p.gl-app-header__subtitle', 'Golden Layout'),
           m('span.gl-app-header__spacer'),
+          ctx.hiddenDockPanels.length > 0
+            ? m('div.gl-app-header__restore',
+                ctx.hiddenDockPanels.map((panelId) =>
+                  m('button.gl-app-header__restore-btn', {
+                    onclick: () => ctx.restoreDockPanel(panelId),
+                    title: `Restore ${panelId}`,
+                  }, panelId === 'source-panel'
+                    ? 'Restore Source'
+                    : panelId === 'graph-settings-panel'
+                      ? 'Restore Settings'
+                      : panelId === 'graph'
+                        ? 'Restore Graph'
+                        : 'Restore Files'),
+                ),
+              )
+            : null,
           m('button.gl-app-header__help-btn', {
             onclick: () => HelpModal.open(),
             title: 'Help & walkthrough',

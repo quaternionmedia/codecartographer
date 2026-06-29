@@ -113,6 +113,12 @@ export interface ControlPanelContent {
   cachedGraphs: CachedEntry[] | null;
 }
 
+export type ControlPanelMode = 'full' | 'source' | 'graph';
+
+export interface ControlPanelRenderOptions {
+  mode?: ControlPanelMode;
+}
+
 const TABS: Tab[] = [
   { id: 'source', label: 'Source', icon: '📁', helpText: 'Load code and configure parsing' },
   { id: 'graph',  label: 'Graph',  icon: '◈',  helpText: 'Renderer, layout, visual style and theme' },
@@ -145,8 +151,11 @@ export function ControlPanel(
   state: ControlPanelState,
   callbacks: ControlPanelCallbacks,
   onStateChange: (updates: Partial<ControlPanelState>) => void,
-  content: ControlPanelContent
+  content: ControlPanelContent,
+  options: ControlPanelRenderOptions = {}
 ): m.Vnode {
+  const mode = options.mode ?? 'full';
+  const isEmbedded = mode !== 'full';
 
   // Resize drag state
   let isDragging = false;
@@ -154,6 +163,7 @@ export function ControlPanel(
   let startHeight = 0;
 
   const updatePanelHeightVar = (element?: HTMLElement) => {
+    if (isEmbedded) return;
     if (!element) return;
     const totalHeight = Math.ceil(element.getBoundingClientRect().height);
     let effectiveHeight = totalHeight;
@@ -542,9 +552,9 @@ export function ControlPanel(
     ]);
   };
 
-  const renderSourceTab = () => {
+  const renderSourceTab = (forceVisible = false) => {
     return m('div.panel-section.panel-source', {
-      class: state.activeTab === 'source' ? 'panel-section--active' : '',
+      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
     }, [
       m('div.panel-source__2col', [
         renderSourceLeft(),
@@ -555,7 +565,7 @@ export function ControlPanel(
 
   // ─── Graph Tab (accordion) ─────────────────────────────────────────────────
 
-  const renderGraphTab = () => {
+  const renderGraphTab = (forceVisible = false) => {
     const styling = content.graphStyling;
     const selectedRenderer = content.selectedRenderer;
     const isSystem = selectedRenderer === 'system';
@@ -586,7 +596,7 @@ export function ControlPanel(
     ]);
 
     return m('div.panel-section.panel-graph', {
-      class: state.activeTab === 'graph' ? 'panel-section--active' : '',
+      class: forceVisible || state.activeTab === 'graph' ? 'panel-section--active' : '',
     }, [
       // Renderer selector — always visible at top
       m('div.panel-settings__group', [
@@ -823,6 +833,23 @@ export function ControlPanel(
   };
 
   // ─── Main render ───────────────────────────────────────────────────────────
+
+  if (isEmbedded) {
+    const embeddedContent = mode === 'source' ? renderSourceTab(true) : renderGraphTab(true);
+
+    return m('div.control-panel.control-panel--embedded', {
+      oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
+      onupdate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
+    }, [
+      m('div.control-panel__body.control-panel__body--open', {
+        style: { height: '100%' },
+      }, [
+        m('div.control-panel__content', [
+          embeddedContent,
+        ]),
+      ]),
+    ]);
+  }
 
   return m('div.control-panel', {
     oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
