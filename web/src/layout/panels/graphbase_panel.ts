@@ -16,6 +16,11 @@ import type { LayoutContext } from '../layout_context';
 let _snapInput = '';
 let _bookmarkInput = '';
 
+function _tsLabel(capturedAt: number): string {
+  const d = new Date(capturedAt * 1000);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 function _ageStr(age_seconds: number): string {
   const mins = Math.round(age_seconds / 60);
   return mins < 60 ? `${mins}m ago` : `${Math.round(mins / 60)}h ago`;
@@ -29,6 +34,7 @@ export function createGraphbasePanel(ctx: LayoutContext): m.Component {
       const available = ctx.graphbaseAvailable;
       const snapshots = ctx.graphbaseSnapshots;
       const bookmarks = ctx.graphbaseBookmarks;
+      const history   = ctx.graphbaseHistory;
       const recent    = ctx.cachedGraphs ?? [];
       const hasGraph  = !!(ctx.appState.state.graphData);
       const hasUrl    = !!ctx.panelState.repoUrl;
@@ -155,6 +161,64 @@ export function createGraphbasePanel(ctx: LayoutContext): m.Component {
                 : m('p.gl-graphbase-panel__hint', 'No bookmarks yet.'),
             ])
           : null,
+
+        // ── History (auto-captured renders for current URL) ───────────────────
+        available && hasUrl && history.length > 0
+          ? m('div.gl-graphbase-panel__section', [
+              m('div.gl-graphbase-panel__section-row', [
+                m('span.gl-graphbase-panel__section-label',
+                  `History (${history.length})`),
+                m('label.gl-graphbase-panel__track-toggle', [
+                  m('input[type=checkbox]', {
+                    checked: ctx.graphbaseTrackHistory,
+                    onchange: (e: Event) => {
+                      ctx.graphbaseTrackHistory = (e.target as HTMLInputElement).checked;
+                    },
+                  }),
+                  m('span', 'Track'),
+                ]),
+              ]),
+              history.map(h =>
+                m('div.gl-graphbase-panel__entry', { key: h.captured_at }, [
+                  m('div.gl-graphbase-panel__entry-info', [
+                    m('span.gl-graphbase-panel__entry-name', _tsLabel(h.captured_at)),
+                    m('span.gl-graphbase-panel__entry-url',
+                      `${h.meta?.nodeCount ?? '?'} nodes`),
+                  ]),
+                  m('div.gl-graphbase-panel__entry-actions', [
+                    m('button.gl-graphbase-panel__load-btn', {
+                      onclick: () => ctx.loadGraphbaseHistoryEntry(h.url_hash, h.captured_at),
+                      disabled: loading,
+                      title: 'Replay this historical render',
+                    }, '▶'),
+                    m('button.gl-graphbase-panel__delete-btn', {
+                      onclick: () => ctx.deleteGraphbaseHistoryEntry(h.url_hash, h.captured_at),
+                      title: 'Delete this history entry',
+                    }, '✕'),
+                  ]),
+                ])
+              ),
+            ])
+          : available && hasUrl
+            ? m('div.gl-graphbase-panel__section', [
+                m('div.gl-graphbase-panel__section-row', [
+                  m('span.gl-graphbase-panel__section-label', 'History (0)'),
+                  m('label.gl-graphbase-panel__track-toggle', [
+                    m('input[type=checkbox]', {
+                      checked: ctx.graphbaseTrackHistory,
+                      onchange: (e: Event) => {
+                        ctx.graphbaseTrackHistory = (e.target as HTMLInputElement).checked;
+                      },
+                    }),
+                    m('span', 'Track'),
+                  ]),
+                ]),
+                m('p.gl-graphbase-panel__hint',
+                  ctx.graphbaseTrackHistory
+                    ? 'Waiting for next render…'
+                    : 'Enable "Track" to record renders automatically.'),
+              ])
+            : null,
 
         // ── Recent ────────────────────────────────────────────────────────────
         m('div.gl-graphbase-panel__section', [

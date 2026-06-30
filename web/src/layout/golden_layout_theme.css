@@ -636,3 +636,13 @@
   gap: 6px;
   flex-wrap: wrap;
 }
+.gl-graphbase-panel__track-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72em;
+  color: var(--c-font-muted, #00aa2a);
+  cursor: pointer;
+  user-select: none;
+}
+.gl-graphbase-panel__track-toggle input { accent-color: var(--c-secondary, #00ff41); }

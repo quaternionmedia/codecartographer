@@ -30,7 +30,7 @@ import { StreamingGraphRenderer } from '../features/graph/services/streaming_ren
 import { ToastManager } from '../components/codecarto/help/toast';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
-import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta } from '../services/graphbase_service';
+import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 
 export type { DockPanelId } from './panel_registry';
 
@@ -92,10 +92,13 @@ export class LayoutContext {
   /** Cached graph entries fetched from the backend cache endpoint. */
   public cachedGraphs: CachedEntry[] | null = null;
 
-  /** Graphbase availability, saved bookmarks, and saved snapshots. */
+  /** Graphbase availability, saved bookmarks, snapshots, and history. */
   public graphbaseAvailable = false;
   public graphbaseBookmarks: GraphbaseBookmark[] = [];
   public graphbaseSnapshots: GraphbaseSnapshotMeta[] = [];
+  public graphbaseHistory: GraphbaseHistoryMeta[] = [];
+  /** When true, every completed render appends an entry to the history collection. */
+  public graphbaseTrackHistory = false;
 
   /** Dock panels that have been closed and can be restored. */
   public hiddenDockPanels: DockPanelId[] = [];
@@ -234,6 +237,10 @@ export class LayoutContext {
         GraphbaseService.listBookmarks(dbBase),
         GraphbaseService.listSnapshots(dbBase),
       ]);
+      // Refresh history for the current URL if one is loaded
+      if (this.panelState.repoUrl) {
+        this.graphbaseHistory = await GraphbaseService.listHistory(dbBase, this.panelState.repoUrl);
+      }
     } else {
       this.graphbaseBookmarks = [];
       this.graphbaseSnapshots = [];
@@ -340,6 +347,31 @@ export class LayoutContext {
   /** Delete a named snapshot. */
   public async deleteGraphbaseSnapshot(name: string): Promise<void> {
     const ok = await GraphbaseService.deleteSnapshot(this.appState.api.db, name);
+    if (ok) await this.refreshGraphbase();
+  }
+
+  // ── History ──────────────────────────────────────────────────────────────
+
+  /** Replay a specific history entry by url_hash + captured_at timestamp. */
+  public async loadGraphbaseHistoryEntry(urlHash: string, capturedAt: number): Promise<void> {
+    const entry = await GraphbaseService.getHistoryEntry(this.appState.api.db, urlHash, capturedAt);
+    if (!entry) { ToastManager.show('History entry not found'); return; }
+
+    this.updatePanelState({ isLoading: true, statusMessage: 'Replaying history…', progress: null });
+    this._mountAndStream((renderer) => {
+      renderer.setTotal(entry.nodes.length);
+      for (const node of entry.nodes) renderer.addNode(node as any);
+      for (const edge of entry.edges) renderer.addEdge(edge as any);
+      renderer.finalize();
+      const ts = new Date(capturedAt * 1000).toLocaleString();
+      this.updatePanelState({ isLoading: false, statusMessage: `History: ${ts}`, progress: null });
+      return () => {};
+    }, 'Replaying history entry…');
+  }
+
+  /** Delete a history entry. */
+  public async deleteGraphbaseHistoryEntry(urlHash: string, capturedAt: number): Promise<void> {
+    const ok = await GraphbaseService.deleteHistoryEntry(this.appState.api.db, urlHash, capturedAt);
     if (ok) await this.refreshGraphbase();
   }
 
@@ -475,6 +507,13 @@ export class LayoutContext {
             this.updatePanelState({ isLoading: false, statusMessage: msg, progress: null });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
             this.refreshCache();
+            if (this.graphbaseAvailable && this.graphbaseTrackHistory && accNodes.length > 0) {
+              const histUrl = this.panelState.repoUrl || 'local';
+              GraphbaseService.appendHistory(
+                this.appState.api.db, histUrl,
+                accNodes as any, accEdges as any, { layout, nodeCount },
+              ).then(() => this.refreshGraphbase());
+            }
           },
           onError: (msg) => {
             this._cancelStream = null;
@@ -544,6 +583,12 @@ export class LayoutContext {
             this.updatePanelState({ isLoading: false, statusMessage: msg, progress: null });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
             this.refreshCache();
+            if (this.graphbaseAvailable && this.graphbaseTrackHistory && accNodes.length > 0) {
+              GraphbaseService.appendHistory(
+                this.appState.api.db, githubUrl,
+                accNodes as any, accEdges as any, { layout, nodeCount },
+              ).then(() => this.refreshGraphbase());
+            }
           },
           onError: (msg) => {
             this._cancelStream = null;
