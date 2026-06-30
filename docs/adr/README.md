@@ -98,3 +98,4 @@ Drafts in flight (numberless, by title):
 - *`CacheService` and `graphbase` stay separate stores* — `DRAFT-cache-service-vs-graphbase.md`
 - *Generalize dock panels into a registry; add a window-add menu* — `DRAFT-panel-registry-and-add-window-menu.md`
 - *Hierarchical drag propagation, per-depth labels, and compound layout spread improvements* — `DRAFT-d3-hierarchy-layout-improvements.md`
+- *Wire graphbase as a named bookmark store via /db/bookmarks* — `DRAFT-graphbase-bookmark-integration.md`

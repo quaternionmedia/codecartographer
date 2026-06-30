@@ -21,10 +21,11 @@ import { createGraphPanel } from './panels/graph_panel';
 import { createFileTreePanel } from './panels/file_tree_panel';
 import { createUploadPanel } from './panels/upload_panel';
 import { createRepoPanel } from './panels/repo_panel';
+import { createGraphbasePanel } from './panels/graphbase_panel';
 import { createGraphSettingsPanel } from './panels/graph_settings_panel';
 import { createActionsPanel } from './panels/actions_panel';
 
-export type DockPanelId = 'graph' | 'file-tree' | 'upload-panel' | 'repo-panel' | 'graph-settings-panel' | 'plotbar';
+export type DockPanelId = 'graph' | 'file-tree' | 'upload-panel' | 'repo-panel' | 'graphbase-panel' | 'graph-settings-panel' | 'plotbar';
 
 export interface PanelDefinition {
   readonly id: DockPanelId;
@@ -63,6 +64,13 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     config: { type: 'component', componentType: 'repo-panel', id: 'repo-panel', title: '⬇ Repository', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createRepoPanel(ctx)),
+  },
+  {
+    id: 'graphbase-panel',
+    menuLabel: 'Graphbase',
+    config: { type: 'component', componentType: 'graphbase-panel', id: 'graphbase-panel', title: '◈ Graphbase', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createGraphbasePanel(ctx)),
   },
   {
     id: 'graph-settings-panel',

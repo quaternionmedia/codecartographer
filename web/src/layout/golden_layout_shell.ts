@@ -76,9 +76,10 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       const theme = ctx.panelState.currentTheme;
       document.documentElement.setAttribute('data-theme', theme === 'terminal' ? '' : theme);
 
-      // Initialise languages + cache (non-blocking)
+      // Initialise languages, filesystem cache, and graphbase (non-blocking, each independent)
       try { await ctx.actions.plot.initializeLanguages(); m.redraw(); } catch { /* non-fatal */ }
       await ctx.refreshCache();
+      ctx.refreshGraphbase(); // non-blocking probe — sets graphbaseAvailable flag
 
       HelpModal.maybeShowFirstTime();
     },

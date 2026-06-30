@@ -30,6 +30,7 @@ import { StreamingGraphRenderer } from '../features/graph/services/streaming_ren
 import { ToastManager } from '../components/codecarto/help/toast';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
+import { GraphbaseService, GraphbaseBookmark } from '../services/graphbase_service';
 
 export type { DockPanelId } from './panel_registry';
 
@@ -90,6 +91,10 @@ export class LayoutContext {
 
   /** Cached graph entries fetched from the backend cache endpoint. */
   public cachedGraphs: CachedEntry[] | null = null;
+
+  /** Graphbase availability and saved bookmarks. */
+  public graphbaseAvailable = false;
+  public graphbaseBookmarks: GraphbaseBookmark[] = [];
 
   /** Dock panels that have been closed and can be restored. */
   public hiddenDockPanels: DockPanelId[] = [];
@@ -217,6 +222,54 @@ export class LayoutContext {
       this._cancelStream = null;
     }
     this.updatePanelState({ isLoading: false, statusMessage: 'Cancelled', progress: null });
+  }
+
+  /** Check graphbase availability and refresh the bookmark list. */
+  public async refreshGraphbase(): Promise<void> {
+    const dbBase = this.appState.api.db;
+    this.graphbaseAvailable = await GraphbaseService.isAvailable(dbBase);
+    if (this.graphbaseAvailable) {
+      this.graphbaseBookmarks = await GraphbaseService.listBookmarks(dbBase);
+    } else {
+      this.graphbaseBookmarks = [];
+    }
+    m.redraw();
+  }
+
+  /** Save the current repo URL + settings as a named graphbase bookmark. */
+  public async saveGraphbaseBookmark(name: string): Promise<void> {
+    if (!name.trim() || !this.panelState.repoUrl) return;
+    const opts = this.appState.state.parserOptions;
+    const layout = this.panelState ? (this.appState.state.graphStyling.layout ?? 'compound_layout') : 'compound_layout';
+    const ok = await GraphbaseService.saveBookmark(
+      this.appState.api.db,
+      name.trim(),
+      this.panelState.repoUrl,
+      layout,
+      this.panelState.parseDepth,
+      opts.fileExtensions,
+    );
+    if (ok) {
+      ToastManager.show(`Saved "${name.trim()}"`);
+      await this.refreshGraphbase();
+    } else {
+      ToastManager.show('Could not save — is graphbase available?');
+    }
+  }
+
+  /** Delete a named graphbase bookmark. */
+  public async deleteGraphbaseBookmark(name: string): Promise<void> {
+    const ok = await GraphbaseService.deleteBookmark(this.appState.api.db, name);
+    if (ok) await this.refreshGraphbase();
+  }
+
+  /** Load a graphbase bookmark: stream the URL with the saved settings. */
+  public loadGraphbaseBookmark(bookmark: GraphbaseBookmark): void {
+    this.updatePanelState({ repoUrl: bookmark.url, codeSourceMode: 'repo' });
+    this._startStreamFromUrl(bookmark.url);
+    this.actions.repo.fetchRepository(bookmark.url)
+      .then(() => m.redraw())
+      .catch(() => { /* graph still renders */ });
   }
 
   /** Fetch and refresh the backend graph-cache list. */
