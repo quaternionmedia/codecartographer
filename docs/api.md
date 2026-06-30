@@ -12,13 +12,10 @@ REST API documentation for Codecarto backend.
 | Prefix | Tag | Description |
 |--------|-----|-------------|
 | `/parse` | parse | **Unified parse (all languages, recommended)** |
-| `/plotter` | plotter | Legacy graph visualization |
-| `/parser` | parser | Legacy Python code parsing |
+| `/plotter` | plotter | Demo data + Notebook-renderer HTML pre-render |
 | `/c-parser` | c-parser | C/H semantic parsing (requires `[c-parsing]` optional dep) |
-| `/repo` | repo | GitHub repository operations |
-| `/local` | local | Local repository operations |
+| `/repo` | repo | GitHub + local repository tree operations |
 | `/pam` | pam | PAM auth log monitor |
-| `/polygraph` | polygraph | Graph transformation operations |
 | `/palette` | palette | Color palette management |
 
 ---
@@ -48,9 +45,19 @@ Parse a directory tree to the requested depth and return a gJGF graph.
   },
   "depth": 2,
   "extensions": [".py", ".c"],
-  "layout": "Spring"
+  "layout": "spring_layout"
 }
 ```
+
+**`layout` values:**
+
+| value | description |
+|-------|-------------|
+| `spring_layout` | Force-directed (default) |
+| `compound_layout` | Hierarchical: dirs → files → symbols in nested orbits |
+| `circular_layout` | Nodes on a circle |
+| `kamada_kawai_layout` | Energy-minimized spring |
+| `spectral_layout` | Graph Laplacian eigenvectors |
 
 **depth values:**
 | depth | output |
@@ -88,6 +95,57 @@ Parse a directory tree to the requested depth and return a gJGF graph.
   }
 }
 ```
+
+---
+
+### POST `/parse/stream`
+
+Same as `/parse/unified` but streamed as [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events)
+instead of one blocking JSON response. Use this for any repo big enough that
+the user would otherwise stare at a blank screen — nodes render as they
+arrive instead of all at once at the end.
+
+**Request Body:** same as `/parse/unified`.
+
+**Response:** `Content-Type: text/event-stream`. Each event is
+`event: <type>\ndata: <json>\n\n`:
+
+| event | payload | when |
+|-------|---------|------|
+| `meta` | `{nodeCount, edgeCount, layout, from_cache?}` | first, once the graph size is known |
+| `node` | flat node dict (`id` + unified schema fields) | once per node |
+| `edge` | `{source, target, label?, ...}` | once per edge, after all nodes |
+| `done` | `{elapsed_ms, from_cache?}` | last |
+| `error` | `{message}` | on exception, in place of `done` |
+
+If the request matches a cached graph, all events are replayed instantly
+from the cache (`from_cache: true`) instead of re-parsing.
+
+After a fresh stream completes (the `done` event is emitted), the full
+accumulated graph is automatically written to cache — subsequent requests
+with the same URL, mode, layout, and extensions are served as instant
+replays without re-parsing.
+
+---
+
+### POST `/parse/stream-url`
+
+Two-phase variant of `/parse/stream` that fetches a GitHub repo *and*
+streams its parse — no separate `/repo/tree` round-trip first.
+
+**Request Body:**
+```json
+{ "url": "https://github.com/owner/repo", "depth": 2, "layout": "Spring" }
+```
+
+**Response:** Same SSE event types as `/parse/stream`, plus a `fetching`
+event (`{message}`) emitted during phase 1 (repo tree fetch) before any
+`node`/`edge` events arrive. Phase 2 (symbol parsing) streams nodes as each
+file's content is fetched and parsed.
+
+After streaming completes, the full accumulated graph is written to cache
+(GitHub URLs only) — the next request for the same repo and settings is an
+instant cache replay.
 
 ---
 
@@ -130,32 +188,13 @@ List all registered language parsers and their file extensions.
 
 ---
 
-## Legacy Plotter Endpoints
+## Plotter Endpoints
 
-These endpoints are Python-only and use the older parser modes.
-
-### POST `/plotter/whole_repo`
-
-Parse an entire repository using a legacy parser mode.
-
-**Request Body:**
-```json
-{
-  "directory": { "info": {...}, "size": 0, "root": {...} },
-  "options": {
-    "palette_id": "0",
-    "layout": "Spring",
-    "type": "d3",
-    "parse_by": "ast"
-  }
-}
-```
-
-**`parse_by` values:** `"ast"` | `"directory"` | `"dependencies"`
-
-**Response:** gJGF `{ graph: {...}, metadata: {...} }` (same shape as `/parse/unified`)
-
----
+Only two routes remain here — the rest of `/plotter/*` (`whole_repo`,
+`whole_repo_deps`, `folder`, `file`, `url`, `local_directory`) were dead
+code (zero frontend callers, fully superseded by `/parse/unified`) and were
+removed in the parser/cache unification pass. Use `/parse/unified` for
+parsing; these two are demo/rendering utilities, not parse entry points.
 
 ### POST `/plotter/demo`
 
@@ -165,20 +204,6 @@ Generate a demo graph from the codecarto source code itself.
 ```json
 {
   "options": { "palette_id": "0", "layout": "Spring", "type": "d3", "parse_by": "ast" }
-}
-```
-
----
-
-### POST `/plotter/file`
-
-Parse a single uploaded file.
-
-**Request Body:**
-```json
-{
-  "file": { "url": "", "name": "main.py", "size": 500, "raw": "def hello(): pass" },
-  "options": { "palette_id": "0", "layout": "Spectral", "type": "d3", "parse_by": "ast" }
 }
 ```
 
@@ -217,7 +242,7 @@ Parse a single C/H source file.
 
 **Request Body:**
 ```json
-{ "path": "/absolute/path/to/file.c", "cache_dir": null }
+{ "path": "/absolute/path/to/file.c" }
 ```
 
 **Response:**
@@ -228,14 +253,45 @@ Parse a single C/H source file.
     "graph": {
       "nodes": [...],
       "edges": [...],
-      "meta": { "files": ["file"], "node_count": 12, "kind_counts": { "function": 3 } }
+      "meta": {
+        "files": ["file"],
+        "node_count": 12,
+        "edge_count": 8,
+        "kind_counts": { "function": 3 },
+        "edge_kinds": { "CALLS": 5, "FIELD_OF": 2, "POINTS_TO": 1 },
+        "diagnostics": {
+          "missing_header": 0,
+          "unknown_type": 0,
+          "other": 0,
+          "files_with_warnings": 0,
+          "worst_files": []
+        },
+        "skipped_files": []
+      }
     }
   }
 }
 ```
 
-> **Note:** `/c-parser/*` returns a legacy `{nodes, edges, meta}` dict. Use
-> `/parse/unified` with `.c`/`.h` extensions to get gJGF output compatible with D3/Gravis.
+> **Note:** `/c-parser/*` returns a legacy flat `{nodes, edges, meta}` dict, not
+> gJGF — the frontend's `adaptCGraphToGJGF` converts it. `/parse/unified` with
+> `.c`/`.h` extensions produces gJGF natively and, since the unification pass,
+> the *same* cross-file CALLS resolution, stub-header diagnostics, and
+> `has_parse_warning` flagging as this dedicated pipeline — both call into the
+> same `CParser` engine (per-symbol extras like `field_count`/`qualifiers`
+> live under each unified node's `meta` field instead of top-level). Prefer
+> `/parse/unified` unless you specifically need this legacy flat shape.
+
+When parsing without a `compile_commands.json` (i.e. `parse_files`/`parse_directory`,
+which backs `/c-parser/file`, `/c-parser/directory`, and `/c-parser/github`), each
+file is parsed standalone against a bundled set of stub POSIX headers
+(`codecarto/data/c_stubs/`) rather than the project's real build setup — see
+`codecarto/services/parsers/c_parser.py`. `meta.diagnostics` reports how often that
+fell short (missing headers, unknown types), and `meta.skipped_files` lists
+source files skipped because they target a single non-default platform (e.g.
+`compat/apple-*.c`, `compat/mingw.c`). Nodes whose source file produced parser
+errors are flagged `has_parse_warning: true` and rendered with a dashed amber
+border in the graph view.
 
 ---
 
@@ -249,8 +305,7 @@ Parse all C/H files in a directory.
   "path": "/absolute/path/to/dir",
   "compile_commands": null,
   "subsystem": null,
-  "max_files": 200,
-  "cache_dir": null
+  "max_files": 200
 }
 ```
 
@@ -258,7 +313,10 @@ Parse all C/H files in a directory.
 
 ### POST `/c-parser/github`
 
-Download a GitHub repository and parse all C/H files.
+Download a GitHub repository and parse all C/H files. Blocking — the
+response isn't sent until every file is parsed. For large repos, prefer
+`/c-parser/stream-github` below for direct API usage when you want
+file-by-file progress events.
 
 **Request Body:**
 ```json
@@ -267,21 +325,116 @@ Download a GitHub repository and parse all C/H files.
 
 ---
 
-## GitHub Repository Endpoints
+### POST `/c-parser/stream-github`
+
+Streamed variant of `/c-parser/github`, used by the "C" example chips
+(git, curl, Lua, SQLite, Redis) in earlier frontend builds. The current
+web UI routes those chips through the unified `/parse/stream-url` flow;
+this endpoint remains available for direct/manual callers. libclang parsing
+is synchronous CPU-bound work, so it runs in a background thread while this
+endpoint drains its progress queue and forwards SSE events in real time —
+see "C semantic stream path" in `docs/llm/ARCHITECTURE.md` for the full
+design rationale.
+
+**Request Body:** same as `/c-parser/github`.
+
+**Response:** `Content-Type: text/event-stream`:
+
+If the request matches a cached parsed graph (`CacheService`, Cache A — see
+`docs/llm/ARCHITECTURE.md` "Two C-parser caches"), all events are replayed
+instantly (`from_cache: true`) with positions baked into each node and a
+`reposition` event restoring the saved layout.
+
+| event | payload | when |
+|-------|---------|------|
+| `fetching` | `{message}` | during archive download/extract (skipped on cache hit) |
+| `meta` | `{fileCount, skippedCount, from_cache?}` | once the target file list is known, before parsing starts |
+| `node` | flat node dict + `language: "c"`, `depth: 2`, `x`, `y` | streamed file-by-file as libclang finishes each one |
+| `reposition` | `{nodeId: {x, y}, …}` | after all nodes — corrects placeholder positions to the final layout |
+| `edge` | `{source, target, label, weight}` | **all at once, after `reposition`** — see below |
+| `done` | `{elapsed_ms, node_count, edge_count, diagnostics, skipped_files, from_cache?}` | last |
+| `error` | `{message}` | on exception, in place of `done` |
+
+After streaming completes, the parsed graph (with final positions) is
+written to `CacheService` (Cache A) — the next request for the same URL
+and layout is served as an instant cache replay.
+
+**Why nodes stream but edges arrive in one batch:** declarations (pass 1)
+are parsed and emitted one file at a time, so nodes appear as libclang
+works through the file list. Call edges and derived type edges
+(FIELD_OF/POINTS_TO) need the *complete* cross-file node set to resolve
+their targets, so they can only be computed — and streamed — after every
+file's declarations are in.
+
+---
+
+### GET `/c-parser/cache`
+
+List extracted GitHub repos in the C-parser's repo cache (newest first).
+This is a *different* cache from `GET /parse/cache` — that one lists cached
+*parsed graphs*; this one lists cached *extracted source trees* (downloaded
+zip contents, re-parsed fresh on every request — only the download+extract
+step is skipped on a hit). See `docs/llm/ARCHITECTURE.md`'s "Two C-parser
+caches" for why these aren't merged into one.
+
+**Response:**
+```json
+{
+  "code": 200,
+  "data": {
+    "entries": [
+      { "key": "git-git", "owner": "git", "repo": "git", "url": "...", "ts": 1234567890.0, "age_seconds": 120, "size_bytes": 45000000 }
+    ]
+  }
+}
+```
+
+---
+
+### DELETE `/c-parser/cache/{key}`
+
+Evict a cached extracted repo by its `{owner}-{repo}` key (from the `key`
+field in `GET /c-parser/cache`'s entries). Counterpart to
+`DELETE /parse/cache/{key}`.
+
+```bash
+curl -X DELETE "http://127.0.0.1:8000/c-parser/cache/git-git"
+```
+
+---
+
+## Repository Endpoints
+
+Handle both GitHub URLs and local filesystem paths — `url` is checked
+against `'github.com' in url` (see `github_service.is_github_url`) to decide
+which backend (`github_service.py` vs `local_repo_service.py`) handles the
+request. There is no separate set of local-only endpoints.
 
 ### GET `/repo/tree`
 
-Fetch the top-level directory tree of a GitHub repository.
+Fetch the directory tree of a GitHub repository **or** a local path.
+
+For GitHub URLs, the result is cached (see "Two C-parser caches" in
+ARCHITECTURE.md for the cache layout) — a repeat call for the same repo
+within `CC_CACHE_TTL` (default 24h) returns instantly with no GitHub calls.
+On a cache miss, the repo's full tree is fetched in two GitHub API calls
+(`github_service.fetch_tree_fast`, the Git Trees API) regardless of repo
+size, then file content is fetched per the repo's size tier: full content
+for repos under `_CONTENT_FETCH_LIMIT_KB` (~5MB), structure only for repos
+under `_STRUCTURE_FETCH_LIMIT_KB` (~50MB), and a shallow single-level
+listing (`is_partial: true`) for anything larger or if GitHub truncates the
+recursive tree response.
 
 **Query Parameters:**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `url` | string | yes | GitHub repository URL |
+| `url` | string | yes | GitHub repository URL, or a local filesystem path |
 
 **Example:**
 ```bash
 curl "http://127.0.0.1:8000/repo/tree?url=https://github.com/fastapi/fastapi"
+curl "http://127.0.0.1:8000/repo/tree?url=/path/to/local/project"
 ```
 
 **Response:**
@@ -299,37 +452,38 @@ curl "http://127.0.0.1:8000/repo/tree?url=https://github.com/fastapi/fastapi"
 ```
 
 **Notes:**
-- Repos > 1 GB are rejected
-- Requires GitHub token for private repos (place in `/run/secrets/github_token` or `token.txt`)
+- GitHub: repos > 1 GB are rejected; requires a token for private repos
+  (place in `/run/secrets/github_token` or `token.txt`)
+- Local: default extension filter is every extension `ParserRegistry`
+  knows about (not just `.py`); default excludes `.git`, `.venv`,
+  `node_modules`, `.vs`, `.idea`, `bin`, `obj`, etc. (see
+  `local_repo_service.get_local_repo`)
 
 ---
 
 ### GET `/repo/subtree`
 
-Lazily expand a single folder path within a previously fetched repository.
+Lazily expand a single folder path within a previously fetched repository
+(GitHub or local).
 
 **Query Parameters:** `url`, `path`
 
+If the repo's full source tree was already cached (e.g. after a `/repo/tree`
+call) and the tree is non-partial (`is_partial: false`), the subfolder is
+served directly from the cache without an additional GitHub API call.
+
 ---
 
-## Local Repository Endpoints
+### GET `/repo/expand-all`
 
-### GET `/local/scan`
+Expand all folders in a partial GitHub repo tree to `max_depth` (default 3),
+returning a full `Directory` with `is_partial: false`.
 
-Scan a local repository and return structure with statistics.
+**Query Parameters:** `url`, `max_depth` (optional, default 3)
 
-**Query Parameters:** `path`, `extensions` (array)
-
-**Example:**
-```bash
-curl "http://127.0.0.1:8000/local/scan?path=/path/to/project&extensions=.py"
-```
-
-### GET `/local/tree`
-
-Get directory tree structure for a local path.
-
-**Query Parameters:** `path`, `extensions` (array)
+If the full tree is already cached the response is served immediately with no
+GitHub calls. The result is a `Directory` model in the same shape as
+`/repo/tree`.
 
 ---
 
@@ -351,22 +505,6 @@ Stream real-time PAM events as JSON objects:
 ```
 
 ---
-
-## Polygraph Endpoints
-
-Graph transformation utilities operating on in-memory graphs.
-
-### POST `/polygraph/merge`
-
-Merge two or more graphs into one.
-
-### POST `/polygraph/filter`
-
-Filter graph nodes by type or attribute predicate.
-
-### POST `/polygraph/subgraph`
-
-Extract a subgraph around a set of seed nodes.
 
 ---
 
@@ -450,7 +588,12 @@ curl "http://127.0.0.1:8000/parse/languages"
 # -> { "languages": { "python": [".py"], "c": [".c", ".h"] } }
 ```
 
-### Parse a local C directory (legacy endpoint)
+### Parse a local C directory (dedicated C-parser pipeline)
+
+Use this when you want the legacy flat shape directly (e.g. scripting
+against `meta.diagnostics`/`meta.skipped_files` without dealing with gJGF).
+For the D3/Gravis UI, `/parse/unified` with `.c`/`.h` extensions produces
+equivalent results in gJGF form instead.
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/c-parser/directory" \

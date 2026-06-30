@@ -25,7 +25,14 @@ visual grammar lives in the parser, not in the renderer.  Renderers use these
 hints directly and only fall back to their own logic when the fields are absent.
 
 Edge kinds: 'contains' | 'calls' | 'imports' | 'inherits' |
-            'type_of' | 'field_of' | 'aliases'
+            'type_of' | 'field_of' | 'aliases' | 'depends_on'
+
+'depends_on' is a depth-1 (file-to-file) edge, distinct from 'imports'
+(depth-1-to-depth-2, a module containing one of its own import
+statements) — it's the resolved target of that import: another file in
+this same parse, or a synthetic depth-1 node (kind='external_module',
+language='external') for stdlib/third-party modules not present in the
+parsed tree. See unified_parser_service.py's _add_python_dependency_edges.
 """
 
 from __future__ import annotations

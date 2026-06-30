@@ -71,6 +71,9 @@ export interface RadialMenuCallbacks {
   onGroupSelection?: (nodes: any[]) => void;
   onAlignNodes?: (direction: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => void;
   onDistributeNodes?: (direction: 'horizontal' | 'vertical') => void;
+
+  // Compound layout actions
+  onFocusGroup?: (nodeId: string) => void;
 }
 
 interface RadialMenuState {
@@ -542,6 +545,14 @@ function getNodeMenuItems(node: any, callbacks?: RadialMenuCallbacks): RadialMen
         alert(`Node Information:\n\n${info}`);
       },
     },
+    ...(node.depth === 0 || node.depth === 1 ? [{
+      id: 'focus-group',
+      label: 'Focus Group',
+      icon: '⬡',
+      action: () => {
+        if (callbacks?.onFocusGroup) callbacks.onFocusGroup(node.id);
+      },
+    }] : []),
   ];
 }
 
@@ -754,7 +765,7 @@ function getCanvasMenuItems(callbacks?: RadialMenuCallbacks): RadialMenuItem[] {
           label: 'Hierarchical',
           icon: '⫸',
           action: () => {
-            if (callbacks?.onArrangeHierarchical) callbacks.onArrangeHierarchical();
+            if (callbacks?.onChangeLayout) callbacks.onChangeLayout('compound_layout');
           },
         },
         {
@@ -824,6 +835,14 @@ function getCanvasMenuItems(callbacks?: RadialMenuCallbacks): RadialMenuItem[] {
           label: 'Spring',
           action: () => {
             if (callbacks?.onChangeLayout) callbacks.onChangeLayout('spring_layout');
+          },
+        },
+        {
+          id: 'layout-compound',
+          label: 'Compound',
+          icon: '⬡',
+          action: () => {
+            if (callbacks?.onChangeLayout) callbacks.onChangeLayout('compound_layout');
           },
         },
         {

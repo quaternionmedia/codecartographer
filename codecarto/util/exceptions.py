@@ -224,3 +224,17 @@ class Github404Error(GithubError):
         exc: Exception | None = None,
     ):
         super().__init__(source, params, message, status_code, exc)
+
+
+class GithubRateLimitError(GithubError):
+    """GitHub API rate limit exceeded (primary 403 or secondary/abuse 429)"""
+
+    def __init__(
+        self,
+        source: str,
+        params: dict,
+        message: str = "GitHub API rate limit exceeded",
+        status_code: int = 429,
+        exc: Exception | None = None,
+    ):
+        super().__init__(source, params, message, status_code, exc)

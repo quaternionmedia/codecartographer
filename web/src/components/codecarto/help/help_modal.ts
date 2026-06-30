@@ -17,7 +17,7 @@ const STEPS = [
   {
     icon: '📁',
     title: 'Load a repository',
-    body: 'Open the Source tab, paste a GitHub URL or upload files, then click "Plot Directory" to visualize the structure.',
+    body: 'Paste a GitHub URL in the Source tab, or upload files. The ▶ Actions tab plots and cancels. Recent cached graphs appear at the bottom of the Source tab.',
   },
   {
     icon: '◈',
@@ -27,7 +27,12 @@ const STEPS = [
   {
     icon: '⚙',
     title: 'Tune the visualization',
-    body: 'Switch to the Graph tab to change the layout algorithm, toggle physics, adjust node size, and pick a color theme.',
+    body: 'Open the Graph Settings tab to change the layout algorithm, toggle physics, adjust node size, labels, and pick a color theme.',
+  },
+  {
+    icon: '⊞',
+    title: 'Manage panels',
+    body: 'Drag tabs to rearrange. Click ✕ to close a panel — a Restore button appears in the top bar to bring it back. Resize panels by dragging the dividers.',
   },
 ];
 

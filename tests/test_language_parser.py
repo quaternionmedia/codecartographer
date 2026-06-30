@@ -182,19 +182,66 @@ class TestPythonLanguageParser:
         assert "B" in labels
 
 
+class TestExtractPythonImports:
+    """extract_python_imports — used by unified_parser_service.py's
+    _add_python_dependency_edges to resolve real file-to-file dependency
+    edges, independent of PythonCustomAST's own (per-file, last-write-wins)
+    import bookkeeping."""
+
+    def _imports(self, code: str) -> list[str]:
+        from codecarto.services.parsers.python_language_parser import extract_python_imports
+        return extract_python_imports(code)
+
+    def test_plain_import(self):
+        assert self._imports("import os\n") == ["os"]
+
+    def test_plain_import_with_alias(self):
+        assert self._imports("import numpy as np\n") == ["numpy"]
+
+    def test_dotted_import(self):
+        assert self._imports("import os.path\n") == ["os.path"]
+
+    def test_from_import(self):
+        assert self._imports("from os import path\n") == ["os"]
+
+    def test_relative_import_skipped(self):
+        """No absolute dotted name to resolve without full package context."""
+        assert self._imports("from . import sibling\n") == []
+        assert self._imports("from .pkg import thing\n") == []
+
+    def test_multiple_imports(self):
+        code = "import os\nimport sys\nfrom json import loads\n"
+        assert self._imports(code) == ["os", "sys", "json"]
+
+    def test_no_imports(self):
+        assert self._imports("x = 1\n") == []
+
+    def test_syntax_error_returns_empty(self):
+        assert self._imports("def f(:\n") == []
+
+    def test_empty_string_returns_empty(self):
+        assert self._imports("") == []
+
+
 # ── CLangaugeParser ────────────────────────────────────────────────────────────
 
 class TestCLanguageParser:
     """CLangaugeParser must fall back gracefully when libclang is unavailable."""
 
-    def test_returns_empty_graph_when_file_has_no_path(self):
-        """A File with no url and no existing filesystem path -> empty graph."""
+    def test_returns_empty_graph_when_file_has_no_path_and_no_content(self):
+        """A File with no url, no real filesystem path, and no raw content
+        has nothing to parse from disk OR from memory -> empty graph."""
         from codecarto.services.parsers.c_language_parser import CLangaugeParser
-        f = File(name="ghost.c", size=0, raw="int x;", url="")
+        f = File(name="ghost.c", size=0, raw="", url="")
         g = CLangaugeParser().parse_files([f], depth=2)
         assert isinstance(g, nx.DiGraph)
-        # No real paths -> no nodes (c_parser can't parse in-memory)
         assert g.number_of_nodes() == 0
+
+    # NOTE: a File with no real url but WITH raw content (e.g. fetched from
+    # GitHub, never written to disk) now parses via libclang's unsaved_files
+    # mechanism instead of returning empty — see
+    # TestCLanguageParserUnsavedFiles in test_c_parser_service.py (requires
+    # libclang, so it lives in the libclang-gated test file, not here).
 
     def test_language_and_extension_attributes(self):
         from codecarto.services.parsers.c_language_parser import CLangaugeParser

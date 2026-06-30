@@ -1,0 +1,455 @@
+/**
+ * Golden Layout – Code Cartographer Terminal Theme
+ *
+ * Overrides the default dark theme to match the app's terminal / neon-green
+ * aesthetic defined in styles/root/root.css.
+ *
+ * Import order (in golden_layout_shell.ts):
+ *   1. golden-layout/dist/css/goldenlayout-base.css  (structural layout)
+ *   2. golden-layout/dist/css/themes/goldenlayout-dark-theme.css  (dark base)
+ *   3. this file  (terminal colour overrides)
+ */
+
+/* ── Shell host ──────────────────────────────────────────────────────────── */
+
+.gl-shell-host {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── GL root / chrome ────────────────────────────────────────────────────── */
+
+.lm_root,
+.lm_goldenlayout {
+  background: var(--c-primary, #0a0a0a);
+}
+
+/* ── Panel header / tab strip ────────────────────────────────────────────── */
+
+.lm_header {
+  background: var(--c-primary-light, #1a1a1a);
+  border-bottom: 1px solid var(--c-border, #00ff4140);
+  height: 28px !important;
+}
+
+.lm_tab {
+  background: var(--c-primary, #0a0a0a);
+  color: var(--c-font-muted, #00aa2a);
+  border: 1px solid var(--c-border, #00ff4140);
+  border-bottom: none;
+  font-family: var(--f-root-font, 'Consolas', monospace);
+  font-size: 0.75em;
+  letter-spacing: 0.5px;
+  padding: 4px 10px !important;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.lm_tab.lm_active {
+  background: var(--c-primary-light, #1a1a1a);
+  color: var(--c-secondary, #00ff41);
+  border-color: var(--c-secondary, #00ff41);
+  border-bottom-color: var(--c-primary-light, #1a1a1a);
+  box-shadow: 0 -1px 8px rgba(0, 255, 65, 0.25);
+}
+
+.lm_tab:not(.lm_active):hover {
+  background: var(--c-primary-light, #1a1a1a);
+  color: var(--c-secondary-light, #33ff66);
+}
+
+/* ── Splitter (resize handle) ────────────────────────────────────────────── */
+
+.lm_splitter {
+  background: var(--c-primary-light, #1a1a1a);
+  transition: background 0.15s ease;
+}
+
+.lm_splitter:hover,
+.lm_splitter.lm_dragging {
+  background: var(--c-secondary-dark, #00cc33);
+  box-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+}
+
+/* ── Header controls (maximise / close icons) ────────────────────────────── */
+
+.lm_controls > li {
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.lm_controls > li:hover {
+  opacity: 1;
+}
+
+.lm_maximise::before,
+.lm_close::before {
+  color: var(--c-font-muted, #00aa2a);
+}
+
+/* ── Panel content areas ─────────────────────────────────────────────────── */
+
+.lm_content {
+  background: var(--c-primary, #0a0a0a);
+  border: 1px solid var(--c-border, #00ff4140);
+}
+
+/* ── Generic panel base ──────────────────────────────────────────────────── */
+
+.gl-panel {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* ── Graph panel ─────────────────────────────────────────────────────────── */
+
+.gl-panel--graph {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.gl-panel--graph .plot {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Controls panel ─────────────────────────────────────────────────────── */
+
+.gl-panel--controls {
+  overflow-y: auto;
+}
+
+.gl-panel--controls-source,
+.gl-panel--controls-graph-settings {
+  overflow: hidden;
+}
+
+/* Override collapse toggle — not needed when GL handles sizing. */
+.gl-panel--controls .control-panel__collapse-btn {
+  display: none;
+}
+
+/* ── File tree panel ─────────────────────────────────────────────────────── */
+
+.gl-panel--file-tree {
+  overflow-y: auto;
+  padding: var(--spacing-sm, 8px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 8px);
+}
+
+.gl-file-tree__section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gl-file-tree__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8em;
+  font-weight: bold;
+  color: var(--c-secondary, #00ff41);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--c-border, #00ff4140);
+}
+
+.gl-file-tree__icon {
+  font-size: 0.9em;
+}
+
+.gl-file-tree__tree {
+  font-size: 0.85em;
+  overflow: auto;
+  max-height: 60vh;
+}
+
+.gl-file-tree__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.gl-file-tree__action-btn {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 0.75em;
+  font-family: var(--f-root-font, 'Consolas', monospace);
+  background: transparent;
+  border: 1px solid var(--c-border, #00ff4140);
+  color: var(--c-secondary, #00ff41);
+  cursor: pointer;
+  text-align: left;
+  letter-spacing: 0.5px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.gl-file-tree__action-btn:hover {
+  background: var(--c-primary-light, #1a1a1a);
+  border-color: var(--c-secondary, #00ff41);
+}
+
+.gl-file-tree__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gl-file-tree__file {
+  padding: 3px 8px;
+  font-size: 0.82em;
+  color: var(--c-font, #00ff41);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.gl-file-tree__file:hover {
+  background: var(--c-primary-light, #1a1a1a);
+  color: var(--c-secondary-light, #33ff66);
+}
+
+.gl-file-tree__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg, 24px) var(--spacing-md, 16px);
+  text-align: center;
+  gap: 8px;
+  opacity: 0.6;
+}
+
+.gl-file-tree__empty-icon {
+  font-size: 2em;
+  color: var(--c-secondary, #00ff41);
+}
+
+.gl-file-tree__empty-text {
+  font-size: 0.78em;
+  color: var(--c-font-muted, #00aa2a);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Overlay container (modals / toasts above GL chrome) ─────────────────── */
+
+.gl-overlays {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.gl-overlays > * {
+  pointer-events: all;
+}
+
+/* ── App header bar ──────────────────────────────────────────────────────── */
+
+.gl-app-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  padding: 6px var(--spacing-md, 16px);
+  background: linear-gradient(180deg, var(--c-primary-light, #1a1a1a) 0%, var(--c-primary, #0a0a0a) 100%);
+  border-bottom: 1px solid var(--c-border, #00ff4140);
+  flex-shrink: 0;
+}
+
+.gl-app-header__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1em;
+  font-weight: bold;
+  color: var(--c-secondary, #00ff41);
+  text-shadow: 0 0 12px var(--c-secondary, #00ff41);
+  margin: 0;
+}
+
+.gl-app-header__icon {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.gl-app-header__subtitle {
+  font-size: 0.72em;
+  color: var(--c-font-muted, #00aa2a);
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+.gl-app-header__spacer {
+  flex: 1;
+}
+
+.gl-app-header__restore {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+}
+
+.gl-app-header__restore-btn {
+  padding: 4px 8px;
+  border: 1px solid var(--c-border, #00ff4140);
+  background: transparent;
+  color: var(--c-secondary, #00ff41);
+  font-size: 0.72em;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.gl-app-header__restore-btn:hover {
+  background: var(--c-primary-light, #1a1a1a);
+  border-color: var(--c-secondary, #00ff41);
+}
+
+.gl-app-header__help-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--c-secondary, #00ff41);
+  background: transparent;
+  color: var(--c-secondary, #00ff41);
+  font-size: 0.75em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gl-app-header__help-btn:hover {
+  background: var(--c-primary-light, #1a1a1a);
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+}
+
+/* ── Full-screen shell container ─────────────────────────────────────────── */
+
+.gl-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background: var(--c-primary, #0a0a0a);
+}
+
+.gl-shell__body {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Actions (Plotbar) panel ─────────────────────────────────────────────── */
+
+.gl-actions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  overflow-y: auto;
+}
+
+.gl-actions-panel__plot,
+.gl-actions-panel__cancel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--c-secondary, #00ff41);
+  background: transparent;
+  color: var(--c-secondary, #00ff41);
+  font-family: var(--f-root-font, 'Consolas', monospace);
+  font-size: 0.82em;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gl-actions-panel__plot:hover {
+  background: rgba(0, 255, 65, 0.1);
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+}
+
+.gl-actions-panel__cancel {
+  border-color: var(--c-error, #e74c3c);
+  color: var(--c-error, #e74c3c);
+}
+
+.gl-actions-panel__cancel:hover {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.gl-actions-panel__status {
+  font-size: 0.78em;
+  color: var(--c-font-muted, #00aa2a);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gl-actions-panel__progress-bar-wrap {
+  width: 100%;
+  height: 2px;
+  background: var(--c-primary-light, #1a1a1a);
+  overflow: hidden;
+}
+
+.gl-actions-panel__progress-bar {
+  height: 100%;
+  background: var(--c-secondary, #00ff41);
+  transition: width 0.2s ease;
+}
+
+.gl-actions-panel__progress-bar--indeterminate {
+  width: 40%;
+  animation: actions-progress-indeterminate 1.4s infinite ease-in-out;
+}
+
+@keyframes actions-progress-indeterminate {
+  0%   { transform: translateX(-150%); }
+  100% { transform: translateX(350%); }
+}
+
+.gl-actions-panel__status-text {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gl-actions-panel__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-font-muted, #00aa2a);
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+
+.gl-actions-panel__status-dot--active {
+  background: var(--c-secondary, #00ff41);
+  box-shadow: 0 0 6px var(--c-secondary, #00ff41);
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}

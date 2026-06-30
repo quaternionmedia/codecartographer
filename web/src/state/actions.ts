@@ -9,42 +9,6 @@ import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/so
 import { logger } from '../core/logger';
 
 /**
- * Adapt the flat {nodes, edges, meta} shape returned by the C parser backend
- * into the gJGF {graph: {nodes, edges}, metadata} shape that GraphData and
- * the D3 renderer expect. Also remaps edge keys src/dst → source/target.
- */
-function adaptCGraphToGJGF(raw: Record<string, unknown>): GraphData {
-  const nodes = (raw.nodes as Record<string, unknown>[]) ?? [];
-  const rawEdges = (raw.edges as Record<string, unknown>[]) ?? [];
-  const meta = (raw.meta as Record<string, unknown>) ?? {};
-
-  // D3 forceLink throws "node not found" if any edge references an unknown ID.
-  // The C parser can produce edges to nodes outside the target file set (e.g.
-  // a FIELD_OF edge whose parent struct lives in a system header). Filter them.
-  const nodeIds = new Set(nodes.map(n => n.id as string));
-  const edges = rawEdges
-    .filter(e => nodeIds.has(e.src as string) && nodeIds.has(e.dst as string))
-    .map(e => ({
-      source: e.src as string,
-      target: e.dst as string,
-      label:  e.kind as string,
-      weight: e.weight,
-    }));
-
-  return {
-    graph: { nodes, edges, directed: true },
-    metadata: {
-      layout:     'force',
-      type:       'c',
-      nodeCount:  nodes.length,
-      edgeCount:  edges.length,
-      palette_id: 'default',
-      ...meta,
-    },
-  } as unknown as GraphData;
-}
-
-/**
  * Convert frontend layout format to backend format
  * Frontend: 'spring_layout', 'spectral_layout', etc.
  * Backend: 'Spring', 'Spectral', 'Kamada_Kawai', etc.
@@ -468,125 +432,6 @@ export class PlotActions {
   }
 
   /**
-   * Plot a single file from URL
-   */
-  async plotUrlFile(url: string): Promise<void> {
-    this.stateController.clear();
-    try {
-      console.log('PlotActions.plotUrlFile - plotting URL:', url);
-      const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const data = await PlotService.plotUrlFile(url, this.stateController.api.plotter, layout);
-      console.log('PlotActions.plotUrlFile - received data:', data);
-      this.handlePlotData(data);
-    } catch (error) {
-      console.error('Failed to plot URL file:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Plot entire repository structure via /parse/unified
-   */
-  async plotWholeRepo(content: Directory): Promise<void> {
-    this.stateController.clear();
-    try {
-      const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const opts   = this.stateController.state.parserOptions;
-      const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
-      const data   = await PlotService.plotUnified(
-        this.stateController.api.parse, content, 2, exts, layout
-      );
-      if (!data) throw new Error('No data returned from parse/unified');
-      this.stateController.update({ parseDirectory: content });
-      this.handlePlotData(data);
-    } catch (error) {
-      console.error('Failed to plot repository:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Plot repository with dependencies via /parse/unified
-   */
-  async plotRepoDeps(content: Directory): Promise<void> {
-    this.stateController.clear();
-    try {
-      const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const opts   = this.stateController.state.parserOptions;
-      const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
-      const data   = await PlotService.plotUnified(
-        this.stateController.api.parse, content, 2, exts, layout, 'dependencies'
-      );
-      if (!data) throw new Error('No data returned from parse/unified');
-      this.stateController.update({ parseDirectory: content });
-      this.handlePlotData(data);
-    } catch (error) {
-      console.error('Failed to plot repository dependencies:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch a GitHub repo and parse all C/H files using the c-parser backend
-   */
-  async plotCGithub(repoUrl: string): Promise<void> {
-    this.stateController.clear();
-    try {
-      const data = await PlotService.plotCGithub(
-        this.stateController.api.cParser,
-        repoUrl
-      );
-      if (!data) throw new Error('No data returned from c-parser/github');
-      const result = (data as Record<string, unknown>);
-      const raw = (result['graph'] ?? data) as Record<string, unknown>;
-      this.handlePlotData(adaptCGraphToGJGF(raw));
-    } catch (error) {
-      console.error('Failed to parse GitHub C repo:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Parse a C/C++ file at the given local path using the c-parser backend
-   */
-  async plotCFile(path: string): Promise<void> {
-    this.stateController.clear();
-    try {
-      const data = await PlotService.plotCFile(
-        this.stateController.api.cParser,
-        path
-      );
-      if (!data) throw new Error('No data returned from c-parser');
-      const result = (data as Record<string, unknown>);
-      const raw = (result['graph'] ?? data) as Record<string, unknown>;
-      this.handlePlotData(adaptCGraphToGJGF(raw));
-    } catch (error) {
-      console.error('Failed to plot C file:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Parse a C/C++ directory at the given local path using the c-parser backend
-   */
-  async plotCDirectory(path: string): Promise<void> {
-    this.stateController.clear();
-    try {
-      const data = await PlotService.plotCDirectory(
-        this.stateController.api.cParser,
-        path
-      );
-      if (!data) throw new Error('No data returned from c-parser');
-      const result = (data as Record<string, unknown>);
-      const raw = (result['graph'] ?? data) as Record<string, unknown>;
-      this.handlePlotData(adaptCGraphToGJGF(raw));
-    } catch (error) {
-      console.error('Failed to plot C directory:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Parse a directory using the unified schema (depth-based hierarchy).
    * Any renderer (D3, Gravis, …) can display the result.
    */
@@ -671,7 +516,10 @@ export class RepoActions {
    * Fetch and load a GitHub repository
    */
   async fetchRepository(url: string): Promise<void> {
-    this.stateController.clear();
+    // TODO: This line prevents stream post call from firing. 
+    //       Commenting out for now to get init parsing working. 
+    //       Need to investigate intent with the below line.
+    //this.stateController.clear();
     try {
       const data = await RepoService.getGithubRepo(url, this.stateController.api.repoReader);
       this.stateController.updateRepoContent(data);
@@ -750,41 +598,6 @@ export class UploadActions {
   selectFile(file: RawFile): void {
     this.stateController.setSelectedLocalFile(file);
   }
-
-  /**
-   * Clear uploaded files
-   */
-  clearUploads(): void {
-    this.stateController.clearLocalData();
-  }
-}
-
-/**
- * UI Actions - handles UI state changes
- */
-export class UIActions {
-  constructor(private stateController: StateController) {}
-
-  /**
-   * Toggle the control panel visibility
-   */
-  toggleControlPanel(): void {
-    // Would need to add this to state controller
-  }
-
-  /**
-   * Set the active control panel tab
-   */
-  setActiveTab(tab: 'demo' | 'repo' | 'upload' | 'settings'): void {
-    // Would need to add this to state controller
-  }
-
-  /**
-   * Clear any error state
-   */
-  clearError(): void {
-    // Would need to add this to state controller
-  }
 }
 
 /**
@@ -794,7 +607,6 @@ export interface AppActions {
   plot: PlotActions;
   repo: RepoActions;
   upload: UploadActions;
-  ui: UIActions;
 }
 
 /**
@@ -805,6 +617,5 @@ export function createActions(stateController: StateController): AppActions {
     plot: new PlotActions(stateController),
     repo: new RepoActions(stateController),
     upload: new UploadActions(stateController),
-    ui: new UIActions(stateController),
   };
 }

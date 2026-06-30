@@ -83,12 +83,12 @@ export interface ControlPanelCallbacks {
   onGraphStylingChange: (options: Partial<GraphStylingOptions>) => void;
   onParserOptionsChange: (options: Partial<ParserOptions>) => void;
   onRendererChange: (renderer: GraphRendererType) => void;
-  onCParserGithub: (repoUrl: string) => void;
   onFolderExpand: (path: string) => void;
   onExpandAll?: () => Promise<void>;
   onCancel?: () => void;
   onLoadFromCache?: (key: string) => void;
   onEvictCache?: (key: string) => void;
+  onClearRepo?: () => void;
 }
 
 export interface CachedEntry {
@@ -113,6 +113,12 @@ export interface ControlPanelContent {
   cachedGraphs: CachedEntry[] | null;
 }
 
+export type ControlPanelMode = 'full' | 'source' | 'graph';
+
+export interface ControlPanelRenderOptions {
+  mode?: ControlPanelMode;
+}
+
 const TABS: Tab[] = [
   { id: 'source', label: 'Source', icon: '📁', helpText: 'Load code and configure parsing' },
   { id: 'graph',  label: 'Graph',  icon: '◈',  helpText: 'Renderer, layout, visual style and theme' },
@@ -120,6 +126,7 @@ const TABS: Tab[] = [
 
 const LAYOUT_OPTIONS = [
   { value: 'spring_layout', label: 'Spring' },
+  { value: 'compound_layout', label: 'Compound' },
   { value: 'spectral_layout', label: 'Spectral' },
   { value: 'kamada_kawai_layout', label: 'Kamada-Kawai' },
   { value: 'circular_layout', label: 'Circular' },
@@ -145,8 +152,11 @@ export function ControlPanel(
   state: ControlPanelState,
   callbacks: ControlPanelCallbacks,
   onStateChange: (updates: Partial<ControlPanelState>) => void,
-  content: ControlPanelContent
+  content: ControlPanelContent,
+  options: ControlPanelRenderOptions = {}
 ): m.Vnode {
+  const mode = options.mode ?? 'full';
+  const isEmbedded = mode !== 'full';
 
   // Resize drag state
   let isDragging = false;
@@ -154,6 +164,7 @@ export function ControlPanel(
   let startHeight = 0;
 
   const updatePanelHeightVar = (element?: HTMLElement) => {
+    if (isEmbedded) return;
     if (!element) return;
     const totalHeight = Math.ceil(element.getBoundingClientRect().height);
     let effectiveHeight = totalHeight;
@@ -413,7 +424,8 @@ export function ControlPanel(
                 title: ex.title,
                 onclick: (e: MouseEvent) => {
                   animations.buttonPress(e.currentTarget as Element);
-                  callbacks.onCParserGithub(ex.url);
+                  onStateChange({ repoUrl: ex.url });
+                  callbacks.onRepoSubmit(ex.url);
                 },
                 disabled: state.isLoading,
               }, ex.label)
@@ -426,6 +438,10 @@ export function ControlPanel(
           m('div.panel-source__repo-header', [
             m('span.panel-source__repo-name', `${repoInfo?.owner}/${repoInfo?.name}`),
             m('span.panel-source__repo-size', `${content.repoDirectory?.size} files`),
+            callbacks.onClearRepo ? m('button.panel-source__repo-clear', {
+              onclick: callbacks.onClearRepo,
+              title: 'Clear repository and go back',
+            }, '✕') : null,
           ]),
           content.repoDirectory?.is_partial ? m('div.panel-source__partial-banner', [
             m('span', '⚠ Partial — click a folder ▶ to expand'),
@@ -443,7 +459,9 @@ export function ControlPanel(
               folders: content.repoDirectory?.root.folders || [],
               files: content.repoDirectory?.root.files || [],
               onUrlFileClicked: callbacks.onRepoFileClick,
-              onFolderExpand: callbacks.onFolderExpand,
+              // Only enable lazy-expand for partial (GitHub shallow) trees.
+              // Local trees are always fully loaded, so empty folders shouldn't trigger expansion.
+              onFolderExpand: content.repoDirectory?.is_partial ? callbacks.onFolderExpand : undefined,
               allowedExtensions: content.availableLanguages
                 ? Object.values(content.availableLanguages).flat()
                 : null,
@@ -456,8 +474,6 @@ export function ControlPanel(
 
   const renderSourceRight = () => {
     const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
-    const hasUploads = content.uploadedFiles.length > 0;
-    const hasSource = hasRepo || hasUploads;
     const parser = content.parserOptions;
 
     return m('div.panel-source__right', [
@@ -515,15 +531,6 @@ export function ControlPanel(
 
       m('div.panel-source__spacer'),
 
-      // Plot button (when source loaded) — primary CTA
-      hasSource ? m('button.panel-source__plot-primary', {
-        onclick: (e: MouseEvent) => {
-          animations.buttonPress(e.currentTarget as Element);
-          if (hasRepo) callbacks.onPlotWholeRepo();
-          else callbacks.onPlotAllUploads();
-        },
-      }, [m('span', '▶'), m('span', 'Plot')]) : null,
-
       m('div.panel-source__divider'),
 
       // Quick Start (when nothing loaded)
@@ -540,9 +547,9 @@ export function ControlPanel(
     ]);
   };
 
-  const renderSourceTab = () => {
+  const renderSourceTab = (forceVisible = false) => {
     return m('div.panel-section.panel-source', {
-      class: state.activeTab === 'source' ? 'panel-section--active' : '',
+      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
     }, [
       m('div.panel-source__2col', [
         renderSourceLeft(),
@@ -553,7 +560,7 @@ export function ControlPanel(
 
   // ─── Graph Tab (accordion) ─────────────────────────────────────────────────
 
-  const renderGraphTab = () => {
+  const renderGraphTab = (forceVisible = false) => {
     const styling = content.graphStyling;
     const selectedRenderer = content.selectedRenderer;
     const isSystem = selectedRenderer === 'system';
@@ -584,7 +591,7 @@ export function ControlPanel(
     ]);
 
     return m('div.panel-section.panel-graph', {
-      class: state.activeTab === 'graph' ? 'panel-section--active' : '',
+      class: forceVisible || state.activeTab === 'graph' ? 'panel-section--active' : '',
     }, [
       // Renderer selector — always visible at top
       m('div.panel-settings__group', [
@@ -658,6 +665,22 @@ export function ControlPanel(
                 onchange: (e: Event) => {
                   const checked = (e.target as HTMLInputElement).checked;
                   callbacks.onGraphStylingChange({ enablePhysics: checked });
+                },
+              }),
+              m('span.panel-settings__toggle-slider'),
+            ]),
+          ]),
+        ]) : null,
+
+        supportsLayout ? m('div.panel-settings__group', [
+          m('div.panel-settings__toggle-row', [
+            m('span.panel-settings__label-compact', 'Group Outlines'),
+            m('label.panel-settings__toggle-compact.panel-settings__toggle', [
+              m('input[type=checkbox]', {
+                checked: styling.showCompoundGroups !== false,
+                onchange: (e: Event) => {
+                  const checked = (e.target as HTMLInputElement).checked;
+                  callbacks.onGraphStylingChange({ showCompoundGroups: checked });
                 },
               }),
               m('span.panel-settings__toggle-slider'),
@@ -821,6 +844,23 @@ export function ControlPanel(
   };
 
   // ─── Main render ───────────────────────────────────────────────────────────
+
+  if (isEmbedded) {
+    const embeddedContent = mode === 'source' ? renderSourceTab(true) : renderGraphTab(true);
+
+    return m('div.control-panel.control-panel--embedded', {
+      oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
+      onupdate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
+    }, [
+      m('div.control-panel__body.control-panel__body--open', {
+        style: { height: '100%' },
+      }, [
+        m('div.control-panel__content', [
+          embeddedContent,
+        ]),
+      ]),
+    ]);
+  }
 
   return m('div.control-panel', {
     oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),

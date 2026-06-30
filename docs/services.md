@@ -84,7 +84,11 @@ Integrates with GitHub API to fetch repository contents.
 
 #### `get_raw_from_repo(url)`
 
-Fetch and parse a GitHub repository.
+Fetch a GitHub repository's directory tree, cached via `CacheService`
+(see ARCHITECTURE.md's "Two C-parser caches"). On a cache miss, fetches the
+full tree in two API calls (`fetch_tree_fast`, the Git Trees API) and then
+fetches file content per the repo's size tier — full content for small
+repos, structure only for medium repos, a shallow listing for huge ones.
 
 ```python
 from codecarto.services.github_service import get_raw_from_repo
@@ -92,7 +96,7 @@ from codecarto.services.github_service import get_raw_from_repo
 directory = await get_raw_from_repo("https://github.com/user/repo")
 ```
 
-**Returns:** `Directory` with full file contents
+**Returns:** `Directory` (file contents present only for small repos)
 
 ---
 
@@ -107,14 +111,6 @@ content = await get_raw_from_url(
 ```
 
 **Returns:** File content as string
-
----
-
-#### `get_repo_content(url, owner, repo, path)`
-
-Fetch directory listing from GitHub API.
-
-**Returns:** Dict with file/folder metadata
 
 ---
 

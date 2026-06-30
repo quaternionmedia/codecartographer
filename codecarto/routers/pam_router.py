@@ -30,7 +30,6 @@ import json
 import os
 import platform
 import subprocess
-import threading
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Set
@@ -39,6 +38,7 @@ from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from codecarto.services.parsers.pam_parser import parse_line, read_history, tail_file
+from codecarto.util.threaded_feeder import start_threaded_feeder
 
 PamRouter = APIRouter()
 
@@ -112,27 +112,6 @@ def _journald_history(minutes: int = 30) -> List[str]:
         return []
 
 
-# ─── Background worker threads ────────────────────────────────────────────────
-
-def _tail_thread(log_path: str, queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
-    """Tail log file in a thread; push parsed events to async queue."""
-    try:
-        for line in tail_file(log_path, from_start=False):
-            ev = parse_line(line)
-            if ev:
-                asyncio.run_coroutine_threadsafe(queue.put(ev.to_dict()), loop)
-    except Exception as exc:
-        asyncio.run_coroutine_threadsafe(queue.put({'__error__': str(exc)}), loop)
-
-
-def _journald_thread(queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
-    """Stream journald in a thread; push parsed events to async queue."""
-    for line in _journald_tail():
-        ev = parse_line(line)
-        if ev:
-            asyncio.run_coroutine_threadsafe(queue.put(ev.to_dict()), loop)
-
-
 # ─── Broadcast loop ───────────────────────────────────────────────────────────
 
 async def _broadcast_loop(queue: asyncio.Queue):
@@ -182,30 +161,45 @@ async def on_pam_startup():
     """Start log-tailer thread and broadcast loop. Call from app startup."""
     global _log_path, _log_available, _log_error, _event_queue, _broadcast_task
 
-    _event_queue = asyncio.Queue()
-    loop = asyncio.get_event_loop()
-
     if _USE_JOURNALD:
-        t = threading.Thread(
-            target=_journald_thread, args=(_event_queue, loop), daemon=True
-        )
-        t.start()
+        def make_journald_worker(queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
+            def worker() -> None:
+                for line in _journald_tail():
+                    ev = parse_line(line)
+                    if ev:
+                        asyncio.run_coroutine_threadsafe(queue.put(ev.to_dict()), loop)
+            return worker
+
+        _event_queue = start_threaded_feeder(make_journald_worker)
         _log_available = True
         _log_path = "journald"
     else:
         _log_path = _detect_log_file()
         if _log_path:
             _log_available = True
-            t = threading.Thread(
-                target=_tail_thread, args=(_log_path, _event_queue, loop), daemon=True
-            )
-            t.start()
+            log_path = _log_path  # bind for the closure below
+
+            def make_tail_worker(queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
+                def worker() -> None:
+                    try:
+                        for line in tail_file(log_path, from_start=False):
+                            ev = parse_line(line)
+                            if ev:
+                                asyncio.run_coroutine_threadsafe(queue.put(ev.to_dict()), loop)
+                    except Exception as exc:
+                        asyncio.run_coroutine_threadsafe(queue.put({'__error__': str(exc)}), loop)
+                return worker
+
+            _event_queue = start_threaded_feeder(make_tail_worker)
         else:
             _log_available = False
             _log_error = (
                 "No readable auth log found. "
                 "Set PAM_LOG_FILE env var or PAM_USE_JOURNALD=1."
             )
+            # No thread to feed it, but _broadcast_loop still needs a queue
+            # to await on (harmlessly, forever) below.
+            _event_queue = asyncio.Queue()
 
     _broadcast_task = asyncio.create_task(_broadcast_loop(_event_queue))
 
@@ -282,14 +276,11 @@ async def pam_session_events(session_id: str):
 @PamRouter.get("/ui")
 async def pam_ui(request: Request):
     """Serve the PAM visualizer HTML frontend, with WS/API URLs patched for this server."""
-    html_path = (
-        Path(__file__).parent.parent.parent
-        / ".github" / "development" / "chrestromathy_branch" / "frontend.html"
-    )
+    html_path = Path(__file__).parent.parent / "static" / "pam-frontend.html"
     if not html_path.exists():
         return HTMLResponse(
             "<h1>PAM Visualizer frontend not found</h1>"
-            "<p>Expected at: chrestromathy_branch/frontend.html</p>",
+            f"<p>Expected at: {html_path}</p>",
             status_code=404,
         )
 

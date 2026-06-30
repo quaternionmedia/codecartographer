@@ -3,6 +3,7 @@ import m from 'mithril';
 import { logger } from '../../../core/logger';
 import { InteractionManager, InteractionManagerCallbacks } from './interaction_manager';
 import { RadialMenu, getContextMenuItems, RadialMenuContext, RadialMenuCallbacks } from '../components/radial_menu';
+import { CompoundLayoutManager, GroupBounds } from './compound_layout';
 import {
   graphExtensions,
   ExtensionContext,
@@ -104,6 +105,7 @@ export class GraphRenderer {
   private static onGraphChange: (() => void) | null = null;
   private static currentUpdatePositions: (() => void) | null = null;
   private static currentResizeObserver: ResizeObserver | null = null;
+  private static _compoundBounds: GroupBounds[] = [];
 
   // Extensions system
   private static dragExtension: DragExtension | null = null;
@@ -112,6 +114,17 @@ export class GraphRenderer {
   private static highlightExtension: HighlightExtension | null = null;
   private static tooltipExtension: TooltipExtension | null = null;
   private static colorExtension: ColorExtension | null = null;
+
+  /** Deselected-state border colour — amber for nodes whose source file had
+   * parser diagnostics (see c_parser.py has_parse_warning), white otherwise. */
+  private static nodeBorderColor(d: GraphNode): string {
+    return d.has_parse_warning ? '#f5a623' : '#fff';
+  }
+
+  /** Deselected-state border dasharray — dashed for parse-warning nodes. */
+  private static nodeBorderDash(d: GraphNode): string | null {
+    return d.has_parse_warning ? '3,2' : null;
+  }
 
   /**
    * Render graph data using D3.js with enhanced interactions
@@ -345,6 +358,9 @@ export class GraphRenderer {
     // Create a group for zoom/pan
     const g = svg.append('g');
 
+    // Background group — first child of g, so circles render behind links/nodes
+    const backgroundGroup = g.append('g').attr('class', 'compound-backgrounds');
+
     // Create node lookup for edge linking
     const nodeById = new Map(nodes.map(n => [n.id, n]));
 
@@ -419,6 +435,21 @@ export class GraphRenderer {
       }
     };
 
+    // Edge-kind visual mapping. `label` carries the semantic edge kind
+    // (e.g. C parser: CALLS/FIELD_OF/POINTS_TO/ALIASES — see c_parser.py).
+    // Unrecognised kinds (other languages, untyped edges) fall through to
+    // the existing default styling untouched.
+    const EDGE_KIND_COLOR: Record<string, string> = {
+      CALLS:     '#e67e22',
+      FIELD_OF:  '#555e6e',
+      POINTS_TO: '#1abc9c',
+      ALIASES:   '#1abc9c',
+    };
+    const EDGE_KIND_DASH: Record<string, string> = {
+      POINTS_TO: '5,4',
+      ALIASES:   '8,4',
+    };
+
     // Draw edges with styling
     const link = g
       .append('g')
@@ -427,10 +458,13 @@ export class GraphRenderer {
       .data(edges)
       .enter()
       .append('line')
-      .attr('stroke', (d) => d.color || styling.edgeColor || '#999')
+      .attr('stroke', (d) => (d.color as string) || EDGE_KIND_COLOR[d.label as string] || styling.edgeColor || '#999')
       .attr('stroke-opacity', styling.edgeOpacity * 0.6)
-      .attr('stroke-width', styling.edgeWidth)
-      .attr('stroke-dasharray', getEdgeDashArray(styling.edgeStyle));
+      .attr('stroke-width', (d) => {
+        const weight = (d.weight as number) ?? 1;
+        return d.label === 'CALLS' ? styling.edgeWidth * Math.min(3, 0.5 + weight * 0.4) : styling.edgeWidth;
+      })
+      .attr('stroke-dasharray', (d) => getEdgeDashArray(styling.edgeStyle) ?? EDGE_KIND_DASH[d.label as string] ?? null);
 
     // Store references for radial menu callbacks (except zoom - will be set later)
     this.currentSvg = svg;
@@ -526,8 +560,12 @@ export class GraphRenderer {
       .attr('d', (d) => getNodePath(d.shape as string, styling.nodeSize * depthSizeMultiplier(d), d))
       .attr('fill', (d) => styling.nodeColorOverride || d.color || 'steelblue')
       .attr('fill-opacity', styling.nodeOpacity)
-      .attr('stroke', '#fff')
-      .attr('stroke-width', styling.nodeBorderWidth);
+      // Parser diagnostics (e.g. C: missing header / unknown type in this
+      // node's source file — see c_parser.py has_parse_warning) get a
+      // dashed amber border instead of the default solid white.
+      .attr('stroke', (d) => this.nodeBorderColor(d))
+      .attr('stroke-width', styling.nodeBorderWidth)
+      .attr('stroke-dasharray', (d) => this.nodeBorderDash(d));
 
     // Add interaction handlers to node groups
     const node = nodeGroup
@@ -539,8 +577,9 @@ export class GraphRenderer {
         if (selectedNodes.has(d)) {
           selectedNodes.delete(d);
           path
-            .attr('stroke', '#fff')
-            .attr('stroke-width', styling.nodeBorderWidth);
+            .attr('stroke', this.nodeBorderColor(d))
+            .attr('stroke-width', styling.nodeBorderWidth)
+            .attr('stroke-dasharray', this.nodeBorderDash(d));
         } else {
           if (!event.ctrlKey && !event.metaKey) {
             // Clear other selections if not multi-select
@@ -548,8 +587,9 @@ export class GraphRenderer {
               d3.selectAll('.graph-node')
                 .filter((n: GraphNode) => n.id === node.id)
                 .select('path')
-                .attr('stroke', '#fff')
-                .attr('stroke-width', styling.nodeBorderWidth);
+                .attr('stroke', this.nodeBorderColor(node))
+                .attr('stroke-width', styling.nodeBorderWidth)
+                .attr('stroke-dasharray', this.nodeBorderDash(node));
             });
             selectedNodes.clear();
           }
@@ -684,11 +724,42 @@ export class GraphRenderer {
     // Store reference for radial menu callbacks
     this.currentUpdatePositions = updatePositions;
 
+    // ── Compound layout background circles ────────────────────────────────
+    const drawCompoundBackgrounds = () => {
+      const manager = new CompoundLayoutManager();
+      const bounds = manager.computeGroupBounds(nodes, 40, styling.nodeSize * 3.0);
+      this._compoundBounds = bounds;
+      backgroundGroup.selectAll('*').remove();
+      for (const b of bounds) {
+        const isDir = b.depth === 0;
+        const fill   = isDir ? 'rgba(127,140,141,0.06)' : 'rgba(155,89,182,0.09)';
+        const stroke = isDir ? 'rgba(127,140,141,0.30)' : 'rgba(155,89,182,0.35)';
+        const dash   = isDir ? '8,4' : '4,2';
+        const sw     = isDir ? 1.5 : 1.0;
+        const grp = backgroundGroup.append('g');
+        grp.append('circle')
+          .attr('cx', b.cx).attr('cy', b.cy).attr('r', b.radius)
+          .attr('fill', fill).attr('stroke', stroke)
+          .attr('stroke-width', sw).attr('stroke-dasharray', dash)
+          .style('opacity', 0)
+          .transition().delay(300).duration(500).style('opacity', 1);
+        grp.append('text')
+          .attr('x', b.cx).attr('y', b.cy - b.radius + 16)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', isDir ? 11 : 9)
+          .attr('fill', isDir ? 'rgba(127,140,141,0.70)' : 'rgba(155,89,182,0.70)')
+          .style('pointer-events', 'none').style('opacity', 0)
+          .text(b.label)
+          .transition().delay(300).duration(500).style('opacity', 1);
+      }
+    };
+
     if (simulation) {
       simulation.on('tick', updatePositions);
     } else {
       // Static layout - just update once
       updatePositions();
+      drawCompoundBackgrounds();
     }
 
     // Shift-drag box selection (must be set up BEFORE zoom)
@@ -709,7 +780,7 @@ export class GraphRenderer {
         g.attr('transform', event.transform);
         // LOD: show labels only when zoomed in enough to read them
         const k = event.transform.k;
-        label.style('display', k >= labelThreshold ? 'block' : 'none');
+        label.style('display', (styling.showNodeLabels && k >= labelThreshold) ? 'block' : 'none');
       });
 
     svg.call(zoom as any);
@@ -736,6 +807,7 @@ export class GraphRenderer {
           zoom.transform as any,
           d3.zoomIdentity.translate(tx, ty).scale(s)
         );
+        drawCompoundBackgrounds();
       });
     }
 
@@ -820,8 +892,9 @@ export class GraphRenderer {
         // Update visual highlighting
         d3.selectAll('.graph-node')
           .select('path')
-          .attr('stroke', '#fff')
-          .attr('stroke-width', styling.nodeBorderWidth);
+          .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
+          .attr('stroke-width', styling.nodeBorderWidth)
+          .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
 
         selectedNodesInBox.forEach((node) => {
           d3.selectAll('.graph-node')
@@ -905,9 +978,10 @@ export class GraphRenderer {
       },
       onNodeDeselect: () => {
         selectedNodes.clear();
-        d3.selectAll('.graph-node')
-          .attr('stroke', '#fff')
-          .attr('stroke-width', styling.nodeBorderWidth);
+        d3.selectAll('.graph-node').select('path')
+          .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
+          .attr('stroke-width', styling.nodeBorderWidth)
+          .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
       },
     };
 
@@ -1186,8 +1260,9 @@ export class GraphRenderer {
 
         // Update visual selection
         d3.selectAll('.graph-node').select('path')
-          .attr('stroke', '#fff')
-          .attr('stroke-width', styling.nodeBorderWidth);
+          .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
+          .attr('stroke-width', styling.nodeBorderWidth)
+          .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
 
         neighbors.forEach(n => {
           d3.selectAll('.graph-node')
@@ -1320,6 +1395,20 @@ export class GraphRenderer {
       onGroupSelection: (nodes: any[]) => {
         logger.debug('Group selection (placeholder):', nodes.length);
         // Placeholder for future grouping feature
+      },
+      onFocusGroup: (nodeId: string) => {
+        const bound = this._compoundBounds.find(b => b.nodeId === nodeId);
+        if (!bound || !this.currentSvg || !this.currentZoom) return;
+        const svgW = parseFloat(this.currentSvg.attr('width'));
+        const svgH = parseFloat(this.currentSvg.attr('height'));
+        const scale = Math.min(svgW, svgH) / (bound.radius * 2 + 80);
+        const tx = svgW / 2 - scale * bound.cx;
+        const ty = svgH / 2 - scale * bound.cy;
+        this.currentSvg.transition().duration(600).call(
+          this.currentZoom.transform as any,
+          d3.zoomIdentity.translate(tx, ty).scale(scale)
+        );
+        logger.debug('Focus group:', nodeId, bound);
       },
     };
 

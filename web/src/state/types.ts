@@ -96,6 +96,9 @@ export interface GraphStylingOptions {
   // System renderer — selects which SystemDefinition to render
   systemId?: string;           // e.g. 'pam' (default)
 
+  // Compound layout — show translucent bounding circles per dir/file group
+  showCompoundGroups?: boolean;
+
   // Allow dynamic properties for extensibility
   [key: string]: unknown;
 }
@@ -176,6 +179,7 @@ export const DEFAULT_GRAPH_STATE: GraphState = {
     labelSize: 11,
     labelColor: '#00ff41',
     interactionProfile: 'default',
+    showCompoundGroups: true,
   },
   parserOptions: {
     fileExtensions: [],

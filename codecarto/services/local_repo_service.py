@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Optional, List
 from codecarto.models.source_data import Directory, File, Folder, RepoInfo
 
+# Cap raw file content at 1 MB; bigger files keep raw='' and rely on
+# parsers that read from disk (e.g. libclang via CLangaugeParser).
+_MAX_RAW_BYTES = 1_000_000
+
 
 def get_local_repo(
     path: str,
@@ -14,24 +18,29 @@ def get_local_repo(
 ) -> Directory:
     """
     Read a local directory/repo and build a Directory structure.
-    
+
     Args:
-        path: Path to the local repository
-        extensions: List of file extensions to include (e.g., ['.py']). 
-                   If None, includes all files.
-        exclude_dirs: List of directory names to exclude (e.g., ['.git', 'node_modules'])
-    
+        path:        Path to the local repository.
+        extensions:  File extensions to include (e.g. ['.py', '.cs']).
+                     If None, all extensions registered with ParserRegistry are included.
+        exclude_dirs: Directory names/globs to skip.
+
     Returns:
-        Directory object with the repo structure
+        Directory object with the repo structure.
     """
     if extensions is None:
-        extensions = ['.py']  # Default to Python files
-    
+        extensions = _default_extensions()
+
+    # Normalize: lowercase, ensure leading dot
+    extensions = [e.lower() if e.startswith('.') else f'.{e.lower()}' for e in extensions]
+
     if exclude_dirs is None:
         exclude_dirs = [
-            '.git', '.venv', 'venv', '__pycache__', 
+            '.git', '.venv', 'venv', '__pycache__',
             'node_modules', '.pytest_cache', '.mypy_cache',
-            'dist', 'build', '.eggs', '*.egg-info'
+            'dist', 'build', '.eggs', '*.egg-info',
+            '.vs', '.idea', '.vscode',
+            'bin', 'obj', # .NET build output
         ]
     
     repo_path = Path(path).resolve()
@@ -54,6 +63,7 @@ def get_local_repo(
         info=RepoInfo(owner=owner, name=repo_name, url=str(repo_path)),
         size=root.size,
         root=root,
+        is_partial=False,
     )
 
 
@@ -64,8 +74,7 @@ def _get_git_owner(repo_path: Path) -> Optional[str]:
         return None
     
     try:
-        with open(git_config, "r") as f:
-            content = f.read()
+        content = git_config.read_text()
         
         # Look for remote origin URL patterns:
         # https://github.com/owner/repo.git
@@ -114,33 +123,29 @@ def _build_folder_tree(
             sub_folder.name = entry.name
             folders.append(sub_folder)
             total_size += sub_folder.size
+            continue
         
-        elif entry.is_file():
-            # Check file extension
-            if extensions and entry.suffix.lower() not in extensions:
-                continue
-            
-            try:
-                file_size = entry.stat().st_size
-                
-                # Read file content for Python files
-                raw = ""
-                if entry.suffix.lower() == '.py':
-                    try:
-                        with open(entry, "r", encoding="utf-8") as f:
-                            raw = f.read()
-                    except (UnicodeDecodeError, PermissionError):
-                        raw = f"# Error reading file: {entry.name}"
-                
-                files.append(File(
-                    url=str(entry),
-                    name=entry.name,
-                    size=file_size,
-                    raw=raw
-                ))
-                total_size += file_size
-            except (PermissionError, OSError):
-                continue
+        # Skip if this is not a file
+        if not entry.is_file():
+            continue
+
+        # Skip files that don't match the specified extensions
+        if extensions and entry.suffix.lower() not in extensions:
+            continue
+    
+        # Read file content for Python files
+        try:
+            file_size = entry.stat().st_size
+            raw = _read_text_capped(entry, file_size)
+            files.append(File(
+                url=str(entry), # disk path — libclang and other on-disk parsers use this
+                name=entry.name,
+                size=file_size,
+                raw=raw,        # source text for parsers that need it; '' if too large or unreadable
+            ))
+            total_size += file_size
+        except (PermissionError, OSError):
+            continue
     
     return Folder(
         name=folder_path.name,
@@ -150,14 +155,29 @@ def _build_folder_tree(
     )
 
 
+def _read_text_capped(file_path: Path, file_size: int) -> str:
+    """Read file as UTF-8 text, returning '' on decode errors or oversize files."""
+    if file_size > _MAX_RAW_BYTES:
+        return ''
+    try:
+        return file_path.read_text(encoding='utf-8')
+    except (UnicodeDecodeError, PermissionError, OSError):
+        return ''
+
+
+def _default_extensions() -> List[str]:
+    """All extensions registered with the unified ParserRegistry.
+
+    Resolved lazily so this module doesn't import parsers at module-load time.
+    """
+    from codecarto.services.parsers.language_parser import ParserRegistry
+    return list(ParserRegistry.all_extensions())
+
+
 def _should_exclude(name: str, exclude_patterns: List[str]) -> bool:
     """Check if a directory name matches any exclude pattern."""
     import fnmatch
-    
-    for pattern in exclude_patterns:
-        if fnmatch.fnmatch(name, pattern):
-            return True
-    return False
+    return any(fnmatch.fnmatch(name, p) for p in exclude_patterns)
 
 
 def get_file_stats(directory: Directory) -> dict:

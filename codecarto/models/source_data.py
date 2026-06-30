@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import Iterator, List, Tuple
 
 
 class File(BaseModel):
@@ -18,6 +18,22 @@ class Folder(BaseModel):
     size: int = 0
     files: List[File] = []
     folders: List["Folder"] = []
+
+    def iter_files(self) -> Iterator[Tuple["Folder", File]]:
+        """Yield every (containing_folder, file) pair in this tree, recursively.
+
+        Shared traversal for callers that just need "every file under this
+        folder" (e.g. collecting parseable files by extension, fetching raw
+        content) instead of each hand-rolling its own recursive walk —
+        see docs/llm/next_steps/parser_consolidation_and_scope_drift.md's
+        finding 1.4. Not used by graph-building walks (e.g.
+        UnifiedParserService._walk_folder) that need per-level parent-id/
+        depth context beyond just the immediate containing folder.
+        """
+        for file in self.files:
+            yield self, file
+        for sub in self.folders:
+            yield from sub.iter_files()
 
 
 class RepoInfo(BaseModel):

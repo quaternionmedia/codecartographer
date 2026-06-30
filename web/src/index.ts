@@ -5,7 +5,7 @@ import { meiosisSetup } from 'meiosis-setup';
 
 import { qmComponentSetup } from './utility';
 import { ICell, ICellState, CellState } from './state/cell_state';
-import { CodeCarto } from './components/codecarto/codecarto';
+import { GoldenLayoutShell } from './layout/golden_layout_shell';
 
 qmComponentSetup();
 
@@ -28,11 +28,7 @@ cells.map(() => {
 // Mount the app
 const app = document.getElementById('app');
 if (app) {
-  // Create the CodeCarto component with a cell getter
-  // This ensures the component always has access to the current cell
-  const appComponent = CodeCarto(() => cells());
-  
-  m.mount(app, appComponent);
+  m.mount(app, GoldenLayoutShell(() => cells()));
 }
 
 // DEBUG

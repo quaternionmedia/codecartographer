@@ -23,7 +23,6 @@ export {
   PlotActions, 
   RepoActions, 
   UploadActions, 
-  UIActions, 
   createActions,
   type AppActions 
 } from './actions';
