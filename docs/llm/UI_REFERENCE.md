@@ -4,229 +4,176 @@ Reference for CodeCartographer's control panel and user interface.
 
 ---
 
-## Control Panel Overview
+## Application Shell — Golden Layout
 
-The control panel is a collapsible sidebar with five tabs:
+The app uses **Golden Layout 2.x** as its primary shell. All panels are dock tabs that can be freely resized, rearranged, and popped in/out.
+
+| Panel | Default position | Purpose |
+|-------|-----------------|---------|
+| Graph | Main area (top) | D3 graph canvas |
+| Source / Info | Bottom dock tab | File tree, repo info |
+| Actions | Bottom dock tab | Plot/re-plot controls |
+
+When a panel tab is closed, a **Restore** button appears in the header so it can be re-opened without a page reload. Panels are independently resizable — drag the divider between dock areas.
+
+---
+
+## Control Panel
+
+The control panel is a collapsible sidebar with **two tabs**:
 
 | Tab | Purpose |
 |-----|---------|
-| Source | Load data (Demo, Upload, GitHub URL) |
-| Parse | Configure parser mode and file extensions |
-| Layout | Select renderer, layout algorithm, physics |
-| Visual | Styling options (nodes, edges, labels) |
-| Theme | Color themes |
-
-### Resize Behavior
-
-- The panel height slider updates the plot area height.
-- Graph renderers observe container size changes and resize the canvas/iframe accordingly.
+| Source | Load data — demo, GitHub repo, cached graphs |
+| Graph | Graph settings — layout, physics, styling, compound groups |
 
 ---
 
 ## Source Tab
 
-### Quick Start
-- **Load Demo**: Loads CodeCartographer's own source as a sample graph
-
-### Upload Mode
-- Drag & drop Python files
-- Click to browse and select files
-- Plot individual files or all uploads
+### Demo
+- **Load Demo** — streams CodeCartographer's own source as a sample graph via `/parse/stream`.
 
 ### Repository Mode
-- Enter GitHub repository URL
-- Fetch repository structure
-- Navigate file tree
-- Plot whole repo or individual files
+1. Paste a GitHub URL and press Enter or click **Fetch**.
+2. The file tree populates. Click folders to expand, files to plot a single file.
+3. **Plot** — streams the whole repo graph.
+4. **Clear** — resets back to the URL input screen.
+
+### Recent Graphs (cache panel)
+Shown when no repo is loaded. Lists previously parsed graphs from the filesystem cache (`~/.codecarto/cache/`). Clicking an entry replays it instantly (cache hit — no re-parse). The ✕ button evicts a single entry.
 
 ---
 
-## Parse Tab
+## Graph Tab
 
-### Parser Modes
+### Layout Algorithm
 
-| Mode | Description |
-|------|-------------|
-| AST (Code Structure) | Full Python abstract syntax tree analysis |
-| Directory Tree | Filesystem hierarchy |
-| Dependencies | Import relationships |
-
-### File Extensions
-Configure which file extensions to parse (default: `.py`).
-
-### Behavior
-- Changing parser mode triggers re-fetch if data is loaded
-- Shows status message if no data is loaded yet
-
----
-
-## Layout Tab
-
-### Renderer Selection
-
-| Renderer | Description |
-|----------|-------------|
-| D3.js (Force-directed) | Interactive physics simulation |
-| Gravis (vis-network) | Alternative physics engine |
-| Notebook (Static HTML) | Pre-rendered visualizations |
-
-### Layout Algorithms
-
-| Layout | Description |
-|--------|-------------|
-| Spring | Force-directed (default) |
-| Spectral | Eigenvector-based positioning |
-| Kamada-Kawai | Energy minimization |
-| Circular | Nodes in a circle |
-| Spiral | Nodes in a spiral |
-| Random | Random positions |
-| Shell | Concentric circles |
-| Sorted Square | Grid arrangement |
+| Value | Description |
+|-------|-------------|
+| `spring_layout` | Force-directed (default) |
+| `compound_layout` | **Hierarchical**: dirs → files → symbols in nested orbits |
+| `circular_layout` | Nodes on a circle |
+| `kamada_kawai_layout` | Energy-minimization spring |
+| `spectral_layout` | Graph Laplacian eigenvectors |
 
 ### Physics Controls
-- **Enable Physics**: Toggle force simulation
-- **Repulsion Force**: How strongly nodes repel (negative values)
-- **Link Distance**: Target distance between connected nodes
+- **Enable Physics** — toggle force simulation (spring_layout only)
+- **Repulsion Force** — how strongly nodes repel (chargeStrength, negative values)
+- **Link Distance** — target edge length in px
+
+### Node Appearance
+| Option | Description |
+|--------|-------------|
+| Node Size | Base radius in px |
+| Node Opacity | 0.0–1.0 fill transparency |
+| Border Width | Stroke width in px |
+
+### Edge Appearance
+| Option | Description |
+|--------|-------------|
+| Edge Width | Line thickness in px |
+| Edge Opacity | 0.0–1.0 |
+
+### Label Appearance
+| Option | Description |
+|--------|-------------|
+| Show Node Labels | Toggle label visibility |
+| Label Size | Font size in px |
+| Label Color | Hex color |
+
+### Group Outlines (Compound Layout)
+**Group Outlines** toggle — shows translucent SVG bounding circles per directory/file group (most meaningful with `compound_layout`):
+- **Grey dashed** circles = directory clusters (depth 0)
+- **Purple dashed** circles = file clusters (depth 1)
 
 ---
 
-## Visual Tab
+## Streaming Graph Renderer
 
-### Node Options
-| Option | Range | Description |
-|--------|-------|-------------|
-| Node Size | 1-30 | Base radius in pixels |
-| Node Opacity | 0.1-1.0 | Fill transparency |
-| Border Width | 0-5 | Stroke width |
-| Color Override | color | Override automatic colors |
+The default renderer is `StreamingGraphRenderer` — nodes and edges arrive progressively over an SSE stream and are added to the canvas in real time.
 
-### Edge Options
-| Option | Range | Description |
-|--------|-------|-------------|
-| Edge Width | 0.5-5 | Line thickness |
-| Edge Opacity | 0.1-1.0 | Line transparency |
-| Edge Color | color | Line color |
-| Edge Style | solid/dashed/dotted | Line style |
-
-### Label Options
-| Option | Description |
-|--------|-------------|
-| Show Node Labels | Toggle node label visibility |
-| Show Edge Labels | Toggle edge label visibility |
-| Label Size | Font size in pixels |
-| Label Color | Text color |
-
-### Canvas Options
-| Option | Description |
-|--------|-------------|
-| Background | Graph canvas background color |
+- **Loading overlay** — shown until the first `meta` event arrives.
+- **Progress bar + status** — "Streaming N/M nodes" with a cancel ✕ button.
+- **Pop-in animation** — each node fades/scales in as it arrives (rAF drain loop).
+- **Batch pacing** — `setTotal(n)` tunes how many nodes render per frame (small repos: 1/frame; large repos: up to `ceil(N/100)` per frame).
+- **Fit view** — after the stream completes, the viewport auto-fits to contain all nodes.
+- **Drag** — nodes can be dragged to reposition; edges follow in real time.
 
 ---
 
-## Theme Tab
+## Radial Context Menu
 
-Available themes:
-- Terminal (default green)
-- Forest (nature green)
-- Cyberpunk (neon)
-- Ocean (blue)
-- Sunset (warm)
-- Light (bright)
-- Noir (dark)
-- Candy (colorful)
+Right-click anywhere on the graph canvas to open the radial menu.
 
-Themes affect the overall UI colors and default graph styling.
+### Node Menu (right-click a node)
+| Item | Action |
+|------|--------|
+| Expand | Load depth-2 symbols for a file node |
+| Collapse | Remove child nodes |
+| Neighbors | Highlight direct connections |
+| Pin | Lock node position |
+| Style | Open per-node style override |
+| Hide | Remove node from view |
+| Delete | Remove node + its edges |
+| Info | Show node metadata panel |
+| **Focus Group** | Zoom/pan to the bounding circle of this node's cluster (depth 0 and 1 only) |
+
+### Canvas Menu (right-click empty space)
+| Submenu / Item | Action |
+|----------------|--------|
+| **Zoom** | Fit to screen, reset zoom, zoom in/out |
+| **Select** | Select all nodes, clear selection |
+| **Layout → Spring** | Apply spring_layout |
+| **Layout → Compound** | Apply compound_layout |
+| **Layout → Circular** | Apply circular_layout |
+| **Layout → Kamada-Kawai** | Apply kamada_kawai_layout |
+| **Layout → Spectral** | Apply spectral_layout |
+| **Organize → Apply Layout** | Re-run the currently selected layout |
+
+---
+
+## Help Modal
+
+- Click the **`?`** button (header) to open a 3-step walkthrough.
+- Auto-shows on first visit (dismissed state stored in `localStorage: cc:help-dismissed`).
+- `HelpModal.open()` / `HelpModal.close()` API.
+
+---
+
+## Themes
+
+Available themes (top-right dropdown):
+- Terminal · Forest · Cyberpunk · Ocean · Sunset · Light · Noir · Candy
+
+Themes drive CSS custom properties (`--c-primary`, `--c-secondary`, `--c-accent`, etc.) consumed by both the UI and the graph renderer's default color palette.
 
 ---
 
 ## Keyboard Shortcuts
 
-### Graph Interaction
-| Key | Action |
-|-----|--------|
-| Scroll | Zoom in/out |
+| Key / Action | Effect |
+|-------------|--------|
+| Scroll | Zoom in/out on graph canvas |
 | Drag background | Pan |
-| Drag node | Move node |
-| Click node | Select |
-| Ctrl+Click | Multi-select |
-| Right-click | Radial menu |
-
-### Control Panel
-| Key | Action |
-|-----|--------|
-| Enter (in URL field) | Submit URL |
-
----
-
-## Status Messages
-
-The control panel displays status feedback:
-
-| Message | Meaning |
-|---------|---------|
-| Ready | No operation in progress |
-| Loading demo... | Fetching demo data |
-| Fetching repository... | Loading GitHub repo |
-| Applying X parser... | Re-parsing with new mode |
-| Parser: X. Load source to apply. | Parser changed but no data |
-| Renderer: X. Load source to apply. | Renderer changed but no data |
-| Error... | Operation failed |
-
----
-
-## Graph Interaction
-
-### Radial Menu
-Right-click on graph to open radial menu with options:
-- Zoom controls (fit, reset, in, out)
-- Selection (select all, clear)
-- Layout refresh
-- Export options
-
-### Node Dragging
-- Drag nodes to reposition
-- Node stays pinned after drag
-- Edges update in real-time
-
-### Selection
-- Click to select single node
-- Ctrl/Cmd+Click for multi-select
-- Selected nodes show highlight
-
-### Tooltips
-Hover over nodes to see:
-- Node label/ID
-- Node type
-- Connection count
-
----
-
-## Callbacks Flow
-
-```
-User Action → Control Panel Callback → State Update → Re-render
-
-Examples:
-- onDemo() → loadDemo() → handlePlotData() → createGraphVnode()
-- onParserOptionsChange() → update state → lastPlotAction() if data exists
-- onRendererChange() → update state → createGraphVnode() if data exists
-- onGraphStylingChange() → update state → createGraphVnode() or re-fetch
-```
+| Drag node | Reposition node; edges follow |
+| Right-click | Open radial menu |
+| Enter (URL field) | Submit GitHub URL |
 
 ---
 
 ## State Flow
 
 ```
-User changes setting
+User action (click, input, toggle)
     ↓
-updatePanelState() - local component state for UI
+Control Panel callback (onDemo, onGraphStylingChange, onPlotWholeRepo, …)
     ↓
-cellState.update() - global Meiosis state
+cell_state.update() — Meiosis patch
     ↓
-m.redraw() - Mithril re-renders
+m.redraw() — Mithril re-renders control panel
     ↓
-Graph updates based on new state
+PlotActions / StreamingGraphRenderer — graph updates
 ```
 
 ---
@@ -234,25 +181,21 @@ Graph updates based on new state
 ## Common Workflows
 
 ### View Demo
-1. Click "Load Demo" in Source tab
-2. Graph appears with default settings
-3. Adjust styling in Visual tab
-4. Change theme in Theme tab
+1. Open control panel → Source tab → **Load Demo**.
+2. Graph streams in progressively.
+3. Adjust settings in the Graph tab.
 
-### Parse GitHub Repository
-1. Enter GitHub URL in Source tab
-2. Click "Fetch"
-3. Navigate file tree
-4. Click "Plot" on whole repo or specific files
+### Parse a GitHub Repo
+1. Source tab → paste GitHub URL → **Fetch**.
+2. File tree loads. Expand folders, click a file to plot it, or **Plot** for the whole repo.
+3. Graph streams in. Use radial menu → Layout → Compound for hierarchical view.
 
-### Change Parser Mode
-1. Load some data first (demo or upload)
-2. Go to Parse tab
-3. Select different parser mode
-4. Graph re-renders with new structure
+### Use Compound Layout
+1. Graph tab → Layout → **Compound**.
+2. Plot (or re-plot). Dirs appear as large clusters, files orbit dirs, symbols orbit files.
+3. Toggle **Group Outlines** to show/hide bounding circles.
+4. Right-click a dir/file node → **Focus Group** to zoom to that cluster.
 
-### Switch Renderers
-1. Load graph data
-2. Go to Layout tab
-3. Select different renderer
-4. Graph re-renders with new engine
+### Re-open a Closed Panel
+1. Close any dock tab (×).
+2. Click the **Restore** button that appears in the header.

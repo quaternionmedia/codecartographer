@@ -76,7 +76,30 @@ Array<{ 'text/html': string, 'text/plain'?: string }>
 - Custom node shapes
 - Interactive legend
 
-### 3. GravisGraphRenderer (`gravis_renderer.ts`)
+### 3. StreamingGraphRenderer (`streaming_renderer.ts`)
+
+**Purpose**: Progressive node/edge rendering over an SSE stream via a requestAnimationFrame drain loop.
+
+**Data Format**: Called directly via `addNode()` / `addEdge()` / `finalize()` — not registered in the registry (it's a streaming sink, not a batch renderer).
+
+**Use Case**: All repo / file plots from `/parse/stream` — the primary render path.
+
+**Features**:
+- rAF drain loop with adaptive batch size (`setTotal(n)`)
+- Pop-in entrance animation per node
+- Loading overlay until first `meta` event
+- Compound group backgrounds (`_drawCompoundBackgrounds()`) using `CompoundLayoutManager`
+- Drag support (pre-computed positions — no force simulation)
+
+### 4. CompoundLayoutManager (`compound_layout.ts`)
+
+**Purpose**: Computes bounding circles for compound layout groups.
+
+**API**: `computeGroupBounds(nodes, padding, baseNodeSize): GroupBounds[]`
+
+Spatially assigns each file to its nearest dir and each symbol to its nearest file, then returns bounding circles depth-0 first (SVG z-order: dir circles drawn before file circles). Used by both `StreamingGraphRenderer` and `GraphRenderer`.
+
+### 5. GravisGraphRenderer (`gravis_renderer.ts`)
 
 **Purpose**: Future client-side gravis.js rendering
 
