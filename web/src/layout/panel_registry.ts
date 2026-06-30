@@ -19,11 +19,12 @@ import type { ComponentItemConfig } from 'golden-layout';
 import type { LayoutContext } from './layout_context';
 import { createGraphPanel } from './panels/graph_panel';
 import { createFileTreePanel } from './panels/file_tree_panel';
-import { createSourcePanel } from './panels/source_panel';
+import { createUploadPanel } from './panels/upload_panel';
+import { createRepoPanel } from './panels/repo_panel';
 import { createGraphSettingsPanel } from './panels/graph_settings_panel';
 import { createActionsPanel } from './panels/actions_panel';
 
-export type DockPanelId = 'graph' | 'file-tree' | 'source-panel' | 'graph-settings-panel' | 'plotbar';
+export type DockPanelId = 'graph' | 'file-tree' | 'upload-panel' | 'repo-panel' | 'graph-settings-panel' | 'plotbar';
 
 export interface PanelDefinition {
   readonly id: DockPanelId;
@@ -50,11 +51,18 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     mount: (ctx, el) => m.mount(el, createFileTreePanel(ctx)),
   },
   {
-    id: 'source-panel',
-    menuLabel: 'Source',
-    config: { type: 'component', componentType: 'source-panel', id: 'source-panel', title: 'Source', isClosable: true },
+    id: 'upload-panel',
+    menuLabel: 'Upload',
+    config: { type: 'component', componentType: 'upload-panel', id: 'upload-panel', title: '↑ Upload', isClosable: true },
     overflow: 'auto',
-    mount: (ctx, el) => m.mount(el, createSourcePanel(ctx)),
+    mount: (ctx, el) => m.mount(el, createUploadPanel(ctx)),
+  },
+  {
+    id: 'repo-panel',
+    menuLabel: 'Repository',
+    config: { type: 'component', componentType: 'repo-panel', id: 'repo-panel', title: '⬇ Repository', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createRepoPanel(ctx)),
   },
   {
     id: 'graph-settings-panel',

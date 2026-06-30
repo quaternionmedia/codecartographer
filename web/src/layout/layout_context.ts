@@ -622,6 +622,11 @@ export class LayoutContext {
         // Streaming from the URL will hit the backend cache and replay instantly.
         this.updatePanelState({ repoUrl: entry.url, codeSourceMode: 'repo' });
         this._startStreamFromUrl(entry.url);
+        // fetchRepository populates state.repo.content, which the Files panel
+        // reads — without this the recalled graph renders but the tree stays empty.
+        this.actions.repo.fetchRepository(entry.url)
+          .then(() => m.redraw())
+          .catch(() => { /* graph still renders from the stream above */ });
       },
 
       onClearRepo: () => {

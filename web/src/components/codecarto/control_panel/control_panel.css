@@ -241,46 +241,6 @@
   padding-left: var(--spacing-md);
 }
 
-/* Mode toggle */
-.panel-source__mode-toggle {
-  display: flex;
-  gap: 0;
-  background-color: var(--c-primary-light);
-  border-radius: var(--border-radius);
-  padding: 2px;
-  width: fit-content;
-  flex-shrink: 0;
-}
-
-.panel-source__mode-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
-  background-color: transparent;
-  color: var(--c-font-muted);
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  font-size: 0.85em;
-  transition: all var(--t-transition-fast);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  box-shadow: none;
-  margin: 0;
-  height: auto;
-}
-.panel-source__mode-btn:hover {
-  color: var(--c-font);
-  box-shadow: none;
-}
-.panel-source__mode-btn--active {
-  background-color: var(--c-secondary);
-  color: var(--c-font-inverse);
-}
-.panel-source__mode-btn--active:hover {
-  background-color: var(--c-secondary);
-  color: var(--c-font-inverse);
-}
-
 /* Upload dropzone */
 .panel-upload__dropzone {
   display: flex;
@@ -309,71 +269,17 @@
   font-size: 0.85em;
 }
 
-/* Upload file list */
+/* Upload section */
 .panel-source__upload {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
   min-height: 0;
 }
-.panel-source__files {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  min-height: 0;
-}
-.panel-source__files-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.85em;
+.panel-source__upload-summary {
+  font-size: 0.8em;
   color: var(--c-font-muted);
-  flex-shrink: 0;
-}
-.panel-source__file-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-}
-.panel-source__file {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background-color: var(--c-primary-light);
-  border: var(--border-size-thin) solid var(--c-border);
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: all var(--t-transition-fast);
-  flex-shrink: 0;
-}
-.panel-source__file:hover {
-  border-color: var(--c-secondary);
-  background-color: var(--c-primary);
-}
-.panel-source__file--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.panel-source__file--disabled:hover {
-  border-color: var(--c-border);
-  background-color: var(--c-primary-light);
-}
-.panel-source__file-icon { font-size: 1em; }
-.panel-source__file-name {
-  flex: 1;
-  font-size: 0.85em;
-  color: var(--c-font);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.panel-source__file-size {
-  font-size: 0.75em;
-  color: var(--c-font-muted);
+  font-style: italic;
 }
 
 /* Repo section in left column */
