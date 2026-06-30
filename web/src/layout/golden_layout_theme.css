@@ -629,3 +629,10 @@
   color: #f39c12;
 }
 .gl-graphbase-panel__section { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+.gl-graphbase-panel__section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}

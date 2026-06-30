@@ -30,7 +30,7 @@ import { StreamingGraphRenderer } from '../features/graph/services/streaming_ren
 import { ToastManager } from '../components/codecarto/help/toast';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
-import { GraphbaseService, GraphbaseBookmark } from '../services/graphbase_service';
+import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta } from '../services/graphbase_service';
 
 export type { DockPanelId } from './panel_registry';
 
@@ -92,9 +92,10 @@ export class LayoutContext {
   /** Cached graph entries fetched from the backend cache endpoint. */
   public cachedGraphs: CachedEntry[] | null = null;
 
-  /** Graphbase availability and saved bookmarks. */
+  /** Graphbase availability, saved bookmarks, and saved snapshots. */
   public graphbaseAvailable = false;
   public graphbaseBookmarks: GraphbaseBookmark[] = [];
+  public graphbaseSnapshots: GraphbaseSnapshotMeta[] = [];
 
   /** Dock panels that have been closed and can be restored. */
   public hiddenDockPanels: DockPanelId[] = [];
@@ -229,9 +230,13 @@ export class LayoutContext {
     const dbBase = this.appState.api.db;
     this.graphbaseAvailable = await GraphbaseService.isAvailable(dbBase);
     if (this.graphbaseAvailable) {
-      this.graphbaseBookmarks = await GraphbaseService.listBookmarks(dbBase);
+      [this.graphbaseBookmarks, this.graphbaseSnapshots] = await Promise.all([
+        GraphbaseService.listBookmarks(dbBase),
+        GraphbaseService.listSnapshots(dbBase),
+      ]);
     } else {
       this.graphbaseBookmarks = [];
+      this.graphbaseSnapshots = [];
     }
     m.redraw();
   }
@@ -275,6 +280,67 @@ export class LayoutContext {
     this.actions.repo.fetchRepository(bookmark.url)
       .then(() => m.redraw())
       .catch(() => { /* graph still renders */ });
+  }
+
+  /** Save the current rendered graph as a full snapshot (instant replay later). */
+  public async saveGraphbaseSnapshot(name: string): Promise<void> {
+    if (!name.trim()) return;
+    const gd = this.appState.state.graphData as any;
+    if (!gd?.graph?.nodes) {
+      ToastManager.show('No graph loaded — render one first');
+      return;
+    }
+    // Reconstruct flat node array from the gJGF {id: {metadata: {...}}} shape
+    const nodes = Object.entries(gd.graph.nodes as Record<string, { metadata: Record<string, unknown> }>)
+      .map(([id, val]) => ({ id, ...val.metadata }));
+    const edges: Array<{ source: string; target: string }> = gd.graph.edges ?? [];
+    const meta = {
+      url: this.panelState.repoUrl || '',
+      layout: this.appState.state.graphStyling.layout,
+      nodeCount: nodes.length,
+    };
+    const ok = await GraphbaseService.saveSnapshot(
+      this.appState.api.db, name.trim(), nodes, edges, meta,
+    );
+    if (ok) {
+      ToastManager.show(`Snapshot "${name.trim()}" saved`);
+      await this.refreshGraphbase();
+    } else {
+      ToastManager.show('Could not save snapshot');
+    }
+  }
+
+  /** Replay a stored snapshot instantly — no re-streaming needed. */
+  public async loadGraphbaseSnapshot(snapshotName: string): Promise<void> {
+    const snap = await GraphbaseService.loadSnapshot(this.appState.api.db, snapshotName);
+    if (!snap) { ToastManager.show('Snapshot not found'); return; }
+
+    const styling = this.appState.state.graphStyling;
+    this.updatePanelState({ isLoading: true, statusMessage: 'Loading snapshot…', progress: null });
+
+    this._mountAndStream((renderer) => {
+      renderer.setTotal(snap.nodes.length);
+      // Feed stored nodes/edges synchronously — no network call
+      for (const node of snap.nodes) renderer.addNode(node as any);
+      for (const edge of snap.edges) renderer.addEdge(edge as any);
+      renderer.finalize();
+      this.updatePanelState({ isLoading: false, statusMessage: `Snapshot: ${snapshotName}`, progress: null });
+      return () => {}; // no-op cancel
+    }, `Loading "${snapshotName}"…`);
+
+    // If the snapshot has a URL, also populate the file tree
+    if (snap.meta?.url) {
+      this.updatePanelState({ repoUrl: snap.meta.url, codeSourceMode: 'repo' });
+      this.actions.repo.fetchRepository(snap.meta.url)
+        .then(() => m.redraw())
+        .catch(() => {});
+    }
+  }
+
+  /** Delete a named snapshot. */
+  public async deleteGraphbaseSnapshot(name: string): Promise<void> {
+    const ok = await GraphbaseService.deleteSnapshot(this.appState.api.db, name);
+    if (ok) await this.refreshGraphbase();
   }
 
   /** Fetch and refresh the backend graph-cache list. */

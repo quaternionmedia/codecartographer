@@ -1,25 +1,24 @@
 /**
  * Graphbase Panel — unified Graph Library
  *
- * Shows both storage tiers in one view so users never need to look in two
- * places:
- *   • Saved    — durable named bookmarks (MongoDB /db/bookmarks)
- *   • Recent   — TTL'd filesystem cache entries (same as the "Recent" section
- *               in the repo panel, but here with a one-click "Save" action
- *               that promotes a cache entry to a durable bookmark)
+ * Three tiers in one view:
+ *   • Snapshots — full node/edge data, instant replay (MongoDB /db/snapshots)
+ *   • Saved     — durable URL bookmarks, re-streams on load (/db/bookmarks)
+ *   • Recent    — TTL'd filesystem cache entries; ☆ promotes to bookmark
  *
- * Degrades gracefully: the Saved section is gated by graphbaseAvailable;
- * the Recent section renders from the filesystem cache regardless of MongoDB.
+ * Snapshots and Saved sections are gated by graphbaseAvailable.
+ * Recent always renders from the filesystem cache regardless of MongoDB.
  */
 
 import m from 'mithril';
 import type { LayoutContext } from '../layout_context';
 
-let _saveInput = '';
+let _snapInput = '';
+let _bookmarkInput = '';
 
 function _ageStr(age_seconds: number): string {
-  const m = Math.round(age_seconds / 60);
-  return m < 60 ? `${m}m ago` : `${Math.round(m / 60)}h ago`;
+  const mins = Math.round(age_seconds / 60);
+  return mins < 60 ? `${mins}m ago` : `${Math.round(mins / 60)}h ago`;
 }
 
 export function createGraphbasePanel(ctx: LayoutContext): m.Component {
@@ -27,13 +26,13 @@ export function createGraphbasePanel(ctx: LayoutContext): m.Component {
     oncreate: () => ctx.refreshGraphbase(),
 
     view: () => {
-      const available  = ctx.graphbaseAvailable;
-      const bookmarks  = ctx.graphbaseBookmarks;
-      const recent     = ctx.cachedGraphs ?? [];
-      const hasUrl     = !!ctx.panelState.repoUrl;
-      const isLoading  = ctx.panelState.isLoading;
-
-      // Names already saved — used to mark "promote" button as redundant
+      const available = ctx.graphbaseAvailable;
+      const snapshots = ctx.graphbaseSnapshots;
+      const bookmarks = ctx.graphbaseBookmarks;
+      const recent    = ctx.cachedGraphs ?? [];
+      const hasGraph  = !!(ctx.appState.state.graphData);
+      const hasUrl    = !!ctx.panelState.repoUrl;
+      const loading   = ctx.panelState.isLoading;
       const savedUrls = new Set(bookmarks.map(b => b.url));
 
       return m('div.gl-graphbase-panel', [
@@ -45,42 +44,93 @@ export function createGraphbasePanel(ctx: LayoutContext): m.Component {
             class: available
               ? 'gl-graphbase-panel__status--ok'
               : 'gl-graphbase-panel__status--off',
-          }, available ? 'graphbase connected' : 'graphbase unavailable'),
+          }, available ? 'connected' : 'unavailable'),
         ]),
 
         !available
           ? m('p.gl-graphbase-panel__hint',
-              'Set MONGODB_URI to enable durable bookmarks. Recent graphs are always shown below.')
+              'Set MONGODB_URI and restart to enable Snapshots and Saved. Recent graphs always show below.')
           : null,
 
-        // ── Save current repo ─────────────────────────────────────────────────
-        available && hasUrl
-          ? m('div.gl-graphbase-panel__save', [
-              m('input.gl-graphbase-panel__name-input[type=text]', {
-                placeholder: 'Bookmark name…',
-                value: _saveInput,
-                oninput: (e: Event) => { _saveInput = (e.target as HTMLInputElement).value; },
-                onkeydown: (e: KeyboardEvent) => {
-                  if (e.key === 'Enter' && _saveInput.trim()) {
-                    ctx.saveGraphbaseBookmark(_saveInput);
-                    _saveInput = '';
-                  }
-                },
-              }),
-              m('button.gl-graphbase-panel__save-btn', {
-                disabled: !_saveInput.trim(),
-                onclick: () => { ctx.saveGraphbaseBookmark(_saveInput); _saveInput = ''; },
-                title: `Save current repo as a named bookmark`,
-              }, 'Save'),
+        // ── Snapshots ─────────────────────────────────────────────────────────
+        available
+          ? m('div.gl-graphbase-panel__section', [
+              m('div.gl-graphbase-panel__section-row', [
+                m('span.gl-graphbase-panel__section-label', `Snapshots (${snapshots.length})`),
+                hasGraph
+                  ? m('div.gl-graphbase-panel__save', [
+                      m('input.gl-graphbase-panel__name-input[type=text]', {
+                        placeholder: 'Snapshot name…',
+                        value: _snapInput,
+                        oninput: (e: Event) => { _snapInput = (e.target as HTMLInputElement).value; },
+                        onkeydown: (e: KeyboardEvent) => {
+                          if (e.key === 'Enter' && _snapInput.trim()) {
+                            ctx.saveGraphbaseSnapshot(_snapInput);
+                            _snapInput = '';
+                          }
+                        },
+                      }),
+                      m('button.gl-graphbase-panel__save-btn', {
+                        disabled: !_snapInput.trim() || loading,
+                        onclick: () => { ctx.saveGraphbaseSnapshot(_snapInput); _snapInput = ''; },
+                        title: 'Save full graph — instant replay, no re-parse',
+                      }, '📸'),
+                    ])
+                  : m('p.gl-graphbase-panel__hint', 'Render a graph first to save a snapshot.'),
+              ]),
+              snapshots.length > 0
+                ? snapshots.map(s =>
+                    m('div.gl-graphbase-panel__entry', { key: s.name }, [
+                      m('div.gl-graphbase-panel__entry-info', [
+                        m('span.gl-graphbase-panel__entry-name', s.name),
+                        m('span.gl-graphbase-panel__entry-url',
+                          `${s.meta?.nodeCount ?? '?'} nodes · ${_ageStr(
+                            Math.round(Date.now() / 1000 - (s.saved_at ?? 0)))}`,
+                        ),
+                      ]),
+                      m('div.gl-graphbase-panel__entry-actions', [
+                        m('button.gl-graphbase-panel__load-btn', {
+                          onclick: () => ctx.loadGraphbaseSnapshot(s.name),
+                          disabled: loading,
+                          title: 'Replay instantly (no re-parse)',
+                        }, '▶'),
+                        m('button.gl-graphbase-panel__delete-btn', {
+                          onclick: () => ctx.deleteGraphbaseSnapshot(s.name),
+                          title: 'Delete snapshot',
+                        }, '✕'),
+                      ]),
+                    ])
+                  )
+                : m('p.gl-graphbase-panel__hint', 'No snapshots yet.'),
             ])
-          : available
-            ? m('p.gl-graphbase-panel__hint', 'Fetch a repo to save it as a bookmark.')
-            : null,
+          : null,
 
         // ── Saved bookmarks ───────────────────────────────────────────────────
         available
           ? m('div.gl-graphbase-panel__section', [
-              m('span.gl-graphbase-panel__section-label', `Saved (${bookmarks.length})`),
+              m('div.gl-graphbase-panel__section-row', [
+                m('span.gl-graphbase-panel__section-label', `Saved (${bookmarks.length})`),
+                hasUrl
+                  ? m('div.gl-graphbase-panel__save', [
+                      m('input.gl-graphbase-panel__name-input[type=text]', {
+                        placeholder: 'Bookmark name…',
+                        value: _bookmarkInput,
+                        oninput: (e: Event) => { _bookmarkInput = (e.target as HTMLInputElement).value; },
+                        onkeydown: (e: KeyboardEvent) => {
+                          if (e.key === 'Enter' && _bookmarkInput.trim()) {
+                            ctx.saveGraphbaseBookmark(_bookmarkInput);
+                            _bookmarkInput = '';
+                          }
+                        },
+                      }),
+                      m('button.gl-graphbase-panel__save-btn', {
+                        disabled: !_bookmarkInput.trim() || loading,
+                        onclick: () => { ctx.saveGraphbaseBookmark(_bookmarkInput); _bookmarkInput = ''; },
+                        title: 'Save URL bookmark — re-streams on load',
+                      }, '☆'),
+                    ])
+                  : m('p.gl-graphbase-panel__hint', 'Fetch a repo to save a bookmark.'),
+              ]),
               bookmarks.length > 0
                 ? bookmarks.map(bk =>
                     m('div.gl-graphbase-panel__entry', { key: bk.name }, [
@@ -92,8 +142,8 @@ export function createGraphbasePanel(ctx: LayoutContext): m.Component {
                       m('div.gl-graphbase-panel__entry-actions', [
                         m('button.gl-graphbase-panel__load-btn', {
                           onclick: () => ctx.loadGraphbaseBookmark(bk),
-                          disabled: isLoading,
-                          title: `Stream ${bk.url}`,
+                          disabled: loading,
+                          title: 'Re-stream from URL',
                         }, '▶'),
                         m('button.gl-graphbase-panel__delete-btn', {
                           onclick: () => ctx.deleteGraphbaseBookmark(bk.name),
@@ -102,49 +152,47 @@ export function createGraphbasePanel(ctx: LayoutContext): m.Component {
                       ]),
                     ])
                   )
-                : m('p.gl-graphbase-panel__hint', 'No bookmarks yet. Save a recent graph below.'),
+                : m('p.gl-graphbase-panel__hint', 'No bookmarks yet.'),
             ])
           : null,
 
-        // ── Recent (filesystem cache) ─────────────────────────────────────────
+        // ── Recent ────────────────────────────────────────────────────────────
         m('div.gl-graphbase-panel__section', [
           m('span.gl-graphbase-panel__section-label', `Recent (${recent.length})`),
           recent.length > 0
-            ? recent.slice(0, 8).map(entry =>
-                m('div.gl-graphbase-panel__entry', { key: entry.key }, [
+            ? recent.slice(0, 8).map(e =>
+                m('div.gl-graphbase-panel__entry', { key: e.key }, [
                   m('div.gl-graphbase-panel__entry-info', [
                     m('span.gl-graphbase-panel__entry-name',
-                      entry.label || entry.url.replace('https://github.com/', '')),
-                    m('span.gl-graphbase-panel__entry-url', _ageStr(entry.age_seconds)),
+                      e.label || e.url.replace('https://github.com/', '')),
+                    m('span.gl-graphbase-panel__entry-url', _ageStr(e.age_seconds)),
                   ]),
                   m('div.gl-graphbase-panel__entry-actions', [
                     m('button.gl-graphbase-panel__load-btn', {
-                      onclick: () => ctx.panelCallbacks.onLoadFromCache?.(entry.key),
-                      disabled: isLoading,
-                      title: `Replay ${entry.url}`,
+                      onclick: () => ctx.panelCallbacks.onLoadFromCache?.(e.key),
+                      disabled: loading,
+                      title: 'Replay from cache',
                     }, '▶'),
-                    // Promote to durable bookmark — only shown when graphbase is available
-                    // and this URL isn't already saved
-                    available && !savedUrls.has(entry.url)
+                    available && !savedUrls.has(e.url)
                       ? m('button.gl-graphbase-panel__promote-btn', {
-                          onclick: () => {
-                            const name = entry.label
-                              || entry.url.replace('https://github.com/', '');
-                            ctx.saveGraphbaseBookmark(name);
-                          },
-                          title: 'Save as a durable bookmark',
+                          onclick: () =>
+                            ctx.saveGraphbaseBookmark(
+                              e.label || e.url.replace('https://github.com/', ''),
+                              e.url,
+                            ),
+                          title: 'Save as durable bookmark',
                         }, '☆')
                       : available
                         ? m('span.gl-graphbase-panel__saved-badge', { title: 'Already saved' }, '★')
                         : null,
                     m('button.gl-graphbase-panel__delete-btn', {
-                      onclick: () => ctx.panelCallbacks.onEvictCache?.(entry.key),
+                      onclick: () => ctx.panelCallbacks.onEvictCache?.(e.key),
                       title: 'Remove from cache',
                     }, '✕'),
                   ]),
                 ])
               )
-            : m('p.gl-graphbase-panel__hint', 'No recent graphs — fetch a repo to get started.'),
+            : m('p.gl-graphbase-panel__hint', 'No recent graphs — fetch a repo first.'),
         ]),
       ]);
     },
