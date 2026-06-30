@@ -609,5 +609,23 @@
   border-radius: var(--border-radius, 4px);
   display: flex; align-items: center; justify-content: center;
 }
-.gl-graphbase-panel__load-btn:hover  { border-color: var(--c-secondary, #00ff41); color: var(--c-secondary, #00ff41); }
-.gl-graphbase-panel__delete-btn:hover { border-color: #e74c3c; color: #e74c3c; }
+.gl-graphbase-panel__load-btn:hover    { border-color: var(--c-secondary, #00ff41); color: var(--c-secondary, #00ff41); }
+.gl-graphbase-panel__delete-btn:hover  { border-color: #e74c3c; color: #e74c3c; }
+.gl-graphbase-panel__promote-btn {
+  width: 22px; height: 22px;
+  border: 1px solid var(--c-border, #333);
+  background: transparent;
+  color: var(--c-font-muted, #00aa2a);
+  cursor: pointer;
+  font-size: 0.8em;
+  border-radius: var(--border-radius, 4px);
+  display: flex; align-items: center; justify-content: center;
+}
+.gl-graphbase-panel__promote-btn:hover { border-color: #f39c12; color: #f39c12; }
+.gl-graphbase-panel__saved-badge {
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8em;
+  color: #f39c12;
+}
+.gl-graphbase-panel__section { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }

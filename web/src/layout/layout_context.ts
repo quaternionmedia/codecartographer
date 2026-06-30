@@ -236,15 +236,20 @@ export class LayoutContext {
     m.redraw();
   }
 
-  /** Save the current repo URL + settings as a named graphbase bookmark. */
-  public async saveGraphbaseBookmark(name: string): Promise<void> {
-    if (!name.trim() || !this.panelState.repoUrl) return;
+  /**
+   * Save a named graphbase bookmark.
+   * When called from the "promote from cache" flow, pass an explicit `url`
+   * override; otherwise uses the current repo URL from panelState.
+   */
+  public async saveGraphbaseBookmark(name: string, urlOverride?: string): Promise<void> {
+    const url = urlOverride ?? this.panelState.repoUrl;
+    if (!name.trim() || !url) return;
     const opts = this.appState.state.parserOptions;
     const layout = this.panelState ? (this.appState.state.graphStyling.layout ?? 'compound_layout') : 'compound_layout';
     const ok = await GraphbaseService.saveBookmark(
       this.appState.api.db,
       name.trim(),
-      this.panelState.repoUrl,
+      url,
       layout,
       this.panelState.parseDepth,
       opts.fileExtensions,
