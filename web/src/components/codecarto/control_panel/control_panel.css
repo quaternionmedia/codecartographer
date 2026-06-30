@@ -757,6 +757,38 @@
   transform: translateX(16px);
 }
 
+/* Per-depth label chips */
+.panel-settings__depth-labels {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.panel-settings__sublabel {
+  font-size: 0.72em;
+  color: var(--c-font-muted);
+}
+.panel-settings__depth-label-chip {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: var(--border-radius);
+  font-size: 0.72em;
+  cursor: pointer;
+  background: var(--c-primary-light);
+  border: 1px solid var(--c-border);
+  color: var(--c-font-muted);
+  user-select: none;
+}
+.panel-settings__depth-label-chip input { display: none; }
+.panel-settings__depth-label-chip--on {
+  border-color: var(--c-secondary);
+  color: var(--c-secondary);
+  background: rgba(0,255,65,0.06);
+}
+
 /* Select dropdown */
 .panel-settings__select {
   width: 100%;

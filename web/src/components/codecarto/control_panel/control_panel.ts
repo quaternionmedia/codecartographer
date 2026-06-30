@@ -45,6 +45,12 @@ export interface GraphStylingOptions {
 
   // System renderer — selects which SystemDefinition to render
   systemId?: string;
+
+  // Compound layout group outlines
+  showCompoundGroups?: boolean;
+
+  // Per-depth label visibility (overrides showNodeLabels per depth 0–3)
+  showLabelsByDepth?: Partial<Record<number, boolean>>;
 }
 
 export interface ParserOptions {
@@ -743,6 +749,35 @@ export function ControlPanel(
                       }),
                       m('span.panel-settings__toggle-slider'),
                     ]),
+                  ]),
+                  // Per-depth label toggles (override the global setting per depth)
+                  m('div.panel-settings__depth-labels', [
+                    m('span.panel-settings__sublabel', 'Per depth:'),
+                    ...([
+                      { depth: 0, label: 'Dir' },
+                      { depth: 1, label: 'File' },
+                      { depth: 2, label: 'Sym' },
+                      { depth: 3, label: 'Sub' },
+                    ].map(({ depth, label }) => {
+                      const perDepth = styling.showLabelsByDepth ?? {};
+                      const isSet = depth in perDepth;
+                      const val = isSet ? perDepth[depth] : styling.showNodeLabels;
+                      return m('label.panel-settings__depth-label-chip', {
+                        title: `Labels for depth ${depth} (${label} nodes)`,
+                        class: val ? 'panel-settings__depth-label-chip--on' : 'panel-settings__depth-label-chip--off',
+                      }, [
+                        m('input[type=checkbox]', {
+                          checked: val,
+                          onchange: (e: Event) => {
+                            const checked = (e.target as HTMLInputElement).checked;
+                            const current = { ...(styling.showLabelsByDepth ?? {}) };
+                            current[depth] = checked;
+                            callbacks.onGraphStylingChange({ showLabelsByDepth: current });
+                          },
+                        }),
+                        label,
+                      ]);
+                    })),
                   ]),
                 ]),
                 m('div.panel-settings__group', [

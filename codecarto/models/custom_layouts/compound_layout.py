@@ -87,19 +87,33 @@ def compound_layout(G: nx.DiGraph) -> dict:
             file_syms[p].append(sym)
 
     # ── Orbit radius helpers ───────────────────────────────────────────────
-    def file_orbit_r(n: int) -> float:
-        return max(1.8, math.sqrt(max(n, 1)) * 0.9)
-
     def sym_orbit_r(n: int) -> float:
         return max(0.45, math.sqrt(max(n, 1)) * 0.28)
 
+    def file_orbit_r(n_files: int, max_child_sym_r: float = 0.45) -> float:
+        """Orbit radius for files around a dir.
+
+        Accounts for the maximum symbol-cluster radius among the dir's files
+        so file-cluster circles don't overlap each other.  The +max_child_sym_r
+        term grows the orbit proportionally to how deep the symbol layer is.
+        """
+        base = max(1.8, math.sqrt(max(n_files, 1)) * 0.9)
+        return base + max_child_sym_r
+
+    # Pre-compute per-dir maximum symbol-orbit radius (cumulative subtree size).
+    def _max_sym_r_for_dir(d: str) -> float:
+        return max(
+            (sym_orbit_r(len(file_syms.get(f, []))) for f in dir_files.get(d, [])),
+            default=0.45,
+        )
+
+    per_dir_max_sym_r = {d: _max_sym_r_for_dir(d) for d in dirs}
+    global_max_sym_r = max(per_dir_max_sym_r.values(), default=0.45)
+
+    # Global max file-orbit radius (used for orphan ring sizing).
     max_file_r = max(
-        (file_orbit_r(len(fs)) for fs in dir_files.values() if fs),
+        (file_orbit_r(len(dir_files[d]), per_dir_max_sym_r[d]) for d in dirs if dir_files[d]),
         default=1.8,
-    )
-    max_sym_r = max(
-        (sym_orbit_r(len(ss)) for ss in file_syms.values() if ss),
-        default=0.45,
     )
 
     pos: dict[str, tuple[float, float]] = {}
@@ -118,10 +132,14 @@ def compound_layout(G: nx.DiGraph) -> dict:
         # Scale so cluster radii don't overlap.
         # Spring spans ≈ [-1, 1]; each cluster needs radius ≈ max_file_r + max_sym_r.
         # Target inter-dir distance ≥ 2.8 × cluster_radius.
-        cluster_r = max_file_r + max_sym_r
+        cluster_r = max_file_r + global_max_sym_r
         scale = math.sqrt(len(dirs)) * cluster_r * 1.6
+        # Perpendicular axis bias: stretch dirs more along X so the dir layer
+        # spreads left-right while file/symbol clusters hang vertically around
+        # each dir.  Values chosen to be perceivable without being extreme.
+        x_stretch, y_stretch = 1.6, 0.7
         dir_pos = {
-            n: (float(xy[0]) * scale, float(xy[1]) * scale)
+            n: (float(xy[0]) * scale * x_stretch, float(xy[1]) * scale * y_stretch)
             for n, xy in raw_dir.items()
         }
 
@@ -137,7 +155,7 @@ def compound_layout(G: nx.DiGraph) -> dict:
             continue
         dx, dy = pos[p]
         n_files = len(dir_files[p])
-        r = file_orbit_r(n_files)
+        r = file_orbit_r(n_files, per_dir_max_sym_r.get(p, 0.45))
         idx = dir_files[p].index(f)
         angle = (2 * math.pi * idx) / max(n_files, 1) + math.pi / 6
         pos[f] = (dx + r * math.cos(angle), dy + r * math.sin(angle))
@@ -163,7 +181,7 @@ def compound_layout(G: nx.DiGraph) -> dict:
         pos[sym] = (fx + r * math.cos(angle), fy + r * math.sin(angle))
 
     if orphan_syms:
-        r_orph = max_sym_r * 0.5
+        r_orph = global_max_sym_r * 0.5
         for i, sym in enumerate(orphan_syms):
             angle = (2 * math.pi * i) / max(len(orphan_syms), 1)
             pos[sym] = (r_orph * math.cos(angle), r_orph * math.sin(angle))

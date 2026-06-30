@@ -106,6 +106,7 @@ export class GraphRenderer {
   private static currentUpdatePositions: (() => void) | null = null;
   private static currentResizeObserver: ResizeObserver | null = null;
   private static _compoundBounds: GroupBounds[] = [];
+  private static _childrenMap: Map<string, string[]> = new Map();
 
   // Extensions system
   private static dragExtension: DragExtension | null = null;
@@ -620,7 +621,10 @@ export class GraphRenderer {
             }
           })
           .on('drag', (event: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode) => {
-            // Update both regular and fixed positions for consistent behavior
+            // Compute delta before updating the dragged node's position.
+            const dx = event.x - (d.x ?? event.x);
+            const dy = event.y - (d.y ?? event.y);
+
             d.x = event.x;
             d.y = event.y;
             d.fx = event.x;
@@ -630,19 +634,37 @@ export class GraphRenderer {
             d3.select(event.currentTarget as SVGGElement)
               .attr('transform', `translate(${event.x}, ${event.y})`);
 
+            // Propagate delta to all descendants in the compound hierarchy.
+            // Only applies when the children map has been computed (compound layout).
+            if (dx !== 0 || dy !== 0) {
+              for (const childId of (GraphRenderer._childrenMap.get(d.id) ?? [])) {
+                const child = nodes.find(n => n.id === childId);
+                if (!child) continue;
+                child.x = (child.x ?? 0) + dx;
+                child.y = (child.y ?? 0) + dy;
+                child.fx = child.x;
+                child.fy = child.y;
+                nodeGroup
+                  .filter((n: any) => n.id === childId)
+                  .attr('transform', `translate(${child.x},${child.y})`);
+              }
+            }
+
             if (simulation) {
               // Simulation will handle edge updates via tick
             } else {
-              // No simulation - update edges manually
+              // No simulation - update edges and labels manually
               if (updatePositions) updatePositions();
             }
           })
           .on('end', (event: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode) => {
             if (simulation) {
               if (!event.active) simulation.alphaTarget(0);
-              // Keep node pinned at dragged position
               d.fx = event.x;
               d.fy = event.y;
+            } else {
+              // Redraw compound background circles so they follow the moved nodes.
+              if (GraphRenderer._childrenMap.size > 0) drawCompoundBackgrounds();
             }
           }) as any
       );
@@ -666,8 +688,14 @@ export class GraphRenderer {
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
       .attr('fill', styling.labelColor)
-      // Large graphs: hide labels initially; LOD zoom handler reveals them when zoomed in
-      .style('display', (styling.showNodeLabels && !isLargeGraph) ? 'block' : 'none')
+      // Large graphs: hide labels initially; LOD zoom handler reveals them when zoomed in.
+      // Per-depth overrides (showLabelsByDepth) take precedence over the global flag.
+      .style('display', (d: GraphNode) => {
+        const depth = (d.depth as number) ?? 2;
+        const byDepth = styling.showLabelsByDepth as Partial<Record<number, boolean>> | undefined;
+        const show = byDepth && depth in byDepth ? byDepth[depth]! : styling.showNodeLabels;
+        return (show && !isLargeGraph) ? 'block' : 'none';
+      })
       .style('pointer-events', 'none');
 
     // Add edge labels (if enabled)
@@ -729,6 +757,7 @@ export class GraphRenderer {
       const manager = new CompoundLayoutManager();
       const bounds = manager.computeGroupBounds(nodes, 40, styling.nodeSize * 3.0);
       this._compoundBounds = bounds;
+      GraphRenderer._childrenMap = manager.computeChildrenMap(nodes);
       backgroundGroup.selectAll('*').remove();
       for (const b of bounds) {
         const isDir = b.depth === 0;
@@ -778,9 +807,15 @@ export class GraphRenderer {
       })
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
-        // LOD: show labels only when zoomed in enough to read them
+        // LOD: show labels only when zoomed in enough to read them.
+        // Respects per-depth overrides in showLabelsByDepth.
         const k = event.transform.k;
-        label.style('display', (styling.showNodeLabels && k >= labelThreshold) ? 'block' : 'none');
+        label.style('display', (d: GraphNode) => {
+          const depth = (d.depth as number) ?? 2;
+          const byDepth = styling.showLabelsByDepth as Partial<Record<number, boolean>> | undefined;
+          const show = byDepth && depth in byDepth ? byDepth[depth]! : styling.showNodeLabels;
+          return (show && k >= labelThreshold) ? 'block' : 'none';
+        });
       });
 
     svg.call(zoom as any);

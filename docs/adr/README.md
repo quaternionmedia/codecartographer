@@ -97,3 +97,4 @@ Drafts in flight (numberless, by title):
 - *Compound hierarchical layout (dirs → files → symbols)* — `DRAFT-compound-hierarchical-layout.md`
 - *`CacheService` and `graphbase` stay separate stores* — `DRAFT-cache-service-vs-graphbase.md`
 - *Generalize dock panels into a registry; add a window-add menu* — `DRAFT-panel-registry-and-add-window-menu.md`
+- *Hierarchical drag propagation, per-depth labels, and compound layout spread improvements* — `DRAFT-d3-hierarchy-layout-improvements.md`

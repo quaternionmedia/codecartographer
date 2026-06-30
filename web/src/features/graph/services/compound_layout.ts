@@ -119,4 +119,61 @@ export class CompoundLayoutManager {
     bounds.sort((a, b) => a.depth - b.depth);
     return bounds;
   }
+
+  /**
+   * Builds a parent→[descendant-ids] map using the same nearest-assignment
+   * logic as computeGroupBounds. A dir's descendants include all files
+   * assigned to it AND all symbols under those files. A file's descendants
+   * include only its directly-assigned symbols.
+   *
+   * Used to propagate drag deltas hierarchically: dragging a dir moves its
+   * files and their symbols; dragging a file moves its symbols.
+   */
+  computeChildrenMap(nodes: GraphNode[]): Map<string, string[]> {
+    const dirs  = nodes.filter(n => (n.depth as number) === 0 && n.x != null && n.y != null);
+    const files = nodes.filter(n => (n.depth as number) === 1 && n.x != null && n.y != null);
+    const syms  = nodes.filter(n => ((n.depth as number) ?? 2) >= 2 && n.x != null && n.y != null);
+
+    const fileToDir = new Map<string, string>();
+    for (const f of files) {
+      let bestId = '';
+      let bestDist = Infinity;
+      for (const d of dirs) {
+        const dist = Math.hypot(f.x! - d.x!, f.y! - d.y!);
+        if (dist < bestDist) { bestDist = dist; bestId = d.id; }
+      }
+      if (bestId) fileToDir.set(f.id, bestId);
+    }
+
+    const symToFile = new Map<string, string>();
+    for (const s of syms) {
+      let bestId = '';
+      let bestDist = Infinity;
+      for (const f of files) {
+        const dist = Math.hypot(s.x! - f.x!, s.y! - f.y!);
+        if (dist < bestDist) { bestDist = dist; bestId = f.id; }
+      }
+      if (bestId) symToFile.set(s.id, bestId);
+    }
+
+    const result = new Map<string, string[]>();
+
+    // File → direct symbol children
+    for (const [symId, fileId] of symToFile) {
+      const list = result.get(fileId) ?? [];
+      list.push(symId);
+      result.set(fileId, list);
+    }
+
+    // Dir → files + those files' symbols (transitively)
+    for (const [fileId, dirId] of fileToDir) {
+      const dirList = result.get(dirId) ?? [];
+      dirList.push(fileId);
+      const fileSyms = result.get(fileId) ?? [];
+      dirList.push(...fileSyms);
+      result.set(dirId, dirList);
+    }
+
+    return result;
+  }
 }
