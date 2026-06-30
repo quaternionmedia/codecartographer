@@ -99,3 +99,4 @@ Drafts in flight (numberless, by title):
 - *Generalize dock panels into a registry; add a window-add menu* — `DRAFT-panel-registry-and-add-window-menu.md`
 - *Hierarchical drag propagation, per-depth labels, and compound layout spread improvements* — `DRAFT-d3-hierarchy-layout-improvements.md`
 - *Wire graphbase as a named bookmark store via /db/bookmarks* — `DRAFT-graphbase-bookmark-integration.md`
+- *Formalize the graphbase submodule interface; keep it a submodule* — `DRAFT-graphbase-submodule-interface-contract.md`
