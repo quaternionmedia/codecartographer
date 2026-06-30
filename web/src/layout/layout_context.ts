@@ -11,7 +11,8 @@
  */
 
 import m from 'mithril';
-import type { ComponentItemConfig, LayoutManager } from 'golden-layout';
+import { LayoutManager } from 'golden-layout';
+import type { LayoutConfig } from 'golden-layout';
 
 import { ICell, ICellState } from '../state/cell_state';
 import { StateController } from '../state/state_controller';
@@ -27,48 +28,15 @@ import {
 import { PlotService } from '../services/plot_service';
 import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
+import { DockPanelId, PanelRegistry } from './panel_registry';
+import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
+
+export type { DockPanelId } from './panel_registry';
 
 // ── Layout helpers ───────────────────────────────────────────────────────────
 
-export type DockPanelId = 'graph' | 'file-tree' | 'source-panel' | 'graph-settings-panel' | 'plotbar';
-
-const DOCK_PANEL_CONFIGS: Record<DockPanelId, ComponentItemConfig> = {
-  graph: {
-    type: 'component',
-    componentType: 'graph',
-    id: 'graph',
-    title: '◈ Graph',
-    isClosable: true,
-  },
-  'file-tree': {
-    type: 'component',
-    componentType: 'file-tree',
-    id: 'file-tree',
-    title: '◉ Files',
-    isClosable: true,
-  },
-  'source-panel': {
-    type: 'component',
-    componentType: 'source-panel',
-    id: 'source-panel',
-    title: 'Source',
-    isClosable: true,
-  },
-  'graph-settings-panel': {
-    type: 'component',
-    componentType: 'graph-settings-panel',
-    id: 'graph-settings-panel',
-    title: 'Graph Settings',
-    isClosable: true,
-  },
-  'plotbar': {
-    type: 'component',
-    componentType: 'plotbar',
-    id: 'plotbar',
-    title: '▶ Actions',
-    isClosable: true,
-  },
-};
+/** localStorage key for the user-saved default Golden Layout configuration. */
+const SAVED_LAYOUT_KEY = 'cc:gl-layout:default';
 
 function convertLayout(frontendLayout: string): string {
   const map: Record<string, string> = {
@@ -166,18 +134,66 @@ export class LayoutContext {
     }
   }
 
+  /** Re-open a closed dock panel, or add it fresh if it isn't in the layout at all. */
   public restoreDockPanel(panelId: DockPanelId): void {
     if (!this._layoutManager) return;
-    const config = DOCK_PANEL_CONFIGS[panelId];
+    const def = PanelRegistry.get(panelId);
+    if (!def) return;
 
     if (this._layoutManager.findFirstComponentItemById(panelId)) {
       this.showDockPanel(panelId);
       return;
     }
 
-    this._layoutManager.newItemAtLocation(config, LayoutManager.defaultLocationSelectors);
+    this._layoutManager.newItemAtLocation(def.config, LayoutManager.defaultLocationSelectors);
     this.showDockPanel(panelId);
     this._layoutManager.updateRootSize(true);
+  }
+
+  /** Ids of every registered panel currently present in the live layout. */
+  public openPanelIds(): DockPanelId[] {
+    if (!this._layoutManager) return [];
+    return PanelRegistry.all()
+      .map((def) => def.id)
+      .filter((id) => !!this._layoutManager!.findFirstComponentItemById(id));
+  }
+
+  /** Registered panels not currently in the layout — what the add-window menu offers. */
+  public addablePanels() {
+    const open = new Set(this.openPanelIds());
+    return PanelRegistry.all().filter((def) => !open.has(def.id));
+  }
+
+  // ── Layout persistence ─────────────────────────────────────────────────────
+
+  /** The saved layout if one exists and parses cleanly, else the built-in default. */
+  public loadInitialLayoutConfig(): LayoutConfig {
+    try {
+      const raw = localStorage.getItem(SAVED_LAYOUT_KEY);
+      if (raw) return JSON.parse(raw) as LayoutConfig;
+    } catch {
+      /* corrupt/old-format entry — fall through to built-in default */
+    }
+    return DEFAULT_LAYOUT_CONFIG;
+  }
+
+  /** Persist the live layout (panel arrangement + sizes) as the local default. */
+  public saveLayoutAsDefault(): void {
+    if (!this._layoutManager) return;
+    try {
+      localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(this._layoutManager.toConfig()));
+      ToastManager.show('Layout saved as default');
+    } catch {
+      ToastManager.show('Could not save layout');
+    }
+  }
+
+  /** Drop the saved default and reload the built-in layout. */
+  public resetLayoutToBuiltinDefault(): void {
+    localStorage.removeItem(SAVED_LAYOUT_KEY);
+    this._layoutManager?.loadLayout(DEFAULT_LAYOUT_CONFIG);
+    this.hiddenDockPanels = [];
+    ToastManager.show('Layout reset to built-in default');
   }
 
   /** Build the ControlPanelContent object from the current cell state. */

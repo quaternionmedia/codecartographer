@@ -318,7 +318,8 @@
   border-color: var(--c-secondary, #00ff41);
 }
 
-.gl-app-header__help-btn {
+.gl-app-header__help-btn,
+.gl-app-header__add-btn {
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -333,9 +334,59 @@
   transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 
-.gl-app-header__help-btn:hover {
+.gl-app-header__help-btn:hover,
+.gl-app-header__add-btn:hover {
   background: var(--c-primary-light, #1a1a1a);
   box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+}
+
+/* ── Add-window / layout menu ────────────────────────────────────────────── */
+
+.gl-add-panel-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 180px;
+  background: var(--c-primary-light, #1a1a1a);
+  border: 1px solid var(--c-border, #00ff4140);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.gl-add-panel-menu__section-title {
+  padding: 4px 12px;
+  font-size: 0.65em;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--c-font-muted, #00aa2a);
+}
+
+.gl-add-panel-menu__item {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--c-secondary, #00ff41);
+  font-size: 0.8em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gl-add-panel-menu__item:hover {
+  background: var(--c-primary, #0a0a0a);
+}
+
+.gl-add-panel-menu__empty {
+  padding: 6px 12px;
+  font-size: 0.75em;
+  color: var(--c-font-muted, #00aa2a);
+  font-style: italic;
+}
+
+.gl-add-panel-menu__divider {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--c-border, #00ff4140);
 }
 
 /* ── Full-screen shell container ─────────────────────────────────────────── */

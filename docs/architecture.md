@@ -296,3 +296,8 @@ MongoDB integration via `graphbase` submodule:
 
 1. Add function in `cli.py` with `@cli.command()` decorator
 2. Use Click options/arguments for parameters
+
+## Architecture Decision Records
+
+For the *why* behind non-obvious structural choices (not just the *what*
+described above), see [`docs/adr/`](adr/README.md).
