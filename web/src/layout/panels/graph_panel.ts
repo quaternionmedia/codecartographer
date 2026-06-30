@@ -14,21 +14,10 @@ export function createGraphPanel(ctx: LayoutContext): m.Component {
   return {
     view: () => {
       const state = ctx.appState.state;
-      const isLoading = ctx.panelState.isLoading;
 
       return m('div.gl-panel.gl-panel--graph', [
         // Main plot area
         m(PlotComponent, { graphs: state.graphContent }),
-
-        // Emergency-stop button while a stream is active
-        isLoading
-          ? m('div.graph-estop', [
-              m('button.graph-estop__btn', {
-                onclick: () => ctx.cancel(),
-                title: 'Emergency stop — cancel stream',
-              }, '⏹'),
-            ])
-          : null,
       ]);
     },
   };

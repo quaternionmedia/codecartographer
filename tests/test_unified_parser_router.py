@@ -15,7 +15,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from codecarto.main import app
-from codecarto.routers.unified_parser_router import _stream_cached_graph
+from codecarto.routers.unified_parser_router import (
+    _stream_cached_graph,
+    _accumulate,
+    _write_stream_cache,
+)
 from codecarto.services.cache_service import CacheService
 
 
@@ -177,3 +181,80 @@ class TestStreamEndpointsShareCacheReplay:
         assert resp_a.status_code == 200
         assert resp_b.status_code == 200
         assert resp_a.text == resp_b.text
+
+
+class TestAccumulate:
+    def test_node_chunk_stored_by_id(self):
+        import json
+        node = {"id": "file::a.py", "depth": 1, "label": "a.py"}
+        chunk = f"event: node\ndata: {json.dumps(node)}\n\n"
+        acc_nodes, acc_edges = {}, []
+        _accumulate(chunk, acc_nodes, acc_edges)
+        assert "file::a.py" in acc_nodes
+        assert acc_nodes["file::a.py"]["depth"] == 1
+        assert "id" not in acc_nodes["file::a.py"]  # id is popped to become the key
+
+    def test_edge_chunk_appended_as_is(self):
+        import json
+        edge = {"source": "a", "target": "b", "label": "contains"}
+        chunk = f"event: edge\ndata: {json.dumps(edge)}\n\n"
+        acc_nodes, acc_edges = {}, []
+        _accumulate(chunk, acc_nodes, acc_edges)
+        assert acc_edges == [{"source": "a", "target": "b", "label": "contains"}]
+
+    def test_non_node_edge_chunk_ignored(self):
+        acc_nodes, acc_edges = {}, []
+        _accumulate("event: meta\ndata: {}\n\n", acc_nodes, acc_edges)
+        _accumulate("event: done\ndata: {}\n\n", acc_nodes, acc_edges)
+        assert acc_nodes == {}
+        assert acc_edges == []
+
+    def test_malformed_json_does_not_raise(self):
+        acc_nodes, acc_edges = {}, []
+        _accumulate("event: node\ndata: {bad json\n\n", acc_nodes, acc_edges)
+        assert acc_nodes == {}
+
+    def test_node_without_id_not_stored(self):
+        import json
+        chunk = f"event: node\ndata: {json.dumps({'depth': 1, 'label': 'x'})}\n\n"
+        acc_nodes, acc_edges = {}, []
+        _accumulate(chunk, acc_nodes, acc_edges)
+        assert acc_nodes == {}
+
+
+class TestWriteStreamCache:
+    def test_writes_gjgf_to_cache(self, monkeypatch, tmp_path):
+        import codecarto.services.cache_service as cache_svc
+        repos_dir = tmp_path / "repos"
+        monkeypatch.setattr(cache_svc, "_CACHE_DIR", tmp_path)
+        monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos_dir)
+        monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos_dir / "index.json")
+
+        url = "https://github.com/test/write-cache"
+        key = CacheService.cache_key(url, "2", "Spring", [])
+        acc_nodes = {"file::a.py": {"depth": 1, "label": "a.py"}}
+        acc_edges = [{"source": "file::a.py", "target": "fn::foo"}]
+
+        _write_stream_cache(key, "test/write-cache", url, "2", "Spring", acc_nodes, acc_edges)
+
+        stored = CacheService.get(key)
+        assert stored is not None
+        assert "file::a.py" in stored["graph"]["nodes"]
+        assert stored["graph"]["edges"] == acc_edges
+
+    def test_empty_nodes_skips_write(self, monkeypatch, tmp_path):
+        import codecarto.services.cache_service as cache_svc
+        repos_dir = tmp_path / "repos"
+        monkeypatch.setattr(cache_svc, "_CACHE_DIR", tmp_path)
+        monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos_dir)
+        monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos_dir / "index.json")
+
+        url = "https://github.com/test/empty"
+        key = CacheService.cache_key(url, "2", "Spring", [])
+        _write_stream_cache(key, "test/empty", url, "2", "Spring", {}, [])
+        assert CacheService.get(key) is None
+
+    def test_empty_key_skips_write(self):
+        written = []
+        _write_stream_cache("", "label", "url", "mode", "layout", {"a": {}}, [])
+        assert written == []  # no exception, just silently skipped

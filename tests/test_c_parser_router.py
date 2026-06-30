@@ -8,16 +8,32 @@ without needing real libclang or network access. The real parse pipeline
 test_c_parser_service.py.
 """
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
 from codecarto.main import app
+from codecarto.routers.c_parser_router import _stream_cached_c_graph, _c_cache_key
 from codecarto.services.c_parser_service import CParserService
+from codecarto.services.cache_service import CacheService
 
 
 @pytest.fixture()
 def client():
     return TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_cache(monkeypatch, tmp_path):
+    """Redirect the graph cache to a per-test tmp dir so write-back from one
+    test can't cause a cache hit in the next."""
+    import codecarto.services.cache_service as cache_svc
+    repos_dir = tmp_path / "repos"
+    monkeypatch.setattr(cache_svc, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos_dir)
+    monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos_dir / "index.json")
+    monkeypatch.setattr(cache_svc, "_mongo_collection", None)
 
 
 def _parse_sse(text: str) -> list[tuple[str, dict]]:
@@ -328,3 +344,134 @@ class TestStreamCGithubNodePositions:
         node_events = [p for et, p in _parse_sse(resp.text) if et == "node"]
         positions = {(n["x"], n["y"]) for n in node_events}
         assert len(positions) == len(node_events)
+
+
+def _parse_cached_sse(text: str) -> list[tuple[str, dict]]:
+    """Re-use _parse_sse logic for the async-generator tests."""
+    return _parse_sse(text)
+
+
+async def _collect_c_cached(cached: dict) -> list[tuple[str, dict]]:
+    events = []
+    async for chunk in _stream_cached_c_graph(cached):
+        event_type, data = None, None
+        for line in chunk.strip().split("\n"):
+            if line.startswith("event: "):
+                event_type = line[len("event: "):].strip()
+            elif line.startswith("data: "):
+                data = json.loads(line[len("data: "):].strip())
+        if event_type:
+            events.append((event_type, data))
+    return events
+
+
+class TestStreamCachedCGraph:
+    @pytest.mark.asyncio
+    async def test_event_order_meta_nodes_reposition_edges_done(self):
+        cached = {
+            "nodes": [{"id": "a", "kind": "function", "file": "f"}],
+            "edges": [{"src": "a", "dst": "a", "kind": "CALLS"}],
+            "positions": {"a": {"x": 1.0, "y": 2.0}},
+            "layout": "Spring",
+            "meta": {"total_files": 1},
+        }
+        events = await _collect_c_cached(cached)
+        types = [t for t, _ in events]
+        assert types == ["meta", "node", "reposition", "edge", "done"]
+
+    @pytest.mark.asyncio
+    async def test_positions_baked_into_node_events(self):
+        cached = {
+            "nodes": [{"id": "a", "kind": "function"}],
+            "edges": [],
+            "positions": {"a": {"x": 42.0, "y": -7.5}},
+            "layout": "Spring",
+            "meta": {},
+        }
+        events = await _collect_c_cached(cached)
+        node = next(d for t, d in events if t == "node")
+        assert node["x"] == 42.0
+        assert node["y"] == -7.5
+
+    @pytest.mark.asyncio
+    async def test_from_cache_flags_in_meta_and_done(self):
+        cached = {"nodes": [], "edges": [], "positions": {}, "layout": "Spring", "meta": {}}
+        events = await _collect_c_cached(cached)
+        meta = next(d for t, d in events if t == "meta")
+        done = next(d for t, d in events if t == "done")
+        assert meta["from_cache"] is True
+        assert done["from_cache"] is True
+
+    @pytest.mark.asyncio
+    async def test_edges_outside_node_set_filtered(self):
+        cached = {
+            "nodes": [{"id": "a", "kind": "function"}],
+            "edges": [
+                {"src": "a", "dst": "ghost", "kind": "CALLS"},
+                {"src": "ghost", "dst": "a", "kind": "CALLS"},
+            ],
+            "positions": {},
+            "layout": "Spring",
+            "meta": {},
+        }
+        events = await _collect_c_cached(cached)
+        edge_events = [d for t, d in events if t == "edge"]
+        assert edge_events == []
+
+    @pytest.mark.asyncio
+    async def test_no_positions_skips_reposition_event(self):
+        cached = {
+            "nodes": [{"id": "a"}],
+            "edges": [],
+            "positions": {},
+            "layout": "Spring",
+            "meta": {},
+        }
+        events = await _collect_c_cached(cached)
+        types = [t for t, _ in events]
+        assert "reposition" not in types
+
+
+class TestCCacheKey:
+    def test_uses_c_mode_to_avoid_collision(self):
+        url = "https://github.com/test/repo"
+        key_c = _c_cache_key(url, "Spring")
+        key_unified = CacheService.cache_key(url=url, mode="2", layout="Spring", extensions=[])
+        assert key_c != key_unified
+
+    def test_same_url_and_layout_produces_same_key(self):
+        url = "https://github.com/test/repo"
+        assert _c_cache_key(url, "Spring") == _c_cache_key(url, "Spring")
+
+    def test_different_layout_produces_different_key(self):
+        url = "https://github.com/test/repo"
+        assert _c_cache_key(url, "Spring") != _c_cache_key(url, "Spectral")
+
+
+class TestStreamCGithubCacheWriteback:
+    """After a live stream, the result should be persisted to CacheService
+    so the next request for the same URL+layout is an instant cache replay."""
+
+    def test_cache_hit_after_first_stream(self, client, monkeypatch, tmp_path):
+        import codecarto.services.cache_service as cache_svc
+        repos_dir = tmp_path / "repos"
+        monkeypatch.setattr(cache_svc, "_CACHE_DIR", tmp_path)
+        monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos_dir)
+        monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos_dir / "index.json")
+
+        def fake_parse_github(url, max_files=200, on_progress=None):
+            return {
+                "nodes": [{"id": "a", "kind": "function"}],
+                "edges": [],
+                "meta": {},
+            }
+
+        monkeypatch.setattr(CParserService, "parse_github", staticmethod(fake_parse_github))
+
+        url = "https://github.com/test/cache-writeback"
+        client.post("/c-parser/stream-github", json={"url": url, "layout": "Spring"})
+
+        key = _c_cache_key(url, "Spring")
+        cached = CacheService.get(key)
+        assert cached is not None
+        assert len(cached["nodes"]) == 1

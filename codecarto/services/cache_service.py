@@ -113,11 +113,23 @@ def _mongo_col():
     uri = os.getenv("MONGODB_URI")
     if not uri:
         return None
+
+    # Prefer the shared graphbase connection (one MongoClient, same database).
+    try:
+        from graphbase.src.main import get_db  # type: ignore
+        db = get_db()
+        if db is not None:
+            _mongo_collection = db["graph_cache"]
+            return _mongo_collection
+    except ImportError:
+        pass
+
+    # Fallback: direct pymongo if graphbase submodule isn't importable.
     try:
         from pymongo import MongoClient  # type: ignore
         client = MongoClient(uri, serverSelectionTimeoutMS=2000)
-        client.server_info()  # trigger connection
-        _mongo_collection = client["codecartographer"]["graph_cache"]
+        client.server_info()
+        _mongo_collection = client["graphbase"]["graph_cache"]
         return _mongo_collection
     except Exception:
         return None
@@ -280,14 +292,26 @@ class CacheService:
     def evict_repo(url: str) -> bool:
         """Remove everything cached for a repo (tree + every parsed graph)."""
         repo_key = _repo_key_from_url(url)
+        deleted = False
+
         d = _REPOS_DIR / repo_key
-        if not d.is_dir():
-            return False
-        shutil.rmtree(d)
+        if d.is_dir():
+            shutil.rmtree(d)
+            deleted = True
 
         entries = _read_index()
         new_entries = [e for e in entries if not e.get("key", "").startswith(f"{repo_key}::")]
         if len(new_entries) != len(entries):
             _write_index(new_entries)
+            deleted = True
 
-        return True
+        col = _mongo_col()
+        if col is not None:
+            try:
+                result = col.delete_many({"name": {"$regex": f"^{repo_key}::"}})
+                if result.deleted_count:
+                    deleted = True
+            except Exception:
+                pass
+
+        return deleted

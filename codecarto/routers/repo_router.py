@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from fastapi import APIRouter
-from codecarto.models.source_data import Directory, RepoInfo
+from codecarto.models.source_data import Directory, Folder, RepoInfo
 from codecarto.services.github_service import (
     get_raw_from_repo,
     get_owner_repo_from_url,
@@ -15,6 +15,23 @@ from codecarto.util.exceptions import CodeCartoException, proc_exception
 from codecarto.util.utilities import Log, generate_return
 
 RepoReaderRouter = APIRouter()
+
+
+def _find_folder_at_path(root: Folder, path: str) -> Folder | None:
+    """Walk a cached Folder tree to the folder at *path* (e.g. 'src/utils').
+
+    Returns None if any segment is missing — caller falls through to GitHub.
+    """
+    if not path:
+        return root
+    segments = [s for s in path.split("/") if s]
+    node = root
+    for seg in segments:
+        match = next((f for f in node.folders if f.name == seg), None)
+        if match is None:
+            return None
+        node = match
+    return node
 
 
 @RepoReaderRouter.get("/tree")
@@ -55,6 +72,18 @@ async def expand_all_repo(url: str, max_depth: int = 3) -> dict:
         Log.info(f"Expanding all folders: {url} (max_depth={max_depth})")
         if not url.endswith("/"):
             url += "/"
+
+        # If the full tree is already cached, return it directly.
+        from codecarto.services.cache_service import CacheService
+        cached_tree = CacheService.get_tree(url)
+        if cached_tree is not None:
+            try:
+                directory = Directory.model_validate(cached_tree)
+                if not directory.is_partial:
+                    return generate_return(200, "expand_all_repo - Cache hit", directory.model_dump())
+            except Exception:
+                pass  # corrupt cache entry — fall through to live fetch
+
         owner, repo_name = get_owner_repo_from_url(url)
         token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
         root_folder = await expand_all_tree(owner, repo_name, token, max_depth)
@@ -78,12 +107,28 @@ async def get_repo_subtree(url: str, path: str = "") -> dict:
     """Fetch one level of a specific folder path in a GitHub repo.
 
     Used to lazily expand stub folders returned by the shallow-mode /tree endpoint.
+    Checks the source-tree cache first — if the repo's full tree was already
+    fetched, the subfolder data is served directly without hitting GitHub.
     """
     try:
         if is_github_url(url):
-            # existing github logic
             Log.info(f"Fetching subtree: {url} @ {path!r}")
-            if url[len(url) - 1] != "/":
+            normalized_url = url if url.endswith("/") else url + "/"
+
+            # Serve from cached tree when available and non-partial.
+            from codecarto.services.cache_service import CacheService
+            cached_tree = CacheService.get_tree(normalized_url)
+            if cached_tree is not None:
+                try:
+                    directory = Directory.model_validate(cached_tree)
+                    if not directory.is_partial:
+                        folder = _find_folder_at_path(directory.root, path)
+                        if folder is not None:
+                            return generate_return(200, "get_repo_subtree - Cache hit", folder.model_dump())
+                except Exception:
+                    pass  # corrupt cache entry — fall through to live fetch
+
+            if not url.endswith("/"):
                 url += "/"
             owner, repo_name = get_owner_repo_from_url(url)
             headers = create_headers(url)

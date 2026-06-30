@@ -88,6 +88,7 @@ export interface ControlPanelCallbacks {
   onCancel?: () => void;
   onLoadFromCache?: (key: string) => void;
   onEvictCache?: (key: string) => void;
+  onClearRepo?: () => void;
 }
 
 export interface CachedEntry {
@@ -125,6 +126,7 @@ const TABS: Tab[] = [
 
 const LAYOUT_OPTIONS = [
   { value: 'spring_layout', label: 'Spring' },
+  { value: 'compound_layout', label: 'Compound' },
   { value: 'spectral_layout', label: 'Spectral' },
   { value: 'kamada_kawai_layout', label: 'Kamada-Kawai' },
   { value: 'circular_layout', label: 'Circular' },
@@ -436,6 +438,10 @@ export function ControlPanel(
           m('div.panel-source__repo-header', [
             m('span.panel-source__repo-name', `${repoInfo?.owner}/${repoInfo?.name}`),
             m('span.panel-source__repo-size', `${content.repoDirectory?.size} files`),
+            callbacks.onClearRepo ? m('button.panel-source__repo-clear', {
+              onclick: callbacks.onClearRepo,
+              title: 'Clear repository and go back',
+            }, '✕') : null,
           ]),
           content.repoDirectory?.is_partial ? m('div.panel-source__partial-banner', [
             m('span', '⚠ Partial — click a folder ▶ to expand'),
@@ -468,8 +474,6 @@ export function ControlPanel(
 
   const renderSourceRight = () => {
     const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
-    const hasUploads = content.uploadedFiles.length > 0;
-    const hasSource = hasRepo || hasUploads;
     const parser = content.parserOptions;
 
     return m('div.panel-source__right', [
@@ -526,15 +530,6 @@ export function ControlPanel(
       m('div.panel-source__divider'),
 
       m('div.panel-source__spacer'),
-
-      // Plot button (when source loaded) — primary CTA
-      hasSource ? m('button.panel-source__plot-primary', {
-        onclick: (e: MouseEvent) => {
-          animations.buttonPress(e.currentTarget as Element);
-          if (hasRepo) callbacks.onPlotWholeRepo();
-          else callbacks.onPlotAllUploads();
-        },
-      }, [m('span', '▶'), m('span', 'Plot')]) : null,
 
       m('div.panel-source__divider'),
 
@@ -670,6 +665,22 @@ export function ControlPanel(
                 onchange: (e: Event) => {
                   const checked = (e.target as HTMLInputElement).checked;
                   callbacks.onGraphStylingChange({ enablePhysics: checked });
+                },
+              }),
+              m('span.panel-settings__toggle-slider'),
+            ]),
+          ]),
+        ]) : null,
+
+        supportsLayout ? m('div.panel-settings__group', [
+          m('div.panel-settings__toggle-row', [
+            m('span.panel-settings__label-compact', 'Group Outlines'),
+            m('label.panel-settings__toggle-compact.panel-settings__toggle', [
+              m('input[type=checkbox]', {
+                checked: styling.showCompoundGroups !== false,
+                onchange: (e: Event) => {
+                  const checked = (e.target as HTMLInputElement).checked;
+                  callbacks.onGraphStylingChange({ showCompoundGroups: checked });
                 },
               }),
               m('span.panel-settings__toggle-slider'),

@@ -35,29 +35,29 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
     defaultMinItemWidth: '80px',
   },
   root: {
-    type: 'row',
+    type: 'column',
     content: [
       {
         type: 'component',
-        componentType: 'file-tree',
-        title: '◉ Files',
-        width: 22,
+        componentType: 'graph',
+        title: '◈ Graph',
+        height: 65,
         isClosable: true,
       },
       {
-        type: 'column',
-        width: 78,
+        type: 'row',
+        height: 35,
         content: [
           {
             type: 'component',
-            componentType: 'graph',
-            title: '◈ Graph',
-            height: 68,
+            componentType: 'file-tree',
+            title: '◉ Files',
+            width: 22,
             isClosable: true,
           },
           {
             type: 'stack',
-            height: 32,
+            width: 78,
             id: 'dock-tab-stack',
             content: [
               {
@@ -72,6 +72,13 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
                 componentType: 'graph-settings-panel',
                 title: 'Graph Settings',
                 id: 'graph-settings-panel',
+                isClosable: true,
+              },
+              {
+                type: 'component',
+                componentType: 'plotbar',
+                title: '▶ Actions',
+                id: 'plotbar',
                 isClosable: true,
               },
             ],

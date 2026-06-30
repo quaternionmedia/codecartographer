@@ -30,7 +30,7 @@ import { ToastManager } from '../components/codecarto/help/toast';
 
 // ── Layout helpers ───────────────────────────────────────────────────────────
 
-export type DockPanelId = 'graph' | 'file-tree' | 'source-panel' | 'graph-settings-panel';
+export type DockPanelId = 'graph' | 'file-tree' | 'source-panel' | 'graph-settings-panel' | 'plotbar';
 
 const DOCK_PANEL_CONFIGS: Record<DockPanelId, ComponentItemConfig> = {
   graph: {
@@ -59,6 +59,13 @@ const DOCK_PANEL_CONFIGS: Record<DockPanelId, ComponentItemConfig> = {
     componentType: 'graph-settings-panel',
     id: 'graph-settings-panel',
     title: 'Graph Settings',
+    isClosable: true,
+  },
+  'plotbar': {
+    type: 'component',
+    componentType: 'plotbar',
+    id: 'plotbar',
+    title: '▶ Actions',
     isClosable: true,
   },
 };
@@ -543,6 +550,9 @@ export class LayoutContext {
         const oldLayout = current.graphStyling.layout;
         const oldPhysics = current.graphStyling.enablePhysics;
         this.appState.update({ graphStyling: { ...current.graphStyling, ...options } });
+        if (this._streamingRenderer) {
+          this._streamingRenderer.updateStyling(options);
+        }
         if (options.layout && options.layout !== oldLayout && this._lastPlotAction) {
           this.updatePanelState({ isLoading: true, statusMessage: 'Applying new layout...' });
           try {
@@ -593,29 +603,15 @@ export class LayoutContext {
       onLoadFromCache: async (key: string) => {
         const entry = this.cachedGraphs?.find((e) => e.key === key);
         if (!entry) return;
-        this.updatePanelState({ isLoading: true, statusMessage: 'Loading from cache\u2026', progress: null });
-        try {
-          const resp = await fetch(`${this.appState.api.parse}/unified`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              directory: {
-                info: { url: entry.url, owner: '', name: entry.label },
-                size: 0,
-                root: { name: '', size: 0, files: [], folders: [] },
-                is_partial: false,
-              },
-              depth: 2,
-              layout: entry.layout,
-              mode: entry.mode,
-            }),
-          });
-          const json = await resp.json();
-          if (json?.data) this.actions.plot.handlePlotData(json.data);
-          this.updatePanelState({ isLoading: false, statusMessage: `Loaded from cache: ${entry.label}` });
-        } catch {
-          this.updatePanelState({ isLoading: false, statusMessage: 'Error loading from cache' });
-        }
+        // Streaming from the URL will hit the backend cache and replay instantly.
+        this.updatePanelState({ repoUrl: entry.url, codeSourceMode: 'repo' });
+        this._startStreamFromUrl(entry.url);
+      },
+
+      onClearRepo: () => {
+        this.appState.clearRepoData();
+        this.uploadedFiles = [];
+        this.updatePanelState({ repoUrl: '', codeSourceMode: 'repo' });
       },
 
       onEvictCache: async (key: string) => {

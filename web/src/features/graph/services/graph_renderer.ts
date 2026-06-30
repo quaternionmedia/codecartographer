@@ -3,6 +3,7 @@ import m from 'mithril';
 import { logger } from '../../../core/logger';
 import { InteractionManager, InteractionManagerCallbacks } from './interaction_manager';
 import { RadialMenu, getContextMenuItems, RadialMenuContext, RadialMenuCallbacks } from '../components/radial_menu';
+import { CompoundLayoutManager, GroupBounds } from './compound_layout';
 import {
   graphExtensions,
   ExtensionContext,
@@ -104,6 +105,7 @@ export class GraphRenderer {
   private static onGraphChange: (() => void) | null = null;
   private static currentUpdatePositions: (() => void) | null = null;
   private static currentResizeObserver: ResizeObserver | null = null;
+  private static _compoundBounds: GroupBounds[] = [];
 
   // Extensions system
   private static dragExtension: DragExtension | null = null;
@@ -355,6 +357,9 @@ export class GraphRenderer {
 
     // Create a group for zoom/pan
     const g = svg.append('g');
+
+    // Background group — first child of g, so circles render behind links/nodes
+    const backgroundGroup = g.append('g').attr('class', 'compound-backgrounds');
 
     // Create node lookup for edge linking
     const nodeById = new Map(nodes.map(n => [n.id, n]));
@@ -719,11 +724,42 @@ export class GraphRenderer {
     // Store reference for radial menu callbacks
     this.currentUpdatePositions = updatePositions;
 
+    // ── Compound layout background circles ────────────────────────────────
+    const drawCompoundBackgrounds = () => {
+      const manager = new CompoundLayoutManager();
+      const bounds = manager.computeGroupBounds(nodes, 40, styling.nodeSize * 3.0);
+      this._compoundBounds = bounds;
+      backgroundGroup.selectAll('*').remove();
+      for (const b of bounds) {
+        const isDir = b.depth === 0;
+        const fill   = isDir ? 'rgba(127,140,141,0.06)' : 'rgba(155,89,182,0.09)';
+        const stroke = isDir ? 'rgba(127,140,141,0.30)' : 'rgba(155,89,182,0.35)';
+        const dash   = isDir ? '8,4' : '4,2';
+        const sw     = isDir ? 1.5 : 1.0;
+        const grp = backgroundGroup.append('g');
+        grp.append('circle')
+          .attr('cx', b.cx).attr('cy', b.cy).attr('r', b.radius)
+          .attr('fill', fill).attr('stroke', stroke)
+          .attr('stroke-width', sw).attr('stroke-dasharray', dash)
+          .style('opacity', 0)
+          .transition().delay(300).duration(500).style('opacity', 1);
+        grp.append('text')
+          .attr('x', b.cx).attr('y', b.cy - b.radius + 16)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', isDir ? 11 : 9)
+          .attr('fill', isDir ? 'rgba(127,140,141,0.70)' : 'rgba(155,89,182,0.70)')
+          .style('pointer-events', 'none').style('opacity', 0)
+          .text(b.label)
+          .transition().delay(300).duration(500).style('opacity', 1);
+      }
+    };
+
     if (simulation) {
       simulation.on('tick', updatePositions);
     } else {
       // Static layout - just update once
       updatePositions();
+      drawCompoundBackgrounds();
     }
 
     // Shift-drag box selection (must be set up BEFORE zoom)
@@ -744,7 +780,7 @@ export class GraphRenderer {
         g.attr('transform', event.transform);
         // LOD: show labels only when zoomed in enough to read them
         const k = event.transform.k;
-        label.style('display', k >= labelThreshold ? 'block' : 'none');
+        label.style('display', (styling.showNodeLabels && k >= labelThreshold) ? 'block' : 'none');
       });
 
     svg.call(zoom as any);
@@ -771,6 +807,7 @@ export class GraphRenderer {
           zoom.transform as any,
           d3.zoomIdentity.translate(tx, ty).scale(s)
         );
+        drawCompoundBackgrounds();
       });
     }
 
@@ -1358,6 +1395,20 @@ export class GraphRenderer {
       onGroupSelection: (nodes: any[]) => {
         logger.debug('Group selection (placeholder):', nodes.length);
         // Placeholder for future grouping feature
+      },
+      onFocusGroup: (nodeId: string) => {
+        const bound = this._compoundBounds.find(b => b.nodeId === nodeId);
+        if (!bound || !this.currentSvg || !this.currentZoom) return;
+        const svgW = parseFloat(this.currentSvg.attr('width'));
+        const svgH = parseFloat(this.currentSvg.attr('height'));
+        const scale = Math.min(svgW, svgH) / (bound.radius * 2 + 80);
+        const tx = svgW / 2 - scale * bound.cx;
+        const ty = svgH / 2 - scale * bound.cy;
+        this.currentSvg.transition().duration(600).call(
+          this.currentZoom.transform as any,
+          d3.zoomIdentity.translate(tx, ty).scale(scale)
+        );
+        logger.debug('Focus group:', nodeId, bound);
       },
     };
 

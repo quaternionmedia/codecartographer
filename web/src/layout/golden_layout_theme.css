@@ -355,3 +355,101 @@
   min-height: 0;
   overflow: hidden;
 }
+
+/* ── Actions (Plotbar) panel ─────────────────────────────────────────────── */
+
+.gl-actions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  overflow-y: auto;
+}
+
+.gl-actions-panel__plot,
+.gl-actions-panel__cancel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--c-secondary, #00ff41);
+  background: transparent;
+  color: var(--c-secondary, #00ff41);
+  font-family: var(--f-root-font, 'Consolas', monospace);
+  font-size: 0.82em;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gl-actions-panel__plot:hover {
+  background: rgba(0, 255, 65, 0.1);
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+}
+
+.gl-actions-panel__cancel {
+  border-color: var(--c-error, #e74c3c);
+  color: var(--c-error, #e74c3c);
+}
+
+.gl-actions-panel__cancel:hover {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.gl-actions-panel__status {
+  font-size: 0.78em;
+  color: var(--c-font-muted, #00aa2a);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gl-actions-panel__progress-bar-wrap {
+  width: 100%;
+  height: 2px;
+  background: var(--c-primary-light, #1a1a1a);
+  overflow: hidden;
+}
+
+.gl-actions-panel__progress-bar {
+  height: 100%;
+  background: var(--c-secondary, #00ff41);
+  transition: width 0.2s ease;
+}
+
+.gl-actions-panel__progress-bar--indeterminate {
+  width: 40%;
+  animation: actions-progress-indeterminate 1.4s infinite ease-in-out;
+}
+
+@keyframes actions-progress-indeterminate {
+  0%   { transform: translateX(-150%); }
+  100% { transform: translateX(350%); }
+}
+
+.gl-actions-panel__status-text {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gl-actions-panel__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-font-muted, #00aa2a);
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+
+.gl-actions-panel__status-dot--active {
+  background: var(--c-secondary, #00ff41);
+  box-shadow: 0 0 6px var(--c-secondary, #00ff41);
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}

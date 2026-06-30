@@ -15,15 +15,62 @@ import json
 import asyncio
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from codecarto.models.source_data import Directory, RepoInfo, Folder, File
+from codecarto.models.source_data import Directory, RepoInfo, Folder
 from codecarto.util.exceptions import CodeCartoException, proc_exception
 from codecarto.util.utilities import generate_return
 
 UnifiedParserRouter = APIRouter()
+
+
+def _accumulate(chunk: str, acc_nodes: dict, acc_edges: list) -> None:
+    """Collect node/edge payloads from a single SSE chunk into the accumulators.
+
+    Called for every yielded chunk so the caller can build a full gJGF after
+    streaming completes without re-parsing or re-fetching anything.
+    """
+    if chunk.startswith("event: node\ndata: "):
+        try:
+            nd = json.loads(chunk.split("\ndata: ", 1)[1])
+            nid = nd.pop("id", None)
+            if nid:
+                acc_nodes[nid] = nd
+        except Exception:
+            pass
+    elif chunk.startswith("event: edge\ndata: "):
+        try:
+            acc_edges.append(json.loads(chunk.split("\ndata: ", 1)[1]))
+        except Exception:
+            pass
+
+
+def _write_stream_cache(
+    key: str,
+    label: str,
+    url: str,
+    mode_key: str,
+    layout: str,
+    acc_nodes: dict,
+    acc_edges: list,
+) -> None:
+    """Persist accumulated stream nodes/edges as a gJGF graph cache entry.
+
+    Only called after the 'done' event is emitted, so the accumulators are
+    complete.  Positions are the streaming orbital positions already baked
+    into each node's x/y — different from layout-algorithm positions, but
+    valid and stable across replays.
+    """
+    if not acc_nodes or not key:
+        return
+    from codecarto.services.cache_service import CacheService
+    gjgf = {"graph": {"directed": True, "nodes": acc_nodes, "edges": acc_edges}}
+    try:
+        CacheService.set(key=key, data=gjgf, label=label, url=url, mode=mode_key, layout=layout)
+    except Exception:
+        pass  # cache write failure never breaks the stream
 
 
 async def _stream_cached_graph(cached: dict, layout: str):
@@ -136,7 +183,6 @@ async def parse_unified(request: UnifiedParseRequest) -> dict:
         url = _repo_url(request)
 
         # Check cache when a stable URL is available
-        cache_hit = False
         if url:
             key = CacheService.cache_key(
                 url=url,
@@ -202,13 +248,19 @@ async def stream_parse(request: UnifiedParseRequest):
     mode_key = request.mode or str(effective_depth)
     url = _repo_url(request)
 
-    # Stream from cache if available
+    key = ""
+    label = url
     if url:
         key = CacheService.cache_key(
             url=url,
             mode=mode_key,
             layout=request.layout,
             extensions=request.extensions or [],
+        )
+        info = request.directory.info
+        label = (
+            f"{info.owner}/{info.name}" if info and info.owner and info.name
+            else url
         )
         cached = CacheService.get(key)
         if cached is not None:
@@ -219,6 +271,8 @@ async def stream_parse(request: UnifiedParseRequest):
             )
 
     async def generate():
+        acc_nodes: dict = {}
+        acc_edges: list = []
         try:
             async for chunk in UnifiedParserService.stream_parse(
                 directory=request.directory,
@@ -226,7 +280,10 @@ async def stream_parse(request: UnifiedParseRequest):
                 extensions=request.extensions,
                 layout=request.layout,
             ):
+                _accumulate(chunk, acc_nodes, acc_edges)
                 yield chunk
+                if chunk.startswith("event: done\n"):
+                    _write_stream_cache(key, label, url, mode_key, request.layout, acc_nodes, acc_edges)
         except Exception as exc:
             yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
 
@@ -271,9 +328,13 @@ async def stream_from_url(request: StreamUrlRequest):
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
-    # GitHub path
+    # GitHub path — accumulate nodes/edges and write to cache after done
     if is_github_url(request.url):
+        _label = request.url.rstrip("/").rsplit("github.com/", 1)[-1]
+
         async def generate():
+            acc_nodes: dict = {}
+            acc_edges: list = []
             try:
                 async for chunk in UnifiedParserService.stream_parse_url(
                     url=request.url,
@@ -281,9 +342,11 @@ async def stream_from_url(request: StreamUrlRequest):
                     extensions=request.extensions,
                     layout=request.layout,
                 ):
+                    _accumulate(chunk, acc_nodes, acc_edges)
                     yield chunk
+                    if chunk.startswith("event: done\n"):
+                        _write_stream_cache(key, _label, request.url, mode_key, request.layout, acc_nodes, acc_edges)
             except Exception as exc:
-                import json
                 yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
 
         return StreamingResponse(
@@ -291,10 +354,9 @@ async def stream_from_url(request: StreamUrlRequest):
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
-        
+
     # Local path
     async def generate_local():
-        import json
         try:
             directory = get_local_repo(request.url, extensions=request.extensions)
             async for chunk in UnifiedParserService.stream_parse(
@@ -312,7 +374,6 @@ async def stream_from_url(request: StreamUrlRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
 
 
 @UnifiedParserRouter.post("/expand")

@@ -197,7 +197,8 @@ class UnifiedParserService:
                     yield chunk
                 return
 
-        yield f"event: fetching\ndata: {json.dumps({'message': 'Fetching repo tree\u2026'})}\n\n"
+        _fetching_msg = json.dumps({"message": "Fetching repo tree\u2026"})
+        yield f"event: fetching\ndata: {_fetching_msg}\n\n"
         await asyncio.sleep(0)
 
         try:

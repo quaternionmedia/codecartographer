@@ -21,6 +21,7 @@ import { createGraphPanel } from './panels/graph_panel';
 import { createFileTreePanel } from './panels/file_tree_panel';
 import { createSourcePanel } from './panels/source_panel';
 import { createGraphSettingsPanel } from './panels/graph_settings_panel';
+import { createActionsPanel } from './panels/actions_panel';
 
 import { HelpModal, HelpModalComponent } from '../components/codecarto/help/help_modal';
 import { ToastContainer } from '../components/codecarto/help/toast';
@@ -43,8 +44,10 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
 
   let glInstance: GoldenLayout | null = null;
 
-  const registerDockPanelLifecycle = (container: any, panelId: 'graph' | 'file-tree' | 'source-panel' | 'graph-settings-panel'): void => {
-    container.on('close', () => ctx.hideDockPanel(panelId));
+  const registerDockPanelLifecycle = (container: any, panelId: 'graph' | 'file-tree' | 'source-panel' | 'graph-settings-panel' | 'plotbar'): void => {
+    // GL2 destroys the container on close — 'beforeComponentRelease' is the correct event.
+    // 'close' is not emitted by ComponentContainer in GL 2.x.
+    container.on('beforeComponentRelease', () => ctx.hideDockPanel(panelId));
     container.on('show', () => ctx.showDockPanel(panelId));
   };
 
@@ -77,6 +80,15 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       m.mount(container.element, createFileTreePanel(ctx));
     });
 
+    // Known limitation: GL 2.x pop-out opens a new window but Mithril component
+    // factories are bound to the original window — components never mount in pop-outs.
+    // popInOnClose: true (default_layout.ts) auto-returns panels on pop-out close.
+    glInstance.registerComponentFactoryFunction('plotbar', (container) => {
+      container.element.style.cssText = 'width:100%;height:100%;overflow:auto;';
+      registerDockPanelLifecycle(container, 'plotbar');
+      m.mount(container.element, createActionsPanel(ctx));
+    });
+
     glInstance.loadLayout(DEFAULT_LAYOUT_CONFIG);
   }
 
@@ -107,7 +119,6 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
             m('span.gl-app-header__icon', '◈'),
             'Code Cartographer',
           ]),
-          m('p.gl-app-header__subtitle', 'Golden Layout'),
           m('span.gl-app-header__spacer'),
           ctx.hiddenDockPanels.length > 0
             ? m('div.gl-app-header__restore',
@@ -121,7 +132,9 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
                       ? 'Restore Settings'
                       : panelId === 'graph'
                         ? 'Restore Graph'
-                        : 'Restore Files'),
+                        : panelId === 'plotbar'
+                          ? 'Restore Actions'
+                          : 'Restore Files'),
                 ),
               )
             : null,

@@ -462,7 +462,7 @@ one abstraction:
 | Key | repo bucket `{owner}-{repo}` (or `SHA256(url)[:16]` for non-GitHub paths), graphs further keyed by `SHA256(url+mode+layout+exts)[:16]` | `{owner}-{repo}` |
 | TTL | `CC_CACHE_TTL` env var (default 24h) | same env var, same default |
 | List/evict | `GET /parse/cache`, `DELETE /parse/cache/{key}` (graphs only — see `CacheService.evict_repo` for nuking a whole repo's tree+graphs) | `GET /c-parser/cache`, `DELETE /c-parser/cache/{key}` |
-| Used by | `/repo/tree` (tree), `/parse/unified`, `/parse/stream`, `/parse/stream-url` (graphs; `/parse/stream-url` also opportunistically reads the tree cache to skip a live GitHub fetch) | `/c-parser/github`, `/c-parser/stream-github` |
+| Used by | `/repo/tree` (tree), `/repo/subtree` (tree, cache-first), `/repo/expand-all` (tree, cache-first), `/parse/unified`, `/parse/stream`, `/parse/stream-url`, `/c-parser/stream-github` (graphs; `/parse/stream-url` also opportunistically reads the tree cache to skip a live GitHub fetch) | `/c-parser/github`, `/c-parser/stream-github` (source tree only) |
 
 Cache A's tree and graph caches share the same per-repo directory
 (`repos/{owner}-{repo}/`) but are logically distinct: the tree cache holds
@@ -486,6 +486,74 @@ real directory by any caller and was removed in the unification pass.
 
 ---
 
+## Compound Hierarchical Layout
+
+### Goal
+
+Each directory acts as a spatially distinct cluster: dir nodes are widely spaced, file nodes orbit their parent dir, and symbol nodes orbit their parent file. Translucent SVG circles drawn behind nodes show group boundaries.
+
+### Backend algorithm (`compound_layout.py`)
+
+Three-pass layout registered in `position_service.py` as `'compound_layout'`.
+
+```
+Pass 1 — dir positions
+  spring_layout on dir-only subgraph, scaled by sqrt(N_dirs) * cluster_r * 1.6
+  cluster_r = max_file_orbit_r + max_sym_orbit_r  (ensures no two dir clusters overlap)
+
+Pass 2 — file orbits
+  For each dir: distribute its child files evenly on a circle
+  orbit radius = max(1.8, sqrt(n_files) * 0.9)  (layout units, × spread=100 → px)
+  Files with no parent dir get a fallback ring centred on the origin.
+
+Pass 3 — symbol orbits
+  For each file: distribute its child symbols evenly on a circle
+  orbit radius = max(0.45, sqrt(n_syms) * 0.28)
+  Symbols with no parent file share a global fallback ring.
+```
+
+Parent detection: `relation='contains'` edges (primary), then `file` node attribute stem match (fallback). `graph_serializer.py`'s `spread=100` multiplier means 1.0 layout unit ≈ 100 px in the browser.
+
+**Registration** — in `position_service.py`'s `add_custom_layouts()`:
+
+```python
+from codecarto.models.custom_layouts.compound_layout import compound_layout
+self.add_layout("compound_layout", compound_layout, ["graph"])
+```
+
+`params=["graph"]` passes the full `nx.DiGraph` to the layout function (same pattern as `arch_layout`).
+
+### Frontend bounding circles (`compound_layout.ts`)
+
+`CompoundLayoutManager.computeGroupBounds(nodes, padding=40, baseNodeSize=4)` uses **spatial assignment** rather than edge data — each file is assigned to its nearest dir, each symbol to its nearest file. This works correctly after the backend places nodes in hierarchical orbits, and degrades gracefully if containment edges are not present in the SSE stream.
+
+Returns `GroupBounds[]` sorted depth=0 first so SVG `<circle>` elements for dir groups are drawn before (behind) file-group circles.
+
+Callers should guard with a layout name check — bounds are only meaningful when `compound_layout` is selected.
+
+### SVG background circles
+
+Both renderers insert a `<g class="compound-backgrounds">` as the **first child** of the main transform group so circles render behind links and nodes (SVG paints in document order).
+
+| depth | fill | stroke | dash |
+|-------|------|--------|------|
+| 0 (dir) | `rgba(127,140,141,0.06)` | `rgba(127,140,141,0.30)` | `8,4`, width 1.5 |
+| 1 (file) | `rgba(155,89,182,0.09)` | `rgba(155,89,182,0.35)` | `4,2`, width 1 |
+
+Labels appear near the top edge of each circle. All circles fade in (300ms delay, 500ms duration) after the graph finishes rendering.
+
+- **StreamingGraphRenderer**: `_drawCompoundBackgrounds()` is called at the end of the rAF drain loop after `_fitView()`, when both `_streamDone` and the queues are empty.
+- **GraphRenderer (static)**: called after `updatePositions()` in the pre-computed position path, and on the simulation `end` event in the force-simulation path.
+
+### UI surface
+
+- **Graph Settings tab**: "Group Outlines" toggle → `showCompoundGroups: boolean` in `GraphStylingOptions` (default `true`). Toggling off clears the background group; toggling on redraws it without re-parsing.
+- **Layout dropdown**: "Compound" is the second entry in `LAYOUT_OPTIONS` (after Spring).
+- **Radial menu (node)**: "Focus Group" item appears on depth=0 and depth=1 nodes — zooms/pans the viewport to the bounding circle of that node's cluster.
+- **Radial menu (canvas → Layout submenu)**: "Compound" entry triggers `onApplyLayout('compound_layout')`.
+
+---
+
 ## D3 Extensions
 
 The D3 renderer supports extensions for enhanced interactivity:
@@ -496,6 +564,18 @@ The D3 renderer supports extensions for enhanced interactivity:
 - **HighlightExtension**: Hover with neighbor fade
 - **TooltipExtension**: Rich node tooltips with metadata
 - **ColorExtension**: Dynamic coloring by degree/type
+
+---
+
+## Known Limitations
+
+### GL Pop-out Windows
+
+Golden Layout 2.x supports popping panels into separate browser windows. With a Vite-bundled SPA the pop-out window loads the page URL and GL reconnects the chrome (hence the themed background is visible), but `registerComponentFactoryFunction` callbacks are bound to the **original window's Mithril instance** and are not replayed in the new window. The components therefore never mount — the pop-out shows only the GL frame with an empty content area.
+
+`popInOnClose: true` (set in `default_layout.ts`) auto-returns panels to the main window when the pop-out window is closed, so no content is permanently lost.
+
+Fixing this properly requires implementing GL's "virtual layout" or "binding context" API so factory callbacks are re-registered in the new window's context — out of scope for the current architecture.
 
 ---
 
@@ -510,6 +590,9 @@ The D3 renderer supports extensions for enhanced interactivity:
 | `codecarto/services/parsers/python_language_parser.py` | Python adapter |
 | `codecarto/services/parsers/c_language_parser.py` | C/H adapter |
 | `codecarto/services/graph_serializer.py` | NetworkX -> gJGF, depth-aware sizing |
+| `codecarto/models/custom_layouts/compound_layout.py` | 3-pass hierarchical layout (dirs→files→symbols) |
+| `codecarto/services/position_service.py` | Layout registry; registers compound_layout |
+| `web/src/features/graph/services/compound_layout.ts` | CompoundLayoutManager + GroupBounds; spatial bounding-circle computation |
 | `web/src/components/codecarto/control_panel/control_panel.ts` | 2-tab panel (Source / Graph) |
 | `web/src/state/actions.ts` | PlotActions: plotUnified, plotWholeRepo, plotCFile, plotCDirectory, … |
 | `web/src/features/graph/services/graph_renderer.ts` | D3 renderer + GraphNode type |

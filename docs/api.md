@@ -45,9 +45,19 @@ Parse a directory tree to the requested depth and return a gJGF graph.
   },
   "depth": 2,
   "extensions": [".py", ".c"],
-  "layout": "Spring"
+  "layout": "spring_layout"
 }
 ```
+
+**`layout` values:**
+
+| value | description |
+|-------|-------------|
+| `spring_layout` | Force-directed (default) |
+| `compound_layout` | Hierarchical: dirs → files → symbols in nested orbits |
+| `circular_layout` | Nodes on a circle |
+| `kamada_kawai_layout` | Energy-minimized spring |
+| `spectral_layout` | Graph Laplacian eigenvectors |
 
 **depth values:**
 | depth | output |
@@ -111,6 +121,11 @@ arrive instead of all at once at the end.
 If the request matches a cached graph, all events are replayed instantly
 from the cache (`from_cache: true`) instead of re-parsing.
 
+After a fresh stream completes (the `done` event is emitted), the full
+accumulated graph is automatically written to cache — subsequent requests
+with the same URL, mode, layout, and extensions are served as instant
+replays without re-parsing.
+
 ---
 
 ### POST `/parse/stream-url`
@@ -127,6 +142,10 @@ streams its parse — no separate `/repo/tree` round-trip first.
 event (`{message}`) emitted during phase 1 (repo tree fetch) before any
 `node`/`edge` events arrive. Phase 2 (symbol parsing) streams nodes as each
 file's content is fetched and parsed.
+
+After streaming completes, the full accumulated graph is written to cache
+(GitHub URLs only) — the next request for the same repo and settings is an
+instant cache replay.
 
 ---
 
@@ -321,14 +340,24 @@ design rationale.
 
 **Response:** `Content-Type: text/event-stream`:
 
+If the request matches a cached parsed graph (`CacheService`, Cache A — see
+`docs/llm/ARCHITECTURE.md` "Two C-parser caches"), all events are replayed
+instantly (`from_cache: true`) with positions baked into each node and a
+`reposition` event restoring the saved layout.
+
 | event | payload | when |
 |-------|---------|------|
 | `fetching` | `{message}` | during archive download/extract (skipped on cache hit) |
-| `meta` | `{fileCount, skippedCount}` | once the target file list is known, before parsing starts |
-| `node` | flat node dict + `language: "c"`, `depth: 2` | streamed file-by-file as libclang finishes each one |
-| `edge` | `{source, target, label, weight}` | **all at once, after `node` events** — see below |
-| `done` | `{elapsed_ms, node_count, edge_count, diagnostics, skipped_files}` | last |
+| `meta` | `{fileCount, skippedCount, from_cache?}` | once the target file list is known, before parsing starts |
+| `node` | flat node dict + `language: "c"`, `depth: 2`, `x`, `y` | streamed file-by-file as libclang finishes each one |
+| `reposition` | `{nodeId: {x, y}, …}` | after all nodes — corrects placeholder positions to the final layout |
+| `edge` | `{source, target, label, weight}` | **all at once, after `reposition`** — see below |
+| `done` | `{elapsed_ms, node_count, edge_count, diagnostics, skipped_files, from_cache?}` | last |
 | `error` | `{message}` | on exception, in place of `done` |
+
+After streaming completes, the parsed graph (with final positions) is
+written to `CacheService` (Cache A) — the next request for the same URL
+and layout is served as an instant cache replay.
 
 **Why nodes stream but edges arrive in one batch:** declarations (pass 1)
 are parsed and emitted one file at a time, so nodes appear as libclang
@@ -438,6 +467,23 @@ Lazily expand a single folder path within a previously fetched repository
 (GitHub or local).
 
 **Query Parameters:** `url`, `path`
+
+If the repo's full source tree was already cached (e.g. after a `/repo/tree`
+call) and the tree is non-partial (`is_partial: false`), the subfolder is
+served directly from the cache without an additional GitHub API call.
+
+---
+
+### GET `/repo/expand-all`
+
+Expand all folders in a partial GitHub repo tree to `max_depth` (default 3),
+returning a full `Directory` with `is_partial: false`.
+
+**Query Parameters:** `url`, `max_depth` (optional, default 3)
+
+If the full tree is already cached the response is served immediately with no
+GitHub calls. The result is a `Directory` model in the same shape as
+`/repo/tree`.
 
 ---
 

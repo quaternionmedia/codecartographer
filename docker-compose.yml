@@ -1,28 +1,43 @@
-version: '3'
+version: '3.8'
 
 services:
-  processor:
-    container_name: processor
-    image: processor
+  mongodb:
+    container_name: mongodb
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - db_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  codecarto:
+    container_name: codecarto
     build:
       context: .
-      dockerfile: ./src/codecarto/Dockerfile
+      dockerfile: ./codecarto/Dockerfile
+      args:
+        - CODECARTO_PATH=./codecarto
     ports:
       - '2020:2020'
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    depends_on:
+      mongodb:
+        condition: service_healthy
     networks:
-      - back_net
-      - graphbase_db_net
-    secrets:
-      - github_token
+      - db_net
+
+volumes:
+  mongodb_data:
 
 networks:
-  front_net:
+  db_net:
     driver: bridge
-  back_net:
-    driver: bridge
-  graphbase_db_net:
-    external: true
-
-secrets:
-  github_token:
-    file: ./token.txt

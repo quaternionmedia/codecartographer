@@ -81,3 +81,51 @@ class TestRepoSubtreeLocalPath:
         )
 
         assert resp.status_code == 500
+
+
+class TestFindFolderAtPath:
+    """Unit tests for _find_folder_at_path — the cached-tree walk helper."""
+
+    def _make_tree(self):
+        from codecarto.models.source_data import Folder, File
+        src = Folder(name="src", files=[File(name="main.py")], folders=[
+            Folder(name="utils", files=[File(name="helpers.py")], folders=[]),
+        ])
+        root = Folder(name="root", files=[], folders=[src])
+        return root
+
+    def test_empty_path_returns_root(self):
+        from codecarto.routers.repo_router import _find_folder_at_path
+        root = self._make_tree()
+        assert _find_folder_at_path(root, "") is root
+
+    def test_single_segment_returns_child(self):
+        from codecarto.routers.repo_router import _find_folder_at_path
+        root = self._make_tree()
+        result = _find_folder_at_path(root, "src")
+        assert result is not None
+        assert result.name == "src"
+
+    def test_nested_path_returns_grandchild(self):
+        from codecarto.routers.repo_router import _find_folder_at_path
+        root = self._make_tree()
+        result = _find_folder_at_path(root, "src/utils")
+        assert result is not None
+        assert result.name == "utils"
+
+    def test_missing_segment_returns_none(self):
+        from codecarto.routers.repo_router import _find_folder_at_path
+        root = self._make_tree()
+        assert _find_folder_at_path(root, "nonexistent") is None
+
+    def test_partial_match_returns_none(self):
+        from codecarto.routers.repo_router import _find_folder_at_path
+        root = self._make_tree()
+        assert _find_folder_at_path(root, "src/ghost/deep") is None
+
+    def test_path_with_leading_trailing_slashes(self):
+        from codecarto.routers.repo_router import _find_folder_at_path
+        root = self._make_tree()
+        result = _find_folder_at_path(root, "/src/utils/")
+        assert result is not None
+        assert result.name == "utils"

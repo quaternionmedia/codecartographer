@@ -12,6 +12,7 @@
 import * as d3 from 'd3';
 import { GraphNode, GraphEdge } from './graph_renderer';
 import { GraphStylingOptions } from '../../../state/types';
+import { CompoundLayoutManager } from './compound_layout';
 
 // Nodes rendered per animation frame. Scales with total so large repos
 // finish in ~2s while small repos show clearly progressive animation.
@@ -46,6 +47,10 @@ export class StreamingGraphRenderer {
   // Loading overlay shown before first data arrives
   private _loadingOverlay: HTMLDivElement | null = null;
 
+  // Compound layout backgrounds
+  private _backgroundGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
+  private _compoundManager = new CompoundLayoutManager();
+
   // Theme colors resolved once at init
   private themeSecondary: string;
   private themeAccent: string;
@@ -58,13 +63,13 @@ export class StreamingGraphRenderer {
       chargeStrength: styling?.chargeStrength ?? -350,
       linkDistance: styling?.linkDistance ?? 120,
       nodeSize: styling?.nodeSize ?? 4,
-      nodeOpacity: styling?.nodeOpacity ?? 1.0,
-      nodeBorderWidth: styling?.nodeBorderWidth ?? 1.5,
+      nodeOpacity: styling?.nodeOpacity ?? 0.75,
+      nodeBorderWidth: styling?.nodeBorderWidth ?? 0,
       edgeWidth: styling?.edgeWidth ?? 1.0,
       edgeOpacity: styling?.edgeOpacity ?? 1.0,
-      showNodeLabels: styling?.showNodeLabels ?? true,
+      showNodeLabels: styling?.showNodeLabels ?? false,
       showEdgeLabels: styling?.showEdgeLabels ?? false,
-      labelSize: styling?.labelSize ?? 10,
+      labelSize: styling?.labelSize ?? 9,
       labelColor: styling?.labelColor ?? '#aaaaaa',
       interactionProfile: styling?.interactionProfile ?? 'default',
     };
@@ -94,6 +99,8 @@ export class StreamingGraphRenderer {
     this.svg.call(this.zoom);
 
     this.g = this.svg.append('g');
+    // Background group must be first child so circles render behind links/nodes
+    this._backgroundGroup = this.g.insert('g', ':first-child').attr('class', 'compound-backgrounds') as any;
     this.linkGroup = this.g.append('g').attr('class', 'links');
     this.nodeGroup = this.g.append('g').attr('class', 'nodes');
     this.labelGroup = this.g.append('g').attr('class', 'labels');
@@ -106,6 +113,20 @@ export class StreamingGraphRenderer {
       this.zoom.transform as any,
       d3.zoomIdentity.translate(this.width / 2, this.height / 2)
     );
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const obs = new ResizeObserver(() => {
+        requestAnimationFrame(() => {
+          const w = container.clientWidth || this.width;
+          const h = container.clientHeight || this.height;
+          if (!w || !h || (w === this.width && h === this.height)) return;
+          this.width = w;
+          this.height = h;
+          this.svg.attr('width', w).attr('height', h).attr('viewBox', [0, 0, w, h]);
+        });
+      });
+      obs.observe(container);
+    }
 
     // Large loading overlay — hidden once the first meta event arrives
     container.style.position = 'relative';
@@ -154,6 +175,29 @@ export class StreamingGraphRenderer {
     this._scheduleLoop();
   }
 
+  /** Update styling options on a live renderer (e.g. toggling labels from Graph Settings). */
+  updateStyling(options: Partial<GraphStylingOptions>): void {
+    Object.assign(this.styling, options);
+    if (options.showNodeLabels !== undefined) {
+      this.labelGroup
+        .selectAll<SVGTextElement, unknown>('text')
+        .style('display', options.showNodeLabels ? 'block' : 'none');
+    }
+    if (options.labelSize !== undefined) {
+      this.labelGroup.selectAll('text').attr('font-size', options.labelSize);
+    }
+    if (options.labelColor !== undefined) {
+      this.labelGroup.selectAll('text').attr('fill', options.labelColor);
+    }
+    if (options.showCompoundGroups !== undefined) {
+      if (options.showCompoundGroups) {
+        this._drawCompoundBackgrounds();
+      } else {
+        this._backgroundGroup.selectAll('*').remove();
+      }
+    }
+  }
+
   // ── Private: rAF drain loop ────────────────────────────────────────────────
 
   private _scheduleLoop(): void {
@@ -185,8 +229,11 @@ export class StreamingGraphRenderer {
       // More work to do — schedule next frame
       this._scheduleLoop();
     } else if (this._streamDone) {
-      // Everything rendered, fit the view
+      // Everything rendered — fit the view and draw compound group backgrounds
       this._fitView();
+      if (this.styling.showCompoundGroups !== false) {
+        this._drawCompoundBackgrounds();
+      }
     }
     // else: queues empty but stream not done yet — wait for more addNode calls
   }
@@ -244,22 +291,22 @@ export class StreamingGraphRenderer {
       .attr('opacity', 1)
       .attr('transform', `translate(${x},${y}) scale(1)`);
 
+    const textEl = this.labelGroup
+      .append('text')
+      .attr('data-node-id', node.id)
+      .attr('x', x)
+      .attr('y', y + size + 12)
+      .text(node.label || node.id)
+      .attr('font-size', this.styling.labelSize!)
+      .attr('text-anchor', 'middle')
+      .attr('fill', this.styling.labelColor!)
+      .style('display', this.styling.showNodeLabels ? 'block' : 'none')
+      .style('pointer-events', 'none');
+
     if (this.styling.showNodeLabels) {
-      this.labelGroup
-        .append('text')
-        .attr('data-node-id', node.id)
-        .attr('x', x)
-        .attr('y', y + size + 12)
-        .text(node.label || node.id)
-        .attr('font-size', this.styling.labelSize!)
-        .attr('text-anchor', 'middle')
-        .attr('fill', this.styling.labelColor!)
-        .attr('opacity', 0)
-        .style('pointer-events', 'none')
-        .transition()
-        .delay(180)
-        .duration(200)
-        .attr('opacity', 1);
+      textEl.attr('opacity', 0).transition().delay(180).duration(200).attr('opacity', 1);
+    } else {
+      textEl.attr('opacity', 1);
     }
 
     // Drag support (no simulation — positions are pre-computed)
@@ -326,6 +373,50 @@ export class StreamingGraphRenderer {
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
+
+  private _drawCompoundBackgrounds(): void {
+    const nodes = Array.from(this.nodeById.values());
+    const bounds = this._compoundManager.computeGroupBounds(
+      nodes,
+      40,
+      this.styling.nodeSize! * 3.0,
+    );
+    this._backgroundGroup.selectAll('*').remove();
+    for (const b of bounds) {
+      const isDir = b.depth === 0;
+      const fill   = isDir ? 'rgba(127,140,141,0.06)' : 'rgba(155,89,182,0.09)';
+      const stroke = isDir ? 'rgba(127,140,141,0.30)' : 'rgba(155,89,182,0.35)';
+      const dash   = isDir ? '8,4' : '4,2';
+      const sw     = isDir ? 1.5 : 1.0;
+      const grp = this._backgroundGroup.append('g').attr('class', `compound-group depth-${b.depth}`);
+      grp.append('circle')
+        .attr('cx', b.cx)
+        .attr('cy', b.cy)
+        .attr('r', b.radius)
+        .attr('fill', fill)
+        .attr('stroke', stroke)
+        .attr('stroke-width', sw)
+        .attr('stroke-dasharray', dash)
+        .style('opacity', 0)
+        .transition()
+        .delay(300)
+        .duration(500)
+        .style('opacity', 1);
+      grp.append('text')
+        .attr('x', b.cx)
+        .attr('y', b.cy - b.radius + 16)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', isDir ? 11 : 9)
+        .attr('fill', isDir ? 'rgba(127,140,141,0.70)' : 'rgba(155,89,182,0.70)')
+        .style('pointer-events', 'none')
+        .style('opacity', 0)
+        .text(b.label)
+        .transition()
+        .delay(300)
+        .duration(500)
+        .style('opacity', 1);
+    }
+  }
 
   private _depthScale(node: GraphNode): number {
     const d = node.depth as number | undefined;

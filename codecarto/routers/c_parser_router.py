@@ -105,6 +105,56 @@ def _sse(event: str, payload: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
 
 
+async def _stream_cached_c_graph(cached: dict):
+    """Replay a cached C-parser result as SSE events.
+
+    The cached dict shape is the raw CParserService result augmented with a
+    'positions' dict and a 'layout' string that were computed at parse time.
+    """
+    nodes: list[dict] = cached.get("nodes", [])
+    edges: list[dict] = cached.get("edges", [])
+    positions: dict = cached.get("positions", {})
+    layout: str = cached.get("layout", "Spring")
+    meta: dict = cached.get("meta", {})
+
+    yield _sse("meta", {
+        "fileCount": meta.get("total_files", len({n.get("file") for n in nodes if n.get("file")})),
+        "from_cache": True,
+    })
+    await asyncio.sleep(0)
+
+    for node in nodes:
+        pos = positions.get(node["id"], {})
+        yield _sse("node", {**node, "language": "c", "depth": 2,
+                             "x": pos.get("x", 0.0), "y": pos.get("y", 0.0)})
+        await asyncio.sleep(0)
+
+    if positions:
+        yield _sse("reposition", positions)
+        await asyncio.sleep(0)
+
+    node_ids = {n["id"] for n in nodes}
+    for e in edges:
+        if e["src"] in node_ids and e["dst"] in node_ids:
+            yield _sse("edge", {
+                "source": e["src"], "target": e["dst"],
+                "label": e["kind"], "weight": e.get("weight"),
+            })
+            await asyncio.sleep(0)
+
+    yield _sse("done", {
+        "elapsed_ms": 0,
+        "node_count": len(nodes),
+        "edge_count": len(edges),
+        "from_cache": True,
+    })
+
+
+def _c_cache_key(url: str, layout: str) -> str:
+    from codecarto.services.cache_service import CacheService
+    return CacheService.cache_key(url=url, mode="c", layout=layout, extensions=[".c", ".h"])
+
+
 def _file_cluster_center(file_index: int, cols: int, spacing: float = 220.0) -> tuple[float, float]:
     """Deterministic grid position for the Nth file's symbol cluster.
 
@@ -179,8 +229,24 @@ async def stream_c_github(request: CStreamGithubRequest) -> StreamingResponse:
     Edges need the complete cross-file node set to resolve CALLS/FIELD_OF
     targets, so they're only available — and only streamed — after the
     thread finishes.
+
+    On cache hit the saved positions and layout are replayed verbatim — no
+    re-parse, no GitHub fetch.
     """
     from codecarto.services.c_parser_service import CParserService
+    from codecarto.services.cache_service import CacheService
+
+    layout = request.layout or "Spring"
+    cache_key = _c_cache_key(request.url, layout)
+
+    # Cache hit — replay immediately
+    cached = CacheService.get(cache_key)
+    if cached is not None:
+        return StreamingResponse(
+            _stream_cached_c_graph(cached),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     result_box: dict = {}
     error_box: dict = {}
@@ -269,6 +335,22 @@ async def stream_c_github(request: CStreamGithubRequest) -> StreamingResponse:
             "diagnostics": meta.get("diagnostics", {}),
             "skipped_files": meta.get("skipped_files", []),
         })
+
+        # Persist so the next request for the same repo is a cache hit.
+        if result["nodes"]:
+            try:
+                label = request.url.rstrip("/").rsplit("github.com/", 1)[-1]
+                cache_entry = {**result, "positions": positions, "layout": layout}
+                CacheService.set(
+                    key=cache_key,
+                    data=cache_entry,
+                    label=label,
+                    url=request.url,
+                    mode="c",
+                    layout=layout,
+                )
+            except Exception:
+                pass
 
     return StreamingResponse(
         generate(),
