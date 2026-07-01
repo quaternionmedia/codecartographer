@@ -179,6 +179,8 @@ export const GraphbaseService = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nodes, edges, meta }),
+        // 30s cap — large graphs (5MB+) on slow networks would otherwise hang indefinitely
+        signal: AbortSignal.timeout(30_000),
       });
       return r.ok;
     } catch {
