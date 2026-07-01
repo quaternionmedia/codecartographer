@@ -244,6 +244,7 @@ export class LayoutContext {
     } else {
       this.graphbaseBookmarks = [];
       this.graphbaseSnapshots = [];
+      this.graphbaseHistory = [];
     }
     m.redraw();
   }
@@ -257,7 +258,7 @@ export class LayoutContext {
     const url = urlOverride ?? this.panelState.repoUrl;
     if (!name.trim() || !url) return;
     const opts = this.appState.state.parserOptions;
-    const layout = this.panelState ? (this.appState.state.graphStyling.layout ?? 'compound_layout') : 'compound_layout';
+    const layout = this.appState.state.graphStyling.layout ?? 'compound_layout';
     const ok = await GraphbaseService.saveBookmark(
       this.appState.api.db,
       name.trim(),

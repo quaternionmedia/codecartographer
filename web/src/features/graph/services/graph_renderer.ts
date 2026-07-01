@@ -547,6 +547,11 @@ export class GraphRenderer {
       .append('g')
       .attr('class', 'graph-node');
 
+    // O(1) lookups for drag-propagation — avoids O(N) nodes.find per child per frame
+    const nodesById = new Map<string, GraphNode>(nodes.map(n => [n.id, n]));
+    const nodeElById = new Map<string, SVGGElement>();
+    nodeGroup.each(function(d: GraphNode) { nodeElById.set(d.id, this as SVGGElement); });
+
     // Add shape paths to nodes — size scales by depth when present
     const depthSizeMultiplier = (d: GraphNode): number => {
       const dep = d.depth as number | undefined;
@@ -638,15 +643,14 @@ export class GraphRenderer {
             // Only applies when the children map has been computed (compound layout).
             if (dx !== 0 || dy !== 0) {
               for (const childId of (GraphRenderer._childrenMap.get(d.id) ?? [])) {
-                const child = nodes.find(n => n.id === childId);
+                const child = nodesById.get(childId);
                 if (!child) continue;
                 child.x = (child.x ?? 0) + dx;
                 child.y = (child.y ?? 0) + dy;
                 child.fx = child.x;
                 child.fy = child.y;
-                nodeGroup
-                  .filter((n: any) => n.id === childId)
-                  .attr('transform', `translate(${child.x},${child.y})`);
+                const childEl = nodeElById.get(childId);
+                if (childEl) childEl.setAttribute('transform', `translate(${child.x},${child.y})`);
               }
             }
 

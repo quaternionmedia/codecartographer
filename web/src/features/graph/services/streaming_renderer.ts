@@ -51,6 +51,8 @@ export class StreamingGraphRenderer {
   private _backgroundGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
   private _compoundManager = new CompoundLayoutManager();
   private _childrenMap: Map<string, string[]> = new Map();
+  // O(1) lookup for child drag propagation — populated in _renderNode, avoids CSS selector per-frame
+  private _nodeGroupEl = new Map<string, SVGGElement>();
 
   // Theme colors resolved once at init
   private themeSecondary: string;
@@ -279,6 +281,9 @@ export class StreamingGraphRenderer {
       .attr('transform', `translate(${x},${y}) scale(0)`)
       .attr('opacity', 0);
 
+    // Cache element for O(1) drag-propagation lookups (avoids per-frame CSS selector)
+    this._nodeGroupEl.set(node.id, group.node()!);
+
     group
       .append('path')
       .attr('d', this._nodePath(node.shape as string, size))
@@ -334,8 +339,8 @@ export class StreamingGraphRenderer {
               if (!child) continue;
               child.x = (child.x ?? 0) + dx;
               child.y = (child.y ?? 0) + dy;
-              const childEl = this.nodeGroup.select<SVGGElement>(`[data-node-id="${childId}"]`);
-              if (!childEl.empty()) childEl.attr('transform', `translate(${child.x},${child.y})`);
+              const childEl = this._nodeGroupEl.get(childId);
+              if (childEl) childEl.setAttribute('transform', `translate(${child.x},${child.y})`);
               this._updateEdgesForNode(childId, child.x, child.y);
               this._updateLabelForNode(childId, child.x, child.y, this.styling.nodeSize! * this._depthScale(child));
             }
