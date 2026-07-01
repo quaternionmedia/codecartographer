@@ -121,57 +121,76 @@ export class CompoundLayoutManager {
   }
 
   /**
-   * Builds a parent→[descendant-ids] map using the same nearest-assignment
-   * logic as computeGroupBounds. A dir's descendants include all files
-   * assigned to it AND all symbols under those files. A file's descendants
-   * include only its directly-assigned symbols.
+   * Builds a parent→[ALL descendant-ids] map covering all four depth levels
+   * (dir→file→symbol→sub-symbol). Uses the same spatial nearest-assignment
+   * logic as computeGroupBounds but extended to depth-3 nodes.
    *
-   * Used to propagate drag deltas hierarchically: dragging a dir moves its
-   * files and their symbols; dragging a file moves its symbols.
+   * Dragging a dir moves its files, their symbols, AND those symbols'
+   * sub-symbols. Dragging a file moves its symbols and sub-symbols.
+   * Dragging a depth-2 symbol moves only its depth-3 children.
    */
   computeChildrenMap(nodes: GraphNode[]): Map<string, string[]> {
-    const dirs  = nodes.filter(n => (n.depth as number) === 0 && n.x != null && n.y != null);
-    const files = nodes.filter(n => (n.depth as number) === 1 && n.x != null && n.y != null);
-    const syms  = nodes.filter(n => ((n.depth as number) ?? 2) >= 2 && n.x != null && n.y != null);
+    const dirs    = nodes.filter(n => (n.depth as number) === 0 && n.x != null && n.y != null);
+    const files   = nodes.filter(n => (n.depth as number) === 1 && n.x != null && n.y != null);
+    const syms2   = nodes.filter(n => (n.depth as number) === 2 && n.x != null && n.y != null);
+    const syms3   = nodes.filter(n => ((n.depth as number) ?? 0) >= 3 && n.x != null && n.y != null);
 
+    // depth-1 → nearest depth-0
     const fileToDir = new Map<string, string>();
     for (const f of files) {
-      let bestId = '';
-      let bestDist = Infinity;
+      let best = ''; let bestD = Infinity;
       for (const d of dirs) {
         const dist = Math.hypot(f.x! - d.x!, f.y! - d.y!);
-        if (dist < bestDist) { bestDist = dist; bestId = d.id; }
+        if (dist < bestD) { bestD = dist; best = d.id; }
       }
-      if (bestId) fileToDir.set(f.id, bestId);
+      if (best) fileToDir.set(f.id, best);
     }
 
+    // depth-2 → nearest depth-1
     const symToFile = new Map<string, string>();
-    for (const s of syms) {
-      let bestId = '';
-      let bestDist = Infinity;
+    for (const s of syms2) {
+      let best = ''; let bestD = Infinity;
       for (const f of files) {
         const dist = Math.hypot(s.x! - f.x!, s.y! - f.y!);
-        if (dist < bestDist) { bestDist = dist; bestId = f.id; }
+        if (dist < bestD) { bestD = dist; best = f.id; }
       }
-      if (bestId) symToFile.set(s.id, bestId);
+      if (best) symToFile.set(s.id, best);
+    }
+
+    // depth-3 → nearest depth-2
+    const subToSym = new Map<string, string>();
+    for (const s of syms3) {
+      let best = ''; let bestD = Infinity;
+      for (const sym of syms2) {
+        const dist = Math.hypot(s.x! - sym.x!, s.y! - sym.y!);
+        if (dist < bestD) { bestD = dist; best = sym.id; }
+      }
+      if (best) subToSym.set(s.id, best);
     }
 
     const result = new Map<string, string[]>();
 
-    // File → direct symbol children
+    // depth-2 sym → direct depth-3 children
+    for (const [subId, symId] of subToSym) {
+      const list = result.get(symId) ?? [];
+      list.push(subId);
+      result.set(symId, list);
+    }
+
+    // depth-1 file → depth-2 syms + their depth-3 children
     for (const [symId, fileId] of symToFile) {
       const list = result.get(fileId) ?? [];
       list.push(symId);
+      list.push(...(result.get(symId) ?? []));
       result.set(fileId, list);
     }
 
-    // Dir → files + those files' symbols (transitively)
+    // depth-0 dir → files + all their descendants
     for (const [fileId, dirId] of fileToDir) {
-      const dirList = result.get(dirId) ?? [];
-      dirList.push(fileId);
-      const fileSyms = result.get(fileId) ?? [];
-      dirList.push(...fileSyms);
-      result.set(dirId, dirList);
+      const list = result.get(dirId) ?? [];
+      list.push(fileId);
+      list.push(...(result.get(fileId) ?? []));
+      result.set(dirId, list);
     }
 
     return result;

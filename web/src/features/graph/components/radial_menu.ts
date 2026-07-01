@@ -74,6 +74,9 @@ export interface RadialMenuCallbacks {
 
   // Compound layout actions
   onFocusGroup?: (nodeId: string) => void;
+
+  // Source navigation (depth ≥ 2 symbol nodes)
+  onViewSource?: (file: string, line: number, label: string) => void;
 }
 
 interface RadialMenuState {
@@ -551,6 +554,20 @@ function getNodeMenuItems(node: any, callbacks?: RadialMenuCallbacks): RadialMen
       icon: '⬡',
       action: () => {
         if (callbacks?.onFocusGroup) callbacks.onFocusGroup(node.id);
+      },
+    }] : []),
+    ...(node.depth >= 2 && node.line ? [{
+      id: 'view-source',
+      label: 'View Source',
+      icon: '◉',
+      action: () => {
+        if (callbacks?.onViewSource) {
+          callbacks.onViewSource(
+            (node.file as string) || '',
+            Number(node.line) || 0,
+            (node.label as string) || node.id,
+          );
+        }
       },
     }] : []),
   ];

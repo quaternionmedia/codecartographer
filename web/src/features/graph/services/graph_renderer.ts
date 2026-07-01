@@ -1449,6 +1449,36 @@ export class GraphRenderer {
         );
         logger.debug('Focus group:', nodeId, bound);
       },
+
+      onViewSource: (file: string, line: number, label: string) => {
+        if (!file) return;
+        // Convert GitHub raw URL → blob view with line anchor for in-browser navigation.
+        // raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
+        //   → github.com/{owner}/{repo}/blob/{branch}/{path}#L{line}
+        const rawMatch = file.match(
+          /^https:\/\/raw\.githubusercontent\.com\/([^/]+\/[^/]+)\/([^/]+)\/(.+)$/
+        );
+        if (rawMatch) {
+          const blobUrl = `https://github.com/${rawMatch[1]}/blob/${rawMatch[2]}/${rawMatch[3]}#L${line}`;
+          window.open(blobUrl, '_blank', 'noopener');
+        } else if (file.startsWith('http')) {
+          window.open(file, '_blank', 'noopener');
+        } else {
+          // Local file or relative path — log location info for the user
+          logger.info(`Source: ${label} at ${file}:${line}`);
+          const info = `${label}\n${file}:${line}`;
+          // Use a non-blocking notification rather than alert
+          const toast = document.createElement('div');
+          toast.style.cssText = `
+            position:fixed;bottom:80px;right:16px;z-index:9999;
+            background:#1a1a1a;border:1px solid #00ff4140;color:#00ff41;
+            padding:8px 12px;font-size:12px;font-family:monospace;border-radius:4px;
+            pointer-events:none;`;
+          toast.textContent = info;
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 4000);
+        }
+      },
     };
 
     // Get context-appropriate menu items with callbacks

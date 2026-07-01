@@ -100,3 +100,4 @@ Drafts in flight (numberless, by title):
 - *Hierarchical drag propagation, per-depth labels, and compound layout spread improvements* — `DRAFT-d3-hierarchy-layout-improvements.md`
 - *Wire graphbase as a named bookmark store via /db/bookmarks* — `DRAFT-graphbase-bookmark-integration.md`
 - *Formalize the graphbase submodule interface; keep it a submodule* — `DRAFT-graphbase-submodule-interface-contract.md`
+- *Code-map navigation: source-ordered layout, depth-4 hierarchy, view-source* — `DRAFT-code-map-navigation.md`
