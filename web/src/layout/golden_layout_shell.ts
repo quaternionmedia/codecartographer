@@ -150,8 +150,12 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
             glInstance?.destroy();
             glInstance = null;
           },
-          // Right-click on the tab/dock area also opens the add-window menu.
+          // Ctrl+right-click on the dock area opens the add-window menu.
+          // Plain right-click is left to the graph renderer's own contextmenu
+          // handlers (which call preventDefault themselves for node targets) or
+          // falls through to the browser's native menu on empty chrome areas.
           oncontextmenu: (e: MouseEvent) => {
+            if (!e.ctrlKey) return;
             e.preventDefault();
             menuPos = { x: e.clientX, y: e.clientY };
             menuOpen = true;
