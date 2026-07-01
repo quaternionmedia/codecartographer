@@ -563,6 +563,89 @@ Labels appear near the top edge of each circle. All circles fade in (300ms delay
 
 ---
 
+## GitHub Token Resolution
+
+`github_service.resolve_github_token()` is called once at startup and cached.
+Resolution order:
+
+1. `CC_GITHUB_TOKEN` env var — project-specific, won't conflict with system
+   `GITHUB_TOKEN` set by other tooling.
+2. `gh auth token --hostname github.com` in a subprocess with `GITHUB_TOKEN`
+   and `GH_TOKEN` **stripped** from the subprocess environment, so the `gh`
+   keyring credential is used rather than a stale env var.
+3. `GITHUB_TOKEN` / `GH_TOKEN` env var — legacy / Docker Compose pass-through.
+4. Docker secret at `/run/secrets/github_token`.
+5. Unauthenticated (60 req/h per IP; logs a warning).
+
+**Why this order matters:** a stale `GITHUB_TOKEN` in the environment would
+shadow a valid `gh` keyring token at every level if env vars were checked
+first. See *GitHub token resolution order* (`docs/adr/`) for the full
+rationale.
+
+`GET /auth/github` exposes the resolved source for diagnostics. The GL header
+shows a green/amber GH indicator on page load.
+
+> **For local dev:** run `gh auth login` once. Set `MONGODB_URI` in the same
+> shell that starts the server. Do not set `GITHUB_TOKEN` in `.bashrc` — use
+> `CC_GITHUB_TOKEN` if you need an explicit token override that won't shadow
+> the `gh` keyring.
+
+---
+
+## Graphbase Store (`/db/*`)
+
+MongoDB-backed named-graph store, mounted only when `MONGODB_URI` is set.
+Distinct from `CacheService` — see *CacheService and graphbase stay separate
+stores* (`docs/adr/`).
+
+Four collections in the `graphbase` database:
+
+| Collection | What it holds | Key | Eviction |
+|------------|--------------|-----|----------|
+| `graph` | Named NetworkX graphs (nx.node_link_data) | `name` | Manual |
+| `snapshots` | Full rendered graph (gJGF nodes + edges) | `name` | Manual |
+| `bookmarks` | URL + parse settings; re-streams on load | `name` | Manual |
+| `history` | Per-URL render snapshots, opt-in | `(url_hash, captured_at)` | Auto, cap 20/URL |
+
+The frontend Graph Library panel (graphbase_panel.ts) exposes all four tiers
+in one view:
+- **Snapshots** — 📸 saves the live rendered graph; ▶ replays instantly
+  (no re-parse) via `LayoutContext.loadGraphbaseSnapshot`.
+- **Saved** — ☆ bookmarks a URL; ▶ re-streams; ★ on Recent entries that
+  are already bookmarked.
+- **History** — auto-appended when "Track" is on; oldest pruned at cap;
+  ▶ replays any past version.
+- **Recent** — the existing CacheService entries with ☆ promote-to-bookmark.
+
+The graphbase package is a git submodule at `graphbase/`. Its public surface
+is `graphbase/__init__.py` which re-exports `graphdb` (FastAPI router) and
+`get_db` (lazy MongoClient) from `graphbase.src.main`. Callers in
+`codecarto/` import from `from graphbase import graphdb, get_db` — not from
+the internal sub-path.
+
+---
+
+## Code-Map Layout
+
+The compound hierarchical layout is now four passes and source-order-aware:
+
+- **Pass 1** — directory spring layout, X-biased (x_stretch=1.6, y_stretch=0.7)
+- **Pass 2** — files orbit parent dir in equal-angle ring
+- **Pass 3** — depth-2 symbols placed in a **300° source-ordered arc** around
+  their file (sorted by `line` attribute, 12-o'clock = line 1 → clockwise =
+  later lines). Each file cluster reads like a minimap of the source file.
+- **Pass 4** — depth-3 sub-symbols orbit their nearest depth-2 parent symbol
+  in the same arc convention.
+
+`computeChildrenMap` in `compound_layout.ts` covers all four tiers for drag
+propagation; dragging any node moves its entire transitive subtree.
+
+Right-clicking a depth-≥2 node with a `line` attribute shows "◉ View Source"
+in the radial menu. For GitHub repos this opens `github.com/blob/#L{line}` in
+a new tab. For local paths a brief toast shows `label at file:line`.
+
+---
+
 ## D3 Extensions
 
 The D3 renderer supports extensions for enhanced interactivity:
@@ -601,11 +684,16 @@ Fixing this properly requires implementing GL's "virtual layout" or "binding con
 | `codecarto/services/parsers/python_language_parser.py` | Python adapter |
 | `codecarto/services/parsers/c_language_parser.py` | C/H adapter |
 | `codecarto/services/graph_serializer.py` | NetworkX -> gJGF, depth-aware sizing |
-| `codecarto/models/custom_layouts/compound_layout.py` | 3-pass hierarchical layout (dirs→files→symbols) |
+| `codecarto/services/github_service.py` | GitHub API client + `resolve_github_token()` / `create_headers()` |
+| `codecarto/models/custom_layouts/compound_layout.py` | 4-pass hierarchical layout (dirs→files→symbols→sub-symbols, source-ordered) |
 | `codecarto/services/position_service.py` | Layout registry; registers compound_layout |
-| `web/src/features/graph/services/compound_layout.ts` | CompoundLayoutManager + GroupBounds; spatial bounding-circle computation |
-| `web/src/components/codecarto/control_panel/control_panel.ts` | 2-tab panel (Source / Graph) |
-| `web/src/state/actions.ts` | PlotActions: plotUnified, plotWholeRepo, plotCFile, plotCDirectory, … |
-| `web/src/features/graph/services/graph_renderer.ts` | D3 renderer + GraphNode type |
+| `web/src/features/graph/services/compound_layout.ts` | CompoundLayoutManager — bounding circles + `computeChildrenMap` (4-tier drag) |
+| `web/src/layout/panel_registry.ts` | Dock panel registration table (id/config/mount) — add new panels here |
+| `web/src/layout/layout_context.ts` | GL state hub — streaming, graphbase, GitHub auth status |
+| `web/src/layout/panels/graphbase_panel.ts` | Graph Library panel (Snapshots / Saved / History / Recent) |
+| `web/src/services/graphbase_service.ts` | `/db/*` client — bookmarks, snapshots, history |
+| `graphbase/__init__.py` | Submodule public surface — `from graphbase import graphdb, get_db` |
+| `graphbase/src/main.py` | MongoDB router (bookmarks / snapshots / history / graph CRUD) |
+| `web/src/features/graph/services/graph_renderer.ts` | D3 renderer + radial menu + onViewSource (github.com/blob/#L) |
 | `web/src/features/graph/services/renderers.ts` | Renderer registry |
 | `docs/llm/EXTENDING.md` | How to add renderers, language parsers, endpoints |

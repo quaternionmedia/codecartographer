@@ -508,6 +508,90 @@ Stream real-time PAM events as JSON objects:
 
 ---
 
+## Auth Endpoints
+
+### GET `/auth/github`
+
+Report the active GitHub credential source and whether the backend has a
+valid token. Useful for diagnosing the `GITHUB_TOKEN`-vs-keyring shadowing
+issue described in *GitHub token resolution order* (`docs/adr/`).
+
+**Response:**
+```json
+{
+  "source": "gh CLI keyring",
+  "authenticated": true,
+  "token_prefix": "gho_Ccw0…"
+}
+```
+
+`source` is one of: `"CC_GITHUB_TOKEN env var"`, `"gh CLI keyring"`,
+`"GITHUB_TOKEN/GH_TOKEN env var"`, `"Docker secret"`, or
+`"none (unauthenticated)"`.
+
+---
+
+## Graphbase Endpoints (`/db/*`)
+
+Mounted **only** when `MONGODB_URI` env var is set. All routes return 404
+otherwise. See `docs/adr/DRAFT-cache-service-vs-graphbase.md` for why this
+store is separate from the filesystem `CacheService`.
+
+The graphbase submodule exposes three typed collections:
+
+| Collection | Purpose | Key |
+|------------|---------|-----|
+| `graph` | Named NetworkX graphs (legacy nx.node_link_data format) | `name` |
+| `snapshots` | Full rendered graph snapshots (gJGF nodes + edges, instant replay) | `name` |
+| `bookmarks` | Lightweight URL + parse-settings records (re-streams on load) | `name` |
+| `history` | Per-URL render history, capped at 20 entries per URL | `(url_hash, captured_at)` |
+
+### Bookmarks
+
+#### POST `/db/bookmarks?name=&url=&layout=&depth=&extensions=`
+Save or overwrite a named source bookmark. Returns `{"message":"Bookmark saved","name":"..."}`.
+
+#### GET `/db/bookmarks`
+List all saved bookmarks. Returns an array of `{name, url, layout, depth, extensions, saved_at}` objects.
+
+#### DELETE `/db/bookmarks/{name}`
+Delete a named bookmark. Returns 404 if not found.
+
+### Snapshots
+
+#### POST `/db/snapshots?name=`
+Body: `{nodes, edges, meta}` in gJGF-adjacent format. Upserts a named graph
+snapshot for instant replay — no re-streaming required. Computed fields
+(`name`, `saved_at`) cannot be overridden by body content.
+
+#### GET `/db/snapshots`
+List snapshot metadata (excludes the full nodes/edges payloads).
+
+#### GET `/db/snapshots/{name}`
+Retrieve a full snapshot including nodes and edges.
+
+#### DELETE `/db/snapshots/{name}`
+Delete a named snapshot.
+
+### History
+
+#### POST `/db/history?url=`
+Body: `{nodes, edges, meta}`. Append a render snapshot for the given URL.
+The backend assigns `url_hash` (SHA-256(url)[:16]) and `captured_at` (unix
+timestamp). Entries are capped at 20 per URL; oldest are pruned automatically.
+Computed fields cannot be overridden by body content.
+
+#### GET `/db/history/{url_hash}`
+List history metadata for a URL hash (no node/edge payloads).
+
+#### GET `/db/history/{url_hash}/{captured_at}`
+Retrieve a specific history entry (full data).
+
+#### DELETE `/db/history/{url_hash}/{captured_at}`
+Delete a specific history entry.
+
+---
+
 ## Palette Endpoints
 
 ### GET `/palette/list`
