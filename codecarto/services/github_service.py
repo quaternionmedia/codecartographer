@@ -1,4 +1,7 @@
 import asyncio
+import logging
+import os
+import subprocess
 import httpx
 from pathlib import Path
 from codecarto.models.source_data import Directory, File, Folder, RepoInfo
@@ -442,34 +445,105 @@ def get_owner_repo_from_url(url: str) -> tuple[str, str]:
     return parts[3], parts[4]
 
 
+_log = logging.getLogger(__name__)
+
+# ── GitHub token resolution ─────────────────────────────────────────────────
+# Resolved once at startup via resolve_github_token(); cached here so every
+# API request reuses it without re-running the subprocess.
+_github_token: str | None = None
+_github_token_source: str = "none"
+
+
+def resolve_github_token() -> tuple[str | None, str]:
+    """Resolve the best available GitHub token and name the source.
+
+    Resolution order (first non-empty string wins):
+
+    1. CC_GITHUB_TOKEN — project-specific env var that can be set
+       independently of the system GITHUB_TOKEN, so it never conflicts
+       with a stale gh-cli GITHUB_TOKEN.
+
+    2. gh auth token (keyring) — `gh auth token --hostname github.com`
+       invoked with GITHUB_TOKEN and GH_TOKEN stripped from the subprocess
+       environment so the gh CLI uses its keyring credential rather than
+       the (potentially stale) env var.
+
+    3. GITHUB_TOKEN env var — legacy / Docker Compose pass-through.
+
+    4. GH_TOKEN env var — alternative legacy name.
+
+    5. Docker secrets file — /run/secrets/github_token.
+
+    6. None — unauthenticated; rate-limited to 60 req/h per IP.
+
+    Returns (token_or_None, source_label).
+    """
+    # 1. Explicit project override
+    if token := os.environ.get("CC_GITHUB_TOKEN", "").strip():
+        return token, "CC_GITHUB_TOKEN env var"
+
+    # 2. gh CLI keyring — strip GITHUB_TOKEN/GH_TOKEN so gh uses keyring
+    try:
+        env_without_token = {
+            k: v for k, v in os.environ.items()
+            if k not in ("GITHUB_TOKEN", "GH_TOKEN")
+        }
+        result = subprocess.run(
+            ["gh", "auth", "token", "--hostname", "github.com"],
+            capture_output=True, text=True, timeout=5, env=env_without_token,
+        )
+        if result.returncode == 0 and (token := result.stdout.strip()):
+            return token, "gh CLI keyring"
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass  # gh not installed or timed out
+
+    # 3 & 4. Env vars (legacy / Docker Compose)
+    if token := (os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or "").strip():
+        return token, "GITHUB_TOKEN/GH_TOKEN env var"
+
+    # 5. Docker secrets
+    try:
+        token = Path("/run/secrets/github_token").read_text().strip()
+        if token:
+            return token, "Docker secret"
+    except (FileNotFoundError, PermissionError):
+        pass
+
+    # 6. Unauthenticated
+    return None, "none (unauthenticated)"
+
+
+def get_github_token() -> str | None:
+    """Return the cached GitHub token, resolving it on first call."""
+    global _github_token, _github_token_source
+    if _github_token is None and _github_token_source == "none":
+        _github_token, _github_token_source = resolve_github_token()
+        if _github_token:
+            _log.info("GitHub auth: %s (token: %s…)", _github_token_source, _github_token[:8])
+        else:
+            _log.warning(
+                "GitHub auth: unauthenticated — rate-limited to 60 req/h per IP. "
+                "Set CC_GITHUB_TOKEN or run 'gh auth login'."
+            )
+    return _github_token
+
+
+def github_auth_status() -> dict:
+    """Return a dict describing the current GitHub auth state (for /auth/github)."""
+    get_github_token()  # ensure resolved
+    return {
+        "source": _github_token_source,
+        "authenticated": _github_token is not None,
+        "token_prefix": _github_token[:8] + "…" if _github_token else None,
+    }
+
+
 def create_headers(url: str) -> dict:
-    """Create headers for GitHub API request with optional authorization token."""
-    import os
-
-    # Try multiple sources for GitHub token (in order of priority):
-    # 1. Environment variable
-    # 2. Docker secrets file
-    # 3. No token (unauthenticated - limited rate)
-    GIT_API_KEY = None
-
-    # Try environment variable first
-    GIT_API_KEY = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-
-    # Try Docker secrets file if env var not found
-    if not GIT_API_KEY:
-        try:
-            with open("/run/secrets/github_token", "r") as file:
-                GIT_API_KEY = file.read().strip()
-        except (FileNotFoundError, PermissionError):
-            pass  # File doesn't exist or can't be read - will use unauthenticated
-
-    # Build headers
+    """Build GitHub API request headers using the resolved token."""
     headers = {"Accept": "application/vnd.github.v3+json"}
-
-    # Add authorization if token found
-    if GIT_API_KEY:
-        headers["Authorization"] = f"token {GIT_API_KEY}"
-
+    token = get_github_token()
+    if token:
+        headers["Authorization"] = f"token {token}"
     return headers
 
 
