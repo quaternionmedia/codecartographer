@@ -6,6 +6,45 @@ Guide for adding new renderers, language parsers, styling options, and backend e
 
 ## Adding a New Language Parser (Unified Architecture)
 
+### Backend parser tiers
+
+Three tiers exist, from lightest to most capable:
+
+| Tier | File | When to use |
+|------|------|-------------|
+| **Phase 1 — Regex** | `regex_language_parser.py` | Any language where top-level symbols (functions, classes, structs, headings, SQL tables, …) can be identified by a line-anchored regex. Zero new dependencies. Add a `_PATTERNS` list + one entry in `_LANGUAGES`. |
+| **Dedicated libclang** | `c_language_parser.py` | C/C++ only. Cross-file `CALLS` resolution, `#include` tracking via `unsaved_files`. Requires `uv sync --extra c-parsing`. |
+| **Phase 2 — tree-sitter** (planned) | not yet implemented | Full AST quality for all languages. Stubs declared in `pyproject.toml` under `[multilang]` optional deps. Planned to replace regex parsers per language when accuracy becomes a priority. |
+
+**Currently registered parsers and extensions:**
+
+| Language | Extensions |
+|----------|-----------|
+| Python | `.py` (PythonLanguageParser — custom AST visitor) |
+| C/C++ | `.c`, `.h`, `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hxx` (libclang) |
+| JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs` |
+| TypeScript | `.ts`, `.tsx`, `.cts`, `.mts` |
+| Rust | `.rs` |
+| Go | `.go` |
+| Java | `.java` |
+| C# | `.cs` |
+| Kotlin | `.kt`, `.kts` |
+| Swift | `.swift` |
+| Ruby | `.rb` |
+| PHP | `.php` |
+| Scala | `.scala` |
+| Shell/Bash | `.sh`, `.bash` |
+| Lua | `.lua` |
+| Assembly | `.asm`, `.s`, `.S` |
+| SQL | `.sql` |
+| Markdown | `.md`, `.mdx` |
+| HTML | `.html`, `.htm`, `.xhtml` |
+| CSS/SCSS/Sass/Less | `.css`, `.scss`, `.sass`, `.less` |
+| Dockerfile | `.dockerfile` |
+| TOML | `.toml` |
+
+**Fastest path to add a new language:** edit `_LANGUAGES` in `regex_language_parser.py` with a `(depth, kind, compiled_regex)` pattern list — see existing entries as templates. The new extensions appear in `/parse/languages` immediately.
+
 The recommended way to add support for a new language is via the **LanguageParser protocol**.
 The parser self-registers at import time and immediately works with `/parse/unified`.
 

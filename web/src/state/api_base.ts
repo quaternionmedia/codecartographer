@@ -29,4 +29,8 @@ export class API {
   get parse(): string {
     return `${this._base}/${this._parse}`;
   }
+
+  get db(): string {
+    return `${this._base}/db`;
+  }
 }

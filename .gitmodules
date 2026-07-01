@@ -1,3 +1,6 @@
 [submodule "graphbase"]
 	path = graphbase
 	url = https://github.com/quaternionmedia/graphbase.git
+[submodule "docs/qm"]
+	path = docs/qm
+	url = https://github.com/quaternionmedia/qm.git

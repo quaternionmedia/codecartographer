@@ -116,7 +116,7 @@ def _mongo_col():
 
     # Prefer the shared graphbase connection (one MongoClient, same database).
     try:
-        from graphbase.src.main import get_db  # type: ignore
+        from graphbase import get_db
         db = get_db()
         if db is not None:
             _mongo_collection = db["graph_cache"]

@@ -45,6 +45,12 @@ export interface GraphStylingOptions {
 
   // System renderer — selects which SystemDefinition to render
   systemId?: string;
+
+  // Compound layout group outlines
+  showCompoundGroups?: boolean;
+
+  // Per-depth label visibility (overrides showNodeLabels per depth 0–3)
+  showLabelsByDepth?: Partial<Record<number, boolean>>;
 }
 
 export interface ParserOptions {
@@ -113,7 +119,7 @@ export interface ControlPanelContent {
   cachedGraphs: CachedEntry[] | null;
 }
 
-export type ControlPanelMode = 'full' | 'source' | 'graph';
+export type ControlPanelMode = 'full' | 'source' | 'upload' | 'repo' | 'graph';
 
 export interface ControlPanelRenderOptions {
   mode?: ControlPanelMode;
@@ -222,12 +228,12 @@ export function ControlPanel(
 
   const handleRepoUrlChange = (e: Event) => {
     const input = e.target as HTMLInputElement;
-    onStateChange({ repoUrl: input.value });
+    onStateChange({ repoUrl: input.value, codeSourceMode: 'repo' });
   };
 
   const handleRepoSubmit = () => {
     if (state.repoUrl.trim()) {
-      onStateChange({ isLoading: true, statusMessage: 'Fetching repository...' });
+      onStateChange({ isLoading: true, statusMessage: 'Fetching repository...', codeSourceMode: 'repo' });
       callbacks.onRepoSubmit(state.repoUrl.trim());
     }
   };
@@ -247,7 +253,10 @@ export function ControlPanel(
     e.stopPropagation();
     const dropzone = e.currentTarget as HTMLElement;
     dropzone.classList.remove('panel-upload__dropzone--active');
-    if (e.dataTransfer?.files.length) callbacks.onFileUpload(e.dataTransfer.files);
+    if (e.dataTransfer?.files.length) {
+      onStateChange({ codeSourceMode: 'upload' });
+      callbacks.onFileUpload(e.dataTransfer.files);
+    }
   };
 
   const handleDragOver = (e: DragEvent) => {
@@ -263,7 +272,10 @@ export function ControlPanel(
 
   const handleFileInput = (e: Event) => {
     const input = e.target as HTMLInputElement;
-    if (input.files?.length) callbacks.onFileUpload(input.files);
+    if (input.files?.length) {
+      onStateChange({ codeSourceMode: 'upload' });
+      callbacks.onFileUpload(input.files);
+    }
   };
 
   const toggleGraphSection = (section: keyof ControlPanelState['graphSections']) => {
@@ -275,33 +287,16 @@ export function ControlPanel(
     });
   };
 
-  // ─── Source Tab (two-column) ───────────────────────────────────────────────
+  // ─── Upload / Repo (single-domain, two-column each) ────────────────────────
+  // File browsing for both lives solely in file_tree_panel.ts (the GL "Files"
+  // panel) — these sections are deliberately just the load affordance, not a
+  // second copy of the tree.
 
-  const renderSourceLeft = () => {
-    const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
-    const hasUploads = content.uploadedFiles.length > 0;
-    const repoInfo = content.repoDirectory?.info;
-    const mode = state.codeSourceMode;
+  const renderUploadSection = () => {
     const activeExts = content.parserOptions.fileExtensions;
-    const supportedFiles = activeExts.length > 0
-      ? content.uploadedFiles.filter(f => activeExts.some(e => f.name.toLowerCase().endsWith(e.replace(/^\./, ''))))
-      : content.uploadedFiles;
 
     return m('div.panel-source__left', [
-      // Mode toggle
-      m('div.panel-source__mode-toggle', [
-        m('button.panel-source__mode-btn', {
-          class: mode === 'upload' ? 'panel-source__mode-btn--active' : '',
-          onclick: () => onStateChange({ codeSourceMode: 'upload' }),
-        }, [m('span', '↑'), ' Upload']),
-        m('button.panel-source__mode-btn', {
-          class: mode === 'repo' ? 'panel-source__mode-btn--active' : '',
-          onclick: () => onStateChange({ codeSourceMode: 'repo' }),
-        }, [m('span', '⬇'), ' Repository']),
-      ]),
-
-      // Upload mode
-      mode === 'upload' ? m('div.panel-source__upload', [
+      m('div.panel-source__upload', [
         m('div.panel-upload__dropzone', {
           ondrop: handleDrop,
           ondragover: handleDragOver,
@@ -316,34 +311,19 @@ export function ControlPanel(
             onchange: handleFileInput,
           }),
         ]),
-        hasUploads ? m('div.panel-source__files', [
-          m('div.panel-source__files-header', [
-            m('span', `${supportedFiles.length} file(s)`),
-          ]),
-          m('div.panel-source__file-list', [
-            content.uploadedFiles.map((file: RawFile) => {
-              const isSupported = activeExts.length === 0 ||
-                activeExts.some(e => file.name.toLowerCase().endsWith(e.replace(/^\./, '')));
-              return m('div.panel-source__file', {
-                class: isSupported ? '' : 'panel-source__file--disabled',
-                onclick: (e: MouseEvent) => {
-                  if (isSupported) {
-                    animations.buttonPress(e.currentTarget as Element);
-                    callbacks.onUploadedFileClick(file);
-                  }
-                },
-              }, [
-                m('span.panel-source__file-icon', isSupported ? '◈' : '📄'),
-                m('span.panel-source__file-name', file.name),
-                m('span.panel-source__file-size', `${Math.round(file.size / 1024) || '<1'}kb`),
-              ]);
-            }),
-          ]),
-        ]) : null,
-      ]) : null,
+        content.uploadedFiles.length > 0
+          ? m('div.panel-source__upload-summary', `${content.uploadedFiles.length} file(s) uploaded — see Files panel`)
+          : null,
+      ]),
+    ]);
+  };
 
-      // Repository mode
-      mode === 'repo' ? m('div.panel-source__repo', [
+  const renderRepoSection = () => {
+    const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
+    const repoInfo = content.repoDirectory?.info;
+
+    return m('div.panel-source__left', [
+      m('div.panel-source__repo', [
         // URL input
         m('div.panel-source__url-input', [
           m('input[type=text]', {
@@ -404,7 +384,7 @@ export function ControlPanel(
                 title: ex.title,
                 onclick: (e: MouseEvent) => {
                   animations.buttonPress(e.currentTarget as Element);
-                  onStateChange({ repoUrl: ex.url });
+                  onStateChange({ repoUrl: ex.url, codeSourceMode: 'repo' });
                   callbacks.onRepoSubmit(ex.url);
                 },
                 disabled: state.isLoading,
@@ -424,7 +404,7 @@ export function ControlPanel(
                 title: ex.title,
                 onclick: (e: MouseEvent) => {
                   animations.buttonPress(e.currentTarget as Element);
-                  onStateChange({ repoUrl: ex.url });
+                  onStateChange({ repoUrl: ex.url, codeSourceMode: 'repo' });
                   callbacks.onRepoSubmit(ex.url);
                 },
                 disabled: state.isLoading,
@@ -433,7 +413,7 @@ export function ControlPanel(
           ]),
         ]) : null,
 
-        // Loaded repo — header + tree fills remaining height
+        // Loaded repo — compact status line; the tree itself lives in the Files panel
         hasRepo ? m('div.panel-source__repo-loaded', [
           m('div.panel-source__repo-header', [
             m('span.panel-source__repo-name', `${repoInfo?.owner}/${repoInfo?.name}`),
@@ -443,32 +423,8 @@ export function ControlPanel(
               title: 'Clear repository and go back',
             }, '✕') : null,
           ]),
-          content.repoDirectory?.is_partial ? m('div.panel-source__partial-banner', [
-            m('span', '⚠ Partial — click a folder ▶ to expand'),
-            callbacks.onExpandAll ? m('button.panel-source__expand-all-btn', {
-              onclick: (e: MouseEvent) => {
-                animations.buttonPress(e.currentTarget as Element);
-                callbacks.onExpandAll!();
-              },
-              title: 'Expand all folders (structure only, no file content)',
-            }, '⊞ Expand All') : null,
-          ]) : null,
-          m('div.panel-source__directory', [
-            m(DirectoryContent, {
-              folderName: repoInfo ? `${repoInfo.owner}/${repoInfo.name}` : 'Repository',
-              folders: content.repoDirectory?.root.folders || [],
-              files: content.repoDirectory?.root.files || [],
-              onUrlFileClicked: callbacks.onRepoFileClick,
-              // Only enable lazy-expand for partial (GitHub shallow) trees.
-              // Local trees are always fully loaded, so empty folders shouldn't trigger expansion.
-              onFolderExpand: content.repoDirectory?.is_partial ? callbacks.onFolderExpand : undefined,
-              allowedExtensions: content.availableLanguages
-                ? Object.values(content.availableLanguages).flat()
-                : null,
-            }),
-          ]),
         ]) : null,
-      ]) : null,
+      ]),
     ]);
   };
 
@@ -552,7 +508,29 @@ export function ControlPanel(
       class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
     }, [
       m('div.panel-source__2col', [
-        renderSourceLeft(),
+        m('div.panel-source__left', [renderUploadSection(), renderRepoSection()]),
+        renderSourceRight(),
+      ]),
+    ]);
+  };
+
+  const renderUploadTab = (forceVisible = false) => {
+    return m('div.panel-section.panel-source', {
+      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
+    }, [
+      m('div.panel-source__2col', [
+        renderUploadSection(),
+        renderSourceRight(),
+      ]),
+    ]);
+  };
+
+  const renderRepoTab = (forceVisible = false) => {
+    return m('div.panel-section.panel-source', {
+      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
+    }, [
+      m('div.panel-source__2col', [
+        renderRepoSection(),
         renderSourceRight(),
       ]),
     ]);
@@ -744,6 +722,35 @@ export function ControlPanel(
                       m('span.panel-settings__toggle-slider'),
                     ]),
                   ]),
+                  // Per-depth label toggles (override the global setting per depth)
+                  m('div.panel-settings__depth-labels', [
+                    m('span.panel-settings__sublabel', 'Per depth:'),
+                    ...([
+                      { depth: 0, label: 'Dir' },
+                      { depth: 1, label: 'File' },
+                      { depth: 2, label: 'Sym' },
+                      { depth: 3, label: 'Sub' },
+                    ].map(({ depth, label }) => {
+                      const perDepth = styling.showLabelsByDepth ?? {};
+                      const isSet = depth in perDepth;
+                      const val = isSet ? perDepth[depth] : styling.showNodeLabels;
+                      return m('label.panel-settings__depth-label-chip', {
+                        title: `Labels for depth ${depth} (${label} nodes)`,
+                        class: val ? 'panel-settings__depth-label-chip--on' : 'panel-settings__depth-label-chip--off',
+                      }, [
+                        m('input[type=checkbox]', {
+                          checked: val,
+                          onchange: (e: Event) => {
+                            const checked = (e.target as HTMLInputElement).checked;
+                            const current = { ...(styling.showLabelsByDepth ?? {}) };
+                            current[depth] = checked;
+                            callbacks.onGraphStylingChange({ showLabelsByDepth: current });
+                          },
+                        }),
+                        label,
+                      ]);
+                    })),
+                  ]),
                 ]),
                 m('div.panel-settings__group', [
                   m('span.panel-settings__label-compact', 'Node Size'),
@@ -846,7 +853,10 @@ export function ControlPanel(
   // ─── Main render ───────────────────────────────────────────────────────────
 
   if (isEmbedded) {
-    const embeddedContent = mode === 'source' ? renderSourceTab(true) : renderGraphTab(true);
+    const embeddedContent = mode === 'source' ? renderSourceTab(true)
+      : mode === 'upload' ? renderUploadTab(true)
+      : mode === 'repo' ? renderRepoTab(true)
+      : renderGraphTab(true);
 
     return m('div.control-panel.control-panel--embedded', {
       oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),

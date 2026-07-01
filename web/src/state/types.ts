@@ -96,6 +96,11 @@ export interface GraphStylingOptions {
   // System renderer — selects which SystemDefinition to render
   systemId?: string;           // e.g. 'pam' (default)
 
+  // Per-depth label visibility — overrides showNodeLabels per depth level when present.
+  // depth 0 = dir, 1 = file, 2 = symbol, 3 = sub-symbol.
+  // Absence of a key means "follow the global showNodeLabels setting."
+  showLabelsByDepth?: Partial<Record<number, boolean>>;
+
   // Compound layout — show translucent bounding circles per dir/file group
   showCompoundGroups?: boolean;
 

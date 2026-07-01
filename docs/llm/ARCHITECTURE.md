@@ -256,6 +256,8 @@ endpoint hasn't arrived yet.
 
 ### C support in the unified pipeline (`batch_whole_tree` + `unsaved_files`)
 
+> Why, not just what: see *Unify parser/cache architecture around `ParserRegistry` + `batch_whole_tree`* ([docs/adr/DRAFT-parser-cache-unification.md](../adr/DRAFT-parser-cache-unification.md)).
+
 Before the parser/cache unification pass, `CLangaugeParser` (the unified
 adapter C registers under `.c`/`.h`/`.cpp`/…) had two bugs that made it
 effectively useless for real multi-file C code:
@@ -484,9 +486,16 @@ parsing entirely. `CParser.parse_files()` used to also support a third,
 per-file pickle cache via a `cache_dir` parameter; it was never wired to a
 real directory by any caller and was removed in the unification pass.
 
+A related but distinct question — why `CacheService` and the `graphbase`
+submodule's `/db/*` store stay separate despite sharing one Mongo
+connection — is covered in *`CacheService` and `graphbase` stay separate
+stores* ([docs/adr/DRAFT-cache-service-vs-graphbase.md](../adr/DRAFT-cache-service-vs-graphbase.md)).
+
 ---
 
 ## Compound Hierarchical Layout
+
+> Why, not just what: see *Compound hierarchical layout (dirs → files → symbols)* ([docs/adr/DRAFT-compound-hierarchical-layout.md](../adr/DRAFT-compound-hierarchical-layout.md)).
 
 ### Goal
 
@@ -572,6 +581,8 @@ The D3 renderer supports extensions for enhanced interactivity:
 ### GL Pop-out Windows
 
 Golden Layout 2.x supports popping panels into separate browser windows. With a Vite-bundled SPA the pop-out window loads the page URL and GL reconnects the chrome (hence the themed background is visible), but `registerComponentFactoryFunction` callbacks are bound to the **original window's Mithril instance** and are not replayed in the new window. The components therefore never mount — the pop-out shows only the GL frame with an empty content area.
+
+For why GL is the shell at all, see *Golden Layout as the primary application shell* ([docs/adr/DRAFT-golden-layout-primary-shell.md](../adr/DRAFT-golden-layout-primary-shell.md)). For the dock panel registry and the add-window menu, see *Generalize dock panels into a registry; add a window-add menu* ([docs/adr/DRAFT-panel-registry-and-add-window-menu.md](../adr/DRAFT-panel-registry-and-add-window-menu.md)).
 
 `popInOnClose: true` (set in `default_layout.ts`) auto-returns panels to the main window when the pop-out window is closed, so no content is permanently lost.
 

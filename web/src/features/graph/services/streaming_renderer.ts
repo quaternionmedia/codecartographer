@@ -50,6 +50,9 @@ export class StreamingGraphRenderer {
   // Compound layout backgrounds
   private _backgroundGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
   private _compoundManager = new CompoundLayoutManager();
+  private _childrenMap: Map<string, string[]> = new Map();
+  // O(1) lookup for child drag propagation — populated in _renderNode, avoids CSS selector per-frame
+  private _nodeGroupEl = new Map<string, SVGGElement>();
 
   // Theme colors resolved once at init
   private themeSecondary: string;
@@ -178,10 +181,15 @@ export class StreamingGraphRenderer {
   /** Update styling options on a live renderer (e.g. toggling labels from Graph Settings). */
   updateStyling(options: Partial<GraphStylingOptions>): void {
     Object.assign(this.styling, options);
-    if (options.showNodeLabels !== undefined) {
+    if (options.showNodeLabels !== undefined || options.showLabelsByDepth !== undefined) {
       this.labelGroup
         .selectAll<SVGTextElement, unknown>('text')
-        .style('display', options.showNodeLabels ? 'block' : 'none');
+        .style('display', (_, i, els) => {
+          const nodeId = els[i].getAttribute('data-node-id');
+          const n = nodeId ? this.nodeById.get(nodeId) : undefined;
+          const depth = ((n?.depth as number) ?? 2);
+          return this._shouldShowLabel(depth) ? 'block' : 'none';
+        });
     }
     if (options.labelSize !== undefined) {
       this.labelGroup.selectAll('text').attr('font-size', options.labelSize);
@@ -273,6 +281,9 @@ export class StreamingGraphRenderer {
       .attr('transform', `translate(${x},${y}) scale(0)`)
       .attr('opacity', 0);
 
+    // Cache element for O(1) drag-propagation lookups (avoids per-frame CSS selector)
+    this._nodeGroupEl.set(node.id, group.node()!);
+
     group
       .append('path')
       .attr('d', this._nodePath(node.shape as string, size))
@@ -300,10 +311,10 @@ export class StreamingGraphRenderer {
       .attr('font-size', this.styling.labelSize!)
       .attr('text-anchor', 'middle')
       .attr('fill', this.styling.labelColor!)
-      .style('display', this.styling.showNodeLabels ? 'block' : 'none')
+      .style('display', this._shouldShowLabel((node.depth as number) ?? 2) ? 'block' : 'none')
       .style('pointer-events', 'none');
 
-    if (this.styling.showNodeLabels) {
+    if (this._shouldShowLabel((node.depth as number) ?? 2)) {
       textEl.attr('opacity', 0).transition().delay(180).duration(200).attr('opacity', 1);
     } else {
       textEl.attr('opacity', 1);
@@ -313,11 +324,31 @@ export class StreamingGraphRenderer {
     group.call(
       d3.drag<SVGGElement, unknown>()
         .on('drag', (event) => {
+          const dx = event.x - (node.x ?? event.x);
+          const dy = event.y - (node.y ?? event.y);
           node.x = event.x;
           node.y = event.y;
           group.attr('transform', `translate(${event.x},${event.y})`);
           this._updateEdgesForNode(node.id, event.x, event.y);
           this._updateLabelForNode(node.id, event.x, event.y, size);
+
+          // Propagate delta to compound hierarchy descendants.
+          if (dx !== 0 || dy !== 0) {
+            for (const childId of (this._childrenMap.get(node.id) ?? [])) {
+              const child = this.nodeById.get(childId);
+              if (!child) continue;
+              child.x = (child.x ?? 0) + dx;
+              child.y = (child.y ?? 0) + dy;
+              const childEl = this._nodeGroupEl.get(childId);
+              if (childEl) childEl.setAttribute('transform', `translate(${child.x},${child.y})`);
+              this._updateEdgesForNode(childId, child.x, child.y);
+              this._updateLabelForNode(childId, child.x, child.y, this.styling.nodeSize! * this._depthScale(child));
+            }
+          }
+        })
+        .on('end', () => {
+          // Redraw compound background circles to follow moved nodes.
+          if (this._childrenMap.size > 0) this._drawCompoundBackgrounds();
         }) as any
     );
   }
@@ -381,6 +412,7 @@ export class StreamingGraphRenderer {
       40,
       this.styling.nodeSize! * 3.0,
     );
+    this._childrenMap = this._compoundManager.computeChildrenMap(nodes);
     this._backgroundGroup.selectAll('*').remove();
     for (const b of bounds) {
       const isDir = b.depth === 0;
@@ -416,6 +448,12 @@ export class StreamingGraphRenderer {
         .duration(500)
         .style('opacity', 1);
     }
+  }
+
+  private _shouldShowLabel(depth: number): boolean {
+    const byDepth = this.styling.showLabelsByDepth as Partial<Record<number, boolean>> | undefined;
+    if (byDepth && depth in byDepth) return byDepth[depth]!;
+    return this.styling.showNodeLabels ?? false;
   }
 
   private _depthScale(node: GraphNode): number {

@@ -11,7 +11,8 @@
  */
 
 import m from 'mithril';
-import type { ComponentItemConfig, LayoutManager } from 'golden-layout';
+import { LayoutManager } from 'golden-layout';
+import type { LayoutConfig } from 'golden-layout';
 
 import { ICell, ICellState } from '../state/cell_state';
 import { StateController } from '../state/state_controller';
@@ -27,48 +28,16 @@ import {
 import { PlotService } from '../services/plot_service';
 import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
+import { DockPanelId, PanelRegistry } from './panel_registry';
+import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
+import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
+
+export type { DockPanelId } from './panel_registry';
 
 // ── Layout helpers ───────────────────────────────────────────────────────────
 
-export type DockPanelId = 'graph' | 'file-tree' | 'source-panel' | 'graph-settings-panel' | 'plotbar';
-
-const DOCK_PANEL_CONFIGS: Record<DockPanelId, ComponentItemConfig> = {
-  graph: {
-    type: 'component',
-    componentType: 'graph',
-    id: 'graph',
-    title: '◈ Graph',
-    isClosable: true,
-  },
-  'file-tree': {
-    type: 'component',
-    componentType: 'file-tree',
-    id: 'file-tree',
-    title: '◉ Files',
-    isClosable: true,
-  },
-  'source-panel': {
-    type: 'component',
-    componentType: 'source-panel',
-    id: 'source-panel',
-    title: 'Source',
-    isClosable: true,
-  },
-  'graph-settings-panel': {
-    type: 'component',
-    componentType: 'graph-settings-panel',
-    id: 'graph-settings-panel',
-    title: 'Graph Settings',
-    isClosable: true,
-  },
-  'plotbar': {
-    type: 'component',
-    componentType: 'plotbar',
-    id: 'plotbar',
-    title: '▶ Actions',
-    isClosable: true,
-  },
-};
+/** localStorage key for the user-saved default Golden Layout configuration. */
+const SAVED_LAYOUT_KEY = 'cc:gl-layout:default';
 
 function convertLayout(frontendLayout: string): string {
   const map: Record<string, string> = {
@@ -123,6 +92,14 @@ export class LayoutContext {
   /** Cached graph entries fetched from the backend cache endpoint. */
   public cachedGraphs: CachedEntry[] | null = null;
 
+  /** Graphbase availability, saved bookmarks, snapshots, and history. */
+  public graphbaseAvailable = false;
+  public graphbaseBookmarks: GraphbaseBookmark[] = [];
+  public graphbaseSnapshots: GraphbaseSnapshotMeta[] = [];
+  public graphbaseHistory: GraphbaseHistoryMeta[] = [];
+  /** When true, every completed render appends an entry to the history collection. */
+  public graphbaseTrackHistory = false;
+
   /** Dock panels that have been closed and can be restored. */
   public hiddenDockPanels: DockPanelId[] = [];
 
@@ -166,18 +143,66 @@ export class LayoutContext {
     }
   }
 
+  /** Re-open a closed dock panel, or add it fresh if it isn't in the layout at all. */
   public restoreDockPanel(panelId: DockPanelId): void {
     if (!this._layoutManager) return;
-    const config = DOCK_PANEL_CONFIGS[panelId];
+    const def = PanelRegistry.get(panelId);
+    if (!def) return;
 
     if (this._layoutManager.findFirstComponentItemById(panelId)) {
       this.showDockPanel(panelId);
       return;
     }
 
-    this._layoutManager.newItemAtLocation(config, LayoutManager.defaultLocationSelectors);
+    this._layoutManager.newItemAtLocation(def.config, LayoutManager.defaultLocationSelectors);
     this.showDockPanel(panelId);
     this._layoutManager.updateRootSize(true);
+  }
+
+  /** Ids of every registered panel currently present in the live layout. */
+  public openPanelIds(): DockPanelId[] {
+    if (!this._layoutManager) return [];
+    return PanelRegistry.all()
+      .map((def) => def.id)
+      .filter((id) => !!this._layoutManager!.findFirstComponentItemById(id));
+  }
+
+  /** Registered panels not currently in the layout — what the add-window menu offers. */
+  public addablePanels() {
+    const open = new Set(this.openPanelIds());
+    return PanelRegistry.all().filter((def) => !open.has(def.id));
+  }
+
+  // ── Layout persistence ─────────────────────────────────────────────────────
+
+  /** The saved layout if one exists and parses cleanly, else the built-in default. */
+  public loadInitialLayoutConfig(): LayoutConfig {
+    try {
+      const raw = localStorage.getItem(SAVED_LAYOUT_KEY);
+      if (raw) return JSON.parse(raw) as LayoutConfig;
+    } catch {
+      /* corrupt/old-format entry — fall through to built-in default */
+    }
+    return DEFAULT_LAYOUT_CONFIG;
+  }
+
+  /** Persist the live layout (panel arrangement + sizes) as the local default. */
+  public saveLayoutAsDefault(): void {
+    if (!this._layoutManager) return;
+    try {
+      localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(this._layoutManager.toConfig()));
+      ToastManager.show('Layout saved as default');
+    } catch {
+      ToastManager.show('Could not save layout');
+    }
+  }
+
+  /** Drop the saved default and reload the built-in layout. */
+  public resetLayoutToBuiltinDefault(): void {
+    localStorage.removeItem(SAVED_LAYOUT_KEY);
+    this._layoutManager?.loadLayout(DEFAULT_LAYOUT_CONFIG);
+    this.hiddenDockPanels = [];
+    ToastManager.show('Layout reset to built-in default');
   }
 
   /** Build the ControlPanelContent object from the current cell state. */
@@ -201,6 +226,154 @@ export class LayoutContext {
       this._cancelStream = null;
     }
     this.updatePanelState({ isLoading: false, statusMessage: 'Cancelled', progress: null });
+  }
+
+  /** Check graphbase availability and refresh the bookmark list. */
+  public async refreshGraphbase(): Promise<void> {
+    const dbBase = this.appState.api.db;
+    this.graphbaseAvailable = await GraphbaseService.isAvailable(dbBase);
+    if (this.graphbaseAvailable) {
+      [this.graphbaseBookmarks, this.graphbaseSnapshots] = await Promise.all([
+        GraphbaseService.listBookmarks(dbBase),
+        GraphbaseService.listSnapshots(dbBase),
+      ]);
+      // Refresh history for the current URL if one is loaded
+      if (this.panelState.repoUrl) {
+        this.graphbaseHistory = await GraphbaseService.listHistory(dbBase, this.panelState.repoUrl);
+      }
+    } else {
+      this.graphbaseBookmarks = [];
+      this.graphbaseSnapshots = [];
+      this.graphbaseHistory = [];
+    }
+    m.redraw();
+  }
+
+  /**
+   * Save a named graphbase bookmark.
+   * When called from the "promote from cache" flow, pass an explicit `url`
+   * override; otherwise uses the current repo URL from panelState.
+   */
+  public async saveGraphbaseBookmark(name: string, urlOverride?: string): Promise<void> {
+    const url = urlOverride ?? this.panelState.repoUrl;
+    if (!name.trim() || !url) return;
+    const opts = this.appState.state.parserOptions;
+    const layout = this.appState.state.graphStyling.layout ?? 'compound_layout';
+    const ok = await GraphbaseService.saveBookmark(
+      this.appState.api.db,
+      name.trim(),
+      url,
+      layout,
+      this.panelState.parseDepth,
+      opts.fileExtensions,
+    );
+    if (ok) {
+      ToastManager.show(`Saved "${name.trim()}"`);
+      await this.refreshGraphbase();
+    } else {
+      ToastManager.show('Could not save — is graphbase available?');
+    }
+  }
+
+  /** Delete a named graphbase bookmark. */
+  public async deleteGraphbaseBookmark(name: string): Promise<void> {
+    const ok = await GraphbaseService.deleteBookmark(this.appState.api.db, name);
+    if (ok) await this.refreshGraphbase();
+  }
+
+  /** Load a graphbase bookmark: stream the URL with the saved settings. */
+  public loadGraphbaseBookmark(bookmark: GraphbaseBookmark): void {
+    this.updatePanelState({ repoUrl: bookmark.url, codeSourceMode: 'repo' });
+    this._startStreamFromUrl(bookmark.url);
+    this.actions.repo.fetchRepository(bookmark.url)
+      .then(() => m.redraw())
+      .catch(() => { /* graph still renders */ });
+  }
+
+  /** Save the current rendered graph as a full snapshot (instant replay later). */
+  public async saveGraphbaseSnapshot(name: string): Promise<void> {
+    if (!name.trim()) return;
+    const gd = this.appState.state.graphData as any;
+    if (!gd?.graph?.nodes) {
+      ToastManager.show('No graph loaded — render one first');
+      return;
+    }
+    // Reconstruct flat node array from the gJGF {id: {metadata: {...}}} shape
+    const nodes = Object.entries(gd.graph.nodes as Record<string, { metadata: Record<string, unknown> }>)
+      .map(([id, val]) => ({ id, ...val.metadata }));
+    const edges: Array<{ source: string; target: string }> = gd.graph.edges ?? [];
+    const meta = {
+      url: this.panelState.repoUrl || '',
+      layout: this.appState.state.graphStyling.layout,
+      nodeCount: nodes.length,
+    };
+    const ok = await GraphbaseService.saveSnapshot(
+      this.appState.api.db, name.trim(), nodes, edges, meta,
+    );
+    if (ok) {
+      ToastManager.show(`Snapshot "${name.trim()}" saved`);
+      await this.refreshGraphbase();
+    } else {
+      ToastManager.show('Could not save snapshot');
+    }
+  }
+
+  /** Replay a stored snapshot instantly — no re-streaming needed. */
+  public async loadGraphbaseSnapshot(snapshotName: string): Promise<void> {
+    const snap = await GraphbaseService.loadSnapshot(this.appState.api.db, snapshotName);
+    if (!snap) { ToastManager.show('Snapshot not found'); return; }
+
+    const styling = this.appState.state.graphStyling;
+    this.updatePanelState({ isLoading: true, statusMessage: 'Loading snapshot…', progress: null });
+
+    this._mountAndStream((renderer) => {
+      renderer.setTotal(snap.nodes.length);
+      // Feed stored nodes/edges synchronously — no network call
+      for (const node of snap.nodes) renderer.addNode(node as any);
+      for (const edge of snap.edges) renderer.addEdge(edge as any);
+      renderer.finalize();
+      this.updatePanelState({ isLoading: false, statusMessage: `Snapshot: ${snapshotName}`, progress: null });
+      return () => {}; // no-op cancel
+    }, `Loading "${snapshotName}"…`);
+
+    // If the snapshot has a URL, also populate the file tree
+    if (snap.meta?.url) {
+      this.updatePanelState({ repoUrl: snap.meta.url, codeSourceMode: 'repo' });
+      this.actions.repo.fetchRepository(snap.meta.url)
+        .then(() => m.redraw())
+        .catch(() => {});
+    }
+  }
+
+  /** Delete a named snapshot. */
+  public async deleteGraphbaseSnapshot(name: string): Promise<void> {
+    const ok = await GraphbaseService.deleteSnapshot(this.appState.api.db, name);
+    if (ok) await this.refreshGraphbase();
+  }
+
+  // ── History ──────────────────────────────────────────────────────────────
+
+  /** Replay a specific history entry by url_hash + captured_at timestamp. */
+  public async loadGraphbaseHistoryEntry(urlHash: string, capturedAt: number): Promise<void> {
+    const entry = await GraphbaseService.getHistoryEntry(this.appState.api.db, urlHash, capturedAt);
+    if (!entry) { ToastManager.show('History entry not found'); return; }
+
+    this.updatePanelState({ isLoading: true, statusMessage: 'Replaying history…', progress: null });
+    this._mountAndStream((renderer) => {
+      renderer.setTotal(entry.nodes.length);
+      for (const node of entry.nodes) renderer.addNode(node as any);
+      for (const edge of entry.edges) renderer.addEdge(edge as any);
+      renderer.finalize();
+      const ts = new Date(capturedAt * 1000).toLocaleString();
+      this.updatePanelState({ isLoading: false, statusMessage: `History: ${ts}`, progress: null });
+      return () => {};
+    }, 'Replaying history entry…');
+  }
+
+  /** Delete a history entry. */
+  public async deleteGraphbaseHistoryEntry(urlHash: string, capturedAt: number): Promise<void> {
+    const ok = await GraphbaseService.deleteHistoryEntry(this.appState.api.db, urlHash, capturedAt);
+    if (ok) await this.refreshGraphbase();
   }
 
   /** Fetch and refresh the backend graph-cache list. */
@@ -335,6 +508,13 @@ export class LayoutContext {
             this.updatePanelState({ isLoading: false, statusMessage: msg, progress: null });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
             this.refreshCache();
+            if (this.graphbaseAvailable && this.graphbaseTrackHistory && accNodes.length > 0) {
+              const histUrl = this.panelState.repoUrl || 'local';
+              GraphbaseService.appendHistory(
+                this.appState.api.db, histUrl,
+                accNodes as any, accEdges as any, { layout, nodeCount },
+              ).then(() => this.refreshGraphbase());
+            }
           },
           onError: (msg) => {
             this._cancelStream = null;
@@ -404,6 +584,12 @@ export class LayoutContext {
             this.updatePanelState({ isLoading: false, statusMessage: msg, progress: null });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
             this.refreshCache();
+            if (this.graphbaseAvailable && this.graphbaseTrackHistory && accNodes.length > 0) {
+              GraphbaseService.appendHistory(
+                this.appState.api.db, githubUrl,
+                accNodes as any, accEdges as any, { layout, nodeCount },
+              ).then(() => this.refreshGraphbase());
+            }
           },
           onError: (msg) => {
             this._cancelStream = null;
@@ -606,6 +792,11 @@ export class LayoutContext {
         // Streaming from the URL will hit the backend cache and replay instantly.
         this.updatePanelState({ repoUrl: entry.url, codeSourceMode: 'repo' });
         this._startStreamFromUrl(entry.url);
+        // fetchRepository populates state.repo.content, which the Files panel
+        // reads — without this the recalled graph renders but the tree stays empty.
+        this.actions.repo.fetchRepository(entry.url)
+          .then(() => m.redraw())
+          .catch(() => { /* graph still renders from the stream above */ });
       },
 
       onClearRepo: () => {

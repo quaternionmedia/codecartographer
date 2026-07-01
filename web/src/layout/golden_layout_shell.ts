@@ -16,12 +16,8 @@ import { GoldenLayout } from 'golden-layout';
 
 import type { ICell } from '../state/cell_state';
 import { LayoutContext } from './layout_context';
-import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
-import { createGraphPanel } from './panels/graph_panel';
-import { createFileTreePanel } from './panels/file_tree_panel';
-import { createSourcePanel } from './panels/source_panel';
-import { createGraphSettingsPanel } from './panels/graph_settings_panel';
-import { createActionsPanel } from './panels/actions_panel';
+import { PanelRegistry, DockPanelId } from './panel_registry';
+import { AddPanelMenu } from './components/add_panel_menu';
 
 import { HelpModal, HelpModalComponent } from '../components/codecarto/help/help_modal';
 import { ToastContainer } from '../components/codecarto/help/toast';
@@ -43,8 +39,12 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
   const ctx = new LayoutContext(initialCell);
 
   let glInstance: GoldenLayout | null = null;
+  let menuOpen = false;
+  let menuPos = { x: 0, y: 0 };
 
-  const registerDockPanelLifecycle = (container: any, panelId: 'graph' | 'file-tree' | 'source-panel' | 'graph-settings-panel' | 'plotbar'): void => {
+  const closeMenu = (): void => { if (menuOpen) { menuOpen = false; m.redraw(); } };
+
+  const registerDockPanelLifecycle = (container: any, panelId: DockPanelId): void => {
     // GL2 destroys the container on close — 'beforeComponentRelease' is the correct event.
     // 'close' is not emitted by ComponentContainer in GL 2.x.
     container.on('beforeComponentRelease', () => ctx.hideDockPanel(panelId));
@@ -56,40 +56,18 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
     glInstance = new GoldenLayout(hostElement);
     ctx.attachLayoutManager(glInstance);
 
-    glInstance.registerComponentFactoryFunction('graph', (container) => {
-      container.element.style.cssText = 'width:100%;height:100%;overflow:hidden;';
-      registerDockPanelLifecycle(container, 'graph');
-      m.mount(container.element, createGraphPanel(ctx));
-    });
-
-    glInstance.registerComponentFactoryFunction('source-panel', (container) => {
-      container.element.style.cssText = 'width:100%;height:100%;overflow:auto;';
-      registerDockPanelLifecycle(container, 'source-panel');
-      m.mount(container.element, createSourcePanel(ctx));
-    });
-
-    glInstance.registerComponentFactoryFunction('graph-settings-panel', (container) => {
-      container.element.style.cssText = 'width:100%;height:100%;overflow:auto;';
-      registerDockPanelLifecycle(container, 'graph-settings-panel');
-      m.mount(container.element, createGraphSettingsPanel(ctx));
-    });
-
-    glInstance.registerComponentFactoryFunction('file-tree', (container) => {
-      container.element.style.cssText = 'width:100%;height:100%;overflow:auto;';
-      registerDockPanelLifecycle(container, 'file-tree');
-      m.mount(container.element, createFileTreePanel(ctx));
-    });
+    for (const def of PanelRegistry.all()) {
+      glInstance.registerComponentFactoryFunction(def.id, (container) => {
+        container.element.style.cssText = `width:100%;height:100%;overflow:${def.overflow};`;
+        registerDockPanelLifecycle(container, def.id);
+        def.mount(ctx, container.element);
+      });
+    }
 
     // Known limitation: GL 2.x pop-out opens a new window but Mithril component
     // factories are bound to the original window — components never mount in pop-outs.
     // popInOnClose: true (default_layout.ts) auto-returns panels on pop-out close.
-    glInstance.registerComponentFactoryFunction('plotbar', (container) => {
-      container.element.style.cssText = 'width:100%;height:100%;overflow:auto;';
-      registerDockPanelLifecycle(container, 'plotbar');
-      m.mount(container.element, createActionsPanel(ctx));
-    });
-
-    glInstance.loadLayout(DEFAULT_LAYOUT_CONFIG);
+    glInstance.loadLayout(ctx.loadInitialLayoutConfig());
   }
 
   return {
@@ -98,9 +76,10 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       const theme = ctx.panelState.currentTheme;
       document.documentElement.setAttribute('data-theme', theme === 'terminal' ? '' : theme);
 
-      // Initialise languages + cache (non-blocking)
+      // Initialise languages, filesystem cache, and graphbase (non-blocking, each independent)
       try { await ctx.actions.plot.initializeLanguages(); m.redraw(); } catch { /* non-fatal */ }
       await ctx.refreshCache();
+      ctx.refreshGraphbase(); // non-blocking probe — sets graphbaseAvailable flag
 
       HelpModal.maybeShowFirstTime();
     },
@@ -115,6 +94,14 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       return m('div.gl-shell', [
         // ── App header ────────────────────────────────────────────────────
         m('header.gl-app-header', [
+          m('button.gl-app-header__add-btn', {
+            onclick: (e: MouseEvent) => {
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              menuPos = { x: rect.left, y: rect.bottom };
+              menuOpen = !menuOpen;
+            },
+            title: 'Add a window',
+          }, '+'),
           m('h1.gl-app-header__title', [
             m('span.gl-app-header__icon', '◈'),
             'Code Cartographer',
@@ -126,15 +113,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
                   m('button.gl-app-header__restore-btn', {
                     onclick: () => ctx.restoreDockPanel(panelId),
                     title: `Restore ${panelId}`,
-                  }, panelId === 'source-panel'
-                    ? 'Restore Source'
-                    : panelId === 'graph-settings-panel'
-                      ? 'Restore Settings'
-                      : panelId === 'graph'
-                        ? 'Restore Graph'
-                        : panelId === 'plotbar'
-                          ? 'Restore Actions'
-                          : 'Restore Files'),
+                  }, `Restore ${PanelRegistry.get(panelId)?.menuLabel ?? panelId}`),
                 ),
               )
             : null,
@@ -155,7 +134,23 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
             glInstance?.destroy();
             glInstance = null;
           },
+          // Right-click on the tab/dock area also opens the add-window menu.
+          oncontextmenu: (e: MouseEvent) => {
+            e.preventDefault();
+            menuPos = { x: e.clientX, y: e.clientY };
+            menuOpen = true;
+            m.redraw();
+          },
         }),
+
+        menuOpen
+          ? m(AddPanelMenu, {
+              ctx,
+              x: menuPos.x,
+              y: menuPos.y,
+              onClose: closeMenu,
+            })
+          : null,
 
         // ── Overlays (modals / toasts — rendered above GL chrome) ─────────
         m('div.gl-overlays', [

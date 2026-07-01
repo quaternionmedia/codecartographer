@@ -5,35 +5,25 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Web Browser                              │
-│                    (http://localhost:1234)                       │
+│              (http://localhost:5173 via Vite dev)                │
 └─────────────────────────┬───────────────────────────────────────┘
-                          │ HTTP
-┌─────────────────────────▼───────────────────────────────────────┐
-│                      Frontend (Vite)                             │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐    │
-│  │  State   │  │Components│  │ Services │  │   Gravis     │    │
-│  │ Manager  │  │   (UI)   │  │  (API)   │  │ (Rendering)  │    │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────────┘    │
-└─────────────────────────┬───────────────────────────────────────┘
-                          │ REST API
+                          │ HTTP / SSE
 ┌─────────────────────────▼───────────────────────────────────────┐
 │                    Backend (FastAPI)                             │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │                       Routers                            │    │
-│  │  /palette  /parser  /plotter  /polygraph  /repo  /local │    │
+│  │  /parse  /repo  /plotter  /c-parser  /pam  /db (opt)   │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
 │  ┌─────────────────────────▼───────────────────────────────┐    │
 │  │                      Services                            │    │
-│  │  ParserService  PlotterService  GitHubService  LocalRepo │    │
+│  │  UnifiedParserService  GitHubService  CacheService       │    │
+│  │  PositionService       CParserService                    │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
 │  ┌─────────────────────────▼───────────────────────────────┐    │
-│  │                       Parsers                            │    │
-│  │  PythonCustomAST  DirectoryParser  DependencyParser      │    │
+│  │                      Parsers                             │    │
+│  │  PythonLanguageParser  CLangaugeParser                   │    │
+│  │  RegexLanguageParser   (20 languages, Phase 1 regex)    │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
-│  ┌─────────────────────────▼───────────────────────────────┐    │
-│  │                      Models                              │    │
-│  │  Directory  Folder  File  GraphData  PlotData            │    │
-│  └──────────────────────────────────────────────────────────┘    │
 └─────────────────────────┬───────────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────────┐
@@ -49,250 +39,144 @@
 
 ```
 codecarto/
-├── __init__.py
-├── cli.py              # Click CLI entry point
-├── main.py             # FastAPI app configuration
+├── main.py                # FastAPI app, router registration
 │
-├── routers/            # HTTP endpoint handlers
-│   ├── palette_router.py
-│   ├── parser_router.py
-│   ├── plotter_router.py
-│   ├── polygraph_router.py
-│   ├── repo_router.py
-│   └── local_repo_router.py
+├── routers/               # HTTP endpoint handlers
+│   ├── unified_parser_router.py  # /parse/*  (all languages, SSE streaming)
+│   ├── plotter_router.py         # /plotter/demo + /render/html
+│   ├── repo_router.py            # /repo/*   (GitHub tree, local paths)
+│   ├── c_parser_router.py        # /c-parser/* (libclang semantic parse)
+│   └── pam_router.py             # /pam/*    (PAM log monitor, WebSocket)
 │
-├── services/           # Business logic
-│   ├── github_service.py
-│   ├── local_repo_service.py
-│   ├── palette_service.py
-│   ├── parser_service.py
-│   ├── plotter_service.py
-│   ├── polygraph_service.py
-│   ├── position_service.py
+├── services/
+│   ├── unified_parser_service.py  # orchestrates all language parsing
+│   ├── github_service.py          # GitHub API + size-tier repo fetching
+│   ├── cache_service.py           # filesystem + optional MongoDB cache
+│   ├── graph_serializer.py        # NetworkX → gJGF
+│   ├── position_service.py        # layout registry (spring, compound …)
+│   ├── c_parser_service.py        # C-specific service layer
 │   └── parsers/
-│       ├── ASTs/
-│       │   └── python_custom_ast.py
-│       └── python/
-│           ├── directory_parser.py
-│           └── dependency_parser.py
+│       ├── language_parser.py          # LanguageParser Protocol + ParserRegistry
+│       ├── python_language_parser.py   # Python (custom AST visitor)
+│       ├── c_language_parser.py        # C/H (libclang adapter, batch_whole_tree)
+│       ├── c_parser.py                 # libclang core
+│       ├── regex_language_parser.py    # 20-language regex adapter (Phase 1)
+│       └── pam_parser.py              # PAM log parser
 │
-├── models/             # Pydantic data models
-│   ├── source_data.py      # File, Folder, Directory
-│   ├── graph_data.py       # Graph structures
-│   ├── plot_data.py        # Visualization data
-│   ├── gravis_settings.py  # Gravis configuration
-│   └── custom_layouts/     # NetworkX layouts
+├── models/
+│   ├── source_data.py       # File, Folder, Directory
+│   └── custom_layouts/
+│       └── compound_layout.py  # 3-pass hierarchical layout
 │
-├── database/           # Database utilities
-│   └── database.py
+└── static/                # Bundled HTML assets (c-visualizer, pam-frontend)
+```
+
+## Frontend Structure
+
+```
+web/src/
+├── layout/
+│   ├── golden_layout_shell.ts   # GL bootstrap; "+" add-window; layout save/restore
+│   ├── layout_context.ts        # shared state hub for all GL panels
+│   ├── panel_registry.ts        # panel definitions (id/config/mount) — add panels here
+│   ├── default_layout.ts        # built-in panel arrangement
+│   └── panels/
+│       ├── graph_panel.ts           # D3/vis-network canvas
+│       ├── file_tree_panel.ts       # repo + upload file browser
+│       ├── upload_panel.ts          # local file dropzone
+│       ├── repo_panel.ts            # GitHub URL fetch + recent/examples
+│       ├── graphbase_panel.ts       # durable named bookmarks (MongoDB)
+│       ├── graph_settings_panel.ts  # styling/layout controls
+│       └── actions_panel.ts         # plot/cancel/status
 │
-└── util/               # Utilities
-    ├── exceptions.py
-    └── utilities.py
+├── features/graph/
+│   ├── services/
+│   │   ├── graph_renderer.ts        # static D3 renderer
+│   │   ├── streaming_renderer.ts    # progressive SSE renderer
+│   │   ├── compound_layout.ts       # CompoundLayoutManager (bounding circles + child map)
+│   │   └── renderers.ts             # renderer registry
+│   └── extensions/                  # drag, zoom, select, highlight, tooltip, color
+│
+├── state/
+│   ├── types.ts             # GraphStylingOptions, app state shapes
+│   ├── api_base.ts          # API endpoint base URLs
+│   └── state_controller.ts  # Meiosis cell wrapper
+│
+└── services/
+    ├── plot_service.ts          # SSE stream helpers
+    ├── repo_service.ts          # repo tree fetch/expand
+    └── graphbase_service.ts     # /db/bookmarks client
 ```
 
 ## Data Flow
 
-### 1. Source Code → Graph
+### Unified parse path (all languages, depth=2)
 
 ```
-Source Code (file/repo)
-        │
-        ▼
-┌───────────────────┐
-│  Local Repo or    │
-│  GitHub Service   │
-└─────────┬─────────┘
-          │ Directory model
-          ▼
-┌───────────────────┐
-│  Parser Service   │
-│  (AST/Dir/Dep)    │
-└─────────┬─────────┘
-          │ NetworkX DiGraph
-          ▼
-┌───────────────────┐
-│  Plotter Service  │
-│  (Layout + Style) │
-└─────────┬─────────┘
-          │ PlotData
-          ▼
-┌───────────────────┐
-│   Gravis/mpld3    │
-│  (Visualization)  │
-└───────────────────┘
+User submits URL / clicks Plot
+  │
+  ▼
+PlotService.streamFromUrl() → POST /parse/stream-url  (SSE)
+  │
+  ▼
+UnifiedParserService.stream_parse_url()
+  │── fetch GitHub tree (3-tier size: full / structure / shallow)
+  │── walk folder: depth-0 dir nodes, depth-1 file nodes
+  │── per language: ParserRegistry.get(ext) → parser.parse_files()
+  │     regular parsers: per-file dispatch
+  │     batch_whole_tree parsers (C/H): collect all, parse once via asyncio.to_thread
+  │── compute layout (NetworkX → PositionService)
+  │── SSE: meta → nodes (BFS) → edges → done
+  │
+  ▼
+StreamingGraphRenderer (frontend rAF loop)
+  │── addNode() per SSE 'node' event → pop-in animation
+  │── addEdge() per SSE 'edge' event
+  │── finalize() on 'done' → fit view + draw compound backgrounds
 ```
 
-### 2. Request Flow
+## Key Architectural Decisions
 
-```
-HTTP Request
-     │
-     ▼
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Router    │────▶│   Service   │────▶│   Parser    │
-│ (Endpoint)  │     │  (Logic)    │     │  (Process)  │
-└─────────────┘     └─────────────┘     └─────────────┘
-     │                                         │
-     │◀────────────────────────────────────────┘
-     │
-     ▼
-HTTP Response (JSON)
-```
+All non-obvious structural choices are documented as ADR drafts in
+`docs/adr/` following the `quaternionmedia/qm` governance discipline
+(see `docs/adr/README.md`). Short index:
 
-## Core Components
-
-### CLI (`cli.py`)
-
-Entry point for command-line operations using Click:
-
-```python
-@click.group()
-def cli():
-    """Codecarto CLI"""
-    pass
-
-@cli.command()
-def dev():
-    """Start development servers"""
-    # Launches uvicorn + npm
-```
-
-### FastAPI App (`main.py`)
-
-Configures the REST API:
-
-```python
-app = FastAPI()
-app.add_middleware(CORSMiddleware, ...)
-app.include_router(ParserRouter, prefix="/parser")
-app.include_router(LocalRepoRouter, prefix="/local")
-# ... more routers
-```
-
-### Routers
-
-Handle HTTP requests and delegate to services:
-
-| Router | Prefix | Purpose |
-|--------|--------|---------|
-| `PaletteRouter` | `/palette` | Color schemes |
-| `ParserRouter` | `/parser` | Parse GitHub files |
-| `PlotterRouter` | `/plotter` | Generate visualizations |
-| `PolygraphRouter` | `/polygraph` | Graph operations |
-| `RepoReaderRouter` | `/repo` | GitHub repos |
-| `LocalRepoRouter` | `/local` | Local repos |
-
-### Services
-
-Business logic layer:
-
-| Service | Responsibility |
-|---------|---------------|
-| `ParserService` | Orchestrates parsing |
-| `GitHubService` | GitHub API integration |
-| `LocalRepoService` | Local filesystem parsing |
-| `PlotterService` | Graph layout and styling |
-| `PositionService` | Node positioning algorithms |
-
-### Parsers
-
-Transform source code into graphs:
-
-| Parser | Output |
-|--------|--------|
-| `PythonCustomAST` | AST nodes and edges |
-| `DirectoryParser` | File hierarchy graph |
-| `DependencyParser` | Import relationship graph |
-
-### Models
-
-Pydantic models for data validation:
-
-```python
-class File(BaseModel):
-    url: str = ""
-    name: str = ""
-    size: int = 0
-    raw: str = ""
-
-class Folder(BaseModel):
-    name: str = ""
-    size: int = 0
-    files: List[File] = []
-    folders: List["Folder"] = []
-
-class Directory(BaseModel):
-    info: RepoInfo
-    size: int = 0
-    root: Folder
-```
-
-## Graph Representation
-
-Codecarto uses NetworkX `DiGraph` for graph representation:
-
-```python
-import networkx as nx
-
-G = nx.DiGraph()
-G.add_node("module", type="Module", name="main.py")
-G.add_node("func", type="Function", name="process")
-G.add_edge("module", "func", relationship="contains")
-```
-
-### Node Attributes
-
-| Attribute | Description |
-|-----------|-------------|
-| `type` | Node type (Module, Function, Class, etc.) |
-| `name` | Display name |
-| `line` | Source line number |
-| `color` | Visualization color |
-
-### Edge Attributes
-
-| Attribute | Description |
-|-----------|-------------|
-| `relationship` | Edge type (contains, imports, calls) |
-| `weight` | Edge weight for layout |
-
-## Frontend Architecture
-
-```
-web/src/
-├── index.html          # Entry point
-├── index.ts            # Main TypeScript
-├── components/         # UI components
-├── services/           # API client services
-├── state/              # State management
-└── styles/             # CSS
-```
-
-## Database (Optional)
-
-MongoDB integration via `graphbase` submodule:
-
-- Stores parsed graphs
-- Enables graph queries
-- Caches analysis results
+| ADR | Decision |
+|-----|----------|
+| *Parser/cache unification* | Deleted legacy router generations; `batch_whole_tree` opt-in for cross-file C parsing |
+| *Golden Layout as primary shell* | Replaced monolithic `codecarto.ts`; panel registry in `panel_registry.ts` |
+| *Compound hierarchical layout* | 3-pass dirs→files→symbols orbit algorithm |
+| *CacheService vs graphbase* | TTL'd content-addressed cache vs. user-named durable store — kept separate |
+| *GL panel registry + add-window menu* | Generalized from hardcoded map; real `LayoutManager` import fixed restore bug |
+| *D3 hierarchy layout improvements* | Hierarchical drag, per-depth labels, cumulative spread scaling |
 
 ## Extension Points
 
-### Adding a New Parser
+### Adding a New Language Parser (fastest path)
 
-1. Create parser in `services/parsers/`
-2. Return `nx.DiGraph`
-3. Add to `ParserService`
-4. Create API endpoint in router
+Add a `_PATTERNS` list and one entry in `_LANGUAGES` in
+`codecarto/services/parsers/regex_language_parser.py`.
+The new extensions appear in `/parse/languages` immediately.
+See `docs/llm/EXTENDING.md` for the full guide including the
+`batch_whole_tree` option for cross-file languages.
 
-### Adding a New Visualization
+### Adding a New GL Panel
 
-1. Add layout in `models/custom_layouts/`
-2. Update `PlotterService`
-3. Configure Gravis settings
+Add one entry to `PANEL_DEFINITIONS` in
+`web/src/layout/panel_registry.ts` (id, title, GL config, mount fn).
+It automatically appears in the "+" add-window menu.
 
-### Adding a CLI Command
+### Adding a New Renderer
 
-1. Add function in `cli.py` with `@cli.command()` decorator
-2. Use Click options/arguments for parameters
+Implement `IGraphRenderer`, register in
+`web/src/features/graph/services/renderers.ts`.
+
+### Adding a New Graph Layout
+
+Add `my_layout(G: nx.DiGraph) -> dict` in
+`codecarto/models/custom_layouts/`, import inside `add_custom_layouts()`
+in `position_service.py`, register with `params=["graph"]`.
+
+## Architecture Decision Records
+
+For the *why* behind non-obvious structural choices, see [`docs/adr/`](adr/README.md).

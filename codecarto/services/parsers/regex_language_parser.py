@@ -190,6 +190,67 @@ _SHELL: list[_Pattern] = [
     (2, "function", re.compile(r"^function\s+(\w+)\s*(?:\(|\{|$)")),
 ]
 
+# ── Lua ──────────────────────────────────────────────────────────────────────
+_LUA: list[_Pattern] = [
+    (2, "function", re.compile(r"^(?:local\s+)?function\s+([\w.:]+)\s*\(")),
+    (2, "function", re.compile(r"^([\w.]+)\s*=\s*function\s*\(")),
+]
+
+# ── Assembly (x86/ARM/MIPS/RISC-V common notations) ─────────────────────────
+_ASM: list[_Pattern] = [
+    # Label definitions: word followed by colon (e.g. main:, _start:, .loop:)
+    (2, "label", re.compile(r"^(\.[a-zA-Z_]\w*|[a-zA-Z_]\w*):")),
+    # Common directive names as top-level symbols
+    (2, "section", re.compile(r"^\.(text|data|bss|rodata|section)\b")),
+]
+
+# ── SQL ───────────────────────────────────────────────────────────────────────
+_SQL: list[_Pattern] = [
+    (2, "table",     re.compile(r"^CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)", re.IGNORECASE)),
+    (2, "view",      re.compile(r"^CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+(\w+)", re.IGNORECASE)),
+    (2, "function",  re.compile(r"^CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(\w+)", re.IGNORECASE)),
+    (2, "procedure", re.compile(r"^CREATE\s+(?:OR\s+REPLACE\s+)?PROCEDURE\s+(\w+)", re.IGNORECASE)),
+    (2, "index",     re.compile(r"^CREATE\s+(?:UNIQUE\s+)?INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)", re.IGNORECASE)),
+]
+
+# ── Markdown ─────────────────────────────────────────────────────────────────
+_MARKDOWN: list[_Pattern] = [
+    # ATX headings: # Title, ## Sub, etc. Capture the heading text.
+    (2, "heading", re.compile(r"^#{1,6}\s+(.+?)\s*$")),
+]
+
+# ── HTML (id and data-component attribute definitions) ───────────────────────
+_HTML: list[_Pattern] = [
+    # Elements with id="…" — useful as structural anchors
+    (2, "anchor", re.compile(r'<\w+[^>]*\sid="([^"]+)"')),
+    # Web component definitions: <custom-element> or data-component="name"
+    (2, "component", re.compile(r"<([a-z][\w-]+-[\w-]+)(?:\s|>|/)")),
+]
+
+# ── CSS / SCSS ────────────────────────────────────────────────────────────────
+_CSS: list[_Pattern] = [
+    (2, "class",      re.compile(r"^\.([\w-]+)\s*(?:\{|,|:)")),
+    (2, "id",         re.compile(r"^#([\w-]+)\s*(?:\{|,|:)")),
+    (2, "keyframes",  re.compile(r"^@keyframes\s+([\w-]+)")),
+    (2, "mixin",      re.compile(r"^@mixin\s+([\w-]+)")),
+    (2, "function",   re.compile(r"^@function\s+([\w-]+)")),
+]
+
+# ── Dockerfile ────────────────────────────────────────────────────────────────
+_DOCKERFILE: list[_Pattern] = [
+    # ARG NAME and ENV NAME are the most symbol-like directives
+    (2, "arg",       re.compile(r"^ARG\s+([\w]+)", re.IGNORECASE)),
+    (2, "env",       re.compile(r"^ENV\s+([\w]+)", re.IGNORECASE)),
+    # Stage names from multi-stage builds: FROM image AS name
+    (2, "stage",     re.compile(r"^FROM\s+\S+\s+AS\s+([\w-]+)", re.IGNORECASE)),
+]
+
+# ── TOML ─────────────────────────────────────────────────────────────────────
+_TOML: list[_Pattern] = [
+    (2, "section",       re.compile(r"^\[([^\[\]]+)\]$")),
+    (2, "array_section", re.compile(r"^\[\[([^\[\]]+)\]\]$")),
+]
+
 
 # ── Parser class ──────────────────────────────────────────────────────────────
 
@@ -283,18 +344,31 @@ class RegexLanguageParser:
 # ── Language instances + registration ─────────────────────────────────────────
 
 _LANGUAGES: list[tuple[str, list[str], list[_Pattern]]] = [
-    ("javascript", [".js", ".jsx", ".mjs"],       _JS),
-    ("typescript", [".ts", ".tsx"],               _TS),
-    ("rust",       [".rs"],                       _RUST),
-    ("go",         [".go"],                       _GO),
-    ("java",       [".java"],                     _JAVA),
-    ("csharp",     [".cs"],                       _CSHARP),
-    ("kotlin",     [".kt", ".kts"],               _KOTLIN),
-    ("swift",      [".swift"],                    _SWIFT),
-    ("ruby",       [".rb"],                       _RUBY),
-    ("php",        [".php"],                      _PHP),
-    ("scala",      [".scala"],                    _SCALA),
-    ("shell",      [".sh", ".bash"],              _SHELL),
+    # ── Existing symbol-bearing languages ─────────────────────────────────────
+    ("javascript", [".js", ".jsx", ".mjs", ".cjs"],    _JS),
+    ("typescript", [".ts", ".tsx", ".cts", ".mts"],    _TS),
+    ("rust",       [".rs"],                            _RUST),
+    ("go",         [".go"],                            _GO),
+    ("java",       [".java"],                          _JAVA),
+    ("csharp",     [".cs"],                            _CSHARP),
+    ("kotlin",     [".kt", ".kts"],                    _KOTLIN),
+    ("swift",      [".swift"],                         _SWIFT),
+    ("ruby",       [".rb"],                            _RUBY),
+    ("php",        [".php"],                           _PHP),
+    ("scala",      [".scala"],                         _SCALA),
+    ("shell",      [".sh", ".bash"],                   _SHELL),
+    # ── New additions ──────────────────────────────────────────────────────────
+    # Note: bare-filename parsers (Dockerfile, Makefile with no extension)
+    # require infrastructure changes in unified_parser_service.py to match
+    # by filename stem rather than Path.suffix — not yet supported.
+    ("lua",        [".lua"],                           _LUA),
+    ("assembly",   [".asm", ".s", ".S"],               _ASM),
+    ("sql",        [".sql"],                           _SQL),
+    ("markdown",   [".md", ".mdx"],                    _MARKDOWN),
+    ("html",       [".html", ".htm", ".xhtml"],        _HTML),
+    ("css",        [".css", ".scss", ".sass", ".less"], _CSS),
+    ("dockerfile", [".dockerfile"],                    _DOCKERFILE),
+    ("toml",       [".toml"],                          _TOML),
 ]
 
 for _lang, _exts, _pats in _LANGUAGES:

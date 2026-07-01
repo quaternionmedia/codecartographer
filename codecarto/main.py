@@ -52,15 +52,25 @@ app.include_router(PamRouter, prefix="/pam", tags=["pam"])
 app.include_router(UnifiedParserRouter, prefix="/parse", tags=["parse"])
 app.include_router(LexiconRouter, prefix="/lexicon", tags=["lexicon"])
 
-# Optional: Graphbase MongoDB router — activated when MONGODB_URI env var is set
+# Optional: Graphbase MongoDB router — activated when MONGODB_URI env var is set.
+# Surfaced explicitly at startup so a missing variable in the wrong shell
+# (e.g. a git-bash session that doesn't inherit Windows user-scope env vars)
+# is immediately visible in the log rather than silently absent.
 import os as _os
+import logging as _log
 if _os.getenv("MONGODB_URI"):
     try:
-        from graphbase.src.main import graphdb as GraphBaseRouter
+        from graphbase import graphdb as GraphBaseRouter
         app.include_router(GraphBaseRouter, prefix="/db", tags=["db"])
+        _log.info("Graphbase router mounted at /db (MONGODB_URI=%s)",
+                  _os.getenv("MONGODB_URI"))
     except Exception as _e:
-        import logging as _logging
-        _logging.warning(f"Graphbase router could not be loaded: {_e}")
+        _log.error("Graphbase router failed to load — /db/* will be unavailable: %s", _e)
+else:
+    _log.info("Graphbase disabled — set MONGODB_URI to enable /db/* routes "
+              "(note: git-bash does not inherit Windows user-scope env vars "
+              "set via PowerShell or the registry; use 'export MONGODB_URI=...' "
+              "in the same shell that starts the server)")
 
 
 @app.get("/", include_in_schema=False)

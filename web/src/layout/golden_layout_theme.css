@@ -318,7 +318,8 @@
   border-color: var(--c-secondary, #00ff41);
 }
 
-.gl-app-header__help-btn {
+.gl-app-header__help-btn,
+.gl-app-header__add-btn {
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -333,9 +334,59 @@
   transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 
-.gl-app-header__help-btn:hover {
+.gl-app-header__help-btn:hover,
+.gl-app-header__add-btn:hover {
   background: var(--c-primary-light, #1a1a1a);
   box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+}
+
+/* ── Add-window / layout menu ────────────────────────────────────────────── */
+
+.gl-add-panel-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 180px;
+  background: var(--c-primary-light, #1a1a1a);
+  border: 1px solid var(--c-border, #00ff4140);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.gl-add-panel-menu__section-title {
+  padding: 4px 12px;
+  font-size: 0.65em;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--c-font-muted, #00aa2a);
+}
+
+.gl-add-panel-menu__item {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--c-secondary, #00ff41);
+  font-size: 0.8em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gl-add-panel-menu__item:hover {
+  background: var(--c-primary, #0a0a0a);
+}
+
+.gl-add-panel-menu__empty {
+  padding: 6px 12px;
+  font-size: 0.75em;
+  color: var(--c-font-muted, #00aa2a);
+  font-style: italic;
+}
+
+.gl-add-panel-menu__divider {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--c-border, #00ff4140);
 }
 
 /* ── Full-screen shell container ─────────────────────────────────────────── */
@@ -453,3 +504,145 @@
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.4; }
 }
+
+/* ── Graphbase panel ─────────────────────────────────────────────────────── */
+
+.gl-graphbase-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 8px);
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.gl-graphbase-panel__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  flex-shrink: 0;
+}
+.gl-graphbase-panel__title {
+  font-weight: bold;
+  font-size: 0.85em;
+  color: var(--c-secondary, #00ff41);
+}
+.gl-graphbase-panel__status {
+  font-size: 0.7em;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--border-radius, 4px);
+}
+.gl-graphbase-panel__status--ok  { color: var(--c-secondary, #00ff41); border: 1px solid var(--c-secondary, #00ff41); }
+.gl-graphbase-panel__status--off { color: var(--c-font-muted, #00aa2a); border: 1px solid var(--c-border, #333); }
+.gl-graphbase-panel__hint {
+  font-size: 0.78em;
+  color: var(--c-font-muted, #00aa2a);
+  font-style: italic;
+  margin: 0;
+}
+.gl-graphbase-panel__section-label {
+  font-size: 0.68em;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--c-font-muted, #00aa2a);
+  display: block;
+  margin-bottom: 4px;
+}
+.gl-graphbase-panel__save {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.gl-graphbase-panel__name-input {
+  flex: 1;
+  background: var(--c-primary-light, #1a1a1a);
+  border: 1px solid var(--c-border, #333);
+  color: var(--c-font, #e0e0e0);
+  padding: 4px 8px;
+  font-size: 0.82em;
+  border-radius: var(--border-radius, 4px);
+}
+.gl-graphbase-panel__save-btn {
+  padding: 4px 10px;
+  font-size: 0.78em;
+  background: transparent;
+  border: 1px solid var(--c-secondary, #00ff41);
+  color: var(--c-secondary, #00ff41);
+  cursor: pointer;
+  border-radius: var(--border-radius, 4px);
+}
+.gl-graphbase-panel__save-btn:disabled { opacity: 0.4; cursor: default; }
+.gl-graphbase-panel__list { display: flex; flex-direction: column; gap: 4px; }
+.gl-graphbase-panel__entry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: var(--c-primary-light, #1a1a1a);
+  border: 1px solid var(--c-border, #333);
+  border-radius: var(--border-radius, 4px);
+}
+.gl-graphbase-panel__entry-info { flex: 1; min-width: 0; }
+.gl-graphbase-panel__entry-name {
+  display: block;
+  font-size: 0.82em;
+  color: var(--c-font, #e0e0e0);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gl-graphbase-panel__entry-url {
+  display: block;
+  font-size: 0.7em;
+  color: var(--c-font-muted, #00aa2a);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gl-graphbase-panel__entry-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.gl-graphbase-panel__load-btn,
+.gl-graphbase-panel__delete-btn {
+  width: 22px; height: 22px;
+  border: 1px solid var(--c-border, #333);
+  background: transparent;
+  color: var(--c-font-muted, #00aa2a);
+  cursor: pointer;
+  font-size: 0.75em;
+  border-radius: var(--border-radius, 4px);
+  display: flex; align-items: center; justify-content: center;
+}
+.gl-graphbase-panel__load-btn:hover    { border-color: var(--c-secondary, #00ff41); color: var(--c-secondary, #00ff41); }
+.gl-graphbase-panel__delete-btn:hover  { border-color: #e74c3c; color: #e74c3c; }
+.gl-graphbase-panel__promote-btn {
+  width: 22px; height: 22px;
+  border: 1px solid var(--c-border, #333);
+  background: transparent;
+  color: var(--c-font-muted, #00aa2a);
+  cursor: pointer;
+  font-size: 0.8em;
+  border-radius: var(--border-radius, 4px);
+  display: flex; align-items: center; justify-content: center;
+}
+.gl-graphbase-panel__promote-btn:hover { border-color: #f39c12; color: #f39c12; }
+.gl-graphbase-panel__saved-badge {
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8em;
+  color: #f39c12;
+}
+.gl-graphbase-panel__section { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+.gl-graphbase-panel__section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.gl-graphbase-panel__track-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72em;
+  color: var(--c-font-muted, #00aa2a);
+  cursor: pointer;
+  user-select: none;
+}
+.gl-graphbase-panel__track-toggle input { accent-color: var(--c-secondary, #00ff41); }

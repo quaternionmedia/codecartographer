@@ -6,8 +6,9 @@ import type { LayoutConfig } from 'golden-layout';
  * Panels:
  *   • file-tree   — left sidebar: repository / upload browser
  *   • graph       — main area: D3 / vis-network visualisation
- *   • source      — bottom tab: source loader
- *   • graph-settings — bottom tab: graph styling controls
+ *   • upload-panel    — bottom tab: local file dropzone
+ *   • repo-panel      — bottom tab: GitHub URL fetch + recent/examples
+ *   • graph-settings  — bottom tab: graph styling controls
  */
 export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   settings: {
@@ -62,9 +63,16 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
             content: [
               {
                 type: 'component',
-                componentType: 'source-panel',
-                title: 'Source',
-                id: 'source-panel',
+                componentType: 'upload-panel',
+                title: '↑ Upload',
+                id: 'upload-panel',
+                isClosable: true,
+              },
+              {
+                type: 'component',
+                componentType: 'repo-panel',
+                title: '⬇ Repository',
+                id: 'repo-panel',
                 isClosable: true,
               },
               {
