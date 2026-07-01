@@ -101,3 +101,4 @@ Drafts in flight (numberless, by title):
 - *Wire graphbase as a named bookmark store via /db/bookmarks* — `DRAFT-graphbase-bookmark-integration.md`
 - *Formalize the graphbase submodule interface; keep it a submodule* — `DRAFT-graphbase-submodule-interface-contract.md`
 - *Code-map navigation: source-ordered layout, depth-4 hierarchy, view-source* — `DRAFT-code-map-navigation.md`
+- *GitHub token resolution order: gh CLI keyring primary, env vars secondary* — `DRAFT-github-token-resolution.md`

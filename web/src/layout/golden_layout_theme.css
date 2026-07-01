@@ -318,6 +318,26 @@
   border-color: var(--c-secondary, #00ff41);
 }
 
+/* GitHub auth indicator */
+.gl-app-header__gh-auth {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7em;
+  letter-spacing: 0.5px;
+  cursor: default;
+  padding: 2px 6px;
+  border-radius: var(--border-radius, 4px);
+  border: 1px solid transparent;
+}
+.gl-app-header__gh-auth--ok  { color: var(--c-secondary, #00ff41); border-color: var(--c-secondary, #00ff4140); }
+.gl-app-header__gh-auth--warn { color: #f39c12; border-color: #f39c1240; }
+.gl-app-header__gh-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
 .gl-app-header__help-btn,
 .gl-app-header__add-btn {
   width: 24px;

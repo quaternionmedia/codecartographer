@@ -8,7 +8,8 @@ from codecarto.services.github_service import (
     create_headers,
     get_subtree,
     expand_all_tree,
-    is_github_url
+    is_github_url,
+    get_github_token,
 )
 from codecarto.services.local_repo_service import get_local_repo
 from codecarto.util.exceptions import CodeCartoException, proc_exception
@@ -85,7 +86,7 @@ async def expand_all_repo(url: str, max_depth: int = 3) -> dict:
                 pass  # corrupt cache entry — fall through to live fetch
 
         owner, repo_name = get_owner_repo_from_url(url)
-        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+        token = get_github_token()
         root_folder = await expand_all_tree(owner, repo_name, token, max_depth)
         root_folder.name = f"{owner}/{repo_name}"
         info = RepoInfo(owner=owner, name=repo_name, url=url)
