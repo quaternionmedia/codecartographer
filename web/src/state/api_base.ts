@@ -33,4 +33,8 @@ export class API {
   get db(): string {
     return `${this._base}/db`;
   }
+
+  get authGithub(): string {
+    return `${this._base}/auth/github`;
+  }
 }

@@ -78,7 +78,21 @@ async def root():
     return RedirectResponse(url="/docs")
 
 
+@app.get("/auth/github", tags=["auth"])
+async def github_auth_status_endpoint():
+    """Report the active GitHub credential source and whether a token is present.
+
+    Useful for diagnosing the env-var / gh-CLI keyring precedence issue:
+    a stale GITHUB_TOKEN silently shadows a valid gh keyring token unless
+    CC_GITHUB_TOKEN is set or GITHUB_TOKEN/GH_TOKEN are cleared.
+    """
+    from codecarto.services.github_service import github_auth_status
+    return github_auth_status()
+
+
 @app.on_event("startup")
 async def startup():
     from codecarto.routers.pam_router import on_pam_startup
+    from codecarto.services.github_service import get_github_token
+    get_github_token()  # resolve and log the auth source at startup
     await on_pam_startup()

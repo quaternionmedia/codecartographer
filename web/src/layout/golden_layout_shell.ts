@@ -76,10 +76,11 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       const theme = ctx.panelState.currentTheme;
       document.documentElement.setAttribute('data-theme', theme === 'terminal' ? '' : theme);
 
-      // Initialise languages, filesystem cache, and graphbase (non-blocking, each independent)
+      // Initialise languages, filesystem cache, graphbase and GitHub auth (all non-blocking)
       try { await ctx.actions.plot.initializeLanguages(); m.redraw(); } catch { /* non-fatal */ }
       await ctx.refreshCache();
-      ctx.refreshGraphbase(); // non-blocking probe — sets graphbaseAvailable flag
+      ctx.refreshGraphbase();        // probe graphbase — sets graphbaseAvailable
+      ctx.refreshGithubAuthStatus(); // probe GitHub auth — surfaces bad-token early
 
       HelpModal.maybeShowFirstTime();
     },
@@ -107,6 +108,21 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
             'Code Cartographer',
           ]),
           m('span.gl-app-header__spacer'),
+          // ── GitHub auth indicator ───────────────────────────────────────
+          ctx.githubAuthStatus
+            ? m('div.gl-app-header__gh-auth', {
+                title: ctx.githubAuthStatus.authenticated
+                  ? `GitHub: authenticated via ${ctx.githubAuthStatus.source}`
+                  : `GitHub: unauthenticated (60 req/h) — set CC_GITHUB_TOKEN or run 'gh auth login'`,
+                class: ctx.githubAuthStatus.authenticated
+                  ? 'gl-app-header__gh-auth--ok'
+                  : 'gl-app-header__gh-auth--warn',
+              }, [
+                m('span.gl-app-header__gh-dot'),
+                m('span.gl-app-header__gh-label',
+                  ctx.githubAuthStatus.authenticated ? 'GH' : 'GH?'),
+              ])
+            : null,
           ctx.hiddenDockPanels.length > 0
             ? m('div.gl-app-header__restore',
                 ctx.hiddenDockPanels.map((panelId) =>
@@ -134,8 +150,12 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
             glInstance?.destroy();
             glInstance = null;
           },
-          // Right-click on the tab/dock area also opens the add-window menu.
+          // Ctrl+right-click on the dock area opens the add-window menu.
+          // Plain right-click is left to the graph renderer's own contextmenu
+          // handlers (which call preventDefault themselves for node targets) or
+          // falls through to the browser's native menu on empty chrome areas.
           oncontextmenu: (e: MouseEvent) => {
+            if (!e.ctrlKey) return;
             e.preventDefault();
             menuPos = { x: e.clientX, y: e.clientY };
             menuOpen = true;

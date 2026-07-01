@@ -92,6 +92,9 @@ export class LayoutContext {
   /** Cached graph entries fetched from the backend cache endpoint. */
   public cachedGraphs: CachedEntry[] | null = null;
 
+  /** GitHub auth status from the backend's /auth/github endpoint. */
+  public githubAuthStatus: { source: string; authenticated: boolean; token_prefix?: string } | null = null;
+
   /** Graphbase availability, saved bookmarks, snapshots, and history. */
   public graphbaseAvailable = false;
   public graphbaseBookmarks: GraphbaseBookmark[] = [];
@@ -226,6 +229,17 @@ export class LayoutContext {
       this._cancelStream = null;
     }
     this.updatePanelState({ isLoading: false, statusMessage: 'Cancelled', progress: null });
+  }
+
+  /** Fetch and cache the GitHub auth status from the backend. */
+  public async refreshGithubAuthStatus(): Promise<void> {
+    try {
+      const r = await fetch(this.appState.api.authGithub);
+      if (r.ok) {
+        this.githubAuthStatus = await r.json();
+        m.redraw();
+      }
+    } catch { /* non-fatal */ }
   }
 
   /** Check graphbase availability and refresh the bookmark list. */

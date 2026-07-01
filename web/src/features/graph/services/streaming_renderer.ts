@@ -320,6 +320,34 @@ export class StreamingGraphRenderer {
       textEl.attr('opacity', 1);
     }
 
+    // ── Source navigation ──────────────────────────────────────────────────
+    // Right-click or double-click on a symbol node → open github.com/blob
+    // view at the node's line number. Right-click calls preventDefault() so
+    // the browser's native context menu never appears; double-click is the
+    // modifier-key-free alternative.
+    const depth = (node.depth as number) ?? 0;
+    const line  = Number(node.line)  || 0;
+    const file  = (node.file as string) || '';
+
+    if (depth >= 2 && line > 0) {
+      group
+        .on('contextmenu', (event: MouseEvent) => {
+          event.preventDefault();
+          event.stopPropagation();
+          this._openSource(file, line, (node.label as string) || node.id, event.clientX, event.clientY);
+        })
+        .on('dblclick', (event: MouseEvent) => {
+          event.stopPropagation();
+          this._openSource(file, line, (node.label as string) || node.id, event.clientX, event.clientY);
+        });
+    } else if (depth < 2) {
+      // Dir/file nodes: right-click only prevents browser menu (no source to show)
+      group.on('contextmenu', (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+    }
+
     // Drag support (no simulation — positions are pre-computed)
     group.call(
       d3.drag<SVGGElement, unknown>()
@@ -447,6 +475,46 @@ export class StreamingGraphRenderer {
         .delay(300)
         .duration(500)
         .style('opacity', 1);
+    }
+  }
+
+  /**
+   * Open the source location for a symbol node.
+   * GitHub raw URLs are converted to github.com/blob/#L{line} in a new tab.
+   * Non-URL file paths show a small in-page toast at the click position.
+   */
+  private _openSource(file: string, line: number, label: string, cx: number, cy: number): void {
+    const rawMatch = file.match(
+      /^https:\/\/raw\.githubusercontent\.com\/([^/]+\/[^/]+)\/([^/]+)\/(.+)$/
+    );
+    if (rawMatch) {
+      window.open(
+        `https://github.com/${rawMatch[1]}/blob/${rawMatch[2]}/${rawMatch[3]}#L${line}`,
+        '_blank', 'noopener',
+      );
+    } else if (file.startsWith('http')) {
+      window.open(file, '_blank', 'noopener');
+    } else {
+      // Local file — show a compact floating badge near the cursor
+      const badge = document.createElement('div');
+      badge.style.cssText = [
+        'position:fixed',
+        `left:${cx + 8}px`,
+        `top:${cy - 28}px`,
+        'z-index:9999',
+        'background:#1a1a1a',
+        'border:1px solid #00ff4140',
+        'color:#00ff41',
+        'padding:4px 8px',
+        'font-size:11px',
+        'font-family:monospace',
+        'border-radius:4px',
+        'pointer-events:none',
+        'white-space:nowrap',
+      ].join(';');
+      badge.textContent = `${label}  ${file}:${line}`;
+      document.body.appendChild(badge);
+      setTimeout(() => badge.remove(), 3500);
     }
   }
 
