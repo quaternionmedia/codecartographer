@@ -414,6 +414,36 @@ export class PlotActions {
   }
 
   /**
+   * Fetch languages that have a Lexicon (abstraction-layer ontology) and
+   * store in state, for the "Load Lexicon" language picker.
+   * Non-fatal: called on startup; failure is silently ignored.
+   */
+  async initializeLexiconLanguages(): Promise<void> {
+    try {
+      const langs = await PlotService.fetchLexiconLanguages(this.stateController.api.lexicon);
+      this.stateController.update({ availableLexiconLanguages: langs });
+    } catch {
+      // non-fatal — backend may not be running yet
+    }
+  }
+
+  /**
+   * Load and display a language's standalone Lexicon graph (Option A —
+   * see docs/llm/roadmap/lexicon.md). Switchable: grows automatically as
+   * more languages get a lexicon YAML, no frontend change needed.
+   */
+  async loadLexicon(language: string): Promise<void> {
+    this.stateController.clear();
+    try {
+      const data = await PlotService.plotLexicon(this.stateController.api.lexicon, language);
+      this.handlePlotData(data);
+    } catch (error) {
+      console.error(`Failed to load ${language} lexicon:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Load and display demo visualization
    */
   async loadDemo(): Promise<void> {

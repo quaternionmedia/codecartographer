@@ -25,6 +25,7 @@ export interface ICellState {
   parserOptions: ParserOptions;
   selectedRenderer: GraphRendererType;
   availableLanguages: Record<string, string[]> | null;
+  availableLexiconLanguages: string[];
   inputRepoUrl: string;
   prompt: string;
   redraw: () => void;
@@ -64,6 +65,7 @@ export class CellState implements ICellState {
   };
   public selectedRenderer: GraphRendererType = 'd3';
   public availableLanguages: Record<string, string[]> | null = null;
+  public availableLexiconLanguages: string[] = [];
   public inputRepoUrl: string = '';
   public prompt: string = '';
   public redraw: () => void = () => {

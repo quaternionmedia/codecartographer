@@ -78,6 +78,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
 
       // Initialise languages, filesystem cache, graphbase and GitHub auth (all non-blocking)
       try { await ctx.actions.plot.initializeLanguages(); m.redraw(); } catch { /* non-fatal */ }
+      try { await ctx.actions.plot.initializeLexiconLanguages(); m.redraw(); } catch { /* non-fatal */ }
       await ctx.refreshCache();
       ctx.refreshGraphbase();        // probe graphbase — sets graphbaseAvailable
       ctx.refreshGithubAuthStatus(); // probe GitHub auth — surfaces bad-token early

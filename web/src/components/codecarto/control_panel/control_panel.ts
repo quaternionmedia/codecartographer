@@ -79,6 +79,7 @@ export interface ControlPanelState {
 
 export interface ControlPanelCallbacks {
   onDemo: () => void;
+  onLoadLexicon?: (language: string) => void;
   onRepoSubmit: (url: string) => void;
   onRepoFileClick: (url: string) => void;
   onPlotWholeRepo: () => void;
@@ -116,6 +117,7 @@ export interface ControlPanelContent {
   parserOptions: ParserOptions;
   selectedRenderer: GraphRendererType;
   availableLanguages: Record<string, string[]> | null;
+  availableLexiconLanguages: string[];
   cachedGraphs: CachedEntry[] | null;
 }
 
@@ -499,6 +501,26 @@ export function ControlPanel(
           },
           style: 'width: 100%;',
         }, [m('span', '⚡'), m('span', 'Load Demo')]),
+
+        // Lexicon: one button per language with an abstraction-layer
+        // ontology (see docs/llm/roadmap/lexicon.md). Switchable/
+        // extendable — grows automatically as more languages get a
+        // lexicon YAML, no UI change needed.
+        content.availableLexiconLanguages.length > 0 && callbacks.onLoadLexicon
+          ? m('div.panel-source__lexicon-picker', { style: 'display: flex; gap: 4px; margin-top: 4px;' },
+              content.availableLexiconLanguages.map((lang) =>
+                m('button.panel-settings__button-option', {
+                  key: lang,
+                  onclick: (e: MouseEvent) => {
+                    animations.buttonPress(e.currentTarget as Element);
+                    callbacks.onLoadLexicon!(lang);
+                  },
+                  style: 'flex: 1;',
+                  title: `Load the ${lang} Lexicon (abstraction-layer ontology)`,
+                }, [m('span', '📖'), m('span', `${lang} Lexicon`)])
+              )
+            )
+          : null,
       ]),
     ]);
   };

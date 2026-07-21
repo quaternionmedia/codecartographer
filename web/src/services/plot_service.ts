@@ -84,6 +84,32 @@ export class PlotService {
     return (data?.['languages'] as Record<string, string[]>) ?? null;
   }
 
+  /** List languages that have a Lexicon (hand-authored abstraction-layer ontology). */
+  public static async fetchLexiconLanguages(
+    lexiconUrl: string
+  ): Promise<string[]> {
+    const data = await RequestHandler.getRequest(`${lexiconUrl}/`) as Record<string, unknown> | null;
+    return (data?.['languages'] as string[]) ?? [];
+  }
+
+  /**
+   * Load a language's standalone Lexicon graph (Option A) - the same
+   * node-link shape /parse/unified produces, so it renders through the
+   * existing pipeline with no renderer changes. See
+   * docs/llm/roadmap/lexicon.md.
+   */
+  public static async plotLexicon(
+    lexiconUrl: string,
+    language: string
+  ): Promise<unknown> {
+    const data = await RequestHandler.getRequest(`${lexiconUrl}/${language}/graph`);
+    if (typeof data === 'string' || !data) {
+      logger.error('Error plotting lexicon graph for', language);
+      return null;
+    }
+    return data;
+  }
+
   /** Parse a directory using the unified schema (depth-based hierarchy). */
   public static async plotUnified(
     parseUrl: string,

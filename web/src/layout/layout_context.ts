@@ -218,6 +218,7 @@ export class LayoutContext {
       parserOptions: s.parserOptions,
       selectedRenderer: s.selectedRenderer,
       availableLanguages: s.availableLanguages ?? null,
+      availableLexiconLanguages: s.availableLexiconLanguages ?? [],
       cachedGraphs: this.cachedGraphs,
     };
   }
@@ -628,6 +629,17 @@ export class LayoutContext {
           this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: 'Error loading demo' });
+        }
+      },
+
+      onLoadLexicon: async (language: string) => {
+        this.updatePanelState({ isLoading: true, statusMessage: `Loading ${language} lexicon...` });
+        this._lastPlotAction = async () => { await this.actions.plot.loadLexicon(language); };
+        try {
+          await this._lastPlotAction();
+          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+        } catch {
+          this.updatePanelState({ isLoading: false, statusMessage: `Error loading ${language} lexicon` });
         }
       },
 
