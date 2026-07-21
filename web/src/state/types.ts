@@ -54,6 +54,9 @@ export interface LocalState {
 /** Parser configuration options */
 export interface ParserOptions {
   fileExtensions: string[];    // File extensions to parse (e.g., ['.py', '.js'])
+  // Stamp Lexicon abstraction-layer data onto real parsed nodes whose
+  // language has one (see lexicon_bridge.py) - opt-in, off by default.
+  annotateLexicon: boolean;
 }
 
 /** Edge line style */

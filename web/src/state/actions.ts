@@ -472,7 +472,7 @@ export class PlotActions {
       const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
       const dir    = new Directory(new RepoInfo(), 1, new RawFolder('upload', file.size, [file]));
       const data   = await PlotService.plotUnified(
-        this.stateController.api.parse, dir, 2, exts, layout
+        this.stateController.api.parse, dir, 2, exts, layout, undefined, opts.annotateLexicon
       );
       if (!data) throw new Error('No data returned from parse/unified');
       this.stateController.update({ parseDirectory: dir });

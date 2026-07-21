@@ -117,7 +117,8 @@ export class PlotService {
     depth: number = 2,
     extensions: string[] | null = null,
     layout: string = 'Spring',
-    mode?: string
+    mode?: string,
+    annotateLexicon: boolean = false
   ): Promise<unknown> {
     const url = `${parseUrl}/unified`;
     const body: Record<string, unknown> = {
@@ -129,6 +130,7 @@ export class PlotService {
       },
       depth,
       layout,
+      annotate_lexicon: annotateLexicon,
     };
     if (extensions) {
       body['extensions'] = extensions;
@@ -224,11 +226,12 @@ export class PlotService {
       extensions?: string[] | null;
       layout?: string;
       mode?: string;
+      annotateLexicon?: boolean;
     },
     callbacks: StreamCallbacks
   ): () => void {
     const controller = new AbortController();
-    const { depth = 2, extensions = null, layout = 'Spring', mode } = opts;
+    const { depth = 2, extensions = null, layout = 'Spring', mode, annotateLexicon = false } = opts;
 
     const body: Record<string, unknown> = {
       directory: {
@@ -239,6 +242,7 @@ export class PlotService {
       },
       depth,
       layout,
+      annotate_lexicon: annotateLexicon,
     };
     if (extensions) body['extensions'] = extensions;
     if (mode)       body['mode'] = mode;
@@ -289,13 +293,14 @@ export class PlotService {
       extensions?: string[] | null;
       layout?: string;
       mode?: string;
+      annotateLexicon?: boolean;
     },
     callbacks: StreamCallbacks
   ): () => void {
     const controller = new AbortController();
-    const { depth = 2, extensions = null, layout = 'Spring', mode } = opts;
+    const { depth = 2, extensions = null, layout = 'Spring', mode, annotateLexicon = false } = opts;
 
-    const body: Record<string, unknown> = { url: githubUrl, depth, layout };
+    const body: Record<string, unknown> = { url: githubUrl, depth, layout, annotate_lexicon: annotateLexicon };
     if (extensions) body['extensions'] = extensions;
     if (mode)       body['mode'] = mode;
 

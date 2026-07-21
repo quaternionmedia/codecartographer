@@ -488,6 +488,27 @@ export function ControlPanel(
         ),
       ]),
 
+      // Lexicon annotation — stamps abstraction-layer data onto real
+      // parsed nodes where the language has a Lexicon (see
+      // docs/llm/roadmap/lexicon.md); pair with the "Color By: Abstraction
+      // Layer" styling option to actually see it.
+      m('div.panel-settings__group', [
+        m('div.panel-settings__toggle-row', [
+          m('span.panel-settings__label-compact', 'Annotate Lexicon'),
+          m('label.panel-settings__toggle-compact.panel-settings__toggle', [
+            m('input[type=checkbox]', {
+              checked: parser.annotateLexicon,
+              title: 'Stamp abstraction-layer data onto real parsed nodes (currently c, python) — pair with Color By: Abstraction Layer to see it',
+              onchange: (e: Event) => {
+                const checked = (e.target as HTMLInputElement).checked;
+                callbacks.onParserOptionsChange({ annotateLexicon: checked });
+              },
+            }),
+            m('span.panel-settings__toggle-slider'),
+          ]),
+        ]),
+      ]),
+
       m('div.panel-source__divider'),
 
       m('div.panel-source__spacer'),

@@ -62,6 +62,7 @@ export class CellState implements ICellState {
   };
   public parserOptions: ParserOptions = {
     fileExtensions: [],
+    annotateLexicon: false,
   };
   public selectedRenderer: GraphRendererType = 'd3';
   public availableLanguages: Record<string, string[]> | null = null;

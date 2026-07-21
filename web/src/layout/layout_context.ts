@@ -481,7 +481,7 @@ export class LayoutContext {
       PlotService.streamUnified(
         this.appState.api.parse,
         directory,
-        { depth, extensions: exts, layout },
+        { depth, extensions: exts, layout, annotateLexicon: opts.annotateLexicon },
         {
           onMeta: (meta) => {
             renderer.setTotal(meta.nodeCount);
@@ -557,7 +557,7 @@ export class LayoutContext {
       PlotService.streamFromUrl(
         this.appState.api.parse,
         githubUrl,
-        { depth, extensions: exts, layout },
+        { depth, extensions: exts, layout, annotateLexicon: opts.annotateLexicon },
         {
           onFetching: (msg) => this.updatePanelState({ statusMessage: msg }),
           onMeta: (meta) => {
