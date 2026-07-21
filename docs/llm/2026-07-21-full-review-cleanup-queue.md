@@ -213,9 +213,12 @@ deleted in the June 27 cleanup or earlier). Omits the real current
 services entirely: `cache_service.py`, `lexicon_service.py`,
 `unified_parser_service.py`, `c_parser_service.py`.
 
-## 12. `.github/CONTRIBUTING.md` drift
+## 12. `.github/CONTRIBUTING.md` drift [DONE 2026-07-21]
 
-**Status: pending.**
+**Status: done.** Also caught, while fixing this: the frontend
+structure example still listed `GraphControls.ts` — deleted earlier on
+this same branch (item 7) — as a live file. Fixed alongside the
+Golden-Layout-shell pointer to `docs/architecture.md`.
 
 - Testing section (lines 327-338) documents `npm run test:e2e`,
   `npm run test:e2e:ui`, `npx playwright test ...`. `web/package.json`
