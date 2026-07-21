@@ -168,6 +168,38 @@ def compound_layout(G: nx.DiGraph) -> dict:
         default=1.8,
     )
 
+    # ── Cumulative descendant weight per directory ─────────────────────────
+    # dir_files/file_syms/sym_subsyms only capture *direct* children at each
+    # level, so a directory whose room-need comes from a deep/wide nested
+    # subtree (subdirectories full of files/symbols) was previously invisible
+    # to Pass 1's spacing — it was scaled identically to an empty directory.
+    # Nested dir→dir 'contains' edges aren't tracked anywhere else in this
+    # file, so build that map here, then weight = direct files+symbols+
+    # sub-symbols beneath this dir, plus the same recursively through every
+    # nested subdirectory.
+    dir_children: dict[str, list[str]] = {d: [] for d in dirs}
+    for u, v, edata in G.edges(data=True):
+        if edata.get("relation") != "contains":
+            continue
+        if G.nodes[u].get("depth", 1) == 0 and G.nodes[v].get("depth", 1) == 0:
+            dir_children.setdefault(u, []).append(v)
+
+    def _dir_weight(d: str, _seen: set[str]) -> int:
+        if d in _seen:
+            return 0
+        _seen.add(d)
+        weight = 0
+        for f in dir_files.get(d, []):
+            weight += 1 + len(file_syms.get(f, []))
+            for sym in file_syms.get(f, []):
+                weight += len(sym_subsyms.get(sym, []))
+        for child in dir_children.get(d, []):
+            weight += _dir_weight(child, _seen)
+        return weight
+
+    dir_weight = {d: max(1, _dir_weight(d, set())) for d in dirs}
+    avg_dir_weight = sum(dir_weight.values()) / len(dirs) if dirs else 1
+
     pos: dict[str, tuple[float, float]] = {}
 
     # ── Pass 1: spring layout for dirs ─────────────────────────────────────
@@ -183,10 +215,18 @@ def compound_layout(G: nx.DiGraph) -> dict:
         cluster_r = max_file_r + global_max_sym_r
         scale = math.sqrt(len(dirs)) * cluster_r * 1.6
         x_stretch, y_stretch = 1.6, 0.7
-        dir_pos = {
-            n: (float(xy[0]) * scale * x_stretch, float(xy[1]) * scale * y_stretch)
-            for n, xy in raw_dir.items()
-        }
+        dir_pos = {}
+        for n, xy in raw_dir.items():
+            # Directories with an above-average cumulative subtree are
+            # pushed proportionally further from the pack's centroid (spring
+            # layout is already ~zero-centered), giving them more orbital
+            # room than a same-position, near-empty directory would need.
+            weight_factor = math.sqrt(dir_weight[n] / avg_dir_weight)
+            node_scale = scale * weight_factor
+            dir_pos[n] = (
+                float(xy[0]) * node_scale * x_stretch,
+                float(xy[1]) * node_scale * y_stretch,
+            )
 
     for d, xy in dir_pos.items():
         pos[d] = xy
