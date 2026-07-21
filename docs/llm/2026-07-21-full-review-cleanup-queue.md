@@ -120,9 +120,18 @@ service per `graphbase/README.md:14`). `graphbase` now runs in-process
 under `/db`, so the cross-origin allowance for a standalone "moe" server
 looks stale.
 
-## 7. Dead frontend files (pre-`features/` refactor duplicates)
+## 7. Dead frontend files (pre-`features/` refactor duplicates) [DONE 2026-07-21]
 
-**Status: pending.**
+**Status: done.** Re-verified each before deleting (fresh greps, plus
+traced `DirectoryNav`/`GraphControls` barrel re-exports specifically to
+confirm `features/repository/index.ts`'s `DirectoryNav` export points
+at the *live* `features/repository/components/DirectoryNav.ts`, an
+unrelated same-named symbol — not the dead one in `directory_nav.ts`).
+`directory_nav.ts` trimmed to just the still-live
+`DirectoryNavController` (its exclusive `directory_nav.css` removed
+too — confirmed no other file references those classes).
+`features/graph/index.ts`'s now-dead `GraphControls` re-export removed.
+`npm run build` clean after (765 modules, down from 779).
 
 - `web/src/components/codecarto/upload/upload_nav.ts`(+`.css`) —
   superseded by `features/upload/components/UploadNav.ts`.

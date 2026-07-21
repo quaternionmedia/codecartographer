@@ -6,7 +6,6 @@
 
 // Components
 export { Plot } from './components/Plot';
-export { GraphControls } from './components/GraphControls';
 
 // Services
 export { GraphRenderer } from './services/graph_renderer';
