@@ -22,7 +22,7 @@ interface ParentChain {
 /**
  * Computes bounding circles and drag-propagation groups for compound layout.
  *
- * Groups are derived from the real backend `relation === "contains"` edges
+ * Groups are derived from the real backend `kind === "contains"` edges
  * (dir→file, file→symbol, symbol→sub-symbol) — the backend already computed
  * this structure (compound_layout.py) and sends it down the wire in the same
  * graph payload, so re-deriving it from node positions was pure duplication.
@@ -52,11 +52,19 @@ export class CompoundLayoutManager {
   }
 
   /**
-   * Maps each child to its parent using real `relation === "contains"`
-   * edges between the two sets. A child with no such edge (an orphan, same
-   * concept compound_layout.py itself falls back on) is instead assigned to
-   * its nearest parent by position.
+   * Maps each child to its parent using real `kind === "contains"` edges
+   * between the two sets (the unified schema's edge-kind field —
+   * `make_edge()` on the backend — arriving either flat as `edge.kind` or,
+   * for gJGF-shaped payloads, nested at `edge.metadata.kind`). A child with
+   * no such edge (an orphan, same concept compound_layout.py itself falls
+   * back on) is instead assigned to its nearest parent by position.
    */
+  private _isContainsEdge(e: GraphEdge): boolean {
+    if (e.kind === 'contains') return true;
+    const meta = e.metadata as Record<string, unknown> | undefined;
+    return meta?.kind === 'contains';
+  }
+
   private _assignParents(
     edges: GraphEdge[],
     children: GraphNode[],
@@ -67,7 +75,7 @@ export class CompoundLayoutManager {
     const result = new Map<string, GraphNode>();
 
     for (const e of edges) {
-      if (e.relation !== 'contains') continue;
+      if (!this._isContainsEdge(e)) continue;
       const sourceId = typeof e.source === 'string' ? e.source : (e.source as GraphNode).id;
       const targetId = typeof e.target === 'string' ? e.target : (e.target as GraphNode).id;
       if (!childIds.has(targetId)) continue;

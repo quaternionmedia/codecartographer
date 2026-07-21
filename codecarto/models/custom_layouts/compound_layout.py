@@ -43,7 +43,7 @@ def compound_layout(G: nx.DiGraph) -> dict:
     subsym_parent: dict[str, str] = {}   # subsym_id → nearest depth-2 ancestor
 
     for u, v, edata in G.edges(data=True):
-        if edata.get("relation") != "contains":
+        if edata.get("kind") != "contains":
             continue
         u_depth = G.nodes[u].get("depth", 1)
         v_depth = G.nodes[v].get("depth", 1)
@@ -65,7 +65,7 @@ def compound_layout(G: nx.DiGraph) -> dict:
                     break
                 found = None
                 for pu, _pv, pdata in G.in_edges(ancestor, data=True):
-                    if pdata.get("relation") == "contains":
+                    if pdata.get("kind") == "contains":
                         found = pu
                         break
                 ancestor = found  # type: ignore[assignment]
@@ -179,7 +179,7 @@ def compound_layout(G: nx.DiGraph) -> dict:
     # nested subdirectory.
     dir_children: dict[str, list[str]] = {d: [] for d in dirs}
     for u, v, edata in G.edges(data=True):
-        if edata.get("relation") != "contains":
+        if edata.get("kind") != "contains":
             continue
         if G.nodes[u].get("depth", 1) == 0 and G.nodes[v].get("depth", 1) == 0:
             dir_children.setdefault(u, []).append(v)

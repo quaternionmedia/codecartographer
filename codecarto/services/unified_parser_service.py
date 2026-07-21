@@ -104,7 +104,7 @@ class UnifiedParserService:
             data: {"id": "...", "x": 0.0, "y": 0.0, ...}
 
             event: edge
-            data: {"source": "...", "target": "...", "relation": "..."}
+            data: {"source": "...", "target": "...", "metadata": {"kind": "contains", ...}}
 
             event: done
             data: {"elapsed_ms": 123}
@@ -374,7 +374,7 @@ class UnifiedParserService:
                     continue
                 fid = file_id_by_stem.get(ndata.get("file", ""))
                 if fid:
-                    events.append(f"event: edge\ndata: {json.dumps({'source': fid, 'target': nid, 'relation': 'contains'})}\n\n")
+                    events.append(f"event: edge\ndata: {json.dumps({'source': fid, 'target': nid, 'kind': 'contains'})}\n\n")
 
             return events
 
