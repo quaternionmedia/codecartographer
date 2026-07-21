@@ -17,13 +17,17 @@ Mount in main.py alongside the other routers, e.g.::
 from fastapi import APIRouter, HTTPException
 
 from codecarto.services.lexicon_service import LexiconService
+from codecarto.util.utilities import generate_return
 
 LexiconRouter = APIRouter()
 
 
 @LexiconRouter.get("/")
 async def list_lexicons() -> dict:
-    return {"languages": LexiconService.available()}
+    return generate_return(
+        message="list_lexicons - Success",
+        results={"languages": LexiconService.available()},
+    )
 
 
 @LexiconRouter.get("/{language}")
@@ -32,7 +36,7 @@ async def get_lexicon(language: str) -> dict:
         lex = LexiconService.load(language)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    return lex.model_dump()
+    return generate_return(message="get_lexicon - Success", results=lex.model_dump())
 
 
 @LexiconRouter.get("/{language}/graph")
@@ -41,7 +45,9 @@ async def get_lexicon_graph(language: str) -> dict:
         lex = LexiconService.load(language)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    return LexiconService.to_json(lex)
+    return generate_return(
+        message="get_lexicon_graph - Success", results=LexiconService.to_json(lex)
+    )
 
 
 @LexiconRouter.get("/{language}/index")
@@ -51,4 +57,6 @@ async def get_lexicon_index(language: str) -> dict:
         lex = LexiconService.load(language)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    return lex.index_by_token()
+    return generate_return(
+        message="get_lexicon_index - Success", results=lex.index_by_token()
+    )
