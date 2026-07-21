@@ -91,6 +91,7 @@ class UnifiedParserService:
         depth: int = 2,
         extensions: Optional[list[str]] = None,
         layout: str = "Spring",
+        annotate_lexicon: bool = False,
     ) -> AsyncIterator[str]:
         """Parse *directory* and yield SSE-formatted lines for each node/edge.
 
@@ -114,7 +115,9 @@ class UnifiedParserService:
         import time
         start = time.monotonic()
 
-        graph = UnifiedParserService.build_graph(directory, depth, extensions)
+        graph = UnifiedParserService.build_graph(
+            directory, depth, extensions, annotate_lexicon=annotate_lexicon
+        )
         options = PlotOptions(layout=layout, type="d3")
         gjgf = GraphSerializer.serialize_to_gjgf(graph, options)
 
@@ -164,6 +167,7 @@ class UnifiedParserService:
         depth: int = 2,
         extensions: Optional[list[str]] = None,
         layout: str = "Spring",
+        annotate_lexicon: bool = False,
     ) -> AsyncIterator[str]:
         """Two-phase SSE streaming directly from a GitHub URL.
 
@@ -393,6 +397,8 @@ class UnifiedParserService:
                 return []
             if sub.number_of_nodes() == 0:
                 return []
+            if annotate_lexicon:
+                annotate_graph_with_lexicon(sub, getattr(parser, "language", ""))
             return node_events_for(sub, {Path(file_name).stem: file_id})
 
         async def fetch_and_parse_batch(
@@ -425,6 +431,8 @@ class UnifiedParserService:
                 return []
             if sub.number_of_nodes() == 0:
                 return []
+            if annotate_lexicon:
+                annotate_graph_with_lexicon(sub, getattr(parser, "language", ""))
             return node_events_for(sub, file_id_by_stem)
 
         # Split into per-file (progressive) vs batch_whole_tree (correctness

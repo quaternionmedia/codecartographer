@@ -963,3 +963,84 @@ class TestLexiconAnnotation:
 
         assert by_kind["class"]["layer_ordinal"] == 1  # python: Structure & definition
         assert by_kind["struct"]["layer_ordinal"] == 2  # c: Aggregate & user-defined types
+
+    @pytest.mark.asyncio
+    async def test_stream_parse_emits_layer_ordinal_in_sse_node_events(self):
+        """The non-streaming path (above) reads the final graph directly;
+        this confirms annotation actually reaches the wire format real
+        clients receive - SSE node event JSON, not just the in-memory
+        graph."""
+        code = "class Greeter:\n    def hello(self): pass\n"
+        d = _simple_dir([_file("greet.py", code)])
+
+        node_events = []
+        async for chunk in UnifiedParserService.stream_parse(
+            d, depth=2, annotate_lexicon=True
+        ):
+            event_type, data = _parse_sse_chunk(chunk)
+            if event_type == "node":
+                node_events.append(data)
+
+        annotated = [n for n in node_events if "layer_ordinal" in n]
+        assert annotated, f"expected at least one annotated node, got: {node_events}"
+        assert all(n["layer_ordinal"] == 1 for n in annotated)
+
+    @pytest.mark.asyncio
+    async def test_stream_parse_url_per_file_dispatch_annotates(self, monkeypatch):
+        """stream_parse_url's per-file dispatch (fetch_and_parse_file)
+        parses each file into its own small subgraph, separate from
+        build_graph's single accumulated graph - annotation has to happen
+        on that subgraph specifically (see the annotate_graph_with_lexicon
+        calls added directly in fetch_and_parse_file/fetch_and_parse_batch)
+        or nothing downstream of the per-file path would ever see a
+        layer_ordinal, no matter what build_graph itself does."""
+        import codecarto.services.github_service as gh_svc
+
+        items = [("greet.py", "blob", "https://raw.example/lexstream/greet.py")]
+        contents = {
+            "https://raw.example/lexstream/greet.py": "class Greeter:\n    def hello(self): pass\n"
+        }
+
+        async def fake_fetch_tree_fast(owner, repo, headers, url):
+            return items, "main", 1, False
+
+        async def fake_get_raw_from_url(dl_url):
+            return contents[dl_url]
+
+        monkeypatch.setattr(gh_svc, "fetch_tree_fast", fake_fetch_tree_fast)
+        monkeypatch.setattr(gh_svc, "get_raw_from_url", fake_get_raw_from_url)
+
+        node_events = []
+        async for chunk in UnifiedParserService.stream_parse_url(
+            "https://github.com/test/lexstream", depth=2, annotate_lexicon=True
+        ):
+            event_type, data = _parse_sse_chunk(chunk)
+            if event_type == "node":
+                node_events.append(data)
+
+        annotated = [n for n in node_events if "layer_ordinal" in n]
+        assert annotated, f"expected at least one annotated node, got: {node_events}"
+        assert all(n["layer_ordinal"] == 1 for n in annotated)
+
+    @pytest.mark.asyncio
+    async def test_stream_parse_url_default_is_unannotated(self, monkeypatch):
+        import codecarto.services.github_service as gh_svc
+
+        items = [("greet.py", "blob", "https://raw.example/lexstream2/greet.py")]
+        contents = {"https://raw.example/lexstream2/greet.py": "class Greeter: pass\n"}
+
+        async def fake_fetch_tree_fast(owner, repo, headers, url):
+            return items, "main", 1, False
+
+        async def fake_get_raw_from_url(dl_url):
+            return contents[dl_url]
+
+        monkeypatch.setattr(gh_svc, "fetch_tree_fast", fake_fetch_tree_fast)
+        monkeypatch.setattr(gh_svc, "get_raw_from_url", fake_get_raw_from_url)
+
+        async for chunk in UnifiedParserService.stream_parse_url(
+            "https://github.com/test/lexstream2", depth=2
+        ):
+            event_type, data = _parse_sse_chunk(chunk)
+            if event_type == "node":
+                assert "layer_ordinal" not in data

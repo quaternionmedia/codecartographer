@@ -143,6 +143,7 @@ class StreamUrlRequest(BaseModel):
     mode: Optional[str] = None
     extensions: Optional[list[str]] = None
     layout: str = "Spring"
+    annotate_lexicon: bool = False
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
@@ -262,7 +263,10 @@ async def stream_parse(request: UnifiedParseRequest):
 
     key = ""
     label = url
-    if url:
+    # annotate_lexicon requests bypass the cache entirely, both read and
+    # write - same reasoning as /unified above (the cache key doesn't vary
+    # on this field).
+    if url and not request.annotate_lexicon:
         key = CacheService.cache_key(
             url=url,
             mode=mode_key,
@@ -291,10 +295,11 @@ async def stream_parse(request: UnifiedParseRequest):
                 depth=effective_depth,
                 extensions=request.extensions,
                 layout=request.layout,
+                annotate_lexicon=request.annotate_lexicon,
             ):
                 _accumulate(chunk, acc_nodes, acc_edges)
                 yield chunk
-                if chunk.startswith("event: done\n"):
+                if chunk.startswith("event: done\n") and key:
                     _write_stream_cache(key, label, url, mode_key, request.layout, acc_nodes, acc_edges)
         except Exception as exc:
             yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
@@ -325,20 +330,24 @@ async def stream_from_url(request: StreamUrlRequest):
     )
     mode_key = request.mode or str(effective_depth)
 
-    # Check cache first
-    key = CacheService.cache_key(
-        url=request.url,
-        mode=mode_key,
-        layout=request.layout,
-        extensions=request.extensions or [],
-    )
-    cached = CacheService.get(key)
-    if cached is not None:
-        return StreamingResponse(
-            _stream_cached_graph(cached, request.layout),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    # Check cache first. annotate_lexicon requests bypass the cache
+    # entirely, both read and write - same reasoning as /unified (the
+    # cache key doesn't vary on this field).
+    key = ""
+    if not request.annotate_lexicon:
+        key = CacheService.cache_key(
+            url=request.url,
+            mode=mode_key,
+            layout=request.layout,
+            extensions=request.extensions or [],
         )
+        cached = CacheService.get(key)
+        if cached is not None:
+            return StreamingResponse(
+                _stream_cached_graph(cached, request.layout),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
 
     # GitHub path — accumulate nodes/edges and write to cache after done
     if is_github_url(request.url):
@@ -353,10 +362,11 @@ async def stream_from_url(request: StreamUrlRequest):
                     depth=effective_depth,
                     extensions=request.extensions,
                     layout=request.layout,
+                    annotate_lexicon=request.annotate_lexicon,
                 ):
                     _accumulate(chunk, acc_nodes, acc_edges)
                     yield chunk
-                    if chunk.startswith("event: done\n"):
+                    if chunk.startswith("event: done\n") and key:
                         _write_stream_cache(key, _label, request.url, mode_key, request.layout, acc_nodes, acc_edges)
             except Exception as exc:
                 yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
@@ -376,6 +386,7 @@ async def stream_from_url(request: StreamUrlRequest):
                 depth=effective_depth,
                 extensions=request.extensions,
                 layout=request.layout,
+                annotate_lexicon=request.annotate_lexicon,
             ):
                 yield chunk
         except Exception as exc:
