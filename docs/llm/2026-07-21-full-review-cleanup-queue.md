@@ -71,28 +71,29 @@ injection via `WindowsViewer.get_command()`) are patched at 12.3.0.
 other package versions moved; verified `codecarto.main` still imports
 and boots (63 routes) against the updated lock.
 
-## 4. `pyproject.toml` dependency-declaration audit
+## 4. `pyproject.toml` dependency-declaration audit [DONE 2026-07-21]
 
-**Status: pending.**
+**Status: done.** Live-verified, not just grep-trusted (per this
+session's own `DRAFT-verify-actual-consumption-before-editing.md` ADR):
+dropped all 5 candidates at once, `uv lock && uv sync`, ran the full
+`pytest` suite. Result: **4 failures**, all
+`ModuleNotFoundError: No module named 'scipy'` inside NetworkX's
+`spring_layout` → `to_scipy_sparse_array` (`codecarto` never writes
+`import scipy` itself, but NetworkX does internally) — confirming the
+suspected false positive. Restored `scipy` alone, re-ran: 293 passed, 23
+skipped, 0 failures; live-booted `codecarto.main` after (63 routes,
+clean).
 
-- `motor` (`pyproject.toml:38`) — declared, never imported anywhere in
-  `codecarto/`. The real Mongo driver in use is `pymongo`, imported
-  directly in `codecarto/services/cache_service.py:129` but **not**
-  declared in `pyproject.toml` (works today only because something else
-  pulls it in transitively).
-- `pytest-asyncio` (`pyproject.toml:39`) — sits in the main
-  `dependencies` list; it's a test-only dependency (exercised via
-  `asyncio_mode = "auto"` for `tests/test_*.py`) and belongs in the
-  `dev` extra instead.
-- `mpld3`, `scipy`, `importlib-metadata`, `python-multipart` — no
-  direct `import` found in `codecarto/`. **Not removed on a grep alone**
-  — each gets a live check (temporarily drop it, `uv lock && uv sync`,
-  run the full `pytest` suite, boot `codecarto.main`) before being
-  either removed or kept-with-a-stated-reason. `scipy` in particular is
-  a plausible false positive: NetworkX's `spectral_layout`/
-  `kamada_kawai_layout` (used by `graph_serializer.py` per project
-  history) import `scipy` internally without `codecarto` ever writing
-  `import scipy` itself.
+- **Removed**: `motor` (declared, never imported — the real Mongo
+  driver is `pymongo`, imported directly in `codecarto/services/
+  cache_service.py:129` but previously undeclared) → replaced with an
+  explicit `pymongo>=4.6` dependency. `mpld3`, `importlib-metadata`,
+  `python-multipart` (no import found anywhere, live-verified safe to
+  drop).
+- **Moved**: `pytest-asyncio` from the main `dependencies` list into
+  the `dev` extra (test-only, exercised via `asyncio_mode = "auto"`).
+- **Kept**: `scipy` — genuinely load-bearing, just not via a direct
+  `codecarto` import.
 
 ## 5. Orphaned backend parser files
 
