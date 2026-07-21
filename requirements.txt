@@ -92,7 +92,7 @@ matplotlib==3.10.8
     # via
     #   codecarto (pyproject.toml)
     #   mpld3
-mistune==3.2.0
+mistune==3.3.0
     # via nbconvert
 motor==3.7.1
     # via codecarto (pyproject.toml)
