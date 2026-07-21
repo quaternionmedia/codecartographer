@@ -260,24 +260,39 @@ after. `npm run build` clean.
   a different branch (`feat/gh-auth-schema`, `copilot/frontend-
   integration-golden-layout`).
 
-## Status: all 12 items shipped
+## Status: all 13 items shipped, clean baseline confirmed live
 
 All items landed on `cleanup/2026-07-21-full-review`, one commit each,
 each re-verified live (not grep-trusted alone) before landing — per
 this session's own `DRAFT-verify-actual-consumption-before-editing.md`
-ADR. Two items surfaced *during* execution that weren't in the original
-survey and were folded into the relevant commit rather than left
-behind: `state_controller.ts`'s `setSelectedRepoFile`/
-`setSelectedLocalFile` (orphaned by item 8's edit) and the GitHub Token
-section of `docs/services.md` (found stale while fixing item 11).
+ADR. Several surfaced *during* execution and were folded into the
+relevant commit rather than left behind: `state_controller.ts`'s
+`setSelectedRepoFile`/`setSelectedLocalFile` (orphaned by item 8's
+edit), the GitHub Token section of `docs/services.md` (found stale
+while fixing item 11), and item 13 (npm audit) itself, surfaced as a
+side effect of deleting the stale remote branches.
 
-Full branch verification: `pytest` full suite (293 passed, 23 skipped,
-0 failed), `npm run build` clean, and a live boot check
-(`uvicorn codecarto.main:app`, `/openapi.json` + `/docs` both 200).
+**Full branch verification (2026-07-21):**
+- `pytest` full suite: 293 passed, 23 skipped, 0 failed.
+- `npm run build`: clean, 765 modules.
+- `npm audit`: 0 vulnerabilities.
+- Live dev server (`uv run codecarto dev --port 8010`, port 8000's
+  default was held by an unrelated local project): backend `/openapi.json`,
+  `/docs`, `/parse/languages`, `/lexicon/` all 200 (lexicon returned
+  real data: `{"languages":["c"]}`); frontend served at `:1234`, 200.
+  A real end-to-end parse (`codecarto repo graph codecarto/models -t
+  ast`) produced a real graph (99 nodes, 126 edges) — not just a boot
+  check, the actual pipeline.
+- Confirmed no orphaned dev-server processes left running after.
 
-Still open, held for explicit go-ahead (see "Held for explicit
-go-ahead" above) — not part of this branch's commits: deleting
-`data/graphs.db` and the 8 stale remote branches.
+Both previously-held destructive items are also done: `data/graphs.db`
+and the 8 stale remote branches, both deleted.
+
+**Remaining, explicitly out of this branch's scope** (see assistant
+memory `project_2026_07_21_remaining_dependabot_alerts` for detail):
+`starlette` Dependabot alerts citing patched versions that don't exist
+yet on PyPI (verified live — 0.50.0 is the actual latest release);
+not fixable by a dependency bump today.
 
 This queue doc can be moved to `docs/llm/archive/legacy/` once merged,
 matching where `parser_consolidation_and_scope_drift.md` (the pattern
