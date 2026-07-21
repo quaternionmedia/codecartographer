@@ -133,8 +133,12 @@ uv pip install -e ".[dev]"
 uv run codecarto lint
 uv run codecarto lint --fix   # Auto-fix issues
 
-# Run tests (coming soon)
+# Run backend tests
 uv run pytest
+
+# Run frontend end-to-end tests (starts the backend and frontend dev
+# servers automatically — see web/playwright.config.ts)
+cd web && npm run test:e2e
 ```
 
 ## Docker (Optional)

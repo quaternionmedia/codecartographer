@@ -7,7 +7,8 @@
   "main": "index.html",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "test:e2e": "playwright test"
   },
   "browserslist": [
     "defaults"
@@ -22,6 +23,7 @@
     "vis-network": "^10.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/mithril": "^2.2.6",
     "vite": "^6.4.3"
   }

@@ -52,6 +52,10 @@ htmlcov/
 node_modules/
 .vite/
 web/dist/
+web/test-results/
+web/playwright-report/
+web/blob-report/
+web/playwright/.cache/
 
 # =============================================================================
 # IDE / Editor
