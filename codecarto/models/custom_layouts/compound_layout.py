@@ -12,7 +12,11 @@ def compound_layout(G: nx.DiGraph) -> dict:
              readable minimap of the file: early lines at 12 o'clock, later
              lines clockwise around the file node.
     Pass 4 — sub-symbol nodes (depth ≥ 3) orbit their nearest depth-2 symbol
-             ancestor with the same source-order arc convention.
+             ancestor with the same source-order arc convention. Bare
+             module-level statements (a top-level call or constant with no
+             enclosing function/class) have no depth-2 ancestor at all —
+             those orbit their file directly, just outside its real
+             symbol-orbit ring, with the same arc convention.
 
     Orphans (no parent detected via edges or node attributes) land on a
     fallback ring at each level rather than failing.
@@ -40,7 +44,9 @@ def compound_layout(G: nx.DiGraph) -> dict:
     # ── Build parent maps from 'contains' edges ────────────────────────────
     file_parent:   dict[str, str] = {}   # file_id   → dir_id
     sym_parent:    dict[str, str] = {}   # sym_id    → file_id
-    subsym_parent: dict[str, str] = {}   # subsym_id → nearest depth-2 ancestor
+    # subsym_id → nearest depth-2 ancestor, or (bare module-level statements
+    # with no enclosing function/class) the depth-1 file directly.
+    subsym_parent: dict[str, str] = {}
 
     for u, v, edata in G.edges(data=True):
         if edata.get("kind") != "contains":
@@ -52,15 +58,20 @@ def compound_layout(G: nx.DiGraph) -> dict:
             file_parent[v] = u
         elif u_depth == 1 and v_depth == 2:
             sym_parent[v] = u
+        elif u_depth == 1 and v_depth >= 3:
+            subsym_parent[v] = u
         elif u_depth == 2 and v_depth >= 3:
             subsym_parent[v] = u
         elif u_depth >= 3 and v_depth >= 3:
-            # Deep nesting: trace up to nearest depth-2 ancestor
+            # Deep nesting: trace up to the nearest depth-2 ancestor,
+            # falling back to the depth-1 file if the chain never passes
+            # through one (a bare module-level statement's own descendants).
             ancestor = u
             visited: set[str] = set()
             while ancestor and ancestor not in visited:
                 visited.add(ancestor)
-                if G.nodes[ancestor].get("depth", 3) == 2:
+                anc_depth = G.nodes[ancestor].get("depth", 3)
+                if anc_depth in (1, 2):
                     subsym_parent[v] = ancestor
                     break
                 found = None
@@ -102,6 +113,11 @@ def compound_layout(G: nx.DiGraph) -> dict:
         ]
         if candidates:
             subsym_parent[sub] = candidates[0]
+        elif stem in file_label_to_id:
+            # No symbol in this file to attach to (e.g. every top-level
+            # statement in it is itself a bare module-level statement) —
+            # fall back to the file directly.
+            subsym_parent[sub] = file_label_to_id[stem]
 
     # ── Group children per parent ──────────────────────────────────────────
     dir_files: dict[str, list[str]]  = {d: [] for d in dirs}
@@ -117,10 +133,15 @@ def compound_layout(G: nx.DiGraph) -> dict:
             file_syms[p].append(sym)
 
     sym_subsyms: dict[str, list[str]] = {s: [] for s in syms}
+    # Bare module-level statements: subsym_parent points at a depth-1 file
+    # rather than a depth-2 symbol (no enclosing function/class exists).
+    file_direct_subsyms: dict[str, list[str]] = {f: [] for f in files}
     for sub in subsyms:
         p = subsym_parent.get(sub)
         if p in sym_subsyms:
             sym_subsyms[p].append(sub)
+        elif p in file_direct_subsyms:
+            file_direct_subsyms[p].append(sub)
 
     # ── Source-line sort helper ────────────────────────────────────────────
     def _line(node_id: str) -> int:
@@ -290,6 +311,22 @@ def compound_layout(G: nx.DiGraph) -> dict:
         angles = _arc_angles(len(local_subs))
         for sub_id, angle in zip(local_subs, angles):
             pos[sub_id] = (sx + r * math.cos(angle), sy + r * math.sin(angle))
+
+    # ── Pass 4b: bare module-level statements orbit their file directly ────
+    # No depth-2 symbol ancestor exists for these (e.g. a top-level call or
+    # constant not nested inside any function/class), so they orbit the
+    # file itself, pushed just outside its real symbol-orbit ring so they
+    # don't collide with actual depth-2 symbols orbiting the same file.
+    for f in files:
+        local_direct_subs = sorted(file_direct_subsyms.get(f, []), key=_line)
+        if not local_direct_subs or f not in pos:
+            continue
+        fx, fy = pos[f]
+        sym_ring_r = sym_orbit_r(len(file_syms.get(f, []))) if file_syms.get(f) else 0.0
+        r = sym_ring_r + subsym_orbit_r(len(local_direct_subs))
+        angles = _arc_angles(len(local_direct_subs))
+        for sub_id, angle in zip(local_direct_subs, angles):
+            pos[sub_id] = (fx + r * math.cos(angle), fy + r * math.sin(angle))
 
     for sub in subsyms:
         if sub in pos:

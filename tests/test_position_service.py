@@ -145,6 +145,33 @@ def test_orphan_file_ring_radius_scales_with_orphan_count():
     assert r_large > r_small
 
 
+def test_bare_module_level_subsymbol_orbits_its_file_not_the_orphan_ring():
+    """Regression test: a sub-symbol whose real parent is the file itself
+    (a bare top-level statement with no enclosing function/class -- e.g. a
+    module-level call or constant) has no depth-2 symbol ancestor to orbit.
+    Before Pass 4b existed, subsym_parent had no case for a depth-1 parent
+    at all, so every one of these landed on the shared orphan fallback
+    ring regardless of which file it actually belonged to -- on this
+    project's own source, that was 43% of all sub-symbol nodes."""
+    g = nx.DiGraph()
+    _add_dir(g, "dir_a", "a")
+    _add_file(g, "dir_a", "file_a", "a.py")
+    _add_file(g, "dir_a", "file_b", "b.py")
+    # Bare module-level statement: file -> sub-symbol directly, no symbol
+    g.add_node("file_a_stmt", depth=3, label="stmt", line=1)
+    g.add_edge("file_a", "file_a_stmt", **make_edge("contains"))
+    g.add_node("file_b_stmt", depth=3, label="stmt", line=1)
+    g.add_edge("file_b", "file_b_stmt", **make_edge("contains"))
+
+    pos = compound_layout(g)
+    ax, ay = pos["file_a"]
+    bx, by = pos["file_b"]
+
+    dist_a_to_own = math.hypot(pos["file_a_stmt"][0] - ax, pos["file_a_stmt"][1] - ay)
+    dist_a_to_other = math.hypot(pos["file_a_stmt"][0] - bx, pos["file_a_stmt"][1] - by)
+    assert dist_a_to_own < dist_a_to_other
+
+
 def test_compound_layout_single_directory_is_centered():
     g = nx.DiGraph()
     _add_dir(g, "only_dir", "only")
