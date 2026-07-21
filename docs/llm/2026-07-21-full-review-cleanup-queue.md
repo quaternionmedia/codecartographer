@@ -197,9 +197,14 @@ not wired to the frontend yet).
   `/pam/sessions/{session_id}`, `WS /pam/ws/replay` —
   `pam_router.py:209-394`).
 
-## 11. `docs/services.md` drift
+## 11. `docs/services.md` drift [DONE 2026-07-21]
 
-**Status: pending.**
+**Status: done.** Read each real service's actual public methods
+directly before documenting them (not just filenames). Also found and
+fixed a related staleness while in this file: the "GitHub Token"
+section still described the pre-ADR hand-rolled `/run/secrets/
+github_token`-only lookup, superseded by `resolve_github_token()`
+(keyring-first — see `docs/qm/adr/DRAFT-github-token-resolution.md`).
 
 Documents deleted/nonexistent files: `parser_service.py`,
 `palette_service.py`, `parsers/python/directory_parser.py`,
