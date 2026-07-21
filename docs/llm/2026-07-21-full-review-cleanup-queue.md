@@ -108,9 +108,9 @@ suite green after (293 passed).
   instantiated anywhere. Only `PythonCustomAST` (same directory) is the
   live engine behind every Python parse.
 
-## 6. Stale `moe` CORS origin in `main.py`
+## 6. Stale `moe` CORS origin in `main.py` [DONE 2026-07-21]
 
-**Status: pending.**
+**Status: done.**
 
 `codecarto/main.py:22-27` carries a `# TODO: this is here to test moe
 calling the api` comment and a `http://localhost:5000  # moe` CORS
