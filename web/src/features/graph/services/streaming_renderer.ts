@@ -265,14 +265,59 @@ export class StreamingGraphRenderer {
     ];
   }
 
+  /**
+   * Local, deterministic collision nudge for a newly-placed node - the
+   * streaming equivalent of graph_renderer.ts's seed-and-settle collision
+   * pass, but a one-shot check-against-neighbors instead of a running
+   * simulation: this renderer has no d3.forceSimulation at all (by
+   * design - it expects backend-computed positions and adds nodes one at
+   * a time, not as a batch a simulation could settle together), so
+   * porting graph_renderer.ts's approach directly isn't a good fit.
+   * Applies to BOTH real backend positions and the depth-ring
+   * placeholder - neither was ever checked against already-placed
+   * siblings before. Skipped above a node-count threshold: this is
+   * O(already-placed) per new node, i.e. O(N^2) across a full stream,
+   * fine at normal repo sizes but not worth paying for on huge graphs
+   * where a single node's local overlap matters far less anyway.
+   */
+  private _resolveCollision(node: GraphNode, x: number, y: number): [number, number] {
+    if (this.nodeById.size > 300) return [x, y];
+    const gap = (n: GraphNode) => this.styling.nodeSize! * depthSizeMultiplier(n) * 1.3;
+    const nodeGap = gap(node);
+    let px = x;
+    let py = y;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      let collided = false;
+      for (const other of this.nodeById.values()) {
+        if (other === node || other.x === undefined || other.y === undefined) continue;
+        const dx = px - other.x;
+        const dy = py - other.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = (nodeGap + gap(other)) / 2;
+        if (dist < 0.001) {
+          px += minDist;
+          collided = true;
+        } else if (dist < minDist) {
+          const push = (minDist - dist) + 2;
+          px += (dx / dist) * push;
+          py += (dy / dist) * push;
+          collided = true;
+        }
+      }
+      if (!collided) break;
+    }
+    return [px, py];
+  }
+
   private _renderNode(node: GraphNode): void {
     let x = node.x;
     let y = node.y;
     if (x === undefined || y === undefined) {
       [x, y] = this._getDepthAwarePosition(node);
-      node.x = x;
-      node.y = y;
     }
+    [x, y] = this._resolveCollision(node, x, y);
+    node.x = x;
+    node.y = y;
     const size = this.styling.nodeSize! * depthSizeMultiplier(node);
 
     const group = this.nodeGroup
