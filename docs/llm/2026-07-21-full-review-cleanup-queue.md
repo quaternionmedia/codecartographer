@@ -233,22 +233,17 @@ Golden-Layout-shell pointer to `docs/architecture.md`.
 
 ---
 
-## Held for explicit go-ahead (not part of the branch's own commits)
+## Held items — both approved and executed 2026-07-21
 
-- `data/graphs.db` (repo root, 135KB SQLite, tables `nodes`/`edges`/
-  `graphs`/`views`/`user_actions`/`user_preferences` with tiny sample
-  data) — added once 2026-03-03, never touched since, referenced by
-  nothing in `codecarto/` (the real `data/` references in code are
-  `codecarto/data/lexicons/` and `codecarto/data/c_stubs/`, a different,
-  nested directory).
-- 8 stale remote branches: 6 fully merged
-  (`c-parser-stub-headers-phase1`, `caching-and-parser-consolidation`,
-  `consolidate-68-69-70-71`, `followup-lifts-completion`,
-  `local-directory-path-hookup`, `uv-refactor`), 2 superseded with
-  their content already on `main` via a different branch
-  (`feat/gh-auth-schema` → superseded by PR #75's branch;
-  `copilot/frontend-integration-golden-layout` → superseded, its
-  commit message matches one already in `main`'s history).
+- `data/graphs.db` — deleted (this branch's final commit).
+- 8 stale remote branches — deleted directly on
+  `quaternionmedia/codecartographer` (not a branch commit): 6 fully
+  merged (`c-parser-stub-headers-phase1`,
+  `caching-and-parser-consolidation`, `consolidate-68-69-70-71`,
+  `followup-lifts-completion`, `local-directory-path-hookup`,
+  `uv-refactor`), 2 superseded with their content already on `main` via
+  a different branch (`feat/gh-auth-schema`, `copilot/frontend-
+  integration-golden-layout`).
 
 ## Status: all 12 items shipped
 
