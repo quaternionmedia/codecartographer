@@ -168,14 +168,12 @@ removed those too in the same commit rather than leave fresh dead code
 behind, a small scope extension beyond the original finding. `npm run
 build` clean after.
 
-## 9. Unused `web/package.json` dependencies
+## 9. Unused `web/package.json` dependencies [DONE 2026-07-21]
 
-**Status: pending.**
-
-`meiosis` (never imported directly), `d3-force` (never imported
-directly — `d3`'s meta-package already pulls it transitively),
-`meiosis-tracer` (only consumer is item 7's `Debug.ts` — becomes
-genuinely unused once that's removed).
+**Status: done.** Re-verified all three unused after item 7 landed
+(fresh grep, zero direct imports). `npm install` only removed 2
+packages from `node_modules` — `d3-force` stays installed as `d3`'s own
+transitive dependency, as expected. `npm run build` clean after.
 
 ## 10. `docs/api.md` drift
 
