@@ -250,6 +250,25 @@ Golden-Layout-shell pointer to `docs/architecture.md`.
   `copilot/frontend-integration-golden-layout` → superseded, its
   commit message matches one already in `main`'s history).
 
-## Status
+## Status: all 12 items shipped
 
-In progress — see checkmarks above as this branch lands each commit.
+All items landed on `cleanup/2026-07-21-full-review`, one commit each,
+each re-verified live (not grep-trusted alone) before landing — per
+this session's own `DRAFT-verify-actual-consumption-before-editing.md`
+ADR. Two items surfaced *during* execution that weren't in the original
+survey and were folded into the relevant commit rather than left
+behind: `state_controller.ts`'s `setSelectedRepoFile`/
+`setSelectedLocalFile` (orphaned by item 8's edit) and the GitHub Token
+section of `docs/services.md` (found stale while fixing item 11).
+
+Full branch verification: `pytest` full suite (293 passed, 23 skipped,
+0 failed), `npm run build` clean, and a live boot check
+(`uvicorn codecarto.main:app`, `/openapi.json` + `/docs` both 200).
+
+Still open, held for explicit go-ahead (see "Held for explicit
+go-ahead" above) — not part of this branch's commits: deleting
+`data/graphs.db` and the 8 stale remote branches.
+
+This queue doc can be moved to `docs/llm/archive/legacy/` once merged,
+matching where `parser_consolidation_and_scope_drift.md` (the pattern
+this doc followed) ended up.
