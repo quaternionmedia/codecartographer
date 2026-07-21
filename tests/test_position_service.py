@@ -207,6 +207,46 @@ def test_c_struct_field_orbits_its_struct_not_the_orphan_ring():
     assert dist_to_own_struct < dist_to_other_struct
 
 
+def test_c_bare_stem_file_attribute_falls_back_via_stem_index():
+    """Regression test: c_parser.py sets a sub-symbol's 'file' node attribute
+    to a bare stem with no extension at all (Path(cursor.location.file.name)
+    .stem -- see c_parser.py), unlike Python's parser, which always includes
+    the extension. When a sub-symbol has no direct containment edge to
+    resolve its parent (redis's real C source has deeply nested
+    anonymous-struct/union fields that land in exactly this position), the
+    file-attribute fallback needs a third, stem-indexed lookup tier --
+    file_label_to_id's keys are always full "name.ext" labels, so neither of
+    the first two fallback checks (stem-of-file_attr, or file_attr verbatim)
+    can ever match a file_attr that is already bare. Verified live at scale
+    against redis's real C source: 149/3194 (4.66%) sub-symbols were still
+    orphaned by this gap even after the field_of fix, dropping to 0 once
+    this stem index was added."""
+    g = nx.DiGraph()
+    _add_dir(g, "dir_a", "a")
+    _add_file(g, "dir_a", "file_a", "a.c")
+    g.add_node("struct_a", depth=2, label="StructA", line=1)
+    g.add_edge("file_a", "struct_a", **make_edge("contains"))
+
+    # A second file/struct pair the orphan must NOT land near, so a
+    # coincidental fallback-ring placement can't pass this test by accident.
+    _add_file(g, "dir_a", "file_b", "b.c")
+    g.add_node("struct_b", depth=2, label="StructB", line=1)
+    g.add_edge("file_b", "struct_b", **make_edge("contains"))
+
+    # Deeply-nested field with no containment edge at all to any symbol --
+    # only a bare-stem 'file' attribute to go on, exactly as c_parser.py
+    # emits for real anonymous-union/struct fields.
+    g.add_node("orphan_field", depth=3, label="field", line=2, file="a")
+
+    pos = compound_layout(g)
+    sx, sy = pos["struct_a"]
+    bx, by = pos["struct_b"]
+
+    dist_to_a = math.hypot(pos["orphan_field"][0] - sx, pos["orphan_field"][1] - sy)
+    dist_to_b = math.hypot(pos["orphan_field"][0] - bx, pos["orphan_field"][1] - by)
+    assert dist_to_a < dist_to_b
+
+
 def test_compound_layout_single_directory_is_centered():
     g = nx.DiGraph()
     _add_dir(g, "only_dir", "only")

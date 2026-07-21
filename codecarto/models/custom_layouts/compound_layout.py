@@ -93,9 +93,29 @@ def compound_layout(G: nx.DiGraph) -> dict:
 
     # Fallback: match symbol to file via the 'file' node attribute (stem name)
     file_label_to_id: dict[str, str] = {}
+    file_stem_to_id: dict[str, str] = {}
     for f in files:
         label = G.nodes[f].get("label", f)
         file_label_to_id[label] = f
+        # First match wins on stem collisions (e.g. rio.c and rio.h both
+        # stem to "rio") -- a plausible same-named file beats staying
+        # orphaned, and struct/enum-holding headers are parsed as their own
+        # file nodes too, so this isn't blindly guessing across languages.
+        file_stem_to_id.setdefault(label.rsplit(".", 1)[0], f)
+
+    def _resolve_file_id(file_attr: str) -> str | None:
+        # Two languages, two different 'file' attribute conventions on
+        # sub/symbol nodes: python_language_parser.py sets it to a full
+        # "name.py" (matches file_label_to_id's keys directly); c_parser.py
+        # sets it to a bare stem with no extension at all (Path(...).stem,
+        # see c_parser.py) -- stripping file_attr's own (absent) extension
+        # is a no-op there, so it only ever matches file_stem_to_id.
+        stem = file_attr.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        return (
+            file_label_to_id.get(stem)
+            or file_label_to_id.get(file_attr)
+            or file_stem_to_id.get(stem)
+        )
 
     for sym in syms:
         if sym in sym_parent:
@@ -103,11 +123,9 @@ def compound_layout(G: nx.DiGraph) -> dict:
         file_attr = G.nodes[sym].get("file", "")
         if not file_attr:
             continue
-        stem = file_attr.rsplit("/", 1)[-1].rsplit(".", 1)[0]
-        if stem in file_label_to_id:
-            sym_parent[sym] = file_label_to_id[stem]
-        elif file_attr in file_label_to_id:
-            sym_parent[sym] = file_label_to_id[file_attr]
+        target_file_id = _resolve_file_id(file_attr)
+        if target_file_id:
+            sym_parent[sym] = target_file_id
 
     for sub in subsyms:
         if sub in subsym_parent:
@@ -115,19 +133,19 @@ def compound_layout(G: nx.DiGraph) -> dict:
         file_attr = G.nodes[sub].get("file", "")
         if not file_attr:
             continue
-        stem = file_attr.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        target_file_id = _resolve_file_id(file_attr)
         # Try to find the nearest depth-2 sym in the same file
         candidates = [
             s for s in syms
-            if sym_parent.get(s) and file_label_to_id.get(stem) == sym_parent.get(s)
+            if target_file_id and sym_parent.get(s) == target_file_id
         ]
         if candidates:
             subsym_parent[sub] = candidates[0]
-        elif stem in file_label_to_id:
+        elif target_file_id:
             # No symbol in this file to attach to (e.g. every top-level
             # statement in it is itself a bare module-level statement) —
             # fall back to the file directly.
-            subsym_parent[sub] = file_label_to_id[stem]
+            subsym_parent[sub] = target_file_id
 
     # ── Group children per parent ──────────────────────────────────────────
     dir_files: dict[str, list[str]]  = {d: [] for d in dirs}
