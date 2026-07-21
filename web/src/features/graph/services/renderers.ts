@@ -7,7 +7,8 @@
  * Available renderers:
  * - NotebookRenderer: Renders pre-rendered HTML from Jupyter notebooks (for demos)
  * - D3Renderer: Interactive D3.js force-directed graphs (for imported repos)
- * - GravisRenderer: Future gravis.js client-side rendering
+ * - GravisRenderer: Client-side rendering via vis-network, styled to match
+ *   Python gravis's look
  *
  * Usage:
  *   import { GraphRendererRegistry } from './renderers';
@@ -50,7 +51,8 @@ function initializeRenderers(): void {
   // Register D3 renderer (for interactive graphs from imported repos)
   GraphRendererRegistry.register('d3', () => new D3GraphRenderer());
 
-  // Register gravis renderer (future implementation)
+  // Register gravis renderer (vis-network based, selectable via the
+  // Renderer dropdown)
   GraphRendererRegistry.register('gravis', () => new GravisGraphRenderer());
 
   // Register PAM system renderer as 'system' — the concrete subclass owns all

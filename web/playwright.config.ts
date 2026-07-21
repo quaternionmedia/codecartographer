@@ -12,10 +12,18 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: true,
+  // webServer starts exactly one backend process, shared by every test --
+  // running workers in parallel means multiple browser sessions hammering
+  // that single process concurrently. Verified live: with the default
+  // parallel workers, demo-graph.spec.ts's "no unexpected failed requests"
+  // assertion flaked consistently (an unrelated request would fail under
+  // the added load); serialized runs (`--workers=1`) passed every time.
+  // Trading parallel speed for reliability given the shared-backend
+  // constraint, not working around a real app bug.
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: 'html',
   use: {
     baseURL: 'http://localhost:1234/codecartographer/',

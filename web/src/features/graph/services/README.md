@@ -101,18 +101,13 @@ Assigns each file to its dir and each symbol/sub-symbol to its file using the re
 
 ### 5. GravisGraphRenderer (`gravis_renderer.ts`)
 
-**Purpose**: Future client-side gravis.js rendering
+**Purpose**: Client-side rendering via [vis-network](https://github.com/visjs/vis-network) — mirrors the visual style of Python gravis (the library this project's static reports use), rendered live in the browser instead of pre-baked HTML.
 
-**Status**: Stub implementation (shows placeholder)
+**Status**: Fully implemented — converts gJGF to vis-network's `{nodes, edges}` DataSets (shapes, colors with opacity, sizes from either `styling.nodeSize` or the backend's own `node.size`), configures physics/interaction/layout options from `GraphStylingOptions`, wires click/double-click/edge-select/stabilization event listeners, and handles container resize and cleanup.
 
-**Data Format**: Same as D3 (gJGF)
+**Data Format**: Same as D3 (gJGF) — `canHandle()` accepts any `{graph: {nodes, edges}, metadata}` shape.
 
-**Detection**: Requires `metadata.type === 'gravis'`
-
-**TODO**:
-- Implement gravis.js client-side rendering
-- Convert gJGF to gravis format
-- Add interaction handlers
+**Selectable**: Via the Renderer dropdown (`'gravis'` in `GraphRendererType`), registered in `renderers.ts`'s `GraphRendererRegistry`.
 
 ## Usage
 
