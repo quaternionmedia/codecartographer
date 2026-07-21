@@ -152,6 +152,42 @@ class TestDepthTwo:
         # At least a dir→file edge and a file→symbol edge must exist
         assert len(edges) >= 2, "expected at least 2 edges"
 
+    def test_file_node_connects_directly_to_its_top_level_symbols(self):
+        """Regression test: the Python AST parser's own Module root node
+        used to survive into the merged graph as a second, disconnected
+        depth=1 node with every real symbol attached underneath it instead
+        of the depth=1 file node the directory walker creates and connects
+        to its parent dir. Top-level symbols must be reachable directly
+        from the file node via a real 'contains' edge, not only through
+        that orphaned module node."""
+        code = "class A: pass\ndef b(): pass\n"
+        d = _simple_dir([_file("a.py", code)])
+        graph = UnifiedParserService.build_graph(d, depth=2, extensions=None)
+
+        file_nodes = [n for n, dd in graph.nodes(data=True) if dd.get("kind") == "file"]
+        assert len(file_nodes) == 1
+        file_id = file_nodes[0]
+
+        symbol_children = [
+            v for _, v, ed in graph.out_edges(file_id, data=True)
+            if ed.get("kind") == "contains" and graph.nodes[v].get("depth") == 2
+        ]
+        symbol_kinds = {graph.nodes[v]["kind"] for v in symbol_children}
+        assert "class" in symbol_kinds
+        assert "function" in symbol_kinds
+
+    def test_no_duplicate_module_node_for_python_files(self):
+        """The Python AST's own Module root must not survive into the
+        merged graph as a second depth=1 node alongside the directory
+        walker's file node — see test_file_node_connects_directly_to_its_
+        top_level_symbols for the concrete symptom this caused."""
+        code = "class A: pass\n"
+        d = _simple_dir([_file("a.py", code)])
+        graph = UnifiedParserService.build_graph(d, depth=2, extensions=None)
+
+        module_nodes = [n for n, dd in graph.nodes(data=True) if dd.get("kind") == "module"]
+        assert module_nodes == []
+
 
 # ── Extension filtering ───────────────────────────────────────────────────────
 
