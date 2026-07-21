@@ -95,9 +95,11 @@ clean).
 - **Kept**: `scipy` — genuinely load-bearing, just not via a direct
   `codecarto` import.
 
-## 5. Orphaned backend parser files
+## 5. Orphaned backend parser files [DONE 2026-07-21]
 
-**Status: pending.**
+**Status: done.** Re-verified before deleting (fresh grep for
+`PythonListAST` found only its own definition file); `pytest` full
+suite green after (293 passed).
 
 - `codecarto/services/parsers/python/__init__.py` — empty (0 bytes),
   the sole remaining file in that package, nothing imports the package.
