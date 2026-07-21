@@ -39,6 +39,10 @@ export class StreamingGraphRenderer {
   // Internal queues — filled by addNode/addEdge, drained by rAF loop
   private _nodeQueue: GraphNode[] = [];
   private _edgeQueue: GraphEdge[] = [];
+  // All edges seen so far, kept (not drained) so compound-group grouping can
+  // read the real 'contains' edges — addEdge's queue above is consumed by
+  // the rAF render loop and doesn't retain them.
+  private _allEdges: GraphEdge[] = [];
   private _rafId: number | null = null;
   private _streamDone = false;
   private _batchSize = 1;           // updated when total is known via setTotal()
@@ -170,6 +174,7 @@ export class StreamingGraphRenderer {
   /** Enqueue an edge — rendered after its source/target nodes appear. */
   addEdge(edge: GraphEdge): void {
     this._edgeQueue.push(edge);
+    this._allEdges.push(edge);
     this._scheduleLoop();
   }
 
@@ -483,10 +488,11 @@ export class StreamingGraphRenderer {
     const nodes = Array.from(this.nodeById.values());
     const bounds = this._compoundManager.computeGroupBounds(
       nodes,
+      this._allEdges,
       40,
       this.styling.nodeSize! * 3.0,
     );
-    this._childrenMap = this._compoundManager.computeChildrenMap(nodes);
+    this._childrenMap = this._compoundManager.computeChildrenMap(nodes, this._allEdges);
     this._backgroundGroup.selectAll('*').remove();
     for (const b of bounds) {
       const isDir = b.depth === 0;

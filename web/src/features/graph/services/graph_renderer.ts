@@ -809,9 +809,9 @@ export class GraphRenderer {
     // ── Compound layout background circles ────────────────────────────────
     const drawCompoundBackgrounds = () => {
       const manager = new CompoundLayoutManager();
-      const bounds = manager.computeGroupBounds(nodes, 40, styling.nodeSize * 3.0);
+      const bounds = manager.computeGroupBounds(nodes, edges, 40, styling.nodeSize * 3.0);
       this._compoundBounds = bounds;
-      GraphRenderer._childrenMap = manager.computeChildrenMap(nodes);
+      GraphRenderer._childrenMap = manager.computeChildrenMap(nodes, edges);
       backgroundGroup.selectAll('*').remove();
       for (const b of bounds) {
         const isDir = b.depth === 0;

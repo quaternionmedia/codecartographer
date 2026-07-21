@@ -95,9 +95,9 @@ Array<{ 'text/html': string, 'text/plain'?: string }>
 
 **Purpose**: Computes bounding circles for compound layout groups.
 
-**API**: `computeGroupBounds(nodes, padding, baseNodeSize): GroupBounds[]`
+**API**: `computeGroupBounds(nodes, edges, padding, baseNodeSize): GroupBounds[]`
 
-Spatially assigns each file to its nearest dir and each symbol to its nearest file, then returns bounding circles depth-0 first (SVG z-order: dir circles drawn before file circles). Used by both `StreamingGraphRenderer` and `GraphRenderer`.
+Assigns each file to its dir and each symbol/sub-symbol to its file using the real backend `relation === "contains"` edges (falling back to nearest-neighbor by position only for orphans with no such edge), then returns bounding circles depth-0 first (SVG z-order: dir circles drawn before file circles). Used by both `StreamingGraphRenderer` and `GraphRenderer`.
 
 ### 5. GravisGraphRenderer (`gravis_renderer.ts`)
 

@@ -1,4 +1,4 @@
-import { GraphNode } from './graph_renderer';
+import { GraphNode, GraphEdge } from './graph_renderer';
 
 export interface GroupBounds {
   nodeId: string;
@@ -9,64 +9,120 @@ export interface GroupBounds {
   depth: number; // 0 = directory, 1 = file
 }
 
+interface ParentChain {
+  dirs: GraphNode[];
+  files: GraphNode[];
+  syms2: GraphNode[];
+  syms3: GraphNode[];
+  fileToDir: Map<string, GraphNode>;
+  sym2ToFile: Map<string, GraphNode>;
+  sym3ToSym2: Map<string, GraphNode>;
+}
+
 /**
- * Computes bounding circles for compound layout groups.
+ * Computes bounding circles and drag-propagation groups for compound layout.
  *
- * Uses spatial assignment: each file is assigned to its nearest dir, each
- * symbol to its nearest file. Works correctly after compound_layout backend
- * places nodes in hierarchical orbits.
+ * Groups are derived from the real backend `relation === "contains"` edges
+ * (dir→file, file→symbol, symbol→sub-symbol) — the backend already computed
+ * this structure (compound_layout.py) and sends it down the wire in the same
+ * graph payload, so re-deriving it from node positions was pure duplication.
+ * Nearest-neighbor spatial assignment is used only as a fallback for orphan
+ * nodes with no matching contains edge, mirroring compound_layout.py's own
+ * orphan fallback-ring behavior.
  *
  * For non-compound layouts (spring, circular, etc.) the circles would be
  * nonsensical — callers should only invoke this when layout is 'compound_layout'.
  */
 export class CompoundLayoutManager {
+  private _buildParentChain(nodes: GraphNode[], edges: GraphEdge[]): ParentChain {
+    const dirs  = nodes.filter(n => (n.depth as number) === 0 && n.x != null && n.y != null);
+    const files = nodes.filter(n => (n.depth as number) === 1 && n.x != null && n.y != null);
+    const syms2 = nodes.filter(n => (n.depth as number) === 2 && n.x != null && n.y != null);
+    const syms3 = nodes.filter(n => ((n.depth as number) ?? 0) >= 3 && n.x != null && n.y != null);
+
+    return {
+      dirs,
+      files,
+      syms2,
+      syms3,
+      fileToDir: this._assignParents(edges, files, dirs),
+      sym2ToFile: this._assignParents(edges, syms2, files),
+      sym3ToSym2: this._assignParents(edges, syms3, syms2),
+    };
+  }
+
+  /**
+   * Maps each child to its parent using real `relation === "contains"`
+   * edges between the two sets. A child with no such edge (an orphan, same
+   * concept compound_layout.py itself falls back on) is instead assigned to
+   * its nearest parent by position.
+   */
+  private _assignParents(
+    edges: GraphEdge[],
+    children: GraphNode[],
+    parents: GraphNode[],
+  ): Map<string, GraphNode> {
+    const parentById = new Map(parents.map(p => [p.id, p]));
+    const childIds = new Set(children.map(c => c.id));
+    const result = new Map<string, GraphNode>();
+
+    for (const e of edges) {
+      if (e.relation !== 'contains') continue;
+      const sourceId = typeof e.source === 'string' ? e.source : (e.source as GraphNode).id;
+      const targetId = typeof e.target === 'string' ? e.target : (e.target as GraphNode).id;
+      if (!childIds.has(targetId)) continue;
+      const parent = parentById.get(sourceId);
+      if (parent) result.set(targetId, parent);
+    }
+
+    for (const c of children) {
+      if (result.has(c.id) || c.x == null || c.y == null) continue;
+      let best: GraphNode | null = null;
+      let bestDist = Infinity;
+      for (const p of parents) {
+        if (p.x == null || p.y == null) continue;
+        const dist = Math.hypot(c.x - p.x, c.y - p.y);
+        if (dist < bestDist) { bestDist = dist; best = p; }
+      }
+      if (best) result.set(c.id, best);
+    }
+
+    return result;
+  }
+
   computeGroupBounds(
     nodes: GraphNode[],
+    edges: GraphEdge[],
     padding = 40,
     baseNodeSize = 4,
   ): GroupBounds[] {
-    const dirs  = nodes.filter(n => (n.depth as number) === 0 && n.x != null && n.y != null);
-    const files = nodes.filter(n => (n.depth as number) === 1 && n.x != null && n.y != null);
-    const syms  = nodes.filter(n => ((n.depth as number) ?? 2) >= 2 && n.x != null && n.y != null);
+    const { dirs, files, syms2, syms3, fileToDir, sym2ToFile, sym3ToSym2 } =
+      this._buildParentChain(nodes, edges);
 
     if (dirs.length === 0 && files.length === 0) return [];
 
-    // Assign each file to its nearest dir
-    const fileToDir = new Map<string, GraphNode>();
-    for (const f of files) {
-      let best: GraphNode | null = null;
-      let bestDist = Infinity;
-      for (const d of dirs) {
-        const dist = Math.hypot(f.x! - d.x!, f.y! - d.y!);
-        if (dist < bestDist) { bestDist = dist; best = d; }
-      }
-      if (best) fileToDir.set(f.id, best);
+    // Sub-symbols enclose within their symbol's file transitively, so a
+    // file's circle still covers both levels like it did before.
+    const symsByFile = new Map<string, GraphNode[]>();
+    for (const s of syms2) {
+      const f = sym2ToFile.get(s.id);
+      if (!f) continue;
+      const list = symsByFile.get(f.id) ?? [];
+      list.push(s);
+      symsByFile.set(f.id, list);
     }
-
-    // Assign each symbol to its nearest file
-    const symToFile = new Map<string, GraphNode>();
-    for (const s of syms) {
-      let best: GraphNode | null = null;
-      let bestDist = Infinity;
-      for (const f of files) {
-        const dist = Math.hypot(s.x! - f.x!, s.y! - f.y!);
-        if (dist < bestDist) { bestDist = dist; best = f; }
-      }
-      if (best) symToFile.set(s.id, best);
+    for (const s of syms3) {
+      const sym = sym3ToSym2.get(s.id);
+      const f = sym && sym2ToFile.get(sym.id);
+      if (!f) continue;
+      const list = symsByFile.get(f.id) ?? [];
+      list.push(s);
+      symsByFile.set(f.id, list);
     }
 
     const bounds: GroupBounds[] = [];
 
     // ── File bounding circles (enclose their symbols) ──────────────────────
-    const symsByFile = new Map<string, GraphNode[]>();
-    for (const [sid, f] of symToFile) {
-      const sym = syms.find(s => s.id === sid);
-      if (!sym) continue;
-      const list = symsByFile.get(f.id) ?? [];
-      list.push(sym);
-      symsByFile.set(f.id, list);
-    }
-
     for (const f of files) {
       const children = symsByFile.get(f.id) ?? [];
       if (children.length === 0) continue;
@@ -87,11 +143,11 @@ export class CompoundLayoutManager {
 
     // ── Dir bounding circles (enclose files + their symbol orbits) ─────────
     const filesByDir = new Map<string, GraphNode[]>();
-    for (const [fid, d] of fileToDir) {
-      const file = files.find(f => f.id === fid);
-      if (!file) continue;
+    for (const f of files) {
+      const d = fileToDir.get(f.id);
+      if (!d) continue;
       const list = filesByDir.get(d.id) ?? [];
-      list.push(file);
+      list.push(f);
       filesByDir.set(d.id, list);
     }
 
@@ -122,75 +178,46 @@ export class CompoundLayoutManager {
 
   /**
    * Builds a parent→[ALL descendant-ids] map covering all four depth levels
-   * (dir→file→symbol→sub-symbol). Uses the same spatial nearest-assignment
-   * logic as computeGroupBounds but extended to depth-3 nodes.
+   * (dir→file→symbol→sub-symbol), from the same real 'contains' edges
+   * computeGroupBounds uses.
    *
    * Dragging a dir moves its files, their symbols, AND those symbols'
    * sub-symbols. Dragging a file moves its symbols and sub-symbols.
    * Dragging a depth-2 symbol moves only its depth-3 children.
    */
-  computeChildrenMap(nodes: GraphNode[]): Map<string, string[]> {
-    const dirs    = nodes.filter(n => (n.depth as number) === 0 && n.x != null && n.y != null);
-    const files   = nodes.filter(n => (n.depth as number) === 1 && n.x != null && n.y != null);
-    const syms2   = nodes.filter(n => (n.depth as number) === 2 && n.x != null && n.y != null);
-    const syms3   = nodes.filter(n => ((n.depth as number) ?? 0) >= 3 && n.x != null && n.y != null);
-
-    // depth-1 → nearest depth-0
-    const fileToDir = new Map<string, string>();
-    for (const f of files) {
-      let best = ''; let bestD = Infinity;
-      for (const d of dirs) {
-        const dist = Math.hypot(f.x! - d.x!, f.y! - d.y!);
-        if (dist < bestD) { bestD = dist; best = d.id; }
-      }
-      if (best) fileToDir.set(f.id, best);
-    }
-
-    // depth-2 → nearest depth-1
-    const symToFile = new Map<string, string>();
-    for (const s of syms2) {
-      let best = ''; let bestD = Infinity;
-      for (const f of files) {
-        const dist = Math.hypot(s.x! - f.x!, s.y! - f.y!);
-        if (dist < bestD) { bestD = dist; best = f.id; }
-      }
-      if (best) symToFile.set(s.id, best);
-    }
-
-    // depth-3 → nearest depth-2
-    const subToSym = new Map<string, string>();
-    for (const s of syms3) {
-      let best = ''; let bestD = Infinity;
-      for (const sym of syms2) {
-        const dist = Math.hypot(s.x! - sym.x!, s.y! - sym.y!);
-        if (dist < bestD) { bestD = dist; best = sym.id; }
-      }
-      if (best) subToSym.set(s.id, best);
-    }
+  computeChildrenMap(nodes: GraphNode[], edges: GraphEdge[]): Map<string, string[]> {
+    const { files, syms2, syms3, fileToDir, sym2ToFile, sym3ToSym2 } =
+      this._buildParentChain(nodes, edges);
 
     const result = new Map<string, string[]>();
 
     // depth-2 sym → direct depth-3 children
-    for (const [subId, symId] of subToSym) {
-      const list = result.get(symId) ?? [];
-      list.push(subId);
-      result.set(symId, list);
+    for (const s of syms3) {
+      const sym = sym3ToSym2.get(s.id);
+      if (!sym) continue;
+      const list = result.get(sym.id) ?? [];
+      list.push(s.id);
+      result.set(sym.id, list);
     }
 
     // depth-1 file → depth-2 syms + their depth-3 children
-    for (const [symId, fileId] of symToFile) {
-      const list = result.get(fileId) ?? [];
-      list.push(symId);
-      list.push(...(result.get(symId) ?? []));
-      result.set(fileId, list);
+    for (const s of syms2) {
+      const f = sym2ToFile.get(s.id);
+      if (!f) continue;
+      const list = result.get(f.id) ?? [];
+      list.push(s.id);
+      list.push(...(result.get(s.id) ?? []));
+      result.set(f.id, list);
     }
 
     // depth-0 dir → files + all their descendants
-    for (const [fileId, dirId] of fileToDir) {
-      const list = result.get(dirId) ?? [];
-      list.push(fileId);
-      list.push(...(result.get(fileId) ?? []));
-      result.set(dirId, list);
+    for (const f of files) {
+      const d = fileToDir.get(f.id);
+      if (!d) continue;
+      const list = result.get(d.id) ?? [];
+      list.push(f.id);
+      list.push(...(result.get(f.id) ?? []));
+      result.set(d.id, list);
     }
 
     return result;
