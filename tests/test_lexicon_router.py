@@ -36,13 +36,28 @@ class TestLexiconRouterEnvelope:
         assert body["status"] == 200
         assert body["results"]["language"] == "c"
 
-    def test_get_lexicon_graph_envelope(self, client):
+    def test_get_lexicon_graph_is_gjgf_shaped(self, client):
+        """Must be {graph: {nodes, edges}, metadata} - what
+        D3GraphRenderer.canHandle actually requires - not the plain
+        node-link {nodes, links} LexiconService.to_json() produces, which
+        the frontend doesn't recognize as valid graph data at all."""
         resp = client.get("/lexicon/c/graph")
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == 200
-        assert "nodes" in body["results"]
-        assert "links" in body["results"]
+        results = body["results"]
+        assert "graph" in results and "metadata" in results
+        assert "nodes" in results["graph"] and "edges" in results["graph"]
+        assert results["metadata"]["nodeCount"] == len(results["graph"]["nodes"])
+
+    def test_get_lexicon_graph_nodes_have_layout_positions(self, client):
+        """Confirms the real GraphSerializer pipeline ran (layout/size),
+        not just a raw structural dump."""
+        resp = client.get("/lexicon/python/graph")
+        body = resp.json()
+        sample = next(iter(body["results"]["graph"]["nodes"].values()))
+        meta = sample.get("metadata", sample)
+        assert "x" in meta and "y" in meta and "size" in meta
 
     def test_get_lexicon_index_envelope(self, client):
         resp = client.get("/lexicon/python/index")
