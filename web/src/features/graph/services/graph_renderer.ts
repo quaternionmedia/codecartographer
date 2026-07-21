@@ -430,6 +430,35 @@ export class GraphRenderer {
         n.x = (n.x || 0) + offsetX;
         n.y = (n.y || 0) + offsetY;
       });
+
+      // Declutter pass: backend layouts (Spring/Compound/etc.) carry real
+      // semantic structure (orbit-by-file, source-ordered arcs) that a
+      // from-scratch force simulation would destroy, but they're never
+      // checked for overlap either — no collision force runs on this path
+      // today, so overlapping symbol clusters etc. just render as-is.
+      // Seed a short, bounded simulation from the already-placed
+      // positions using ONLY collision (push apart just enough to stop
+      // overlapping) plus a gentle pull back toward each node's own
+      // original spot (so the global layout survives, only local overlap
+      // gets resolved) - no link/charge/center forces, which would pull
+      // based on topology and fight the backend's placement instead of
+      // just decluttering it. This also revives the existing "Spread
+      // Nodes"/"Compact Nodes" radial-menu actions (onSpreadNodes/
+      // onCompactNodes below), which already guard on `this.
+      // currentSimulation` but silently did nothing for any
+      // backend-positioned graph until now, since that was always null
+      // here.
+      nodes.forEach((n: any) => { n.__anchorX = n.x; n.__anchorY = n.y; });
+      simulation = d3
+        .forceSimulation(nodes as any)
+        .force(
+          'collision',
+          d3.forceCollide((d: any) => styling.nodeSize * depthSizeMultiplier(d) * 1.3)
+        )
+        .force('x', d3.forceX((d: any) => d.__anchorX).strength(0.3))
+        .force('y', d3.forceY((d: any) => d.__anchorY).strength(0.3))
+        .alphaDecay(0.1)
+        .velocityDecay(0.6);
     }
 
     // Helper to get stroke-dasharray for edge style
@@ -810,6 +839,12 @@ export class GraphRenderer {
 
     if (simulation) {
       simulation.on('tick', updatePositions);
+      // Backend-positioned graphs always had compound backgrounds drawn
+      // immediately (they used to skip the simulation branch entirely) -
+      // draw once now against the already-recentered positions rather
+      // than waiting for the brief declutter pass to finish, so they
+      // don't lag or flicker while collision settles.
+      if (hasPositions) drawCompoundBackgrounds();
     } else {
       // Static layout - just update once
       updatePositions();
