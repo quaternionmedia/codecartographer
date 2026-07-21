@@ -24,9 +24,9 @@ maps.md`.
 
 ---
 
-## 1. qm governance migration
+## 1. qm governance migration [DONE 2026-07-21]
 
-**Status: pending.**
+**Status: done.**
 
 Adopt the branch-per-project ADR model from `quaternionmedia/qm` commit
 `d1b8afc`: this project's `adr/` directory moves from a copy inside

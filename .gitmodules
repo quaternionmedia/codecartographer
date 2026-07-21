@@ -4,3 +4,4 @@
 [submodule "docs/qm"]
 	path = docs/qm
 	url = https://github.com/quaternionmedia/qm.git
+	branch = project/codecartographer
