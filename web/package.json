@@ -6,7 +6,8 @@
   "license": "MIT",
   "main": "index.html",
   "scripts": {
-    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
     "dev": "vite",
     "test:e2e": "playwright test"
   },
@@ -24,7 +25,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "@types/d3": "^7.4.3",
     "@types/mithril": "^2.2.6",
+    "typescript": "^7.0.2",
     "vite": "^6.4.3"
   }
 }

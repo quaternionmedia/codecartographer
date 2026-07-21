@@ -139,6 +139,9 @@ uv run pytest
 # Run frontend end-to-end tests (starts the backend and frontend dev
 # servers automatically — see web/playwright.config.ts)
 cd web && npm run test:e2e
+
+# Type-check the frontend (also runs automatically before `npm run build`)
+cd web && npm run typecheck
 ```
 
 ## Docker (Optional)
