@@ -29,6 +29,8 @@ import networkx as nx
 from codecarto.models.source_data import Directory, File, Folder
 from codecarto.models.plot_data import PlotOptions
 from codecarto.services.graph_serializer import GraphSerializer
+from codecarto.services.lexicon_bridge import annotate_graph_with_lexicon
+from codecarto.services.lexicon_service import LexiconService
 from codecarto.services.parsers.language_parser import (
     ParserRegistry,
     make_node,
@@ -48,6 +50,7 @@ class UnifiedParserService:
         depth: int = 2,
         extensions: Optional[list[str]] = None,
         layout: str = "Spring",
+        annotate_lexicon: bool = False,
     ) -> dict:
         """Parse *directory* up to *depth* and return a gJGF dict.
 
@@ -62,13 +65,21 @@ class UnifiedParserService:
             all registered extensions are included.
         layout : str
             Layout algorithm name passed to GraphSerializer.
+        annotate_lexicon : bool
+            Stamp Lexicon abstraction-layer data onto nodes whose language
+            has one (see lexicon_bridge.py). Opt-in: off by default so
+            parses nobody asked to annotate pay no extra cost. Not (yet)
+            threaded through stream_parse/stream_parse_url — deliberately
+            scoped to this non-streaming entry point for its first pass.
 
         Returns
         -------
         dict
             gJGF graph dict (same shape as other plot endpoints).
         """
-        graph = UnifiedParserService.build_graph(directory, depth, extensions)
+        graph = UnifiedParserService.build_graph(
+            directory, depth, extensions, annotate_lexicon=annotate_lexicon
+        )
         options = PlotOptions(layout=layout, type="d3")
         gjgf = GraphSerializer.serialize_to_gjgf(graph, options)
         meta = GraphSerializer.create_metadata(graph, options)
@@ -533,6 +544,7 @@ class UnifiedParserService:
         directory: Directory,
         depth: int,
         extensions: Optional[list[str]],
+        annotate_lexicon: bool = False,
     ) -> nx.DiGraph:
         """Walk the directory tree and build the unified graph.
 
@@ -573,6 +585,15 @@ class UnifiedParserService:
 
         if depth >= 2:
             _add_python_dependency_edges(graph, directory.root, allowed_exts)
+
+        if annotate_lexicon:
+            # A single graph can span multiple languages (a repo isn't
+            # mono-language) - annotate each one present that also has a
+            # lexicon, rather than assuming a single language for the
+            # whole graph.
+            languages = {data.get("language") for _, data in graph.nodes(data=True)}
+            for language in languages & set(LexiconService.available()):
+                annotate_graph_with_lexicon(graph, language)
 
         return graph
 

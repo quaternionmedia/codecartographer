@@ -809,3 +809,157 @@ class TestCBatchWholeTree:
         labels = {nd["label"] for nd in result["graph"]["nodes"].values()}
         assert "A" in labels
         assert "B" in labels
+
+
+# ── Lexicon annotation (Option B) ──────────────────────────────────────────
+# annotate_lexicon=True stamps layer_ordinal/meta['lexicon_layers'] onto
+# nodes whose kind or (for C) qualifiers match a keyword/operator in that
+# language's Lexicon. See codecarto/services/lexicon_bridge.py's module
+# docstring for why this isn't a kind.lower() heuristic - Python's own
+# "Function" node kind maps to unified kind "function", not the keyword
+# "def", proving casing alone isn't reliable even within one language.
+
+class TestLexiconAnnotation:
+    def test_default_is_unannotated(self):
+        """annotate_lexicon defaults to False - existing callers see no
+        behavior change."""
+        d = _simple_dir([_file("mod.py", "class A: pass\n")])
+        result = UnifiedParserService.parse(d, depth=2)
+        for nd in result["graph"]["nodes"].values():
+            assert "layer_ordinal" not in nd.get("metadata", {})
+
+    def test_python_class_gets_structure_layer(self):
+        code = "class Greeter:\n    def hello(self):\n        pass\n"
+        d = _simple_dir([_file("greet.py", code)])
+        graph = UnifiedParserService.build_graph(
+            d, depth=2, extensions=None, annotate_lexicon=True
+        )
+
+        class_nodes = [
+            (n, data) for n, data in graph.nodes(data=True)
+            if data.get("kind") == "class"
+        ]
+        assert class_nodes, "expected a class node"
+        for _, data in class_nodes:
+            assert data["layer_ordinal"] == 1  # Structure & definition
+            assert data["meta"]["lexicon_layers"][0]["group"] == "definition"
+
+    def test_python_function_maps_to_def_keyword_not_the_word_function(self):
+        """Regression guard for the exact bug this design was built to
+        avoid: 'function'.lower() is not a real Python keyword, 'def' is -
+        the kind->token map must translate explicitly, not assume casing."""
+        code = "def standalone(): pass\n"
+        d = _simple_dir([_file("x.py", code)])
+        graph = UnifiedParserService.build_graph(
+            d, depth=2, extensions=None, annotate_lexicon=True
+        )
+
+        func_nodes = [
+            data for _, data in graph.nodes(data=True)
+            if data.get("kind") == "function"
+        ]
+        assert func_nodes
+        for data in func_nodes:
+            assert data["layer_ordinal"] == 1
+            tokens = {m.get("group") for m in data["meta"]["lexicon_layers"]}
+            assert "definition" in tokens  # reached via the "def" mapping
+
+    def test_non_matching_python_nodes_are_left_untouched(self):
+        """Module/Call/Name/Constant nodes have no lexicon-token equivalent
+        - they must not gain a layer_ordinal key at all (absent, not null),
+        matching how shape/color are absent rather than null when unset."""
+        code = "def f():\n    print('hi')\n"
+        d = _simple_dir([_file("x.py", code)])
+        graph = UnifiedParserService.build_graph(
+            d, depth=3, extensions=None, annotate_lexicon=True
+        )
+
+        non_keyword_kinds = {"module", "call", "name", "constant", "argument"}
+        for _, data in graph.nodes(data=True):
+            if data.get("kind") in non_keyword_kinds:
+                assert "layer_ordinal" not in data, (
+                    f"{data.get('kind')} node unexpectedly annotated: {data}"
+                )
+
+    @requires_libclang
+    def test_c_struct_gets_aggregate_layer(self):
+        import codecarto.services.parsers.c_language_parser  # noqa: F401
+
+        code = "struct Point { int x; int y; };\n"
+        d = _simple_dir([File(name="shapes.c", size=len(code), raw=code, url="")])
+        graph = UnifiedParserService.build_graph(
+            d, depth=3, extensions=None, annotate_lexicon=True
+        )
+
+        struct_nodes = [
+            data for _, data in graph.nodes(data=True)
+            if data.get("kind") == "struct"
+        ]
+        assert struct_nodes
+        for data in struct_nodes:
+            assert data["layer_ordinal"] == 2  # Aggregate & user-defined types
+            groups = {m["group"] for m in data["meta"]["lexicon_layers"]}
+            assert "aggregate" in groups
+
+    @requires_libclang
+    def test_c_qualifier_reaches_a_different_layer_than_kind_would(self):
+        """static is Layer 0 (Storage & memory placement); the function
+        kind itself has no direct keyword match - this only works because
+        meta['qualifiers'] is checked independently of kind."""
+        import codecarto.services.parsers.c_language_parser  # noqa: F401
+
+        code = "static int add(int a, int b) { return a + b; }\n"
+        d = _simple_dir([File(name="math.c", size=len(code), raw=code, url="")])
+        graph = UnifiedParserService.build_graph(
+            d, depth=3, extensions=None, annotate_lexicon=True
+        )
+
+        fn_nodes = [
+            data for _, data in graph.nodes(data=True)
+            if data.get("kind") == "function"
+        ]
+        assert fn_nodes
+        for data in fn_nodes:
+            assert data["layer_ordinal"] == 0  # Storage & memory placement
+            groups = {m["group"] for m in data["meta"]["lexicon_layers"]}
+            assert "storage class" in groups
+
+    @requires_libclang
+    def test_c_fields_unmatched_by_kind_or_qualifiers_are_untouched(self):
+        import codecarto.services.parsers.c_language_parser  # noqa: F401
+
+        code = "struct Point { int x; };\n"
+        d = _simple_dir([File(name="shapes.c", size=len(code), raw=code, url="")])
+        graph = UnifiedParserService.build_graph(
+            d, depth=3, extensions=None, annotate_lexicon=True
+        )
+
+        field_nodes = [
+            data for _, data in graph.nodes(data=True)
+            if data.get("kind") == "field"
+        ]
+        assert field_nodes
+        for data in field_nodes:
+            assert "layer_ordinal" not in data
+
+    @requires_libclang
+    def test_mixed_language_graph_annotates_each_language_independently(self):
+        """A single build_graph call can span multiple languages (a real
+        repo isn't mono-language) - annotation must handle every language
+        present, not assume one for the whole graph."""
+        import codecarto.services.parsers.c_language_parser  # noqa: F401
+
+        py = _file("greet.py", "class Greeter: pass\n")
+        c = File(name="shapes.c", size=30, raw="struct Point { int x; };\n", url="")
+        d = _simple_dir([py, c])
+        graph = UnifiedParserService.build_graph(
+            d, depth=3, extensions=None, annotate_lexicon=True
+        )
+
+        by_kind = {}
+        for _, data in graph.nodes(data=True):
+            if data.get("kind") in ("class", "struct"):
+                by_kind[data["kind"]] = data
+
+        assert by_kind["class"]["layer_ordinal"] == 1  # python: Structure & definition
+        assert by_kind["struct"]["layer_ordinal"] == 2  # c: Aggregate & user-defined types

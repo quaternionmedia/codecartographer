@@ -128,6 +128,7 @@ class UnifiedParseRequest(BaseModel):
     mode: Optional[str] = None   # 'directory' | 'ast' | 'dependencies'
     extensions: Optional[list[str]] = None
     layout: str = "Spring"
+    annotate_lexicon: bool = False
 
 
 class ExpandNodeRequest(BaseModel):
@@ -170,6 +171,11 @@ async def parse_unified(request: UnifiedParseRequest) -> dict:
         File extensions to include.  Null = all registered parsers.
     layout : str
         Layout algorithm (Spring, Spectral, …).
+    annotate_lexicon : bool
+        Stamp Lexicon abstraction-layer data onto nodes whose language has
+        one (currently c, python). Default False; when True, this request
+        bypasses the cache (see lexicon_bridge.py; the cache key doesn't
+        vary on this field, so annotated/unannotated results aren't mixed).
     """
     from codecarto.services.unified_parser_service import UnifiedParserService
     from codecarto.services.cache_service import CacheService
@@ -182,8 +188,12 @@ async def parse_unified(request: UnifiedParseRequest) -> dict:
         mode_key = request.mode or str(effective_depth)
         url = _repo_url(request)
 
-        # Check cache when a stable URL is available
-        if url:
+        # Check cache when a stable URL is available. annotate_lexicon isn't
+        # part of the cache key (CacheService.cache_key is shared with other
+        # callers) - skip the cache entirely for annotated requests rather
+        # than risk serving a cached unannotated result for one, or vice
+        # versa.
+        if url and not request.annotate_lexicon:
             key = CacheService.cache_key(
                 url=url,
                 mode=mode_key,
@@ -200,10 +210,12 @@ async def parse_unified(request: UnifiedParseRequest) -> dict:
             depth=effective_depth,
             extensions=request.extensions,
             layout=request.layout,
+            annotate_lexicon=request.annotate_lexicon,
         )
 
-        # Persist to cache
-        if url:
+        # Persist to cache (see the read side above for why annotated
+        # requests skip the cache entirely)
+        if url and not request.annotate_lexicon:
             info = request.directory.info
             label = (
                 f"{info.owner}/{info.name}" if info and info.owner and info.name
