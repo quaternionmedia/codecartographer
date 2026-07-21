@@ -218,6 +218,7 @@ export class LayoutContext {
       parserOptions: s.parserOptions,
       selectedRenderer: s.selectedRenderer,
       availableLanguages: s.availableLanguages ?? null,
+      availableLexiconLanguages: s.availableLexiconLanguages ?? [],
       cachedGraphs: this.cachedGraphs,
     };
   }
@@ -480,7 +481,7 @@ export class LayoutContext {
       PlotService.streamUnified(
         this.appState.api.parse,
         directory,
-        { depth, extensions: exts, layout },
+        { depth, extensions: exts, layout, annotateLexicon: opts.annotateLexicon },
         {
           onMeta: (meta) => {
             renderer.setTotal(meta.nodeCount);
@@ -556,7 +557,7 @@ export class LayoutContext {
       PlotService.streamFromUrl(
         this.appState.api.parse,
         githubUrl,
-        { depth, extensions: exts, layout },
+        { depth, extensions: exts, layout, annotateLexicon: opts.annotateLexicon },
         {
           onFetching: (msg) => this.updatePanelState({ statusMessage: msg }),
           onMeta: (meta) => {
@@ -628,6 +629,17 @@ export class LayoutContext {
           this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: 'Error loading demo' });
+        }
+      },
+
+      onLoadLexicon: async (language: string) => {
+        this.updatePanelState({ isLoading: true, statusMessage: `Loading ${language} lexicon...` });
+        this._lastPlotAction = async () => { await this.actions.plot.loadLexicon(language); };
+        try {
+          await this._lastPlotAction();
+          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+        } catch {
+          this.updatePanelState({ isLoading: false, statusMessage: `Error loading ${language} lexicon` });
         }
       },
 

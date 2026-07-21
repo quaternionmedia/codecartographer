@@ -138,8 +138,9 @@ StreamingGraphRenderer (frontend rAF loop)
 ## Key Architectural Decisions
 
 All non-obvious structural choices are documented as ADR drafts in
-`docs/adr/` following the `quaternionmedia/qm` governance discipline
-(see `docs/adr/README.md`). Short index:
+`docs/qm/adr/` (on this repo's `project/codecartographer` branch of the
+`quaternionmedia/qm` submodule) following its governance discipline
+(see `docs/qm/adr/README.md`). Short index:
 
 | ADR | Decision |
 |-----|----------|
@@ -179,4 +180,4 @@ in `position_service.py`, register with `params=["graph"]`.
 
 ## Architecture Decision Records
 
-For the *why* behind non-obvious structural choices, see [`docs/adr/`](adr/README.md).
+For the *why* behind non-obvious structural choices, see [`docs/qm/adr/`](qm/adr/README.md).

@@ -1,11 +1,17 @@
 import { animate, stagger, createTimeline } from 'animejs';
-import type { Animation } from 'animejs';
+import type { JSAnimation } from 'animejs';
+
+// Matches animejs's own DOMTargetsParam (string | DOMTarget | NodeList, or
+// an array of those) — animate() genuinely accepts a plain array of
+// elements (e.g. Array.from(...).filter(...)), not just a single Element
+// or a live NodeList.
+type AnimationTarget = string | Element | Element[] | NodeList;
 
 /** Reusable animation presets for consistent UI polish */
 export const animations = {
   /** Fade in element with optional slide */
   fadeIn: (
-    target: string | Element | NodeList,
+    target: AnimationTarget,
     options?: {
       duration?: number;
       delay?: number;
@@ -24,7 +30,7 @@ export const animations = {
 
   /** Fade out element */
   fadeOut: (
-    target: string | Element | NodeList,
+    target: AnimationTarget,
     options?: { duration?: number }
   ) => {
     const { duration = 200 } = options || {};
@@ -37,7 +43,7 @@ export const animations = {
 
   /** Slide navigation panel in/out */
   slideNav: (
-    target: string | Element,
+    target: AnimationTarget,
     isOpen: boolean,
     side: 'left' | 'right'
   ) => {
@@ -59,7 +65,7 @@ export const animations = {
 
   /** Stagger children for list animations */
   staggerIn: (
-    target: string | Element | NodeList,
+    target: AnimationTarget,
     options?: {
       delay?: number;
       staggerDelay?: number;
@@ -76,7 +82,7 @@ export const animations = {
   },
 
   /** Button press feedback */
-  buttonPress: (target: string | Element) => {
+  buttonPress: (target: AnimationTarget) => {
     return animate(target, {
       scale: [1, 0.95, 1],
       duration: 150,
@@ -85,7 +91,7 @@ export const animations = {
   },
 
   /** Loading pulse animation */
-  pulse: (target: string | Element) => {
+  pulse: (target: AnimationTarget) => {
     return animate(target, {
       opacity: [0.5, 1],
       scale: [0.98, 1],
@@ -97,7 +103,7 @@ export const animations = {
   },
 
   /** Graph node entrance animation */
-  graphNodeEntrance: (target: string | Element | NodeList) => {
+  graphNodeEntrance: (target: AnimationTarget) => {
     return animate(target, {
       scale: [0, 1],
       opacity: [0, 1],
@@ -108,7 +114,7 @@ export const animations = {
   },
 
   /** Shake for error feedback */
-  shake: (target: string | Element) => {
+  shake: (target: AnimationTarget) => {
     return animate(target, {
       translateX: [0, -10, 10, -10, 10, 0],
       duration: 400,
@@ -117,7 +123,7 @@ export const animations = {
   },
 
   /** Expand/collapse for folder toggle */
-  expandCollapse: (target: string | Element, isExpanding: boolean) => {
+  expandCollapse: (target: AnimationTarget, isExpanding: boolean) => {
     return animate(target, {
       height: isExpanding ? [0, (target as Element).scrollHeight || 'auto'] : [(target as Element).scrollHeight || 'auto', 0],
       opacity: isExpanding ? [0, 1] : [1, 0],
@@ -127,7 +133,7 @@ export const animations = {
   },
 
   /** Tooltip appear */
-  tooltipIn: (target: string | Element) => {
+  tooltipIn: (target: AnimationTarget) => {
     return animate(target, {
       opacity: [0, 1],
       scale: [0.9, 1],
@@ -137,7 +143,7 @@ export const animations = {
   },
 
   /** Tooltip disappear */
-  tooltipOut: (target: string | Element) => {
+  tooltipOut: (target: AnimationTarget) => {
     return animate(target, {
       opacity: [1, 0],
       scale: [1, 0.9],
@@ -149,9 +155,9 @@ export const animations = {
 
 /** Animation controller for managing active animations */
 export class AnimationController {
-  private activeAnimations: Map<string, Animation> = new Map();
+  private activeAnimations: Map<string, JSAnimation> = new Map();
 
-  play(id: string, animation: Animation) {
+  play(id: string, animation: JSAnimation) {
     // Stop existing animation with same ID
     this.stop(id);
     this.activeAnimations.set(id, animation);

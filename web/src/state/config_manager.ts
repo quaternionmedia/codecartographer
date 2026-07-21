@@ -13,8 +13,8 @@ export class ConfigManager {
 }
 
 export class DebugManager {
-  public isMenuOpen: boolean;
-  public isTracerShown: boolean;
+  public isMenuOpen: boolean = false;
+  public isTracerShown: boolean = false;
 
   public toggleMenu() {
     this.isMenuOpen = !this.isMenuOpen;

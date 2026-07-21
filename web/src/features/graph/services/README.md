@@ -95,24 +95,19 @@ Array<{ 'text/html': string, 'text/plain'?: string }>
 
 **Purpose**: Computes bounding circles for compound layout groups.
 
-**API**: `computeGroupBounds(nodes, padding, baseNodeSize): GroupBounds[]`
+**API**: `computeGroupBounds(nodes, edges, padding, baseNodeSize): GroupBounds[]`
 
-Spatially assigns each file to its nearest dir and each symbol to its nearest file, then returns bounding circles depth-0 first (SVG z-order: dir circles drawn before file circles). Used by both `StreamingGraphRenderer` and `GraphRenderer`.
+Assigns each file to its dir and each symbol/sub-symbol to its file using the real backend `kind === "contains"` edges (falling back to nearest-neighbor by position only for orphans with no such edge), then returns bounding circles depth-0 first (SVG z-order: dir circles drawn before file circles). Used by both `StreamingGraphRenderer` and `GraphRenderer`.
 
 ### 5. GravisGraphRenderer (`gravis_renderer.ts`)
 
-**Purpose**: Future client-side gravis.js rendering
+**Purpose**: Client-side rendering via [vis-network](https://github.com/visjs/vis-network) — mirrors the visual style of Python gravis (the library this project's static reports use), rendered live in the browser instead of pre-baked HTML.
 
-**Status**: Stub implementation (shows placeholder)
+**Status**: Fully implemented — converts gJGF to vis-network's `{nodes, edges}` DataSets (shapes, colors with opacity, sizes from either `styling.nodeSize` or the backend's own `node.size`), configures physics/interaction/layout options from `GraphStylingOptions`, wires click/double-click/edge-select/stabilization event listeners, and handles container resize and cleanup.
 
-**Data Format**: Same as D3 (gJGF)
+**Data Format**: Same as D3 (gJGF) — `canHandle()` accepts any `{graph: {nodes, edges}, metadata}` shape.
 
-**Detection**: Requires `metadata.type === 'gravis'`
-
-**TODO**:
-- Implement gravis.js client-side rendering
-- Convert gJGF to gravis format
-- Add interaction handlers
+**Selectable**: Via the Renderer dropdown (`'gravis'` in `GraphRendererType`), registered in `renderers.ts`'s `GraphRendererRegistry`.
 
 ## Usage
 

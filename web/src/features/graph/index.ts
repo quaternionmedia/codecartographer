@@ -6,11 +6,11 @@
 
 // Components
 export { Plot } from './components/Plot';
-export { GraphControls } from './components/GraphControls';
 
 // Services
 export { GraphRenderer } from './services/graph_renderer';
-export type { GraphData, GraphStylingOptions } from './services/graph_renderer';
+export type { GraphData } from './services/graph_renderer';
+export type { GraphStylingOptions } from '../../state/types';
 export { InteractionManager } from './services/interaction_manager';
 export type { InteractionManagerCallbacks, InteractionManagerOptions } from './services/interaction_manager';
 

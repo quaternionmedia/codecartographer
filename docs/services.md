@@ -10,20 +10,26 @@ Services contain the business logic, separated from HTTP routing (routers) and d
 
 ```
 services/
-├── github_service.py       # GitHub API integration
-├── local_repo_service.py   # Local filesystem parsing
-├── palette_service.py      # Color management
-├── parser_service.py       # Parse orchestration
-├── graph_serializer.py     # Graph JSON serialization
-├── polygraph_service.py    # Graph operations
-├── position_service.py     # Node positioning
+├── github_service.py          # GitHub API integration
+├── local_repo_service.py      # Local filesystem parsing
+├── unified_parser_service.py  # Depth-based parse orchestration (all languages)
+├── cache_service.py           # Parsed-graph + repo-tree cache (filesystem + optional MongoDB)
+├── c_parser_service.py        # C-specific parse orchestration (libclang)
+├── lexicon_service.py         # Hand-authored language lexicons -> graph
+├── graph_serializer.py        # Graph JSON serialization
+├── position_service.py        # Node positioning
 └── parsers/
-    ├── ASTs/
-    │   └── python_custom_ast.py
-    └── python/
-        ├── directory_parser.py
-        └── dependency_parser.py
+    ├── language_parser.py     # LanguageParser Protocol + ParserRegistry
+    ├── python_language_parser.py
+    ├── c_language_parser.py
+    ├── regex_language_parser.py  # 12-language regex adapter
+    └── ASTs/
+        └── python_custom_ast.py
 ```
+
+`palette_router.py` reads palettes directly (`DefaultPalette` from
+`models/plot_data.py`, or `DatabaseContext.fetch_palette_by_id` for
+custom ones) — there's no dedicated `PaletteService`.
 
 ---
 
@@ -116,70 +122,53 @@ content = await get_raw_from_url(
 
 ### GitHub Token
 
-Reads from `/run/secrets/github_token` or `token.txt`:
-
-```python
-def create_headers(url):
-    with open("/run/secrets/github_token", "r") as file:
-        GIT_API_KEY = file.read().strip()
-    return {"Authorization": f"token {GIT_API_KEY}"}
-```
+`resolve_github_token()`, cached by `get_github_token()` and used by
+`create_headers()`. Resolution order (first non-empty wins):
+`CC_GITHUB_TOKEN` env var → `gh auth token` (keyring) → `GITHUB_TOKEN`/
+`GH_TOKEN` env vars → `/run/secrets/github_token` (Docker secret) →
+unauthenticated. See `docs/qm/adr/DRAFT-github-token-resolution.md` for
+why the order is keyring-before-env-var, and `GET /auth/github`
+(`docs/api.md`) to inspect the resolved source at runtime.
 
 ---
 
-## ParserService
+## UnifiedParserService
 
-**File:** `parser_service.py`
+**File:** `unified_parser_service.py`
 
-Orchestrates parsing operations, delegating to specific parsers.
+The language-agnostic parse orchestrator behind `/parse/*`. Dispatches
+each file to its registered `LanguageParser` (via `ParserRegistry`,
+keyed by extension), walks folders to the requested depth, and — for
+languages needing cross-file context (`batch_whole_tree = True`, e.g.
+C) — batches all of that language's files into one parser call instead
+of one-at-a-time. See `docs/llm/ARCHITECTURE.md` for the full pipeline.
 
 ### Methods
 
-#### `parse_raw(url)` (async)
+#### `parse(source, depth, extensions, layout)`
 
-Parse a file from GitHub URL.
+Parse a `Directory`/`Folder` structure at the given depth (1 =
+dirs/files only, 2 = symbols and cross-file edges too).
 
 ```python
-graph = await ParserService.parse_raw(
-    "https://raw.githubusercontent.com/user/repo/main/file.py"
-)
+graph = UnifiedParserService.parse(directory, depth=2, extensions=None, layout="Spring")
 ```
 
-**Returns:** `nx.DiGraph` with AST nodes
+**Returns:** gJGF-ready graph dict
 
 ---
 
-#### `parse_code(folder)` (async)
+#### `stream_parse(...)` / `stream_parse_url(...)` (async generators)
 
-Parse a Folder structure.
+SSE variants of `parse()` — yield `meta`/`node`/`edge`/`done` events as
+parsing progresses, for the local-directory and GitHub-URL cases
+respectively. Cache-hit replay (`CacheService`) short-circuits both to
+an instant replay of the saved graph.
 
-```python
-graph = await ParserService.parse_code(folder)
-```
+#### `expand_node(...)`
 
----
-
-#### `parse_directory(directory)` (async)
-
-Generate directory structure graph.
-
-```python
-graph = await ParserService.parse_directory(directory)
-```
-
-**Returns:** Graph with folder/file hierarchy
-
----
-
-#### `parse_dependancy(directory)` (async)
-
-Generate import dependency graph.
-
-```python
-graph = await ParserService.parse_dependancy(directory)
-```
-
-**Returns:** Graph with import relationships
+Lazily expand a single node's children on demand (used by the
+compound-hierarchical layout's drill-down).
 
 ---
 
@@ -213,51 +202,75 @@ graph = parser.parse(folder)
 
 ---
 
-### DirectoryParser
-
-**File:** `parsers/python/directory_parser.py`
-
-Creates graph from directory structure.
-
-```python
-from codecarto.services.parsers.python.directory_parser import DirectoryParser
-
-parser = DirectoryParser()
-graph = parser.parse(directory)
-```
-
-**Node Types:**
-
-| Type | Description |
-|------|-------------|
-| `Folder` | Directory node |
-| `File` | File node |
-
-**Edges:** Parent-child containment relationships
+Directory/file hierarchy and Python import-dependency edges are both
+produced by `UnifiedParserService` itself now (depth=1 for the
+hierarchy; `_add_python_dependency_edges()` for `depends_on` edges at
+depth>=2), not by separate parser classes.
 
 ---
 
-### DependencyParser
+## LexiconService
 
-**File:** `parsers/python/dependency_parser.py`
+**File:** `lexicon_service.py`
 
-Analyzes import statements to build dependency graph.
+Loads a hand-authored per-language lexicon (reserved words/operators on
+a hierarchy of abstraction layers, from `data/lexicons/<language>.yaml`)
+and projects it into the same graph pipeline the parsers use. See
+`docs/llm/roadmap/lexicon.md` for the full design and the `/lexicon/*`
+endpoints in `docs/api.md`.
 
-```python
-from codecarto.services.parsers.python.dependency_parser import DependencyParser
+### Methods
 
-parser = DependencyParser()
-graph = parser.parse(directory)
-```
+| Method | Description |
+|--------|-------------|
+| `available()` | List language ids with a lexicon on disk |
+| `load(language)` | Load + validate a language's YAML into a `Lexicon` |
+| `to_graph(lexicon)` | Project to an `nx.DiGraph` |
+| `to_json(lexicon)` | Project to the node-link `{nodes, links}` shape the plotter consumes |
 
-**Node Types:**
+---
 
-| Type | Description |
-|------|-------------|
-| `Module` | Python module |
-| `Package` | External package |
+## CacheService
 
-**Edges:** Import relationships
+**File:** `cache_service.py`
+
+Content-addressed cache for parsed graphs and fetched repo trees —
+filesystem-backed, with an optional MongoDB backend when `MONGODB_URI`
+is set. Key = `SHA256(url + mode + layout + extensions)[:16]`. Distinct
+from `graphbase` (a separate, user-named durable store) — see
+`docs/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why they're kept
+separate.
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `cache_key(url, mode, layout, extensions)` | Compute the cache key |
+| `get(key)` / `set(key, ...)` | Read/write a cached parsed graph |
+| `list_cached()` | List all cached entries |
+| `evict(key)` | Remove one cached entry |
+| `get_tree(url)` / `set_tree(url, data)` | Cache a fetched repo tree separately from parsed graphs |
+| `evict_repo(url)` | Remove a cached repo tree |
+
+---
+
+## CParserService
+
+**File:** `c_parser_service.py`
+
+C-specific parse orchestration via libclang, used by the dedicated
+`/c-parser/*` endpoints (distinct from C files going through the
+generic `/parse/*` path via `c_language_parser.py` — see
+`docs/llm/ARCHITECTURE.md`'s "Two C-parser caches").
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `parse_file(path)` | Parse a single C/H file |
+| `parse_directory(path, ...)` | Parse a local directory, with an optional per-file progress callback |
+| `parse_github(...)` | Parse a GitHub repo's C/H files |
+| `list_cached_repos()` / `evict_repo_cache(key)` | Manage this service's own repo-tree cache |
 
 ---
 
@@ -334,38 +347,6 @@ Located in `models/custom_layouts/`:
 
 ---
 
-## PaletteService
-
-**File:** `palette_service.py`
-
-Manages color palettes for visualization.
-
-### Methods
-
-#### `get_palette(name)`
-
-Get colors for a named palette.
-
-#### `list_palettes()`
-
-List available palette names.
-
----
-
-## PolygraphService
-
-**File:** `polygraph_service.py`
-
-Graph manipulation operations.
-
-### Operations
-
-- **Merge:** Combine multiple graphs
-- **Filter:** Extract nodes by type/attribute
-- **Subgraph:** Extract neighborhood around nodes
-
----
-
 ## Creating New Services
 
 ### Template
@@ -422,15 +403,17 @@ async def my_endpoint(param: str):
          ▼
 ┌─────────────────┐
 │    Services     │
-│  (ParserService,│
-│GraphSerializer) │
+│(UnifiedParser-  │
+│Service, GraphSe-│
+│rializer)        │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐     ┌─────────────────┐
 │    Parsers      │     │     Models      │
 │ (PythonCustomAST│     │ (Directory,     │
-│  DependencyParser)    │  Graph, Plot)   │
+│  via ParserReg- │     │  Graph, Plot)   │
+│  istry)         │     │                 │
 └─────────────────┘     └─────────────────┘
 ```
 

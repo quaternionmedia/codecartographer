@@ -4,6 +4,8 @@ import { logger } from '../../../core/logger';
 import { InteractionManager, InteractionManagerCallbacks } from './interaction_manager';
 import { RadialMenu, getContextMenuItems, RadialMenuContext, RadialMenuCallbacks } from '../components/radial_menu';
 import { CompoundLayoutManager, GroupBounds } from './compound_layout';
+import { depthSizeMultiplier } from './depth_scale';
+import { GraphStylingOptions } from '../../../state/types';
 import {
   graphExtensions,
   ExtensionContext,
@@ -65,34 +67,6 @@ export interface GraphData {
     };
   }
 
-export interface GraphStylingOptions {
-  // Layout Algorithm
-  layout?: string;
-
-  // Physics Simulation
-  enablePhysics?: boolean;
-  chargeStrength?: number;      // in pixels (repulsion force)
-  linkDistance?: number;         // in pixels (target edge length)
-
-  // Node Appearance
-  nodeSize?: number;            // in pixels (radius)
-  nodeOpacity?: number;         // 0.0 to 1.0
-  nodeBorderWidth?: number;     // in pixels
-
-  // Edge Appearance
-  edgeWidth?: number;           // in pixels
-  edgeOpacity?: number;         // 0.0 to 1.0
-
-  // Label Appearance
-  showNodeLabels?: boolean;
-  showEdgeLabels?: boolean;
-  labelSize?: number;           // in pixels (font size)
-  labelColor?: string;          // hex color
-
-  // Interactions
-  interactionProfile?: string;  // Profile ID (default, cad, gaming, touch)
-}
-
 export class GraphRenderer {
   // Static state for radial menu and graph elements
   private static radialMenuContainer: HTMLElement | null = null;
@@ -101,6 +75,7 @@ export class GraphRenderer {
   private static currentZoom: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null;
   private static currentSimulation: d3.Simulation<GraphNode, GraphEdge> | null = null;
   private static currentNodes: GraphNode[] = [];
+  private static currentEdges: GraphEdge[] = [];
   private static selectedNodes: Set<GraphNode> = new Set();
   private static onGraphChange: (() => void) | null = null;
   private static currentUpdatePositions: (() => void) | null = null;
@@ -146,6 +121,7 @@ export class GraphRenderer {
       nodeSize: stylingOptions?.nodeSize ?? 5,
       nodeOpacity: stylingOptions?.nodeOpacity ?? 1.0,
       nodeBorderWidth: stylingOptions?.nodeBorderWidth ?? 1.5,
+      colorBy: stylingOptions?.colorBy ?? 'auto',
       edgeWidth: stylingOptions?.edgeWidth ?? 1.0,
       edgeOpacity: stylingOptions?.edgeOpacity ?? 1.0,
       showNodeLabels: stylingOptions?.showNodeLabels ?? true,
@@ -153,6 +129,17 @@ export class GraphRenderer {
       labelSize: stylingOptions?.labelSize ?? 10,
       labelColor: stylingOptions?.labelColor ?? '#333333',
       interactionProfile: stylingOptions?.interactionProfile ?? 'default',
+      // Falsy-default overrides: every read site below already treats these
+      // with `|| fallback`, so '' is equivalent to "unset", not a real color.
+      nodeColorOverride: stylingOptions?.nodeColorOverride ?? '',
+      edgeColor: stylingOptions?.edgeColor ?? '',
+      backgroundColor: stylingOptions?.backgroundColor ?? '',
+      edgeStyle: stylingOptions?.edgeStyle ?? 'solid',
+      systemId: stylingOptions?.systemId ?? 'pam',
+      showCompoundGroups: stylingOptions?.showCompoundGroups ?? true,
+      // Read sites already cast this back to `| undefined`; {} is the
+      // "no per-depth overrides" equivalent of unset.
+      showLabelsByDepth: stylingOptions?.showLabelsByDepth ?? {},
     };
 
     logger.debug('GraphRenderer.renderD3 - rendering graph:', metadata);
@@ -365,8 +352,11 @@ export class GraphRenderer {
     // Create node lookup for edge linking
     const nodeById = new Map(nodes.map(n => [n.id, n]));
 
-    // Convert edge source/target from string IDs to node objects
-    const edges = graph.edges.map(e => ({
+    // Convert edge source/target from string IDs to node objects. Typed
+    // explicitly as GraphEdge[] -- inferring from the object literal alone
+    // drops GraphEdge's index signature, so downstream reads of dynamic
+    // fields (e.g. d.weight) would no longer type-check.
+    const edges: GraphEdge[] = graph.edges.map(e => ({
       ...e,
       source: typeof e.source === 'string' ? nodeById.get(e.source) || e.source : e.source,
       target: typeof e.target === 'string' ? nodeById.get(e.target) || e.target : e.target,
@@ -382,11 +372,11 @@ export class GraphRenderer {
     if (!hasPositions && styling.enablePhysics) {
       // No positions provided - use force simulation
       simulation = d3
-        .forceSimulation(nodes as any)
+        .forceSimulation<GraphNode>(nodes)
         .force(
           'link',
           d3
-            .forceLink(edges)
+            .forceLink<GraphNode, GraphEdge>(edges)
             .id((d: GraphNode) => d.id)
             .distance(styling.linkDistance)
         )
@@ -425,6 +415,35 @@ export class GraphRenderer {
         n.x = (n.x || 0) + offsetX;
         n.y = (n.y || 0) + offsetY;
       });
+
+      // Declutter pass: backend layouts (Spring/Compound/etc.) carry real
+      // semantic structure (orbit-by-file, source-ordered arcs) that a
+      // from-scratch force simulation would destroy, but they're never
+      // checked for overlap either — no collision force runs on this path
+      // today, so overlapping symbol clusters etc. just render as-is.
+      // Seed a short, bounded simulation from the already-placed
+      // positions using ONLY collision (push apart just enough to stop
+      // overlapping) plus a gentle pull back toward each node's own
+      // original spot (so the global layout survives, only local overlap
+      // gets resolved) - no link/charge/center forces, which would pull
+      // based on topology and fight the backend's placement instead of
+      // just decluttering it. This also revives the existing "Spread
+      // Nodes"/"Compact Nodes" radial-menu actions (onSpreadNodes/
+      // onCompactNodes below), which already guard on `this.
+      // currentSimulation` but silently did nothing for any
+      // backend-positioned graph until now, since that was always null
+      // here.
+      nodes.forEach((n: any) => { n.__anchorX = n.x; n.__anchorY = n.y; });
+      simulation = d3
+        .forceSimulation<GraphNode>(nodes)
+        .force(
+          'collision',
+          d3.forceCollide((d: any) => styling.nodeSize * depthSizeMultiplier(d) * 1.3)
+        )
+        .force('x', d3.forceX((d: any) => d.__anchorX).strength(0.3))
+        .force('y', d3.forceY((d: any) => d.__anchorY).strength(0.3))
+        .alphaDecay(0.1)
+        .velocityDecay(0.6);
     }
 
     // Helper to get stroke-dasharray for edge style
@@ -471,6 +490,7 @@ export class GraphRenderer {
     this.currentSvg = svg;
     this.currentSimulation = simulation;
     this.currentNodes = nodes;
+    this.currentEdges = edges;
     this.selectedNodes.clear(); // Clear previous selections
 
     // State for node selection and interaction (use static reference)
@@ -552,19 +572,35 @@ export class GraphRenderer {
     const nodeElById = new Map<string, SVGGElement>();
     nodeGroup.each(function(d: GraphNode) { nodeElById.set(d.id, this as SVGGElement); });
 
-    // Add shape paths to nodes — size scales by depth when present
-    const depthSizeMultiplier = (d: GraphNode): number => {
-      const dep = d.depth as number | undefined;
-      if (dep === 0) return 3.0;   // directory: 3× larger
-      if (dep === 1) return 1.8;   // file: 1.8×
-      if (dep === 3) return 0.6;   // sub-symbol: 0.6×
-      return 1.0;                  // symbol (depth=2) and legacy: base size
-    };
+    // "Color by abstraction layer" mode: layer_ordinal (0 = most
+    // machine-facing) comes from Lexicon Option B annotation
+    // (lexicon_bridge.py) — present only on nodes matched to a keyword/
+    // operator, absent otherwise (falls through to the normal chain).
+    // Domain is computed from the actual data present, not a fixed
+    // range, since different languages' lexicons have different layer
+    // counts (C: 0-4, Python: 0-2 today).
+    let layerColorScale: ((v: number) => string) | null = null;
+    if (styling.colorBy === 'layer') {
+      const ordinals = nodes
+        .map((d) => d.layer_ordinal as number | undefined)
+        .filter((v): v is number => typeof v === 'number');
+      if (ordinals.length > 0) {
+        const scale = d3.scaleSequential(d3.interpolateViridis)
+          .domain([Math.min(...ordinals), Math.max(...ordinals)]);
+        layerColorScale = (v: number) => scale(v);
+      }
+    }
 
     nodeGroup
       .append('path')
       .attr('d', (d) => getNodePath(d.shape as string, styling.nodeSize * depthSizeMultiplier(d), d))
-      .attr('fill', (d) => styling.nodeColorOverride || d.color || 'steelblue')
+      .attr('fill', (d) => {
+        const layerOrdinal = d.layer_ordinal as number | undefined;
+        if (layerColorScale && typeof layerOrdinal === 'number') {
+          return layerColorScale(layerOrdinal);
+        }
+        return styling.nodeColorOverride || d.color || 'steelblue';
+      })
       .attr('fill-opacity', styling.nodeOpacity)
       // Parser diagnostics (e.g. C: missing header / unknown type in this
       // node's source file — see c_parser.py has_parse_warning) get a
@@ -590,7 +626,7 @@ export class GraphRenderer {
           if (!event.ctrlKey && !event.metaKey) {
             // Clear other selections if not multi-select
             selectedNodes.forEach((node) => {
-              d3.selectAll('.graph-node')
+              d3.selectAll<SVGGElement, GraphNode>('.graph-node')
                 .filter((n: GraphNode) => n.id === node.id)
                 .select('path')
                 .attr('stroke', this.nodeBorderColor(node))
@@ -617,7 +653,7 @@ export class GraphRenderer {
       })
       .call(
         d3
-          .drag()
+          .drag<SVGGElement, GraphNode>()
           .on('start', (event: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode) => {
             if (simulation) {
               if (!event.active) simulation.alphaTarget(0.3).restart();
@@ -635,9 +671,15 @@ export class GraphRenderer {
             d.fx = event.x;
             d.fy = event.y;
 
-            // Immediate visual update for the dragged node (don't wait for tick)
-            d3.select(event.currentTarget as SVGGElement)
-              .attr('transform', `translate(${event.x}, ${event.y})`);
+            // Immediate visual update for the dragged node (don't wait for tick).
+            // D3DragEvent has no `currentTarget` (only `sourceEvent`, the raw
+            // underlying mouse/touch event) -- this always selected nothing
+            // and silently no-opped. nodeElById already maps every node to
+            // its live SVG element for exactly this kind of lookup.
+            const draggedEl = nodeElById.get(d.id);
+            if (draggedEl) {
+              d3.select(draggedEl).attr('transform', `translate(${event.x}, ${event.y})`);
+            }
 
             // Propagate delta to all descendants in the compound hierarchy.
             // Only applies when the children map has been computed (compound layout).
@@ -759,9 +801,9 @@ export class GraphRenderer {
     // ── Compound layout background circles ────────────────────────────────
     const drawCompoundBackgrounds = () => {
       const manager = new CompoundLayoutManager();
-      const bounds = manager.computeGroupBounds(nodes, 40, styling.nodeSize * 3.0);
+      const bounds = manager.computeGroupBounds(nodes, edges, 40, styling.nodeSize * 3.0);
       this._compoundBounds = bounds;
-      GraphRenderer._childrenMap = manager.computeChildrenMap(nodes);
+      GraphRenderer._childrenMap = manager.computeChildrenMap(nodes, edges);
       backgroundGroup.selectAll('*').remove();
       for (const b of bounds) {
         const isDir = b.depth === 0;
@@ -789,6 +831,12 @@ export class GraphRenderer {
 
     if (simulation) {
       simulation.on('tick', updatePositions);
+      // Backend-positioned graphs always had compound backgrounds drawn
+      // immediately (they used to skip the simulation branch entirely) -
+      // draw once now against the already-recentered positions rather
+      // than waiting for the brief declutter pass to finish, so they
+      // don't lag or flicker while collision settles.
+      if (hasPositions) drawCompoundBackgrounds();
     } else {
       // Static layout - just update once
       updatePositions();
@@ -803,7 +851,7 @@ export class GraphRenderer {
     // Add zoom and pan with filter to allow shift-drag
     const labelThreshold = isLargeGraph ? 0.4 : 0.15;
     const zoom = d3
-      .zoom()
+      .zoom<SVGSVGElement, unknown>()
       .scaleExtent([isLargeGraph ? 0.01 : 0.05, 10])
       .filter((event: any) => {
         // Prevent zoom from interfering with shift-drag box selection
@@ -822,7 +870,7 @@ export class GraphRenderer {
         });
       });
 
-    svg.call(zoom as any);
+    svg.call(zoom);
 
     // Store zoom reference for radial menu callbacks (now that it's created)
     this.currentZoom = zoom;
@@ -929,14 +977,14 @@ export class GraphRenderer {
         selectedNodesInBox.forEach((node) => selectedNodes.add(node));
 
         // Update visual highlighting
-        d3.selectAll('.graph-node')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node')
           .select('path')
           .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
           .attr('stroke-width', styling.nodeBorderWidth)
           .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
 
         selectedNodesInBox.forEach((node) => {
-          d3.selectAll('.graph-node')
+          d3.selectAll<SVGGElement, GraphNode>('.graph-node')
             .filter((d: GraphNode) => d.id === node.id)
             .select('path')
             .attr('stroke', '#00ff41')
@@ -1017,7 +1065,7 @@ export class GraphRenderer {
       },
       onNodeDeselect: () => {
         selectedNodes.clear();
-        d3.selectAll('.graph-node').select('path')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node').select('path')
           .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
           .attr('stroke-width', styling.nodeBorderWidth)
           .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
@@ -1080,7 +1128,7 @@ export class GraphRenderer {
     container: HTMLElement,
     svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
     graphGroup: d3.Selection<SVGGElement, unknown, null, undefined>,
-    nodes: d3.Selection<SVGCircleElement, GraphNode, SVGGElement, unknown>,
+    nodes: d3.Selection<SVGGElement, GraphNode, SVGGElement, unknown>,
     edges: d3.Selection<SVGLineElement, GraphEdge, SVGGElement, unknown>,
     labels: d3.Selection<SVGTextElement, GraphNode, SVGGElement, unknown>,
     zoom: d3.ZoomBehavior<SVGSVGElement, unknown>,
@@ -1201,13 +1249,13 @@ export class GraphRenderer {
       onColorNode: (node: GraphNode, color: string) => {
         node.color = color;
         // Update visual
-        d3.selectAll('.graph-node')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node')
           .filter((n: GraphNode) => n.id === node.id)
           .attr('fill', color);
         logger.debug('Node color changed', node, color);
       },
       onHideNode: (node: GraphNode) => {
-        d3.selectAll('.graph-node')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node')
           .filter((n: GraphNode) => n.id === node.id)
           .attr('opacity', 0)
           .style('pointer-events', 'none');
@@ -1217,10 +1265,10 @@ export class GraphRenderer {
         // Remove from selection
         this.selectedNodes.delete(node);
         // Hide from view (actual deletion would require re-render)
-        d3.selectAll('.graph-node')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node')
           .filter((n: GraphNode) => n.id === node.id)
           .remove();
-        d3.selectAll('.menu-label')
+        d3.selectAll<SVGTextElement, GraphNode>('.menu-label')
           .filter((n: GraphNode) => n.id === node.id)
           .remove();
         logger.debug('Node deleted', node);
@@ -1279,11 +1327,9 @@ export class GraphRenderer {
         alert(`Layout change to ${layout} requires re-fetching from backend`);
       },
       onSelectNeighbors: (node: GraphNode) => {
-        if (!graph || !graph.edges) return;
-
         // Find all neighbors of this node
         const neighbors = new Set<GraphNode>();
-        graph.edges.forEach((edge: GraphEdge) => {
+        this.currentEdges.forEach((edge: GraphEdge) => {
           const sourceNode = typeof edge.source === 'object' ? edge.source : this.currentNodes.find(n => n.id === edge.source);
           const targetNode = typeof edge.target === 'object' ? edge.target : this.currentNodes.find(n => n.id === edge.target);
 
@@ -1298,13 +1344,13 @@ export class GraphRenderer {
         neighbors.forEach(n => this.selectedNodes.add(n));
 
         // Update visual selection
-        d3.selectAll('.graph-node').select('path')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node').select('path')
           .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
           .attr('stroke-width', styling.nodeBorderWidth)
           .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
 
         neighbors.forEach(n => {
-          d3.selectAll('.graph-node')
+          d3.selectAll<SVGGElement, GraphNode>('.graph-node')
             .filter((d: GraphNode) => d.id === n.id)
             .select('path')
             .attr('stroke', '#00ff41')
@@ -1324,14 +1370,14 @@ export class GraphRenderer {
       onShowOnlyConnected: () => {
         // Hide all isolated nodes (nodes with no edges)
         const connectedNodeIds = new Set<string>();
-        graph.edges.forEach((edge: GraphEdge) => {
+        this.currentEdges.forEach((edge: GraphEdge) => {
           const sourceId = typeof edge.source === 'object' ? edge.source.id : edge.source;
           const targetId = typeof edge.target === 'object' ? edge.target.id : edge.target;
           connectedNodeIds.add(sourceId);
           connectedNodeIds.add(targetId);
         });
 
-        d3.selectAll('.graph-node').each(function(d: GraphNode) {
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node').each(function(d: GraphNode) {
           if (!connectedNodeIds.has(d.id)) {
             d3.select(this).attr('opacity', 0).style('pointer-events', 'none');
           } else {
@@ -1361,7 +1407,7 @@ export class GraphRenderer {
         // Increase link distance if simulation exists
         if (this.currentSimulation) {
           const currentDistance = styling.linkDistance * 1.5;
-          this.currentSimulation.force('link', d3.forceLink(edges).distance(currentDistance));
+          this.currentSimulation.force('link', d3.forceLink(this.currentEdges).distance(currentDistance));
           this.currentSimulation.alpha(1).restart();
           logger.debug('Spread nodes - increased link distance');
         }
@@ -1370,7 +1416,7 @@ export class GraphRenderer {
         // Decrease link distance if simulation exists
         if (this.currentSimulation) {
           const currentDistance = styling.linkDistance * 0.67;
-          this.currentSimulation.force('link', d3.forceLink(edges).distance(currentDistance));
+          this.currentSimulation.force('link', d3.forceLink(this.currentEdges).distance(currentDistance));
           this.currentSimulation.alpha(1).restart();
           logger.debug('Compact nodes - decreased link distance');
         }
@@ -1619,8 +1665,8 @@ export class GraphRenderer {
   private static createExtensionContext(): ExtensionContext<GraphNode, GraphEdge> | null {
     if (!this.currentSvg) return null;
 
-    const graphGroup = this.currentSvg.select('g');
-    const nodes = graphGroup.selectAll<SVGCircleElement, GraphNode>('.graph-node');
+    const graphGroup = this.currentSvg.select<SVGGElement>('g');
+    const nodes = graphGroup.selectAll<SVGGElement, GraphNode>('.graph-node');
     const edges = graphGroup.selectAll<SVGLineElement, GraphEdge>('line');
     const labels = graphGroup.selectAll<SVGTextElement, GraphNode>('text');
 

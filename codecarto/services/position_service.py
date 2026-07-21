@@ -61,9 +61,6 @@ class Positions:
         self.add_layout("sorted_square_layout", sorted_square_layout, ["graph"])
         self.add_layout("compound_layout", compound_layout, ["graph"])
 
-        # from .custom_layouts.cluster_layout import cluster_layout
-        # self.add_layout("cluster_layout", cluster_layout, ["graph", "root"])
-
     def get_layout_names(self) -> list:
         """Get all layout names from the list of available layouts
 
@@ -170,9 +167,6 @@ class Positions:
                     # Create the list of lists (shells)
                     shells = list(grouped_nodes.values())
                     layout_kwargs["nshells"] = shells
-            elif param == "root" and name == "cluster_layout":
-                # Set the root node
-                layout_kwargs["root"] = kwargs["root"]
             elif param != "G":
                 # TODO Handle other parameters here
                 pass
@@ -203,9 +197,6 @@ class Positions:
 
                 seed = random.randint(0, 1000)
                 layout_kwargs["seed"] = seed
-            elif param == "prog" and layout_name == "dot_layout":
-                # Set the program to use for graphviz
-                layout_kwargs["prog"] = "dot"
             elif param == "nshells" and layout_name == "shell_layout":
                 # Group nodes by parent
                 grouped_nodes: dict[str, list] = {}
@@ -217,14 +208,6 @@ class Positions:
                 # Create the list of lists (shells)
                 shells = list(grouped_nodes.values())
                 layout_kwargs["nshells"] = shells
-            elif param == "root" and layout_name == "cluster_layout":
-                # get the node at the very top
-                root = None
-                for node, data in graph.nodes(data=True):
-                    if data.get("label", "") == "root":
-                        root = node
-                        break
-                layout_kwargs["root"] = root
             elif param != "G":
                 # TODO: Handle other parameters here
                 pass

@@ -45,9 +45,16 @@ Parse a directory tree to the requested depth and return a gJGF graph.
   },
   "depth": 2,
   "extensions": [".py", ".c"],
-  "layout": "spring_layout"
+  "layout": "spring_layout",
+  "annotate_lexicon": false
 }
 ```
+
+**`annotate_lexicon`** (default `false`): stamp Lexicon abstraction-layer
+data (`layer_ordinal`, `meta.lexicon_layers`) onto nodes whose language
+has one (currently `c`, `python` — see `docs/llm/roadmap/lexicon.md`).
+Opt-in: existing callers see no change. Requests with this set to `true`
+bypass the response cache (the cache key doesn't vary on this field).
 
 **`layout` values:**
 
@@ -366,6 +373,13 @@ works through the file list. Call edges and derived type edges
 their targets, so they can only be computed — and streamed — after every
 file's declarations are in.
 
+### GET `/c-parser/visualizer?path=<optional>`
+
+Serve the C Semantic Visualizer HTML page. Without `path`, shows a
+built-in demo graph (`linux/mm/`); with `path`, parses the given
+filesystem path with libclang and injects the result in place of the
+demo graph.
+
 ---
 
 ### GET `/c-parser/cache`
@@ -497,12 +511,28 @@ Serve the PAM auth log monitor HTML frontend (URL-patched for current server).
 
 Check PAM monitor status (running, log source, event count).
 
+### GET `/pam/history?minutes=30`
+
+Parsed PAM events from recent log history (`minutes`: 1-1440, default 30).
+
+### GET `/pam/sessions`
+
+List captured authentication sessions.
+
+### GET `/pam/sessions/{session_id}`
+
+All events for a specific captured session.
+
 ### WebSocket `/pam/ws/live`
 
 Stream real-time PAM events as JSON objects:
 ```json
 { "timestamp": "...", "user": "alice", "event_type": "accepted", "rhost": "192.168.1.10" }
 ```
+
+### WebSocket `/pam/ws/replay?session_id=<id>`
+
+Replay a captured session's events at 3x speed.
 
 ---
 
@@ -514,7 +544,7 @@ Stream real-time PAM events as JSON objects:
 
 Report the active GitHub credential source and whether the backend has a
 valid token. Useful for diagnosing the `GITHUB_TOKEN`-vs-keyring shadowing
-issue described in *GitHub token resolution order* (`docs/adr/`).
+issue described in *GitHub token resolution order* (`docs/qm/adr/`).
 
 **Response:**
 ```json
@@ -534,7 +564,7 @@ issue described in *GitHub token resolution order* (`docs/adr/`).
 ## Graphbase Endpoints (`/db/*`)
 
 Mounted **only** when `MONGODB_URI` env var is set. All routes return 404
-otherwise. See `docs/adr/DRAFT-cache-service-vs-graphbase.md` for why this
+otherwise. See `docs/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why this
 store is separate from the filesystem `CacheService`.
 
 The graphbase submodule exposes three typed collections:
@@ -592,15 +622,54 @@ Delete a specific history entry.
 
 ---
 
+## Lexicon Endpoints
+
+Hand-authored per-language ontologies (reserved words/operators on a
+hierarchy of abstraction layers), projected into the same graph pipeline
+the parsers use. See `docs/llm/roadmap/lexicon.md` for the full design.
+
+### GET `/lexicon/`
+
+List available language ids (e.g. `{"languages": ["c", "python"]}`).
+
+### GET `/lexicon/{language}`
+
+Full validated lexicon as JSON (layers, groups, tokens).
+
+### GET `/lexicon/{language}/graph`
+
+gJGF graph (`{graph: {nodes, edges}, metadata}`) — the same shape and
+serialization pipeline (`GraphSerializer.serialize_to_gjgf`, real layout
+positions included) every parsed-code graph uses, so it renders through
+the existing D3 pipeline unchanged. Token nodes carry `layer_ordinal`
+and `kind` for coloring by abstraction level (see the `colorBy: 'layer'`
+styling option). **Not** `LexiconService.to_json()`'s plain node-link
+dump — that shape isn't recognized by the frontend renderer at all
+(verified directly; an earlier version of this doc claimed otherwise).
+
+### GET `/lexicon/{language}/index`
+
+Token-spelling → contexts lookup (which layers/groups a token appears
+in) — the join `unified_parser_service.py`'s `annotate_lexicon` flag
+uses to enrich real parsed graphs (see `POST /parse/unified` above).
+
+---
+
 ## Palette Endpoints
 
-### GET `/palette/list`
+### GET `/palette/default`
 
-List all available color palette IDs.
+Get the built-in default palette. Response `results` is a `Palette`
+object: `{id, bases, labels, alphas, sizes, shapes, colors}`, each a
+dict keyed by AST node kind (e.g. `"FunctionDef"`, `"If"`) mapping to
+that kind's style value.
 
-### GET `/palette/{id}`
+### GET `/palette/custom?palette_id=<id>`
 
-Get a specific palette definition (bases, colors, shapes, sizes).
+Get a custom palette by id from the database (same `Palette` shape as
+above). `DatabaseContext.fetch_palette_by_id` is currently a
+placeholder that always returns the default palette regardless of
+`palette_id` — custom palette storage isn't implemented yet.
 
 ---
 

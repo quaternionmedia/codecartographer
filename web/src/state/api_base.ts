@@ -5,6 +5,7 @@ export class API {
   private _plotter: string = 'plotter';
   private _repoReader: string = 'repo';
   private _parse: string = 'parse';
+  private _lexicon: string = 'lexicon';
 
   constructor(base: string) {
     this._base = base;
@@ -28,6 +29,10 @@ export class API {
 
   get parse(): string {
     return `${this._base}/${this._parse}`;
+  }
+
+  get lexicon(): string {
+    return `${this._base}/${this._lexicon}`;
   }
 
   get db(): string {

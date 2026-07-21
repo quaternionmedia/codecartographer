@@ -414,6 +414,36 @@ export class PlotActions {
   }
 
   /**
+   * Fetch languages that have a Lexicon (abstraction-layer ontology) and
+   * store in state, for the "Load Lexicon" language picker.
+   * Non-fatal: called on startup; failure is silently ignored.
+   */
+  async initializeLexiconLanguages(): Promise<void> {
+    try {
+      const langs = await PlotService.fetchLexiconLanguages(this.stateController.api.lexicon);
+      this.stateController.update({ availableLexiconLanguages: langs });
+    } catch {
+      // non-fatal — backend may not be running yet
+    }
+  }
+
+  /**
+   * Load and display a language's standalone Lexicon graph (Option A —
+   * see docs/llm/roadmap/lexicon.md). Switchable: grows automatically as
+   * more languages get a lexicon YAML, no frontend change needed.
+   */
+  async loadLexicon(language: string): Promise<void> {
+    this.stateController.clear();
+    try {
+      const data = await PlotService.plotLexicon(this.stateController.api.lexicon, language);
+      this.handlePlotData(data);
+    } catch (error) {
+      console.error(`Failed to load ${language} lexicon:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Load and display demo visualization
    */
   async loadDemo(): Promise<void> {
@@ -432,38 +462,6 @@ export class PlotActions {
   }
 
   /**
-   * Parse a directory using the unified schema (depth-based hierarchy).
-   * Any renderer (D3, Gravis, …) can display the result.
-   */
-  async plotUnified(
-    directory: Directory,
-    depth: number = 2,
-    extensions?: string[]
-  ): Promise<void> {
-    this.stateController.clear();
-    try {
-      const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const data = await PlotService.plotUnified(
-        this.stateController.api.parse,
-        directory,
-        depth,
-        extensions ?? null,
-        layout
-      );
-      if (!data) throw new Error('No data returned from parse/unified');
-      // Backend wraps result in { results: { graph, metadata } }
-      const result = data as Record<string, unknown>;
-      const graphData = result['graph'] !== undefined ? result : data;
-      // Store directory so subsequent expandGraphNode() calls can reuse it
-      this.stateController.update({ parseDirectory: directory });
-      this.handlePlotData(graphData);
-    } catch (error) {
-      console.error('Failed to plot unified:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Plot a single uploaded file via /parse/unified
    */
   async plotUploadedFile(file: RawFile): Promise<void> {
@@ -474,7 +472,7 @@ export class PlotActions {
       const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
       const dir    = new Directory(new RepoInfo(), 1, new RawFolder('upload', file.size, [file]));
       const data   = await PlotService.plotUnified(
-        this.stateController.api.parse, dir, 2, exts, layout
+        this.stateController.api.parse, dir, 2, exts, layout, undefined, opts.annotateLexicon
       );
       if (!data) throw new Error('No data returned from parse/unified');
       this.stateController.update({ parseDirectory: dir });
@@ -544,7 +542,14 @@ export class RepoActions {
       );
       const pathParts = path.split('/').filter(p => p.length > 0);
       const newRoot = mergeFolderAtPath(current.root, pathParts, folder);
-      this.stateController.setRepoContent({ ...current, root: newRoot });
+      // Constructed via `new Directory(...)`, not a `{...current}` spread --
+      // isEmpty is a computed getter on the class prototype, which a plain
+      // object spread silently drops (spread only copies own enumerable
+      // properties), producing an object that type-checks as a Directory
+      // but isn't really one at runtime.
+      this.stateController.setRepoContent(
+        new Directory(current.info, current.size, newRoot, current.is_partial)
+      );
     } catch (error) {
       console.error('Failed to expand path:', path, error);
       throw error;
@@ -571,19 +576,6 @@ export class RepoActions {
     }
   }
 
-  /**
-   * Select a file in the repository tree
-   */
-  selectFile(file: RawFile): void {
-    this.stateController.setSelectedRepoFile(file);
-  }
-
-  /**
-   * Clear repository data
-   */
-  clearRepository(): void {
-    this.stateController.clearRepoData();
-  }
 }
 
 /**
@@ -591,13 +583,6 @@ export class RepoActions {
  */
 export class UploadActions {
   constructor(private stateController: StateController) {}
-
-  /**
-   * Select an uploaded file
-   */
-  selectFile(file: RawFile): void {
-    this.stateController.setSelectedLocalFile(file);
-  }
 }
 
 /**

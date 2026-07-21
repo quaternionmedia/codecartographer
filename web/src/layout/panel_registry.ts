@@ -10,7 +10,7 @@
  * by ParserRegistry (backend) and the D3/Gravis/Notebook renderer registry
  * (frontend) elsewhere in this codebase.
  *
- * See ADR 0005 (docs/adr/) for why this generalization exists.
+ * See ADR 0005 (docs/qm/adr/) for why this generalization exists.
  */
 
 import m from 'mithril';

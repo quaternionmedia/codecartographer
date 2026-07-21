@@ -52,7 +52,7 @@ export const SettingsPanel: m.Component<SettingsPanelAttrs> = {
               { value: 'dark', label: 'Dark' },
               { value: 'light', label: 'Light' },
             ],
-            onChange: onThemeChange,
+            onchange: (value: string) => onThemeChange(value as 'light' | 'dark'),
           }),
         ]),
 
@@ -66,7 +66,7 @@ export const SettingsPanel: m.Component<SettingsPanelAttrs> = {
               { value: '2', label: 'Pastel' },
               { value: '3', label: 'Monochrome' },
             ],
-            onChange: onPaletteChange,
+            onchange: onPaletteChange,
           }),
         ]),
       ]),
@@ -85,7 +85,7 @@ export const SettingsPanel: m.Component<SettingsPanelAttrs> = {
               { value: 'Circular', label: 'Circular' },
               { value: 'Shell', label: 'Shell' },
             ],
-            onChange: onDefaultLayoutChange,
+            onchange: onDefaultLayoutChange,
           }),
         ]),
 
@@ -98,7 +98,7 @@ export const SettingsPanel: m.Component<SettingsPanelAttrs> = {
               { value: 'three', label: 'Three.js (3D)' },
               { value: 'vis', label: 'vis.js' },
             ],
-            onChange: onDefaultTypeChange,
+            onchange: (value: string) => onDefaultTypeChange(value as 'd3' | 'three' | 'vis'),
           }),
         ]),
 
@@ -115,11 +115,10 @@ export const SettingsPanel: m.Component<SettingsPanelAttrs> = {
 
       m('.settings-panel__footer', [
         m(Button, {
-          label: 'Reset to Defaults',
-          onClick: onReset,
+          onclick: onReset,
           variant: 'ghost',
           size: 'small',
-        }),
+        }, 'Reset to Defaults'),
       ]),
     ]);
   },

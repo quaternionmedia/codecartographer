@@ -7,7 +7,7 @@ import * as d3 from 'd3';
 /**
  * Base interface for all graph extensions
  */
-export interface GraphExtension<TNode = any, TEdge = any> {
+export interface GraphExtension<TNode extends d3.SimulationNodeDatum = any, TEdge = any> {
   /** Unique identifier for this extension */
   id: string;
 
@@ -39,15 +39,18 @@ export interface GraphExtension<TNode = any, TEdge = any> {
 /**
  * Context provided to extensions
  */
-export interface ExtensionContext<TNode = any, TEdge = any> {
+export interface ExtensionContext<TNode extends d3.SimulationNodeDatum = any, TEdge = any> {
   /** SVG container selection */
   svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
 
   /** Graph data group selection */
   graphGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
 
-  /** Node selections */
-  nodes: d3.Selection<SVGCircleElement, TNode, SVGGElement, unknown>;
+  /** Node selections. Element type is SVGGElement, not a shape-specific
+   * element -- graph_renderer.ts wraps every node's shape in a <g
+   * class="graph-node"> to hold the shape path, label, and drag/selection
+   * behavior together, matching how nodes are actually built. */
+  nodes: d3.Selection<SVGGElement, TNode, SVGGElement, unknown>;
 
   /** Edge selections */
   edges: d3.Selection<SVGLineElement, TEdge, SVGGElement, unknown>;
@@ -58,8 +61,13 @@ export interface ExtensionContext<TNode = any, TEdge = any> {
   /** D3 zoom behavior */
   zoom?: d3.ZoomBehavior<SVGSVGElement, unknown>;
 
-  /** D3 force simulation (if active) */
-  simulation?: d3.Simulation<TNode, TEdge>;
+  /** D3 force simulation (if active). Edge-datum type intentionally left as
+   * `any` rather than threading TEdge through -- d3.Simulation's second
+   * generic must satisfy SimulationLinkDatum<TNode>, a constraint real edge
+   * data (source/target as string | GraphNode) doesn't cleanly satisfy, and
+   * nothing here actually operates on simulation.force('link')'s data with
+   * TEdge-specific typing. */
+  simulation?: d3.Simulation<TNode, any>;
 
   /** Container element */
   container: HTMLElement;
@@ -80,7 +88,7 @@ export interface ExtensionContext<TNode = any, TEdge = any> {
 /**
  * Base class for creating extensions
  */
-export abstract class BaseExtension<TNode = any, TEdge = any> implements GraphExtension<TNode, TEdge> {
+export abstract class BaseExtension<TNode extends d3.SimulationNodeDatum = any, TEdge = any> implements GraphExtension<TNode, TEdge> {
   protected context: ExtensionContext<TNode, TEdge> | null = null;
   protected enabled: boolean = true;
 

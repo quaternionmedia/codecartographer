@@ -54,6 +54,9 @@ export interface LocalState {
 /** Parser configuration options */
 export interface ParserOptions {
   fileExtensions: string[];    // File extensions to parse (e.g., ['.py', '.js'])
+  // Stamp Lexicon abstraction-layer data onto real parsed nodes whose
+  // language has one (see lexicon_bridge.py) - opt-in, off by default.
+  annotateLexicon: boolean;
 }
 
 /** Edge line style */
@@ -74,6 +77,9 @@ export interface GraphStylingOptions {
   nodeOpacity: number;         // 0.0 to 1.0
   nodeBorderWidth: number;     // in pixels
   nodeColorOverride?: string;  // Optional override for automatic node coloring
+  // 'auto' (default depth/kind heuristic) | 'layer' (Lexicon Option B
+  // abstraction layer, when present on a node) | 'type' | 'degree' | ...
+  colorBy?: string;
 
   // Edge Appearance
   edgeWidth: number;           // in pixels
@@ -188,6 +194,7 @@ export const DEFAULT_GRAPH_STATE: GraphState = {
   },
   parserOptions: {
     fileExtensions: [],
+    annotateLexicon: false,
   },
   selectedRenderer: 'd3',
 };
