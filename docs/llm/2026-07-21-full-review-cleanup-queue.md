@@ -60,9 +60,9 @@ from `codecarto/requirements.txt` instead; CI uses `pip install
 the `Dockerfile` line that (via the compose override) doesn't even
 point at it.
 
-## 3. Pillow CVE unpatched in the real dependency tree
+## 3. Pillow CVE unpatched in the real dependency tree [DONE 2026-07-21]
 
-**Status: pending.**
+**Status: done.**
 
 `uv.lock` had Pillow pinned at 12.1.0 (transitive via `matplotlib`).
 Several open high-severity CVEs (heap out-of-bounds write, OS command
