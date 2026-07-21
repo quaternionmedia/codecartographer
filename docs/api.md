@@ -366,6 +366,13 @@ works through the file list. Call edges and derived type edges
 their targets, so they can only be computed — and streamed — after every
 file's declarations are in.
 
+### GET `/c-parser/visualizer?path=<optional>`
+
+Serve the C Semantic Visualizer HTML page. Without `path`, shows a
+built-in demo graph (`linux/mm/`); with `path`, parses the given
+filesystem path with libclang and injects the result in place of the
+demo graph.
+
 ---
 
 ### GET `/c-parser/cache`
@@ -497,12 +504,28 @@ Serve the PAM auth log monitor HTML frontend (URL-patched for current server).
 
 Check PAM monitor status (running, log source, event count).
 
+### GET `/pam/history?minutes=30`
+
+Parsed PAM events from recent log history (`minutes`: 1-1440, default 30).
+
+### GET `/pam/sessions`
+
+List captured authentication sessions.
+
+### GET `/pam/sessions/{session_id}`
+
+All events for a specific captured session.
+
 ### WebSocket `/pam/ws/live`
 
 Stream real-time PAM events as JSON objects:
 ```json
 { "timestamp": "...", "user": "alice", "event_type": "accepted", "rhost": "192.168.1.10" }
 ```
+
+### WebSocket `/pam/ws/replay?session_id=<id>`
+
+Replay a captured session's events at 3x speed.
 
 ---
 
@@ -592,15 +615,48 @@ Delete a specific history entry.
 
 ---
 
+## Lexicon Endpoints
+
+Hand-authored per-language ontologies (reserved words/operators on a
+hierarchy of abstraction layers), projected into the same graph pipeline
+the parsers use. See `docs/llm/roadmap/lexicon.md` for the full design.
+
+### GET `/lexicon/`
+
+List available language ids (e.g. `{"languages": ["c"]}`).
+
+### GET `/lexicon/{language}`
+
+Full validated lexicon as JSON (layers, groups, tokens).
+
+### GET `/lexicon/{language}/graph`
+
+Node-link graph (`{nodes, links}`) for the plotter — same shape the
+frontend already renders, no plotter changes needed. Token nodes carry
+`layer_ordinal` and `kind` for palette coloring by abstraction level.
+
+### GET `/lexicon/{language}/index`
+
+Token-spelling → contexts lookup (which layers/groups a token appears
+in) — for joining real parsed source tokens to their lexicon entry.
+
+---
+
 ## Palette Endpoints
 
-### GET `/palette/list`
+### GET `/palette/default`
 
-List all available color palette IDs.
+Get the built-in default palette. Response `results` is a `Palette`
+object: `{id, bases, labels, alphas, sizes, shapes, colors}`, each a
+dict keyed by AST node kind (e.g. `"FunctionDef"`, `"If"`) mapping to
+that kind's style value.
 
-### GET `/palette/{id}`
+### GET `/palette/custom?palette_id=<id>`
 
-Get a specific palette definition (bases, colors, shapes, sizes).
+Get a custom palette by id from the database (same `Palette` shape as
+above). `DatabaseContext.fetch_palette_by_id` is currently a
+placeholder that always returns the default palette regardless of
+`palette_id` — custom palette storage isn't implemented yet.
 
 ---
 

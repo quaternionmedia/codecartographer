@@ -175,9 +175,14 @@ build` clean after.
 packages from `node_modules` — `d3-force` stays installed as `d3`'s own
 transitive dependency, as expected. `npm run build` clean after.
 
-## 10. `docs/api.md` drift
+## 10. `docs/api.md` drift [DONE 2026-07-21]
 
-**Status: pending.**
+**Status: done.** Read `palette_router.py`/`plot_data.py` directly to
+get the real `Palette` shape and `fetch_palette_by_id`'s placeholder
+status right, not just the route paths. Added the `/lexicon/*` section
+with a pointer to `docs/llm/roadmap/lexicon.md` (this is real,
+roadmapped infrastructure — documenting it is in scope even though it's
+not wired to the frontend yet).
 
 - Palette section (api.md:595-604) documents a **different API than
   what's implemented**: `GET /palette/list` and `GET /palette/{id}`
