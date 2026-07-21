@@ -13,6 +13,7 @@ import * as d3 from 'd3';
 import { GraphNode, GraphEdge } from './graph_renderer';
 import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager } from './compound_layout';
+import { depthSizeMultiplier } from './depth_scale';
 
 // Nodes rendered per animation frame. Scales with total so large repos
 // finish in ~2s while small repos show clearly progressive animation.
@@ -272,7 +273,7 @@ export class StreamingGraphRenderer {
       node.x = x;
       node.y = y;
     }
-    const size = this.styling.nodeSize! * this._depthScale(node);
+    const size = this.styling.nodeSize! * depthSizeMultiplier(node);
 
     const group = this.nodeGroup
       .append('g')
@@ -370,7 +371,7 @@ export class StreamingGraphRenderer {
               const childEl = this._nodeGroupEl.get(childId);
               if (childEl) childEl.setAttribute('transform', `translate(${child.x},${child.y})`);
               this._updateEdgesForNode(childId, child.x, child.y);
-              this._updateLabelForNode(childId, child.x, child.y, this.styling.nodeSize! * this._depthScale(child));
+              this._updateLabelForNode(childId, child.x, child.y, this.styling.nodeSize! * depthSizeMultiplier(child));
             }
           }
         })
@@ -522,14 +523,6 @@ export class StreamingGraphRenderer {
     const byDepth = this.styling.showLabelsByDepth as Partial<Record<number, boolean>> | undefined;
     if (byDepth && depth in byDepth) return byDepth[depth]!;
     return this.styling.showNodeLabels ?? false;
-  }
-
-  private _depthScale(node: GraphNode): number {
-    const d = node.depth as number | undefined;
-    if (d === 0) return 3.0;
-    if (d === 1) return 1.8;
-    if (d === 3) return 0.6;
-    return 1.0;
   }
 
   private _assignVisuals(node: GraphNode): void {

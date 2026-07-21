@@ -4,6 +4,7 @@ import { logger } from '../../../core/logger';
 import { InteractionManager, InteractionManagerCallbacks } from './interaction_manager';
 import { RadialMenu, getContextMenuItems, RadialMenuContext, RadialMenuCallbacks } from '../components/radial_menu';
 import { CompoundLayoutManager, GroupBounds } from './compound_layout';
+import { depthSizeMultiplier } from './depth_scale';
 import {
   graphExtensions,
   ExtensionContext,
@@ -555,15 +556,6 @@ export class GraphRenderer {
     const nodesById = new Map<string, GraphNode>(nodes.map(n => [n.id, n]));
     const nodeElById = new Map<string, SVGGElement>();
     nodeGroup.each(function(d: GraphNode) { nodeElById.set(d.id, this as SVGGElement); });
-
-    // Add shape paths to nodes — size scales by depth when present
-    const depthSizeMultiplier = (d: GraphNode): number => {
-      const dep = d.depth as number | undefined;
-      if (dep === 0) return 3.0;   // directory: 3× larger
-      if (dep === 1) return 1.8;   // file: 1.8×
-      if (dep === 3) return 0.6;   // sub-symbol: 0.6×
-      return 1.0;                  // symbol (depth=2) and legacy: base size
-    };
 
     // "Color by abstraction layer" mode: layer_ordinal (0 = most
     // machine-facing) comes from Lexicon Option B annotation
