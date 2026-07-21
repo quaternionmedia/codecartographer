@@ -432,38 +432,6 @@ export class PlotActions {
   }
 
   /**
-   * Parse a directory using the unified schema (depth-based hierarchy).
-   * Any renderer (D3, Gravis, …) can display the result.
-   */
-  async plotUnified(
-    directory: Directory,
-    depth: number = 2,
-    extensions?: string[]
-  ): Promise<void> {
-    this.stateController.clear();
-    try {
-      const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const data = await PlotService.plotUnified(
-        this.stateController.api.parse,
-        directory,
-        depth,
-        extensions ?? null,
-        layout
-      );
-      if (!data) throw new Error('No data returned from parse/unified');
-      // Backend wraps result in { results: { graph, metadata } }
-      const result = data as Record<string, unknown>;
-      const graphData = result['graph'] !== undefined ? result : data;
-      // Store directory so subsequent expandGraphNode() calls can reuse it
-      this.stateController.update({ parseDirectory: directory });
-      this.handlePlotData(graphData);
-    } catch (error) {
-      console.error('Failed to plot unified:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Plot a single uploaded file via /parse/unified
    */
   async plotUploadedFile(file: RawFile): Promise<void> {
@@ -571,19 +539,6 @@ export class RepoActions {
     }
   }
 
-  /**
-   * Select a file in the repository tree
-   */
-  selectFile(file: RawFile): void {
-    this.stateController.setSelectedRepoFile(file);
-  }
-
-  /**
-   * Clear repository data
-   */
-  clearRepository(): void {
-    this.stateController.clearRepoData();
-  }
 }
 
 /**
@@ -591,13 +546,6 @@ export class RepoActions {
  */
 export class UploadActions {
   constructor(private stateController: StateController) {}
-
-  /**
-   * Select an uploaded file
-   */
-  selectFile(file: RawFile): void {
-    this.stateController.setSelectedLocalFile(file);
-  }
 }
 
 /**

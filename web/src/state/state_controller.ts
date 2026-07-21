@@ -58,20 +58,12 @@ export class StateController {
     this.update({ repo: { component: component } });
   }
 
-  public setSelectedRepoFile(file: RawFile) {
-    this.update({ repo: { selectedFile: file } });
-  }
-
   public setSelectedRepoFolder(folder: RawFolder) {
     this.update({ repo: { selectedFolder: folder } });
   }
 
   public setUploadComponent(component: Vnode[]) {
     this.update({ local: { component: component } });
-  }
-
-  public setSelectedLocalFile(file: RawFile) {
-    this.update({ local: { selectedFile: file } });
   }
 
   public setSelectedLocalFolder(folder: RawFolder) {

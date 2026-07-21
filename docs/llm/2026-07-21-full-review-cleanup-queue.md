@@ -157,15 +157,16 @@ too — confirmed no other file references those classes).
 `PlotService.plotCFile`/`plotCDirectory` and several `actions.ts`
 wrappers — was already removed via PR #70. Not part of this queue.)
 
-## 8. Dead `actions.ts` methods
+## 8. Dead `actions.ts` methods [DONE 2026-07-21]
 
-**Status: pending.**
-
-`web/src/state/actions.ts`: `PlotActions.plotUnified` (:438-464, zero
-callers — only `PlotService.plotUnified` is called, from `loadDemo`/
-`plotUploadedFile`), `RepoActions.clearRepository` (:584-586, zero
-callers), `RepoActions.selectFile` / `UploadActions.selectFile`
-(:577-579, :598-600, zero callers anywhere).
+**Status: done.** Re-verified zero callers for all four (fresh grep for
+each call pattern) before removing. Removing `RepoActions.selectFile`/
+`UploadActions.selectFile` left their sole backing methods —
+`state_controller.ts`'s `setSelectedRepoFile`/`setSelectedLocalFile` —
+newly orphaned (confirmed via repo-wide grep, no other callers);
+removed those too in the same commit rather than leave fresh dead code
+behind, a small scope extension beyond the original finding. `npm run
+build` clean after.
 
 ## 9. Unused `web/package.json` dependencies
 
