@@ -45,9 +45,16 @@ Parse a directory tree to the requested depth and return a gJGF graph.
   },
   "depth": 2,
   "extensions": [".py", ".c"],
-  "layout": "spring_layout"
+  "layout": "spring_layout",
+  "annotate_lexicon": false
 }
 ```
+
+**`annotate_lexicon`** (default `false`): stamp Lexicon abstraction-layer
+data (`layer_ordinal`, `meta.lexicon_layers`) onto nodes whose language
+has one (currently `c`, `python` — see `docs/llm/roadmap/lexicon.md`).
+Opt-in: existing callers see no change. Requests with this set to `true`
+bypass the response cache (the cache key doesn't vary on this field).
 
 **`layout` values:**
 
@@ -623,7 +630,7 @@ the parsers use. See `docs/llm/roadmap/lexicon.md` for the full design.
 
 ### GET `/lexicon/`
 
-List available language ids (e.g. `{"languages": ["c"]}`).
+List available language ids (e.g. `{"languages": ["c", "python"]}`).
 
 ### GET `/lexicon/{language}`
 
@@ -631,14 +638,20 @@ Full validated lexicon as JSON (layers, groups, tokens).
 
 ### GET `/lexicon/{language}/graph`
 
-Node-link graph (`{nodes, links}`) for the plotter — same shape the
-frontend already renders, no plotter changes needed. Token nodes carry
-`layer_ordinal` and `kind` for palette coloring by abstraction level.
+gJGF graph (`{graph: {nodes, edges}, metadata}`) — the same shape and
+serialization pipeline (`GraphSerializer.serialize_to_gjgf`, real layout
+positions included) every parsed-code graph uses, so it renders through
+the existing D3 pipeline unchanged. Token nodes carry `layer_ordinal`
+and `kind` for coloring by abstraction level (see the `colorBy: 'layer'`
+styling option). **Not** `LexiconService.to_json()`'s plain node-link
+dump — that shape isn't recognized by the frontend renderer at all
+(verified directly; an earlier version of this doc claimed otherwise).
 
 ### GET `/lexicon/{language}/index`
 
 Token-spelling → contexts lookup (which layers/groups a token appears
-in) — for joining real parsed source tokens to their lexicon entry.
+in) — the join `unified_parser_service.py`'s `annotate_lexicon` flag
+uses to enrich real parsed graphs (see `POST /parse/unified` above).
 
 ---
 
