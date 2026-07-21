@@ -77,6 +77,9 @@ export interface GraphStylingOptions {
   nodeOpacity: number;         // 0.0 to 1.0
   nodeBorderWidth: number;     // in pixels
   nodeColorOverride?: string;  // Optional override for automatic node coloring
+  // 'auto' (default depth/kind heuristic) | 'layer' (Lexicon Option B
+  // abstraction layer, when present on a node) | 'type' | 'degree' | ...
+  colorBy?: string;
 
   // Edge Appearance
   edgeWidth: number;           // in pixels
@@ -191,6 +194,7 @@ export const DEFAULT_GRAPH_STATE: GraphState = {
   },
   parserOptions: {
     fileExtensions: [],
+    annotateLexicon: false,
   },
   selectedRenderer: 'd3',
 };

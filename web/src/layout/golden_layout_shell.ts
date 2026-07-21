@@ -86,7 +86,10 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       HelpModal.maybeShowFirstTime();
     },
 
-    ondestroy: () => {
+    // Mithril's real removal hook is `onremove`, not `ondestroy` (which
+    // isn't a recognized lifecycle name at all -- Mithril silently ignores
+    // unknown vnode properties, so this cleanup never ran).
+    onremove: () => {
       glInstance?.destroy();
       glInstance = null;
       ctx.attachLayoutManager(null);

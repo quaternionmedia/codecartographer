@@ -542,7 +542,14 @@ export class RepoActions {
       );
       const pathParts = path.split('/').filter(p => p.length > 0);
       const newRoot = mergeFolderAtPath(current.root, pathParts, folder);
-      this.stateController.setRepoContent({ ...current, root: newRoot });
+      // Constructed via `new Directory(...)`, not a `{...current}` spread --
+      // isEmpty is a computed getter on the class prototype, which a plain
+      // object spread silently drops (spread only copies own enumerable
+      // properties), producing an object that type-checks as a Directory
+      // but isn't really one at runtime.
+      this.stateController.setRepoContent(
+        new Directory(current.info, current.size, newRoot, current.is_partial)
+      );
     } catch (error) {
       console.error('Failed to expand path:', path, error);
       throw error;

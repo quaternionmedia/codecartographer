@@ -6,7 +6,9 @@
  */
 
 // Export base classes and interfaces
-export { type GraphExtension, type ExtensionContext, BaseExtension } from './base';
+import type { GraphExtension, ExtensionContext } from './base';
+export { BaseExtension } from './base';
+export type { GraphExtension, ExtensionContext };
 
 /**
  * Extension registry for managing graph extensions

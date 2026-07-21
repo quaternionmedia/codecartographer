@@ -3,61 +3,19 @@ import { animations } from '../../../core/animations';
 import { Directory, RawFile } from '../../models/source';
 import { DirectoryContent } from '../../qm_comp_lib/directory/directory';
 import { SystemDefinitionRegistry } from '../../../features/graph/services/system_renderer';
+import { GraphStylingOptions, ParserOptions, GraphRendererType } from '../../../state/types';
 import './control_panel.css';
+
+export type { GraphStylingOptions, ParserOptions, GraphRendererType };
 
 export type TabId = 'source' | 'graph';
 export type CodeSourceMode = 'upload' | 'repo';
-export type GraphRendererType = 'd3' | 'gravis' | 'notebook' | 'system';
 
 export interface Tab {
   id: TabId;
   label: string;
   icon?: string;
   helpText?: string;
-}
-
-export interface GraphStylingOptions {
-  // Layout Algorithm
-  layout: string;
-
-  // Physics Simulation
-  enablePhysics: boolean;
-  chargeStrength: number;      // in pixels (repulsion force)
-  linkDistance: number;         // in pixels (target edge length)
-
-  // Node Appearance
-  nodeSize: number;            // in pixels (radius)
-  nodeOpacity: number;         // 0.0 to 1.0
-  nodeBorderWidth: number;     // in pixels
-  // 'auto' (default depth/kind heuristic) | 'layer' (Lexicon Option B
-  // abstraction layer, when present on a node)
-  colorBy?: string;
-
-  // Edge Appearance
-  edgeWidth: number;           // in pixels
-  edgeOpacity: number;         // 0.0 to 1.0
-
-  // Label Appearance
-  showNodeLabels: boolean;
-  showEdgeLabels: boolean;
-  labelSize: number;           // in pixels (font size)
-  labelColor: string;          // hex color
-
-  // Interactions
-  interactionProfile: string;  // Profile ID (default, cad, gaming, touch)
-
-  // System renderer — selects which SystemDefinition to render
-  systemId?: string;
-
-  // Compound layout group outlines
-  showCompoundGroups?: boolean;
-
-  // Per-depth label visibility (overrides showNodeLabels per depth 0–3)
-  showLabelsByDepth?: Partial<Record<number, boolean>>;
-}
-
-export interface ParserOptions {
-  fileExtensions: string[];    // File extensions to parse (e.g., ['.py', '.js'])
 }
 
 export interface LoadingProgress {

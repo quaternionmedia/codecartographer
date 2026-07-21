@@ -5,6 +5,7 @@ import { InteractionManager, InteractionManagerCallbacks } from './interaction_m
 import { RadialMenu, getContextMenuItems, RadialMenuContext, RadialMenuCallbacks } from '../components/radial_menu';
 import { CompoundLayoutManager, GroupBounds } from './compound_layout';
 import { depthSizeMultiplier } from './depth_scale';
+import { GraphStylingOptions } from '../../../state/types';
 import {
   graphExtensions,
   ExtensionContext,
@@ -66,37 +67,6 @@ export interface GraphData {
     };
   }
 
-export interface GraphStylingOptions {
-  // Layout Algorithm
-  layout?: string;
-
-  // Physics Simulation
-  enablePhysics?: boolean;
-  chargeStrength?: number;      // in pixels (repulsion force)
-  linkDistance?: number;         // in pixels (target edge length)
-
-  // Node Appearance
-  nodeSize?: number;            // in pixels (radius)
-  nodeOpacity?: number;         // 0.0 to 1.0
-  nodeBorderWidth?: number;     // in pixels
-  // 'auto' (default depth/kind heuristic) | 'layer' (Lexicon Option B
-  // abstraction layer, when present on a node — see lexicon_bridge.py)
-  colorBy?: string;
-
-  // Edge Appearance
-  edgeWidth?: number;           // in pixels
-  edgeOpacity?: number;         // 0.0 to 1.0
-
-  // Label Appearance
-  showNodeLabels?: boolean;
-  showEdgeLabels?: boolean;
-  labelSize?: number;           // in pixels (font size)
-  labelColor?: string;          // hex color
-
-  // Interactions
-  interactionProfile?: string;  // Profile ID (default, cad, gaming, touch)
-}
-
 export class GraphRenderer {
   // Static state for radial menu and graph elements
   private static radialMenuContainer: HTMLElement | null = null;
@@ -105,6 +75,7 @@ export class GraphRenderer {
   private static currentZoom: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null;
   private static currentSimulation: d3.Simulation<GraphNode, GraphEdge> | null = null;
   private static currentNodes: GraphNode[] = [];
+  private static currentEdges: GraphEdge[] = [];
   private static selectedNodes: Set<GraphNode> = new Set();
   private static onGraphChange: (() => void) | null = null;
   private static currentUpdatePositions: (() => void) | null = null;
@@ -158,6 +129,17 @@ export class GraphRenderer {
       labelSize: stylingOptions?.labelSize ?? 10,
       labelColor: stylingOptions?.labelColor ?? '#333333',
       interactionProfile: stylingOptions?.interactionProfile ?? 'default',
+      // Falsy-default overrides: every read site below already treats these
+      // with `|| fallback`, so '' is equivalent to "unset", not a real color.
+      nodeColorOverride: stylingOptions?.nodeColorOverride ?? '',
+      edgeColor: stylingOptions?.edgeColor ?? '',
+      backgroundColor: stylingOptions?.backgroundColor ?? '',
+      edgeStyle: stylingOptions?.edgeStyle ?? 'solid',
+      systemId: stylingOptions?.systemId ?? 'pam',
+      showCompoundGroups: stylingOptions?.showCompoundGroups ?? true,
+      // Read sites already cast this back to `| undefined`; {} is the
+      // "no per-depth overrides" equivalent of unset.
+      showLabelsByDepth: stylingOptions?.showLabelsByDepth ?? {},
     };
 
     logger.debug('GraphRenderer.renderD3 - rendering graph:', metadata);
@@ -370,8 +352,11 @@ export class GraphRenderer {
     // Create node lookup for edge linking
     const nodeById = new Map(nodes.map(n => [n.id, n]));
 
-    // Convert edge source/target from string IDs to node objects
-    const edges = graph.edges.map(e => ({
+    // Convert edge source/target from string IDs to node objects. Typed
+    // explicitly as GraphEdge[] -- inferring from the object literal alone
+    // drops GraphEdge's index signature, so downstream reads of dynamic
+    // fields (e.g. d.weight) would no longer type-check.
+    const edges: GraphEdge[] = graph.edges.map(e => ({
       ...e,
       source: typeof e.source === 'string' ? nodeById.get(e.source) || e.source : e.source,
       target: typeof e.target === 'string' ? nodeById.get(e.target) || e.target : e.target,
@@ -387,11 +372,11 @@ export class GraphRenderer {
     if (!hasPositions && styling.enablePhysics) {
       // No positions provided - use force simulation
       simulation = d3
-        .forceSimulation(nodes as any)
+        .forceSimulation<GraphNode>(nodes)
         .force(
           'link',
           d3
-            .forceLink(edges)
+            .forceLink<GraphNode, GraphEdge>(edges)
             .id((d: GraphNode) => d.id)
             .distance(styling.linkDistance)
         )
@@ -450,7 +435,7 @@ export class GraphRenderer {
       // here.
       nodes.forEach((n: any) => { n.__anchorX = n.x; n.__anchorY = n.y; });
       simulation = d3
-        .forceSimulation(nodes as any)
+        .forceSimulation<GraphNode>(nodes)
         .force(
           'collision',
           d3.forceCollide((d: any) => styling.nodeSize * depthSizeMultiplier(d) * 1.3)
@@ -505,6 +490,7 @@ export class GraphRenderer {
     this.currentSvg = svg;
     this.currentSimulation = simulation;
     this.currentNodes = nodes;
+    this.currentEdges = edges;
     this.selectedNodes.clear(); // Clear previous selections
 
     // State for node selection and interaction (use static reference)
@@ -640,7 +626,7 @@ export class GraphRenderer {
           if (!event.ctrlKey && !event.metaKey) {
             // Clear other selections if not multi-select
             selectedNodes.forEach((node) => {
-              d3.selectAll('.graph-node')
+              d3.selectAll<SVGGElement, GraphNode>('.graph-node')
                 .filter((n: GraphNode) => n.id === node.id)
                 .select('path')
                 .attr('stroke', this.nodeBorderColor(node))
@@ -667,7 +653,7 @@ export class GraphRenderer {
       })
       .call(
         d3
-          .drag()
+          .drag<SVGGElement, GraphNode>()
           .on('start', (event: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode) => {
             if (simulation) {
               if (!event.active) simulation.alphaTarget(0.3).restart();
@@ -685,9 +671,15 @@ export class GraphRenderer {
             d.fx = event.x;
             d.fy = event.y;
 
-            // Immediate visual update for the dragged node (don't wait for tick)
-            d3.select(event.currentTarget as SVGGElement)
-              .attr('transform', `translate(${event.x}, ${event.y})`);
+            // Immediate visual update for the dragged node (don't wait for tick).
+            // D3DragEvent has no `currentTarget` (only `sourceEvent`, the raw
+            // underlying mouse/touch event) -- this always selected nothing
+            // and silently no-opped. nodeElById already maps every node to
+            // its live SVG element for exactly this kind of lookup.
+            const draggedEl = nodeElById.get(d.id);
+            if (draggedEl) {
+              d3.select(draggedEl).attr('transform', `translate(${event.x}, ${event.y})`);
+            }
 
             // Propagate delta to all descendants in the compound hierarchy.
             // Only applies when the children map has been computed (compound layout).
@@ -859,7 +851,7 @@ export class GraphRenderer {
     // Add zoom and pan with filter to allow shift-drag
     const labelThreshold = isLargeGraph ? 0.4 : 0.15;
     const zoom = d3
-      .zoom()
+      .zoom<SVGSVGElement, unknown>()
       .scaleExtent([isLargeGraph ? 0.01 : 0.05, 10])
       .filter((event: any) => {
         // Prevent zoom from interfering with shift-drag box selection
@@ -878,7 +870,7 @@ export class GraphRenderer {
         });
       });
 
-    svg.call(zoom as any);
+    svg.call(zoom);
 
     // Store zoom reference for radial menu callbacks (now that it's created)
     this.currentZoom = zoom;
@@ -985,14 +977,14 @@ export class GraphRenderer {
         selectedNodesInBox.forEach((node) => selectedNodes.add(node));
 
         // Update visual highlighting
-        d3.selectAll('.graph-node')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node')
           .select('path')
           .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
           .attr('stroke-width', styling.nodeBorderWidth)
           .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
 
         selectedNodesInBox.forEach((node) => {
-          d3.selectAll('.graph-node')
+          d3.selectAll<SVGGElement, GraphNode>('.graph-node')
             .filter((d: GraphNode) => d.id === node.id)
             .select('path')
             .attr('stroke', '#00ff41')
@@ -1073,7 +1065,7 @@ export class GraphRenderer {
       },
       onNodeDeselect: () => {
         selectedNodes.clear();
-        d3.selectAll('.graph-node').select('path')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node').select('path')
           .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
           .attr('stroke-width', styling.nodeBorderWidth)
           .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
@@ -1136,7 +1128,7 @@ export class GraphRenderer {
     container: HTMLElement,
     svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
     graphGroup: d3.Selection<SVGGElement, unknown, null, undefined>,
-    nodes: d3.Selection<SVGCircleElement, GraphNode, SVGGElement, unknown>,
+    nodes: d3.Selection<SVGGElement, GraphNode, SVGGElement, unknown>,
     edges: d3.Selection<SVGLineElement, GraphEdge, SVGGElement, unknown>,
     labels: d3.Selection<SVGTextElement, GraphNode, SVGGElement, unknown>,
     zoom: d3.ZoomBehavior<SVGSVGElement, unknown>,
@@ -1257,13 +1249,13 @@ export class GraphRenderer {
       onColorNode: (node: GraphNode, color: string) => {
         node.color = color;
         // Update visual
-        d3.selectAll('.graph-node')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node')
           .filter((n: GraphNode) => n.id === node.id)
           .attr('fill', color);
         logger.debug('Node color changed', node, color);
       },
       onHideNode: (node: GraphNode) => {
-        d3.selectAll('.graph-node')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node')
           .filter((n: GraphNode) => n.id === node.id)
           .attr('opacity', 0)
           .style('pointer-events', 'none');
@@ -1273,10 +1265,10 @@ export class GraphRenderer {
         // Remove from selection
         this.selectedNodes.delete(node);
         // Hide from view (actual deletion would require re-render)
-        d3.selectAll('.graph-node')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node')
           .filter((n: GraphNode) => n.id === node.id)
           .remove();
-        d3.selectAll('.menu-label')
+        d3.selectAll<SVGTextElement, GraphNode>('.menu-label')
           .filter((n: GraphNode) => n.id === node.id)
           .remove();
         logger.debug('Node deleted', node);
@@ -1335,11 +1327,9 @@ export class GraphRenderer {
         alert(`Layout change to ${layout} requires re-fetching from backend`);
       },
       onSelectNeighbors: (node: GraphNode) => {
-        if (!graph || !graph.edges) return;
-
         // Find all neighbors of this node
         const neighbors = new Set<GraphNode>();
-        graph.edges.forEach((edge: GraphEdge) => {
+        this.currentEdges.forEach((edge: GraphEdge) => {
           const sourceNode = typeof edge.source === 'object' ? edge.source : this.currentNodes.find(n => n.id === edge.source);
           const targetNode = typeof edge.target === 'object' ? edge.target : this.currentNodes.find(n => n.id === edge.target);
 
@@ -1354,13 +1344,13 @@ export class GraphRenderer {
         neighbors.forEach(n => this.selectedNodes.add(n));
 
         // Update visual selection
-        d3.selectAll('.graph-node').select('path')
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node').select('path')
           .attr('stroke', (d: GraphNode) => this.nodeBorderColor(d))
           .attr('stroke-width', styling.nodeBorderWidth)
           .attr('stroke-dasharray', (d: GraphNode) => this.nodeBorderDash(d));
 
         neighbors.forEach(n => {
-          d3.selectAll('.graph-node')
+          d3.selectAll<SVGGElement, GraphNode>('.graph-node')
             .filter((d: GraphNode) => d.id === n.id)
             .select('path')
             .attr('stroke', '#00ff41')
@@ -1380,14 +1370,14 @@ export class GraphRenderer {
       onShowOnlyConnected: () => {
         // Hide all isolated nodes (nodes with no edges)
         const connectedNodeIds = new Set<string>();
-        graph.edges.forEach((edge: GraphEdge) => {
+        this.currentEdges.forEach((edge: GraphEdge) => {
           const sourceId = typeof edge.source === 'object' ? edge.source.id : edge.source;
           const targetId = typeof edge.target === 'object' ? edge.target.id : edge.target;
           connectedNodeIds.add(sourceId);
           connectedNodeIds.add(targetId);
         });
 
-        d3.selectAll('.graph-node').each(function(d: GraphNode) {
+        d3.selectAll<SVGGElement, GraphNode>('.graph-node').each(function(d: GraphNode) {
           if (!connectedNodeIds.has(d.id)) {
             d3.select(this).attr('opacity', 0).style('pointer-events', 'none');
           } else {
@@ -1417,7 +1407,7 @@ export class GraphRenderer {
         // Increase link distance if simulation exists
         if (this.currentSimulation) {
           const currentDistance = styling.linkDistance * 1.5;
-          this.currentSimulation.force('link', d3.forceLink(edges).distance(currentDistance));
+          this.currentSimulation.force('link', d3.forceLink(this.currentEdges).distance(currentDistance));
           this.currentSimulation.alpha(1).restart();
           logger.debug('Spread nodes - increased link distance');
         }
@@ -1426,7 +1416,7 @@ export class GraphRenderer {
         // Decrease link distance if simulation exists
         if (this.currentSimulation) {
           const currentDistance = styling.linkDistance * 0.67;
-          this.currentSimulation.force('link', d3.forceLink(edges).distance(currentDistance));
+          this.currentSimulation.force('link', d3.forceLink(this.currentEdges).distance(currentDistance));
           this.currentSimulation.alpha(1).restart();
           logger.debug('Compact nodes - decreased link distance');
         }
@@ -1675,8 +1665,8 @@ export class GraphRenderer {
   private static createExtensionContext(): ExtensionContext<GraphNode, GraphEdge> | null {
     if (!this.currentSvg) return null;
 
-    const graphGroup = this.currentSvg.select('g');
-    const nodes = graphGroup.selectAll<SVGCircleElement, GraphNode>('.graph-node');
+    const graphGroup = this.currentSvg.select<SVGGElement>('g');
+    const nodes = graphGroup.selectAll<SVGGElement, GraphNode>('.graph-node');
     const edges = graphGroup.selectAll<SVGLineElement, GraphEdge>('line');
     const labels = graphGroup.selectAll<SVGTextElement, GraphNode>('text');
 
