@@ -29,6 +29,9 @@ export interface GraphStylingOptions {
   nodeSize: number;            // in pixels (radius)
   nodeOpacity: number;         // 0.0 to 1.0
   nodeBorderWidth: number;     // in pixels
+  // 'auto' (default depth/kind heuristic) | 'layer' (Lexicon Option B
+  // abstraction layer, when present on a node)
+  colorBy?: string;
 
   // Edge Appearance
   edgeWidth: number;           // in pixels
@@ -782,6 +785,19 @@ export function ControlPanel(
                       oninput: (e: Event) => callbacks.onGraphStylingChange({ nodeSize: parseFloat((e.target as HTMLInputElement).value) }),
                     }),
                     m('span.panel-settings__slider-value', `${styling.nodeSize}px`),
+                  ]),
+                ]),
+                m('div.panel-settings__group', [
+                  m('span.panel-settings__label-compact', 'Color By'),
+                  m('select.panel-settings__select', {
+                    value: styling.colorBy ?? 'auto',
+                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/llm/roadmap/lexicon.md); nodes without a layer fall back to the default.',
+                    onchange: (e: Event) => {
+                      callbacks.onGraphStylingChange({ colorBy: (e.target as HTMLSelectElement).value });
+                    },
+                  }, [
+                    m('option', { value: 'auto' }, 'Auto (depth/kind)'),
+                    m('option', { value: 'layer' }, 'Abstraction Layer'),
                   ]),
                 ]),
                 m('div.panel-settings__group', [

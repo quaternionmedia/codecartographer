@@ -78,6 +78,9 @@ export interface GraphStylingOptions {
   nodeSize?: number;            // in pixels (radius)
   nodeOpacity?: number;         // 0.0 to 1.0
   nodeBorderWidth?: number;     // in pixels
+  // 'auto' (default depth/kind heuristic) | 'layer' (Lexicon Option B
+  // abstraction layer, when present on a node — see lexicon_bridge.py)
+  colorBy?: string;
 
   // Edge Appearance
   edgeWidth?: number;           // in pixels
@@ -146,6 +149,7 @@ export class GraphRenderer {
       nodeSize: stylingOptions?.nodeSize ?? 5,
       nodeOpacity: stylingOptions?.nodeOpacity ?? 1.0,
       nodeBorderWidth: stylingOptions?.nodeBorderWidth ?? 1.5,
+      colorBy: stylingOptions?.colorBy ?? 'auto',
       edgeWidth: stylingOptions?.edgeWidth ?? 1.0,
       edgeOpacity: stylingOptions?.edgeOpacity ?? 1.0,
       showNodeLabels: stylingOptions?.showNodeLabels ?? true,
@@ -561,10 +565,35 @@ export class GraphRenderer {
       return 1.0;                  // symbol (depth=2) and legacy: base size
     };
 
+    // "Color by abstraction layer" mode: layer_ordinal (0 = most
+    // machine-facing) comes from Lexicon Option B annotation
+    // (lexicon_bridge.py) — present only on nodes matched to a keyword/
+    // operator, absent otherwise (falls through to the normal chain).
+    // Domain is computed from the actual data present, not a fixed
+    // range, since different languages' lexicons have different layer
+    // counts (C: 0-4, Python: 0-2 today).
+    let layerColorScale: ((v: number) => string) | null = null;
+    if (styling.colorBy === 'layer') {
+      const ordinals = nodes
+        .map((d) => d.layer_ordinal as number | undefined)
+        .filter((v): v is number => typeof v === 'number');
+      if (ordinals.length > 0) {
+        const scale = d3.scaleSequential(d3.interpolateViridis)
+          .domain([Math.min(...ordinals), Math.max(...ordinals)]);
+        layerColorScale = (v: number) => scale(v);
+      }
+    }
+
     nodeGroup
       .append('path')
       .attr('d', (d) => getNodePath(d.shape as string, styling.nodeSize * depthSizeMultiplier(d), d))
-      .attr('fill', (d) => styling.nodeColorOverride || d.color || 'steelblue')
+      .attr('fill', (d) => {
+        const layerOrdinal = d.layer_ordinal as number | undefined;
+        if (layerColorScale && typeof layerOrdinal === 'number') {
+          return layerColorScale(layerOrdinal);
+        }
+        return styling.nodeColorOverride || d.color || 'steelblue';
+      })
       .attr('fill-opacity', styling.nodeOpacity)
       // Parser diagnostics (e.g. C: missing header / unknown type in this
       // node's source file — see c_parser.py has_parse_warning) get a
