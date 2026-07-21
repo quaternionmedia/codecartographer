@@ -233,6 +233,21 @@ Golden-Layout-shell pointer to `docs/architecture.md`.
 
 ---
 
+## 13. npm audit vulnerabilities (`web/package-lock.json`) [DONE 2026-07-21]
+
+**Status: done.** Surfaced as a side effect of deleting the stale
+branches (GitHub's push response reported 73 open Dependabot alerts on
+`main`; most trace to the dead `requirements.txt`/Pillow, already
+covered by items 2-4 — see `project_2026_07_21_remaining_dependabot_
+alerts` in assistant memory). Two were real and independent of this
+branch's other work: `minimatch <=3.1.3` (high, ReDoS x3, transitive
+via `mithril`'s own `ospec` test-framework dependency →
+`glob`→`minimatch`) and `uuid` (moderate, buffer bounds check,
+transitive via `vis-data`/`vis-network`). `npm audit fix` resolved both
+cleanly (minimatch 3.1.2→3.1.5, uuid 13.0.0→13.0.2, both transitive —
+no direct `package.json` change needed). `npm audit`: 0 vulnerabilities
+after. `npm run build` clean.
+
 ## Held items — both approved and executed 2026-07-21
 
 - `data/graphs.db` — deleted (this branch's final commit).
