@@ -247,6 +247,39 @@ def test_c_bare_stem_file_attribute_falls_back_via_stem_index():
     assert dist_to_a < dist_to_b
 
 
+def test_external_module_stub_orbits_outside_the_directory_cluster():
+    """Regression test: 'external_module' nodes (unresolved imports -- see
+    _add_python_dependency_edges in unified_parser_service.py) are connected
+    only by 'depends_on' edges, never 'contains', so they always land in the
+    file-level orphan path -- but they are not parsing failures, and a repo
+    with many distinct imports produces many of them (67 for the real
+    pallets/flask repo). Before this fix they shared the same near-origin
+    ring as genuine orphans, sized only for the orphan count itself with no
+    regard for how large the real directory cluster already was -- for
+    Flask, that ring landed inside the cluster (radius ~3.7 vs. directories
+    up to ~233 from origin), overlapping real content. They should instead
+    clear every real directory's own position plus its orbit radius."""
+    g = nx.DiGraph()
+    _add_dir(g, "dir_a", "a")
+    _add_file(g, "dir_a", "file_a", "a.py")
+    for i in range(30):
+        _add_symbol(g, "file_a", f"file_a_sym{i}", line=i)
+
+    for i in range(10):
+        eid = f"external::pkg{i}"
+        g.add_node(eid, depth=1, kind="external_module", label=f"pkg{i}")
+        g.add_edge("file_a", eid, **make_edge("depends_on"))
+
+    pos = compound_layout(g)
+
+    dir_dist = _dist(pos, "dir_a")
+    file_dist = _dist(pos, "file_a") + 0.45  # file's own symbol-orbit margin
+    cluster_edge = max(dir_dist, file_dist)
+    ext_dists = [_dist(pos, f"external::pkg{i}") for i in range(10)]
+
+    assert min(ext_dists) > cluster_edge
+
+
 def test_compound_layout_single_directory_is_centered():
     g = nx.DiGraph()
     _add_dir(g, "only_dir", "only")

@@ -282,10 +282,14 @@ def compound_layout(G: nx.DiGraph) -> dict:
 
     # ── Pass 2: file orbits around parent dir ──────────────────────────────
     orphan_files: list[str] = []
+    external_files: list[str] = []
     for f in files:
         p = file_parent.get(f)
         if p is None or p not in pos:
-            orphan_files.append(f)
+            if G.nodes[f].get("kind") == "external_module":
+                external_files.append(f)
+            else:
+                orphan_files.append(f)
             continue
         dx, dy = pos[p]
         n_files = len(dir_files[p])
@@ -299,6 +303,30 @@ def compound_layout(G: nx.DiGraph) -> dict:
         for i, f in enumerate(orphan_files):
             angle = (2 * math.pi * i) / max(len(orphan_files), 1)
             pos[f] = (r_orph * math.cos(angle), r_orph * math.sin(angle))
+
+    if external_files:
+        # 'external_module' stub nodes (unresolved imports -- stdlib or
+        # third-party packages, see _add_python_dependency_edges) are
+        # connected only by 'depends_on' edges, never 'contains' -- they are
+        # NOT parsing failures and always land here, growing with however
+        # many distinct top-level packages the repo imports (67 for Flask).
+        # Placing that many on the same near-origin ring as genuine orphans
+        # would collide with the real directory cluster, and the collision
+        # only gets worse as import count grows. Orbit them just outside the
+        # whole directory cluster's own outer edge instead, so they read as
+        # the external world surrounding the parsed codebase.
+        outer_r = max(
+            (
+                math.hypot(*pos[d]) + file_orbit_r(len(dir_files[d]), per_dir_max_sym_r.get(d, 0.45))
+                for d in dirs
+                if d in pos
+            ),
+            default=max_file_r,
+        )
+        r_ext = outer_r + file_orbit_r(len(external_files))
+        for i, f in enumerate(external_files):
+            angle = (2 * math.pi * i) / max(len(external_files), 1)
+            pos[f] = (r_ext * math.cos(angle), r_ext * math.sin(angle))
 
     # ── Pass 3: symbols in source-order arc around parent file ─────────────
     # Symbols are sorted by their ``line`` attribute so the arc reads like a
