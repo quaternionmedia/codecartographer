@@ -185,7 +185,7 @@ starlette==0.16.0
     # via fastapi
 tinycss2==1.4.0
     # via bleach
-tornado==6.5.4
+tornado==6.5.7
     # via jupyter-client
 traitlets==5.14.3
     # via
