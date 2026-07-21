@@ -17,7 +17,12 @@ export interface IGraphRenderer {
   readonly name: string;
 
   /**
-   * Render the graph data into the provided container element
+   * Render the graph data into the provided container element.
+   *
+   * May return void (renders synchronously) or a Promise (e.g. a renderer
+   * that lazy-loads its own rendering library on first use) -- callers
+   * that need to know when rendering has actually finished should await
+   * the result rather than assuming synchronous completion.
    *
    * @param container - HTML element to render into
    * @param data - Graph data (format varies by renderer)
@@ -27,7 +32,7 @@ export interface IGraphRenderer {
     container: HTMLElement,
     data: unknown,
     styling?: GraphStylingOptions
-  ): void;
+  ): void | Promise<void>;
 
   /**
    * Check if this renderer can handle the given data format
