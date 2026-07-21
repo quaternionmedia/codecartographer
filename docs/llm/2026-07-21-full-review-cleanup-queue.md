@@ -48,9 +48,9 @@ submodule.
   (`d8affe4`), which already includes today's new
   `DRAFT-verify-actual-consumption-before-editing.md` ADR.
 
-## 2. Dead root `requirements.txt`
+## 2. Dead root `requirements.txt` [DONE 2026-07-21]
 
-**Status: pending.**
+**Status: done.**
 
 Deleted outright — nothing installs from it. The real Docker build
 (`docker-compose.yml`'s `CODECARTO_PATH=./codecarto` override) installs
