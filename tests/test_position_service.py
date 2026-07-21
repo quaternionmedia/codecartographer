@@ -122,6 +122,29 @@ def test_compound_layout_orbits_files_around_their_own_directory():
         assert dist_to_own_dir < dist_to_other_dir
 
 
+def test_orphan_file_ring_radius_scales_with_orphan_count():
+    """Regression test: the orphan fallback ring's radius must grow with
+    how many nodes land on it, the same way subsym_orbit_r's orphan ring
+    already scaled with count — a fixed radius means adjacent-node spacing
+    shrinks toward zero as more orphans accumulate, producing a visibly
+    overlapping ring."""
+    def _build(n_orphans: int) -> nx.DiGraph:
+        g = nx.DiGraph()
+        _add_dir(g, "dir_a", "a")
+        _add_file(g, "dir_a", "real_file", "real.py")
+        for i in range(n_orphans):
+            g.add_node(f"orphan{i}", depth=1, label=f"orphan{i}.py")
+        return g
+
+    pos_small = compound_layout(_build(3))
+    pos_large = compound_layout(_build(60))
+
+    r_small = _dist(pos_small, "orphan0")
+    r_large = _dist(pos_large, "orphan0")
+
+    assert r_large > r_small
+
+
 def test_compound_layout_single_directory_is_centered():
     g = nx.DiGraph()
     _add_dir(g, "only_dir", "only")

@@ -246,7 +246,7 @@ def compound_layout(G: nx.DiGraph) -> dict:
         pos[f] = (dx + r * math.cos(angle), dy + r * math.sin(angle))
 
     if orphan_files:
-        r_orph = max_file_r * 0.5
+        r_orph = file_orbit_r(len(orphan_files)) * 0.5
         for i, f in enumerate(orphan_files):
             angle = (2 * math.pi * i) / max(len(orphan_files), 1)
             pos[f] = (r_orph * math.cos(angle), r_orph * math.sin(angle))
@@ -273,7 +273,7 @@ def compound_layout(G: nx.DiGraph) -> dict:
         orphan_syms.append(sym)
 
     if orphan_syms:
-        r_orph = global_max_sym_r * 0.5
+        r_orph = sym_orbit_r(len(orphan_syms)) * 0.5
         for i, sym in enumerate(set(orphan_syms)):
             angle = (2 * math.pi * i) / max(len(orphan_syms), 1)
             pos[sym] = (r_orph * math.cos(angle), r_orph * math.sin(angle))
