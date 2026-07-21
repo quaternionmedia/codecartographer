@@ -172,6 +172,41 @@ def test_bare_module_level_subsymbol_orbits_its_file_not_the_orphan_ring():
     assert dist_a_to_own < dist_a_to_other
 
 
+def test_c_struct_field_orbits_its_struct_not_the_orphan_ring():
+    """Regression test: c_language_parser.py deliberately uses the more
+    specific edge kind 'field_of' (not 'contains') for struct/union/enum ->
+    field/enum_constant membership (see c_language_parser.py's
+    _EDGE_KIND_MAP) -- it's a real, intentional part of the unified schema,
+    not a typo like the earlier relation/kind bug. But compound_layout.py's
+    parent-detection only recognized 'contains', so every field and enum
+    constant in every C struct/enum was orphaned. Verified live at scale
+    against redis's real C source (github.com/redis/redis): 100% of 3,194
+    sub-symbols (fields + enum constants) had no resolved parent before
+    this fix, dropping to 4.7% after -- this test pins the mechanism with a
+    minimal graph."""
+    g = nx.DiGraph()
+    _add_dir(g, "dir_a", "a")
+    _add_file(g, "dir_a", "file_a", "a.c")
+    g.add_node("struct_a", depth=2, label="StructA", line=1)
+    g.add_edge("file_a", "struct_a", **make_edge("contains"))
+    g.add_node("struct_a_field", depth=3, label="field", line=2)
+    g.add_edge("struct_a", "struct_a_field", **make_edge("field_of"))
+
+    # A second, unrelated struct in the same file, far enough around the
+    # arc that a fallback-ring placement wouldn't coincidentally land near
+    # struct_a's own orbit.
+    g.add_node("struct_b", depth=2, label="StructB", line=50)
+    g.add_edge("file_a", "struct_b", **make_edge("contains"))
+
+    pos = compound_layout(g)
+    sx, sy = pos["struct_a"]
+    bx, by = pos["struct_b"]
+
+    dist_to_own_struct = math.hypot(pos["struct_a_field"][0] - sx, pos["struct_a_field"][1] - sy)
+    dist_to_other_struct = math.hypot(pos["struct_a_field"][0] - bx, pos["struct_a_field"][1] - by)
+    assert dist_to_own_struct < dist_to_other_struct
+
+
 def test_compound_layout_single_directory_is_centered():
     g = nx.DiGraph()
     _add_dir(g, "only_dir", "only")

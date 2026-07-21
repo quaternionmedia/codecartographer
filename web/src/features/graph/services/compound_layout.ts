@@ -22,8 +22,9 @@ interface ParentChain {
 /**
  * Computes bounding circles and drag-propagation groups for compound layout.
  *
- * Groups are derived from the real backend `kind === "contains"` edges
- * (dir→file, file→symbol, symbol→sub-symbol) — the backend already computed
+ * Groups are derived from the real backend containment edges (`kind` of
+ * `contains` or `field_of` — dir→file, file→symbol, symbol→sub-symbol) —
+ * the backend already computed
  * this structure (compound_layout.py) and sends it down the wire in the same
  * graph payload, so re-deriving it from node positions was pure duplication.
  * Nearest-neighbor spatial assignment is used only as a fallback for orphan
@@ -52,17 +53,23 @@ export class CompoundLayoutManager {
   }
 
   /**
-   * Maps each child to its parent using real `kind === "contains"` edges
-   * between the two sets (the unified schema's edge-kind field —
-   * `make_edge()` on the backend — arriving either flat as `edge.kind` or,
-   * for gJGF-shaped payloads, nested at `edge.metadata.kind`). A child with
-   * no such edge (an orphan, same concept compound_layout.py itself falls
-   * back on) is instead assigned to its nearest parent by position.
+   * Maps each child to its parent using real containment edges between the
+   * two sets (the unified schema's edge-kind field — `make_edge()` on the
+   * backend — arriving either flat as `edge.kind` or, for gJGF-shaped
+   * payloads, nested at `edge.metadata.kind`). Recognizes both `contains`
+   * (the general kind every parser uses) and `field_of` (the C parser's
+   * more specific kind for struct/union/enum -> field/enum_constant
+   * membership — see compound_layout.py's `_CONTAINS_KINDS`, which this
+   * mirrors). A child with no such edge (an orphan, same concept
+   * compound_layout.py itself falls back on) is instead assigned to its
+   * nearest parent by position.
    */
+  private static readonly CONTAINS_KINDS = new Set(['contains', 'field_of']);
+
   private _isContainsEdge(e: GraphEdge): boolean {
-    if (e.kind === 'contains') return true;
+    if (CompoundLayoutManager.CONTAINS_KINDS.has(e.kind as string)) return true;
     const meta = e.metadata as Record<string, unknown> | undefined;
-    return meta?.kind === 'contains';
+    return CompoundLayoutManager.CONTAINS_KINDS.has(meta?.kind as string);
   }
 
   private _assignParents(
