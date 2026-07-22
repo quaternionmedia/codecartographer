@@ -168,7 +168,7 @@ rpds-py==0.30.0
     #   referencing
 scipy==1.17.0
     # via codecarto (pyproject.toml)
-setuptools==80.9.0
+setuptools==83.0.0
     # via
     #   gravis
     #   gunicorn
