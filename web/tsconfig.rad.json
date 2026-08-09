@@ -23,6 +23,14 @@
   "include": [
     "src/features/graph/rad/core/**/*.ts",
     "src/features/graph/rad/conformance/**/*.ts",
-    "src/features/graph/rad/session.ts"
+    "src/features/graph/rad/session.ts",
+
+    // host/ is codecartographer-specific and mostly imports application code,
+    // which does not belong in this build. These two files are the exception:
+    // they are pure data and pure functions, and compiling them here is what
+    // lets the conformance suite check the vocabulary and the menu this host
+    // ACTUALLY ships rather than a second copy of it kept in step by hand.
+    "src/features/graph/rad/host/vocabulary.ts",
+    "src/features/graph/rad/host/resolve.ts"
   ]
 }

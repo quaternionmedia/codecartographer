@@ -18,6 +18,10 @@ import { dirname, join } from 'node:path';
 
 import { runConformanceWith, checkGeometryBlock } from '../../dist-rad/conformance/run.js';
 import { createSession } from '../../dist-rad/session.js';
+// The vocabulary this host actually binds, not a copy of it. One governed
+// vector (`source: "CHORD_MAP"`) asserts it is prefix-free, so importing the
+// real thing is what makes that vector mean something here.
+import { CHORD_WORDS as HOST_CHORD_WORDS } from '../../dist-rad/host/vocabulary.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -25,20 +29,6 @@ const here = dirname(fileURLToPath(import.meta.url));
 const PINNED = '0.4.0';
 
 const vectors = JSON.parse(readFileSync(join(here, `vectors.v${PINNED}.json`), 'utf8'));
-
-/**
- * The host's chord vocabulary, mirrored from
- * src/features/graph/rad/host/vocabulary.ts.
- *
- * Duplicated deliberately rather than imported: host/ imports application
- * code and does not compile under tsconfig.rad.json, and the point of the
- * prefix-free vector is to check what this host actually binds. A drift test
- * below keeps the two copies honest.
- */
-const HOST_CHORD_WORDS = [
-  'xp', 'cl', 'pin', 'hd', 'del', 'nbr', 'fit', 'lay', 'src', 'nfo',
-  'red', 'blu', 'tea', 'vio', 'gld',
-];
 
 test('the vector file on disk is the version this host claims', () => {
   assert.equal(vectors.version, PINNED);
