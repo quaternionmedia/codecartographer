@@ -101,3 +101,50 @@ test('expand takes the 12 o\'clock wedge', () => {
   );
   assert.equal(spec.items[0].action, 'expand', 'index 0 is what a straight-up flick reaches');
 });
+
+/**
+ * The check that was missing, and that let three verbs alias to one.
+ *
+ * `intents.test.mjs` proves every verb reaches a named operation. It cannot
+ * prove the operation does anything — the host's op bodies are application
+ * code and never enter the conformance build. So `spread`, `cluster` and
+ * `focus-group` all shipped pointing at `fitView()` and the suite stayed
+ * green: three verbs claiming three things, doing one.
+ *
+ * A host cannot assert "this op is meaningful" from here. What it can assert
+ * is the decision that replaced the aliases: a capability the host does not
+ * have is offered DISABLED, never quietly substituted. The wedge stays so
+ * indices do not shift; the item goes grey so the menu stops lying.
+ */
+test('a capability the host lacks is disabled, not silently substituted', () => {
+  const facts = {
+    depth: 0,
+    hasRenderedChildren: true,
+    selectionCount: 2,
+    physicsAvailable: false,
+    layoutAvailable: false,
+  };
+  const gated = { spread: 'layoutAvailable', cluster: 'layoutAvailable',
+                  'toggle-physics': 'physicsAvailable' };
+
+  let found = 0;
+  for (const type of ['node', 'edge', 'canvas', 'selection']) {
+    const spec = resolveGraphMenu({ type, targetIds: ['x'], position: { x: 0, y: 0 } }, facts);
+    for (const item of spec.items) {
+      if (!(item.action in gated)) continue;
+      found++;
+      assert.equal(item.enabled, false,
+        `${type} ring offers '${item.action}' as enabled while ${gated[item.action]} is false`);
+    }
+  }
+  assert.ok(found >= 3, `expected the gated verbs to still occupy their wedges, saw ${found}`);
+});
+
+test('the same verbs come back enabled on a host that does have them', () => {
+  const facts = { selectionCount: 2, physicsAvailable: true, layoutAvailable: true };
+  const canvas = resolveGraphMenu({ type: 'canvas', targetIds: [], position: { x: 0, y: 0 } }, facts);
+  const byId = Object.fromEntries(canvas.items.map((i) => [i.id, i]));
+  assert.notEqual(byId.spread.enabled, false);
+  assert.notEqual(byId.cluster.enabled, false);
+  assert.equal(byId.physics.enabled, true);
+});

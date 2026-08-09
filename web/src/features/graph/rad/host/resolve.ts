@@ -40,6 +40,15 @@ export interface MenuFacts {
   anyHidden?: boolean;
   /** True when the force simulation exists on this renderer. */
   physicsAvailable?: boolean;
+  /**
+   * True when the host can re-arrange nodes client-side.
+   *
+   * False on a renderer whose positions come from the backend layout, where
+   * `spread` and `cluster` have nothing to act on. They stay in the ring and
+   * disabled rather than falling back to a fit — three verbs that quietly do
+   * the same thing is worse than one verb and two honest blanks.
+   */
+  layoutAvailable?: boolean;
 }
 
 /** Palette tokens, never literals — contract §1. */
@@ -82,8 +91,8 @@ function canvasRing(f: MenuFacts): MenuItem[] {
   return [
     { id: 'fit', label: 'Fit', action: 'fit' },
     { id: 'relayout', label: 'Relayout', action: 'relayout' },
-    { id: 'spread', label: 'Spread', action: 'spread' },
-    { id: 'cluster', label: 'Cluster', action: 'cluster' },
+    { id: 'spread', label: 'Spread', action: 'spread', enabled: !!f.layoutAvailable },
+    { id: 'cluster', label: 'Cluster', action: 'cluster', enabled: !!f.layoutAvailable },
     {
       id: 'physics',
       label: 'Physics',
@@ -105,8 +114,8 @@ function selectionRing(f: MenuFacts): MenuItem[] {
   return [
     { id: 'expand', label: 'Expand', action: 'expand' },
     { id: 'neighbors', label: 'Neighbours', action: 'select-neighbors' },
-    { id: 'spread', label: 'Spread', action: 'spread' },
-    { id: 'cluster', label: 'Cluster', action: 'cluster' },
+    { id: 'spread', label: 'Spread', action: 'spread', enabled: !!f.layoutAvailable },
+    { id: 'cluster', label: 'Cluster', action: 'cluster', enabled: !!f.layoutAvailable },
     { id: 'colour', label: 'Colour', children: COLOUR_RING },
     { id: 'hide', label: 'Hide', action: 'hide' },
     { id: 'clear', label: 'Deselect', action: 'clear-selection' },
@@ -156,6 +165,7 @@ export function allMenuVerbs(): string[] {
     selectionCount: 2,
     anyHidden: true,
     physicsAvailable: true,
+    layoutAvailable: true,
   };
   const seen = new Set<string>();
   const walk = (items: MenuItem[]) => {

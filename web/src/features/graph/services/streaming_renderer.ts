@@ -518,6 +518,12 @@ export class StreamingGraphRenderer {
     this._fitView();
   }
 
+  /** Fit the viewport to these nodes only. Unknown ids are ignored. */
+  fitTo(ids: string[]): void {
+    const nodes = ids.map((id) => this.nodeById.get(id)).filter((n): n is GraphNode => !!n);
+    this._fitNodes(nodes);
+  }
+
   /** Remove nodes and any edge touching them. Used by the `delete` verb. */
   removeNodes(ids: string[]): void {
     const gone = new Set(ids);
@@ -530,6 +536,15 @@ export class StreamingGraphRenderer {
     this._allEdges = this._allEdges.filter(
       (e) => !gone.has(String(e.source)) && !gone.has(String(e.target)),
     );
+    // Prune the containment map too. It is otherwise only rebuilt on the
+    // next relayout, so until then `childIdsOf` would keep naming children
+    // that are no longer on the canvas.
+    for (const id of ids) this._childrenMap.delete(id);
+    for (const [parent, kids] of this._childrenMap) {
+      if (kids.some((k) => gone.has(k))) {
+        this._childrenMap.set(parent, kids.filter((k) => !gone.has(k)));
+      }
+    }
     this.linkGroup
       .selectAll<SVGLineElement, GraphEdge>('line.stream-edge')
       .filter((d) => !!d && (gone.has(String(d.source)) || gone.has(String(d.target))))
@@ -553,8 +568,18 @@ export class StreamingGraphRenderer {
   }
 
   private _fitView(): void {
-    if (this.nodeById.size === 0) return;
-    const nodes = Array.from(this.nodeById.values());
+    this._fitNodes(Array.from(this.nodeById.values()));
+  }
+
+  /**
+   * Fit the viewport to a subset of nodes.
+   *
+   * Split out of `_fitView` so `focus-group` can frame one subtree. A verb
+   * that says "focus" and fits the whole graph is the kind of near-miss the
+   * legacy menu was full of.
+   */
+  private _fitNodes(nodes: GraphNode[]): void {
+    if (nodes.length === 0) return;
 
     const avgX = nodes.reduce((s, n) => s + (n.x ?? 0), 0) / nodes.length;
     const avgY = nodes.reduce((s, n) => s + (n.y ?? 0), 0) / nodes.length;

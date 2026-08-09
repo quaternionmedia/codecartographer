@@ -123,6 +123,8 @@ export class LayoutContext {
   private _rad: RadExtension | null = null;
   private _nodeViewState: NodeViewState = EMPTY_VIEW_STATE;
   private _radSelection = new Set<GraphNode>();
+  /** Set by the `relayout` verb so the remount knows to keep view state. */
+  private _radRelayoutPending = false;
   private _lastPlotAction: (() => Promise<void> | void) | null = null;
 
   public readonly panelCallbacks: ControlPanelCallbacks;
@@ -501,6 +503,26 @@ export class LayoutContext {
     this._rad?.applyViewState();
   }
 
+  /**
+   * Swap the selection's contents without swapping the Set.
+   *
+   * `ExtensionContext.selectedNodes` holds a reference captured at mount, so
+   * assigning a fresh Set to the field leaves the extension reading the old
+   * one. Mutating in place is what keeps the two views of the selection the
+   * same object.
+   */
+  private _replaceSelection(nodes: GraphNode[]): void {
+    this._radSelection.clear();
+    for (const n of nodes) this._radSelection.add(n);
+  }
+
+  /** A verb the ring shows disabled, refused out loud if it ever commits. */
+  private _radUnsupported(verb: string): void {
+    this.updatePanelState({
+      statusMessage: `${verb} is not available on this renderer`,
+    });
+  }
+
   private _radOps(): GraphOps {
     const renderer = () => this._streamingRenderer;
     return {
@@ -528,15 +550,26 @@ export class LayoutContext {
         if (!directory || !r || !ids.length) return;
 
         this.updatePanelState({ statusMessage: `Expanding ${ids.length} node(s)…` });
-        for (const id of ids) {
-          const payload = await PlotService.expandNode(this.appState.api.parse, directory, id, 3);
-          const { nodes, edges } = this._normaliseGraph(payload);
-          // The subgraph includes the node that was expanded; mergeGraph
-          // skips ids already on the canvas, so this is idempotent.
-          r.mergeGraph(nodes, edges);
+        let added = 0;
+        try {
+          for (const id of ids) {
+            const payload = await PlotService.expandNode(this.appState.api.parse, directory, id, 3);
+            const { nodes, edges } = this._normaliseGraph(payload);
+            // The subgraph includes the node that was expanded; mergeGraph
+            // skips ids already on the canvas, so this is idempotent.
+            const before = r.getNodes().length;
+            r.mergeGraph(nodes, edges);
+            added += r.getNodes().length - before;
+          }
+        } finally {
+          // Whatever happened, the status line stops claiming work is in
+          // flight. Without this a rejected expand leaves "Expanding…" up
+          // for the rest of the session.
+          this._rad?.applyViewState();
+          this.updatePanelState({
+            statusMessage: added > 0 ? `Expanded — ${added} new node(s)` : 'Nothing further to expand',
+          });
         }
-        this._rad?.applyViewState();
-        this.updatePanelState({ statusMessage: 'Expanded' });
       },
 
       collapse: (ids) => {
@@ -557,29 +590,59 @@ export class LayoutContext {
       },
 
       fit: () => renderer()?.fitView(),
-      relayout: () => this._lastPlotAction?.(),
-      spread: () => renderer()?.fitView(),
-      cluster: () => renderer()?.fitView(),
-      togglePhysics: () => {},
 
+      /**
+       * Re-runs the last plot, which re-streams and remounts. The flag is how
+       * the remount below learns this is the same graph arriving again rather
+       * than a new one, so view state is carried across.
+       */
+      relayout: () => {
+        this._radRelayoutPending = true;
+        void this._lastPlotAction?.();
+      },
+
+      // Disabled in the ring: this renderer's positions come from the backend
+      // layout, and there is no force simulation to toggle. They are wired to
+      // an explicit refusal rather than to `{}` or to a fit, so that if one
+      // ever does commit it says so instead of looking like it worked.
+      spread: () => this._radUnsupported('spread'),
+      cluster: () => this._radUnsupported('cluster'),
+      togglePhysics: () => this._radUnsupported('toggle-physics'),
+
+      /**
+       * One hop, and only one.
+       *
+       * The seed set is snapshotted before the scan: growing the set being
+       * tested while iterating the edge list makes the result depend on edge
+       * order, which reaches an arbitrary number of hops rather than a
+       * defined one.
+       */
       selectNeighbors: (ids) => {
         const r = renderer();
         if (!r) return;
+        const seeds = new Set<string>(ids);
         const want = new Set<string>(ids);
         for (const e of r.getEdges()) {
           const s = String(e.source);
           const t = String(e.target);
-          if (want.has(s)) want.add(t);
-          else if (want.has(t)) want.add(s);
+          if (seeds.has(s)) want.add(t);
+          if (seeds.has(t)) want.add(s);
         }
-        this._radSelection = new Set(r.getNodes().filter((n) => want.has(n.id)));
+        this._replaceSelection(r.getNodes().filter((n) => want.has(n.id)));
       },
-      clearSelection: () => {
-        this._radSelection = new Set();
-      },
+      clearSelection: () => this._replaceSelection([]),
+
+      /** Frame the node and everything under it, not the whole graph. */
       focusGroup: (id) => {
-        void id;
-        renderer()?.fitView();
+        const r = renderer();
+        if (!r) return;
+        const subtree = [id];
+        for (let i = 0; i < subtree.length; i++) {
+          for (const kid of r.childIdsOf(subtree[i])) {
+            if (!subtree.includes(kid)) subtree.push(kid);
+          }
+        }
+        r.fitTo(subtree);
       },
 
       viewSource: (id) => {
@@ -603,10 +666,18 @@ export class LayoutContext {
    * interaction layer was never missing, it was attached to a renderer no
    * code-map path mounts.
    */
-  private _mountRad(renderer: StreamingGraphRenderer): void {
+  private _mountRad(renderer: StreamingGraphRenderer, keepViewState = false): void {
+    const wasRelayout = this._radRelayoutPending;
+    this._radRelayoutPending = false;
+    keepViewState = keepViewState || wasRelayout;
     this._rad?.destroy();
-    this._radSelection = new Set();
-    this._nodeViewState = EMPTY_VIEW_STATE;
+    this._radSelection.clear();
+    // A relayout re-streams the same graph, so hide/pin/colour have to
+    // outlive it — §5.1 of the integration standard, and a claim this
+    // record's ADR makes in as many words. A new plot target is a different
+    // graph and starts clean. Keyed on ids, so nodes that come back get
+    // their state back and nodes that do not are simply never painted.
+    if (!keepViewState) this._nodeViewState = EMPTY_VIEW_STATE;
 
     const rad = new RadExtension({
       ops: this._radOps(),

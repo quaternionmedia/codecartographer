@@ -177,7 +177,12 @@ it honest:
 | | Verbs | Why |
 |---|---|---|
 | **State** | `hide` `pin` `color:*` `expand` `collapse` `delete` | own graph facts; must survive a re-render |
-| **Camera / selection** | `fit` `relayout` `spread` `cluster` `toggle-physics` `select-neighbors` `clear-selection` | own nothing; routing them through the store adds a write nothing reads |
+| **Camera / selection** | `fit` `relayout` `spread`\* `cluster`\* `toggle-physics`\* `select-neighbors` `clear-selection` | own nothing; routing them through the store adds a write nothing reads |
+
+\* Disabled in our rings — this renderer takes positions from a backend layout
+and has no simulation. They keep their wedges (a menu whose items move
+between states is one nobody builds muscle memory for) and are wired to an
+explicit refusal, not to `{}` and not to a fallback.
 
 For the first group we added a sparse `NodeViewState` — `{ [id]: { hidden?,
 pinned?, colorToken? } }` — that intents fold into and the renderer projects.
@@ -185,6 +190,25 @@ It is serializable, so it survives a cache replay. The legacy menu's
 `d3.selectAll(...).attr('opacity', 0)` was invisible to the rest of the
 application and vanished on the next redraw; this is what §5.1 is warning you
 about, concretely.
+
+### The routing test proves less than it looks like it proves
+
+Read this before trusting your own version of it. Ours asserts *every verb the
+menu can commit reaches a named operation* — and it stayed green while
+`spread`, `cluster` and `focus-group` all pointed at the same `fitView()`
+call. Three verbs claiming three things, doing one, and the suite could not
+see it: the spy sits at the `GraphOps` boundary, so it observes *which op
+fired*, never what the op body does. Op bodies are application code and never
+enter the conformance build.
+
+The gap is structural and you will have it too. Two things close most of it:
+
+- **A capability the host lacks is offered disabled, never substituted.** That
+  *is* purely testable — resolve with the capability flag false and assert the
+  item comes back `enabled: false` while keeping its wedge. Aliasing a missing
+  verb onto a working one is the failure mode; refusing to alias is the rule.
+- **Review the op bodies by hand for duplicates.** Nothing automated caught
+  this. Reading `ops` top to bottom did.
 
 **Throw on an unrouted verb.** Do not let it fall through:
 
