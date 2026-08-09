@@ -13,6 +13,7 @@ import * as d3 from 'd3';
 import { GraphNode, GraphEdge } from './graph_renderer';
 import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager } from './compound_layout';
+import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
 
 // Nodes rendered per animation frame. Scales with total so large repos
@@ -332,13 +333,21 @@ export class StreamingGraphRenderer {
       .attr('transform', `translate(${x},${y}) scale(0)`)
       .attr('opacity', 0);
 
+    // Bind the datum so an ExtensionContext built from this renderer carries
+    // real node data, the same way the static renderer's selections do.
+    group.datum(node);
+
     // Cache element for O(1) drag-propagation lookups (avoids per-frame CSS selector)
     this._nodeGroupEl.set(node.id, group.node()!);
 
+    const baseFill = (node.color as string) || 'steelblue';
     group
       .append('path')
       .attr('d', this._nodePath(node.shape as string, size))
-      .attr('fill', (node.color as string) || 'steelblue')
+      .attr('fill', baseFill)
+      // Remembered so a colour override can be undone without re-deriving
+      // the parser's visual grammar here.
+      .attr('data-base-fill', baseFill)
       .attr('fill-opacity', this.styling.nodeOpacity!)
       .attr('stroke', '#fff')
       .attr('stroke-width', this.styling.nodeBorderWidth!);
@@ -454,6 +463,93 @@ export class StreamingGraphRenderer {
       .transition()
       .duration(180)
       .attr('opacity', 1);
+  }
+
+  // ── Extension seam ─────────────────────────────────────────────────────────
+  //
+  // The interaction layer used to hang off graph_renderer.ts, which no
+  // code-map path mounts: Load Demo, plot repo, plot file, cache recall and
+  // bookmark replay all render here. Everything below exists so an extension
+  // can attach to THIS renderer, which is the whole of the M1 fix. Nothing
+  // here knows what an extension does with it.
+
+  /** Nodes rendered so far, by id. */
+  getNodes(): GraphNode[] {
+    return Array.from(this.nodeById.values());
+  }
+
+  getEdges(): GraphEdge[] {
+    return this._allEdges;
+  }
+
+  /** The container the renderer was constructed against. */
+  getContainer(): HTMLElement {
+    return this.svg.node()!.parentElement as HTMLElement;
+  }
+
+  /**
+   * An `ExtensionContext` describing the current scene.
+   *
+   * Rebuilt on request rather than cached: nodes stream in, so a context
+   * captured once would describe a graph that no longer exists. Selections
+   * are re-derived for the same reason.
+   */
+  buildExtensionContext(selectedNodes: Set<GraphNode>, onGraphChange?: () => void): ExtensionContext<GraphNode, GraphEdge> {
+    return {
+      svg: this.svg,
+      graphGroup: this.g,
+      nodes: this.nodeGroup.selectAll<SVGGElement, GraphNode>('g.graph-node'),
+      edges: this.linkGroup.selectAll<SVGLineElement, GraphEdge>('line.stream-edge'),
+      labels: this.labelGroup.selectAll<SVGTextElement, GraphNode>('text'),
+      zoom: this.zoom,
+      // No force simulation on this renderer — positions come from the
+      // backend layout. Extensions must treat `simulation` as optional, and
+      // the canvas ring disables `toggle-physics` accordingly.
+      simulation: undefined,
+      container: this.getContainer(),
+      data: { nodes: this.getNodes(), edges: this._allEdges },
+      selectedNodes,
+      onGraphChange,
+    };
+  }
+
+  /** Public so an intent can ask for a fit without reaching into the DOM. */
+  fitView(): void {
+    this._fitView();
+  }
+
+  /** Remove nodes and any edge touching them. Used by the `delete` verb. */
+  removeNodes(ids: string[]): void {
+    const gone = new Set(ids);
+    for (const id of ids) {
+      this.nodeById.delete(id);
+      this._nodeGroupEl.delete(id);
+      this.nodeGroup.select(`g.graph-node[data-node-id="${CSS.escape(id)}"]`).remove();
+      this.labelGroup.selectAll(`text[data-node-id="${CSS.escape(id)}"]`).remove();
+    }
+    this._allEdges = this._allEdges.filter(
+      (e) => !gone.has(String(e.source)) && !gone.has(String(e.target)),
+    );
+    this.linkGroup
+      .selectAll<SVGLineElement, GraphEdge>('line.stream-edge')
+      .filter((d) => !!d && (gone.has(String(d.source)) || gone.has(String(d.target))))
+      .remove();
+  }
+
+  /** Ids of nodes whose parent is `id`, per the accumulated containment edges. */
+  childIdsOf(id: string): string[] {
+    return this._childrenMap.get(id) ?? [];
+  }
+
+  /** Merge freshly parsed nodes/edges into the live scene, then settle. */
+  mergeGraph(nodes: GraphNode[], edges: GraphEdge[]): void {
+    for (const n of nodes) {
+      if (this.nodeById.has(n.id)) continue;
+      this.addNode(n);
+    }
+    for (const e of edges) this.addEdge(e);
+    this._streamDone = true;
+    this._scheduleLoop();
   }
 
   private _fitView(): void {

@@ -31,6 +31,12 @@ import { ToastManager } from '../components/codecarto/help/toast';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
+import { RadExtension } from '../features/graph/rad/host/rad_extension';
+import { viewActions, EMPTY_VIEW_STATE, anyHidden } from '../features/graph/rad/host/view_state';
+import type { NodeViewState } from '../features/graph/rad/host/view_state';
+import type { GraphOps } from '../features/graph/rad/host/graph_intents';
+import type { MenuContext } from '../features/graph/rad/core/types';
+import type { GraphNode, GraphEdge } from '../features/graph/services/graph_renderer';
 
 export type { DockPanelId } from './panel_registry';
 
@@ -109,6 +115,14 @@ export class LayoutContext {
   // Streaming lifecycle refs
   private _cancelStream: (() => void) | null = null;
   private _streamingRenderer: StreamingGraphRenderer | null = null;
+
+  // ── rad ────────────────────────────────────────────────────────────────────
+  // The radial menu is mounted here rather than inside the renderer because
+  // intents have to reach the state layer, and the renderer does not know
+  // about it. Integration standard §5.1.
+  private _rad: RadExtension | null = null;
+  private _nodeViewState: NodeViewState = EMPTY_VIEW_STATE;
+  private _radSelection = new Set<GraphNode>();
   private _lastPlotAction: (() => Promise<void> | void) | null = null;
 
   public readonly panelCallbacks: ControlPanelCallbacks;
@@ -428,6 +442,186 @@ export class LayoutContext {
     };
   }
 
+  // ── rad integration ────────────────────────────────────────────────────────
+
+  /**
+   * `POST /parse/expand` answers in gJGF, where `nodes` is an id-keyed map of
+   * `{metadata}` records — while the streaming path deals in flat node
+   * objects. Both shapes are accepted rather than assumed, because the two
+   * conventions already coexist in this codebase and a wrong guess here fails
+   * silently as an empty expansion.
+   */
+  private _normaliseGraph(payload: unknown): { nodes: GraphNode[]; edges: GraphEdge[] } {
+    const graph = (payload as { graph?: unknown })?.graph as
+      | { nodes?: unknown; edges?: unknown }
+      | undefined;
+    if (!graph) return { nodes: [], edges: [] };
+
+    const rawNodes = graph.nodes;
+    let nodes: GraphNode[] = [];
+    if (Array.isArray(rawNodes)) {
+      nodes = rawNodes as GraphNode[];
+    } else if (rawNodes && typeof rawNodes === 'object') {
+      nodes = Object.entries(rawNodes as Record<string, { metadata?: Record<string, unknown> }>)
+        .map(([id, v]) => ({ id, ...(v?.metadata ?? v) }) as GraphNode);
+    }
+
+    const rawEdges = Array.isArray(graph.edges) ? graph.edges : [];
+    const edges = (rawEdges as Array<Record<string, unknown>>).map(
+      (e) => ({ ...(e.metadata as object ?? {}), ...e }) as unknown as GraphEdge,
+    );
+
+    return { nodes, edges };
+  }
+
+  /** Facts the resolver needs that only this host can know. */
+  private _radFacts(context: MenuContext) {
+    const r = this._streamingRenderer;
+    const id = context.targetIds[0];
+    const node = id ? r?.getNodes().find((n) => n.id === id) : undefined;
+    return {
+      depth: node?.depth as number | undefined,
+      kind: node?.kind as string | undefined,
+      hasRenderedChildren: id ? (r?.childIdsOf(id).length ?? 0) > 0 : false,
+      pinned: !!(id && this._nodeViewState[id]?.pinned),
+      hasSource: !!node?.file,
+      hasGroup: (node?.depth as number | undefined) !== undefined && (node!.depth as number) < 2,
+      selectionCount: this._radSelection.size,
+      anyHidden: anyHidden(this._nodeViewState),
+      // The streaming renderer has no force simulation; positions come from
+      // the backend layout. The verb stays in the ring, disabled, rather
+      // than disappearing — a missing wedge would move every other index.
+      physicsAvailable: false,
+    };
+  }
+
+  /** Fold a view-state change in and repaint. §5.1: state, then projection. */
+  private _setViewState(next: NodeViewState): void {
+    this._nodeViewState = next;
+    this._rad?.applyViewState();
+  }
+
+  private _radOps(): GraphOps {
+    const renderer = () => this._streamingRenderer;
+    return {
+      hide: (ids) => this._setViewState(viewActions.hide(this._nodeViewState, ids)),
+      showHidden: () => this._setViewState(viewActions.showAll(this._nodeViewState)),
+      togglePin: (ids) => this._setViewState(viewActions.togglePin(this._nodeViewState, ids)),
+      colour: (ids, token) =>
+        this._setViewState(viewActions.colour(this._nodeViewState, ids, token)),
+
+      remove: (ids) => {
+        renderer()?.removeNodes(ids);
+        this._setViewState(viewActions.forget(this._nodeViewState, ids));
+      },
+
+      /**
+       * M2. Everything this needs already existed and was never joined:
+       * the endpoint, PlotService.expandNode, and `parseDirectory` on the
+       * live GraphState — whose docstring has said for months that it is
+       * stored "so that subsequent expand-node calls can reuse the same
+       * directory context".
+       */
+      expand: async (ids) => {
+        const directory = this.appState.state.parseDirectory;
+        const r = renderer();
+        if (!directory || !r || !ids.length) return;
+
+        this.updatePanelState({ statusMessage: `Expanding ${ids.length} node(s)…` });
+        for (const id of ids) {
+          const payload = await PlotService.expandNode(this.appState.api.parse, directory, id, 3);
+          const { nodes, edges } = this._normaliseGraph(payload);
+          // The subgraph includes the node that was expanded; mergeGraph
+          // skips ids already on the canvas, so this is idempotent.
+          r.mergeGraph(nodes, edges);
+        }
+        this._rad?.applyViewState();
+        this.updatePanelState({ statusMessage: 'Expanded' });
+      },
+
+      collapse: (ids) => {
+        const r = renderer();
+        if (!r) return;
+        // Breadth-first over the containment map, so collapsing a directory
+        // takes its files and their symbols with it.
+        const doomed: string[] = [];
+        const queue = [...ids.flatMap((id) => r.childIdsOf(id))];
+        while (queue.length) {
+          const next = queue.shift()!;
+          if (doomed.includes(next)) continue;
+          doomed.push(next);
+          queue.push(...r.childIdsOf(next));
+        }
+        r.removeNodes(doomed);
+        this._setViewState(viewActions.forget(this._nodeViewState, doomed));
+      },
+
+      fit: () => renderer()?.fitView(),
+      relayout: () => this._lastPlotAction?.(),
+      spread: () => renderer()?.fitView(),
+      cluster: () => renderer()?.fitView(),
+      togglePhysics: () => {},
+
+      selectNeighbors: (ids) => {
+        const r = renderer();
+        if (!r) return;
+        const want = new Set<string>(ids);
+        for (const e of r.getEdges()) {
+          const s = String(e.source);
+          const t = String(e.target);
+          if (want.has(s)) want.add(t);
+          else if (want.has(t)) want.add(s);
+        }
+        this._radSelection = new Set(r.getNodes().filter((n) => want.has(n.id)));
+      },
+      clearSelection: () => {
+        this._radSelection = new Set();
+      },
+      focusGroup: (id) => {
+        void id;
+        renderer()?.fitView();
+      },
+
+      viewSource: (id) => {
+        const node = renderer()?.getNodes().find((n) => n.id === id);
+        if (node?.file) ToastManager.hint('rad-source', String(node.file));
+      },
+      showInfo: (id) => {
+        const node = renderer()?.getNodes().find((n) => n.id === id);
+        if (node) {
+          ToastManager.hint('rad-info', `${node.label ?? node.id} · ${node.kind ?? 'node'}`);
+        }
+      },
+    };
+  }
+
+  /**
+   * Mount rad against the streaming renderer.
+   *
+   * Called after `finalize()` — the graph has to exist before a menu can
+   * resolve anything about it. This one call is the whole of M1: the rich
+   * interaction layer was never missing, it was attached to a renderer no
+   * code-map path mounts.
+   */
+  private _mountRad(renderer: StreamingGraphRenderer): void {
+    this._rad?.destroy();
+    this._radSelection = new Set();
+    this._nodeViewState = EMPTY_VIEW_STATE;
+
+    const rad = new RadExtension({
+      ops: this._radOps(),
+      viewState: () => this._nodeViewState,
+      facts: (context) => this._radFacts(context),
+      onError: (verb, err) => {
+        this.updatePanelState({ statusMessage: `${verb} failed: ${String(err)}` });
+      },
+    });
+
+    rad.initialize(renderer.buildExtensionContext(this._radSelection, () => m.redraw()));
+    rad.apply();
+    this._rad = rad;
+  }
+
   /** Core SSE render loop (shared by all stream starters). */
   private _mountAndStream(
     startFn: (renderer: StreamingGraphRenderer) => () => void,
@@ -505,7 +699,9 @@ export class LayoutContext {
           onDone: (elapsed_ms, from_cache) => {
             this._cancelStream = null;
             renderer.finalize();
-            this._streamingRenderer = null;
+            // Keep the renderer: rad mounts against it, and its ops need a
+            // live handle for the whole session, not just the stream.
+            this._mountRad(renderer);
             this.appState.update({
               parseDirectory: directory,
               graphData: this._buildGraphData(accNodes, accEdges, {
@@ -582,7 +778,9 @@ export class LayoutContext {
           onDone: (elapsed_ms, from_cache) => {
             this._cancelStream = null;
             renderer.finalize();
-            this._streamingRenderer = null;
+            // Keep the renderer: rad mounts against it, and its ops need a
+            // live handle for the whole session, not just the stream.
+            this._mountRad(renderer);
             this.appState.update({
               graphData: this._buildGraphData(accNodes, accEdges, {
                 nodeCount,

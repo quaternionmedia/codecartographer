@@ -31,6 +31,8 @@
     // lets the conformance suite check the vocabulary and the menu this host
     // ACTUALLY ships rather than a second copy of it kept in step by hand.
     "src/features/graph/rad/host/vocabulary.ts",
-    "src/features/graph/rad/host/resolve.ts"
+    "src/features/graph/rad/host/resolve.ts",
+    "src/features/graph/rad/host/view_state.ts",
+    "src/features/graph/rad/host/graph_intents.ts"
   ]
 }
