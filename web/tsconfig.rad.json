@@ -1,0 +1,28 @@
+{
+  // Builds the platform-free half of the rad package to plain ES modules so
+  // the conformance vectors can be replayed under `node --test` with no
+  // browser and no new dependency.
+  //
+  // Two properties this buys, both of which the reference implementation
+  // cannot have while its core shares a file with a renderer:
+  //   - pure functions are tested as pure functions (milliseconds, not a
+  //     Chromium launch);
+  //   - `lib` below omits DOM, so a stray `document` in core/ is a compile
+  //     error here even before scripts/rad-core-lint.mjs greps for it.
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020"],
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "declaration": false,
+    "outDir": "dist-rad",
+    "rootDir": "src/features/graph/rad"
+  },
+  "include": [
+    "src/features/graph/rad/core/**/*.ts",
+    "src/features/graph/rad/conformance/**/*.ts",
+    "src/features/graph/rad/session.ts"
+  ]
+}

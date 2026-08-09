@@ -92,3 +92,6 @@ dev.sh
 # Screenshots cache (mkdocs)
 .cache/
 .screenshot_cache/
+
+# rad conformance build output
+web/dist-rad/
