@@ -126,7 +126,7 @@ content = await get_raw_from_url(
 `create_headers()`. Resolution order (first non-empty wins):
 `CC_GITHUB_TOKEN` env var → `gh auth token` (keyring) → `GITHUB_TOKEN`/
 `GH_TOKEN` env vars → `/run/secrets/github_token` (Docker secret) →
-unauthenticated. See `docs/qm/adr/DRAFT-github-token-resolution.md` for
+unauthenticated. See `governance/qm/adr/DRAFT-github-token-resolution.md` for
 why the order is keyring-before-env-var, and `GET /auth/github`
 (`docs/api.md`) to inspect the resolved source at runtime.
 
@@ -238,7 +238,7 @@ Content-addressed cache for parsed graphs and fetched repo trees —
 filesystem-backed, with an optional MongoDB backend when `MONGODB_URI`
 is set. Key = `SHA256(url + mode + layout + extensions)[:16]`. Distinct
 from `graphbase` (a separate, user-named durable store) — see
-`docs/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why they're kept
+`governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why they're kept
 separate.
 
 ### Methods

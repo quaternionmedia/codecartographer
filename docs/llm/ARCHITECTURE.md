@@ -256,7 +256,7 @@ endpoint hasn't arrived yet.
 
 ### C support in the unified pipeline (`batch_whole_tree` + `unsaved_files`)
 
-> Why, not just what: see *Unify parser/cache architecture around `ParserRegistry` + `batch_whole_tree`* ([docs/qm/adr/DRAFT-parser-cache-unification.md](../qm/adr/DRAFT-parser-cache-unification.md)).
+> Why, not just what: see *Unify parser/cache architecture around `ParserRegistry` + `batch_whole_tree`* ([governance/qm/adr/DRAFT-parser-cache-unification.md](../../governance/qm/adr/DRAFT-parser-cache-unification.md)).
 
 Before the parser/cache unification pass, `CLangaugeParser` (the unified
 adapter C registers under `.c`/`.h`/`.cpp`/…) had two bugs that made it
@@ -489,13 +489,13 @@ real directory by any caller and was removed in the unification pass.
 A related but distinct question — why `CacheService` and the `graphbase`
 submodule's `/db/*` store stay separate despite sharing one Mongo
 connection — is covered in *`CacheService` and `graphbase` stay separate
-stores* ([docs/qm/adr/DRAFT-cache-service-vs-graphbase.md](../qm/adr/DRAFT-cache-service-vs-graphbase.md)).
+stores* ([governance/qm/adr/DRAFT-cache-service-vs-graphbase.md](../../governance/qm/adr/DRAFT-cache-service-vs-graphbase.md)).
 
 ---
 
 ## Compound Hierarchical Layout
 
-> Why, not just what: see *Compound hierarchical layout (dirs → files → symbols)* ([docs/qm/adr/DRAFT-compound-hierarchical-layout.md](../qm/adr/DRAFT-compound-hierarchical-layout.md)).
+> Why, not just what: see *Compound hierarchical layout (dirs → files → symbols)* ([governance/qm/adr/DRAFT-compound-hierarchical-layout.md](../../governance/qm/adr/DRAFT-compound-hierarchical-layout.md)).
 
 ### Goal
 
@@ -579,7 +579,7 @@ Resolution order:
 
 **Why this order matters:** a stale `GITHUB_TOKEN` in the environment would
 shadow a valid `gh` keyring token at every level if env vars were checked
-first. See *GitHub token resolution order* (`docs/qm/adr/`) for the full
+first. See *GitHub token resolution order* (`governance/qm/adr/`) for the full
 rationale.
 
 `GET /auth/github` exposes the resolved source for diagnostics. The GL header
@@ -596,7 +596,7 @@ shows a green/amber GH indicator on page load.
 
 MongoDB-backed named-graph store, mounted only when `MONGODB_URI` is set.
 Distinct from `CacheService` — see *CacheService and graphbase stay separate
-stores* (`docs/qm/adr/`).
+stores* (`governance/qm/adr/`).
 
 Four collections in the `graphbase` database:
 
@@ -665,7 +665,7 @@ The D3 renderer supports extensions for enhanced interactivity:
 
 Golden Layout 2.x supports popping panels into separate browser windows. With a Vite-bundled SPA the pop-out window loads the page URL and GL reconnects the chrome (hence the themed background is visible), but `registerComponentFactoryFunction` callbacks are bound to the **original window's Mithril instance** and are not replayed in the new window. The components therefore never mount — the pop-out shows only the GL frame with an empty content area.
 
-For why GL is the shell at all, see *Golden Layout as the primary application shell* ([docs/qm/adr/DRAFT-golden-layout-primary-shell.md](../qm/adr/DRAFT-golden-layout-primary-shell.md)). For the dock panel registry and the add-window menu, see *Generalize dock panels into a registry; add a window-add menu* ([docs/qm/adr/DRAFT-panel-registry-and-add-window-menu.md](../qm/adr/DRAFT-panel-registry-and-add-window-menu.md)).
+For why GL is the shell at all, see *Golden Layout as the primary application shell* ([governance/qm/adr/DRAFT-golden-layout-primary-shell.md](../../governance/qm/adr/DRAFT-golden-layout-primary-shell.md)). For the dock panel registry and the add-window menu, see *Generalize dock panels into a registry; add a window-add menu* ([governance/qm/adr/DRAFT-panel-registry-and-add-window-menu.md](../../governance/qm/adr/DRAFT-panel-registry-and-add-window-menu.md)).
 
 `popInOnClose: true` (set in `default_layout.ts`) auto-returns panels to the main window when the pop-out window is closed, so no content is permanently lost.
 

@@ -60,7 +60,12 @@ web/playwright/.cache/
 # =============================================================================
 # IDE / Editor
 # =============================================================================
-.vscode/
+# Contents rather than the directory: git will not re-include a file whose
+# parent directory is excluded, so `.vscode/` would make the negations below
+# silently do nothing. The governance seed checks those two files in.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 .vs/
 *.swp
