@@ -112,7 +112,7 @@ jobs:
             else
               echo "::error::Submodule '$path' is pinned to $sha, which could not be fetched from its remote ($url)."
               echo "::error::Most likely: committed inside the submodule without pushing. Run: (cd $path && git push origin HEAD), then re-push this repo."
-              echo "::error::This check cannot tell that apart from a private submodule remote that an unauthenticated runner cannot read. If the commit IS pushed, run 'git ls-remote $url $sha' locally: output means the pin is fine and this job needs credentials."
+              echo "::error::This check cannot tell that apart from a private submodule remote that an unauthenticated runner cannot read. To tell them apart locally, run: git init -q /tmp/probe && git -C /tmp/probe fetch --depth=1 $url $sha -- success means the pin is fine and this job needs credentials. Do NOT use 'git ls-remote $url $sha': ls-remote matches ref NAMES, so it prints nothing and exits 0 for a commit that is perfectly fine, which reads as confirmation of the failure."
               status=1
             fi
             rm -rf "$scratch"
