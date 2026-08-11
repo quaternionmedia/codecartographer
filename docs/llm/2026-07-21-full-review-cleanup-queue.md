@@ -1,9 +1,9 @@
 # 2026-07-21 full-review cleanup queue
 
 Survey of the codebase (2026-07-21) triggered by two same-session
-dependency-triage near-misses (see `docs/qm/perspectives/
+dependency-triage near-misses (see `governance/qm/perspectives/
 2026-07-21-verify-before-fixing.md` and the companion
-`docs/qm/adr/DRAFT-verify-actual-consumption-before-editing.md` on this
+`governance/qm/adr/DRAFT-verify-actual-consumption-before-editing.md` on this
 project's `project/codecartographer` branch): a dead `requirements.txt`
 misdiagnosed as load-bearing, then several merged Dependabot PRs that
 only touched that dead file. Following up turned into a full-repo
@@ -31,17 +31,17 @@ maps.md`.
 Adopt the branch-per-project ADR model from `quaternionmedia/qm` commit
 `d1b8afc`: this project's `adr/` directory moves from a copy inside
 this repo (`docs/adr/`) to a dedicated branch of the `qm` repo
-(`project/codecartographer`), checked out through the `docs/qm`
+(`project/codecartographer`), checked out through the `governance/qm`
 submodule.
 
-- `.gitmodules`: `docs/qm` submodule tracks `branch =
+- `.gitmodules`: `governance/qm` submodule tracks `branch =
   project/codecartographer` instead of a floating `main` pin.
 - `docs/adr/` (this repo's own copy, 10 `DRAFT-*.md` files) deleted —
-  same content now lives unchanged at `docs/qm/adr/` on that branch.
-- `.github/workflows/adr-lint.yml` added (ported from `docs/qm/
+  same content now lives unchanged at `governance/qm/adr/` on that branch.
+- `.github/workflows/adr-lint.yml` added (ported from `governance/qm/
   project-seed/ci/adr-lint.yml`, glob path adjusted for this project's
-  `docs/qm` mount point vs. the seed's assumed `governance/qm`).
-- Doc references updated from `docs/adr/` to `docs/qm/adr/`:
+  `governance/qm` mount point vs. the seed's assumed `governance/qm`).
+- Doc references updated from `docs/adr/` to `governance/qm/adr/`:
   `docs/architecture.md`, `docs/api.md`, `docs/llm/ARCHITECTURE.md`,
   `web/src/layout/panel_registry.ts`.
 - Submodule pin lands on `project/codecartographer`'s current tip
@@ -56,7 +56,7 @@ Deleted outright — nothing installs from it. The real Docker build
 (`docker-compose.yml`'s `CODECARTO_PATH=./codecarto` override) installs
 from `codecarto/requirements.txt` instead; CI uses `pip install
 -e ".[dev]"` against `pyproject.toml` directly. A repo-wide grep for
-`requirements.txt` outside `docs/qm/` turns up exactly this file and
+`requirements.txt` outside `governance/qm/` turns up exactly this file and
 the `Dockerfile` line that (via the compose override) doesn't even
 point at it.
 
@@ -204,7 +204,7 @@ directly before documenting them (not just filenames). Also found and
 fixed a related staleness while in this file: the "GitHub Token"
 section still described the pre-ADR hand-rolled `/run/secrets/
 github_token`-only lookup, superseded by `resolve_github_token()`
-(keyring-first — see `docs/qm/adr/DRAFT-github-token-resolution.md`).
+(keyring-first — see `governance/qm/adr/DRAFT-github-token-resolution.md`).
 
 Documents deleted/nonexistent files: `parser_service.py`,
 `palette_service.py`, `parsers/python/directory_parser.py`,

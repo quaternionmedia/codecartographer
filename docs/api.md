@@ -544,7 +544,7 @@ Replay a captured session's events at 3x speed.
 
 Report the active GitHub credential source and whether the backend has a
 valid token. Useful for diagnosing the `GITHUB_TOKEN`-vs-keyring shadowing
-issue described in *GitHub token resolution order* (`docs/qm/adr/`).
+issue described in *GitHub token resolution order* (`governance/qm/adr/`).
 
 **Response:**
 ```json
@@ -564,7 +564,7 @@ issue described in *GitHub token resolution order* (`docs/qm/adr/`).
 ## Graphbase Endpoints (`/db/*`)
 
 Mounted **only** when `MONGODB_URI` env var is set. All routes return 404
-otherwise. See `docs/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why this
+otherwise. See `governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why this
 store is separate from the filesystem `CacheService`.
 
 The graphbase submodule exposes three typed collections:

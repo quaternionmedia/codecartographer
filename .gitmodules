@@ -1,7 +1,7 @@
 [submodule "graphbase"]
 	path = graphbase
 	url = https://github.com/quaternionmedia/graphbase.git
-[submodule "docs/qm"]
-	path = docs/qm
+[submodule "governance/qm"]
+	path = governance/qm
 	url = https://github.com/quaternionmedia/qm.git
 	branch = project/codecartographer
