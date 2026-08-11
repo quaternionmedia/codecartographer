@@ -25,6 +25,20 @@ on:
     branches: [main]
   pull_request:
 
+# One run per branch per workflow. A second push supersedes the first: nobody
+# reads the result of a run whose commit has already been replaced, and the
+# minutes are real -- 55 of this repository's 129 runs on 2026-08-11 came from
+# five iterative pushes to two pull request branches, where only the last
+# mattered.
+#
+# Cancellation is scoped to pull requests deliberately. On the default branch
+# and on a project branch the run IS the record of what that commit reported,
+# and cancelling it to start a newer one destroys the only evidence that the
+# earlier commit was ever checked.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
