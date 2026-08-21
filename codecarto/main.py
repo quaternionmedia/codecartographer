@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from codecarto.routers.c_parser_router import CParserRouter
+from codecarto.routers.topology_router import TopologyRouter
 from codecarto.routers.palette_router import PaletteRouter
 from codecarto.routers.plotter_router import PlotterRouter
 from codecarto.routers.repo_router import RepoReaderRouter
@@ -49,6 +50,9 @@ app.include_router(CParserRouter, prefix="/c-parser", tags=["c-parser"])
 app.include_router(PamRouter, prefix="/pam", tags=["pam"])
 app.include_router(UnifiedParserRouter, prefix="/parse", tags=["parse"])
 app.include_router(LexiconRouter, prefix="/lexicon", tags=["lexicon"])
+# The harness's topology, drawn here. `codecarto` is qmcp's front end on
+# the web; the terminal one is `dossier`, and both read the same document.
+app.include_router(TopologyRouter, prefix="/topology", tags=["topology"])
 
 # Optional: Graphbase MongoDB router — activated when MONGODB_URI env var is set.
 # Surfaced explicitly at startup so a missing variable in the wrong shell
