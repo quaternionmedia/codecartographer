@@ -168,15 +168,29 @@ def test_the_caveat_says_how_much_of_the_picture_is_measured(client):
     assert body["caveat"] in client.get("/topology").text
 
 
-def test_parallel_edges_are_bowed_apart_rather_than_drawn_on_each_other(client):
-    """Three readings of one relation stacked on one line look like one
-    reading. The page separates them.
+def test_parallel_readings_survive_into_the_projects_graph_format(client):
+    """Three readings of one relation are three observations, not one.
 
-    Mutation: draw every edge as a straight line and this fails.
+    **ASSERTS THE GRAPH, NOT THE MARKUP.** The first version counted SVG curve
+    commands, which was really asserting that this router hand-drew its own
+    picture -- so it went red the moment the drawing moved onto codecarto's
+    canvas, where it belongs. What must survive is the data: three edges in the
+    gJGF, and a canvas told to curve them so they do not overlap.
+
+    Mutation: build the graph as a `DiGraph` and this fails.
     """
-    page = client.get("/topology").text
-    curves = page.count(" Q ")
-    assert curves >= 2, "edges are not being bowed apart"
+    body = client.get("/topology/gjgf").json()
+    assert body["ok"], body
+    parallel = [e for e in body["graph"]["edges"]
+                if e["source"] == "subject" and e["target"] == "r0"]
+    assert len(parallel) == 2, "parallel readings were collapsed"
+
+    import inspect
+
+    from codecarto.routers import topology_router
+
+    assert "edge_curvature" in inspect.getsource(topology_router._canvas), (
+        "the canvas is not told to separate parallel edges")
 
 
 def test_the_legend_draws_the_distinction_rather_than_describing_it(client):
@@ -190,7 +204,8 @@ def test_the_level_is_bounded(client):
 
 
 def test_the_topology_picker_lists_what_the_harness_offers(client):
-    assert 'href="/topology?kind=delegation"' in client.get("/topology").text
+    page = client.get("/topology").text
+    assert "/topology?kind=delegation" in page
 
 
 # --- the client ----------------------------------------------------------------

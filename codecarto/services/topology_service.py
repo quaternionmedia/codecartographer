@@ -1,29 +1,30 @@
-"""The harness's topology, drawn as a graph, in this window.
+"""The harness's topology, as a codecarto graph.
 
-**THE SAME PAYLOAD `dossier` DRAWS AS TEXT.** `qmcp` decides what the topology
-is; this decides what it looks like here. The two windows differ in resolution
-and in nothing else, which is the property that makes them worth having: a
-reader who sees a box in one and not the other has found a defect rather than a
-rendering choice.
+**IT GOES THROUGH THIS PROJECT'S PIPELINE, NOT AROUND IT.** The first version of
+this module resolved the payload into widths and colours and the router hand-
+wrote SVG, which meant a second renderer living beside codecarto's own: its
+layouts, its palette, its serializer and its canvas were all bypassed, and a
+topology could not be laid out with `Kamada Kawai` or restyled by choosing a
+palette, because none of that was in the path.
 
-**NOTHING HERE IMPORTS `qmcp`.** It cannot -- the two repositories do not depend
-on each other -- and that is the seam working rather than an inconvenience. This
-reads a document: `topology`, `boxes`, `arrows`, and the `encoding` block that
-says which visual channel carries which data axis. A field this does not
-recognise is carried through untouched, so the far side can add one without this
-side needing a release.
+So the shape of this module is: **build a `networkx` graph whose nodes speak the
+palette's vocabulary, and hand it to `GraphSerializer`.** Everything downstream
+-- layout, positions, gJGF, gravis -- is the same code every other graph in this
+project goes through. A topology is now a graph codecarto draws, rather than a
+picture something else drew nearby.
 
-**THE ENCODING IS READ, NOT ASSUMED.** `qmcp.topology_view.ENCODING` is served
-alongside the view for exactly this reason. A window that hard-coded "thicker
-means stronger" would keep drawing that after the harness changed its mind, and
-the picture would be confidently wrong -- which is worse than blank, because
-nothing about it looks stale.
+**WHAT IS SPECIAL ABOUT A TOPOLOGY, AND IT IS ONLY THIS.** An edge carries a
+`weight` that may be `None`, and `None` means *nobody measured this* rather than
+*this is small*. Every other graph here has edges that are simply present. So
+this module's whole contribution is putting `measured` on its own visual channel
+-- line style -- and keeping it off the width scale, so a reader can tell an
+unlooked-at relation from a weak one. That distinction is the reason the harness
+sends a `weight` of `null` instead of a `0`, and losing it here would waste the
+care taken at the other end.
 
-WHAT THIS REFUSES TO DO. Draw an unmeasured edge as a thin one. A null weight
-means nobody measured that relation; a thin line means somebody measured it and
-found it weak. Rendering the first as the second is not a visual shortcut, it is
-a claim the data does not make, and it is the single thing both windows are
-tested for.
+**A MULTIGRAPH, DELIBERATELY.** Three threads each finding a relation to one
+delta is three observations with three weights, not one. `MultiDiGraph` keeps
+them; `DiGraph` silently keeps the last.
 """
 
 from __future__ import annotations
@@ -31,15 +32,28 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from codecarto.models.plot_data import Palette, PlotOptions
+from codecarto.services import palette_service
+
+# A topology box's `kind` -> the node `type` the palette names. The palette
+# speaks in capitalised type names (`ClassDef`, `Worker`) and maps those to
+# dotted bases; this is the join, and it lives here because the harness's
+# vocabulary is the harness's to change.
+KIND_TO_TYPE = {
+    "input": "Input",
+    "worker": "Worker",
+    "gate": "Gate",
+    "store": "Store",
+    "output": "Output",
+}
+DEFAULT_TYPE = "Worker"
+
 # Line width in points, for the strength axis. The floor is deliberately
 # visible: a measured-but-negligible edge is a finding, and an edge that
 # vanished into the background would read as absent.
 MIN_WIDTH = 0.8
 MAX_WIDTH = 4.5
 
-# The style that carries `measured`. Solid is measured; dashed is not. Dashing
-# is used rather than a lighter colour on purpose -- lightness reads as
-# less-of-something, which is the very confusion this axis exists to prevent.
 MEASURED_STYLE = "solid"
 UNMEASURED_STYLE = "dashed"
 
@@ -47,15 +61,6 @@ UNMEASURED_STYLE = "dashed"
 # MIN_WIDTH: that is the width of a measured near-zero edge, and the two must
 # not collide.
 UNMEASURED_WIDTH = 1.6
-
-SHAPES = {
-    "input": "ellipse",
-    "worker": "box",
-    "gate": "diamond",
-    "store": "cylinder",
-    "output": "ellipse",
-}
-DEFAULT_SHAPE = "box"
 
 COLOURS = {
     "flow": "#6db2ff",
@@ -97,7 +102,7 @@ class RenderedEdge:
 
 @dataclass
 class RenderedTopology:
-    """A whole view, ready for whatever actually puts pixels down."""
+    """A whole view, in a form this project's renderers accept."""
 
     topology: str = ""
     level: int = 0
@@ -130,7 +135,8 @@ class RenderedTopology:
 
 
 def render(payload: dict[str, Any],
-           encoding: list[dict[str, Any]] | None = None) -> RenderedTopology:
+           encoding: list[dict[str, Any]] | None = None,
+           palette: Palette | None = None) -> RenderedTopology:
     """A payload from the harness, resolved into channels.
 
     `encoding` is the harness's own declaration of which channel carries which
@@ -148,11 +154,20 @@ def render(payload: dict[str, Any],
     )
 
     for box in payload.get("boxes") or []:
+        kind = str(box.get("kind") or "")
+        node_type = KIND_TO_TYPE.get(kind, DEFAULT_TYPE)
+        style = palette_service.style_for_type(node_type, palette)
         view.nodes.append({
             "id": str(box.get("id") or ""),
             "label": str(box.get("label") or ""),
-            "shape": SHAPES.get(str(box.get("kind") or ""), DEFAULT_SHAPE),
-            "kind": str(box.get("kind") or ""),
+            # The palette's vocabulary, carried on the node so anything else in
+            # this project can restyle it without knowing what a topology is.
+            "type": node_type,
+            "base": style.base,
+            "kind": kind,
+            "shape": style.shape,
+            "color": style.color,
+            "size": style.size,
             "note": str(box.get("note") or ""),
             "count": box.get("count"),
         })
@@ -188,31 +203,83 @@ def render(payload: dict[str, Any],
 
 
 def as_graph(view: RenderedTopology):
-    """The same thing as a `networkx` graph, for this project's plotters.
+    """The view as a `networkx` graph this project's serializer accepts.
 
     Imported inside the function so that reading a payload does not require a
     graph library. A window that could not render should still be able to say
     what it was given.
-
-    **`MultiDiGraph`, AND THE CHOICE IS THE WHOLE POINT.** `DiGraph` keeps one
-    edge per ordered pair: a second `a -> b` silently replaces the first. Several
-    relations reaching one address is the ordinary case in a real archive --
-    three separate readings of one delta, each with its own weight and basis --
-    and a plain `DiGraph` drew all three as whichever happened to be last. No
-    error, no warning, and a picture that looks complete.
     """
     import networkx as nx
 
     graph = nx.MultiDiGraph(topology=view.topology, caption=view.caption,
                             status=view.status, unmeasured=view.unmeasured)
     for node in view.nodes:
-        graph.add_node(node["id"], **node)
+        graph.add_node(node["id"], **{k: v for k, v in node.items()
+                                      if k != "id"}, hover=node["note"] or node["label"])
     for edge in view.edges:
-        graph.add_edge(edge.source, edge.target, label=edge.label,
-                       width=edge.width, style=edge.style, color=edge.colour,
-                       measured=edge.measured, weight=edge.weight,
-                       title=edge.title)
+        graph.add_edge(
+            edge.source, edge.target,
+            label=edge.label,
+            # gravis reads `size` for edge thickness and `color` for its
+            # colour, so the channels arrive named as the canvas expects.
+            size=edge.width, color=edge.colour,
+            # `hover` is where the unmeasured caveat survives a picture.
+            hover=edge.title,
+            style=edge.style, measured=edge.measured,
+            # **NOT `weight`.** `weight` is networkx's own edge attribute:
+            # `kamada_kawai_layout` and every shortest-path layout read it as a
+            # distance. An unmeasured edge carries `None`, and networkx compared
+            # `None` with a float and raised from inside the layout -- an error
+            # about types, several frames below anything that mentions
+            # topologies. The harness's measurement is `strength` here, which
+            # no layout claims.
+            strength=edge.weight,
+            title=edge.title,
+        )
     return graph
+
+
+def as_gjgf(view: RenderedTopology, options: PlotOptions | None = None
+            ) -> dict[str, Any]:
+    """The view in this project's own graph format, laid out by its layouts.
+
+    **THE WHOLE REASON THIS MODULE EXISTS IN THIS SHAPE.** Everything after this
+    call -- positions, scaling, gJGF, gravis -- is the path every other graph in
+    codecarto takes. A topology that rendered itself would have to reimplement
+    all of it, and would drift from it the first time either changed.
+    """
+    from codecarto.services.graph_serializer import GraphSerializer
+
+    chosen = options or PlotOptions(layout="Kamada Kawai")
+    return GraphSerializer.serialize_to_gjgf(as_graph(view), chosen)
+
+
+def metadata(view: RenderedTopology, document: dict[str, Any],
+             options: PlotOptions | None = None) -> dict[str, Any]:
+    """Graph-level facts the canvas and the page both read.
+
+    The caveat is here rather than only on the page: a client rendering this
+    gJGF somewhere else must be able to reach the sentence that says how much
+    of the picture was measured.
+    """
+    chosen = options or PlotOptions(layout="Kamada Kawai")
+    return {
+        "layout": chosen.layout,
+        "type": chosen.type,
+        "palette_id": chosen.palette_id,
+        "topology": view.topology,
+        "caption": view.caption,
+        "source": document.get("source", ""),
+        "surveyed": document.get("surveyed"),
+        "nodeCount": len(view.nodes),
+        "edgeCount": len(view.edges),
+        "measured": view.measured,
+        "unmeasured": view.unmeasured,
+        "caveat": view.caveat(),
+        "background_color": "#151a21",
+        "node_label_color": "#e4e9f0",
+        "edge_label_color": "#8b93a1",
+    }
 
 
 def _axes(encoding: list[dict[str, Any]] | None) -> dict[str, str]:

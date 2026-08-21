@@ -244,3 +244,80 @@ def test_the_graph_carries_the_channels_through():
     dashed = [d for _, _, d in graph.edges(data=True) if not d["measured"]]
     assert len(dashed) == 1 and dashed[0]["style"] == UNMEASURED_STYLE
     assert isinstance(networkx.get_edge_attributes(graph, "width"), dict)
+
+
+# --- through this project's own pipeline ---------------------------------------
+
+
+def test_the_graph_speaks_the_palettes_vocabulary():
+    """A topology node carries `type` and `base`, so anything else in codecarto
+    can restyle it without knowing what a topology is.
+
+    Mutation: stop setting `base` and this fails.
+    """
+    from codecarto.services.topology_service import as_graph, render
+
+    graph = as_graph(render(_payload()))
+    for _, data in graph.nodes(data=True):
+        assert data["type"] in {"Input", "Worker", "Gate", "Store", "Output"}
+        assert data["base"].startswith("topology.")
+        assert data["color"].startswith("#")
+
+
+def test_the_measurement_is_not_called_weight_on_the_graph():
+    """**`weight` IS NETWORKX'S.** Shortest-path layouts read it as a distance,
+    and an unmeasured edge carries `None`, so `kamada_kawai_layout` raised
+    comparing `None` with a float -- several frames below anything naming a
+    topology.
+
+    Mutation: name the attribute `weight` and this fails.
+    """
+    from codecarto.services.topology_service import as_graph, render
+
+    graph = as_graph(render(_payload()))
+    for _, _, data in graph.edges(data=True):
+        assert "weight" not in data, "the harness's measurement shadows networkx's"
+        assert "strength" in data
+
+
+def test_a_topology_lays_out_with_a_shortest_path_layout():
+    """The layout that broke. Unmeasured edges must not stop a graph being
+    laid out at all."""
+    pytest.importorskip("gravis")
+    from codecarto.models.plot_data import PlotOptions
+    from codecarto.services.topology_service import as_gjgf, render
+
+    gjgf = as_gjgf(render(_payload()), PlotOptions(layout="Kamada Kawai"))
+    assert len(gjgf["nodes"]) == 4
+    for node in gjgf["nodes"].values():
+        assert "x" in node["metadata"] and "y" in node["metadata"]
+
+
+def test_parallel_readings_survive_the_serializer():
+    """Three observations of one relation, through codecarto's own serializer.
+
+    Mutation: build a `DiGraph` in `as_graph` and this fails.
+    """
+    pytest.importorskip("gravis")
+    from codecarto.models.plot_data import PlotOptions
+    from codecarto.services.topology_service import as_gjgf, render
+
+    view = render(_payload(arrows=[
+        {"from": "subject", "to": "r0", "label": "crosses", "kind": "flow",
+         "weight": 0.06, "basis": "m"},
+        {"from": "subject", "to": "r0", "label": "part-of", "kind": "flow",
+         "weight": 0.17, "basis": "m"},
+        {"from": "subject", "to": "r0", "label": "crosses", "kind": "flow",
+         "weight": 0.13, "basis": "m"}]))
+    assert len(as_gjgf(view, PlotOptions())["edges"]) == 3
+
+
+def test_the_metadata_carries_the_caveat_to_any_other_client():
+    """A client rendering this gJGF elsewhere must be able to reach the
+    sentence saying how much of the picture was measured."""
+    from codecarto.services.topology_service import metadata, render
+
+    view = render(_payload())
+    found = metadata(view, {"source": "thread archive", "surveyed": 128})
+    assert found["caveat"] == view.caveat()
+    assert found["unmeasured"] == 1 and found["source"] == "thread archive"
