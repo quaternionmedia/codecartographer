@@ -519,7 +519,13 @@ def get_github_token() -> str | None:
     if _github_token is None and _github_token_source == "none":
         _github_token, _github_token_source = resolve_github_token()
         if _github_token:
-            _log.info("GitHub auth: %s (token: %s…)", _github_token_source, _github_token[:8])
+            # The token's *kind* (`gho_`, `ghp_`, ...) is what a reader needs to
+            # tell an app token from a personal one. `[:8]` also carried four
+            # characters of the secret into a log file that outlives the
+            # process -- not enough to use, and not a thing to write down.
+            kind = _github_token.split("_", 1)[0] + "_" if "_" in _github_token else "opaque"
+            _log.info("GitHub auth: %s (token kind: %s)",
+                      _github_token_source, kind)
         else:
             _log.warning(
                 "GitHub auth: unauthenticated — rate-limited to 60 req/h per IP. "
