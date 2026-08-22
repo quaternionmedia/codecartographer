@@ -2,6 +2,7 @@ import { Patch } from 'meiosis-setup/types';
 import { RawFile, RawFolder, Directory } from '../components/models/source';
 import { DirectoryNavController } from '../components/codecarto/directory/directory_nav';
 import { ICell, ICellState } from './cell_state';
+import { GraphData } from '../features/graph';
 import { API } from './api_base';
 import { Vnode } from 'mithril';
 import { clearError } from '../utility';
@@ -88,7 +89,27 @@ export class StateController {
   }
 
   public clearGraphContent() {
-    this.update({ graphContent: [] });
+    // **`graphData` TOO, AND AS A REPLACEMENT.** Two defects met here.
+    // `clear()` emptied the rendered vnodes and left the *data* behind; and
+    // `update` is a mergerino patch, which deep-merges — so `{graphData: next}`
+    // merged the new graph into the old one, and `graph.nodes` is an object
+    // keyed by node id. Every plot therefore drew the union of itself and
+    // everything plotted before it. Switching between two harness topologies
+    // made it obvious because they share ids like `in` and `out`; between two
+    // repositories it would have looked like an oddly large graph.
+    //
+    // A function patch replaces instead of merging. See `replaceGraphData`.
+    this.update({ graphContent: [], graphData: null });
+  }
+
+  /**
+   * Set the graph data, replacing whatever was there.
+   *
+   * **NEVER `update({ graphData })` DIRECTLY.** That is a merge, and a merged
+   * graph is the union of every graph ever drawn.
+   */
+  public replaceGraphData(graphData: GraphData | null) {
+    this.update({ graphData: () => graphData } as unknown as Patch<ICellState>);
   }
 
   /** Clear the graph and optionally the repo and uploaded files */

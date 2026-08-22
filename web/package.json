@@ -12,7 +12,8 @@
     "test:e2e": "playwright test",
     "lint:rad": "node scripts/rad-core-lint.mjs",
     "build:rad": "tsc -p tsconfig.rad.json && node -e \"require('fs').writeFileSync('dist-rad/package.json','{\\\"type\\\":\\\"module\\\"}')\"",
-    "test:rad": "npm run lint:rad && npm run build:rad && node --test tests/rad/"
+    "test:rad": "npm run lint:rad && npm run build:rad && node --test tests/rad/",
+    "test:state": "node --test tests/state/"
   },
   "browserslist": [
     "defaults"

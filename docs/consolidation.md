@@ -67,6 +67,25 @@ the current arrangement means correctness depends on the caller's context, which
 nothing states and nothing checks. Either `update` redraws and a batching escape
 hatch exists, or it keeps a name that says it does not.
 
+**Every graph was the union of every graph before it.** `StateController.update`
+applies a `mergerino` patch, and mergerino deep-merges — so
+`update({ graphData })` merged the new graph into the old one, and
+`graph.nodes` is an object keyed by node id. Switching between two harness
+topologies made it plain (they share ids like `in` and `out`: 6 nodes became 9,
+then 11, and switching back still showed 11), but **this was never
+topology-specific** — plotting two repositories in a row did the same, and would
+have looked like an oddly large graph rather than a bug. `clear()` compounded it
+by emptying the rendered vnodes and leaving the data. Fixed with
+`replaceGraphData`, which uses a function patch; `clear()` now nulls the data.
+Pinned by `web/tests/state/graph-data-replacement.test.mjs`.
+
+**The onboarding modal reappears and does not close on Escape.** After a panel
+is opened from the add-window menu, `.cc-modal-backdrop` can come back and
+intercept every click in the app; `dismissOnboardingModal` presses Escape first,
+which does nothing, and only the `×` works. Found because it blocked a browser
+test, which is a mild version of what it does to a person. Worth deciding
+whether Escape should close it and whether it should reappear at all.
+
 ## Open, with what it would cost
 
 **The palette speaks matplotlib and the canvas speaks gravis.** `shapes` are

@@ -99,8 +99,11 @@ export class PlotActions {
   private renderGraphData(graphData: GraphData): void {
     logger.info('PlotActions.renderGraphData - rendering client-side:', graphData.metadata);
 
-    // Store graph data in state so we can re-render when styling changes
-    this.stateController.update({ graphData });
+    // Store graph data in state so we can re-render when styling changes.
+    // **REPLACE, NEVER MERGE.** `update` is a mergerino patch: `{graphData}`
+    // deep-merges into the previous graph, and `graph.nodes` is keyed by id, so
+    // every plot drew the union of itself and everything before it.
+    this.stateController.replaceGraphData(graphData);
 
     // Create the graph vnode
     this.createGraphVnode();

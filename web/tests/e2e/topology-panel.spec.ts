@@ -24,6 +24,23 @@ import { dismissOnboardingModal } from './helpers';
  *  up well before this, so a timeout here means nothing repainted. */
 const SETTLED = 20_000;
 
+/**
+ * Clear anything covering the app.
+ *
+ * `.cc-modal-backdrop` intercepts pointer events, and it can appear *during* a
+ * run rather than only at first load — a click that "times out on a visible,
+ * enabled, stable element" is this, and it reads like the element is broken.
+ */
+async function clearOverlays(page: Page): Promise<void> {
+  const backdrop = page.locator('.cc-modal-backdrop');
+  if ((await backdrop.count()) === 0) return;
+  await page.keyboard.press('Escape');
+  if ((await backdrop.count()) > 0) {
+    await backdrop.locator('button', { hasText: '×' }).first()
+      .click({ force: true }).catch(() => undefined);
+  }
+}
+
 async function openTopologyPanel(page: Page): Promise<void> {
   await page.goto('/');
   await dismissOnboardingModal(page);
@@ -60,15 +77,48 @@ test('the topology panel resolves rather than sitting on "asking"', async ({ pag
 });
 
 test('a harness that is not answering offers a way to try again', async ({ page }) => {
+  /**
+   * **STUBBED, NOT SKIPPED.** The first version of this checked for a problem
+   * state and skipped when the harness happened to be up — so on a healthy
+   * machine it asserted nothing, and on a busy one it flaked. A test that only
+   * runs when something is already broken is not a test of the broken case.
+   *
+   * The harness is a separate process this suite does not start, so its being
+   * down is stubbed here: the route answers exactly as the server does when it
+   * cannot reach the harness.
+   */
+  await page.route('**/topology/available*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 200,
+        message: 'Success',
+        results: {
+          unreachable: true,
+          problem: 'nothing is answering at http://127.0.0.1:3141',
+          remedy: 'start it with `uv run qm dashboard --start harness`',
+          where: 'http://127.0.0.1:3141/v1/topology',
+          topologies: [],
+          layouts: ['Spring'],
+        },
+      }),
+    }),
+  );
+
   await openTopologyPanel(page);
 
   const problem = page.locator('.topology__problem');
-  if (!(await problem.count())) {
-    test.skip(true, 'the harness answered, so there is no problem state to check');
-  }
+  await expect(problem).toBeVisible();
+  await expect(problem).toContainText('nothing is answering');
+  await expect(problem).toContainText('qm dashboard --start harness');
+  await expect(problem).toContainText('tried');
 
   // A harness is usually started *after* somebody finds this down. Without a
   // retry they would have to know to close and reopen the panel.
   await expect(problem.locator('.topology__retry')).toBeVisible();
-  await expect(problem).toContainText(/tried/);
+
+  // And the pending state must be gone — "asking…" that never resolves is the
+  // bug this whole file exists for.
+  await expect(page.locator('.topology__pending')).toHaveCount(0);
 });
