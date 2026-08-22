@@ -1,8 +1,28 @@
+// Where the API is while developing. The dev server proxies to it so the app
+// and its API share an origin in development exactly as they do in production,
+// which removes the whole class of "works built, broken in dev".
+//
+// **THIS EXISTS BECAUSE `appsettings.json` NAMED A PORT NOTHING RUNS ON.** It
+// said 8000; the container publishes 2020 and the trio runs 2718. A developer
+// running `npm run dev` got a panel stuck on "asking the harness..." with no
+// clue that the request had gone to a fourth address.
+const API = process.env.CODECARTO_API || 'http://127.0.0.1:2718';
+
+// Every path the API owns. A prefix missing from this list is a request the
+// dev server tries to answer itself and cannot, so the list is the contract.
+const API_PATHS = [
+  '/topology', '/plotter', '/palette', '/repo', '/parse', '/lexicon',
+  '/c-parser', '/pam', '/db', '/auth', '/docs', '/openapi.json',
+];
+
 export default {
   root: 'src',
   server: {
     port: 1234,
     host: '0.0.0.0',
+    proxy: Object.fromEntries(
+      API_PATHS.map((path) => [path, { target: API, changeOrigin: true }]),
+    ),
   },
   build: {
     base: '/codecartographer',

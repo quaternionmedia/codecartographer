@@ -24,14 +24,21 @@
 import { logger } from '../core/logger';
 import { RequestHandler } from './request_handler';
 
-/** The standard envelope every codecarto route answers in. */
-interface Envelope {
-  status: number;
-  message: string;
-  results: Record<string, unknown>;
-}
+/**
+ * **`RequestHandler` ALREADY UNWRAPS THE ENVELOPE.** `handleResponse` returns
+ * `responseData.results`, not `{status, message, results}` — so a service that
+ * reads `.results` off what it is handed gets `undefined` and throws on the
+ * next property access. This one did, the throw was swallowed by the caller's
+ * `catch`, and the panel sat on "asking the harness…" forever with a perfectly
+ * successful 200 in the network log.
+ *
+ * The lesson is smaller than the bug: read the layer you are building on.
+ * Everything below takes the *inner* document, because that is what arrives.
+ */
 
 export interface TopologyProblem {
+  /** Present only when the harness could not be reached. */
+  unreachable: true;
   /** What is wrong, in a sentence. */
   problem: string;
   /** What the reader can do about it. Empty when there is nothing they could. */
@@ -64,17 +71,26 @@ export interface TopologyRequest {
   paletteId?: string;
 }
 
-function isProblem(envelope: Envelope | null): boolean {
-  return !envelope || envelope.status >= 400;
-}
-
-function asProblem(envelope: Envelope | null, url: string): TopologyProblem {
-  const results = (envelope?.results ?? {}) as Partial<TopologyProblem>;
-  return {
-    problem: results.problem ?? envelope?.message ?? 'the front end could not reach its own server',
-    remedy: results.remedy ?? '',
-    where: results.where ?? url,
-  };
+/**
+ * Whether a result says the harness could not be reached.
+ *
+ * **A `null` COUNTS.** `RequestHandler` returns `null` when the request itself
+ * failed — the API down rather than the harness — and a caller that only
+ * checked for `unreachable` would treat that as a graph.
+ */
+function problemOf(found: unknown, url: string): TopologyProblem | null {
+  if (found === null || found === undefined) {
+    return {
+      unreachable: true,
+      problem: 'the front end could not reach its own API',
+      remedy: 'check that the codecarto server is running',
+      where: url,
+    };
+  }
+  if (typeof found === 'object' && 'unreachable' in (found as object)) {
+    return found as TopologyProblem;
+  }
+  return null;
 }
 
 export class TopologyService {
@@ -83,12 +99,13 @@ export class TopologyService {
     topologyUrl: string,
   ): Promise<TopologyChoices | TopologyProblem> {
     const url = `${topologyUrl}/available`;
-    const envelope = (await RequestHandler.getRequest(url)) as Envelope | null;
-    if (isProblem(envelope)) {
-      logger.warn('TopologyService.available - harness unreachable');
-      return asProblem(envelope, url);
+    const found = await RequestHandler.getRequest(url);
+    const problem = problemOf(found, url);
+    if (problem) {
+      logger.warn('TopologyService.available - ' + problem.problem);
+      return problem;
     }
-    const results = envelope!.results as unknown as TopologyChoices;
+    const results = found as TopologyChoices;
     return {
       topologies: results.topologies ?? [],
       layouts: results.layouts ?? [],
@@ -119,15 +136,12 @@ export class TopologyService {
     if (request.paletteId) query.set('palette_id', request.paletteId);
 
     const url = `${topologyUrl}/gjgf?${query.toString()}`;
-    const envelope = (await RequestHandler.getRequest(url)) as Envelope | null;
-    if (isProblem(envelope)) {
-      return asProblem(envelope, url);
-    }
-    return envelope!.results;
+    const found = await RequestHandler.getRequest(url);
+    return problemOf(found, url) ?? found;
   }
 
-  /** True when a result is a problem rather than a graph. */
+  /** True when a result says the harness could not be reached. */
   public static isProblem(found: unknown): found is TopologyProblem {
-    return !!found && typeof found === 'object' && 'problem' in found;
+    return !!found && typeof found === 'object' && 'unreachable' in found;
   }
 }

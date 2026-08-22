@@ -147,8 +147,14 @@ def test_an_unreachable_harness_draws_no_graph_at_all(no_harness):
 def test_the_data_route_reports_the_problem_rather_than_erroring(no_harness):
     answer = no_harness.get("/topology/data")
     assert answer.status_code == 200, "the front end itself is fine"
-    assert status_of(answer) == 503, "and it says the harness is not"
+    # **STATUS 200, WITH THE PROBLEM IN `results`.** An envelope status of 503
+    # would say *this service* is unavailable, which is false -- and the browser
+    # client treats any status but 200 as a hard error, parsing the message with
+    # the message parser, which raises on every message not in that
+    # exact shape. So a non-200 envelope arrived as a `TypeError` with no detail.
+    assert status_of(answer) == 200, "this route worked; the harness did not"
     body = results(answer)
+    assert body["unreachable"] is True
     assert "nothing is answering" in body["problem"]
     assert "harness" in body["remedy"]
 
@@ -321,3 +327,40 @@ def test_available_lists_what_the_harness_offers_and_what_can_lay_it_out(client)
     assert body["topologies"]
     assert body["layouts"], "no layout can be chosen"
     assert "Kamada Kawai" in body["layouts"] or "Spring" in body["layouts"]
+
+
+def test_the_client_gets_the_inner_document_not_the_envelope(client):
+    """**THE BUG THAT KEPT THE PANEL ON "ASKING".**
+
+    `RequestHandler.handleResponse` returns `responseData.results`, so the
+    browser never sees `{status, message, results}` at all. A service written
+    against the outer shape read `.results` off the results, got `undefined`,
+    and threw on the next access — with a successful 200 in the network log.
+
+    This test pins the contract from the server side: whatever a route puts in
+    `results` is exactly what the browser receives.
+    """
+    body = results(client.get("/topology/available"))
+    assert "topologies" in body and "layouts" in body
+    assert "results" not in body, "the envelope is nested twice"
+
+
+def test_an_unreachable_harness_is_flagged_inside_results(no_harness):
+    """The browser cannot see the envelope status, so the flag has to be in the
+    document. Without it a front end cannot tell a problem from a graph.
+
+    Mutation: drop `unreachable` and this fails.
+    """
+    for route in ("/topology/available", "/topology/gjgf", "/topology/data"):
+        body = results(no_harness.get(route))
+        assert body.get("unreachable") is True, f"{route} does not say so"
+        assert body["problem"] and body["where"]
+
+
+def test_available_still_offers_layouts_when_the_harness_is_down(no_harness):
+    """Layouts are this server's own; they do not depend on the harness. A
+    picker that emptied itself because something else was down would be
+    reporting the wrong outage."""
+    body = results(no_harness.get("/topology/available"))
+    assert body["topologies"] == []
+    assert body["layouts"], "this server can still lay a graph out"

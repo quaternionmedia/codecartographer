@@ -49,6 +49,12 @@ export default defineConfig({
       url: 'http://localhost:1234/codecartographer/',
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
+      // The dev server proxies API paths, and this says where to. It is stated
+      // rather than defaulted because the backend above is on 8000 while the
+      // trio runs it on 2718 and the container publishes 2020 -- one of the
+      // four addresses this project has meant by "the API", and the reason a
+      // panel could sit forever asking a port nothing answered on.
+      env: { CODECARTO_API: 'http://127.0.0.1:8000' },
     },
   ],
 });

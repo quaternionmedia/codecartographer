@@ -488,12 +488,19 @@ export class PlotActions {
         // and an empty canvas would state that this topology has nothing in it
         // -- a different claim, and a false one.
         this.stateController.update({ topologyProblem: found as TopologyProblem });
+        // **AND REDRAW.** `update` changes state and does not repaint. Mithril
+        // repaints by itself after a DOM event handler, which is why every
+        // other action here appears to work without this -- but an `oninit`
+        // that awaits resolves outside any handler, so the panel kept showing
+        // "asking the harness..." after the answer had already arrived.
+        this.stateController.redraw();
         logger.warn('PlotActions.loadTopology - ' + (found as TopologyProblem).problem);
         return;
       }
 
       this.stateController.update({ topologyProblem: null });
       this.handlePlotData(found);
+      this.stateController.redraw();
     } catch (error) {
       logger.error('Failed to load topology:', error);
       throw error;
@@ -502,20 +509,41 @@ export class PlotActions {
 
   /** Fill the topology picker from whatever the harness actually offers. */
   async loadTopologyChoices(): Promise<void> {
-    const found = await TopologyService.available(
-      this.stateController.api.topology,
-    );
+    // **A THROW MUST BECOME A VISIBLE PROBLEM, NEVER A SILENT ONE.** This had
+    // no handler, so a `TypeError` inside the service rejected the promise, the
+    // panel's `catch` swallowed it, and the panel showed "asking the harness…"
+    // for as long as it stayed open -- with a successful 200 in the network
+    // log. A pending state that no failure can clear is a state nothing exits.
+    let found;
+    try {
+      found = await TopologyService.available(this.stateController.api.topology);
+    } catch (error) {
+      logger.error('PlotActions.loadTopologyChoices - ', error);
+      this.stateController.update({
+        topologyChoices: null,
+        topologyProblem: {
+          unreachable: true,
+          problem: 'the front end failed while reading the answer',
+          remedy: String((error as Error)?.message ?? error),
+          where: this.stateController.api.topology + '/available',
+        } as TopologyProblem,
+      });
+      this.stateController.redraw();
+      return;
+    }
     if (TopologyService.isProblem(found)) {
       this.stateController.update({
         topologyProblem: found as TopologyProblem,
         topologyChoices: null,
       });
+      this.stateController.redraw();
       return;
     }
     this.stateController.update({
       topologyChoices: found as TopologyChoices,
       topologyProblem: null,
     });
+    this.stateController.redraw();
   }
 
   /**

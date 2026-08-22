@@ -23,15 +23,30 @@ import m from 'mithril';
 import type { LayoutContext } from '../layout_context';
 import './topology_panel.css';
 
-/** Asked once per panel mount, so opening the panel fills its own picker. */
-let asked = false;
-
 export function createTopologyPanel(ctx: LayoutContext): m.Component {
+  /**
+   * Whether this panel has asked the harness what it offers.
+   *
+   * **PER PANEL, AND CLEARED BY A FAILURE.** The first version was a
+   * module-level flag set before the request: closing and reopening the panel
+   * never asked again, and — worse — a harness that was down when the panel
+   * first opened could never be retried, because the flag said the question
+   * had been asked. It had; the answer was just "no".
+   */
+  let asked = false;
+
+  const ask = () => {
+    asked = true;
+    void ctx.actions.plot
+      .loadTopologyChoices()
+      .catch(() => {
+        asked = false;
+      });
+  };
+
   return {
     oninit: () => {
-      if (asked) return;
-      asked = true;
-      void ctx.actions.plot.loadTopologyChoices();
+      if (!asked) ask();
     },
 
     view: () => {
@@ -64,6 +79,15 @@ export function createTopologyPanel(ctx: LayoutContext): m.Component {
               m('p.topology__problem-where', ['tried ', m('code', problem.where)]),
               m('p.topology__problem-note',
                 'Nothing was drawn. An empty graph would look like an answer.'),
+              // A harness is usually started *after* somebody opens this and
+              // finds it down. Without this they would have to close and
+              // reopen the panel, which is not a thing anybody guesses.
+              m('button.topology__retry', {
+                onclick: () => {
+                  ctx.appState.update({ topologyProblem: null });
+                  ask();
+                },
+              }, 'try again'),
             ])
           : null,
 

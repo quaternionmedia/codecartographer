@@ -9,7 +9,7 @@ what they would cost.
 design. Most of these are the ordinary residue of a renderer that changed canvas
 (matplotlib to gravis) while its vocabulary stayed where it was.
 
-**Stamped 2026-08-21**, against `f7e5699`. Re-derive before acting.
+**Stamped 2026-08-22**, against `0823aa6`. Re-derive before acting.
 
 ---
 
@@ -47,6 +47,25 @@ local variable. It raises a `ValueError` naming what is registered.
 plus four characters of the secret, in a file that outlives the process. Not
 usable at that length, and not a thing to write down; it logs the token *kind*
 now.
+
+**The API's address was written down four times, and three were wrong.**
+`appsettings.json` said 8000 (which is what `playwright.config.ts` starts, so it
+was not arbitrary — it was one true case), the container publishes 2020, and the
+trio runs 2718. A build could only ever talk to one of them, and moving the API
+meant rebuilding the front end. Now: `ConfigManager` resolves at runtime
+(injected meta tag → same origin → settings), the dev server proxies API paths
+so development shares an origin like production does, and `playwright.config.ts`
+states the address it starts rather than relying on a constant agreeing with it.
+
+**`StateController.update` changes state without repainting.** Every other
+action gets away with it because it is reached from a DOM event handler, and
+Mithril repaints after those by itself. An `oninit` that awaits is not, so the
+Topology panel sat on "asking the harness…" after its answer had arrived.
+`update` is used in dozens of places; **whether it should redraw is a real
+decision and not obviously "yes"** — a redraw per update in a loop is waste. But
+the current arrangement means correctness depends on the caller's context, which
+nothing states and nothing checks. Either `update` redraws and a batching escape
+hatch exists, or it keeps a name that says it does not.
 
 ## Open, with what it would cost
 

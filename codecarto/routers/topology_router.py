@@ -8,13 +8,21 @@ renders it with **gravis**, the same canvas -- so a topology can be laid out
 with any registered layout and restyled by choosing a palette, because it is on
 the path where those things happen.
 
-**THE ROUTES, AND WHY THERE ARE THREE.**
+**THE ROUTES, AND WHAT EACH ANSWERS.**
 
-- `/topology` -- the page a person opens. Interactive gravis canvas.
-- `/topology/gjgf` -- the graph, in this project's format, for any other client.
+- `/topology/gjgf` -- the graph as `GraphData`, which is what the application's
+  Topology panel plots. The primary route.
+- `/topology/available` -- what the harness offers and what can lay it out, so
+  a picker fills itself without drawing anything first.
 - `/topology/data` -- what *this window drew*: widths, styles, and how many
   edges nobody measured. That is what makes it comparable with another window's
   answer, rather than merely with the payload both were handed.
+- `/topology` (and `/topology/`) -- a standalone server-rendered page. **Kept
+  deliberately, and it is not the front end.** It needs no build and no
+  application, which makes it the thing to open when the question is "is the
+  harness answering at all". The panel in the application is the front end.
+
+Every one answers in `generate_return`'s envelope, like every other router here.
 
 **A HARNESS THAT IS NOT RUNNING IS THE ORDINARY CASE.** It is a separate process
 on a separate port and very often has not been started. The page says so, says
@@ -57,6 +65,25 @@ async def _fetch(kind: str, subject: str | None, level: int):
             else qmcp_client.shape(kind, level))
 
 
+def _unreachable(reach) -> dict[str, Any]:
+    """A reachable route reporting an unreachable harness.
+
+    **STATUS 200, AND THE PROBLEM IN `results`.** This route worked -- it is the
+    thing behind it that did not, and an envelope status of 503 would say this
+    service is unavailable, which is false. It also matters mechanically:
+    `RequestHandler.handleResponse` treats any status but 200 as a hard error
+    and parses the message with `split('\n\tmessage:')[2]`, which raises on
+    every message not in that exact shape. So a non-200 envelope reached the
+    browser as a `TypeError` with no detail at all.
+    """
+    return generate_return(results={
+        "unreachable": True,
+        "problem": reach.problem,
+        "remedy": reach.remedy,
+        "where": reach.where,
+    })
+
+
 @TopologyRouter.get("/gjgf")
 async def topology_gjgf(
     kind: str = Query("delegation"),
@@ -79,10 +106,7 @@ async def topology_gjgf(
     """
     reach = await _fetch(kind, subject, level)
     if not reach.ok:
-        return generate_return(
-            status=503, message=reach.problem,
-            results={"problem": reach.problem, "remedy": reach.remedy,
-                     "where": reach.where})
+        return _unreachable(reach)
 
     options = _options(layout, palette_id)
     view = topology_service.render(reach.document["payload"],
@@ -102,10 +126,10 @@ async def topology_available() -> dict[str, Any]:
     """
     reach = qmcp_client.topologies()
     if not reach.ok:
-        return generate_return(
-            status=503, message=reach.problem,
-            results={"problem": reach.problem, "remedy": reach.remedy,
-                     "where": reach.where, "topologies": []})
+        found = _unreachable(reach)
+        found["results"]["topologies"] = []
+        found["results"]["layouts"] = _layouts()
+        return found
     return generate_return(results={
         "topologies": reach.document.get("topologies", []),
         "encoding": reach.document.get("encoding", []),
@@ -127,10 +151,7 @@ async def topology_data(
     """
     reach = await _fetch(kind, subject, level)
     if not reach.ok:
-        return generate_return(
-            status=503, message=reach.problem,
-            results={"problem": reach.problem, "remedy": reach.remedy,
-                     "where": reach.where})
+        return _unreachable(reach)
 
     view = topology_service.render(reach.document["payload"],
                                    reach.document.get("encoding"))

@@ -170,3 +170,21 @@
   padding: 0.05em 0.3em;
   border-radius: 2px;
 }
+
+/* A harness is usually started after somebody has already opened this panel
+   and found it down, so the way back must be visible rather than remembered. */
+.topology__retry {
+  margin-top: 0.5rem;
+  font-family: var(--f-root-font);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-font-inverse);
+  background: var(--c-accent);
+  border: 0;
+  border-radius: 2px;
+  padding: 0.25rem 0.7rem;
+  cursor: pointer;
+}
+
+.topology__retry:hover { background: var(--c-accent-light); }
