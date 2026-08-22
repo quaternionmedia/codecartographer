@@ -6,6 +6,7 @@ export class API {
   private _repoReader: string = 'repo';
   private _parse: string = 'parse';
   private _lexicon: string = 'lexicon';
+  private _topology: string = 'topology';
 
   constructor(base: string) {
     this._base = base;
@@ -33,6 +34,10 @@ export class API {
 
   get lexicon(): string {
     return `${this._base}/${this._lexicon}`;
+  }
+
+  get topology(): string {
+    return `${this._base}/${this._topology}`;
   }
 
   get db(): string {

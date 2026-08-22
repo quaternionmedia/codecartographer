@@ -86,6 +86,31 @@ def no_harness(monkeypatch) -> TestClient:
     return TestClient(app)
 
 
+
+def results(response) -> dict:
+    """The inner document of codecarto's standard envelope.
+
+    Every route here answers `{status, message, results}`. These tests read the
+    inner document directly until the topology routes were moved onto the house
+    style, and then failed with `KeyError` -- which looked like a broken route
+    and was a test reading the wrong shape. One helper, so the next envelope
+    change is one edit.
+    """
+    body = response.json()
+    assert "results" in body, f"not the standard envelope: {sorted(body)}"
+    return body["results"]
+
+
+def status_of(response) -> int:
+    """The envelope's own status, which is not the HTTP status.
+
+    A reachable route reporting an unreachable *harness* answers HTTP 200 with
+    an envelope status of 503 -- the front end is working, the thing behind it
+    is not, and collapsing those into one number would lose the distinction.
+    """
+    return int(response.json().get("status", 200))
+
+
 # --- the two that matter -------------------------------------------------------
 
 
@@ -120,8 +145,10 @@ def test_an_unreachable_harness_draws_no_graph_at_all(no_harness):
 
 
 def test_the_data_route_reports_the_problem_rather_than_erroring(no_harness):
-    body = no_harness.get("/topology/data").json()
-    assert body["ok"] is False
+    answer = no_harness.get("/topology/data")
+    assert answer.status_code == 200, "the front end itself is fine"
+    assert status_of(answer) == 503, "and it says the harness is not"
+    body = results(answer)
     assert "nothing is answering" in body["problem"]
     assert "harness" in body["remedy"]
 
@@ -141,7 +168,7 @@ def test_an_unmeasured_edge_is_dashed_and_never_thin(client):
 
     Mutation: drop the dash and this fails.
     """
-    body = client.get("/topology/data").json()
+    body = results(client.get("/topology/data"))
     unmeasured = [e for e in body["edges"] if not e["measured"]]
     assert len(unmeasured) == 1
     assert unmeasured[0]["style"] == "dashed"
@@ -156,13 +183,13 @@ def test_the_data_route_serves_what_was_drawn_not_what_was_fetched(client):
     """Widths and styles, which are this window's own resolution of the
     channels. Serving the payload back would make two windows agree by both
     reading one field, which establishes nothing."""
-    body = client.get("/topology/data").json()
+    body = results(client.get("/topology/data"))
     for edge in body["edges"]:
         assert "width" in edge and "style" in edge
 
 
 def test_the_caveat_says_how_much_of_the_picture_is_measured(client):
-    body = client.get("/topology/data").json()
+    body = results(client.get("/topology/data"))
     assert body["measured"] == 1 and body["unmeasured"] == 1
     assert "1 of 2" in body["caveat"]
     assert body["caveat"] in client.get("/topology").text
@@ -179,8 +206,7 @@ def test_parallel_readings_survive_into_the_projects_graph_format(client):
 
     Mutation: build the graph as a `DiGraph` and this fails.
     """
-    body = client.get("/topology/gjgf").json()
-    assert body["ok"], body
+    body = results(client.get("/topology/gjgf"))
     parallel = [e for e in body["graph"]["edges"]
                 if e["source"] == "subject" and e["target"] == "r0"]
     assert len(parallel) == 2, "parallel readings were collapsed"
@@ -236,3 +262,62 @@ def test_the_client_never_raises(monkeypatch):
     yet" into a 500."""
     reach = qmcp_client.fetch("/nope", base="http://127.0.0.1:9")
     assert isinstance(reach, qmcp_client.Reach) and reach.ok is False
+
+
+# --- the application, and where its API is -------------------------------------
+
+
+def test_the_root_serves_the_application_when_there_is_one(client):
+    """**A REDIRECT TO `/docs` IS NOT A FRONT END.**
+
+    Opening this port used to give an API schema, which is correct and is not
+    what anybody who was told "the web front end is up" meant.
+
+    Mutation: redirect unconditionally and this fails.
+    """
+    from codecarto.routers.app_router import build_present
+
+    answer = client.get("/", follow_redirects=False)
+    expected = "/app" if build_present() else "/docs"
+    assert answer.headers["location"] == expected
+
+
+def test_the_application_is_told_where_its_api_is(client):
+    """**THE BUNDLE MUST NOT CARRY A PORT.** `appsettings.json` said 8000; the
+    container publishes 2020 and the trio runs 2718, so a build could only
+    ever talk to one machine's guess. The server injects the origin it served
+    from, and `ConfigManager` prefers it over everything else.
+
+    Mutation: stop injecting the meta tag and this fails.
+    """
+    from codecarto.routers.app_router import build_present
+
+    if not build_present():
+        import pytest
+
+        pytest.skip("no web build on disk; `cd web && npm run build`")
+
+    page = client.get("/app").text
+    assert 'name="codecarto-api"' in page
+    # Before the module script, or the bundle never sees it.
+    assert page.index('name="codecarto-api"') < page.index("<script")
+
+
+def test_a_missing_build_is_a_sentence_rather_than_a_404(monkeypatch, client):
+    """Somebody who has not run `npm run build` should be told which command
+    to run, and that a dev server is the other option."""
+    from codecarto.routers import app_router
+
+    monkeypatch.setattr(app_router, "build_present", lambda: False)
+    page = client.get("/app").text
+    assert "not built" in page
+    assert app_router.BUILD_COMMAND in page
+    assert "npm run dev" in page
+
+
+def test_available_lists_what_the_harness_offers_and_what_can_lay_it_out(client):
+    """A picker fills itself from this. It must not need a drawing first."""
+    body = results(client.get("/topology/available"))
+    assert body["topologies"]
+    assert body["layouts"], "no layout can be chosen"
+    assert "Kamada Kawai" in body["layouts"] or "Spring" in body["layouts"]

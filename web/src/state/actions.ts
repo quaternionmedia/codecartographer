@@ -1,6 +1,8 @@
 import m from 'mithril';
 import { StateController } from '../state/state_controller';
 import { PlotService } from '../services/plot_service';
+import { TopologyService } from '../services/topology_service';
+import type { TopologyChoices, TopologyProblem, TopologyRequest } from '../services/topology_service';
 import { RepoService } from '../features/repository';
 import { GraphData } from '../features/graph';
 import { GraphStylingOptions } from './types';
@@ -459,6 +461,61 @@ export class PlotActions {
       console.error('Failed to load demo:', error);
       throw error;
     }
+  }
+
+  /**
+   * Plot a topology from the harness.
+   *
+   * **GOES THROUGH `handlePlotData` LIKE EVERY OTHER PLOT.** A topology is
+   * graph data; the only thing that makes it unusual is that some of its edges
+   * were never measured, and that travels in the graph metadata. Giving it its
+   * own render path would have meant a second renderer, second styling and a
+   * second set of extensions to keep in step.
+   */
+  async loadTopology(request: TopologyRequest = {}): Promise<void> {
+    this.stateController.clear();
+    try {
+      const layout = convertLayoutToBackend(
+        this.stateController.state.graphStyling.layout,
+      );
+      const found = await TopologyService.load(
+        this.stateController.api.topology,
+        { ...request, layout: request.layout ?? layout },
+      );
+
+      if (TopologyService.isProblem(found)) {
+        // **NOT AN EMPTY GRAPH.** The harness being down is the ordinary case,
+        // and an empty canvas would state that this topology has nothing in it
+        // -- a different claim, and a false one.
+        this.stateController.update({ topologyProblem: found as TopologyProblem });
+        logger.warn('PlotActions.loadTopology - ' + (found as TopologyProblem).problem);
+        return;
+      }
+
+      this.stateController.update({ topologyProblem: null });
+      this.handlePlotData(found);
+    } catch (error) {
+      logger.error('Failed to load topology:', error);
+      throw error;
+    }
+  }
+
+  /** Fill the topology picker from whatever the harness actually offers. */
+  async loadTopologyChoices(): Promise<void> {
+    const found = await TopologyService.available(
+      this.stateController.api.topology,
+    );
+    if (TopologyService.isProblem(found)) {
+      this.stateController.update({
+        topologyProblem: found as TopologyProblem,
+        topologyChoices: null,
+      });
+      return;
+    }
+    this.stateController.update({
+      topologyChoices: found as TopologyChoices,
+      topologyProblem: null,
+    });
   }
 
   /**

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from codecarto.routers.c_parser_router import CParserRouter
 from codecarto.routers.topology_router import TopologyRouter
+from codecarto.routers.app_router import AppRouter, DIST, build_present
 from codecarto.routers.palette_router import PaletteRouter
 from codecarto.routers.plotter_router import PlotterRouter
 from codecarto.routers.repo_router import RepoReaderRouter
@@ -54,6 +55,20 @@ app.include_router(LexiconRouter, prefix="/lexicon", tags=["lexicon"])
 # the web; the terminal one is `dossier`, and both read the same document.
 app.include_router(TopologyRouter, prefix="/topology", tags=["topology"])
 
+# The built web application, on the same origin as the API it talks to. Mounted
+# after the routers so a route always wins over a static file of the same name.
+app.include_router(AppRouter)
+if build_present():
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/assets", StaticFiles(directory=str(DIST / "assets")),
+              name="assets")
+    logging.getLogger(__name__).info(
+        "Web application served at /app (built assets in %s)", DIST)
+else:
+    logging.getLogger(__name__).info(
+        "No web build found in %s; /app explains how to make one", DIST)
+
 # Optional: Graphbase MongoDB router — activated when MONGODB_URI env var is set.
 # Surfaced explicitly at startup so a missing variable in the wrong shell
 # (e.g. a git-bash session that doesn't inherit Windows user-scope env vars)
@@ -77,7 +92,13 @@ else:
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return RedirectResponse(url="/docs")
+    """The application when there is one, the API docs when there is not.
+
+    Redirecting to `/docs` unconditionally is what made "the web front end is
+    up" mean "here is a schema". A person opening this port wants the thing
+    they were told was running.
+    """
+    return RedirectResponse(url="/app" if build_present() else "/docs")
 
 
 @app.get("/auth/github", tags=["auth"])

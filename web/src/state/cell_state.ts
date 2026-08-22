@@ -5,6 +5,7 @@ import { DirectoryNavController } from '../components/codecarto/directory/direct
 import { ConfigManager, DebugManager } from './config_manager';
 import { GraphStylingOptions, ParserOptions, GraphRendererType } from './types';
 import { GraphData } from '../features/graph';
+import type { TopologyChoices, TopologyProblem } from '../services/topology_service';
 import { Directory } from '../components/models/source';
 
 export interface ICell extends MeiosisCell<ICellState> {}
@@ -22,6 +23,22 @@ export interface ICellState {
    */
   parseDirectory: Directory | null;
   graphStyling: GraphStylingOptions;
+  /**
+   * What the harness offers, or null before anybody asked. **Null and empty
+   * are different**: null is "not looked yet", an empty list is "the harness
+   * answered and has none".
+   */
+  topologyChoices: TopologyChoices | null;
+  /**
+   * Why the topology could not be drawn, or null when it could. Held rather
+   * than thrown, because a harness that is not running is the ordinary case
+   * and the panel has a sentence to show for it.
+   */
+  topologyProblem: TopologyProblem | null;
+  /** The topology currently drawn, so the panel can mark it. */
+  topologyKind: string;
+  /** The project the archive was read for, when a subject was asked about. */
+  topologySubject: string;
   parserOptions: ParserOptions;
   selectedRenderer: GraphRendererType;
   availableLanguages: Record<string, string[]> | null;
@@ -40,6 +57,10 @@ export class CellState implements ICellState {
   public graphContent: m.Vnode[] = [];
   public graphData: GraphData | null = null;
   public parseDirectory: Directory | null = null;
+  public topologyChoices: TopologyChoices | null = null;
+  public topologyProblem: TopologyProblem | null = null;
+  public topologyKind: string = 'delegation';
+  public topologySubject: string = '';
   public graphStyling: GraphStylingOptions = {
     layout: 'spring_layout',
     enablePhysics: true,

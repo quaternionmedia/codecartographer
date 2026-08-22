@@ -31,6 +31,7 @@ from fastapi.responses import HTMLResponse
 
 from codecarto.models.plot_data import PlotOptions
 from codecarto.services import qmcp_client, topology_service
+from codecarto.util.utilities import generate_return
 
 TopologyRouter = APIRouter()
 
@@ -64,24 +65,52 @@ async def topology_gjgf(
     layout: str = Query("Kamada Kawai"),
     palette_id: str = Query("0"),
 ) -> dict[str, Any]:
-    """The topology in this project's graph format, laid out and styled.
+    """The topology as `GraphData`, in this project's response envelope.
 
-    The same shape `/plotter` produces, so anything that can already render a
-    codecarto graph can render a topology without knowing what one is.
+    **THE SHAPE IS THE FRONT END'S `GraphData`, EXACTLY.** `{graph, metadata}`
+    with `layout`, `type`, `nodeCount`, `edgeCount` and `palette_id` -- so the
+    web application plots a topology through `handlePlotData` like any other
+    graph, and inherits its renderer, its styling, its zoom and drag and
+    tooltip extensions and its radial menu. A bespoke shape here would have
+    meant a bespoke renderer there, which is what this whole pass is undoing.
+
+    `generate_return` is the envelope every other router here uses. A route
+    that invented its own would make the client special-case one endpoint.
     """
     reach = await _fetch(kind, subject, level)
     if not reach.ok:
-        return {"ok": False, "problem": reach.problem, "remedy": reach.remedy,
-                "where": reach.where}
+        return generate_return(
+            status=503, message=reach.problem,
+            results={"problem": reach.problem, "remedy": reach.remedy,
+                     "where": reach.where})
 
     options = _options(layout, palette_id)
     view = topology_service.render(reach.document["payload"],
                                    reach.document.get("encoding"))
-    return {
-        "ok": True,
+    return generate_return(results={
         "graph": topology_service.as_gjgf(view, options),
         "metadata": topology_service.metadata(view, reach.document, options),
-    }
+    })
+
+
+@TopologyRouter.get("/available")
+async def topology_available() -> dict[str, Any]:
+    """Every topology the harness offers, for a picker to fill itself from.
+
+    Separate from the views so a control panel can populate without drawing
+    anything -- the front end asks this once and the answer is small.
+    """
+    reach = qmcp_client.topologies()
+    if not reach.ok:
+        return generate_return(
+            status=503, message=reach.problem,
+            results={"problem": reach.problem, "remedy": reach.remedy,
+                     "where": reach.where, "topologies": []})
+    return generate_return(results={
+        "topologies": reach.document.get("topologies", []),
+        "encoding": reach.document.get("encoding", []),
+        "layouts": _layouts(),
+    })
 
 
 @TopologyRouter.get("/data")
@@ -90,16 +119,22 @@ async def topology_data(
     subject: str | None = Query(None),
     level: int = Query(2, ge=0, le=2),
 ) -> dict[str, Any]:
-    """The resolved rendering: what this window drew, edge by edge."""
+    """The resolved rendering: what this window drew, edge by edge.
+
+    Not the graph and not the payload -- the widths and styles this side
+    resolved. That is what makes it comparable with another window's answer
+    rather than with the document both were handed.
+    """
     reach = await _fetch(kind, subject, level)
     if not reach.ok:
-        return {"ok": False, "problem": reach.problem, "remedy": reach.remedy,
-                "where": reach.where}
+        return generate_return(
+            status=503, message=reach.problem,
+            results={"problem": reach.problem, "remedy": reach.remedy,
+                     "where": reach.where})
 
     view = topology_service.render(reach.document["payload"],
                                    reach.document.get("encoding"))
-    return {
-        "ok": True,
+    return generate_return(results={
         "source": reach.document.get("source", ""),
         "topology": view.topology,
         "caveat": view.caveat(),
@@ -110,7 +145,7 @@ async def topology_data(
                    "width": e.width, "style": e.style, "colour": e.colour,
                    "measured": e.measured, "weight": e.weight,
                    "title": e.title} for e in view.edges],
-    }
+    })
 
 
 @TopologyRouter.get("", response_class=HTMLResponse)
