@@ -161,6 +161,8 @@ async def topology_data(
         "caveat": view.caveat(),
         "measured": view.measured,
         "unmeasured": view.unmeasured,
+        # Nodes carry `address` and `content`: what the harness called it, and
+        # where the thing it names can actually be read.
         "nodes": view.nodes,
         "edges": [{"source": e.source, "target": e.target, "label": e.label,
                    "width": e.width, "style": e.style, "colour": e.colour,

@@ -70,6 +70,44 @@ COLOURS = {
 DEFAULT_COLOUR = "#9aa0a6"
 
 
+# --- where the thing a node represents actually lives --------------------------
+#
+# **`content` IS A GENERAL NODE ATTRIBUTE, NOT A TOPOLOGY ONE.** It means "where
+# the thing this node stands for can be read". For a topology box it is the
+# repository the address names; for a parsed-code node it would be the file. A
+# renderer that knows how to open `content` can therefore navigate any graph
+# this project draws, which is the point of putting it on the node rather than
+# in the topology page.
+#
+# **DERIVED FROM THE ADDRESS, AND NONE WHEN THERE IS NOT ONE.** An address is
+# `<owner>/<repo>/<kind>/<id>`; the first two segments name the repository. A
+# box with no address -- a gate, a stage, anything that is not a place --
+# carries no content, and inventing a URL for it would send a reader somewhere
+# nobody named.
+
+FORGE = "https://github.com"
+"""Where an `<owner>/<repo>` is read. **A default, not a fact**: an address says
+which account owns a repository and not which forge hosts it. Override with
+`CODECARTO_FORGE` for an installation whose repositories live elsewhere."""
+
+
+def content_for(address: str) -> str | None:
+    """The URL where the thing at `address` can be read, or None.
+
+    None rather than a guess: a topology box that is a stage in a pipeline is
+    not a place, and a link to nowhere is worse than no link because it looks
+    like it goes somewhere.
+    """
+    import os
+
+    parts = [p for p in str(address or "").split("/") if p]
+    if len(parts) < 2:
+        return None
+    owner, repo = parts[0], parts[1]
+    forge = (os.environ.get("CODECARTO_FORGE") or FORGE).rstrip("/")
+    return f"{forge}/{owner}/{repo}"
+
+
 @dataclass
 class RenderedEdge:
     """One arrow, with every channel resolved and each traceable to an axis."""
@@ -157,9 +195,14 @@ def render(payload: dict[str, Any],
         kind = str(box.get("kind") or "")
         node_type = KIND_TO_TYPE.get(kind, DEFAULT_TYPE)
         style = palette_service.style_for_type(node_type, palette)
+        address = str(box.get("note") or "")
         view.nodes.append({
             "id": str(box.get("id") or ""),
             "label": str(box.get("label") or ""),
+            # The address the harness sent, and where it can be read. Both are
+            # carried so a renderer can show one and open the other.
+            "address": address,
+            "content": content_for(address),
             # The palette's vocabulary, carried on the node so anything else in
             # this project can restyle it without knowing what a topology is.
             "type": node_type,
@@ -214,8 +257,17 @@ def as_graph(view: RenderedTopology):
     graph = nx.MultiDiGraph(topology=view.topology, caption=view.caption,
                             status=view.status, unmeasured=view.unmeasured)
     for node in view.nodes:
+        # `content` travels on the node, so any renderer that knows how to open
+        # it can navigate any graph -- not only a topology.
         graph.add_node(node["id"], **{k: v for k, v in node.items()
-                                      if k != "id"}, hover=node["note"] or node["label"])
+                                      if k != "id"},
+                       hover=_hover_for(node),
+                       # **THE NAVIGATION.** gravis renders `click` as a detail
+                       # panel and keeps the markup, so a node whose content is
+                       # known becomes a way into the code it represents. A node
+                       # that is not a place gets a sentence saying so rather
+                       # than a dead link.
+                       click=_click_for(node))
     for edge in view.edges:
         graph.add_edge(
             edge.source, edge.target,
@@ -237,6 +289,46 @@ def as_graph(view: RenderedTopology):
             title=edge.title,
         )
     return graph
+
+
+def _click_for(node: dict[str, Any]) -> str:
+    """The detail panel for one node: what it is, and a way to the code.
+
+    **A NODE THAT IS NOT A PLACE SAYS SO.** A gate or a stage has no repository,
+    and a link to nowhere is worse than no link because it looks like it goes
+    somewhere. That distinction is the same one the whole encoding turns on --
+    an absence stated, rather than filled in.
+    """
+    import html as _html
+
+    label = _html.escape(str(node.get("label") or node.get("id") or ""))
+    address = _html.escape(str(node.get("address") or ""))
+    content = node.get("content")
+
+    lines = [f"<b>{label}</b>"]
+    if address:
+        lines.append(f"<div><code>{address}</code></div>")
+    if content:
+        safe = _html.escape(str(content), quote=True)
+        lines.append(
+            f'<div><a href="{safe}" target="_blank" rel="noreferrer">'
+            f"open the code this represents</a></div>")
+    else:
+        lines.append("<div><i>not a place &mdash; nothing to open</i></div>")
+    return "".join(lines)
+
+
+def _hover_for(node: dict[str, Any]) -> str:
+    """What a reader sees on the node, including where it goes.
+
+    The address alone does not say it is followable, and a link with no address
+    does not say what it points at. Both, or neither.
+    """
+    address = str(node.get("note") or "")
+    label = str(node.get("label") or "")
+    if node.get("content"):
+        return f"{address or label}  --  open the repository"
+    return address or label
 
 
 def as_gjgf(view: RenderedTopology, options: PlotOptions | None = None

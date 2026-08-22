@@ -321,3 +321,88 @@ def test_the_metadata_carries_the_caveat_to_any_other_client():
     found = metadata(view, {"source": "thread archive", "surveyed": 128})
     assert found["caveat"] == view.caveat()
     assert found["unmeasured"] == 1 and found["source"] == "thread archive"
+
+
+# --- navigating to the code a node represents ---------------------------------
+
+
+def test_a_node_carries_where_its_content_can_be_read():
+    """**`content` IS A GENERAL NODE ATTRIBUTE, NOT A TOPOLOGY ONE.** It means
+    "where the thing this node stands for can be read" — a repository for a
+    topology box, a file for a parsed-code node. Putting it on the node is what
+    lets one renderer navigate every graph this project draws.
+
+    Mutation: stop deriving `content` and this fails.
+    """
+    view = render(_payload())
+    worker = next(n for n in view.nodes if n["id"] == "r0")
+    assert worker["address"] == "qm/dossier"
+    assert worker["content"] == "https://github.com/qm/dossier"
+
+
+def test_a_node_that_is_not_a_place_has_no_link():
+    """THE ONE THAT MATTERS.
+
+    A gate or a stage is not a repository. A link to nowhere is worse than no
+    link, because it looks like it goes somewhere — the same rule the unmeasured
+    edge follows, and for the same reason.
+
+    Mutation: fall back to a forge URL for every node and this fails.
+    """
+    from codecarto.services.topology_service import content_for
+
+    view = render(_payload())
+    subject = next(n for n in view.nodes if n["id"] == "subject")
+    assert subject["content"] is None
+
+    assert content_for("") is None
+    assert content_for("just-a-name") is None
+    assert content_for("owner/repo") == "https://github.com/owner/repo"
+
+
+def test_the_forge_is_a_default_and_not_a_fact(monkeypatch):
+    """An address says which account owns a repository, not which forge hosts
+    it. An installation whose repositories live elsewhere sets this.
+
+    Mutation: hard-code the host and this fails.
+    """
+    from codecarto.services.topology_service import content_for
+
+    monkeypatch.setenv("CODECARTO_FORGE", "https://git.example.com/")
+    assert content_for("owner/repo") == "https://git.example.com/owner/repo"
+
+
+def test_the_click_panel_offers_the_code_or_says_there_is_none():
+    """gravis renders `click` as a detail panel and keeps the markup, so this is
+    the way in from a drawn node.
+
+    Mutation: drop the anchor and this fails.
+    """
+    pytest.importorskip("gravis")
+    from codecarto.services.topology_service import as_graph
+
+    graph = as_graph(render(_payload()))
+    worker = graph.nodes["r0"]["click"]
+    subject = graph.nodes["subject"]["click"]
+
+    assert 'href="https://github.com/qm/dossier"' in worker
+    assert "open the code this represents" in worker
+    assert "not a place" in subject
+    assert "href" not in subject, "a node that is not a place got a link"
+
+
+def test_a_label_cannot_inject_markup_into_the_panel():
+    """The panel is HTML and a label is a name somebody chose. A repository
+    called `<script>` must not become one.
+
+    Mutation: stop escaping and this fails.
+    """
+    pytest.importorskip("gravis")
+    from codecarto.services.topology_service import as_graph
+
+    graph = as_graph(render(_payload(boxes=[
+        {"id": "x", "label": "<script>alert(1)</script>", "kind": "worker",
+         "note": "a/b", "count": None}])))
+    panel = graph.nodes["x"]["click"]
+    assert "<script>" not in panel
+    assert "&lt;script&gt;" in panel
