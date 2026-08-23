@@ -59,9 +59,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          # **ONLY THE GOVERNANCE SUBMODULE, INITIALISED BELOW.**
+          # `submodules: true` is all-or-nothing, and this project also has a
+          # private one. The runner has no credentials for it, so the checkout
+          # aborted with `remote: Repository not found` before the lint could
+          # run at all -- a workflow that had never executed a line of its own
+          # logic while reading as a configured gate.
+          submodules: false
           # Full history: the append-only check diffs against the base.
           fetch-depth: 0
+
+      - name: Check out the governance submodule only
+        run: git submodule update --init --depth 1 "$QM_SUBMODULE"
 
       - uses: actions/setup-python@v5
         with:

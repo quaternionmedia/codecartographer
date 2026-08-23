@@ -110,10 +110,27 @@ jobs:
                 echo "  ok - reachable over $reached (the configured URL is not fetchable here)"
               fi
             else
-              echo "::error::Submodule '$path' is pinned to $sha, which could not be fetched from its remote ($url)."
-              echo "::error::Most likely: committed inside the submodule without pushing. Run: (cd $path && git push origin HEAD), then re-push this repo."
-              echo "::error::This check cannot tell that apart from a private submodule remote that an unauthenticated runner cannot read. To tell them apart locally, run: git init -q /tmp/probe && git -C /tmp/probe fetch --depth=1 $url $sha -- success means the pin is fine and this job needs credentials. Do NOT use 'git ls-remote $url $sha': ls-remote matches ref NAMES, so it prints nothing and exits 0 for a commit that is perfectly fine, which reads as confirmation of the failure."
-              status=1
+              # **UNPUSHED AND UNREADABLE ARE DIFFERENT FACTS.** This branch
+              # reported both as one failure, in an error that admitted it could
+              # not tell them apart -- and this project has a private submodule,
+              # so it was permanently red for a reason nothing was wrong with.
+              #
+              # `git ls-remote <url>` with NO ref asks "can this remote be read
+              # at all", which is decidable. Where it can, a missing commit is
+              # now unambiguous rather than a maybe.
+              #
+              # This is the copied seed file. The corpus has since moved the
+              # logic into project-seed/ci/check_submodule_pins.py, which this
+              # workflow will call once the governance pin advances past it.
+              if git ls-remote --quiet "$url" >/dev/null 2>&1; then
+                echo "::error::Submodule '$path' is pinned to $sha, and its remote ($url) IS readable from here and does not have that commit."
+                echo "::error::The commit exists only where it was made. Run: (cd $path && git push origin HEAD), then re-push this repo."
+                status=1
+              else
+                echo "::warning::Submodule '$path' is pinned to $sha and its remote ($url) could not be read at all from here."
+                echo "::warning::Unknown, not a failure: a private submodule is unreadable to an unauthenticated runner, and so is a deleted one. This job cannot separate those and does not guess."
+                echo "::warning::To settle it where credentials exist: uv run qm pins, or git init -q /tmp/probe && git -C /tmp/probe fetch --depth=1 $url $sha"
+              fi
             fi
             rm -rf "$scratch"
           done < <(git submodule status)

@@ -38,10 +38,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # graphbase is imported by the cache tests. governance/qm is not
-          # needed here -- the ADR lint checks it out separately -- but
-          # submodules are all-or-nothing on checkout, and the corpus is small.
-          submodules: recursive
+          # **NO SUBMODULES.** The comment here used to say graphbase was
+          # imported by the cache tests. It is not: nothing under tests/
+          # mentions it, and both imports in the package are guarded behind
+          # MONGODB_URI *and* a try/except. What it did do was fail the whole
+          # checkout -- graphbase is private, the runner has no credentials, and
+          # `remote: Repository not found` aborts before a single test runs.
+          # The suite passes without it in 22s.
+          submodules: false
 
       - uses: astral-sh/setup-uv@v5
         with:
