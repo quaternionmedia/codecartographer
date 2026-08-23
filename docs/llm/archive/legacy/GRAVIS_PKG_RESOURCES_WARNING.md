@@ -7,7 +7,7 @@
 ## Warning Message
 
 ```
-C:\Users\peter\repos\codecartographer\.venv\Lib\site-packages\gravis\_internal\plotting\template_system.py:5:
+C:\Users\you\repos\codecartographer\.venv\Lib\site-packages\gravis\_internal\plotting\template_system.py:5:
 UserWarning: pkg_resources is deprecated as an API.
 See https://setuptools.pypa.io/en/latest/pkg_resources.html.
 The pkg_resources package is slated for removal as early as 2025-11-30.
