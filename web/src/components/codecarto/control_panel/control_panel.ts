@@ -3,58 +3,19 @@ import { animations } from '../../../core/animations';
 import { Directory, RawFile } from '../../models/source';
 import { DirectoryContent } from '../../qm_comp_lib/directory/directory';
 import { SystemDefinitionRegistry } from '../../../features/graph/services/system_renderer';
+import { GraphStylingOptions, ParserOptions, GraphRendererType } from '../../../state/types';
 import './control_panel.css';
+
+export type { GraphStylingOptions, ParserOptions, GraphRendererType };
 
 export type TabId = 'source' | 'graph';
 export type CodeSourceMode = 'upload' | 'repo';
-export type GraphRendererType = 'd3' | 'gravis' | 'notebook' | 'system';
 
 export interface Tab {
   id: TabId;
   label: string;
   icon?: string;
   helpText?: string;
-}
-
-export interface GraphStylingOptions {
-  // Layout Algorithm
-  layout: string;
-
-  // Physics Simulation
-  enablePhysics: boolean;
-  chargeStrength: number;      // in pixels (repulsion force)
-  linkDistance: number;         // in pixels (target edge length)
-
-  // Node Appearance
-  nodeSize: number;            // in pixels (radius)
-  nodeOpacity: number;         // 0.0 to 1.0
-  nodeBorderWidth: number;     // in pixels
-
-  // Edge Appearance
-  edgeWidth: number;           // in pixels
-  edgeOpacity: number;         // 0.0 to 1.0
-
-  // Label Appearance
-  showNodeLabels: boolean;
-  showEdgeLabels: boolean;
-  labelSize: number;           // in pixels (font size)
-  labelColor: string;          // hex color
-
-  // Interactions
-  interactionProfile: string;  // Profile ID (default, cad, gaming, touch)
-
-  // System renderer — selects which SystemDefinition to render
-  systemId?: string;
-
-  // Compound layout group outlines
-  showCompoundGroups?: boolean;
-
-  // Per-depth label visibility (overrides showNodeLabels per depth 0–3)
-  showLabelsByDepth?: Partial<Record<number, boolean>>;
-}
-
-export interface ParserOptions {
-  fileExtensions: string[];    // File extensions to parse (e.g., ['.py', '.js'])
 }
 
 export interface LoadingProgress {
@@ -79,6 +40,7 @@ export interface ControlPanelState {
 
 export interface ControlPanelCallbacks {
   onDemo: () => void;
+  onLoadLexicon?: (language: string) => void;
   onRepoSubmit: (url: string) => void;
   onRepoFileClick: (url: string) => void;
   onPlotWholeRepo: () => void;
@@ -116,6 +78,7 @@ export interface ControlPanelContent {
   parserOptions: ParserOptions;
   selectedRenderer: GraphRendererType;
   availableLanguages: Record<string, string[]> | null;
+  availableLexiconLanguages: string[];
   cachedGraphs: CachedEntry[] | null;
 }
 
@@ -483,6 +446,27 @@ export function ControlPanel(
         ),
       ]),
 
+      // Lexicon annotation — stamps abstraction-layer data onto real
+      // parsed nodes where the language has a Lexicon (see
+      // docs/llm/roadmap/lexicon.md); pair with the "Color By: Abstraction
+      // Layer" styling option to actually see it.
+      m('div.panel-settings__group', [
+        m('div.panel-settings__toggle-row', [
+          m('span.panel-settings__label-compact', 'Annotate Lexicon'),
+          m('label.panel-settings__toggle-compact.panel-settings__toggle', [
+            m('input[type=checkbox]', {
+              checked: parser.annotateLexicon,
+              title: 'Stamp abstraction-layer data onto real parsed nodes (currently c, python) — pair with Color By: Abstraction Layer to see it',
+              onchange: (e: Event) => {
+                const checked = (e.target as HTMLInputElement).checked;
+                callbacks.onParserOptionsChange({ annotateLexicon: checked });
+              },
+            }),
+            m('span.panel-settings__toggle-slider'),
+          ]),
+        ]),
+      ]),
+
       m('div.panel-source__divider'),
 
       m('div.panel-source__spacer'),
@@ -499,6 +483,26 @@ export function ControlPanel(
           },
           style: 'width: 100%;',
         }, [m('span', '⚡'), m('span', 'Load Demo')]),
+
+        // Lexicon: one button per language with an abstraction-layer
+        // ontology (see docs/llm/roadmap/lexicon.md). Switchable/
+        // extendable — grows automatically as more languages get a
+        // lexicon YAML, no UI change needed.
+        content.availableLexiconLanguages.length > 0 && callbacks.onLoadLexicon
+          ? m('div.panel-source__lexicon-picker', { style: 'display: flex; gap: 4px; margin-top: 4px;' },
+              content.availableLexiconLanguages.map((lang) =>
+                m('button.panel-settings__button-option', {
+                  key: lang,
+                  onclick: (e: MouseEvent) => {
+                    animations.buttonPress(e.currentTarget as Element);
+                    callbacks.onLoadLexicon!(lang);
+                  },
+                  style: 'flex: 1;',
+                  title: `Load the ${lang} Lexicon (abstraction-layer ontology)`,
+                }, [m('span', '📖'), m('span', `${lang} Lexicon`)])
+              )
+            )
+          : null,
       ]),
     ]);
   };
@@ -760,6 +764,19 @@ export function ControlPanel(
                       oninput: (e: Event) => callbacks.onGraphStylingChange({ nodeSize: parseFloat((e.target as HTMLInputElement).value) }),
                     }),
                     m('span.panel-settings__slider-value', `${styling.nodeSize}px`),
+                  ]),
+                ]),
+                m('div.panel-settings__group', [
+                  m('span.panel-settings__label-compact', 'Color By'),
+                  m('select.panel-settings__select', {
+                    value: styling.colorBy ?? 'auto',
+                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/llm/roadmap/lexicon.md); nodes without a layer fall back to the default.',
+                    onchange: (e: Event) => {
+                      callbacks.onGraphStylingChange({ colorBy: (e.target as HTMLSelectElement).value });
+                    },
+                  }, [
+                    m('option', { value: 'auto' }, 'Auto (depth/kind)'),
+                    m('option', { value: 'layer' }, 'Abstraction Layer'),
                   ]),
                 ]),
                 m('div.panel-settings__group', [

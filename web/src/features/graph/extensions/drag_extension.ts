@@ -41,7 +41,7 @@ export interface DragOptions {
 }
 
 export class DragExtension extends BaseExtension {
-  private dragBehavior: d3.DragBehavior<SVGGraphicsElement, any, any> | null = null;
+  private dragBehavior: d3.DragBehavior<SVGGElement, any, any> | null = null;
   private options: Required<DragOptions>;
   private draggedNodes: Set<any> = new Set();
   private initialPositions: Map<any, { x: number; y: number }> = new Map();
@@ -73,7 +73,7 @@ export class DragExtension extends BaseExtension {
 
     // Create drag behavior
     this.dragBehavior = d3
-      .drag<SVGGraphicsElement, any>()
+      .drag<SVGGElement, any>()
       .on('start', (event, d) => this.handleDragStart(event, d, context))
       .on('drag', (event, d) => this.handleDrag(event, d, context))
       .on('end', (event, d) => this.handleDragEnd(event, d, context));

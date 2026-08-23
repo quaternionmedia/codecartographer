@@ -33,11 +33,10 @@ export const UrlInput: m.Component<UrlInputAttrs> = {
         },
       }),
       m(Button, {
-        label: isLoading ? 'Fetching...' : 'Fetch',
         disabled: !url || isLoading,
         loading: isLoading,
-        onClick: onFetch,
-      }),
+        onclick: onFetch,
+      }, isLoading ? 'Fetching...' : 'Fetch'),
     ]);
   },
 };

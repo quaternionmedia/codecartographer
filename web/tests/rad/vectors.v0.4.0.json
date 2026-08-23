@@ -1,0 +1,1240 @@
+{
+  "version": "0.4.0",
+  "geometry": {
+    "startDeg": -90,
+    "clockwise": true,
+    "r0": 36,
+    "r1": 108,
+    "longPressMs": 350,
+    "slop": 10,
+    "cancelScale": 1.35,
+    "maxItems": 8,
+    "bandMin": 56,
+    "margin": 8,
+    "topInset": 64,
+    "bottomInset": 40
+  },
+  "time": {
+    "ppqn": 24,
+    "chordGapMs": 30,
+    "burstSplitMs": 250
+  },
+  "notes": "Traces are polar, relative to menu center. r in density-independent units. thetaDeg uses screen convention where -90 is up. 'expectHighlights' is the edge-triggered sequence of item indices (null = none); 'expectLabels' is the label each highlight effect carried, which must be resolvable without consulting live state. v0.3.0 adds: the outward cancel bound r_cancel = cancelScale * r1, identical in both commit styles; hub-latch highlight suppression; the ring ceiling; prefix-freeness of a chord vocabulary; and the three tempo axes (bpm, div, aps) with their MIDI CC mappings. v0.2.0 added pure suites: quant (quantizeTime), tempo (estimateBpm over 24ppqn ticks, median period), chord (classifyBurst), split (splitBursts). v0.4.0 adds the ring-fit suite: fitRing shrinks r1 toward the band minimum before overflowing a viewport that cannot contain it, and clampRingCentre centres rather than clamping when the viewport is smaller than the ring, because a naive clamp inverts its own bounds and pushes the ring off the opposite edge. Cases may carry a `geom` override; the state machine reads geometry from its own state rather than a module global.",
+  "cases": [
+    {
+      "name": "angle-to-index basics, N=4",
+      "n": 4,
+      "pure": [
+        {
+          "thetaDeg": -90,
+          "expectIndex": 0
+        },
+        {
+          "thetaDeg": 0,
+          "expectIndex": 1
+        },
+        {
+          "thetaDeg": 90,
+          "expectIndex": 2
+        },
+        {
+          "thetaDeg": 180,
+          "expectIndex": 3
+        },
+        {
+          "thetaDeg": -46,
+          "expectIndex": 0
+        },
+        {
+          "thetaDeg": -134,
+          "expectIndex": 0
+        },
+        {
+          "thetaDeg": -44,
+          "expectIndex": 1
+        },
+        {
+          "thetaDeg": 269.9,
+          "expectIndex": 0
+        }
+      ]
+    },
+    {
+      "name": "angle-to-index wedge boundaries, N=6",
+      "n": 6,
+      "pure": [
+        {
+          "thetaDeg": -90,
+          "expectIndex": 0
+        },
+        {
+          "thetaDeg": -30,
+          "expectIndex": 1
+        },
+        {
+          "thetaDeg": -60.1,
+          "expectIndex": 0
+        },
+        {
+          "thetaDeg": -59.9,
+          "expectIndex": 1
+        },
+        {
+          "thetaDeg": 150,
+          "expectIndex": 4
+        }
+      ]
+    },
+    {
+      "name": "release-select commit",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "down",
+          "r": 0,
+          "thetaDeg": 0
+        },
+        {
+          "t": 350,
+          "type": "longpress"
+        },
+        {
+          "t": 420,
+          "type": "move",
+          "r": 70,
+          "thetaDeg": 0
+        },
+        {
+          "t": 500,
+          "type": "up",
+          "r": 70,
+          "thetaDeg": 0
+        }
+      ],
+      "expectHighlights": [
+        1
+      ],
+      "expect": {
+        "committed": 1,
+        "cancelled": false
+      }
+    },
+    {
+      "name": "release-select sweep then commit",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "down",
+          "r": 0,
+          "thetaDeg": 0
+        },
+        {
+          "t": 350,
+          "type": "longpress"
+        },
+        {
+          "t": 400,
+          "type": "move",
+          "r": 70,
+          "thetaDeg": -90
+        },
+        {
+          "t": 450,
+          "type": "move",
+          "r": 70,
+          "thetaDeg": 0
+        },
+        {
+          "t": 470,
+          "type": "move",
+          "r": 72,
+          "thetaDeg": 2
+        },
+        {
+          "t": 500,
+          "type": "move",
+          "r": 70,
+          "thetaDeg": 90
+        },
+        {
+          "t": 560,
+          "type": "up",
+          "r": 70,
+          "thetaDeg": 90
+        }
+      ],
+      "expectHighlights": [
+        0,
+        1,
+        2
+      ],
+      "expect": {
+        "committed": 2,
+        "cancelled": false
+      }
+    },
+    {
+      "name": "release in dead zone cancels",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "down",
+          "r": 0,
+          "thetaDeg": 0
+        },
+        {
+          "t": 350,
+          "type": "longpress"
+        },
+        {
+          "t": 400,
+          "type": "move",
+          "r": 80,
+          "thetaDeg": 180
+        },
+        {
+          "t": 450,
+          "type": "move",
+          "r": 20,
+          "thetaDeg": 180
+        },
+        {
+          "t": 500,
+          "type": "up",
+          "r": 20,
+          "thetaDeg": 180
+        }
+      ],
+      "expectHighlights": [
+        3,
+        null
+      ],
+      "expect": {
+        "committed": null,
+        "cancelled": true
+      }
+    },
+    {
+      "name": "short press never opens",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "down",
+          "r": 0,
+          "thetaDeg": 0
+        },
+        {
+          "t": 200,
+          "type": "up",
+          "r": 2,
+          "thetaDeg": 0
+        }
+      ],
+      "expectHighlights": [],
+      "expect": {
+        "committed": null,
+        "cancelled": true,
+        "opened": false
+      }
+    },
+    {
+      "name": "tap-select: open idle, hover, click commits",
+      "n": 6,
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "move",
+          "r": 80,
+          "thetaDeg": -30
+        },
+        {
+          "t": 200,
+          "type": "move",
+          "r": 80,
+          "thetaDeg": 30
+        },
+        {
+          "t": 300,
+          "type": "down",
+          "r": 80,
+          "thetaDeg": 30
+        },
+        {
+          "t": 360,
+          "type": "up",
+          "r": 80,
+          "thetaDeg": 30
+        }
+      ],
+      "expectHighlights": [
+        1,
+        2
+      ],
+      "expect": {
+        "committed": 2,
+        "cancelled": false
+      }
+    },
+    {
+      "name": "tap outside cancels",
+      "n": 6,
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 200,
+          "type": "down",
+          "r": 300,
+          "thetaDeg": 45
+        },
+        {
+          "t": 260,
+          "type": "up",
+          "r": 300,
+          "thetaDeg": 45
+        }
+      ],
+      "expectHighlights": [],
+      "expect": {
+        "committed": null,
+        "cancelled": true
+      }
+    },
+    {
+      "name": "keyboard rotate and commit",
+      "n": 5,
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "key",
+          "key": "ArrowRight"
+        },
+        {
+          "t": 200,
+          "type": "key",
+          "key": "ArrowRight"
+        },
+        {
+          "t": 300,
+          "type": "key",
+          "key": "ArrowLeft"
+        },
+        {
+          "t": 400,
+          "type": "key",
+          "key": "Enter"
+        }
+      ],
+      "expectHighlights": [
+        0,
+        1,
+        0
+      ],
+      "expect": {
+        "committed": 0,
+        "cancelled": false
+      }
+    },
+    {
+      "name": "keyboard escape cancels",
+      "n": 5,
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "key",
+          "key": "ArrowLeft"
+        },
+        {
+          "t": 200,
+          "type": "key",
+          "key": "Escape"
+        }
+      ],
+      "expectHighlights": [
+        4
+      ],
+      "expect": {
+        "committed": null,
+        "cancelled": true
+      }
+    },
+    {
+      "name": "edge-triggered highlight: jitter within one wedge fires once",
+      "n": 8,
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "move",
+          "r": 80,
+          "thetaDeg": -90
+        },
+        {
+          "t": 120,
+          "type": "move",
+          "r": 82,
+          "thetaDeg": -88
+        },
+        {
+          "t": 140,
+          "type": "move",
+          "r": 78,
+          "thetaDeg": -92
+        },
+        {
+          "t": 160,
+          "type": "move",
+          "r": 80,
+          "thetaDeg": -91
+        }
+      ],
+      "expectHighlights": [
+        0
+      ],
+      "expect": {
+        "committed": null,
+        "cancelled": false,
+        "stillOpen": true
+      }
+    },
+    {
+      "name": "quantize next-beat",
+      "quant": [
+        {
+          "t": 1210,
+          "phase": 1000,
+          "period": 500,
+          "policy": "next",
+          "expectT": 1500
+        },
+        {
+          "t": 1500,
+          "phase": 1000,
+          "period": 500,
+          "policy": "next",
+          "expectT": 1500
+        },
+        {
+          "t": 1501,
+          "phase": 1000,
+          "period": 500,
+          "policy": "next",
+          "expectT": 2000
+        },
+        {
+          "t": 980,
+          "phase": 1000,
+          "period": 500,
+          "policy": "next",
+          "expectT": 1000
+        }
+      ]
+    },
+    {
+      "name": "quantize nearest",
+      "quant": [
+        {
+          "t": 1210,
+          "phase": 1000,
+          "period": 500,
+          "policy": "nearest",
+          "expectT": 1000
+        },
+        {
+          "t": 1260,
+          "phase": 1000,
+          "period": 500,
+          "policy": "nearest",
+          "expectT": 1500
+        },
+        {
+          "t": 1740,
+          "phase": 1000,
+          "period": 500,
+          "policy": "nearest",
+          "expectT": 1500
+        }
+      ]
+    },
+    {
+      "name": "quantize next-bar (period = 4 beats)",
+      "quant": [
+        {
+          "t": 1210,
+          "phase": 1000,
+          "period": 2000,
+          "policy": "next",
+          "expectT": 3000
+        }
+      ]
+    },
+    {
+      "name": "tempo estimate: clean 120 bpm",
+      "tempo": {
+        "periods": [
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333,
+          20.8333
+        ],
+        "expectBpm": 120,
+        "tol": 0.05
+      }
+    },
+    {
+      "name": "tempo estimate: USB jitter, median holds",
+      "tempo": {
+        "periods": [
+          20.8,
+          22.1,
+          19.6,
+          20.9,
+          20.8,
+          24.0,
+          17.7,
+          20.85,
+          20.8,
+          20.9,
+          20.8,
+          20.83,
+          20.9,
+          20.8,
+          20.87,
+          20.8
+        ],
+        "expectBpm": 120,
+        "tol": 1.0
+      }
+    },
+    {
+      "name": "tempo estimate: one tick is silence",
+      "tempo": {
+        "periods": [],
+        "expectBpm": null
+      }
+    },
+    {
+      "name": "chord: machine-fast word is chorded",
+      "chord": {
+        "evts": [
+          {
+            "k": "p",
+            "t": 0
+          },
+          {
+            "k": "i",
+            "t": 8
+          },
+          {
+            "k": "n",
+            "t": 16
+          }
+        ],
+        "expectWord": "pin",
+        "expectChorded": true
+      }
+    },
+    {
+      "name": "chord: human-slow word is typed",
+      "chord": {
+        "evts": [
+          {
+            "k": "p",
+            "t": 0
+          },
+          {
+            "k": "i",
+            "t": 180
+          },
+          {
+            "k": "n",
+            "t": 420
+          }
+        ],
+        "expectWord": "pin",
+        "expectChorded": false
+      }
+    },
+    {
+      "name": "chord: single key is never chorded",
+      "chord": {
+        "evts": [
+          {
+            "k": "f",
+            "t": 0
+          }
+        ],
+        "expectWord": "f",
+        "expectChorded": false
+      }
+    },
+    {
+      "name": "burst split at gap > burstSplitMs (250)",
+      "split": {
+        "evts": [
+          {
+            "k": "h",
+            "t": 0
+          },
+          {
+            "k": "d",
+            "t": 10
+          },
+          {
+            "k": "f",
+            "t": 300
+          },
+          {
+            "k": "i",
+            "t": 308
+          },
+          {
+            "k": "t",
+            "t": 316
+          }
+        ],
+        "expectWords": [
+          "hd",
+          "fit"
+        ]
+      }
+    },
+    {
+      "name": "release-select cancels beyond r_cancel",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "down",
+          "r": 0,
+          "thetaDeg": 0
+        },
+        {
+          "t": 350,
+          "type": "longpress"
+        },
+        {
+          "t": 400,
+          "type": "move",
+          "r": 70,
+          "thetaDeg": 0
+        },
+        {
+          "t": 460,
+          "type": "move",
+          "r": 200,
+          "thetaDeg": 0
+        },
+        {
+          "t": 520,
+          "type": "up",
+          "r": 200,
+          "thetaDeg": 0
+        }
+      ],
+      "expectHighlights": [
+        1,
+        null
+      ],
+      "expect": {
+        "committed": null,
+        "cancelled": true
+      }
+    },
+    {
+      "name": "tap-select cancels beyond r_cancel",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "down",
+          "r": 200,
+          "thetaDeg": 0
+        },
+        {
+          "t": 160,
+          "type": "up",
+          "r": 200,
+          "thetaDeg": 0
+        }
+      ],
+      "expectHighlights": [],
+      "expect": {
+        "committed": null,
+        "cancelled": true
+      }
+    },
+    {
+      "name": "both commit styles agree inside the band (r=130 < r_cancel=145.8)",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "down",
+          "r": 130,
+          "thetaDeg": 0
+        },
+        {
+          "t": 160,
+          "type": "up",
+          "r": 130,
+          "thetaDeg": 0
+        }
+      ],
+      "expectHighlights": [
+        1
+      ],
+      "expect": {
+        "committed": 1,
+        "cancelled": false
+      }
+    },
+    {
+      "name": "release-select commits inside the band at the same point",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "down",
+          "r": 0,
+          "thetaDeg": 0
+        },
+        {
+          "t": 350,
+          "type": "longpress"
+        },
+        {
+          "t": 400,
+          "type": "move",
+          "r": 130,
+          "thetaDeg": 0
+        },
+        {
+          "t": 460,
+          "type": "up",
+          "r": 130,
+          "thetaDeg": 0
+        }
+      ],
+      "expectHighlights": [
+        1
+      ],
+      "expect": {
+        "committed": 1,
+        "cancelled": false
+      }
+    },
+    {
+      "name": "latched hub press does not highlight while dragging out",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "down",
+          "r": 10,
+          "thetaDeg": 0
+        },
+        {
+          "t": 200,
+          "type": "move",
+          "r": 80,
+          "thetaDeg": 0
+        },
+        {
+          "t": 260,
+          "type": "move",
+          "r": 80,
+          "thetaDeg": 90
+        },
+        {
+          "t": 320,
+          "type": "up",
+          "r": 80,
+          "thetaDeg": 90
+        }
+      ],
+      "expectHighlights": [],
+      "expect": {
+        "committed": null,
+        "cancelled": true
+      }
+    },
+    {
+      "name": "highlight effects carry their own label",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "key",
+          "key": "ArrowRight"
+        },
+        {
+          "t": 200,
+          "type": "key",
+          "key": "ArrowRight"
+        }
+      ],
+      "expectHighlights": [
+        0,
+        1
+      ],
+      "expectLabels": [
+        "i0",
+        "i1"
+      ],
+      "expect": {
+        "committed": null,
+        "cancelled": false,
+        "stillOpen": true
+      }
+    },
+    {
+      "name": "ring ceiling: 8 items is legal, 9 raises",
+      "ceiling": [
+        {
+          "n": 1,
+          "expectThrows": false
+        },
+        {
+          "n": 8,
+          "expectThrows": false
+        },
+        {
+          "n": 9,
+          "expectThrows": true
+        },
+        {
+          "n": 0,
+          "expectThrows": true
+        }
+      ]
+    },
+    {
+      "name": "chord vocabulary must be prefix-free",
+      "vocab": {
+        "source": "CHORD_MAP",
+        "expectPrefixFree": true
+      }
+    },
+    {
+      "name": "prefix collision is detected when present",
+      "vocab": {
+        "words": [
+          "del",
+          "de",
+          "fit"
+        ],
+        "expectPrefixFree": false,
+        "expectCollisions": [
+          "de ⊂ del"
+        ]
+      }
+    },
+    {
+      "name": "aps derives from bpm and subdivision when linked",
+      "aps": [
+        {
+          "bpm": 60,
+          "div": 1,
+          "expectAps": 1
+        },
+        {
+          "bpm": 120,
+          "div": 1,
+          "expectAps": 2
+        },
+        {
+          "bpm": 60,
+          "div": 4,
+          "expectAps": 4
+        },
+        {
+          "bpm": 90,
+          "div": 0.5,
+          "expectAps": 0.75
+        },
+        {
+          "bpm": 30,
+          "div": 1,
+          "expectAps": 0.5
+        }
+      ]
+    },
+    {
+      "name": "MIDI CC maps onto each axis range",
+      "cc": [
+        {
+          "cc": 0,
+          "lo": 30,
+          "hi": 300,
+          "expect": 30
+        },
+        {
+          "cc": 127,
+          "lo": 30,
+          "hi": 300,
+          "expect": 300
+        },
+        {
+          "cc": 64,
+          "lo": 30,
+          "hi": 300,
+          "expect": 166.0629921259843
+        },
+        {
+          "cc": 0,
+          "lo": 0.25,
+          "hi": 8,
+          "expect": 0.25
+        },
+        {
+          "cc": 127,
+          "lo": 0.25,
+          "hi": 8,
+          "expect": 8
+        },
+        {
+          "cc": 200,
+          "lo": 30,
+          "hi": 300,
+          "expect": 300
+        },
+        {
+          "cc": -5,
+          "lo": 30,
+          "hi": 300,
+          "expect": 30
+        }
+      ]
+    },
+    {
+      "name": "MIDI CC quantizes onto the five legal subdivisions",
+      "ccdiv": [
+        {
+          "cc": 0,
+          "expect": 0.5
+        },
+        {
+          "cc": 25,
+          "expect": 0.5
+        },
+        {
+          "cc": 26,
+          "expect": 1
+        },
+        {
+          "cc": 51,
+          "expect": 1
+        },
+        {
+          "cc": 52,
+          "expect": 2
+        },
+        {
+          "cc": 64,
+          "expect": 2
+        },
+        {
+          "cc": 102,
+          "expect": 3
+        },
+        {
+          "cc": 103,
+          "expect": 4
+        },
+        {
+          "cc": 127,
+          "expect": 4
+        }
+      ]
+    },
+    {
+      "name": "grid period follows the subdivision axis",
+      "grid": [
+        {
+          "bpm": 60,
+          "div": 1,
+          "expectMs": 1000
+        },
+        {
+          "bpm": 60,
+          "div": 4,
+          "expectMs": 250
+        },
+        {
+          "bpm": 120,
+          "div": 2,
+          "expectMs": 250
+        },
+        {
+          "bpm": 60,
+          "div": 0.5,
+          "expectMs": 2000
+        }
+      ]
+    },
+    {
+      "name": "fitRing keeps the natural radius when the viewport allows",
+      "fit": [
+        {
+          "vw": 390,
+          "vh": 900,
+          "expectR1": 108
+        },
+        {
+          "vw": 1280,
+          "vh": 860,
+          "expectR1": 108
+        },
+        {
+          "vw": 240,
+          "vh": 900,
+          "expectR1": 108
+        },
+        {
+          "vw": 232,
+          "vh": 900,
+          "expectR1": 108
+        }
+      ]
+    },
+    {
+      "name": "fitRing shrinks r1 toward the band minimum, never past it",
+      "fit": [
+        {
+          "vw": 200,
+          "vh": 900,
+          "expectR1": 92
+        },
+        {
+          "vw": 180,
+          "vh": 900,
+          "expectR1": 92
+        },
+        {
+          "vw": 900,
+          "vh": 200,
+          "expectR1": 92
+        },
+        {
+          "vw": 60,
+          "vh": 60,
+          "expectR1": 92
+        }
+      ]
+    },
+    {
+      "name": "clampRingCentre shifts the centre inward when the ring fits",
+      "clamp": [
+        {
+          "x": 10,
+          "y": 400,
+          "vw": 390,
+          "vh": 900,
+          "r1": 108,
+          "expectX": 132,
+          "expectY": 400
+        },
+        {
+          "x": 380,
+          "y": 400,
+          "vw": 390,
+          "vh": 900,
+          "r1": 108,
+          "expectX": 258,
+          "expectY": 400
+        },
+        {
+          "x": 195,
+          "y": 10,
+          "vw": 390,
+          "vh": 900,
+          "r1": 108,
+          "expectX": 195,
+          "expectY": 132
+        },
+        {
+          "x": 195,
+          "y": 890,
+          "vw": 390,
+          "vh": 900,
+          "r1": 108,
+          "expectX": 195,
+          "expectY": 728
+        },
+        {
+          "x": 195,
+          "y": 400,
+          "vw": 390,
+          "vh": 900,
+          "r1": 108,
+          "expectX": 195,
+          "expectY": 400
+        }
+      ]
+    },
+    {
+      "name": "clampRingCentre centres on the axis that cannot fit, and clamps on the one that can",
+      "clamp": [
+        {
+          "x": 160,
+          "y": 130,
+          "vw": 320,
+          "vh": 260,
+          "r1": 92,
+          "expectX": 160,
+          "expectY": 130
+        },
+        {
+          "x": 10,
+          "y": 10,
+          "vw": 320,
+          "vh": 260,
+          "r1": 92,
+          "expectX": 116,
+          "expectY": 130
+        },
+        {
+          "x": 300,
+          "y": 250,
+          "vw": 200,
+          "vh": 200,
+          "r1": 92,
+          "expectX": 100,
+          "expectY": 100
+        }
+      ]
+    },
+    {
+      "name": "the committing band follows the machine's own geometry, not a global",
+      "n": 4,
+      "geom": {
+        "startDeg": -90,
+        "clockwise": true,
+        "r0": 36,
+        "r1": 92,
+        "cancelScale": 1.35,
+        "longPressMs": 350,
+        "slop": 10
+      },
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "down",
+          "r": 120,
+          "thetaDeg": 0
+        },
+        {
+          "t": 160,
+          "type": "up",
+          "r": 120,
+          "thetaDeg": 0
+        }
+      ],
+      "expectHighlights": [
+        1
+      ],
+      "expect": {
+        "committed": 1,
+        "cancelled": false
+      }
+    },
+    {
+      "name": "a shrunken ring cancels beyond its own r_cancel (124.2), not the default",
+      "n": 4,
+      "geom": {
+        "startDeg": -90,
+        "clockwise": true,
+        "r0": 36,
+        "r1": 92,
+        "cancelScale": 1.35,
+        "longPressMs": 350,
+        "slop": 10
+      },
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "down",
+          "r": 130,
+          "thetaDeg": 0
+        },
+        {
+          "t": 160,
+          "type": "up",
+          "r": 130,
+          "thetaDeg": 0
+        }
+      ],
+      "expectHighlights": [],
+      "expect": {
+        "committed": null,
+        "cancelled": true
+      }
+    }
+  ]
+}

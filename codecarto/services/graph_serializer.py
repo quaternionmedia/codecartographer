@@ -29,8 +29,15 @@ class GraphSerializer:
         Dict[str, Any]
             The graph in gJGF format with positions and styling
         """
-        # Ensure we have a DiGraph
-        ntxGraph = nx.DiGraph(graph)
+        # **A MULTIGRAPH STAYS A MULTIGRAPH.** `nx.DiGraph(graph)` keeps one
+        # edge per ordered pair and drops the rest without a word, so three
+        # measured readings of one relation arrived here and one left. Nothing
+        # errored and the picture looked complete. Graphs that were already
+        # simple are unaffected -- this only stops a lossy conversion.
+        if graph.is_multigraph():
+            ntxGraph = nx.MultiDiGraph(graph)
+        else:
+            ntxGraph = nx.DiGraph(graph)
 
         # Apply layout algorithm to get node positions
         layout_name = f"{options.layout.lower()}_layout"
@@ -55,9 +62,16 @@ class GraphSerializer:
             out_edges_count = len(ntxGraph.out_edges(node)) * 10
             in_edges_count = len(ntxGraph.in_edges(node)) * 10
 
-            # Depth-based base size (unified schema: 0=dir, 1=file, 2=symbol, 3=sub)
-            node_depth = data.get("depth")
-            if node_depth is not None:
+            # **AN EXPLICIT SIZE WINS.** A caller that set `size` -- from a
+            # palette, say -- had a reason, and the heuristic below overwrote it
+            # silently: a node asked to be 30 came out 21 and nothing said why.
+            # The heuristic is what to do when nobody has decided, not a
+            # correction to somebody who has.
+            if data.get("size") is not None:
+                pass
+            elif (node_depth := data.get("depth")) is not None:
+                # Depth-based base size (unified schema: 0=dir, 1=file,
+                # 2=symbol, 3=sub)
                 depth_base = {0: 40, 1: 20, 2: 10, 3: 6}.get(int(node_depth), 10)
                 data["size"] = depth_base + out_edges_count + in_edges_count
             else:

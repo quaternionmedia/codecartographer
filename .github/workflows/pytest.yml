@@ -1,0 +1,67 @@
+name: Tests
+
+# The Python suite, and deliberately nothing else.
+#
+# This repository ships a TypeScript frontend under web/ and a docker-compose
+# stack, and neither is installed here. The 355 tests under tests/ are pure
+# Python: they exercise the parsers, the services and the routers, and they
+# need no browser, no Node toolchain and no container. Installing any of that
+# would triple the runtime of every pull request to cover code these tests do
+# not touch.
+#
+# A frontend or end-to-end suite belongs in its own workflow, triggered on the
+# paths it actually covers, so that a Python change is not gated on a browser
+# download. It is absent rather than stubbed: a job that installs a toolchain
+# and asserts nothing is a green check that enforces nothing.
+#
+# Not a seed file. The three governance workflows beside this one are copied
+# verbatim from the corpus and must stay that way; this one is the project's
+# own and is free to change.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A second push supersedes the first: nobody reads the result of a run whose
+  # commit has already been replaced, and the runner minutes are real.
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # **NO SUBMODULES.** The comment here used to say graphbase was
+          # imported by the cache tests. It is not: nothing under tests/
+          # mentions it, and both imports in the package are guarded behind
+          # MONGODB_URI *and* a try/except. What it did do was fail the whole
+          # checkout -- graphbase is private, the runner has no credentials, and
+          # `remote: Repository not found` aborts before a single test runs.
+          # The suite passes without it in 22s.
+          submodules: false
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the project and its test extras
+        # `uv sync --locked` rather than `uv pip install --system`: it installs
+        # exactly what uv.lock pins, and it works in a local run of this
+        # workflow as well as on a runner. `--system` targets whatever Python
+        # the host calls system, which on a Windows workstation is a read-only
+        # store install -- so the step failed locally while passing in CI, and
+        # a workflow that only runs in one place is one nobody can check before
+        # pushing.
+        run: uv sync --locked --extra dev
+
+      - name: Run the suite
+        # -q because a passing run of 355 tests says nothing worth 355 lines,
+        # and a failure prints its own detail regardless.
+        run: uv run pytest tests -q

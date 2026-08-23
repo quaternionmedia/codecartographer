@@ -1,0 +1,179 @@
+# Python language lexicon — reserved words and operators arranged on a
+# hierarchy of abstractions, from control flow up.
+#
+# Second lexicon in this repo (after C), added deliberately compact — three
+# layers instead of C's five — as the simpler onboarding example for anyone
+# adding a third language. See docs/llm/roadmap/lexicon.md's "Adding a
+# language" section for what wiring Option B (parser enrichment) for a new
+# language actually requires.
+#
+# Coverage here is intentionally partial, same honesty standard as C's own
+# lexicon: not all 35 Python keywords have a slot yet (True/False/None,
+# del, elif's siblings if/else are present but e.g. `del` is not), because
+# this first pass covers what's most load-bearing for reading real code, not
+# an exhaustive keyword-by-keyword catalogue. Extend groups/tokens freely.
+#
+# Option B coverage is narrower still: today only `class`, `for`, `import`,
+# and `def` are reachable by the real parser join (see
+# codecarto/services/lexicon_bridge.py's _KIND_TOKEN_MAP) — PythonCustomAST
+# only emits those four keyword-shaped node kinds. The rest of the tokens
+# below exist for Option A (the standalone lexicon graph) and for whenever
+# parser coverage grows, not because Option B reaches them today.
+
+language: python
+display_name: "Python"
+# Version each token first appears in, where notable. Tokens with no
+# `since` predate Python 3.0.
+standards: [py2, py3, py3.5, py3.7]
+
+keywords:
+  layers:
+    - ordinal: 0
+      name: "Control flow"
+      gloss: >
+        Structured sequencing and branching within a function or module body
+        — the most machine-facing layer: it says what runs, not what things
+        mean.
+      groups:
+        - name: "selection"
+          tokens:
+            - {token: if}
+            - {token: elif}
+            - {token: else}
+        - name: "iteration"
+          tokens:
+            - {token: for}
+            - {token: while}
+            - {token: break}
+            - {token: continue}
+            - {token: pass}
+        - name: "exception handling"
+          tokens:
+            - {token: try}
+            - {token: except}
+            - {token: finally}
+            - {token: raise}
+
+    - ordinal: 1
+      name: "Structure & definition"
+      gloss: >
+        Naming and packaging: functions, classes, modules, and the values
+        that flow out of them. Where Python's "everything is an object"
+        character actually gets built.
+      groups:
+        - name: "definition"
+          tokens:
+            - {token: def}
+            - {token: class}
+            - {token: lambda}
+        - name: "value flow"
+          tokens:
+            - {token: return}
+            - {token: yield}
+        - name: "module system"
+          tokens:
+            - {token: import}
+            - {token: from}
+            - {token: as}
+        - name: "context management"
+          tokens:
+            - {token: with}
+
+    - ordinal: 2
+      name: "Abstraction & scope"
+      gloss: >
+        Words that reason about scope, concurrency, and truth rather than
+        producing a value directly — the most abstract layer. async/await
+        added a whole concurrency dimension on top of the synchronous
+        control-flow layer without changing it.
+      groups:
+        - name: "scope"
+          tokens:
+            - {token: global}
+            - {token: nonlocal, since: py3}
+        - name: "concurrency"
+          tokens:
+            - {token: async, since: "py3.5"}
+            - {token: await, since: "py3.5"}
+        - name: "logical & membership"
+          tokens:
+            - {token: and}
+            - {token: or}
+            - {token: not}
+            - {token: in}
+            - {token: is}
+        - name: "contract"
+          tokens:
+            - {token: assert}
+
+operators:
+  layers:
+    - ordinal: 0
+      name: "Arithmetic & bitwise"
+      gloss: >
+        Values treated as numbers or bit patterns — the closest Python gets
+        to the machine. `*`/`**` overload with unpacking (layer 1) by
+        context, the same kind of overload C's `&`/`*` has.
+      groups:
+        - name: "arithmetic"
+          tokens:
+            - {token: "+", role: "add"}
+            - {token: "-", role: "subtract"}
+            - {token: "*", role: "multiply"}
+            - {token: "/", role: "true divide"}
+            - {token: "//", role: "floor divide"}
+            - {token: "%", role: "modulo"}
+            - {token: "**", role: "power"}
+        - name: "bitwise"
+          tokens:
+            - {token: "&", role: "bitwise and"}
+            - {token: "|", role: "bitwise or"}
+            - {token: "^", role: "bitwise xor"}
+            - {token: "~", role: "bitwise not"}
+            - {token: "<<", role: "left shift"}
+            - {token: ">>", role: "right shift"}
+
+    - ordinal: 1
+      name: "Comparison & access"
+      gloss: >
+        Producing truth values, or reaching into an object/sequence.
+        Comparisons chain in Python (`a < b < c`) in a way most languages
+        don't, which is part of why they're grouped as their own layer.
+      groups:
+        - name: "relational"
+          tokens:
+            - {token: "==", role: "equal"}
+            - {token: "!=", role: "not equal"}
+            - {token: "<", role: "less"}
+            - {token: ">", role: "greater"}
+            - {token: "<=", role: "less or equal"}
+            - {token: ">=", role: "greater or equal"}
+        - name: "member & attribute"
+          tokens:
+            - {token: ".", role: "attribute"}
+            - {token: "[]", role: "subscript"}
+        - name: "unpacking"
+          tokens:
+            - {token: "*", role: "iterable unpack"}
+            - {token: "**", role: "mapping unpack"}
+
+    - ordinal: 2
+      name: "Assignment"
+      gloss: >
+        Computed values flowing into a name. The walrus operator is the
+        newest and most abstract member — assignment as an expression,
+        not a statement.
+      groups:
+        - name: "simple"
+          tokens:
+            - {token: "=", role: "assign"}
+            - {token: ":=", role: "walrus assign", since: "py3.8"}
+        - name: "compound"
+          tokens:
+            - {token: "+=", role: "add-assign"}
+            - {token: "-=", role: "sub-assign"}
+            - {token: "*=", role: "mul-assign"}
+            - {token: "/=", role: "div-assign"}
+            - {token: "//=", role: "floordiv-assign"}
+            - {token: "%=", role: "mod-assign"}
+            - {token: "**=", role: "pow-assign"}

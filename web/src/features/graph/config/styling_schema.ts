@@ -87,6 +87,18 @@ export const STYLING_SCHEMA: StyleOption[] = [
     default: null,
     description: 'Override automatic node coloring (leave empty for auto)',
   },
+  {
+    key: 'colorBy',
+    label: 'Color By',
+    type: 'select',
+    category: 'node',
+    default: 'auto',
+    options: [
+      { value: 'auto', label: 'Auto (depth/kind)' },
+      { value: 'layer', label: 'Abstraction Layer' },
+    ],
+    description: 'Layer mode colors nodes by Lexicon abstraction layer where present, falling back to auto for nodes without one',
+  },
 
   // === EDGE OPTIONS ===
   {

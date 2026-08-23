@@ -61,16 +61,14 @@ export const UploadNav: m.Component<UploadNavAttrs> = {
           m('h4', `${files.length} file(s) uploaded`),
           m('.upload-nav__actions', [
             m(Button, {
-              label: 'Plot All',
-              onClick: onPlotAll,
+              onclick: onPlotAll,
               size: 'small',
-            }),
+            }, 'Plot All'),
             m(Button, {
-              label: 'Clear',
-              onClick: onClear,
+              onclick: onClear,
               variant: 'ghost',
               size: 'small',
-            }),
+            }, 'Clear'),
           ]),
         ]),
 

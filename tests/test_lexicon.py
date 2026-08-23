@@ -82,3 +82,42 @@ def test_index_handles_overloaded_operators():
 def test_missing_language_raises():
     with pytest.raises(FileNotFoundError):
         LexiconService.load("cobol")
+
+
+# ── Generic structural tests over every available lexicon ──────────────────
+# Parametrized over LexiconService.available() so a new language YAML gets
+# this coverage for free — no per-language test needed, same "generic
+# router/tests" property the language-agnostic parts of this feature already
+# have. See docs/llm/roadmap/lexicon.md's "Adding a language" section.
+
+
+@pytest.mark.parametrize("language", LexiconService.available())
+def test_every_lexicon_loads_and_validates(language):
+    lex = LexiconService.load(language)
+    assert isinstance(lex, Lexicon)
+    assert lex.language == language
+    assert lex.keywords.layers or lex.operators.layers
+
+
+@pytest.mark.parametrize("language", LexiconService.available())
+def test_every_lexicon_layers_are_machine_to_abstract(language):
+    lex = LexiconService.load(language)
+    for kind in (lex.keywords, lex.operators):
+        ordinals = [layer.ordinal for layer in kind.layers]
+        assert ordinals == sorted(ordinals)
+        if ordinals:
+            assert ordinals[0] == 0
+
+
+@pytest.mark.parametrize("language", LexiconService.available())
+def test_every_lexicon_projects_to_a_connected_graph(language):
+    lex = LexiconService.load(language)
+    g = LexiconService.to_graph(lex)
+    roots = [n for n, d in g.in_degree() if d == 0]
+    assert roots == [f"lang:{language}"]
+    assert nx.number_weakly_connected_components(g) == 1
+
+
+def test_at_least_two_lexicons_available():
+    """Guards against silently losing a language file."""
+    assert set(LexiconService.available()) >= {"c", "python"}

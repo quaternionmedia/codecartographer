@@ -61,16 +61,21 @@ uv run codecarto repo graph . -t ast
 
 ## Architecture Overview
 
-### Feature-Based Frontend Structure
+### Frontend Structure
 
-The frontend uses a feature-based module architecture:
+The frontend combines a feature-based module architecture
+(`web/src/features/`) with Golden Layout as the primary application
+shell (`web/src/layout/` — dock panel registry, layout persistence).
+See `docs/architecture.md` for the current, authoritative structure;
+the feature-module shape below still holds for the graph/repository/
+upload/settings features themselves, just wrapped by the GL shell now
+rather than the older fixed-tab control panel:
 
 ```
 web/src/features/
 ├── graph/                   # Graph visualization feature
 │   ├── components/
-│   │   ├── Plot.ts          # Main visualization container
-│   │   └── GraphControls.ts # Interactive controls
+│   │   └── Plot.ts          # Main visualization container
 │   ├── services/
 │   │   └── graph_renderer.ts
 │   ├── state/
@@ -324,31 +329,10 @@ def test_serialize_to_gjgf():
     assert len(gjgf['edges']) == 1
 ```
 
-### Frontend E2E Testing (Playwright)
-
-```bash
-# Run all E2E tests
-npm run test:e2e
-
-# Run with UI
-npm run test:e2e:ui
-
-# Run specific test file
-npx playwright test graph-visualization.spec.ts
-```
-
-**Test Pattern**:
-```typescript
-test('loads demo visualization', async ({ page }) => {
-  await page.goto('/');
-  await page.click('.control-panel__toggle');
-  await page.click('[data-tab="demo"]');
-  await page.click('button:has-text("Load Demo")');
-
-  const svg = await page.locator('.graph_content svg');
-  await expect(svg).toBeVisible();
-});
-```
+No frontend E2E test tooling exists in this repo today — `web/
+package.json` has no test script and no Playwright (or similar)
+dependency. `npm run build` (`vite build`) is the frontend's only
+automated check; verify UI changes by actually running the app.
 
 ---
 

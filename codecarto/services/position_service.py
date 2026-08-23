@@ -5,6 +5,24 @@ from codecarto.models.plot_data import LayoutType
 
 
 ########################   OLD CODE   ########################
+def layout_key(name: str) -> str:
+    """A layout name as the registry spells it.
+
+    **A DISPLAY NAME AND A REGISTRY KEY ARE TWO THINGS.** Callers build the key
+    as `layout.lower() + "_layout"`, so `Kamada Kawai` -- the obvious way to
+    write it in a menu -- became `kamada kawai_layout` and failed several
+    frames deep with a message naming a layout nobody typed. Spaces and hyphens
+    normalise to underscores, and an already-suffixed name is left alone, so
+    every spelling of one layout reaches the same entry.
+    """
+    cleaned = str(name or "").strip().lower().replace(" ", "_").replace("-", "_")
+    while "__" in cleaned:
+        cleaned = cleaned.replace("__", "_")
+    if not cleaned:
+        return ""
+    return cleaned if cleaned.endswith("_layout") else f"{cleaned}_layout"
+
+
 class Positions:
     def __init__(self, include_networkx: bool = True, include_custom: bool = True):
         """Constructor for Layouts
@@ -61,9 +79,6 @@ class Positions:
         self.add_layout("sorted_square_layout", sorted_square_layout, ["graph"])
         self.add_layout("compound_layout", compound_layout, ["graph"])
 
-        # from .custom_layouts.cluster_layout import cluster_layout
-        # self.add_layout("cluster_layout", cluster_layout, ["graph", "root"])
-
     def get_layout_names(self) -> list:
         """Get all layout names from the list of available layouts
 
@@ -118,12 +133,18 @@ class Positions:
             The parameters of the layout
         """
         # Check if the provided name in list (_layouts: list[LayoutType])
+        wanted = layout_key(name)
         for layout in self._layouts:
-            if layout["name"] == name:
+            if layout["name"] == name or layout["name"] == wanted:
                 return layout["params"]
 
-        # if here then layout not found
-        raise ValueError(f"Layout {name} does not exist")
+        # If here the layout really is not registered. Name what does exist:
+        # the old message gave only the mangled string, which sent readers
+        # looking for a layout nobody had asked for.
+        known = ", ".join(sorted(str(l["name"]) for l in self._layouts))
+        raise ValueError(
+            f"Layout {name!r} does not exist (looked for {wanted!r}). "
+            f"Registered: {known}")
 
     def get_positions(self, name: str, seed: int = -1, **kwargs) -> dict:
         """Get a positions from the list of available layouts
@@ -147,11 +168,25 @@ class Positions:
         layout_func: Callable
         layout_params: list
 
+        # Same tolerance as `get_layout_params`, and the same reason: a display
+        # name is not a registry key. **AND AN UNKNOWN LAYOUT RAISES HERE.**
+        # Before this, no match left `layout_func` and `layout_params` unbound
+        # and the next line failed with `UnboundLocalError` -- a message about
+        # a local variable, for a caller who chose a layout that is not
+        # registered.
+        wanted = layout_key(name)
+        layout_func = None
+        layout_params = []
         for layout in self._layouts:
-            if layout["name"] == name:
+            if layout["name"] == name or layout["name"] == wanted:
                 layout_func = layout["func"]
                 layout_params = layout["params"]
                 break
+        if layout_func is None:
+            known = ", ".join(sorted(str(l["name"]) for l in self._layouts))
+            raise ValueError(
+                f"Layout {name!r} does not exist (looked for {wanted!r}). "
+                f"Registered: {known}")
         layout_kwargs: dict = {}
 
         for param in layout_params:
@@ -170,9 +205,6 @@ class Positions:
                     # Create the list of lists (shells)
                     shells = list(grouped_nodes.values())
                     layout_kwargs["nshells"] = shells
-            elif param == "root" and name == "cluster_layout":
-                # Set the root node
-                layout_kwargs["root"] = kwargs["root"]
             elif param != "G":
                 # TODO Handle other parameters here
                 pass
@@ -203,9 +235,6 @@ class Positions:
 
                 seed = random.randint(0, 1000)
                 layout_kwargs["seed"] = seed
-            elif param == "prog" and layout_name == "dot_layout":
-                # Set the program to use for graphviz
-                layout_kwargs["prog"] = "dot"
             elif param == "nshells" and layout_name == "shell_layout":
                 # Group nodes by parent
                 grouped_nodes: dict[str, list] = {}
@@ -217,14 +246,6 @@ class Positions:
                 # Create the list of lists (shells)
                 shells = list(grouped_nodes.values())
                 layout_kwargs["nshells"] = shells
-            elif param == "root" and layout_name == "cluster_layout":
-                # get the node at the very top
-                root = None
-                for node, data in graph.nodes(data=True):
-                    if data.get("label", "") == "root":
-                        root = node
-                        break
-                layout_kwargs["root"] = root
             elif param != "G":
                 # TODO: Handle other parameters here
                 pass

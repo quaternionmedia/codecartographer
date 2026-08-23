@@ -152,6 +152,19 @@ class PythonLanguageParser:
             label    = data.get("label", node_id)
             module   = data.get("module", "")
 
+            # The AST's own Module root duplicates the depth=1 file node
+            # unified_parser_service.py's directory walker already created
+            # and connected to its parent directory — including it here
+            # produced a second, disconnected depth=1 node with every real
+            # symbol attached underneath it instead of the file node,
+            # permanently landing the whole file's contents on
+            # compound_layout's orphan fallback ring. Skipping it here lets
+            # its direct children (classes/functions/imports) surface as
+            # in-degree-0 roots, which _merge_subgraph already connects
+            # straight to the real file node.
+            if ast_type == "Module":
+                continue
+
             kind, node_depth = _ast_type_to_kind_depth(ast_type)
 
             # Respect max_depth — skip deeper nodes

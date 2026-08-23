@@ -1,10 +1,6 @@
-import m from 'mithril';
+import type m from 'mithril';
 
-import { displayError } from '../../../utility';
-import { animations } from '../../../core/animations';
 import { Directory, RawFile, RawFolder } from '../../models/source';
-import { DirectoryContent } from '../../qm_comp_lib/directory/directory';
-import './directory_nav.css';
 
 export class DirectoryNavController {
   public isLocal: boolean = false;
@@ -33,94 +29,3 @@ export class DirectoryNavController {
     this.clearSelectedFolder();
   }
 }
-
-export class DirectoryNavState {
-  public controller: DirectoryNavController;
-  private onUrlClicked: (url: string) => void;
-  private onWholeRepoClicked: () => void;
-  private onWholeRepoDepsClicked: () => void;
-  private updateCell: (upload: DirectoryNavState) => void;
-
-  constructor(
-    controller: DirectoryNavController,
-    onUrlFileClicked: (url: string) => void,
-    onWholeRepoClicked: () => void,
-    onWholeRepoDepsClicked: () => void,
-    updateCell: (upload: DirectoryNavState) => void
-  ) {
-    this.controller = controller;
-    this.onUrlClicked = onUrlFileClicked;
-    this.onWholeRepoClicked = onWholeRepoClicked;
-    this.onWholeRepoDepsClicked = onWholeRepoDepsClicked;
-    this.updateCell = updateCell;
-  }
-
-  public setSelectedUrl = (url: string) => {
-    if (this.checkUrl(url)) {
-      this.controller.selectedUrl = url;
-      this.updateCell(this);
-      this.onUrlClicked(url);
-    }
-  };
-
-  public wholeRepoClicked = () => {
-    this.onWholeRepoClicked();
-  };
-
-  public wholeRepoDepsClicked = () => {
-    this.onWholeRepoDepsClicked();
-  };
-
-  private checkUrl(url: string): boolean {
-    if (!url || url === '') {
-      displayError('Please enter a URL');
-      return false;
-    }
-    return true;
-  }
-}
-
-export const DirectoryNav = (state: DirectoryNavState) => {
-  if (state.controller.content.size > 0) {
-    const folder = state.controller.content.root;
-    const owner = state.controller.content.info.owner;
-    const name = state.controller.content.info.name;
-
-    const tree = m(DirectoryContent, {
-      folderName: `${owner}/${name}`,
-      folders: folder.folders,
-      files: folder.files,
-      onUrlFileClicked: state.setSelectedUrl,
-    });
-
-    const plotAll = m(
-      'button.plot_whole_repo_btn',
-      {
-        onclick: function (e: MouseEvent) {
-          animations.buttonPress(e.currentTarget as Element);
-          state.wholeRepoClicked();
-        },
-      },
-      'Plot Directory Tree'
-    );
-
-    const plotAllDeps = m(
-      'button.plot_whole_repo_deps_btn',
-      {
-        onclick: function (e: MouseEvent) {
-          animations.buttonPress(e.currentTarget as Element);
-          state.wholeRepoDepsClicked();
-        },
-      },
-      'Plot Dependency Tree'
-    );
-
-    state.controller.component = [
-      m('div.directory_tree', tree),
-      plotAll,
-      plotAllDeps,
-    ];
-  }
-
-  return m('div.directory_nav', [state.controller.component]);
-};

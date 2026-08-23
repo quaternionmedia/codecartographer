@@ -4,12 +4,12 @@
  * Displays repository directory tree navigation
  */
 import m from 'mithril';
-import { Directory, RawFile } from '../../../components/models/source';
+import { Directory } from '../../../components/models/source';
 import { DirectoryContent } from '../../../components/qm_comp_lib/directory/directory';
 
 export interface DirectoryNavAttrs {
   directory: Directory | null;
-  onFileClick: (file: RawFile) => void;
+  onFileClick: (url: string) => void;
   onPlotWholeRepo: () => void;
   onPlotDependencies: () => void;
 }
@@ -43,7 +43,9 @@ export const DirectoryNav: m.Component<DirectoryNavAttrs> = {
 
       m('.directory-nav__tree', [
         m(DirectoryContent, {
-          root: directory.root,
+          folderName: directory.root.name,
+          folders: directory.root.folders,
+          files: directory.root.files,
           onUrlFileClicked: onFileClick,
         }),
       ]),

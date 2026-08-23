@@ -3,7 +3,7 @@
  *
  * Action creators for settings state updates
  */
-import { SettingsState } from './settings_state';
+import { SettingsState, DEFAULT_SETTINGS_STATE } from './settings_state';
 
 export const settingsActions = {
   /**
@@ -57,8 +57,5 @@ export const settingsActions = {
   /**
    * Reset to default settings
    */
-  reset: () => (state: SettingsState): SettingsState => {
-    const { DEFAULT_SETTINGS_STATE } = require('./settings_state');
-    return DEFAULT_SETTINGS_STATE;
-  },
+  reset: () => (): SettingsState => DEFAULT_SETTINGS_STATE,
 };

@@ -12,7 +12,10 @@ export interface RadialMenuItem {
   id: string;
   label: string;
   icon?: string;
-  action: () => void;
+  // Optional: branch items (with children) never have their own action —
+  // the click handler only calls .action() in the leaf case (no children),
+  // opening a submenu instead when children are present.
+  action?: () => void;
   enabled?: boolean;
   children?: RadialMenuItem[];
 }
@@ -90,7 +93,11 @@ interface RadialMenuState {
  *
  * Renders a circular/donut menu with context-aware actions
  */
-export const RadialMenu: m.Component<RadialMenuOptions> = {
+interface RadialMenuComponentState {
+  cleanup?: () => void;
+}
+
+export const RadialMenu: m.Component<RadialMenuOptions, RadialMenuComponentState> = {
   oncreate(vnode) {
     const { items, context, innerRadius = 60, outerRadius = 120 } = vnode.attrs;
     const state: RadialMenuState = {
@@ -100,7 +107,7 @@ export const RadialMenu: m.Component<RadialMenuOptions> = {
     };
 
     const container = vnode.dom as HTMLElement;
-    const svg = d3.select(container).select('svg');
+    const svg = d3.select(container).select<SVGSVGElement>('svg');
 
     // Create radial menu
     renderRadialMenu(svg, items, context, innerRadius, outerRadius, state, vnode.attrs.onClose);
@@ -126,11 +133,13 @@ export const RadialMenu: m.Component<RadialMenuOptions> = {
       document.addEventListener('keydown', handleEscape);
     }, 0);
 
-    vnode.state = {
-      cleanup: () => {
-        document.removeEventListener('click', handleOutsideClick);
-        document.removeEventListener('keydown', handleEscape);
-      },
+    // Mithril forbids reassigning vnode.state wholesale (only mutating its
+    // existing properties is allowed -- it throws "'vnode.state' must not
+    // be modified" otherwise, since it compares the object reference after
+    // oncreate runs).
+    vnode.state.cleanup = () => {
+      document.removeEventListener('click', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
     };
   },
 
@@ -171,7 +180,7 @@ export const RadialMenu: m.Component<RadialMenuOptions> = {
  * Render radial menu using D3
  */
 function renderRadialMenu(
-  svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>,
+  svg: d3.Selection<SVGSVGElement, unknown, any, any>,
   items: RadialMenuItem[],
   context: RadialMenuContext,
   innerRadius: number,
@@ -206,7 +215,7 @@ function renderRadialMenu(
 
   // Create menu segments
   const segments = g
-    .selectAll('.menu-segment')
+    .selectAll<SVGGElement, d3.PieArcDatum<RadialMenuItem>>('.menu-segment')
     .data(arcs)
     .enter()
     .append('g')
@@ -216,7 +225,7 @@ function renderRadialMenu(
   segments
     .append('path')
     .attr('class', 'menu-arc')
-    .attr('d', arc)
+    .attr('d', arc as any)
     .attr('fill', (d, i) => {
       // Use theme-aware gradient
       const baseColor = d3.color(secondaryColor);
@@ -247,7 +256,7 @@ function renderRadialMenu(
         .transition()
         .duration(150)
         .attr('opacity', 0.8)
-        .attr('d', arc);
+        .attr('d', arc as any);
     })
     .on('click', function (event, d) {
       event.stopPropagation();
@@ -260,7 +269,7 @@ function renderRadialMenu(
         renderRadialMenu(svg, d.data.children, context, innerRadius + 20, outerRadius + 40, state, onClose);
       } else {
         // Execute action
-        d.data.action();
+        d.data.action?.();
         if (onClose) onClose();
       }
     });
@@ -283,7 +292,7 @@ function renderRadialMenu(
 
   // Add icons if provided
   segments
-    .filter((d) => d.data.icon)
+    .filter((d) => !!d.data.icon)
     .append('text')
     .attr('class', 'menu-icon')
     .attr('transform', (d) => {

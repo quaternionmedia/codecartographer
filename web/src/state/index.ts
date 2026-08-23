@@ -28,7 +28,8 @@ export {
 } from './actions';
 
 // Legacy exports (for backward compatibility)
-export { ICell, ICellState, CellState } from './cell_state';
+export type { ICell, ICellState } from './cell_state';
+export { CellState } from './cell_state';
 export { StateController } from './state_controller';
 export { API } from './api_base';
 export { ConfigManager, DebugManager } from './config_manager';

@@ -183,6 +183,85 @@ class TestStreamEndpointsShareCacheReplay:
         assert resp_a.text == resp_b.text
 
 
+class TestStreamEndpointsAnnotateLexiconBypassesCache:
+    """annotate_lexicon isn't part of the cache key (CacheService.cache_key
+    is shared with every other caller) - both streaming endpoints must skip
+    the cache entirely for annotated requests rather than risk serving a
+    cached unannotated result, matching /parse/unified's own fix."""
+
+    @pytest.fixture()
+    def client(self):
+        return TestClient(app)
+
+    def test_stream_ignores_cached_entry_when_annotate_lexicon_true(self, client, monkeypatch, tmp_path):
+        cache_dir = tmp_path / "cache"
+        repos_dir = cache_dir / "repos"
+        import codecarto.services.cache_service as cache_svc
+        monkeypatch.setattr(cache_svc, "_CACHE_DIR", cache_dir)
+        monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos_dir)
+        monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos_dir / "index.json")
+
+        url = "https://github.com/test/annotate-bypass"
+        # A cached entry with a sentinel node id that would NOT appear in a
+        # fresh parse of the empty directory below - if the cache were
+        # (wrongly) consulted, this sentinel would show up in the response.
+        graph_data = {
+            "graph": {
+                "nodes": {"file::CACHED_SENTINEL.py": {"metadata": {"depth": 1, "kind": "file", "label": "CACHED_SENTINEL.py"}}},
+                "edges": [],
+            },
+            "metadata": {},
+        }
+        key = CacheService.cache_key(url, "2", "Spring", [])
+        CacheService.set(key, graph_data, label="test/annotate-bypass", url=url, mode="2", layout="Spring")
+
+        body = {
+            "directory": {
+                "info": {"url": url, "owner": "test", "name": "annotate-bypass"},
+                "size": 0,
+                "root": {"name": "", "size": 0, "files": [], "folders": []},
+                "is_partial": False,
+            },
+            "depth": 2,
+            "layout": "Spring",
+            "annotate_lexicon": True,
+        }
+        resp = client.post("/parse/stream", json=body)
+        assert resp.status_code == 200
+        assert "CACHED_SENTINEL" not in resp.text
+
+    def test_stream_url_ignores_cached_entry_when_annotate_lexicon_true(self, client, monkeypatch, tmp_path):
+        cache_dir = tmp_path / "cache"
+        repos_dir = cache_dir / "repos"
+        import codecarto.services.cache_service as cache_svc
+        monkeypatch.setattr(cache_svc, "_CACHE_DIR", cache_dir)
+        monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos_dir)
+        monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos_dir / "index.json")
+
+        import codecarto.services.github_service as gh_svc
+
+        async def fake_fetch_tree_fast(owner, repo, headers, url):
+            return [], "main", 1, False
+
+        monkeypatch.setattr(gh_svc, "fetch_tree_fast", fake_fetch_tree_fast)
+
+        url = "https://github.com/test/annotate-bypass-url"
+        graph_data = {
+            "graph": {
+                "nodes": {"file::CACHED_SENTINEL.py": {"metadata": {"depth": 1, "kind": "file", "label": "CACHED_SENTINEL.py"}}},
+                "edges": [],
+            },
+            "metadata": {},
+        }
+        key = CacheService.cache_key(url, "2", "Spring", [])
+        CacheService.set(key, graph_data, label="test/annotate-bypass-url", url=url, mode="2", layout="Spring")
+
+        body = {"url": url, "depth": 2, "layout": "Spring", "annotate_lexicon": True}
+        resp = client.post("/parse/stream-url", json=body)
+        assert resp.status_code == 200
+        assert "CACHED_SENTINEL" not in resp.text
+
+
 class TestAccumulate:
     def test_node_chunk_stored_by_id(self):
         import json

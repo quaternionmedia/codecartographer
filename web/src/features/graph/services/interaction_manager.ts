@@ -7,6 +7,7 @@
 import * as d3 from 'd3';
 import { InteractionProfile, getProfile } from '../config/interaction_profiles';
 import { logger } from '../../../core/logger';
+import type { RadialMenuContext } from '../components/radial_menu';
 
 export interface GraphNode {
   id: string;
@@ -28,7 +29,7 @@ export interface InteractionManagerCallbacks {
   onNodeDeselect?: () => void;
   onEdgeSelect?: (edge: GraphEdge) => void;
   onCanvasClick?: (position: { x: number; y: number }) => void;
-  onContextMenu?: (context: { type: string; target?: any; position: { x: number; y: number } }) => void;
+  onContextMenu?: (context: { type: RadialMenuContext['type']; target?: any; position: { x: number; y: number } }) => void;
   onZoomChange?: (scale: number) => void;
   onFitToScreen?: () => void;
   onCenterSelection?: () => void;

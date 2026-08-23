@@ -10,7 +10,7 @@
  * by ParserRegistry (backend) and the D3/Gravis/Notebook renderer registry
  * (frontend) elsewhere in this codebase.
  *
- * See ADR 0005 (docs/adr/) for why this generalization exists.
+ * See ADR 0005 (governance/qm/adr/) for why this generalization exists.
  */
 
 import m from 'mithril';
@@ -24,8 +24,9 @@ import { createRepoPanel } from './panels/repo_panel';
 import { createGraphbasePanel } from './panels/graphbase_panel';
 import { createGraphSettingsPanel } from './panels/graph_settings_panel';
 import { createActionsPanel } from './panels/actions_panel';
+import { createTopologyPanel } from './panels/topology_panel';
 
-export type DockPanelId = 'graph' | 'file-tree' | 'upload-panel' | 'repo-panel' | 'graphbase-panel' | 'graph-settings-panel' | 'plotbar';
+export type DockPanelId = 'graph' | 'file-tree' | 'upload-panel' | 'repo-panel' | 'graphbase-panel' | 'graph-settings-panel' | 'plotbar' | 'topology-panel';
 
 export interface PanelDefinition {
   readonly id: DockPanelId;
@@ -43,6 +44,13 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     config: { type: 'component', componentType: 'graph', id: 'graph', title: '◈ Graph', isClosable: true },
     overflow: 'hidden',
     mount: (ctx, el) => m.mount(el, createGraphPanel(ctx)),
+  },
+  {
+    id: 'topology-panel',
+    menuLabel: 'Topology',
+    config: { type: 'component', componentType: 'topology-panel', id: 'topology-panel', title: '⌁ Topology', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createTopologyPanel(ctx)),
   },
   {
     id: 'file-tree',

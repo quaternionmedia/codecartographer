@@ -6,7 +6,6 @@
 
 // Components
 export { UploadNav } from './components/UploadNav';
-export { FileList } from './components/FileList';
 
 // State
 export { uploadActions } from './state/upload_actions';

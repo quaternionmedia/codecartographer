@@ -52,11 +52,20 @@ htmlcov/
 node_modules/
 .vite/
 web/dist/
+web/test-results/
+web/playwright-report/
+web/blob-report/
+web/playwright/.cache/
 
 # =============================================================================
 # IDE / Editor
 # =============================================================================
-.vscode/
+# Contents rather than the directory: git will not re-include a file whose
+# parent directory is excluded, so `.vscode/` would make the negations below
+# silently do nothing. The governance seed checks those two files in.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 .vs/
 *.swp
@@ -88,3 +97,6 @@ dev.sh
 # Screenshots cache (mkdocs)
 .cache/
 .screenshot_cache/
+
+# rad conformance build output
+web/dist-rad/

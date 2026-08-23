@@ -1,0 +1,137 @@
+name: Submodule refs
+
+# SEED FILE: copy verbatim into a forking project's .github/workflows/.
+#
+# Verifies every submodule's pinned commit exists on that submodule's own
+# remote, so "committed a pointer bump without pushing the submodule" is caught
+# here with an actionable message, rather than later as a cryptic
+# actions/checkout failure in whichever workflow happens to fetch first:
+#
+#   fatal: remote error: upload-pack: not our ref <sha>
+#
+# Two QM projects have hit exactly that. qmetronome's v0.0.28 Alpha Release
+# build broke on it and the project wrote this check in response; apothecary
+# hit the identical error on 2026-07-21 with no check, because nothing carried
+# qmetronome's fix across. Carrying it is what the seed is for.
+#
+# Unlike the ADR lint, this check is SELF-CONTAINED rather than run from the
+# governance submodule -- it has to be. It checks out with submodules: false on
+# purpose, since the submodule fetch is the thing being guarded and letting it
+# run first would mask this check's clearer error. A script living inside the
+# submodule would not be present to run.
+#
+# Triggers on every push and PR, deliberately broader than a main/PR-only
+# workflow: a stale pointer can be introduced on any branch, and the breakage
+# surfaces later, at tag time, in a different workflow.
+
+on:
+  push:
+  pull_request:
+
+# One run per branch per workflow. A second push supersedes the first: nobody
+# reads the result of a run whose commit has already been replaced, and the
+# minutes are real -- 55 of this repository's 129 runs on 2026-08-11 came from
+# five iterative pushes to two pull request branches, where only the last
+# mattered.
+#
+# Cancellation is scoped to pull requests deliberately. On the default branch
+# and on a project branch the run IS the record of what that commit reported,
+# and cancelling it to start a newer one destroys the only evidence that the
+# earlier commit was ever checked.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check-submodule-refs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Verify submodule commits are pushed to their own remotes
+        run: |
+          set -uo pipefail
+          status=0
+          while IFS= read -r line; do
+            # `git submodule status` lines are " <sha> <path> (<describe>)",
+            # optionally prefixed with `-` (uninitialized), `+` (checked-out SHA
+            # differs from the index) or `U` (merge conflict). Strip all three:
+            # without stripping `U` the SHA reads "U<sha>" as one token and the
+            # error would name a SHA that does not exist.
+            sha=$(echo "$line" | sed 's/^[-+U]//' | awk '{print $1}')
+            path=$(echo "$line" | sed 's/^[-+U]//' | awk '{print $2}')
+            url=$(git config -f .gitmodules --get "submodule.${path}.url" || true)
+            if [ -z "$url" ]; then
+              echo "::warning::No .gitmodules URL for submodule '$path' - skipping"
+              continue
+            fi
+            # A filesystem path here resolves on the machine that set it up and
+            # nowhere else -- it is how an unreachable commit gets pinned in the
+            # first place, and it fails in CI as a missing directory rather than
+            # as anything that names the cause.
+            case "$url" in
+              *://*|*@*:*) ;;
+              *) echo "::error::Submodule '$path' has a filesystem URL in .gitmodules: $url"
+                 echo "::error::Set it to the canonical remote, then run: git submodule sync $path"
+                 status=1; continue ;;
+            esac
+            # A runner has no SSH key, so an `git@host:owner/repo` URL cannot be
+            # fetched here even when the commit is present. Reading that as "not
+            # pushed" is a false negative, and it fires for every project whose
+            # .gitmodules names the canonical SSH remote -- which is what the
+            # fork procedure produces. So the SSH form is translated and tried
+            # as well, and the URL that worked is reported.
+            candidates="$url"
+            https_url=$(printf '%s' "$url" | sed -E \
+              -e 's#^ssh://[^@]+@([^/]+)/#https://\1/#' \
+              -e 's#^[^@/]+@([^:/]+):#https://\1/#')
+            if [ "$https_url" != "$url" ]; then
+              candidates="$url $https_url"
+            fi
+            echo "Checking $path @ $sha against $url ..."
+            scratch=$(mktemp -d)
+            git init --quiet --bare "$scratch"
+            reached=""
+            for candidate in $candidates; do
+              if git -C "$scratch" fetch --quiet --depth=1 "$candidate" "$sha" >/dev/null 2>&1; then
+                reached="$candidate"
+                break
+              fi
+            done
+            if [ -n "$reached" ]; then
+              if [ "$reached" = "$url" ]; then
+                echo "  ok - reachable"
+              else
+                echo "  ok - reachable over $reached (the configured URL is not fetchable here)"
+              fi
+            else
+              # **UNPUSHED AND UNREADABLE ARE DIFFERENT FACTS.** This branch
+              # reported both as one failure, in an error that admitted it could
+              # not tell them apart -- and this project has a private submodule,
+              # so it was permanently red for a reason nothing was wrong with.
+              #
+              # `git ls-remote <url>` with NO ref asks "can this remote be read
+              # at all", which is decidable. Where it can, a missing commit is
+              # now unambiguous rather than a maybe.
+              #
+              # This is the copied seed file. The corpus has since moved the
+              # logic into project-seed/ci/check_submodule_pins.py, which this
+              # workflow will call once the governance pin advances past it.
+              if git ls-remote --quiet "$url" >/dev/null 2>&1; then
+                echo "::error::Submodule '$path' is pinned to $sha, and its remote ($url) IS readable from here and does not have that commit."
+                echo "::error::The commit exists only where it was made. Run: (cd $path && git push origin HEAD), then re-push this repo."
+                status=1
+              else
+                echo "::warning::Submodule '$path' is pinned to $sha and its remote ($url) could not be read at all from here."
+                echo "::warning::Unknown, not a failure: a private submodule is unreadable to an unauthenticated runner, and so is a deleted one. This job cannot separate those and does not guess."
+                echo "::warning::To settle it where credentials exist: uv run qm pins, or git init -q /tmp/probe && git -C /tmp/probe fetch --depth=1 $url $sha"
+              fi
+            fi
+            rm -rf "$scratch"
+          done < <(git submodule status)
+          exit $status

@@ -68,7 +68,12 @@ export const Folder: m.Component<FolderAttrs> = {
               };
               if (folderContent) {
                 const anim = animations.fadeOut(folderContent, { duration: 150 });
-                Promise.resolve(anim?.finished).then(close);
+                // animejs v4's JSAnimation is itself thenable (resolves on
+                // completion) -- v3's separate `.finished` promise property
+                // no longer exists, so awaiting that always resolved
+                // immediately with undefined instead of waiting for the
+                // animation to actually finish.
+                Promise.resolve(anim).then(close);
               } else {
                 close();
               }

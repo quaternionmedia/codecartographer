@@ -31,10 +31,11 @@ if (app) {
   m.mount(app, GoldenLayoutShell(() => cells()));
 }
 
-// DEBUG
+// DEBUG — exposes the Meiosis stream itself, not its resolved value; call
+// window.cells() in the console to read current state.
 declare global {
   interface Window {
-    cells: ReturnType<typeof cells>;
+    cells: typeof cells;
   }
 }
 window.cells = cells;

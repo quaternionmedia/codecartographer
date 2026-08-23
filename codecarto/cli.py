@@ -14,6 +14,38 @@ import sys
 import os
 from pathlib import Path
 
+
+# THE CODE MAPS ANSWER ON E. Three services on one machine, three constants a
+# person can recall without looking: 3141 the harness (qmcp), 1618 the panel
+# (dossier), 2718 here. `e` is the base of natural growth, which is the shape
+# this tool is for -- it exists because complexity grows faster than anybody
+# can hold in their head.
+#
+# NOT 8000, WHICH THIS USED AND HALF THE PYTHON WORLD USES. A default that
+# common is a default that collides, and the pair already lost a week to a port
+# disagreement: the panel looked on 8000 while the harness served 3333, and
+# reported an absent archive while the harness was answering.
+#
+# Override with `CODECARTO_PORT`, or `--port` on any command that binds one.
+DEFAULT_PORT = 2718
+
+
+def _default_port() -> int:
+    """The port, from the environment or the constant.
+
+    A callable rather than a literal default, so `CODECARTO_PORT` is read when
+    the command runs rather than when this module is imported -- which is what
+    lets a test set it and a shell export it.
+    """
+    import os
+
+    raw = os.environ.get("CODECARTO_PORT", "")
+    try:
+        return int(raw) if raw else DEFAULT_PORT
+    except ValueError:
+        return DEFAULT_PORT
+
+
 # Ensure stdout/stderr can handle Unicode on Windows (cp1252 can't encode emojis)
 if sys.platform == "win32":
     import io
@@ -72,7 +104,8 @@ def cli():
 
 @cli.command()
 @click.option("--host", default="127.0.0.1", help="Backend host address")
-@click.option("--port", default=8000, help="Backend port")
+@click.option("--port", default=lambda: _default_port(),
+              help=f"Backend port (default {DEFAULT_PORT}, or $CODECARTO_PORT)")
 @click.option("--no-frontend", is_flag=True, help="Skip starting frontend")
 def dev(host: str, port: int, no_frontend: bool):
     """
@@ -80,7 +113,7 @@ def dev(host: str, port: int, no_frontend: bool):
 
     \b
     Starts:
-    - Uvicorn backend with hot reload on http://127.0.0.1:8000
+    - Uvicorn backend with hot reload on http://127.0.0.1:2718
     - Vite frontend on http://localhost:1234
 
     Press Ctrl+C to stop both servers.
@@ -144,7 +177,8 @@ def dev(host: str, port: int, no_frontend: bool):
 
 @cli.command()
 @click.option("--host", default="127.0.0.1", help="Host address")
-@click.option("--port", default=8000, help="Port number")
+@click.option("--port", default=lambda: _default_port(),
+              help=f"Port number (default {DEFAULT_PORT}, or $CODECARTO_PORT)")
 @click.option("--reload/--no-reload", default=True, help="Enable hot reload")
 def serve(host: str, port: int, reload: bool):
     """

@@ -13,6 +13,8 @@ import * as d3 from 'd3';
 import { GraphNode, GraphEdge } from './graph_renderer';
 import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager } from './compound_layout';
+import type { ExtensionContext } from '../extensions/base';
+import { depthSizeMultiplier } from './depth_scale';
 
 // Nodes rendered per animation frame. Scales with total so large repos
 // finish in ~2s while small repos show clearly progressive animation.
@@ -38,6 +40,10 @@ export class StreamingGraphRenderer {
   // Internal queues — filled by addNode/addEdge, drained by rAF loop
   private _nodeQueue: GraphNode[] = [];
   private _edgeQueue: GraphEdge[] = [];
+  // All edges seen so far, kept (not drained) so compound-group grouping can
+  // read the real 'contains' edges — addEdge's queue above is consumed by
+  // the rAF render loop and doesn't retain them.
+  private _allEdges: GraphEdge[] = [];
   private _rafId: number | null = null;
   private _streamDone = false;
   private _batchSize = 1;           // updated when total is known via setTotal()
@@ -169,6 +175,7 @@ export class StreamingGraphRenderer {
   /** Enqueue an edge — rendered after its source/target nodes appear. */
   addEdge(edge: GraphEdge): void {
     this._edgeQueue.push(edge);
+    this._allEdges.push(edge);
     this._scheduleLoop();
   }
 
@@ -264,15 +271,60 @@ export class StreamingGraphRenderer {
     ];
   }
 
+  /**
+   * Local, deterministic collision nudge for a newly-placed node - the
+   * streaming equivalent of graph_renderer.ts's seed-and-settle collision
+   * pass, but a one-shot check-against-neighbors instead of a running
+   * simulation: this renderer has no d3.forceSimulation at all (by
+   * design - it expects backend-computed positions and adds nodes one at
+   * a time, not as a batch a simulation could settle together), so
+   * porting graph_renderer.ts's approach directly isn't a good fit.
+   * Applies to BOTH real backend positions and the depth-ring
+   * placeholder - neither was ever checked against already-placed
+   * siblings before. Skipped above a node-count threshold: this is
+   * O(already-placed) per new node, i.e. O(N^2) across a full stream,
+   * fine at normal repo sizes but not worth paying for on huge graphs
+   * where a single node's local overlap matters far less anyway.
+   */
+  private _resolveCollision(node: GraphNode, x: number, y: number): [number, number] {
+    if (this.nodeById.size > 300) return [x, y];
+    const gap = (n: GraphNode) => this.styling.nodeSize! * depthSizeMultiplier(n) * 1.3;
+    const nodeGap = gap(node);
+    let px = x;
+    let py = y;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      let collided = false;
+      for (const other of this.nodeById.values()) {
+        if (other === node || other.x === undefined || other.y === undefined) continue;
+        const dx = px - other.x;
+        const dy = py - other.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = (nodeGap + gap(other)) / 2;
+        if (dist < 0.001) {
+          px += minDist;
+          collided = true;
+        } else if (dist < minDist) {
+          const push = (minDist - dist) + 2;
+          px += (dx / dist) * push;
+          py += (dy / dist) * push;
+          collided = true;
+        }
+      }
+      if (!collided) break;
+    }
+    return [px, py];
+  }
+
   private _renderNode(node: GraphNode): void {
     let x = node.x;
     let y = node.y;
     if (x === undefined || y === undefined) {
       [x, y] = this._getDepthAwarePosition(node);
-      node.x = x;
-      node.y = y;
     }
-    const size = this.styling.nodeSize! * this._depthScale(node);
+    [x, y] = this._resolveCollision(node, x, y);
+    node.x = x;
+    node.y = y;
+    const size = this.styling.nodeSize! * depthSizeMultiplier(node);
 
     const group = this.nodeGroup
       .append('g')
@@ -281,13 +333,21 @@ export class StreamingGraphRenderer {
       .attr('transform', `translate(${x},${y}) scale(0)`)
       .attr('opacity', 0);
 
+    // Bind the datum so an ExtensionContext built from this renderer carries
+    // real node data, the same way the static renderer's selections do.
+    group.datum(node);
+
     // Cache element for O(1) drag-propagation lookups (avoids per-frame CSS selector)
     this._nodeGroupEl.set(node.id, group.node()!);
 
+    const baseFill = (node.color as string) || 'steelblue';
     group
       .append('path')
       .attr('d', this._nodePath(node.shape as string, size))
-      .attr('fill', (node.color as string) || 'steelblue')
+      .attr('fill', baseFill)
+      // Remembered so a colour override can be undone without re-deriving
+      // the parser's visual grammar here.
+      .attr('data-base-fill', baseFill)
       .attr('fill-opacity', this.styling.nodeOpacity!)
       .attr('stroke', '#fff')
       .attr('stroke-width', this.styling.nodeBorderWidth!);
@@ -370,7 +430,7 @@ export class StreamingGraphRenderer {
               const childEl = this._nodeGroupEl.get(childId);
               if (childEl) childEl.setAttribute('transform', `translate(${child.x},${child.y})`);
               this._updateEdgesForNode(childId, child.x, child.y);
-              this._updateLabelForNode(childId, child.x, child.y, this.styling.nodeSize! * this._depthScale(child));
+              this._updateLabelForNode(childId, child.x, child.y, this.styling.nodeSize! * depthSizeMultiplier(child));
             }
           }
         })
@@ -405,9 +465,121 @@ export class StreamingGraphRenderer {
       .attr('opacity', 1);
   }
 
+  // ── Extension seam ─────────────────────────────────────────────────────────
+  //
+  // The interaction layer used to hang off graph_renderer.ts, which no
+  // code-map path mounts: Load Demo, plot repo, plot file, cache recall and
+  // bookmark replay all render here. Everything below exists so an extension
+  // can attach to THIS renderer, which is the whole of the M1 fix. Nothing
+  // here knows what an extension does with it.
+
+  /** Nodes rendered so far, by id. */
+  getNodes(): GraphNode[] {
+    return Array.from(this.nodeById.values());
+  }
+
+  getEdges(): GraphEdge[] {
+    return this._allEdges;
+  }
+
+  /** The container the renderer was constructed against. */
+  getContainer(): HTMLElement {
+    return this.svg.node()!.parentElement as HTMLElement;
+  }
+
+  /**
+   * An `ExtensionContext` describing the current scene.
+   *
+   * Rebuilt on request rather than cached: nodes stream in, so a context
+   * captured once would describe a graph that no longer exists. Selections
+   * are re-derived for the same reason.
+   */
+  buildExtensionContext(selectedNodes: Set<GraphNode>, onGraphChange?: () => void): ExtensionContext<GraphNode, GraphEdge> {
+    return {
+      svg: this.svg,
+      graphGroup: this.g,
+      nodes: this.nodeGroup.selectAll<SVGGElement, GraphNode>('g.graph-node'),
+      edges: this.linkGroup.selectAll<SVGLineElement, GraphEdge>('line.stream-edge'),
+      labels: this.labelGroup.selectAll<SVGTextElement, GraphNode>('text'),
+      zoom: this.zoom,
+      // No force simulation on this renderer — positions come from the
+      // backend layout. Extensions must treat `simulation` as optional, and
+      // the canvas ring disables `toggle-physics` accordingly.
+      simulation: undefined,
+      container: this.getContainer(),
+      data: { nodes: this.getNodes(), edges: this._allEdges },
+      selectedNodes,
+      onGraphChange,
+    };
+  }
+
+  /** Public so an intent can ask for a fit without reaching into the DOM. */
+  fitView(): void {
+    this._fitView();
+  }
+
+  /** Fit the viewport to these nodes only. Unknown ids are ignored. */
+  fitTo(ids: string[]): void {
+    const nodes = ids.map((id) => this.nodeById.get(id)).filter((n): n is GraphNode => !!n);
+    this._fitNodes(nodes);
+  }
+
+  /** Remove nodes and any edge touching them. Used by the `delete` verb. */
+  removeNodes(ids: string[]): void {
+    const gone = new Set(ids);
+    for (const id of ids) {
+      this.nodeById.delete(id);
+      this._nodeGroupEl.delete(id);
+      this.nodeGroup.select(`g.graph-node[data-node-id="${CSS.escape(id)}"]`).remove();
+      this.labelGroup.selectAll(`text[data-node-id="${CSS.escape(id)}"]`).remove();
+    }
+    this._allEdges = this._allEdges.filter(
+      (e) => !gone.has(String(e.source)) && !gone.has(String(e.target)),
+    );
+    // Prune the containment map too. It is otherwise only rebuilt on the
+    // next relayout, so until then `childIdsOf` would keep naming children
+    // that are no longer on the canvas.
+    for (const id of ids) this._childrenMap.delete(id);
+    for (const [parent, kids] of this._childrenMap) {
+      if (kids.some((k) => gone.has(k))) {
+        this._childrenMap.set(parent, kids.filter((k) => !gone.has(k)));
+      }
+    }
+    this.linkGroup
+      .selectAll<SVGLineElement, GraphEdge>('line.stream-edge')
+      .filter((d) => !!d && (gone.has(String(d.source)) || gone.has(String(d.target))))
+      .remove();
+  }
+
+  /** Ids of nodes whose parent is `id`, per the accumulated containment edges. */
+  childIdsOf(id: string): string[] {
+    return this._childrenMap.get(id) ?? [];
+  }
+
+  /** Merge freshly parsed nodes/edges into the live scene, then settle. */
+  mergeGraph(nodes: GraphNode[], edges: GraphEdge[]): void {
+    for (const n of nodes) {
+      if (this.nodeById.has(n.id)) continue;
+      this.addNode(n);
+    }
+    for (const e of edges) this.addEdge(e);
+    this._streamDone = true;
+    this._scheduleLoop();
+  }
+
   private _fitView(): void {
-    if (this.nodeById.size === 0) return;
-    const nodes = Array.from(this.nodeById.values());
+    this._fitNodes(Array.from(this.nodeById.values()));
+  }
+
+  /**
+   * Fit the viewport to a subset of nodes.
+   *
+   * Split out of `_fitView` so `focus-group` can frame one subtree. A verb
+   * that says "focus" and fits the whole graph is the kind of near-miss the
+   * legacy menu was full of.
+   */
+  private _fitNodes(nodes: GraphNode[]): void {
+    if (nodes.length === 0) return;
 
     const avgX = nodes.reduce((s, n) => s + (n.x ?? 0), 0) / nodes.length;
     const avgY = nodes.reduce((s, n) => s + (n.y ?? 0), 0) / nodes.length;
@@ -437,10 +609,11 @@ export class StreamingGraphRenderer {
     const nodes = Array.from(this.nodeById.values());
     const bounds = this._compoundManager.computeGroupBounds(
       nodes,
+      this._allEdges,
       40,
       this.styling.nodeSize! * 3.0,
     );
-    this._childrenMap = this._compoundManager.computeChildrenMap(nodes);
+    this._childrenMap = this._compoundManager.computeChildrenMap(nodes, this._allEdges);
     this._backgroundGroup.selectAll('*').remove();
     for (const b of bounds) {
       const isDir = b.depth === 0;
@@ -522,14 +695,6 @@ export class StreamingGraphRenderer {
     const byDepth = this.styling.showLabelsByDepth as Partial<Record<number, boolean>> | undefined;
     if (byDepth && depth in byDepth) return byDepth[depth]!;
     return this.styling.showNodeLabels ?? false;
-  }
-
-  private _depthScale(node: GraphNode): number {
-    const d = node.depth as number | undefined;
-    if (d === 0) return 3.0;
-    if (d === 1) return 1.8;
-    if (d === 3) return 0.6;
-    return 1.0;
   }
 
   private _assignVisuals(node: GraphNode): void {

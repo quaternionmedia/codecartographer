@@ -1,5 +1,12 @@
-import { Network } from 'vis-network';
-import { DataSet } from 'vis-data';
+// Type-only: erased at compile time, so this doesn't pull the real
+// vis-network/vis-data modules (523 KB minified, ~half this app's total
+// bundle) into the eagerly-loaded main chunk. The actual classes are
+// dynamically imported inside render() below, only once a user actually
+// selects this renderer -- canHandle() (used by findForData() to
+// auto-detect a renderer for arbitrary data) never touches either
+// library, so that check stays synchronous and free of this cost.
+import type { Network } from 'vis-network';
+import type { DataSet } from 'vis-data';
 import { IGraphRenderer } from './base_renderer';
 import { GraphData, GraphNode, GraphEdge } from './graph_renderer';
 import { GraphStylingOptions } from '../../../state/types';
@@ -19,18 +26,45 @@ export class GravisGraphRenderer implements IGraphRenderer {
   /**
    * Render graph data using vis-network
    */
-  render(
+  async render(
     container: HTMLElement,
     data: unknown,
     styling?: GraphStylingOptions
-  ): void {
+  ): Promise<void> {
+    // Kept synchronous and outside the try/catch below: callers wrap
+    // render() in their own try/catch expecting synchronous errors for
+    // bad data, and this check doesn't need the dynamically-imported
+    // libraries at all.
     if (!this.canHandle(data)) {
       throw new Error('GravisGraphRenderer: Invalid data format');
     }
 
     this.cleanup();
 
-    const graphData = data as GraphData;
+    try {
+      await this.renderWithVisNetwork(container, data as GraphData, styling);
+    } catch (error) {
+      // render() is async now (it lazy-loads vis-network on first use), so
+      // a caller's synchronous try/catch around renderer.render(...) can no
+      // longer catch failures here -- an unhandled rejection would
+      // otherwise replace the graceful inline error state every other
+      // renderer path already produces on failure.
+      logger.error('GravisGraphRenderer: render failed', error);
+      container.innerHTML =
+        '<div style="padding: 20px; color: red;">Error rendering graph. Check console for details.</div>';
+    }
+  }
+
+  private async renderWithVisNetwork(
+    container: HTMLElement,
+    graphData: GraphData,
+    styling?: GraphStylingOptions
+  ): Promise<void> {
+    const [{ Network }, { DataSet }] = await Promise.all([
+      import('vis-network'),
+      import('vis-data'),
+    ]);
+
     logger.debug('GravisGraphRenderer.render - rendering with vis-network');
 
     // Clear container

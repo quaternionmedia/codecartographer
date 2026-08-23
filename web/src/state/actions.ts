@@ -1,6 +1,8 @@
 import m from 'mithril';
 import { StateController } from '../state/state_controller';
 import { PlotService } from '../services/plot_service';
+import { TopologyService } from '../services/topology_service';
+import type { TopologyChoices, TopologyProblem, TopologyRequest } from '../services/topology_service';
 import { RepoService } from '../features/repository';
 import { GraphData } from '../features/graph';
 import { GraphStylingOptions } from './types';
@@ -97,8 +99,11 @@ export class PlotActions {
   private renderGraphData(graphData: GraphData): void {
     logger.info('PlotActions.renderGraphData - rendering client-side:', graphData.metadata);
 
-    // Store graph data in state so we can re-render when styling changes
-    this.stateController.update({ graphData });
+    // Store graph data in state so we can re-render when styling changes.
+    // **REPLACE, NEVER MERGE.** `update` is a mergerino patch: `{graphData}`
+    // deep-merges into the previous graph, and `graph.nodes` is keyed by id, so
+    // every plot drew the union of itself and everything before it.
+    this.stateController.replaceGraphData(graphData);
 
     // Create the graph vnode
     this.createGraphVnode();
@@ -414,6 +419,36 @@ export class PlotActions {
   }
 
   /**
+   * Fetch languages that have a Lexicon (abstraction-layer ontology) and
+   * store in state, for the "Load Lexicon" language picker.
+   * Non-fatal: called on startup; failure is silently ignored.
+   */
+  async initializeLexiconLanguages(): Promise<void> {
+    try {
+      const langs = await PlotService.fetchLexiconLanguages(this.stateController.api.lexicon);
+      this.stateController.update({ availableLexiconLanguages: langs });
+    } catch {
+      // non-fatal — backend may not be running yet
+    }
+  }
+
+  /**
+   * Load and display a language's standalone Lexicon graph (Option A —
+   * see docs/llm/roadmap/lexicon.md). Switchable: grows automatically as
+   * more languages get a lexicon YAML, no frontend change needed.
+   */
+  async loadLexicon(language: string): Promise<void> {
+    this.stateController.clear();
+    try {
+      const data = await PlotService.plotLexicon(this.stateController.api.lexicon, language);
+      this.handlePlotData(data);
+    } catch (error) {
+      console.error(`Failed to load ${language} lexicon:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Load and display demo visualization
    */
   async loadDemo(): Promise<void> {
@@ -432,35 +467,86 @@ export class PlotActions {
   }
 
   /**
-   * Parse a directory using the unified schema (depth-based hierarchy).
-   * Any renderer (D3, Gravis, …) can display the result.
+   * Plot a topology from the harness.
+   *
+   * **GOES THROUGH `handlePlotData` LIKE EVERY OTHER PLOT.** A topology is
+   * graph data; the only thing that makes it unusual is that some of its edges
+   * were never measured, and that travels in the graph metadata. Giving it its
+   * own render path would have meant a second renderer, second styling and a
+   * second set of extensions to keep in step.
    */
-  async plotUnified(
-    directory: Directory,
-    depth: number = 2,
-    extensions?: string[]
-  ): Promise<void> {
+  async loadTopology(request: TopologyRequest = {}): Promise<void> {
     this.stateController.clear();
     try {
-      const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const data = await PlotService.plotUnified(
-        this.stateController.api.parse,
-        directory,
-        depth,
-        extensions ?? null,
-        layout
+      const layout = convertLayoutToBackend(
+        this.stateController.state.graphStyling.layout,
       );
-      if (!data) throw new Error('No data returned from parse/unified');
-      // Backend wraps result in { results: { graph, metadata } }
-      const result = data as Record<string, unknown>;
-      const graphData = result['graph'] !== undefined ? result : data;
-      // Store directory so subsequent expandGraphNode() calls can reuse it
-      this.stateController.update({ parseDirectory: directory });
-      this.handlePlotData(graphData);
+      const found = await TopologyService.load(
+        this.stateController.api.topology,
+        { ...request, layout: request.layout ?? layout },
+      );
+
+      if (TopologyService.isProblem(found)) {
+        // **NOT AN EMPTY GRAPH.** The harness being down is the ordinary case,
+        // and an empty canvas would state that this topology has nothing in it
+        // -- a different claim, and a false one.
+        this.stateController.update({ topologyProblem: found as TopologyProblem });
+        // **AND REDRAW.** `update` changes state and does not repaint. Mithril
+        // repaints by itself after a DOM event handler, which is why every
+        // other action here appears to work without this -- but an `oninit`
+        // that awaits resolves outside any handler, so the panel kept showing
+        // "asking the harness..." after the answer had already arrived.
+        this.stateController.redraw();
+        logger.warn('PlotActions.loadTopology - ' + (found as TopologyProblem).problem);
+        return;
+      }
+
+      this.stateController.update({ topologyProblem: null });
+      this.handlePlotData(found);
+      this.stateController.redraw();
     } catch (error) {
-      console.error('Failed to plot unified:', error);
+      logger.error('Failed to load topology:', error);
       throw error;
     }
+  }
+
+  /** Fill the topology picker from whatever the harness actually offers. */
+  async loadTopologyChoices(): Promise<void> {
+    // **A THROW MUST BECOME A VISIBLE PROBLEM, NEVER A SILENT ONE.** This had
+    // no handler, so a `TypeError` inside the service rejected the promise, the
+    // panel's `catch` swallowed it, and the panel showed "asking the harness…"
+    // for as long as it stayed open -- with a successful 200 in the network
+    // log. A pending state that no failure can clear is a state nothing exits.
+    let found;
+    try {
+      found = await TopologyService.available(this.stateController.api.topology);
+    } catch (error) {
+      logger.error('PlotActions.loadTopologyChoices - ', error);
+      this.stateController.update({
+        topologyChoices: null,
+        topologyProblem: {
+          unreachable: true,
+          problem: 'the front end failed while reading the answer',
+          remedy: String((error as Error)?.message ?? error),
+          where: this.stateController.api.topology + '/available',
+        } as TopologyProblem,
+      });
+      this.stateController.redraw();
+      return;
+    }
+    if (TopologyService.isProblem(found)) {
+      this.stateController.update({
+        topologyProblem: found as TopologyProblem,
+        topologyChoices: null,
+      });
+      this.stateController.redraw();
+      return;
+    }
+    this.stateController.update({
+      topologyChoices: found as TopologyChoices,
+      topologyProblem: null,
+    });
+    this.stateController.redraw();
   }
 
   /**
@@ -474,7 +560,7 @@ export class PlotActions {
       const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
       const dir    = new Directory(new RepoInfo(), 1, new RawFolder('upload', file.size, [file]));
       const data   = await PlotService.plotUnified(
-        this.stateController.api.parse, dir, 2, exts, layout
+        this.stateController.api.parse, dir, 2, exts, layout, undefined, opts.annotateLexicon
       );
       if (!data) throw new Error('No data returned from parse/unified');
       this.stateController.update({ parseDirectory: dir });
@@ -544,7 +630,14 @@ export class RepoActions {
       );
       const pathParts = path.split('/').filter(p => p.length > 0);
       const newRoot = mergeFolderAtPath(current.root, pathParts, folder);
-      this.stateController.setRepoContent({ ...current, root: newRoot });
+      // Constructed via `new Directory(...)`, not a `{...current}` spread --
+      // isEmpty is a computed getter on the class prototype, which a plain
+      // object spread silently drops (spread only copies own enumerable
+      // properties), producing an object that type-checks as a Directory
+      // but isn't really one at runtime.
+      this.stateController.setRepoContent(
+        new Directory(current.info, current.size, newRoot, current.is_partial)
+      );
     } catch (error) {
       console.error('Failed to expand path:', path, error);
       throw error;
@@ -571,19 +664,6 @@ export class RepoActions {
     }
   }
 
-  /**
-   * Select a file in the repository tree
-   */
-  selectFile(file: RawFile): void {
-    this.stateController.setSelectedRepoFile(file);
-  }
-
-  /**
-   * Clear repository data
-   */
-  clearRepository(): void {
-    this.stateController.clearRepoData();
-  }
 }
 
 /**
@@ -591,13 +671,6 @@ export class RepoActions {
  */
 export class UploadActions {
   constructor(private stateController: StateController) {}
-
-  /**
-   * Select an uploaded file
-   */
-  selectFile(file: RawFile): void {
-    this.stateController.setSelectedLocalFile(file);
-  }
 }
 
 /**
