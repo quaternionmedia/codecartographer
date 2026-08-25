@@ -202,7 +202,24 @@ def test_a_row_with_no_id_is_dropped_rather_than_named(tmp_path: Path):
 # --- the routes -----------------------------------------------------------------
 
 
-def test_the_graph_route_answers_in_this_project_s_envelope(client: TestClient):
+@pytest.fixture()
+def registry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """A corpus these route tests own, rather than the one on this machine.
+
+    **THE RUNNER HAS NO GOVERNANCE SUBMODULE.** `pytest.yml` checks out with
+    `submodules: false` on purpose -- `submodules: true` is all-or-nothing and
+    this project also has a private one the runner cannot read. So a test that
+    asserted against the ambient corpus passed here and failed there, which is
+    the shape this estate keeps finding: a test that is really a test of the
+    author's working copy. Both route tests below now carry their own registry.
+    """
+    root = corpus(tmp_path, ONE)
+    monkeypatch.setattr(mod, "CORPUS", root)
+    return root
+
+
+def test_the_graph_route_answers_in_this_project_s_envelope(
+        client: TestClient, registry: Path):
     body = client.get("/capabilities/gjgf").json()
 
     assert body["results"].keys() >= {"graph", "metadata"}
@@ -210,14 +227,32 @@ def test_the_graph_route_answers_in_this_project_s_envelope(client: TestClient):
 
 
 def test_the_data_route_carries_the_claim_and_the_pointers_apart(
-        client: TestClient):
+        client: TestClient, registry: Path):
     """Nothing reconciles them, which is the comparison the record exists for."""
     results = client.get("/capabilities/data").json()["results"]
 
     assert results["rungs"] == list(mod.RUNGS)
+    assert len(results["capabilities"]) == 1
     for row in results["capabilities"]:
         assert "phase" in row and "evidence" in row
         assert set(row["evidence"]) == set(mod.RUNGS)
+
+
+def test_both_routes_answer_when_no_corpus_is_checked_out_at_all(
+        client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """**THE RUNNER'S ORDINARY STATE, ASSERTED RATHER THAN DISCOVERED.**
+
+    CI checks this project out with no governance submodule, so every request
+    to these routes there takes the unreadable path. That must be a reported
+    reason on both routes and never a traceback -- and it was found by CI
+    failing on tests that had assumed otherwise.
+    """
+    monkeypatch.setattr(mod, "CORPUS", tmp_path / "absent")
+
+    for path in ("/capabilities/gjgf", "/capabilities/data"):
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert response.json()["results"]["unreadable"] is True, path
 
 
 def test_an_unreadable_registry_answers_200_with_the_problem_in_results(

@@ -69,8 +69,15 @@ jobs:
           # Full history: the append-only check diffs against the base.
           fetch-depth: 0
 
+      # **NOT `--depth 1`, AND THE REASON ONLY APPEARS WHEN THE PIN MOVES.**
+      # The append-only check below diffs `adr/` between the base commit's pin
+      # and this one's. A depth-1 submodule clone holds only the pin it was
+      # given, so the base pin is not an object it has, and the check failed
+      # with `fatal: bad object <base pin>` -- on the first pull request that
+      # moved this project's governance pin. Every run before that passed
+      # because both sides resolved to the same commit.
       - name: Check out the governance submodule only
-        run: git submodule update --init --depth 1 "$QM_SUBMODULE"
+        run: git submodule update --init "$QM_SUBMODULE"
 
       - uses: actions/setup-python@v5
         with:
