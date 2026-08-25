@@ -111,37 +111,7 @@ def status_of(response) -> int:
     return int(response.json().get("status", 200))
 
 
-# --- the two that matter -------------------------------------------------------
-
-
-def test_a_harness_that_is_not_running_is_a_sentence_not_a_stack_trace(no_harness):
-    """THE ONE THAT MATTERS.
-
-    Somebody opening this page has usually not started the harness. The page
-    must say so, say what to run, and say where it looked -- and it must not
-    return a 500, because a 500 reports a fault in this front end when the
-    front end is working correctly.
-
-    Mutation: let the client raise and this fails.
-    """
-    answer = no_harness.get("/topology")
-    assert answer.status_code == 200
-    assert "nothing is answering" in answer.text
-    assert "qm dashboard --start harness" in answer.text
-    assert "127.0.0.1:3141" in answer.text
-
-
-def test_an_unreachable_harness_draws_no_graph_at_all(no_harness):
-    """**AN EMPTY GRAPH LOOKS LIKE AN ANSWER.** A page that rendered an empty
-    canvas would say "this topology has nothing in it", which is a claim, and a
-    different one from "I could not ask".
-
-    Mutation: render the canvas anyway and this fails.
-    """
-    text = no_harness.get("/topology").text
-    assert "<svg" not in text.split('class="legend"')[0], (
-        "a canvas was drawn with nothing to draw")
-    assert "would look like an answer" in text
+# --- an unreachable harness -------------------------------------------------------
 
 
 def test_the_data_route_reports_the_problem_rather_than_erroring(no_harness):
@@ -159,14 +129,7 @@ def test_the_data_route_reports_the_problem_rather_than_erroring(no_harness):
     assert "harness" in body["remedy"]
 
 
-# --- what it draws when the harness is there -----------------------------------
-
-
-def test_the_page_renders_the_topology(client):
-    answer = client.get("/topology?kind=delegation")
-    assert answer.status_code == 200
-    assert "delegation" in answer.text
-    assert "<svg" in answer.text
+# --- what it answers when the harness is there ---------------------------------
 
 
 def test_an_unmeasured_edge_is_dashed_and_never_thin(client):
@@ -180,9 +143,6 @@ def test_an_unmeasured_edge_is_dashed_and_never_thin(client):
     assert unmeasured[0]["style"] == "dashed"
     assert unmeasured[0]["weight"] is None
     assert "not measured" in unmeasured[0]["title"]
-
-    page = client.get("/topology").text
-    assert "stroke-dasharray" in page
 
 
 def test_the_data_route_serves_what_was_drawn_not_what_was_fetched(client):
@@ -198,7 +158,6 @@ def test_the_caveat_says_how_much_of_the_picture_is_measured(client):
     body = results(client.get("/topology/data"))
     assert body["measured"] == 1 and body["unmeasured"] == 1
     assert "1 of 2" in body["caveat"]
-    assert body["caveat"] in client.get("/topology").text
 
 
 def test_parallel_readings_survive_into_the_projects_graph_format(client):
@@ -217,27 +176,10 @@ def test_parallel_readings_survive_into_the_projects_graph_format(client):
                 if e["source"] == "subject" and e["target"] == "r0"]
     assert len(parallel) == 2, "parallel readings were collapsed"
 
-    import inspect
-
-    from codecarto.routers import topology_router
-
-    assert "edge_curvature" in inspect.getsource(topology_router._canvas), (
-        "the canvas is not told to separate parallel edges")
-
-
-def test_the_legend_draws_the_distinction_rather_than_describing_it(client):
-    page = client.get("/topology").text
-    legend = page.split('class="legend"')[1]
-    assert "stroke-dasharray" in legend and "stroke-width" in legend
-
 
 def test_the_level_is_bounded(client):
-    assert client.get("/topology?level=9").status_code == 422
-
-
-def test_the_topology_picker_lists_what_the_harness_offers(client):
-    page = client.get("/topology").text
-    assert "/topology?kind=delegation" in page
+    assert client.get("/topology/gjgf?level=9").status_code == 422
+    assert client.get("/topology/data?level=9").status_code == 422
 
 
 # --- the client ----------------------------------------------------------------

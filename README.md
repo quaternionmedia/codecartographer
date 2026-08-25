@@ -100,7 +100,7 @@ addresses on startup; `serve --help` names the backend's default port.
 | `/c-parser` | C parsing via libclang, plus a standalone visualizer page |
 | `/pam` | PAM session capture, replay, and a standalone visualizer page |
 | `/lexicon` | Hand-authored language lexicons, as graphs |
-| `/topology` | The harness's flows as graph data, plus a build-free page |
+| `/topology` | The harness's flows, as graph data the app plots |
 | `/capabilities` | What each named thing this estate can do has reached |
 | `/db` | Graphbase — mounted only when `MONGODB_URI` is set |
 
