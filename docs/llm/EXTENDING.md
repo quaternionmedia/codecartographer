@@ -393,7 +393,9 @@ dropdown.
   file across the whole tree before parsing (needed for cross-file `CALLS`
   resolution) — see `docs/llm/ARCHITECTURE.md`'s `batch_whole_tree` section
   if you're writing a new language adapter that also needs whole-tree context.
-- Frontend renderer: `web/src/features/graph/services/c_semantic_renderer.ts` (opt-in)
+- Frontend: no dedicated renderer. C parser output is gJGF, so it draws on the
+  same canvas as everything else. A polygon-specific renderer existed and was
+  removed once the output became gJGF.
 - Standalone visualizer HTML: `codecarto/static/c-visualizer.html` (served by `GET /c-parser/visualizer`)
 
 **Optional dependency pattern** (system-level libs):
@@ -415,16 +417,6 @@ def _get_clang():
             "Install with: uv pip install 'codecarto[c-parsing]'"
         ) from exc
     ...
-```
-
-**C Semantic Renderer — opt-in, not auto-detected:**
-```typescript
-// c_semantic_renderer.ts
-canHandle(_data: unknown): boolean {
-    // Opt-in only. C parser output is now gJGF; D3 handles it by default.
-    // Users select 'c-semantic' from the dropdown for the polygon-based view.
-    return false;
-}
 ```
 
 ---

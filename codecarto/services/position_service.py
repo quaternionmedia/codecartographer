@@ -247,18 +247,21 @@ class Positions:
                 shells = list(grouped_nodes.values())
                 layout_kwargs["nshells"] = shells
             elif param != "graph":
-                # **EVERY REGISTERED LAYOUT DECLARES `graph`, `seed` OR `nshells`,
-                # AND ALL THREE ARE HANDLED**, so nothing reaches here today.
-                # `add_layout` is what would change that: a layout registered
-                # with a fourth parameter name gets it silently dropped and runs
-                # on the default instead, which is a picture rather than an
-                # error. Named here so the next person adding one knows this is
-                # the place.
+                # **REACHED BY NOTHING THE REGISTRY CURRENTLY HOLDS.** Every
+                # layout in `add_networkx_layouts`/`add_custom_layouts` declares
+                # only `graph`, `seed` or `nshells`, and the branches above take
+                # the first two unconditionally and `nshells` for the one layout
+                # that asks for it.
                 #
-                # The test was `param != "G"`, which never matched: `G` is the
-                # keyword networkx takes, not a name any layout declares, so
-                # this branch fired once per call for the `graph` parameter and
-                # did nothing -- correct by accident, and unreadable.
+                # **AN UNHANDLED PARAMETER IS DROPPED SILENTLY**, and the layout
+                # then runs on networkx's default for it -- a different picture,
+                # not an error. That is the cost of adding a layout with a
+                # fourth parameter name, and this is the place to pay it.
+                #
+                # The guard reads `graph` because that is the name layouts
+                # register. It read `G` -- the keyword networkx takes, which no
+                # layout declares -- so it matched nothing and this branch ran
+                # once per call for `graph` itself.
                 pass
 
         # Compute layout positions
