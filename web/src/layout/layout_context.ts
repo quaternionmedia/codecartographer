@@ -32,6 +32,7 @@ import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
+import { LegendExtension } from '../features/graph/extensions';
 import { viewActions, EMPTY_VIEW_STATE, anyHidden } from '../features/graph/rad/host/view_state';
 import type { NodeViewState } from '../features/graph/rad/host/view_state';
 import type { GraphOps } from '../features/graph/rad/host/graph_intents';
@@ -121,6 +122,7 @@ export class LayoutContext {
   // intents have to reach the state layer, and the renderer does not know
   // about it. Integration standard §5.1.
   private _rad: RadExtension | null = null;
+  private _legend: LegendExtension | null = null;
   private _nodeViewState: NodeViewState = EMPTY_VIEW_STATE;
   private _radSelection = new Set<GraphNode>();
   /** Set by the `relayout` verb so the remount knows to keep view state. */
@@ -688,9 +690,21 @@ export class LayoutContext {
       },
     });
 
-    rad.initialize(renderer.buildExtensionContext(this._radSelection, () => m.redraw()));
+    const context = renderer.buildExtensionContext(this._radSelection, () => m.redraw());
+
+    rad.initialize(context);
     rad.apply();
     this._rad = rad;
+
+    // The key, on the same context and the same lifetime as the menu. It
+    // reads the scene the renderer just finished, so it is mounted here
+    // rather than during the stream, when the counts would be a snapshot
+    // of a graph still arriving.
+    this._legend?.destroy();
+    const legend = new LegendExtension();
+    legend.initialize(context);
+    legend.apply();
+    this._legend = legend;
   }
 
   /** Core SSE render loop (shared by all stream starters). */

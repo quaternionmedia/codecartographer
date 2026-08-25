@@ -1,0 +1,31 @@
+{
+  // Builds the DOM-free, app-free logic that decides what the UI *says*, so it
+  // can be tested under `node --test` with no browser.
+  //
+  // **THIS EXISTS BECAUSE A GREEN SUITE ONCE PROVED ROUTING AND NOTHING ELSE.**
+  // rad's integration review found three verbs sharing one implementation while
+  // every test passed: the spy sat at an operation boundary and the operation
+  // bodies were application code no test build compiled. Anything that decides
+  // meaning rather than markup belongs here, where it is compiled and asserted
+  // directly.
+  //
+  // Separate from tsconfig.rad.json on purpose. That build has a second job —
+  // `lib` without DOM is what makes a stray `document` in rad's core a compile
+  // error — and its rootDir is rad's own directory because it mirrors a
+  // package. This one is just "project logic worth testing without a browser".
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020"],
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "declaration": false,
+    "outDir": "dist-pure",
+    "rootDir": "src"
+  },
+  "include": [
+    "src/features/graph/extensions/legend_marks.ts",
+    "src/features/graph/services/node_shapes.ts"
+  ]
+}

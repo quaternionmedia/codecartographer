@@ -11,6 +11,7 @@
 
 import * as d3 from 'd3';
 import { GraphNode, GraphEdge } from './graph_renderer';
+import { nodePath } from './node_shapes';
 import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
@@ -750,25 +751,9 @@ export class StreamingGraphRenderer {
     }
   }
 
+  /** Shapes come from `node_shapes`, so the legend's swatches match. */
   private _nodePath(shape: string | undefined, s: number): string {
-    switch (shape) {
-      case 'square':
-      case 'rectangle':
-        return `M ${-s} ${-s} L ${s} ${-s} L ${s} ${s} L ${-s} ${s} Z`;
-      case 'triangle': {
-        const h = s * 1.5;
-        return `M 0 ${-h} L ${s} ${h} L ${-s} ${h} Z`;
-      }
-      case 'diamond':
-        return `M 0 ${-s} L ${s} 0 L 0 ${s} L ${-s} 0 Z`;
-      case 'hexagon': {
-        const a = s * 0.866;
-        const b = s * 0.5;
-        return `M 0 ${-s} L ${a} ${-b} L ${a} ${b} L 0 ${s} L ${-a} ${b} L ${-a} ${-b} Z`;
-      }
-      default:
-        return `M ${s} 0 A ${s} ${s} 0 1 1 ${-s} 0 A ${s} ${s} 0 1 1 ${s} 0 Z`;
-    }
+    return nodePath(shape, s);
   }
 
   private _updateEdgesForNode(nodeId: string, x: number, y: number): void {
