@@ -3,20 +3,28 @@ name: Tests
 # The Python suite, and deliberately nothing else.
 #
 # This repository ships a TypeScript frontend under web/ and a docker-compose
-# stack, and neither is installed here. The 355 tests under tests/ are pure
-# Python: they exercise the parsers, the services and the routers, and they
-# need no browser, no Node toolchain and no container. Installing any of that
-# would triple the runtime of every pull request to cover code these tests do
-# not touch.
+# stack, and neither is installed here. Every test under tests/ is pure Python:
+# they exercise the parsers, the services and the routers, and they need no
+# browser, no Node toolchain and no container. Installing any of that would
+# triple the runtime of every pull request to cover code these tests do not
+# touch.
 #
 # A frontend or end-to-end suite belongs in its own workflow, triggered on the
 # paths it actually covers, so that a Python change is not gated on a browser
 # download. It is absent rather than stubbed: a job that installs a toolchain
 # and asserts nothing is a green check that enforces nothing.
 #
-# Not a seed file. The three governance workflows beside this one are copied
-# verbatim from the corpus and must stay that way; this one is the project's
-# own and is free to change.
+# **THAT WORKFLOW DOES NOT EXIST YET, AND THE PARAGRAPH ABOVE READS AS IF IT
+# DOES.** web/ carries a typecheck, a rad conformance suite, a state suite and a
+# Playwright suite, and none of them runs on a pull request -- a change under
+# web/ is gated on this Python job and nothing else. Recorded here because this
+# is the file a reader opens to learn what is covered, and an absence nobody
+# wrote down reads as a decision rather than a gap.
+#
+# Not a seed file. The governance workflows beside this one are copied from the
+# corpus; this one is the project's own and is free to change. Their copies are
+# not all current -- diff against governance/qm/project-seed/ci/ rather than
+# trusting the "copy verbatim" header each one carries.
 
 on:
   push:
@@ -62,6 +70,6 @@ jobs:
         run: uv sync --locked --extra dev
 
       - name: Run the suite
-        # -q because a passing run of 355 tests says nothing worth 355 lines,
+        # -q because a passing run says nothing worth one line per test,
         # and a failure prints its own detail regardless.
         run: uv run pytest tests -q

@@ -41,7 +41,7 @@ uv pip install -e ".[dev]"
 uv run codecarto dev
 
 # Or start components separately
-uv run codecarto serve    # Backend only (http://127.0.0.1:8000)
+uv run codecarto serve    # Backend only — `serve --help` names the default port
 uv run codecarto web      # Frontend only (http://localhost:1234)
 ```
 
@@ -85,18 +85,30 @@ uv run codecarto repo scan . -o json
 
 ## API Endpoints
 
-Once the server is running, access:
-- **API Docs**: http://127.0.0.1:8000/docs
-- **Frontend**: http://localhost:1234
+Once the server is running, `/docs` on the backend's own origin lists every
+route it actually registered — that is the authority, and this table is a map
+of the neighbourhoods rather than a copy of it. `codecarto dev` prints both
+addresses on startup; `serve --help` names the backend's default port.
 
 | Endpoint | Description |
 |----------|-------------|
+| `/app` | The web application, served from `web/dist` when a build is present |
 | `/palette` | Color palette management |
-| `/parser` | Source code parsing |
+| `/parse` | Source code parsing, every supported language |
 | `/plotter` | Graph visualization |
-| `/polygraph` | Graph operations |
 | `/repo` | GitHub repository reading |
-| `/local` | Local repository analysis |
+| `/c-parser` | C parsing via libclang, plus a standalone visualizer page |
+| `/pam` | PAM session capture, replay, and a standalone visualizer page |
+| `/lexicon` | Hand-authored language lexicons, as graphs |
+| `/topology` | The harness's flows as graph data, plus a build-free page |
+| `/capabilities` | What each named thing this estate can do has reached |
+| `/db` | Graphbase — mounted only when `MONGODB_URI` is set |
+
+During `npm run dev` the Vite server proxies API prefixes to the backend, so the
+app and its API share an origin exactly as they do in production. `API_PATHS` in
+`web/vite.config.js` is the list that decides which — it does not cover every
+row above, and a prefix missing from it is a request the dev server tries to
+answer itself and cannot.
 
 ## Project Structure
 
@@ -109,8 +121,11 @@ codecartographer/
 │   ├── services/        # Business logic
 │   ├── models/          # Pydantic models
 │   └── util/            # Utilities
+│   └── static/          # Standalone visualizer pages served by their routers
 ├── web/                 # Frontend (Vite + TypeScript)
+├── tests/               # Python test suite
 ├── graphbase/           # Database submodule
+├── governance/qm/       # Governance submodule — decision records live in adr/
 ├── docs/                # Documentation
 └── pyproject.toml       # Project configuration
 ```
@@ -156,7 +171,13 @@ uv run codecarto docker-down
 
 ## Documentation
 
-- [Development Guide](docs/llm/uv_migration.md) - Full dev cycle documentation
+- [Getting Started](docs/getting-started.md) — install, run, first graph
+- [Architecture](docs/architecture.md) — how the pieces fit
+- [CLI](docs/cli.md) and [API](docs/api.md) — the two command surfaces
+- [Contributing](docs/contributing.md) — working on this project
+- [UI Reference](docs/llm/UI_REFERENCE.md) — panels, renderers, and both radial menus
+
+Decision records live on the `governance/qm` submodule, under `adr/`.
 
 ## License
 
