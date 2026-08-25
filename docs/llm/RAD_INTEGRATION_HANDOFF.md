@@ -186,7 +186,7 @@ explicit refusal, not to `{}` and not to a fallback.
 
 For the first group we added a sparse `NodeViewState` — `{ [id]: { hidden?,
 pinned?, colorToken? } }` — that intents fold into and the renderer projects.
-It is serializable, so it survives a cache replay. The legacy menu's
+It is serializable, so it survives a cache replay. The retired menu's
 `d3.selectAll(...).attr('opacity', 0)` was invisible to the rest of the
 application and vanished on the next redraw; this is what §5.1 is warning you
 about, concretely.
@@ -217,7 +217,7 @@ default:
   throw new Error(`rad: no handler for verb '${action}'`);
 ```
 
-The legacy menu shipped stubbed actions that opened, animated, committed and
+The retired menu shipped stubbed actions that opened, animated, committed and
 did nothing — indistinguishable from working ones. One test closes it
 permanently:
 

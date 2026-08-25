@@ -65,12 +65,14 @@ codecartographer/
     │   └── control_panel/             # 2-tab panel (Source / Graph)
     ├── features/graph/
     │   ├── services/
-    │   │   ├── streaming_renderer.ts  # Primary renderer (rAF + SSE)
-    │   │   ├── graph_renderer.ts      # Static D3 renderer + radial menu
+    │   │   ├── streaming_renderer.ts  # The D3 canvas — every graph draws here
+    │   │   ├── d3_renderer.ts         # Registry entry; hands it a finished graph
+    │   │   ├── graph_surface.ts       # Announces the canvas; rad/legend subscribe
+    │   │   ├── graph_types.ts         # GraphNode / GraphEdge / GraphData
     │   │   ├── compound_layout.ts     # CompoundLayoutManager + GroupBounds
-    │   │   └── renderers.ts           # Renderer registry
-    │   └── components/
-    │       └── radial_menu.ts         # D3 pie/arc context menu
+    │   │   └── renderers.ts           # Renderer registry (gravis, notebook, system)
+    │   ├── rad/                       # The radial menu, conformant to rad's vectors
+    │   └── extensions/                # BaseExtension seam; the legend mounts here
     ├── layout/
     │   ├── golden_layout_shell.ts     # GL2 primary shell
     │   ├── default_layout.ts          # Panel definitions

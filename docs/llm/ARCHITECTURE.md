@@ -306,7 +306,7 @@ progress mid-batch — not done here; flagged as a known limitation.
 
 `has_parse_warning` is emitted as a **top-level** node attribute (not
 nested under the unified schema's `meta` field) in both the unified and
-dedicated C pipelines, because `graph_renderer.ts` reads
+dedicated C pipelines, because the renderer reads
 `node.has_parse_warning` directly regardless of which backend produced the
 node — keeping the attribute's location consistent across pipelines was
 the point, not an accident.
@@ -551,8 +551,7 @@ Both renderers insert a `<g class="compound-backgrounds">` as the **first child*
 
 Labels appear near the top edge of each circle. All circles fade in (300ms delay, 500ms duration) after the graph finishes rendering.
 
-- **StreamingGraphRenderer**: `_drawCompoundBackgrounds()` is called at the end of the rAF drain loop after `_fitView()`, when both `_streamDone` and the queues are empty.
-- **GraphRenderer (static)**: called after `updatePositions()` in the pre-computed position path, and on the simulation `end` event in the force-simulation path.
+- **StreamingGraphRenderer**: `_drawCompoundBackgrounds()` is called at the end of the rAF drain loop after `_fitView()`, when both `_streamDone` and the queues are empty. This is the only D3 path — a graph handed over whole by the registry drains the same loop, so there is one place backgrounds are drawn rather than two that had to agree.
 
 ### UI surface
 
@@ -694,6 +693,9 @@ Fixing this properly requires implementing GL's "virtual layout" or "binding con
 | `web/src/services/graphbase_service.ts` | `/db/*` client — bookmarks, snapshots, history |
 | `graphbase/__init__.py` | Submodule public surface — `from graphbase import graphdb, get_db` |
 | `graphbase/src/main.py` | MongoDB router (bookmarks / snapshots / history / graph CRUD) |
-| `web/src/features/graph/services/graph_renderer.ts` | D3 renderer + radial menu + onViewSource (github.com/blob/#L) |
-| `web/src/features/graph/services/renderers.ts` | Renderer registry |
+| `web/src/features/graph/services/streaming_renderer.ts` | The D3 canvas — every graph draws here |
+| `web/src/features/graph/services/graph_surface.ts` | Announces the live canvas; rad and the legend subscribe |
+| `web/src/features/graph/rad/` | The radial menu, incl. onViewSource (github.com/blob/#L) |
+| `web/src/features/graph/extensions/legend_extension.ts` | The graph key, built from what was drawn |
+| `web/src/features/graph/services/renderers.ts` | Renderer registry (gravis, notebook, system) |
 | `docs/llm/EXTENDING.md` | How to add renderers, language parsers, endpoints |

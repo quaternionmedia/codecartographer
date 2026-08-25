@@ -253,7 +253,7 @@ public graphStyling: GraphStylingOptions = {
 ### Step 4: Apply in renderer
 
 ```typescript
-// web/src/features/graph/services/graph_renderer.ts
+// web/src/features/graph/services/streaming_renderer.ts
 .attr('some-attribute', styling.myOption || 10)
 ```
 
@@ -268,7 +268,7 @@ Extensions add interactivity to the D3 renderer.
 ```typescript
 // web/src/features/graph/extensions/my_extension.ts
 import { ExtensionContext } from './index';
-import { GraphNode, GraphEdge } from '../services/graph_renderer';
+import { GraphNode, GraphEdge } from '../services/graph_types';
 
 export class MyExtension {
   initialize(context: ExtensionContext<GraphNode, GraphEdge>): void {
@@ -292,13 +292,21 @@ export class MyExtension {
 export { MyExtension } from './my_extension';
 ```
 
-### Step 3: Use in renderer
+### Step 3: Mount it against the canvas
+
+**NOT INSIDE A RENDERER.** An extension built into one renderer belongs to
+one rendering path, which is how this project ended up with a menu on the
+path most readers never took. `GraphSurface` announces the live canvas;
+subscribe once and mount against whatever drew it. `layout_context.ts` does
+this for rad and the legend:
 
 ```typescript
-// graph_renderer.ts in initializeExtensions():
-this.myExtension = new MyExtension();
-this.myExtension.initialize(context);
-this.myExtension.apply();
+// layout_context.ts, in the constructor
+GraphSurface.subscribe((renderer) => {
+  const ext = new MyExtension();
+  ext.initialize(renderer.buildExtensionContext(selection, () => m.redraw()));
+  ext.apply();
+});
 ```
 
 ---

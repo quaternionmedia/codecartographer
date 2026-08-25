@@ -104,20 +104,12 @@ The default renderer is `StreamingGraphRenderer` — nodes and edges arrive prog
 
 ## Radial Context Menu
 
-**There are two, and which one you get depends on how the graph was drawn.**
-This was previously undocumented, and the tables below described a menu most
-users never reached.
-
-| Menu | Appears on | Source |
-|---|---|---|
-| **rad** | every code-map path — Load Demo, plot repo, plot file, cache recall, bookmark replay | `web/src/features/graph/rad/` |
-| **legacy** | the Lexicon / abstraction-layer path only | `web/src/features/graph/services/radial_menu.ts` |
-
-The legacy menu is documented in the tables below and is on its way out; see
-[`RAD_INTEGRATION_HANDOFF.md`](RAD_INTEGRATION_HANDOFF.md) for what replaced
-it and why.
-
-### rad (the menu you get on a code map)
+**There is one, and every graph gets it.** rad is mounted against the canvas
+rather than inside a renderer, so it reaches whatever drew the graph — Load
+Demo, plot repo, plot file, cache recall, bookmark replay, a lexicon. Source is
+`web/src/features/graph/rad/`; see
+[`RAD_INTEGRATION_HANDOFF.md`](RAD_INTEGRATION_HANDOFF.md) for the contract it
+conforms to.
 
 Press-and-hold, right-click, or press the menu key on a focused canvas. Flick
 toward a wedge to commit; release in the dead zone to cancel. Every item is
@@ -130,39 +122,34 @@ reachable by keyboard — arrow keys and Enter — and every verb also has a cho
 | **Selection** | Expand · Neighbours · Spread\* · Cluster\* · Colour ▸ · Hide · Deselect · Delete *n* |
 | **Edge** | Endpoints · Hide · Info |
 
-\* Shown but **disabled** on this renderer: node positions come from the
-backend layout and there is no force simulation to toggle. They keep their
-wedges so the other items do not shift position between states.
+\* Shown but **disabled**: node positions come from the backend layout and
+there is no force simulation to toggle. They keep their wedges so the other
+items do not shift position between states. **A capability the host lacks is
+offered disabled, never substituted** — three verbs once shared one `fitView()`
+call while every test stayed green, which is the rule's whole origin.
 
 `Expand` holds the 12 o'clock wedge — the one a straight-up flick reaches —
 and calls `POST /parse/expand`, merging the returned subgraph into the live
 scene. Hide, Pin and Colour are held as application state, so they survive a
 re-render, a relayout and a cache replay.
 
-### Legacy node menu (Lexicon path only)
-| Item | Action |
-|------|--------|
-| Expand | Load depth-2 symbols for a file node |
-| Collapse | Remove child nodes |
-| Neighbors | Highlight direct connections |
-| Pin | Lock node position |
-| Style | Open per-node style override |
-| Hide | Remove node from view |
-| Delete | Remove node + its edges |
-| Info | Show node metadata panel |
-| **Focus Group** | Zoom/pan to the bounding circle of this node's cluster (depth 0 and 1 only) |
+---
 
-### Legacy canvas menu (Lexicon path only)
-| Submenu / Item | Action |
-|----------------|--------|
-| **Zoom** | Fit to screen, reset zoom, zoom in/out |
-| **Select** | Select all nodes, clear selection |
-| **Layout → Spring** | Apply spring_layout |
-| **Layout → Compound** | Apply compound_layout |
-| **Layout → Circular** | Apply circular_layout |
-| **Layout → Kamada-Kawai** | Apply kamada_kawai_layout |
-| **Layout → Spectral** | Apply spectral_layout |
-| **Organize → Apply Layout** | Re-run the currently selected layout |
+## Graph Legend
+
+A key in the bottom-left of the canvas, collapsed by default. Its header states
+the totals; opening it lists the node kinds and edge kinds actually present,
+with a swatch drawn by the same function the canvas draws nodes with, and a
+count per row.
+
+**It reads the graph rather than describing it.** There are no fixed rows: a
+kind absent from the picture has no row, and every node is accounted for by
+exactly one row. What each row means is decided in
+`web/src/features/graph/extensions/legend_marks.ts`, which is pure and covered
+by `npm run test:pure`.
+
+Like rad, it is a `BaseExtension` mounted against the canvas, so it appears on
+every path that draws a graph.
 
 ---
 
