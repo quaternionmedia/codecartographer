@@ -253,3 +253,86 @@ class Positions:
         # Compute layout positions
         pos: dict = self.get_positions(layout_name, **layout_kwargs)
         return pos
+
+
+# --- guaranteeing a gJGF document is positioned --------------------------------
+
+
+def _metadata_of(node: dict) -> dict:
+    """A gJGF node's attribute bag.
+
+    gravis nests everything under `metadata`, but hand-built documents in this
+    codebase have carried `x`/`y` at the top level too. Reading whichever one
+    the node actually has is what stops a positioned node being re-laid-out --
+    which would silently move a picture the caller had already composed.
+    """
+    inner = node.get("metadata")
+    return inner if isinstance(inner, dict) else node
+
+
+def is_positioned(gjgf: dict) -> bool:
+    """Whether every node in a gJGF document already carries `x` and `y`."""
+    nodes = gjgf.get("nodes") or {}
+    values = nodes.values() if isinstance(nodes, dict) else nodes
+    values = list(values)
+    if not values:
+        # **AN EMPTY GRAPH IS POSITIONED, NOT UNPOSITIONED.** Reporting it as
+        # needing a layout would make `ensure_positions` run one over nothing
+        # and hand back the same empty document, which reads as work done.
+        return True
+    return all("x" in _metadata_of(n) and "y" in _metadata_of(n)
+               for n in values)
+
+
+def ensure_positions(gjgf: dict, layout: str = "Spring") -> dict:
+    """Give every node in a gJGF document an `x` and a `y`, in place.
+
+    **NOTHING CALLS THIS YET, AND THAT IS DELIBERATE.** Every graph route in
+    this project reaches the front end through `GraphSerializer.serialize_to_gjgf`,
+    which lays the graph out on the way past -- so as of this commit there is no
+    source of unpositioned nodes, and `test_every_graph_route_is_positioned`
+    asserts exactly that. This exists so the next route that builds a gJGF by
+    hand has one call to make instead of a layout to reinvent, and so the
+    frontend's depth-ring fallback stays a fallback rather than becoming the
+    layout for a whole source nobody noticed was unpositioned.
+
+    **A POSITION THE CALLER SET WINS.** Only nodes actually missing a
+    coordinate are placed; a partially positioned document keeps the half it
+    had. The alternative -- laying the whole thing out whenever any node is
+    short -- would move nodes the caller had deliberately placed, which is the
+    failure mode this function exists to prevent rather than cause.
+
+    Returns the same object it was handed, so a caller can use it inline.
+    """
+    import networkx as nx
+
+    nodes = gjgf.get("nodes") or {}
+    if not isinstance(nodes, dict):
+        # A list-shaped `nodes` carries its own ids; normalising it here would
+        # be guessing at a convention this project does not currently emit.
+        raise TypeError(
+            "ensure_positions expects gJGF's id-keyed `nodes` map, "
+            f"got {type(nodes).__name__}")
+
+    missing = [nid for nid, n in nodes.items()
+               if "x" not in _metadata_of(n) or "y" not in _metadata_of(n)]
+    if not missing:
+        return gjgf
+
+    graph = nx.DiGraph()
+    graph.add_nodes_from(nodes.keys())
+    for edge in gjgf.get("edges") or []:
+        source, target = edge.get("source"), edge.get("target")
+        if source in nodes and target in nodes:
+            graph.add_edge(source, target)
+
+    placed = Positions().get_node_positions(
+        graph=graph, layout_name=layout_key(layout))
+
+    for nid in missing:
+        x, y = placed.get(nid, (0.0, 0.0))
+        meta = _metadata_of(nodes[nid])
+        meta["x"] = float(x) * 100
+        meta["y"] = float(y) * 100
+
+    return gjgf
