@@ -33,6 +33,21 @@ export class StreamingGraphRenderer {
   private labelGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
   private zoom: d3.ZoomBehavior<SVGSVGElement, unknown>;
   private nodeById = new Map<string, GraphNode>();
+  /**
+   * How many nodes arrived without coordinates and were placed on a
+   * depth ring instead.
+   *
+   * **THE RING IS A FALLBACK, AND NOTHING SHOULD BE REACHING IT.** Every
+   * graph route in this project lays its nodes out server-side on the way
+   * through `GraphSerializer.serialize_to_gjgf`, and a backend test
+   * asserts that. This counter is the other half of that claim: the test
+   * covers the routes it knows about, and this covers whatever actually
+   * arrives. A non-zero count in the status line means a source is
+   * streaming unpositioned nodes and the picture is a ring rather than a
+   * layout -- which looks like a rendered graph, which is why it needs
+   * saying out loud rather than leaving to be noticed.
+   */
+  private _ringPlaced = 0;
   private styling: GraphStylingOptions;
   private width: number;
   private height: number;
@@ -179,6 +194,18 @@ export class StreamingGraphRenderer {
     this._scheduleLoop();
   }
 
+  /**
+   * Nodes this renderer had to place itself, and nodes it drew in total.
+   *
+   * Read after `finalize()`. `placed` counts only the ones that arrived
+   * without an `x` or a `y`; `total` is every node drawn, so a caller can
+   * say "3 of 400" rather than a bare number that means nothing without
+   * the denominator.
+   */
+  layoutFallback(): { placed: number; total: number } {
+    return { placed: this._ringPlaced, total: this.nodeById.size };
+  }
+
   /** Called when the SSE stream is complete. Drains remaining queue then fits view. */
   finalize(): void {
     this._streamDone = true;
@@ -320,6 +347,7 @@ export class StreamingGraphRenderer {
     let y = node.y;
     if (x === undefined || y === undefined) {
       [x, y] = this._getDepthAwarePosition(node);
+      this._ringPlaced += 1;
     }
     [x, y] = this._resolveCollision(node, x, y);
     node.x = x;

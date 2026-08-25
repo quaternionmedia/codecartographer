@@ -694,6 +694,22 @@ export class LayoutContext {
   }
 
   /** Core SSE render loop (shared by all stream starters). */
+  /**
+   * What to append to a status line when the renderer had to place nodes
+   * itself, and the empty string when it did not.
+   *
+   * **SILENCE IS THE NORMAL CASE AND HAS TO STAY SILENT.** Every backend
+   * graph source lays its own nodes out, so this appends nothing on every
+   * path that works. It exists so the one that stops doing so is visible
+   * in the place a reader is already looking, rather than as a graph that
+   * merely looks oddly circular.
+   */
+  private _fallbackNote(renderer: StreamingGraphRenderer): string {
+    const { placed, total } = renderer.layoutFallback();
+    if (placed === 0) return '';
+    return ` — ${placed} of ${total} placed without backend positions`;
+  }
+
   private _mountAndStream(
     startFn: (renderer: StreamingGraphRenderer) => () => void,
     statusMsg: string,
@@ -787,7 +803,11 @@ export class LayoutContext {
             const msg = from_cache
               ? `Served from cache (${nodeCount} nodes)`
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
-            this.updatePanelState({ isLoading: false, statusMessage: msg, progress: null });
+            this.updatePanelState({
+              isLoading: false,
+              statusMessage: msg + this._fallbackNote(renderer),
+              progress: null,
+            });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
             this.refreshCache();
             if (this.graphbaseAvailable && this.graphbaseTrackHistory && accNodes.length > 0) {
@@ -865,7 +885,11 @@ export class LayoutContext {
             const msg = from_cache
               ? `Served from cache (${nodeCount} nodes)`
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
-            this.updatePanelState({ isLoading: false, statusMessage: msg, progress: null });
+            this.updatePanelState({
+              isLoading: false,
+              statusMessage: msg + this._fallbackNote(renderer),
+              progress: null,
+            });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
             this.refreshCache();
             if (this.graphbaseAvailable && this.graphbaseTrackHistory && accNodes.length > 0) {
