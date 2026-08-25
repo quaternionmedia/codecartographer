@@ -246,8 +246,19 @@ class Positions:
                 # Create the list of lists (shells)
                 shells = list(grouped_nodes.values())
                 layout_kwargs["nshells"] = shells
-            elif param != "G":
-                # TODO: Handle other parameters here
+            elif param != "graph":
+                # **EVERY REGISTERED LAYOUT DECLARES `graph`, `seed` OR `nshells`,
+                # AND ALL THREE ARE HANDLED**, so nothing reaches here today.
+                # `add_layout` is what would change that: a layout registered
+                # with a fourth parameter name gets it silently dropped and runs
+                # on the default instead, which is a picture rather than an
+                # error. Named here so the next person adding one knows this is
+                # the place.
+                #
+                # The test was `param != "G"`, which never matched: `G` is the
+                # keyword networkx takes, not a name any layout declares, so
+                # this branch fired once per call for the `graph` parameter and
+                # did nothing -- correct by accident, and unreadable.
                 pass
 
         # Compute layout positions
