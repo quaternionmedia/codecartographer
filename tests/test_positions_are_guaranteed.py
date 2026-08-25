@@ -106,26 +106,86 @@ GJGF_ROUTES = [
     "/lexicon/python/graph",
 ]
 
+#: Routes that answer from this process alone. The rest may legitimately report
+#: that something they depend on is not running, and a test that treated that as
+#: a failure would go red on a developer machine for a reason unrelated to it.
+SELF_CONTAINED = {"/capabilities/gjgf", "/lexicon/c/graph", "/lexicon/python/graph"}
+
+
+def _graph_or_reason(answer) -> tuple[dict | None, str]:
+    """The graph a route served, or why it served none.
+
+    **A ROUTE MAY HONESTLY HAVE NO GRAPH TO GIVE.** `/topology/gjgf` reads a
+    harness that is a separate process and usually is not running; it reports
+    that as `unreachable` inside a 200, which is this project's convention and
+    not a fault. An earlier version of this test read `["results"]["graph"]`
+    directly and passed only while a harness happened to be up on the machine
+    running it — the result described the tester's environment rather than the
+    route.
+    """
+    results = answer.json().get("results")
+    if not isinstance(results, dict):
+        return None, f"results was {type(results).__name__}, not an object"
+    if results.get("unreachable"):
+        return None, str(results.get("problem", "reported unreachable"))
+    graph = results.get("graph")
+    if not isinstance(graph, dict):
+        return None, "no `graph` in results, and no `unreachable` either"
+    return graph, ""
+
+
+def _unplaced(graph: dict) -> list[str]:
+    nodes = graph.get("nodes") or {}
+    return [nid for nid, n in nodes.items()
+            if "x" not in n.get("metadata", n) or "y" not in n.get("metadata", n)]
+
 
 @pytest.mark.parametrize("route", GJGF_ROUTES)
 def test_every_graph_route_is_positioned(client, route):
     """**THE FRONTEND'S DEPTH-RING FALLBACK HAS NO BACKEND TRIGGER.**
 
     Asserted rather than assumed, and asserted per route so a failure names the
-    one that regressed. A route answering anything but 200 fails here too: a
-    broken route cannot be evidence that graphs arrive positioned.
+    one that regressed. Whenever a route serves a graph, every node in it
+    carries coordinates. A route that serves no graph because a dependency is
+    down is not evidence either way, and says so.
 
     Mutation: strip `x` from one node in `serialize_to_gjgf` and this fails.
     """
     answer = client.get(route)
     assert answer.status_code == 200, f"{route} did not answer"
 
-    graph = answer.json()["results"]["graph"]
-    nodes = graph["nodes"]
-    assert nodes, f"{route} returned no nodes, so it proves nothing"
+    graph, reason = _graph_or_reason(answer)
+    if graph is None:
+        assert route not in SELF_CONTAINED, (
+            f"{route} answers from this process alone and still served no graph: {reason}")
+        pytest.skip(f"{route} served no graph: {reason}")
 
-    unplaced = [nid for nid, n in nodes.items()
-                if "x" not in n.get("metadata", n) or "y" not in n.get("metadata", n)]
+    nodes = graph.get("nodes") or {}
+    assert nodes, f"{route} served a graph with no nodes, so it proves nothing"
+
+    unplaced = _unplaced(graph)
     assert not unplaced, (
         f"{route} served {len(unplaced)} of {len(nodes)} nodes without "
         f"coordinates; the streaming renderer would place them on a depth ring")
+
+
+def test_the_positioning_claim_is_not_vacuous(client):
+    """**A SKIP IS NOT A PASS, AND A FILE OF SKIPS IS NOT EVIDENCE.**
+
+    The test above skips a route whose dependency is down. If every route could
+    skip, the whole claim would report green while checking nothing — so this
+    asserts that at least one route actually served a positioned graph on this
+    run. It is the assertion that makes the others mean something.
+
+    Mutation: empty `SELF_CONTAINED` and point every route at a dead dependency,
+    and this fails while the parametrized test above goes all-skip.
+    """
+    served = 0
+    for route in GJGF_ROUTES:
+        graph, _ = _graph_or_reason(client.get(route))
+        if graph and (graph.get("nodes") or {}) and not _unplaced(graph):
+            served += 1
+
+    assert served, (
+        "no route served a positioned graph on this run, so nothing here is "
+        "evidence that graphs arrive positioned")

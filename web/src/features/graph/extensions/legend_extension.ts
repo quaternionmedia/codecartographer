@@ -22,7 +22,7 @@
 import * as d3 from 'd3';
 
 import { BaseExtension } from './base';
-import type { GraphNode, GraphEdge } from '../services/graph_renderer';
+import type { GraphNode, GraphEdge } from '../services/graph_types';
 import { nodePath } from '../services/node_shapes';
 import { edgeMarks, nodeMarks, readable } from './legend_marks';
 import type { EdgeMark, NodeMark } from './legend_marks';

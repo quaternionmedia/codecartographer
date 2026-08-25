@@ -32,12 +32,13 @@ import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
+import { GraphSurface } from '../features/graph/services/graph_surface';
 import { LegendExtension } from '../features/graph/extensions';
 import { viewActions, EMPTY_VIEW_STATE, anyHidden } from '../features/graph/rad/host/view_state';
 import type { NodeViewState } from '../features/graph/rad/host/view_state';
 import type { GraphOps } from '../features/graph/rad/host/graph_intents';
 import type { MenuContext } from '../features/graph/rad/core/types';
-import type { GraphNode, GraphEdge } from '../features/graph/services/graph_renderer';
+import type { GraphNode, GraphEdge } from '../features/graph/services/graph_types';
 
 export type { DockPanelId } from './panel_registry';
 
@@ -135,6 +136,15 @@ export class LayoutContext {
     this.appState = new StateController(initialCell);
     this.actions = createActions(this.appState);
     this.panelCallbacks = this._buildCallbacks();
+
+    // **ONE PLACE THE MENU AND THE KEY ATTACH, WHICHEVER PATH DREW.** A repo
+    // plot builds its renderer here; Load Demo and an uploaded file go through
+    // the registry, which builds one inside a Mithril vnode this object never
+    // sees. Both announce the finished canvas, so both get the same fittings.
+    GraphSurface.subscribe((renderer) => {
+      this._streamingRenderer = renderer;
+      this._mountRad(renderer);
+    });
   }
 
   // ── Public helpers ─────────────────────────────────────────────────────────
@@ -802,7 +812,9 @@ export class LayoutContext {
             renderer.finalize();
             // Keep the renderer: rad mounts against it, and its ops need a
             // live handle for the whole session, not just the stream.
-            this._mountRad(renderer);
+            // Announced rather than mounted here, so this path and the
+            // registry's converge on the one subscription in the constructor.
+            GraphSurface.publish(renderer);
             this.appState.update({
               parseDirectory: directory,
               graphData: this._buildGraphData(accNodes, accEdges, {
@@ -885,7 +897,9 @@ export class LayoutContext {
             renderer.finalize();
             // Keep the renderer: rad mounts against it, and its ops need a
             // live handle for the whole session, not just the stream.
-            this._mountRad(renderer);
+            // Announced rather than mounted here, so this path and the
+            // registry's converge on the one subscription in the constructor.
+            GraphSurface.publish(renderer);
             this.appState.update({
               graphData: this._buildGraphData(accNodes, accEdges, {
                 nodeCount,

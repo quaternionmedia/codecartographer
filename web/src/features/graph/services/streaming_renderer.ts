@@ -10,7 +10,7 @@
  */
 
 import * as d3 from 'd3';
-import { GraphNode, GraphEdge } from './graph_renderer';
+import { GraphNode, GraphEdge } from './graph_types';
 import { nodePath } from './node_shapes';
 import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager } from './compound_layout';
