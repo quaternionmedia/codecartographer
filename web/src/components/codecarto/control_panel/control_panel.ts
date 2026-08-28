@@ -588,7 +588,7 @@ export function ControlPanel(
           m('option', { value: 'd3' }, 'D3.js (Force-directed)'),
           m('option', { value: 'gravis' }, 'Gravis (vis-network)'),
           m('option', { value: 'notebook' }, 'Notebook (Static HTML)'),
-          m('option', { value: 'system' }, 'System Monitor (PAM)'),
+          m('option', { value: 'system' }, 'System Monitor'),
         ]),
       ]),
 
@@ -598,7 +598,7 @@ export function ControlPanel(
         SystemDefinitionRegistry.all().length > 1 ? m('div.panel-settings__group', [
           m('span.panel-settings__label-compact', 'System'),
           m('select.panel-settings__select', {
-            value: styling.systemId ?? 'pam',
+            value: styling.systemId ?? 'moat',
             onchange: (e: Event) => {
               callbacks.onGraphStylingChange({ systemId: (e.target as HTMLSelectElement).value });
             },
@@ -611,15 +611,18 @@ export function ControlPanel(
         m('span.panel-settings__label-compact', 'Mode'),
         m('div', { style: { display: 'flex', gap: '6px', marginTop: '6px' } }, [
           m('button.panel-settings__option', {
-            class: (styling as Record<string, unknown>).pamMode !== 'live' ? 'panel-settings__option--active' : '',
-            onclick: () => callbacks.onGraphStylingChange({ pamMode: 'demo' }),
+            class: (styling as Record<string, unknown>).systemMode !== 'live' ? 'panel-settings__option--active' : '',
+            onclick: () => callbacks.onGraphStylingChange({ systemMode: 'demo' }),
           }, 'Demo'),
           m('button.panel-settings__option', {
-            class: (styling as Record<string, unknown>).pamMode === 'live' ? 'panel-settings__option--active' : '',
-            onclick: () => callbacks.onGraphStylingChange({ pamMode: 'live' }),
+            class: (styling as Record<string, unknown>).systemMode === 'live' ? 'panel-settings__option--active' : '',
+            onclick: () => callbacks.onGraphStylingChange({ systemMode: 'live' }),
           }, 'Live'),
         ]),
-        m('p.panel-settings__hint', 'Demo always works. Live streams system events via WebSocket.'),
+        m('p.panel-settings__hint',
+          'Demo replays the derived history on a loop. Live streams over the '
+          + "definition's WebSocket — the PAM feed tails auth.log; a derived "
+          + 'system replays its clone once, labelled as a replay.'),
       ]) : null,
 
       // Layout section
