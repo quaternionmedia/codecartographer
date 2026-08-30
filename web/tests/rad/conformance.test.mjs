@@ -26,7 +26,7 @@ import { CHORD_WORDS as HOST_CHORD_WORDS } from '../../dist-rad/host/vocabulary.
 const here = dirname(fileURLToPath(import.meta.url));
 
 /** The version this host claims. Must match the vector file it loads. */
-const PINNED = '0.6.0';
+const PINNED = '0.0.1';
 
 const vectors = JSON.parse(readFileSync(join(here, `vectors.v${PINNED}.json`), 'utf8'));
 
