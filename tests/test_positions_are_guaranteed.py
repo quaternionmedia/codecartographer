@@ -106,10 +106,18 @@ GJGF_ROUTES = [
     "/lexicon/python/graph",
 ]
 
-#: Routes that answer from this process alone. The rest may legitimately report
-#: that something they depend on is not running, and a test that treated that as
-#: a failure would go red on a developer machine for a reason unrelated to it.
-SELF_CONTAINED = {"/capabilities/gjgf", "/lexicon/c/graph", "/lexicon/python/graph"}
+#: Routes that answer from this process alone, needing no separate service and
+#: no submodule checkout. The rest may legitimately report that something they
+#: depend on is absent, and a test that treated that as a failure would go red
+#: for a reason unrelated to positioning.
+#:
+#: `/capabilities/gjgf` is deliberately not here. It reads the capability
+#: registry from the `governance/qm` submodule, which `pytest.yml` checks out
+#: with `submodules: false`, so on a runner the route honestly answers
+#: `unreadable` and draws nothing -- the contract `test_capability_router.py`
+#: asserts. Listing it here made this a test of the author's working copy: green
+#: where the submodule was present and red on CI where it was not.
+SELF_CONTAINED = {"/lexicon/c/graph", "/lexicon/python/graph"}
 
 
 def _graph_or_reason(answer) -> tuple[dict | None, str]:
@@ -128,9 +136,15 @@ def _graph_or_reason(answer) -> tuple[dict | None, str]:
         return None, f"results was {type(results).__name__}, not an object"
     if results.get("unreachable"):
         return None, str(results.get("problem", "reported unreachable"))
+    if results.get("unreadable"):
+        # `/capabilities/gjgf` reads a registry that lives in the governance
+        # submodule; a checkout without it (CI's ordinary state) reports
+        # `unreadable` and draws nothing, exactly as `unreachable` reports a
+        # process that is not running. Both are honest no-graph answers.
+        return None, str(results.get("problem", "reported unreadable"))
     graph = results.get("graph")
     if not isinstance(graph, dict):
-        return None, "no `graph` in results, and no `unreachable` either"
+        return None, "no `graph` in results, and neither `unreachable` nor `unreadable`"
     return graph, ""
 
 
