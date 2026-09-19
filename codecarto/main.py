@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from codecarto.routers.c_parser_router import CParserRouter
 from codecarto.routers.topology_router import TopologyRouter
 from codecarto.routers.capability_router import CapabilityRouter
+from codecarto.routers.overview_router import OverviewRouter
 from codecarto.routers.app_router import AppRouter, DIST, build_present
 from codecarto.routers.palette_router import PaletteRouter
 from codecarto.routers.plotter_router import PlotterRouter
@@ -59,6 +60,11 @@ app.include_router(TopologyRouter, prefix="/topology", tags=["topology"])
 # corpus's and `dossier` is the other window onto the same registry.
 app.include_router(CapabilityRouter, prefix="/capabilities",
                    tags=["capabilities"])
+
+# dossier's org overview, drawn here rather than recomputed. dossier produces
+# the seam and prints it as tables; this window consumes the same seam and draws
+# it as a graph -- the two are windows onto one reading at two resolutions.
+app.include_router(OverviewRouter, prefix="/overview", tags=["overview"])
 
 # The built web application, on the same origin as the API it talks to. Mounted
 # after the routers so a route always wins over a static file of the same name.
