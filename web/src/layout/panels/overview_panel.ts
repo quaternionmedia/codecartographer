@@ -23,14 +23,19 @@ import { Provenance } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import '../../features/estate/estate.css';
 
-/** A masthead figure however the producer packed it: `{label, value}` or a
- *  single-key object. The producer's shape is the producer's to change. */
-function figure(entry: Record<string, unknown>): { label: string; value: string } {
-  if ('label' in entry || 'value' in entry) {
-    return { label: String(entry.label ?? ''), value: String(entry.value ?? '') };
-  }
-  const [label, value] = Object.entries(entry)[0] ?? ['', ''];
-  return { label, value: String(value) };
+/**
+ * A masthead figure as `dossier.overview.as_dict` writes it: `{label, value,
+ * note}`. **ONE SHAPE, READ AS WRITTEN.** The first version of this guessed a
+ * second shape (a single-key object) when the first was absent; a window that
+ * guesses at a producer's fields is how two windows start disagreeing about one
+ * estate. A figure without a label is shown as such, not repacked.
+ */
+function figure(entry: Record<string, unknown>): { label: string; value: string; note: string } {
+  return {
+    label: String(entry.label ?? '(unlabelled)'),
+    value: String(entry.value ?? ''),
+    note: String(entry.note ?? ''),
+  };
 }
 
 export function createOverviewPanel(ctx: LayoutContext): m.Component {
@@ -74,9 +79,12 @@ export function createOverviewPanel(ctx: LayoutContext): m.Component {
               reading.masthead.length
                 ? m('div.estate-view__masthead', reading.masthead.map((entry) => {
                     const f = figure(entry);
-                    return m('div.estate-view__figure', [
+                    return m('div.estate-view__figure', { title: f.note }, [
                       m('span.estate-view__figure-label', f.label),
                       m('span.estate-view__figure-value', f.value),
+                      // The producer's own qualification of its figure
+                      // ("101 synced, 94%"), shown beside it rather than lost.
+                      f.note ? m('span.estate-view__figure-note', f.note) : null,
                     ]);
                   }))
                 : m('p.estate-view__hint', 'the seam carries no masthead figures'),
@@ -99,9 +107,14 @@ export function createOverviewPanel(ctx: LayoutContext): m.Component {
                   ]))),
                 m('p.estate-view__hint', reading.caveat),
                 m('p.estate__where', ['from ', m('code', reading.source),
-                  reading.generated_from ? `, generated from ${reading.generated_from}` : '']),
+                  reading.generated_from ? `, ${reading.generated_from}` : '',
+                  // When the producer stamped its reading, else when the file
+                  // was written -- said as which, because they differ.
+                  reading.generated_at
+                    ? `, generated ${reading.generated_at}`
+                    : reading.written_at ? `, file written ${reading.written_at}` : '']),
                 m('button.estate-view__draw', {
-                  onclick: () => void ctx.actions.plot.drawOverview().then(() => ctx.focusDockPanel('graph')),
+                  onclick: () => void ctx.plotWith(() => ctx.actions.plot.drawOverview()).then(() => ctx.focusDockPanel('graph')),
                 }, 'draw the overview'),
               ]
             : null,

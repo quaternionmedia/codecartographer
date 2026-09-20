@@ -40,7 +40,7 @@ from typing import Any
 from fastapi import APIRouter, Query
 
 from codecarto.models.plot_data import PlotOptions
-from codecarto.services import qmcp_client, topology_service
+from codecarto.services import estate_service, qmcp_client, topology_service
 from codecarto.util.utilities import generate_return
 
 TopologyRouter = APIRouter()
@@ -113,8 +113,15 @@ async def topology_gjgf(
     options = _options(layout, palette_id)
     view = topology_service.render(reach.document["payload"],
                                    reach.document.get("encoding"))
+    try:
+        graph = topology_service.as_gjgf(view, options)
+    except ValueError as error:
+        # A layout nobody registered. The seam answered; the window could not
+        # lay it out as asked, and says so rather than raising.
+        return generate_return(results=estate_service.unknown_layout(
+            error, f"/topology/gjgf?layout={layout}"))
     return generate_return(results={
-        "graph": topology_service.as_gjgf(view, options),
+        "graph": graph,
         "metadata": topology_service.metadata(view, reach.document, options),
     })
 

@@ -184,6 +184,31 @@ SEAMS: tuple[Seam, ...] = (
 BY_NAME = {s.name: s for s in SEAMS}
 
 
+def unknown_layout(error: ValueError, where: str) -> dict[str, Any]:
+    """A layout nobody registered, as the envelope every estate route answers in.
+
+    **STATUS 200, AND THE PROBLEM IN `results`**, the rule every estate router
+    follows: the route worked, the seam answered, and the caller asked for a
+    layout this window cannot compute. `Positions.get_layout_params` already
+    raises a `ValueError` naming what *is* registered; this carries that
+    sentence to the browser instead of letting it become a 500 with no detail,
+    which is what `compound_layout` -- the name the front end's own menu is
+    keyed by -- produced until the serializer normalised spellings.
+    """
+    from codecarto.services.position_service import Positions
+
+    known = sorted(str(layout["name"]) for layout in
+                   Positions(include_networkx=True, include_custom=True)._layouts)
+    return {
+        "unreadable": True,
+        "problem": str(error),
+        "remedy": ("choose one of the registered layouts: " + ", ".join(known)
+                   + ". `/topology/available` lists them in the form the menu "
+                   "uses"),
+        "where": where,
+    }
+
+
 def survey(seams: tuple[Seam, ...] = SEAMS) -> list[dict[str, Any]]:
     """Every seam, probed once, as rows a table or a panel can render.
 

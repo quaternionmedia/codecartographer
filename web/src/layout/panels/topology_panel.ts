@@ -63,11 +63,11 @@ export function createTopologyPanel(ctx: LayoutContext): m.Component {
           topologyKind: over.kind ?? state.topologyKind,
           topologySubject: over.subject ?? '',
         });
-        void ctx.actions.plot
-          .loadTopology({
-            kind: over.kind ?? state.topologyKind,
-            subject: over.subject,
-          })
+        const request = { kind: over.kind ?? state.topologyKind, subject: over.subject };
+        // Through `plotWith`, so a layout chosen in Graph Settings re-draws
+        // this topology rather than being kept for a draw nobody repeats.
+        void ctx
+          .plotWith(() => ctx.actions.plot.loadTopology(request))
           // The drawing goes where the reader can see it: this panel usually
           // sits in the same stack as the canvas, in front of it.
           .then(() => ctx.focusDockPanel('graph'))

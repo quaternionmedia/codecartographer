@@ -92,7 +92,7 @@ export function createCapabilitiesPanel(ctx: LayoutContext): m.Component {
             : null,
           reading
             ? m('button.estate-view__draw', {
-                onclick: () => void ctx.actions.plot.drawCapabilities().then(() => ctx.focusDockPanel('graph')),
+                onclick: () => void ctx.plotWith(() => ctx.actions.plot.drawCapabilities()).then(() => ctx.focusDockPanel('graph')),
               }, 'draw the registry')
             : null,
         ]),

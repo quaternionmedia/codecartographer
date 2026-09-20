@@ -3,7 +3,7 @@ import networkx as nx
 import gravis as gv
 
 from codecarto.models.plot_data import PlotOptions
-from codecarto.services.position_service import Positions
+from codecarto.services.position_service import Positions, layout_key
 
 
 class GraphSerializer:
@@ -39,15 +39,24 @@ class GraphSerializer:
         else:
             ntxGraph = nx.DiGraph(graph)
 
-        # Apply layout algorithm to get node positions
-        layout_name = f"{options.layout.lower()}_layout"
+        # **ONE SPELLING, RESOLVED ONCE.** `layout_key` is what the registry
+        # matches on, so `Kamada Kawai`, `Kamada_Kawai`, `kamada-kawai` and
+        # `kamada_kawai_layout` are one layout here. This used to build the
+        # key as `options.layout.lower() + "_layout"` and then compare the
+        # *unnormalised* string for the spread below -- so the same layout
+        # came out five times larger depending on how a caller spelled it,
+        # and an already-suffixed name (`compound_layout`, exactly what the
+        # front end's own menu is keyed by) was looked up as
+        # `compound_layout_layout` and raised. Position is calculated here;
+        # the spelling a caller chose is not a parameter of the calculation.
+        layout_name = layout_key(options.layout)
         positions = Positions().get_node_positions(graph=ntxGraph, layout_name=layout_name)
 
-        # Scale positions based on layout type
+        # Scale positions based on layout type. A display constant applied at
+        # the data layer, kept because the canvas expects these magnitudes;
+        # keyed on the resolved name so it cannot depend on spelling.
         spread = 100
-        if options.layout == "Spectral":
-            spread = 500
-        elif layout_name == "kamada_kawai_layout":
+        if layout_name in ("spectral_layout", "kamada_kawai_layout"):
             spread = 500
 
         # Add scaled positions to graph nodes

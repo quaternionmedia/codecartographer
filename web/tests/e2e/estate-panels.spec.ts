@@ -187,3 +187,58 @@ test.describe('the Overview panel', () => {
     await expect(panel.locator('.overview__caveat')).toContainText("dossier's reading");
   });
 });
+
+test.describe('a layout chosen in Graph Settings applies to an estate graph', () => {
+  test('changing the layout re-draws the registry with the new one', async ({ page }) => {
+    /**
+     * **THE SELECTION WAS KEPT AND NOT APPLIED.** A layout change re-runs the
+     * last plot action, and only the code-map paths ever set one -- so for an
+     * estate graph the setting changed and the canvas did not, until somebody
+     * pressed draw again. The panels now draw through `plotWith`, and this
+     * watches the request the change must cause.
+     */
+    await openFromMenu(page, /^Capabilities$/, '.gl-panel--capabilities');
+    const panel = page.locator('.gl-panel--capabilities');
+    await panel.locator('.estate-view__draw').waitFor({ timeout: SETTLED });
+    await panel.locator('.estate-view__draw').click();
+    await expect(page.locator('.graph-node').first()).toBeVisible({ timeout: SETTLED });
+
+    // Graph Settings lives in the bottom dock; its layout select is the
+    // `Algorithm` control under the Layout section.
+    await page.locator('.lm_tab', { hasText: /Graph Settings/ }).click();
+    // The first `select` in the panel is the renderer's; the layout's is the one labelled Algorithm.
+    const select = page.locator('.panel-settings__group', { hasText: 'Algorithm' }).locator('select');
+    await select.waitFor({ timeout: SETTLED });
+
+    const redraw = page.waitForRequest(
+      (req) => req.url().includes('/capabilities/gjgf') && req.url().includes('layout=Circular'),
+      { timeout: SETTLED },
+    );
+    await select.selectOption('circular_layout');
+    const request = await redraw;
+    expect(request.url()).toContain('layout=Circular');
+    // And the drawn graph says which layout it was laid out with.
+    await expect(page.locator('.graph-node').first()).toBeVisible({ timeout: SETTLED });
+  });
+
+  test('a layout the menu names but the tables dropped reaches the server as itself', async ({ page }) => {
+    await openFromMenu(page, /^Capabilities$/, '.gl-panel--capabilities');
+    const panel = page.locator('.gl-panel--capabilities');
+    await panel.locator('.estate-view__draw').waitFor({ timeout: SETTLED });
+    await page.locator('.lm_tab', { hasText: /Graph Settings/ }).click();
+    // The first `select` in the panel is the renderer's; the layout's is the one labelled Algorithm.
+    const select = page.locator('.panel-settings__group', { hasText: 'Algorithm' }).locator('select');
+    await select.waitFor({ timeout: SETTLED });
+    await select.selectOption('compound_layout');
+
+    const drawn = page.waitForRequest(
+      (req) => req.url().includes('/capabilities/gjgf'),
+      { timeout: SETTLED },
+    );
+    await page.locator('.lm_tab', { hasText: /Capabilities/ }).click();
+    await panel.locator('.estate-view__draw').click();
+    const request = await drawn;
+    // Not `Spring`: the two hand tables both fell back to it for this name.
+    expect(request.url()).toContain('layout=Compound');
+  });
+});

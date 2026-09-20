@@ -13,25 +13,12 @@ import { GraphStylingOptions } from './types';
 import { GraphRendererRegistry } from '../features/graph/services/renderers';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
 import { logger } from '../core/logger';
+import { backendLayoutName } from '../features/graph/services/layout_names';
 
-/**
- * Convert frontend layout format to backend format
- * Frontend: 'spring_layout', 'spectral_layout', etc.
- * Backend: 'Spring', 'Spectral', 'Kamada_Kawai', etc.
- */
-function convertLayoutToBackend(frontendLayout: string): string {
-  const mapping: Record<string, string> = {
-    'spring_layout': 'Spring',
-    'spectral_layout': 'Spectral',
-    'kamada_kawai_layout': 'Kamada_Kawai',
-    'circular_layout': 'Circular',
-    'spiral_layout': 'Spiral',
-    'random_layout': 'Random',
-    'shell_layout': 'Shell',
-    'sorted_square_layout': 'Sorted_Square',
-  };
-  return mapping[frontendLayout] || 'Spring';
-}
+// The menu's registry name, as the backend spells it. One rule in
+// `layout_names.ts`; this used to be a private table here that fell back to
+// 'Spring' for any name it did not list.
+const convertLayoutToBackend = backendLayoutName;
 
 /**
  * Plot Actions - handles all graph/visualization related operations
