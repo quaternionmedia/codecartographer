@@ -734,17 +734,27 @@ it.
 
 dossier's overview seam (`dossier overview --json`) as `GraphData`. The one
 relation drawn is that a section lists a subject; the masthead figures ride in
-`metadata.masthead`. Every name is whatever the producer published — redaction
-is inherited, never repeated. `metadata.kind` is `"overview"`. The seam is read
+`metadata.masthead`, and `metadata.generated_at` / `metadata.written_at` say
+when the reading was made. Every name is whatever the producer published —
+redaction is inherited, never repeated. `metadata.kind` is `"overview"`.
+
+**Any estate route, given a layout nobody registered**, answers 200 with
+`unreadable`, the registry's own message and the registered names. Spellings
+are normalised once (`Kamada Kawai`, `Kamada_Kawai`, `kamada_kawai_layout` are
+one layout) and the result does not depend on which was sent. The seam is read
 from `seam`, else `DOSSIER_OVERVIEW_SEAM`, else `overview.json` in the working
 directory; a seam whose `schema` this window does not know is declined rather
 than guessed.
 
 ### GET `/overview/data?seam=`
 
-The sections themselves: `scope`, `generated_from`, `masthead`, `sections`
-(each with `title` and `rows`), `caveat`. The same reading the terminal prints
-as tables, so the two windows can be compared.
+The sections themselves: `scope`, `generated_from` (how far back the sync
+reached), `generated_at` (when the producer took the picture, when the seam
+carries it), `written_at` (when the seam file was written -- a fact about the
+file, shown when the producer's stamp is absent), `masthead` (each figure with
+the producer's `label`, `value` and `note`), `sections` (each with `title` and
+`rows`), `caveat`. The same reading the terminal prints as tables, so the two
+windows can be compared.
 
 ---
 
