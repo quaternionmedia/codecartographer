@@ -72,6 +72,16 @@ UNKNOWN = "unknown"
 # kind a thing is.
 CAPABILITY, RUNG, REPO, ARTIFACT = "capability", "rung", "repo", "artifact"
 
+# A node's `kind` -> the node `type` the palette names, the same join
+# `topology_service.KIND_TO_TYPE` makes and for the same reason: the palette
+# speaks in capitalised type names and maps those to dotted bases, and a node
+# that carries no `type` resolves to the palette's `unknown` -- every node one
+# grey circle, which is what this view drew until the join existed. The
+# vocabulary is the palette's `topology.*` family, read for what each thing
+# *does* in the picture: a capability is a worker, a rung is a gate it has
+# passed, a repository is where it lives, an artifact is what it points at.
+KIND_TO_TYPE = {CAPABILITY: "Worker", RUNG: "Gate", REPO: "Store", ARTIFACT: "Output"}
+
 
 @dataclass
 class Reading:
@@ -148,11 +158,21 @@ def as_graph(reading: Reading):
     """
     import networkx as nx
 
+    from codecarto.services import palette_service
+
     graph = nx.MultiDiGraph(kind="capabilities", source=reading.source,
                             unmeasured=unmeasured(reading))
 
+    def styled(kind: str) -> dict[str, Any]:
+        """The palette's vocabulary, carried on the node so anything else in
+        this project can restyle it without knowing what a capability is."""
+        node_type = KIND_TO_TYPE.get(kind, "Worker")
+        style = palette_service.style_for_type(node_type)
+        return {"type": node_type, "base": style.base, "shape": style.shape,
+                "color": style.color, "size": style.size}
+
     for rung in RUNGS:
-        graph.add_node(rung, label=rung, kind=RUNG,
+        graph.add_node(rung, label=rung, kind=RUNG, **styled(RUNG),
                        hover=f"rung: {rung}",
                        click=f"<p>The <b>{rung}</b> rung.</p>")
 
@@ -160,14 +180,14 @@ def as_graph(reading: Reading):
         name = str(entry["id"])
         title = str(entry.get("title", name))
         graph.add_node(
-            name, label=title, kind=CAPABILITY,
+            name, label=title, kind=CAPABILITY, **styled(CAPABILITY),
             phase=str(entry.get("phase", UNKNOWN)),
             hover=f"{title} -- claims {entry.get('phase', UNKNOWN)}",
             click=_click_for(entry))
 
         repo = str(entry.get("repo") or "").strip()
         if repo:
-            graph.add_node(repo, label=repo, kind=REPO, hover=repo,
+            graph.add_node(repo, label=repo, kind=REPO, **styled(REPO), hover=repo,
                            click=f"<p>Repository <b>{repo}</b></p>")
             graph.add_edge(name, repo, label="lives-in", stated=True)
 
@@ -182,7 +202,8 @@ def as_graph(reading: Reading):
             if where == UNKNOWN:
                 # Draws nothing. An absence must not become a box.
                 continue
-            graph.add_node(where, label=where, kind=ARTIFACT, hover=where,
+            graph.add_node(where, label=where, kind=ARTIFACT, **styled(ARTIFACT),
+                           hover=where,
                            click=f"<p><code>{where}</code></p>")
             graph.add_edge(name, where, label=rung, stated=True)
 

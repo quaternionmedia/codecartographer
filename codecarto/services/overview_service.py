@@ -57,6 +57,13 @@ DEFAULT_SEAM = Path("overview.json")
 # colour. The renderer decides how a kind looks; this decides what a thing is.
 SCOPE, SECTION, SUBJECT = "scope", "section", "subject"
 
+# `kind` -> the palette's type name, the join `topology_service.KIND_TO_TYPE`
+# and `capability_service.KIND_TO_TYPE` make: the scope is what goes in, a
+# section is a reading the estate passes through, a subject is a repository --
+# where a thing lives. Without it every node resolved to `unknown` and drew as
+# one grey circle.
+KIND_TO_TYPE = {SCOPE: "Input", SECTION: "Gate", SUBJECT: "Store"}
+
 
 @dataclass
 class Reading:
@@ -128,11 +135,19 @@ def as_graph(reading: Reading):
     """
     import networkx as nx
 
+    from codecarto.services import palette_service
+
     graph = nx.MultiDiGraph(kind="overview", source=reading.source,
                             scope=reading.scope, generated_from=reading.generated_from)
 
+    def styled(kind: str) -> dict[str, Any]:
+        node_type = KIND_TO_TYPE.get(kind, "Store")
+        style = palette_service.style_for_type(node_type)
+        return {"type": node_type, "base": style.base, "shape": style.shape,
+                "color": style.color, "size": style.size}
+
     scope = reading.scope or "the estate"
-    graph.add_node(scope, label=scope, kind=SCOPE, hover=scope,
+    graph.add_node(scope, label=scope, kind=SCOPE, **styled(SCOPE), hover=scope,
                    click=f"<p><b>{scope}</b></p>")
 
     for section in reading.sections:
@@ -140,7 +155,7 @@ def as_graph(reading: Reading):
         if not title:
             continue
         rows = section.get("rows", []) or []
-        graph.add_node(title, label=title, kind=SECTION,
+        graph.add_node(title, label=title, kind=SECTION, **styled(SECTION),
                        rows=len(rows), hover=f"{title} -- {len(rows)} row(s)",
                        click=f"<p><b>{title}</b><br/>{len(rows)} row(s)</p>")
         graph.add_edge(scope, title, label="has", stated=True)
@@ -150,7 +165,7 @@ def as_graph(reading: Reading):
         for name in dict.fromkeys(_subject(r) for r in rows):
             if not name:
                 continue
-            graph.add_node(name, label=name, kind=SUBJECT, hover=name,
+            graph.add_node(name, label=name, kind=SUBJECT, **styled(SUBJECT), hover=name,
                            click=f"<p><code>{name}</code></p>")
             graph.add_edge(title, name, label="lists", stated=True)
 

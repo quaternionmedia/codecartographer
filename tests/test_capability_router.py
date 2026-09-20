@@ -285,3 +285,25 @@ def test_this_window_agrees_with_the_corpus_about_the_rungs():
     text = source.read_text(encoding="utf-8")
     for rung in mod.RUNGS:
         assert f'"{rung}"' in text, f"{rung} is not a rung in the corpus"
+
+
+def test_every_node_carries_the_palettes_vocabulary():
+    """A node with no `type` resolves to the palette's `unknown` and draws grey.
+
+    Every kind this view emits is joined to a palette type, so the canvas can
+    tell a capability from the rung it claims from the repository it lives in.
+    Seen red with the join removed: every node's `type` was absent.
+    """
+    from codecarto.services import capability_service
+
+    reading = capability_service.Reading(source="fixture", capabilities=[{
+        "id": "a/b", "title": "A", "repo": "o/r", "phase": "execution",
+        "evidence": {"design": "records/x.md"}}])
+    graph = capability_service.as_graph(reading)
+    kinds = {data["kind"]: data for _, data in graph.nodes(data=True)}
+    assert set(kinds) == {"rung", "capability", "repo", "artifact"}
+    for kind, data in kinds.items():
+        assert data["type"] == capability_service.KIND_TO_TYPE[kind], kind
+        assert data["color"] and data["shape"] and data["size"] > 0, kind
+    # Different kinds, different types -- the join is not one colour for all.
+    assert len({d["type"] for d in kinds.values()}) == len(kinds)

@@ -122,3 +122,23 @@ def test_a_missing_seam_is_a_200_with_the_problem_in_results(client, tmp_path):
     r = client.get("/overview/gjgf", params={"seam": str(tmp_path / "absent.json")})
     assert r.status_code == 200
     assert r.json()["results"]["unreadable"] is True
+
+
+def test_every_node_carries_the_palettes_vocabulary(tmp_path):
+    """The scope, a section and a subject are three kinds and draw as three
+    types; without the join all three resolved to `unknown`."""
+    import json
+
+    from codecarto.services import overview_service
+
+    seam = tmp_path / "overview.json"
+    seam.write_text(json.dumps({"schema": 1, "scope": "s", "masthead": [],
+                                "sections": [{"title": "T", "rows": [["r"]]}]}),
+                    encoding="utf-8")
+    graph = overview_service.as_graph(overview_service.read(seam))
+    kinds = {data["kind"]: data for _, data in graph.nodes(data=True)}
+    assert set(kinds) == {"scope", "section", "subject"}
+    for kind, data in kinds.items():
+        assert data["type"] == overview_service.KIND_TO_TYPE[kind], kind
+        assert data["color"] and data["shape"]
+    assert len({d["type"] for d in kinds.values()}) == 3
