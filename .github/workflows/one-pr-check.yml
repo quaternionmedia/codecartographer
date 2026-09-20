@@ -53,7 +53,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          # **ONLY THE GOVERNANCE SUBMODULE, INITIALISED BELOW** -- the one
+          # departure from the seed's copy, for the reason adr-lint.yml gives:
+          # `submodules: true` is all-or-nothing and this project also has a
+          # private submodule the runner has no credentials for, so the seed's
+          # checkout aborted with `remote: Repository not found` before the
+          # check ran a line. Seen on the first pull request that carried it.
+          submodules: false
+
+      - name: Check out the governance submodule only
+        run: git submodule update --init governance/qm
 
       - uses: actions/setup-python@v5
         with:
