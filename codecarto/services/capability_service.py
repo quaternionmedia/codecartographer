@@ -67,9 +67,9 @@ corpus, that file is right and this is the copy to repair."""
 
 UNKNOWN = "unknown"
 
-# What each node is, so a palette can colour by kind without this module
-# choosing a colour. The renderer decides how a kind looks; this decides what
-# kind a thing is.
+# What each node is. This module decides what kind a thing is; the palette
+# decides what a kind looks like; `palette_service.vocabulary` is where that
+# resolution is carried onto the node, and why a service carries it at all.
 CAPABILITY, RUNG, REPO, ARTIFACT = "capability", "rung", "repo", "artifact"
 
 # A node's `kind` -> the node `type` the palette names, the same join
@@ -164,12 +164,8 @@ def as_graph(reading: Reading):
                             unmeasured=unmeasured(reading))
 
     def styled(kind: str) -> dict[str, Any]:
-        """The palette's vocabulary, carried on the node so anything else in
-        this project can restyle it without knowing what a capability is."""
-        node_type = KIND_TO_TYPE.get(kind, "Worker")
-        style = palette_service.style_for_type(node_type)
-        return {"type": node_type, "base": style.base, "shape": style.shape,
-                "color": style.color, "size": style.size}
+        """The palette's vocabulary for this kind, carried on the node."""
+        return palette_service.vocabulary(KIND_TO_TYPE.get(kind, "Worker"))
 
     for rung in RUNGS:
         graph.add_node(rung, label=rung, kind=RUNG, **styled(RUNG),

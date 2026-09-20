@@ -83,6 +83,11 @@ Shown when no repo is loaded. Lists previously parsed graphs from the filesystem
 
 ### Layout Algorithm
 
+Applies to whatever graph is on the canvas — a code map or an estate graph
+(topology, capabilities, overview). Changing it re-draws the last thing drawn
+with the new layout; the menu's names are the backend registry's, translated by
+one rule in `web/src/features/graph/services/layout_names.ts`.
+
 | Value | Description |
 |-------|-------------|
 | `spring_layout` | Force-directed (default) |

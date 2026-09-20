@@ -53,8 +53,9 @@ KNOWN_SCHEMA = 1
 SEAM_ENV = "DOSSIER_OVERVIEW_SEAM"
 DEFAULT_SEAM = Path("overview.json")
 
-# What each node is, so a palette colours by kind without this module choosing a
-# colour. The renderer decides how a kind looks; this decides what a thing is.
+# What each node is. This module decides what a thing is; the palette decides
+# what a kind looks like; `palette_service.vocabulary` carries that onto the
+# node and says why a service does.
 SCOPE, SECTION, SUBJECT = "scope", "section", "subject"
 
 # `kind` -> the palette's type name, the join `topology_service.KIND_TO_TYPE`
@@ -72,6 +73,16 @@ class Reading:
     source: str
     scope: str = ""
     generated_from: str = ""
+    generated_at: str = ""
+    """When the producer made this reading, in its own words (ISO-8601, UTC) --
+    when the seam carries `generated_at`. Empty when it does not, and then
+    `written_at` is what a reader has."""
+
+    written_at: str = ""
+    """When the seam file was last written, from the file itself. A fact about
+    the stored artefact, not about the reading: a copied file carries a new
+    time. Shown as what it is."""
+
     masthead: list[dict[str, Any]] = field(default_factory=list)
     sections: list[dict[str, Any]] = field(default_factory=list)
     reason: str = ""
@@ -110,10 +121,15 @@ def read(seam: Path | str | None = None) -> Reading:
             f"{KNOWN_SCHEMA}. A field's meaning may have changed, so it is "
             "declined rather than read on the old assumption."))
 
+    from datetime import datetime, timezone
+
+    written = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
     return Reading(
         source=str(path),
         scope=str(data.get("scope", "")),
         generated_from=str(data.get("generated_from", "")),
+        generated_at=str(data.get("generated_at") or ""),
+        written_at=written.isoformat(timespec="seconds"),
         masthead=list(data.get("masthead", [])),
         sections=list(data.get("sections", [])),
     )
@@ -141,10 +157,7 @@ def as_graph(reading: Reading):
                             scope=reading.scope, generated_from=reading.generated_from)
 
     def styled(kind: str) -> dict[str, Any]:
-        node_type = KIND_TO_TYPE.get(kind, "Store")
-        style = palette_service.style_for_type(node_type)
-        return {"type": node_type, "base": style.base, "shape": style.shape,
-                "color": style.color, "size": style.size}
+        return palette_service.vocabulary(KIND_TO_TYPE.get(kind, "Store"))
 
     scope = reading.scope or "the estate"
     graph.add_node(scope, label=scope, kind=SCOPE, **styled(SCOPE), hover=scope,
@@ -190,6 +203,8 @@ def metadata(reading: Reading, options: Any = None) -> dict[str, Any]:
         "source": reading.source,
         "scope": reading.scope,
         "generated_from": reading.generated_from,
+        "generated_at": reading.generated_at,
+        "written_at": reading.written_at,
         "layout": getattr(options, "layout", "Kamada Kawai"),
         "type": getattr(options, "type", None),
         "palette_id": getattr(options, "palette_id", "0"),

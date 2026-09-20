@@ -61,6 +61,10 @@ export interface OverviewDocument {
   source: string;
   scope: string;
   generated_from: string;
+  /** The producer's own stamp, when the seam carries one. */
+  generated_at: string;
+  /** When the seam file was written -- a fact about the file, not the reading. */
+  written_at: string;
   masthead: Array<Record<string, unknown>>;
   sections: Array<{ title?: string; rows?: unknown[]; [key: string]: unknown }>;
   caveat: string;

@@ -27,6 +27,8 @@ export interface EstateMetadata {
   measured?: number;
   surveyed?: number;
   generated_from?: string;
+  generated_at?: string;
+  written_at?: string;
   scope?: string;
   capabilities?: number;
   sections?: number;
@@ -54,7 +56,11 @@ export const Provenance: m.Component<ProvenanceAttrs> = {
 
     const from: string[] = [];
     if (md.source) from.push(`from ${md.source}`);
-    if (md.generated_from) from.push(`generated from ${md.generated_from}`);
+    if (md.generated_from) from.push(String(md.generated_from));
+    // The producer's stamp when it gave one; the file's time otherwise, and
+    // named as the file's -- a copied seam carries a new time.
+    if (md.generated_at) from.push(`generated ${md.generated_at}`);
+    else if (md.written_at) from.push(`file written ${md.written_at}`);
     if (md.scope) from.push(`scope ${md.scope}`);
     if (typeof md.surveyed === 'number') from.push(`${md.surveyed} thread(s) read`);
 

@@ -150,6 +150,26 @@ def style_for_type(node_type: str, palette: Palette | None = None) -> Style:
     return style_for(base_for(node_type, palette), palette)
 
 
+def vocabulary(node_type: str, palette: Palette | None = None) -> dict:
+    """The palette's words for one node type, ready to carry on a node.
+
+    **WHY A SERVICE CARRIES THE LOOK AT ALL.** `GraphSerializer` computes
+    positions and sizes-by-degree; it does not apply the palette. So a service
+    that wants its nodes drawn as more than the palette's `unknown` -- grey
+    circles, all alike -- resolves the palette itself and puts the result on
+    the node: `type` and `base` say what the thing is in the palette's
+    vocabulary, `shape`, `color` and `size` are what that resolves to today. The
+    renderer draws what it is given and decides nothing about kind. Three
+    services did this with three private copies of the same five lines; this
+    is the one. Moving the resolution into the serializer, so a service sets
+    `type` alone, is the right eventual home and is named in
+    `docs/architecture.md`'s boundary section rather than done here.
+    """
+    style = style_for_type(node_type, palette)
+    return {"type": node_type, "base": style.base, "shape": style.shape,
+            "color": style.color, "size": style.size}
+
+
 def apply_to(graph, palette: Palette | None = None, *,
              overwrite: bool = False) -> int:
     """Style every node in a graph from its `type` or `base`. Returns how many.

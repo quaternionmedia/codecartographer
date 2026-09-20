@@ -168,6 +168,67 @@ StreamingGraphRenderer (frontend rAF loop)
   │── finalize() on 'done' → fit view + draw compound backgrounds
 ```
 
+## Calculated, stored, displayed
+
+Every figure on the screen was calculated somewhere, may have been stored
+somewhere, and is displayed here. The three are different places with
+different owners, and a window that blurs them is how two windows onto one
+estate start disagreeing. `tests/test_boundaries.py` is the check; this is the
+statement.
+
+| | who calculates | who stores | who displays |
+|---|---|---|---|
+| **Code maps** (`/parse`, `/repo`) | this backend: parsers produce nodes and edges, `PositionService` lays them out, `GraphSerializer` sizes by degree | `CacheService` — content-addressed, keyed by url + mode + layout + extensions, filesystem or MongoDB; `graphbase` for named bookmarks (separate store, separate decision) | the one canvas, `StreamingGraphRenderer`; the legend counts what was drawn |
+| **Topologies** (`/topology`) | the harness declares shapes (boxes, arrows, no coordinates) and measures relation weights from its archive; this backend resolves the *encoding* — width from strength, dashed from unmeasured, colour from kind — and lays out | nothing here. Read live on every request; the harness stores its own archive and its own runs | the canvas draws exactly the channels `topology_service` resolved; the panel shows the harness's caveat verbatim |
+| **Capabilities** (`/capabilities`) | the corpus's registry states claims; this backend counts nothing but the rungs naming no evidence, and lays out | nothing here; the registry is the corpus's file at the governance pin | the canvas; the panel lists the claims as stated, with who stated them and when |
+| **Overview** (`/overview`) | dossier builds masthead figures and sections from its database and writes them as a seam; this backend draws the one relation the seam states (a section lists a subject) and lays out | dossier's seam file — a snapshot; this window reads it and never writes it | the canvas; the panel shows the masthead as written, with the producer's own `note` beside each figure, and when the reading was made |
+| **Liveness** (`/estate/seams`) | this backend probes each seam for a document whose shape it knows | nothing | the Estate panel, one row per seam, the server's `ok` and the server's sentence |
+
+**Rules, and where each was learned.**
+
+1. **The window calculates two things and no more: a layout, and the palette's
+   vocabulary for a kind.** Layouts are `PositionService`; the vocabulary is
+   `palette_service.vocabulary`, the one place a kind becomes a shape, colour
+   and size (three services once held three private copies). The serializer
+   does not apply the palette, which is why a service carries the result; the
+   right eventual home is the serializer, so a service sets `type` alone.
+2. **A calculation does not depend on how the caller spelled its name.**
+   `layout_key` normalises once and everything downstream keys on the result.
+   The same layout used to come out five times larger for `Kamada_Kawai` than
+   for `Kamada Kawai`, and `compound_layout` — the menu's own name — raised.
+3. **A data document carries no display constants.** Three hex colours rode in
+   the topology metadata and the front end overwrote them on arrival. The canvas
+   themes itself from the application's tokens.
+4. **The estate services and panels store nothing.** No cache, no database, no
+   `localStorage`. What a panel remembers between renders is application state
+   and is gone with the tab. The one thing persisted on this side of the estate
+   is the saved Golden Layout arrangement, which is a fact about the window and
+   not about the estate.
+5. **A panel displays the producer's figures and may count the rows it was
+   handed; it never derives a figure the producer also states.** The caveat is
+   shown verbatim. `unmeasured`, `live`, `surveyed` are read, not recomputed. A
+   panel may map a stated figure to a style (`is-partial` when `unmeasured > 0`)
+   — that is display, not calculation.
+6. **A seam that cannot be drawn as asked is a sentence.** An unknown layout
+   answers 200 with `unreadable`, the registry's own message and the registered
+   names; nothing in an estate router raises to the browser.
+7. **A layout choice is a choice about the graph on the canvas, whichever seam
+   drew it.** Every panel that draws goes through `LayoutContext.plotWith`, so
+   changing the layout in Graph Settings — or rad's `relayout` — re-runs the
+   last draw with the new one. The estate draws were once not remembered, and
+   the setting changed while the canvas did not.
+8. **One translation between the menu's names and the backend's.**
+   `layout_names.ts` strips `_layout` and capitalises; there is no fallback.
+   Two hand tables used to fall back to `Spring` for any name they did not
+   list.
+
+**What a reader should still not expect.** That a seam's *content* is right —
+the probes say a seam is there and is what this window expects, and each seam's
+own caveat says what it could not see. And that a producer's figure is current:
+the overview panel shows when the reading was made (the producer's stamp when
+the seam carries one, else the file's time, named as such) so a stale number is
+delivered with its date.
+
 ## Key Architectural Decisions
 
 All non-obvious structural choices are documented as ADR drafts in
