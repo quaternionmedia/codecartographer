@@ -21,6 +21,9 @@
 import m from 'mithril';
 
 import type { LayoutContext } from '../layout_context';
+import { ProblemView } from '../../features/estate/problem_view';
+import { Provenance } from '../../features/estate/provenance';
+import type { EstateMetadata } from '../../features/estate/provenance';
 import './topology_panel.css';
 
 export function createTopologyPanel(ctx: LayoutContext): m.Component {
@@ -53,58 +56,43 @@ export function createTopologyPanel(ctx: LayoutContext): m.Component {
       const state = ctx.appState.state;
       const choices = state.topologyChoices;
       const problem = state.topologyProblem;
-      const metadata = state.graphData?.metadata as
-        | { caveat?: string; unmeasured?: number; source?: string; surveyed?: number }
-        | undefined;
+      const metadata = state.graphData?.metadata as EstateMetadata | undefined;
 
       const draw = (over: Record<string, string>) => {
         ctx.appState.update({
           topologyKind: over.kind ?? state.topologyKind,
           topologySubject: over.subject ?? '',
         });
-        void ctx.actions.plot.loadTopology({
-          kind: over.kind ?? state.topologyKind,
-          subject: over.subject,
-        });
+        void ctx.actions.plot
+          .loadTopology({
+            kind: over.kind ?? state.topologyKind,
+            subject: over.subject,
+          })
+          // The drawing goes where the reader can see it: this panel usually
+          // sits in the same stack as the canvas, in front of it.
+          .then(() => ctx.focusDockPanel('graph'))
+          .catch(() => undefined);
       };
 
       return m('div.gl-panel.gl-panel--controls.gl-panel--topology', [
         // --- what is wrong, when something is -----------------------------
+        // The one problem view every estate panel shares, wearing this
+        // panel's prefix so its stylesheet and its browser tests still apply.
         problem
-          ? m('div.topology__problem', [
-              m('p.topology__problem-what', problem.problem),
-              problem.remedy
-                ? m('p.topology__problem-remedy', problem.remedy)
-                : null,
-              m('p.topology__problem-where', ['tried ', m('code', problem.where)]),
-              m('p.topology__problem-note',
-                'Nothing was drawn. An empty graph would look like an answer.'),
-              // A harness is usually started *after* somebody opens this and
-              // finds it down. Without this they would have to close and
-              // reopen the panel, which is not a thing anybody guesses.
-              m('button.topology__retry', {
-                onclick: () => {
-                  ctx.appState.update({ topologyProblem: null });
-                  ask();
-                },
-              }, 'try again'),
-            ])
+          ? m(ProblemView, {
+              problem,
+              prefix: 'topology',
+              onRetry: () => {
+                ctx.appState.update({ topologyProblem: null });
+                ask();
+              },
+            })
           : null,
 
         // --- how much of what is drawn was measured -----------------------
-        metadata?.caveat
-          ? m(
-              'p.topology__caveat',
-              { class: metadata.unmeasured ? 'is-partial' : 'is-complete' },
-              metadata.caveat,
-            )
-          : null,
-
-        metadata?.source
-          ? m('p.topology__provenance',
-              `from the ${metadata.source}` +
-                (metadata.surveyed ? `, ${metadata.surveyed} thread(s) read` : ''))
-          : null,
+        // Only when the canvas holds a topology: a capability graph's caveat
+        // must not appear here because it happens to be what is drawn.
+        m(Provenance, { metadata, prefix: 'topology', kind: 'topology' }),
 
         // --- the harness's own shapes -------------------------------------
         m('div.topology__section', [

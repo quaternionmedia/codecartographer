@@ -356,6 +356,10 @@ def metadata(view: RenderedTopology, document: dict[str, Any],
     """
     chosen = options or PlotOptions(layout="Kamada Kawai")
     return {
+        # Which seam drew this, so a panel shows its own seam's caveat and not
+        # whichever graph happens to be on the canvas. The capability and
+        # overview views carry the same key.
+        "kind": "topology",
         "layout": chosen.layout,
         "type": chosen.type,
         "palette_id": chosen.palette_id,

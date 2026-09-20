@@ -7,6 +7,9 @@ export class API {
   private _parse: string = 'parse';
   private _lexicon: string = 'lexicon';
   private _topology: string = 'topology';
+  private _capabilities: string = 'capabilities';
+  private _overview: string = 'overview';
+  private _estate: string = 'estate';
 
   constructor(base: string) {
     this._base = base;
@@ -38,6 +41,18 @@ export class API {
 
   get topology(): string {
     return `${this._base}/${this._topology}`;
+  }
+
+  get capabilities(): string {
+    return `${this._base}/${this._capabilities}`;
+  }
+
+  get overview(): string {
+    return `${this._base}/${this._overview}`;
+  }
+
+  get estate(): string {
+    return `${this._base}/${this._estate}`;
   }
 
   get db(): string {

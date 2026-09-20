@@ -39,11 +39,22 @@ const STEPS = [
 let _isOpen = false;
 let _step = 0;
 
+/**
+ * Escape closes it. A modal that only closes on its own `×` is one every
+ * keyboard reader and every browser test presses Escape at first, and the
+ * dismiss helper in `web/tests/e2e/helpers.ts` did exactly that and then had
+ * to fall back to hunting for the button.
+ */
+function onKey(e: KeyboardEvent): void {
+  if (e.key === 'Escape' && _isOpen) HelpModal.close();
+}
+
 export const HelpModal = {
   /** Open the help modal (always). */
   open(): void {
     _isOpen = true;
     _step = 0;
+    document.addEventListener('keydown', onKey);
     m.redraw();
   },
 
@@ -56,6 +67,7 @@ export const HelpModal = {
 
   close(): void {
     _isOpen = false;
+    document.removeEventListener('keydown', onKey);
     localStorage.setItem(DISMISSED_KEY, '1');
     m.redraw();
   },

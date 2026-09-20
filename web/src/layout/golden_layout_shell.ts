@@ -76,14 +76,20 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       const theme = ctx.panelState.currentTheme;
       document.documentElement.setAttribute('data-theme', theme === 'terminal' ? '' : theme);
 
+      // **FIRST, AND BEFORE ANY AWAIT.** This used to run last, after four
+      // network probes -- so on a first visit the modal appeared seconds after
+      // the page did, over whatever the reader had started doing, and its
+      // backdrop intercepted every click. It read as "the modal reappears"; it
+      // was only ever late. A modal that opens with the page is one the reader
+      // (and the browser tests' dismiss helper) meets before anything else.
+      HelpModal.maybeShowFirstTime();
+
       // Initialise languages, filesystem cache, graphbase and GitHub auth (all non-blocking)
       try { await ctx.actions.plot.initializeLanguages(); m.redraw(); } catch { /* non-fatal */ }
       try { await ctx.actions.plot.initializeLexiconLanguages(); m.redraw(); } catch { /* non-fatal */ }
       await ctx.refreshCache();
       ctx.refreshGraphbase();        // probe graphbase — sets graphbaseAvailable
       ctx.refreshGithubAuthStatus(); // probe GitHub auth — surfaces bad-token early
-
-      HelpModal.maybeShowFirstTime();
     },
 
     // Mithril's real removal hook is `onremove`, not `ondestroy` (which

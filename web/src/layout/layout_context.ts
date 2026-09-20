@@ -174,6 +174,27 @@ export class LayoutContext {
     }
   }
 
+  /**
+   * Bring a panel's tab to the front of its stack.
+   *
+   * A panel opened from the "+" menu lands in the main stack beside the Graph
+   * panel, so after a reader presses "draw" the graph is drawn behind the
+   * controls they pressed it from -- which the browser tests measured as every
+   * node present and every node hidden. The drawing goes where the reader can
+   * see it; a panel that is not in a stack has nothing to focus and is left.
+   */
+  public focusDockPanel(panelId: DockPanelId): void {
+    const item = this._layoutManager?.findFirstComponentItemById(panelId);
+    if (!item) return;
+    // `ComponentItem.focus()` marks the item focused and leaves the stack's
+    // active tab alone -- the first version called it and the graph stayed
+    // behind. The stack is what shows one tab and hides the rest.
+    const stack = item.parent as { setActiveComponentItem?: (i: typeof item, focus: boolean) => void } | null;
+    if (stack && typeof stack.setActiveComponentItem === 'function') {
+      stack.setActiveComponentItem(item, true);
+    }
+  }
+
   /** Re-open a closed dock panel, or add it fresh if it isn't in the layout at all. */
   public restoreDockPanel(panelId: DockPanelId): void {
     if (!this._layoutManager) return;
@@ -182,6 +203,8 @@ export class LayoutContext {
 
     if (this._layoutManager.findFirstComponentItemById(panelId)) {
       this.showDockPanel(panelId);
+      // Present but behind another tab is not "shown" to anybody.
+      this.focusDockPanel(panelId);
       return;
     }
 
