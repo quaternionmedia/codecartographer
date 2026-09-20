@@ -5,6 +5,7 @@ from codecarto.routers.c_parser_router import CParserRouter
 from codecarto.routers.topology_router import TopologyRouter
 from codecarto.routers.capability_router import CapabilityRouter
 from codecarto.routers.overview_router import OverviewRouter
+from codecarto.routers.estate_router import EstateRouter
 from codecarto.routers.app_router import AppRouter, DIST, build_present
 from codecarto.routers.palette_router import PaletteRouter
 from codecarto.routers.plotter_router import PlotterRouter
@@ -19,8 +20,20 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-# Create the app
-app = FastAPI()
+# Create the app. **NAMED, SO A CALLER CAN TELL IT IS THIS ONE.** Several
+# servers run on this workstation at once, and a 200 from a port proves only
+# that something listens. `/openapi.json` carries this title and version, which
+# is what the browser tests and the dashboard read before believing a port.
+def _version() -> str:
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("codecarto")
+    except PackageNotFoundError:
+        return "unknown"
+
+
+app = FastAPI(title="codecarto", version=_version())
 
 
 origins = [
@@ -65,6 +78,10 @@ app.include_router(CapabilityRouter, prefix="/capabilities",
 # the seam and prints it as tables; this window consumes the same seam and draws
 # it as a graph -- the two are windows onto one reading at two resolutions.
 app.include_router(OverviewRouter, prefix="/overview", tags=["overview"])
+
+# Every seam above, and whether each one is there: the liveness table a reader
+# opens before any panel, answered without drawing anything.
+app.include_router(EstateRouter, prefix="/estate", tags=["estate"])
 
 # The built web application, on the same origin as the API it talks to. Mounted
 # after the routers so a route always wins over a static file of the same name.
