@@ -103,3 +103,8 @@ web/dist-rad/
 
 # pure-logic test build output
 web/dist-pure/
+
+# The session brief governance/qm/project-seed/ci/cowork_context.py writes for
+# the session it is running in. It describes one moment in one clone, so it
+# is never committed -- the corpus ignores the same directory for the same reason.
+.harness/
