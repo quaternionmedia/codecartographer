@@ -1,11 +1,11 @@
 /**
  * Graph Visualization Feature Module
  *
- * Handles all graph rendering and visualization logic
+ * The types every graph is made of, and the interaction profiles. The
+ * component, state and action slices that used to be exported here were a
+ * migration begun and not finished: nothing outside this barrel imported them,
+ * and the application runs on `state/cell_state.ts` and `layout/`.
  */
-
-// Components
-export { Plot } from './components/Plot';
 
 // Services
 export type { GraphData, GraphNode, GraphEdge } from './services/graph_types';
@@ -27,7 +27,3 @@ export type {
   MouseBinding,
   TouchBinding,
 } from './config/interaction_profiles';
-
-// State
-export { graphActions } from './state/graph_actions';
-export type { GraphState } from './state/graph_state';

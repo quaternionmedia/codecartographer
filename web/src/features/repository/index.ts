@@ -1,16 +1,10 @@
 /**
  * Repository Feature Module
  *
- * Handles GitHub repository browsing and file selection
+ * The GitHub repository service. Its component and state slices were a
+ * migration begun and not finished -- nothing outside this barrel imported
+ * them -- and are gone; the application's repository state lives in
+ * `state/cell_state.ts` and its panels in `layout/panels/`.
  */
 
-// Components
-export { UrlInput } from './components/UrlInput';
-export { DirectoryNav } from './components/DirectoryNav';
-
-// Services
 export { RepoService } from './services/repo_service';
-
-// State
-export { repoActions } from './state/repo_actions';
-export type { RepoState } from './state/repo_state';
