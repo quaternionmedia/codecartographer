@@ -25,13 +25,8 @@ git clone https://github.com/quaternionmedia/codecartographer.git
 cd codecartographer
 git submodule init && git submodule update
 
-# Create virtual environment and install
-uv venv
-source .venv/bin/activate      # Linux/macOS
-# .venv\Scripts\activate       # Windows PowerShell
-# source .venv/Scripts/activate  # Windows Git Bash
-
-uv pip install -e ".[dev]"
+# The lockfile is the environment
+uv sync --extra dev
 ```
 
 ### Start Development
@@ -102,13 +97,17 @@ addresses on startup; `serve --help` names the backend's default port.
 | `/lexicon` | Hand-authored language lexicons, as graphs |
 | `/topology` | The harness's flows, as graph data the app plots |
 | `/capabilities` | What each named thing this estate can do has reached |
+| `/overview` | dossier's reading of the estate, drawn here from the seam it produces |
+| `/estate` | Every seam above, and whether each one is there — identified, not just answering |
+| `/auth` | Which GitHub credential source is active |
 | `/db` | Graphbase — mounted only when `MONGODB_URI` is set |
 
 During `npm run dev` the Vite server proxies API prefixes to the backend, so the
 app and its API share an origin exactly as they do in production. `API_PATHS` in
-`web/vite.config.js` is the list that decides which — it does not cover every
-row above, and a prefix missing from it is a request the dev server tries to
-answer itself and cannot.
+`web/vite.config.js` is the list that decides which; `tests/test_docs_routes.py`
+fails when a mounted prefix is missing from it, from this table, or from
+`docs/api.md`, because a prefix missing from the proxy is a request the dev
+server tries to answer itself and cannot.
 
 ## Project Structure
 
@@ -117,12 +116,13 @@ codecartographer/
 ├── codecarto/           # Main Python package
 │   ├── cli.py           # CLI entry point
 │   ├── main.py          # FastAPI application
-│   ├── routers/         # API route handlers
-│   ├── services/        # Business logic
+│   ├── routers/         # API route handlers; the estate ones serve graphs, never pictures
+│   ├── services/        # Business logic; estate_service.py is the seam registry
 │   ├── models/          # Pydantic models
-│   └── util/            # Utilities
+│   ├── util/            # Utilities
 │   └── static/          # Standalone visualizer pages served by their routers
 ├── web/                 # Frontend (Vite + TypeScript)
+│   └── src/features/estate/  # The seam client, problem view and provenance strip every estate panel shares
 ├── tests/               # Python test suite
 ├── graphbase/           # Database submodule
 ├── governance/qm/       # Governance submodule — decision records live in adr/
@@ -142,17 +142,18 @@ For parsing public GitHub repositories:
 
 ```bash
 # Install dev dependencies
-uv pip install -e ".[dev]"
+uv sync --extra dev
 
 # Run linter
 uv run codecarto lint
 uv run codecarto lint --fix   # Auto-fix issues
 
-# Run backend tests
+# Run backend tests (unset MONGODB_URI first, or the suite waits on a database)
 uv run pytest
 
-# Run frontend end-to-end tests (starts the backend and frontend dev
-# servers automatically — see web/playwright.config.ts)
+# Run frontend end-to-end tests. They start their own backend and dev server on
+# non-default ports and refuse to reuse one they did not start -- see
+# web/playwright.config.ts
 cd web && npm run test:e2e
 
 # Type-check the frontend (also runs automatically before `npm run build`)
@@ -175,9 +176,11 @@ uv run codecarto docker-down
 - [Architecture](docs/architecture.md) — how the pieces fit
 - [CLI](docs/cli.md) and [API](docs/api.md) — the two command surfaces
 - [Contributing](docs/contributing.md) — working on this project
-- [UI Reference](docs/llm/UI_REFERENCE.md) — panels, renderers, and both radial menus
+- [UI Reference](docs/llm/UI_REFERENCE.md) — the shell, every panel, the one canvas and the radial menu
 
-Decision records live on the `governance/qm` submodule, under `adr/`.
+Decision records live on the `governance/qm` submodule, under `adr/`. The plan
+this window is built to -- the estate frame, the topology designer, and the
+chrestomathy of code -- is `plans/the-web-window.md` in the corpus.
 
 ## License
 

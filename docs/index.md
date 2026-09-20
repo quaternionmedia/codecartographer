@@ -8,9 +8,14 @@
 |----------|-------------|
 | [Getting Started](getting-started.md) | Installation and first run |
 | [CLI Reference](cli.md) | Command-line interface |
-| [API Reference](api.md) | REST API endpoints |
+| [API Reference](api.md) | REST API endpoints, including the estate seams |
 | [Architecture](architecture.md) | High-level system design |
+| [Services](services.md) | The service layer, module by module |
 | [Contributing](contributing.md) | Development guidelines |
+
+The plan this window is built to -- the estate frame, the topology designer, and
+the chrestomathy of code -- is `plans/the-web-window.md` in the governance corpus
+(`governance/qm` once the pin carries it).
 
 ## LLM / AI Context
 
@@ -33,7 +38,8 @@
 
 | Document | Description |
 |----------|-------------|
-| [roadmap/lexicon.md](llm/roadmap/lexicon.md) | Language lexicon feature (C implemented, Go/Python planned) |
+| [roadmap/lexicon.md](llm/roadmap/lexicon.md) | Language lexicons on abstraction layers -- C and Python shipped, a third language is the next step |
+| [roadmap/topology-functionality-abstraction-maps.md](llm/roadmap/topology-functionality-abstraction-maps.md) | What maps of code and of systems already mean here, and what is open |
 | [roadmap/c_parser_phase3_compile_commands.md](llm/roadmap/c_parser_phase3_compile_commands.md) | C parser phase 3 — compile_commands.json support |
 
 ---
@@ -42,7 +48,7 @@
 
 Codecarto parses source code repositories into interactive graph visualizations:
 
-- **Multi-language**: Python (`.py`) and C/H (`.c`, `.h`) via libclang; more planned
+- **Multi-language**: Python by AST, C/H by libclang, and a regex parser per language for the rest -- `GET /parse/languages` lists every extension
 - **Streaming**: nodes stream progressively via SSE as each file is parsed
 - **Compound layout**: directories, files, and symbols in nested hierarchical orbits
 - **Interactive**: drag nodes, right-click radial menu, zoom/pan, group outline circles
@@ -58,7 +64,7 @@ uv pip install -e ".[dev]"
 uv run codecarto dev
 ```
 
-Open `http://localhost:1234` for the web UI, `http://127.0.0.1:8000/docs` for the API explorer.
+Open `http://localhost:1234` for the web UI; `codecarto dev` prints the API address and its `/docs`.
 
 ## Documentation Structure
 

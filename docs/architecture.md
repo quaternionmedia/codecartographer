@@ -5,19 +5,22 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Web Browser                              │
-│              (http://localhost:5173 via Vite dev)                │
+│              (http://localhost:1234 via Vite dev)                │
 └─────────────────────────┬───────────────────────────────────────┘
                           │ HTTP / SSE
 ┌─────────────────────────▼───────────────────────────────────────┐
 │                    Backend (FastAPI)                             │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │                       Routers                            │    │
-│  │  /parse  /repo  /plotter  /c-parser  /pam  /db (opt)   │    │
+│  │  /parse /repo /plotter /c-parser /pam /lexicon /palette │    │
+│  │  /topology /capabilities /overview /estate  /db (opt)   │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
 │  ┌─────────────────────────▼───────────────────────────────┐    │
 │  │                      Services                            │    │
 │  │  UnifiedParserService  GitHubService  CacheService       │    │
-│  │  PositionService       CParserService                    │    │
+│  │  PositionService       CParserService   LexiconService   │    │
+│  │  topology_service  capability_service  overview_service  │    │
+│  │  estate_service (the seam registry)   qmcp_client        │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
 │  ┌─────────────────────────▼───────────────────────────────┐    │
 │  │                      Parsers                             │    │
@@ -31,6 +34,10 @@
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
 │  │ Local Files  │  │   GitHub     │  │   MongoDB (optional) │  │
 │  │  (Filesystem)│  │     API      │  │     (graphbase)      │  │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │ qmcp (HTTP)  │  │ governance/qm│  │ dossier's overview   │  │
+│  │ the harness  │  │ the registry │  │ seam (a file)        │  │
 │  └──────────────┘  └──────────────┘  └──────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -46,7 +53,14 @@ codecarto/
 │   ├── plotter_router.py         # /plotter/demo + /render/html
 │   ├── repo_router.py            # /repo/*   (GitHub tree, local paths)
 │   ├── c_parser_router.py        # /c-parser/* (libclang semantic parse)
-│   └── pam_router.py             # /pam/*    (PAM log monitor, WebSocket)
+│   ├── pam_router.py             # /pam/*    (PAM log monitor, WebSocket)
+│   ├── lexicon_router.py         # /lexicon/* (hand-authored ontologies, as graphs)
+│   ├── palette_router.py         # /palette/*
+│   ├── topology_router.py        # /topology/*     the harness's shapes, as GraphData
+│   ├── capability_router.py      # /capabilities/* the corpus's registry, as GraphData
+│   ├── overview_router.py        # /overview/*     dossier's seam, as GraphData
+│   ├── estate_router.py          # /estate/seams   every seam above, identified or not
+│   └── app_router.py             # /app, the built front end on the API's origin
 │
 ├── services/
 │   ├── unified_parser_service.py  # orchestrates all language parsing
@@ -55,6 +69,12 @@ codecarto/
 │   ├── graph_serializer.py        # NetworkX → gJGF
 │   ├── position_service.py        # layout registry (spring, compound …)
 │   ├── c_parser_service.py        # C-specific service layer
+│   ├── lexicon_service.py         # lexicon YAML -> graph; lexicon_bridge.py joins parsed nodes to layers
+│   ├── qmcp_client.py             # the seam to the harness: a URL and a JSON shape, never an import
+│   ├── topology_service.py        # harness payload -> networkx -> GraphSerializer
+│   ├── capability_service.py      # registry YAML -> networkx -> GraphSerializer
+│   ├── overview_service.py        # overview seam -> networkx -> GraphSerializer
+│   ├── estate_service.py          # the seam registry: identity probes, the liveness table
 │   └── parsers/
 │       ├── language_parser.py          # LanguageParser Protocol + ParserRegistry
 │       ├── python_language_parser.py   # Python (custom AST visitor)
@@ -81,13 +101,23 @@ web/src/
 │   ├── panel_registry.ts        # panel definitions (id/config/mount) — add panels here
 │   ├── default_layout.ts        # built-in panel arrangement
 │   └── panels/
-│       ├── graph_panel.ts           # D3/vis-network canvas
+│       ├── graph_panel.ts           # the one canvas
 │       ├── file_tree_panel.ts       # repo + upload file browser
 │       ├── upload_panel.ts          # local file dropzone
 │       ├── repo_panel.ts            # GitHub URL fetch + recent/examples
 │       ├── graphbase_panel.ts       # durable named bookmarks (MongoDB)
 │       ├── graph_settings_panel.ts  # styling/layout controls
-│       └── actions_panel.ts         # plot/cancel/status
+│       ├── actions_panel.ts         # plot/cancel/status
+│       ├── estate_panel.ts          # every seam, live or not, with the way to its panel
+│       ├── topology_panel.ts        # choose a harness flow; the drawing goes to the canvas
+│       ├── capabilities_panel.ts    # the registry's declarations; draw them
+│       └── overview_panel.ts        # dossier's masthead and sections; draw them
+│
+├── features/estate/                 # what every estate panel shares
+│   ├── seam_client.ts               # the four outcomes a seam can answer, told apart (pure; tested under node)
+│   ├── estate_service.ts            # the URLs and document shapes
+│   ├── problem_view.ts              # the one "nothing was drawn" component
+│   └── provenance.ts                # source and caveat, above the controls
 │
 ├── features/graph/
 │   ├── services/

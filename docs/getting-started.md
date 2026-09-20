@@ -65,10 +65,11 @@ uv run codecarto info
 uv run codecarto dev
 ```
 
-This starts:
-- **Backend API**: http://127.0.0.1:8000
-- **API Docs**: http://127.0.0.1:8000/docs
-- **Frontend**: http://localhost:1234
+This starts the backend, on the port `codecarto.cli.DEFAULT_PORT` names (the
+constant the corpus's `qm dashboard` allocates to this project; the command
+prints it, with the `/docs` address), and the frontend on
+`http://localhost:1234`. The port is deliberately not written here: five pages
+once named a port the server had stopped binding.
 
 Press `Ctrl+C` to stop both servers.
 
@@ -108,12 +109,16 @@ uv run codecarto repo graph /path/to/project -t ast
 ### Analyze via API
 
 ```bash
-# Scan local repo
-curl "http://127.0.0.1:8000/local/scan?path=/path/to/project"
+# $API is the backend address `codecarto serve` printed
 
-# Get AST graph
-curl "http://127.0.0.1:8000/local/graph/ast?path=/path/to/project"
+# The tree of a local directory (the same route reads a GitHub URL)
+curl "$API/repo/tree?url=/path/to/project"
+
+# Every seam this window reads, and whether each is there
+curl "$API/estate/seams"
 ```
+
+`docs/api.md` is the map of the routes; `$API/docs` is the authority.
 
 ## GitHub Token (Optional)
 

@@ -22,7 +22,7 @@ services/
     ├── language_parser.py     # LanguageParser Protocol + ParserRegistry
     ├── python_language_parser.py
     ├── c_language_parser.py
-    ├── regex_language_parser.py  # 12-language regex adapter
+    ├── regex_language_parser.py  # one regex adapter per language; `_LANGUAGES` is the list
     └── ASTs/
         └── python_custom_ast.py
 ```
@@ -337,12 +337,12 @@ Calculates node positions for graph layouts.
 
 ### Custom Layouts
 
-Located in `models/custom_layouts/`:
+Located in `models/custom_layouts/`; `Positions(include_custom=True)` registers
+whatever is there, and `/topology/available` lists the result.
 
 | Layout | File | Description |
 |--------|------|-------------|
-| Arch | `arch_layout.py` | Hierarchical arch |
-| Cluster | `cluster_layout.py` | Clustered groups |
+| Compound | `compound_layout.py` | Hierarchical: dirs, then files, then symbols in nested orbits |
 | Sorted Square | `sorted_square_layout.py` | Grid arrangement |
 
 ---
