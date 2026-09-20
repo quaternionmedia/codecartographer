@@ -60,6 +60,14 @@ export interface CaseResult {
   name: string;
   pass: boolean;
   why: string;
+  /**
+   * False when the governed case addresses a capability this port does not
+   * have. A third state is needed because the other two both lie: reporting a
+   * case this host cannot execute as `pass` is a silent pass, and reporting it
+   * as a failure invents a defect. A not-applicable result carries its reason
+   * and is counted separately, never folded into either.
+   */
+  applicable?: boolean;
 }
 
 export interface RunOptions {
@@ -117,6 +125,7 @@ export function runConformanceWith(v: VectorSet, opts: RunOptions = {}): CaseRes
   for (const c of v.cases as VectorCase[]) {
     let pass = true;
     let why = '';
+    let applicable = true;
 
     if (c.fit) {
       for (const k of c.fit as Array<{ vw: number; vh: number; expectR1: number }>) {
@@ -259,6 +268,22 @@ export function runConformanceWith(v: VectorSet, opts: RunOptions = {}): CaseRes
           break;
         }
       }
+    } else if (c.cells) {
+      // Cell addressing -- host integration standard 2b. A cell and an angle
+      // name the same item by index, and a host may implement either or both:
+      // constraint 3 of that section says a cell-addressing host is not
+      // thereby a ring-rendering host, and this port is the converse. It
+      // renders a ring and accepts no cell, so these cases describe a
+      // capability it does not have.
+      //
+      // Before this branch existed the case fell through to the trace path,
+      // which built a machine from a case carrying no items and threw
+      // `root ring must hold at least one item`. A crash is at least loud; the
+      // danger was fixing it by passing the case.
+      applicable = false;
+      why =
+        'this port renders a ring and does not accept cell input; ' +
+        'host integration standard 2b constraint 3';
     } else {
       // Behavioural trace.
       const n = c.n as number;
@@ -300,7 +325,7 @@ export function runConformanceWith(v: VectorSet, opts: RunOptions = {}): CaseRes
       }
     }
 
-    results.push({ name: c.name, pass, why });
+    results.push({ name: c.name, pass, why, applicable });
   }
 
   return results;

@@ -26,7 +26,7 @@ import { CHORD_WORDS as HOST_CHORD_WORDS } from '../../dist-rad/host/vocabulary.
 const here = dirname(fileURLToPath(import.meta.url));
 
 /** The version this host claims. Must match the vector file it loads. */
-const PINNED = '0.4.0';
+const PINNED = '0.6.0';
 
 const vectors = JSON.parse(readFileSync(join(here, `vectors.v${PINNED}.json`), 'utf8'));
 
@@ -48,12 +48,35 @@ test('every governed vector passes against this port', () => {
     `ran ${results.length} of ${vectors.cases.length} cases`,
   );
 
-  const failed = results.filter((r) => !r.pass);
+  // A case this port cannot execute is neither a pass nor a failure. It is
+  // counted, named and reported -- a silent pass would make `conformant` mean
+  // "the cases we happen to implement".
+  const notApplicable = results.filter((r) => r.applicable === false);
+  const applicable = results.filter((r) => r.applicable !== false);
+  const failed = applicable.filter((r) => !r.pass);
+
   assert.deepEqual(
     failed.map((f) => `${f.name}: ${f.why}`),
     [],
-    `${failed.length} of ${results.length} vectors failed`,
+    `${failed.length} of ${applicable.length} applicable vectors failed`,
   );
+
+  const summary = [
+    `rad conformance: ${applicable.length} applicable, all passing; `,
+    `${notApplicable.length} not applicable to this port`,
+  ];
+  if (notApplicable.length) {
+    summary.push(` — ${notApplicable[0].why}. Cases: `);
+    summary.push(notApplicable.map((r) => r.name).join('; '));
+  }
+  console.log(summary.join(''));
+});
+
+test('a case this port cannot execute is reported, never silently passed', () => {
+  const results = runConformanceWith(vectors, { chordWords: HOST_CHORD_WORDS });
+  for (const r of results.filter((x) => x.applicable === false)) {
+    assert.ok(r.why, `${r.name} is not applicable and gives no reason`);
+  }
 });
 
 /**
