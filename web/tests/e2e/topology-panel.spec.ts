@@ -24,23 +24,6 @@ import { dismissOnboardingModal } from './helpers';
  *  up well before this, so a timeout here means nothing repainted. */
 const SETTLED = 20_000;
 
-/**
- * Clear anything covering the app.
- *
- * `.cc-modal-backdrop` intercepts pointer events, and it can appear *during* a
- * run rather than only at first load — a click that "times out on a visible,
- * enabled, stable element" is this, and it reads like the element is broken.
- */
-async function clearOverlays(page: Page): Promise<void> {
-  const backdrop = page.locator('.cc-modal-backdrop');
-  if ((await backdrop.count()) === 0) return;
-  await page.keyboard.press('Escape');
-  if ((await backdrop.count()) > 0) {
-    await backdrop.locator('button', { hasText: '×' }).first()
-      .click({ force: true }).catch(() => undefined);
-  }
-}
-
 async function openTopologyPanel(page: Page): Promise<void> {
   await page.goto('/');
   await dismissOnboardingModal(page);
