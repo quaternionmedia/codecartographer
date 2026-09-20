@@ -602,10 +602,13 @@ export class RepoActions {
    * Fetch and load a GitHub repository
    */
   async fetchRepository(url: string): Promise<void> {
-    // TODO: This line prevents stream post call from firing. 
-    //       Commenting out for now to get init parsing working. 
-    //       Need to investigate intent with the below line.
-    //this.stateController.clear();
+    // **NO `clear()` HERE, AND THAT IS SETTLED RATHER THAN PENDING.** Every
+    // caller starts the stream first and then calls this to fill the file
+    // tree -- `onRepoSubmit`, `loadGraphbaseBookmark` and `onLoadFromCache`
+    // all in that order. `clear()` nulls `graphData`, so calling it here
+    // would wipe the graph the stream is midway through building, on every
+    // repository plot. Clearing belongs to whoever begins a plot, which is
+    // `handlePlotData` via `replaceGraphData`.
     try {
       const data = await RepoService.getGithubRepo(url, this.stateController.api.repoReader);
       this.stateController.updateRepoContent(data);

@@ -77,7 +77,10 @@ web/src/features/
 │   ├── components/
 │   │   └── Plot.ts          # Main visualization container
 │   ├── services/
-│   │   └── graph_renderer.ts
+│   │   ├── streaming_renderer.ts   # the D3 canvas — every graph draws here
+│   │   └── graph_types.ts          # GraphNode / GraphEdge / GraphData
+│   ├── rad/                  # the radial menu
+│   ├── extensions/           # BaseExtension seam; the legend mounts here
 │   ├── state/
 │   │   ├── graph_state.ts   # State interface
 │   │   └── graph_actions.ts # Action creators

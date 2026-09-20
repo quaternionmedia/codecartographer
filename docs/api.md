@@ -666,10 +666,11 @@ that kind's style value.
 
 ### GET `/palette/custom?palette_id=<id>`
 
-Get a custom palette by id from the database (same `Palette` shape as
-above). `DatabaseContext.fetch_palette_by_id` is currently a
-placeholder that always returns the default palette regardless of
-`palette_id` — custom palette storage isn't implemented yet.
+**There is no palette store, and this route says so.** It answers 200
+with `results.unavailable: true`, the `requested` id echoed back, and a
+`remedy` — the same convention `/topology/*` uses for a dependency that
+is not there. Branch on `unavailable`; there is no `Palette` in the
+response to mistake for a successful lookup.
 
 ---
 

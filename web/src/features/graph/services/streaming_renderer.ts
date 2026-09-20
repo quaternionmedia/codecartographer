@@ -10,7 +10,8 @@
  */
 
 import * as d3 from 'd3';
-import { GraphNode, GraphEdge } from './graph_renderer';
+import { GraphNode, GraphEdge } from './graph_types';
+import { nodePath } from './node_shapes';
 import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
@@ -33,6 +34,21 @@ export class StreamingGraphRenderer {
   private labelGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
   private zoom: d3.ZoomBehavior<SVGSVGElement, unknown>;
   private nodeById = new Map<string, GraphNode>();
+  /**
+   * How many nodes arrived without coordinates and were placed on a
+   * depth ring instead.
+   *
+   * **THE RING IS A FALLBACK, AND NOTHING SHOULD BE REACHING IT.** Every
+   * graph route in this project lays its nodes out server-side on the way
+   * through `GraphSerializer.serialize_to_gjgf`, and a backend test
+   * asserts that. This counter is the other half of that claim: the test
+   * covers the routes it knows about, and this covers whatever actually
+   * arrives. A non-zero count in the status line means a source is
+   * streaming unpositioned nodes and the picture is a ring rather than a
+   * layout -- which looks like a rendered graph, which is why it needs
+   * saying out loud rather than leaving to be noticed.
+   */
+  private _ringPlaced = 0;
   private styling: GraphStylingOptions;
   private width: number;
   private height: number;
@@ -179,6 +195,18 @@ export class StreamingGraphRenderer {
     this._scheduleLoop();
   }
 
+  /**
+   * Nodes this renderer had to place itself, and nodes it drew in total.
+   *
+   * Read after `finalize()`. `placed` counts only the ones that arrived
+   * without an `x` or a `y`; `total` is every node drawn, so a caller can
+   * say "3 of 400" rather than a bare number that means nothing without
+   * the denominator.
+   */
+  layoutFallback(): { placed: number; total: number } {
+    return { placed: this._ringPlaced, total: this.nodeById.size };
+  }
+
   /** Called when the SSE stream is complete. Drains remaining queue then fits view. */
   finalize(): void {
     this._streamDone = true;
@@ -320,6 +348,7 @@ export class StreamingGraphRenderer {
     let y = node.y;
     if (x === undefined || y === undefined) {
       [x, y] = this._getDepthAwarePosition(node);
+      this._ringPlaced += 1;
     }
     [x, y] = this._resolveCollision(node, x, y);
     node.x = x;
@@ -722,25 +751,9 @@ export class StreamingGraphRenderer {
     }
   }
 
+  /** Shapes come from `node_shapes`, so the legend's swatches match. */
   private _nodePath(shape: string | undefined, s: number): string {
-    switch (shape) {
-      case 'square':
-      case 'rectangle':
-        return `M ${-s} ${-s} L ${s} ${-s} L ${s} ${s} L ${-s} ${s} Z`;
-      case 'triangle': {
-        const h = s * 1.5;
-        return `M 0 ${-h} L ${s} ${h} L ${-s} ${h} Z`;
-      }
-      case 'diamond':
-        return `M 0 ${-s} L ${s} 0 L 0 ${s} L ${-s} 0 Z`;
-      case 'hexagon': {
-        const a = s * 0.866;
-        const b = s * 0.5;
-        return `M 0 ${-s} L ${a} ${-b} L ${a} ${b} L 0 ${s} L ${-a} ${b} L ${-a} ${-b} Z`;
-      }
-      default:
-        return `M ${s} 0 A ${s} ${s} 0 1 1 ${-s} 0 A ${s} ${s} 0 1 1 ${s} 0 Z`;
-    }
+    return nodePath(shape, s);
   }
 
   private _updateEdgesForNode(nodeId: string, x: number, y: number): void {

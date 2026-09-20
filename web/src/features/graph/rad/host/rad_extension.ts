@@ -12,7 +12,7 @@
 import * as d3 from 'd3';
 import { BaseExtension } from '../../extensions/base';
 import type { ExtensionContext } from '../../extensions/base';
-import type { GraphNode, GraphEdge } from '../../services/graph_renderer';
+import type { GraphNode, GraphEdge } from '../../services/graph_types';
 import type { Effect, MenuContext } from '../core/types.js';
 import { createSession } from '../session.js';
 import type { Session } from '../session.js';

@@ -91,11 +91,14 @@ web/src/
 │
 ├── features/graph/
 │   ├── services/
-│   │   ├── graph_renderer.ts        # static D3 renderer
-│   │   ├── streaming_renderer.ts    # progressive SSE renderer
+│   │   ├── streaming_renderer.ts    # the D3 canvas — every graph draws here
+│   │   ├── d3_renderer.ts           # registry entry; hands a finished graph to the above
+│   │   ├── graph_surface.ts         # announces the live canvas so rad/legend can attach
+│   │   ├── graph_types.ts           # GraphNode / GraphEdge / GraphData
 │   │   ├── compound_layout.ts       # CompoundLayoutManager (bounding circles + child map)
-│   │   └── renderers.ts             # renderer registry
-│   └── extensions/                  # drag, zoom, select, highlight, tooltip, color
+│   │   └── renderers.ts             # renderer registry (gravis, notebook, system)
+│   ├── extensions/                  # BaseExtension seam; legend mounts here
+│   └── rad/                         # the radial menu, conformant to rad's vectors
 │
 ├── state/
 │   ├── types.ts             # GraphStylingOptions, app state shapes

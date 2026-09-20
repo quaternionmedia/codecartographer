@@ -58,9 +58,17 @@ All other parsers use zero extra dependencies (regex only).
 
 This is the core UX feature that makes the single-large-graph experience work.
 
-### 2-A. D3 double-click to expand
+> **Phase 2 shipped, and not the way this section describes it.** Expansion
+> arrived through rad's `Expand` verb rather than a double-click handler,
+> and `graph_renderer.ts` — which every file reference below names — has
+> been retired in favour of `streaming_renderer.ts`. The sub-sections are
+> kept because 2-B's merge semantics and 2-C's position handling are still
+> the design in force; read them for the reasoning, not for the paths. See
+> `UI_REFERENCE.md` for what a reader actually presses.
 
-**File**: `web/src/features/graph/services/graph_renderer.ts`
+### 2-A. Double-click to expand
+
+**Superseded**: rad's `Expand` verb holds the 12 o'clock wedge.
 
 - Accept `onNodeExpand?: (nodeId: string, currentDepth: number) => void` via
   `GraphStylingOptions` index signature (`[key: string]: unknown`).
@@ -82,7 +90,7 @@ Add `PlotActions.expandGraphNode(nodeId)`:
 
 ### 2-C. Position-preserving re-render
 
-**File**: `web/src/features/graph/services/graph_renderer.ts`
+**File**: `web/src/features/graph/services/streaming_renderer.ts`
 
 Keep a module-level `_positionCache: Map<string, {x: number, y: number}>`.
 - On tick/end: write current node positions into the cache.
@@ -92,8 +100,8 @@ Keep a module-level `_positionCache: Map<string, {x: number, y: number}>`.
 
 ### 2-D. Collapse support
 
-Extend the right-click context menu in `graph_renderer.ts`:
-- Add "Collapse subtree" option.
+Extend rad's node ring (`web/src/features/graph/rad/host/vocabulary.ts`):
+- `Collapse` is already a verb there.
 - BFS from the clicked node to find all reachable descendants.
 - Remove descendant nodes and their edges from `graphData`.
 - Re-render (positions of surviving nodes are already in cache).
@@ -213,7 +221,7 @@ subtrees simultaneously.
 | Phase | Key file(s) |
 |-------|-------------|
 | New language parser | `codecarto/services/parsers/` — implement `LanguageParser` protocol, import in `unified_parser_service.py` |
-| Phase 2 expand UX | `web/src/features/graph/services/graph_renderer.ts`, `web/src/state/actions.ts` |
+| Phase 2 expand UX | `web/src/features/graph/rad/`, `web/src/layout/layout_context.ts` (shipped) |
 | Phase 3 download | `codecarto/services/unified_parser_service.py`, `codecarto/routers/unified_parser_router.py` |
 | Phase 4 git archive | New `codecarto/routers/parse_job_router.py` + service |
 | Phase 5 WebSocket | Extend parse job router + `web/src/state/actions.ts` |

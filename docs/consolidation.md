@@ -105,10 +105,13 @@ match where lexicons already live and let a palette be edited without touching
 Python. The blocker is that `Palette` is constructed at import time by several
 callers.
 
-**Nothing validates a custom palette.** `fetch_palette_by_id` returns whatever
-the database holds. A palette missing `unknown` resolves every unmatched base to
-the hard-coded fallbacks in `palette_service`, quietly. A `Palette.validate()`
-naming missing keys would make a bad palette a message rather than a grey graph.
+**Nothing validates a custom palette, and there is nowhere to keep one.**
+`/palette/custom` now reports that rather than serving the default palette under
+the requested id, so the gap is visible to a caller. Validation is still owed
+whenever a store arrives: a palette missing `unknown` resolves every unmatched
+base to the hard-coded fallbacks in `palette_service`, quietly. A
+`Palette.validate()` naming missing keys would make a bad palette a message
+rather than a grey graph.
 
 **The lexicon and the palette describe the same thing twice.**
 `models/lexicon.py` puts tokens on abstraction layers with a `group`, explicitly
@@ -130,9 +133,9 @@ out at each call site — including this project's newest one, because passing
 `GravisOptions` was not wired to anything. Either it becomes the way figures are
 configured, or it goes.
 
-**`Positions._layouts` is private and read from outside.** The topology page
-lists available layouts by reaching into it. A public `names()` would be one
-line and would let the picker stop touching an underscore.
+**`Positions._layouts` is private and read from outside.** `/topology/available`
+lists layouts by reaching into it, so a picker can fill itself. A public
+`names()` would be one line and would let the route stop touching an underscore.
 
 **Two `topology_service` modules existed briefly.** One here, one in `dossier`,
 with the same channel constants written out twice because the repositories may

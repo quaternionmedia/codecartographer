@@ -8,7 +8,7 @@
 import type { Network } from 'vis-network';
 import type { DataSet } from 'vis-data';
 import { IGraphRenderer } from './base_renderer';
-import { GraphData, GraphNode, GraphEdge } from './graph_renderer';
+import { GraphData, GraphNode, GraphEdge } from './graph_types';
 import { GraphStylingOptions } from '../../../state/types';
 import { logger } from '../../../core/logger';
 

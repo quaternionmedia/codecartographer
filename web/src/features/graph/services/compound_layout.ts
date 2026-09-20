@@ -1,4 +1,4 @@
-import { GraphNode, GraphEdge } from './graph_renderer';
+import { GraphNode, GraphEdge } from './graph_types';
 
 export interface GroupBounds {
   nodeId: string;

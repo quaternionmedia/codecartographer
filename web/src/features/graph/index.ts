@@ -8,15 +8,8 @@
 export { Plot } from './components/Plot';
 
 // Services
-export { GraphRenderer } from './services/graph_renderer';
-export type { GraphData } from './services/graph_renderer';
+export type { GraphData, GraphNode, GraphEdge } from './services/graph_types';
 export type { GraphStylingOptions } from '../../state/types';
-export { InteractionManager } from './services/interaction_manager';
-export type { InteractionManagerCallbacks, InteractionManagerOptions } from './services/interaction_manager';
-
-// Components (new)
-export { RadialMenu, getContextMenuItems } from './components/radial_menu';
-export type { RadialMenuItem, RadialMenuContext, RadialMenuOptions } from './components/radial_menu';
 
 // Configuration
 export {
