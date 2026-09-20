@@ -1,7 +1,7 @@
 /**
  * The estate panels, end to end: Estate, Capabilities, Overview.
  *
- * WHAT A BROWSER CAN TELL YOU THAT THE UNIT TESTS CANNOT. Every function behind
+ * WHAT A BROWSER SEES THAT THE UNIT TESTS CANNOT. Every function behind
  * these panels is tested under node and pytest. What only a browser sees is
  * whether a correct answer reached the screen -- the topology panel once shipped
  * sitting on "asking…" with a perfectly good 200 in the network log, and these
