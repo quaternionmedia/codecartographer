@@ -20,9 +20,15 @@ name: ADR lint
 #
 # Two knobs, both in env: below. Nothing else in this file needs editing.
 #   QM_SUBMODULE -- where this project mounts the governance submodule.
-#                   `governance/qm` is the documented default, and this project
-#                   uses it. The path is set once here rather than repeated in
-#                   every step.
+#                   `governance/qm` is the documented default. A project that
+#                   mounts it somewhere else sets the path once here rather
+#                   than repeating it in every step.
+#
+#                   This used to name a project and where it mounted, which
+#                   was a claim with an expiry date: the project moved to the
+#                   default and the sentence stayed, describing a state that
+#                   had ended and referring to a pull request that had merged.
+#                   The knob is documented by what it does.
 #   RECORDS_DIR  -- leave empty for the branch-per-project model. Set it to a
 #                   local path (adr) only if this project keeps adr/ in its
 #                   own working tree instead of on its governance branch.
@@ -59,12 +65,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # **ONLY THE GOVERNANCE SUBMODULE, INITIALISED BELOW.**
-          # `submodules: true` is all-or-nothing, and this project also has a
-          # private one. The runner has no credentials for it, so the checkout
-          # aborted with `remote: Repository not found` before the lint could
-          # run at all -- a workflow that had never executed a line of its own
-          # logic while reading as a configured gate.
+          # **ONLY THE GOVERNANCE SUBMODULE, INITIALISED BELOW** -- the one
+          # departure from the seed's copy. `submodules: true` is all-or-nothing
+          # and this project also has a private submodule the runner has no
+          # credentials for, so the seed's checkout aborted with
+          # `remote: Repository not found` before the check ran a line.
           submodules: false
           # Full history: the append-only check diffs against the base.
           fetch-depth: 0
