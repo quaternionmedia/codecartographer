@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "scope": "an-estate",
+  "generated_from": "a fixture, not dossier: the shape dossier overview --json writes, with names invented for a test",
+  "masthead": [
+    {"label": "repositories", "value": "3"},
+    {"label": "in flight", "value": "1"}
+  ],
+  "sections": [
+    {"title": "Repositories", "rows": [["alpha", "a project"], ["beta", "another"], ["gamma", "a third"]]},
+    {"title": "Work in flight", "rows": [["alpha", "one delta"]]}
+  ]
+}

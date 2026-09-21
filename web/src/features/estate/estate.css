@@ -1,0 +1,298 @@
+/**
+ * The estate views' shared pieces: a problem, a provenance strip, a seam row.
+ *
+ * Every colour is one of the application's tokens, for the reason
+ * topology_panel.css gives: a colour that is not a token is a colour no theme
+ * can move. The topology panel's own selectors stay in its stylesheet; these
+ * are the shared classes every estate element also carries.
+ */
+
+/* --- a seam that is not there, said plainly ------------------------------- */
+
+.seam-problem {
+  padding: 0.65rem 0.75rem;
+  background: var(--c-primary-light);
+  border: 1px solid var(--c-border);
+  border-left: 2px solid var(--c-warning);
+  border-radius: 2px;
+}
+
+/* The window's own API being down is a different fault from a seam's, and
+   reads in a different colour so a reader looks at the right server. */
+.seam-problem[data-kind="api-down"] { border-left-color: var(--c-error, var(--c-warning)); }
+
+.seam-problem p { margin: 0 0 0.35rem; }
+.seam-problem p:last-child { margin-bottom: 0; }
+
+.seam-problem__what   { font-size: 0.8rem;  color: var(--c-font); }
+.seam-problem__remedy { font-size: 0.76rem; color: var(--c-accent); }
+.seam-problem__where,
+.seam-problem__note   { font-size: 0.7rem;  color: var(--c-font-muted); }
+
+.seam-problem code {
+  background: var(--c-primary-dark);
+  padding: 0.05em 0.3em;
+  border-radius: 2px;
+}
+
+.seam-problem__retry {
+  margin-top: 0.5rem;
+  font-family: var(--f-root-font);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-font-inverse);
+  background: var(--c-accent);
+  border: 0;
+  border-radius: 2px;
+  padding: 0.25rem 0.7rem;
+  cursor: pointer;
+}
+
+.seam-problem__retry:hover { background: var(--c-accent-light); }
+
+/* --- what a drawn graph came from ----------------------------------------- */
+
+.seam-provenance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.seam-caveat {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--c-font);
+  background: var(--c-primary-light);
+  border-left: 2px solid var(--c-secondary);
+}
+
+.seam-caveat.is-partial { border-left-color: var(--c-warning); }
+
+.seam-source {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--c-font-muted);
+}
+
+/* --- the liveness table --------------------------------------------------- */
+
+.gl-panel--estate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 0.75rem);
+  padding: var(--spacing-md, 0.75rem);
+  overflow-y: auto;
+}
+
+.estate__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.estate__row {
+  display: grid;
+  grid-template-columns: 0.9rem 1fr auto;
+  gap: 0.35rem 0.6rem;
+  align-items: start;
+  padding: 0.5rem 0.6rem;
+  background: var(--c-primary-light);
+  border: 1px solid var(--c-border);
+  border-radius: 2px;
+}
+
+.estate__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-top: 0.25rem;
+  border-radius: 50%;
+  background: var(--c-border);
+}
+
+.estate__row.is-live .estate__dot { background: var(--c-secondary); }
+.estate__row.is-down .estate__dot { background: var(--c-warning); }
+
+.estate__name {
+  font-size: 0.8rem;
+  color: var(--c-font);
+}
+
+.estate__role,
+.estate__detail,
+.estate__where {
+  grid-column: 2 / span 2;
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--c-font-muted);
+}
+
+.estate__detail { color: var(--c-font); }
+
+.estate__problem,
+.estate__remedy {
+  grid-column: 2 / span 2;
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.estate__problem { color: var(--c-font); }
+.estate__remedy  { color: var(--c-accent); }
+
+.estate__open {
+  font-family: var(--f-root-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: lowercase;
+  color: var(--c-font-muted);
+  background: var(--c-transparent-full);
+  border: 1px solid var(--c-border);
+  border-radius: 2px;
+  padding: 0.15rem 0.45rem;
+  cursor: pointer;
+}
+
+.estate__open:hover { color: var(--c-font); border-color: var(--c-border-active); }
+
+.estate__open[disabled] {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.estate__routes {
+  grid-column: 2 / span 2;
+  margin: 0;
+  font-size: 0.66rem;
+  color: var(--c-font-muted);
+  word-break: break-all;
+}
+
+.estate__actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.estate__refresh {
+  font-family: var(--f-root-font);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-font-inverse);
+  background: var(--c-secondary);
+  border: 0;
+  border-radius: 2px;
+  padding: 0.25rem 0.7rem;
+  cursor: pointer;
+}
+
+.estate__refresh:hover { background: var(--c-secondary-light); }
+
+.estate__pending,
+.estate__hint {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--c-font-muted);
+}
+
+/* --- the capabilities and overview panels --------------------------------- */
+
+.gl-panel--capabilities,
+.gl-panel--overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 0.75rem);
+  padding: var(--spacing-md, 0.75rem);
+  overflow-y: auto;
+}
+
+.estate-view__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 0.5rem);
+}
+
+.estate-view__heading {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: var(--c-font-muted);
+  margin: 0;
+}
+
+.estate-view__draw {
+  align-self: flex-start;
+  font-family: var(--f-root-font);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-font-inverse);
+  background: var(--c-secondary);
+  border: 0;
+  border-radius: 2px;
+  padding: 0.25rem 0.7rem;
+  cursor: pointer;
+}
+
+.estate-view__draw:hover { background: var(--c-secondary-light); }
+
+.estate-view__hint,
+.estate-view__pending {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--c-font-muted);
+}
+
+.estate-view__rungs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.estate-view__rung {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: var(--c-font-muted);
+  border: 1px solid var(--c-border);
+  border-radius: 2px;
+  padding: 0.18rem 0.45rem;
+}
+
+.estate-view__masthead {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.35rem;
+}
+
+.estate-view__figure {
+  padding: 0.4rem 0.5rem;
+  background: var(--c-primary-light);
+  border: 1px solid var(--c-border);
+  border-radius: 2px;
+}
+
+.estate-view__figure-label {
+  display: block;
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  color: var(--c-font-muted);
+}
+
+.estate-view__figure-value {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--c-font);
+}
+
+.estate-view__figure-note {
+  display: block;
+  font-size: 0.62rem;
+  line-height: 1.3;
+  color: var(--c-font-muted);
+}

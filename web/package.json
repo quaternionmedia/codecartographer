@@ -14,6 +14,7 @@
     "build:rad": "tsc -p tsconfig.rad.json && node -e \"require('fs').writeFileSync('dist-rad/package.json','{\\\"type\\\":\\\"module\\\"}')\"",
     "test:rad": "npm run lint:rad && npm run build:rad && node --test tests/rad/",
     "test:state": "node --test tests/state/",
+    "test:families": "node --test tests/families/",
     "build:pure": "tsc -p tsconfig.pure.json && node -e \"require('fs').writeFileSync('dist-pure/package.json','{\\\"type\\\":\\\"module\\\"}')\"",
     "test:pure": "npm run build:pure && node --test tests/pure/"
   },

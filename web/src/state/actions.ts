@@ -3,31 +3,22 @@ import { StateController } from '../state/state_controller';
 import { PlotService } from '../services/plot_service';
 import { TopologyService } from '../services/topology_service';
 import type { TopologyChoices, TopologyProblem, TopologyRequest } from '../services/topology_service';
+import { EstateService } from '../features/estate/estate_service';
+import type { CapabilitiesDocument, DrawRequest, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
+import { isProblem } from '../features/estate/seam_client';
+import type { SeamOutcome, SeamProblem } from '../features/estate/seam_client';
 import { RepoService } from '../features/repository';
 import { GraphData } from '../features/graph';
 import { GraphStylingOptions } from './types';
 import { GraphRendererRegistry } from '../features/graph/services/renderers';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
 import { logger } from '../core/logger';
+import { backendLayoutName } from '../features/graph/services/layout_names';
 
-/**
- * Convert frontend layout format to backend format
- * Frontend: 'spring_layout', 'spectral_layout', etc.
- * Backend: 'Spring', 'Spectral', 'Kamada_Kawai', etc.
- */
-function convertLayoutToBackend(frontendLayout: string): string {
-  const mapping: Record<string, string> = {
-    'spring_layout': 'Spring',
-    'spectral_layout': 'Spectral',
-    'kamada_kawai_layout': 'Kamada_Kawai',
-    'circular_layout': 'Circular',
-    'spiral_layout': 'Spiral',
-    'random_layout': 'Random',
-    'shell_layout': 'Shell',
-    'sorted_square_layout': 'Sorted_Square',
-  };
-  return mapping[frontendLayout] || 'Spring';
-}
+// The menu's registry name, as the backend spells it. One rule in
+// `layout_names.ts`; this used to be a private table here that fell back to
+// 'Spring' for any name it did not list.
+const convertLayoutToBackend = backendLayoutName;
 
 /**
  * Plot Actions - handles all graph/visualization related operations
@@ -546,6 +537,107 @@ export class PlotActions {
       topologyChoices: found as TopologyChoices,
       topologyProblem: null,
     });
+    this.stateController.redraw();
+  }
+
+  // --- the estate: seams, capabilities, overview -----------------------------
+  //
+  // **EVERY ONE OF THESE GOES THROUGH `handlePlotData` WHEN IT DRAWS**, like the
+  // topology above and for the same reason. What differs per seam is only which
+  // state fields hold its reading and its problem, so each pair below is the
+  // same shape with different names, and the shape is `seam_client`'s four
+  // outcomes: the window's own API down, the seam unreachable, the seam present
+  // and unreadable, or a document.
+
+  /** The liveness table. Only this window's own API can fail here. */
+  async loadSeams(): Promise<void> {
+    const found = await EstateService.seams(this.stateController.api.estate);
+    if (isProblem(found)) {
+      this.stateController.update({ estateSeams: null, estateProblem: found.problem });
+    } else {
+      this.stateController.update({
+        estateSeams: found.document as unknown as SeamsDocument,
+        estateProblem: null,
+      });
+    }
+    this.stateController.redraw();
+  }
+
+  /** The registry's declarations, for the panel's list. Draws nothing. */
+  async loadCapabilitiesReading(): Promise<void> {
+    const found = await EstateService.capabilitiesData(this.stateController.api.capabilities);
+    this._settle(found, 'capabilitiesReading', 'capabilitiesProblem');
+  }
+
+  /** The registry as a graph, on the canvas. */
+  async drawCapabilities(request: DrawRequest = {}): Promise<void> {
+    this.stateController.clear();
+    const found = await EstateService.capabilitiesGraph(
+      this.stateController.api.capabilities,
+      { ...request, layout: request.layout ?? this._layout() },
+    );
+    this._draw(found, 'capabilitiesProblem');
+  }
+
+  /** dossier's sections, for the panel's list. Draws nothing. */
+  async loadOverviewReading(seam?: string): Promise<void> {
+    const found = await EstateService.overviewData(this.stateController.api.overview, seam);
+    this._settle(found, 'overviewReading', 'overviewProblem');
+  }
+
+  /** dossier's reading as a graph, on the canvas. */
+  async drawOverview(request: DrawRequest = {}): Promise<void> {
+    this.stateController.clear();
+    const found = await EstateService.overviewGraph(
+      this.stateController.api.overview,
+      { ...request, layout: request.layout ?? this._layout() },
+    );
+    this._draw(found, 'overviewProblem');
+  }
+
+  private _layout(): string {
+    return convertLayoutToBackend(this.stateController.state.graphStyling.layout);
+  }
+
+  /** Put a document in one field and clear the other, or the reverse. */
+  private _settle(
+    found: SeamOutcome,
+    readingField: 'capabilitiesReading' | 'overviewReading',
+    problemField: 'capabilitiesProblem' | 'overviewProblem',
+  ): void {
+    const patch: Record<string, unknown> = {};
+    if (isProblem(found)) {
+      patch[readingField] = null;
+      patch[problemField] = found.problem;
+      logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
+    } else {
+      patch[readingField] = found.document as unknown as CapabilitiesDocument | OverviewDocument;
+      patch[problemField] = null;
+    }
+    this.stateController.update(patch);
+    this.stateController.redraw();
+  }
+
+  /**
+   * Draw a seam's graph, or hold its problem.
+   *
+   * **NOT AN EMPTY GRAPH.** A seam being absent is the ordinary case, and an
+   * empty canvas would state that the estate holds nothing -- a different
+   * claim, and a false one. **AND REDRAW**: `update` changes state without
+   * repainting, and this resolves outside any DOM handler.
+   */
+  private _draw(found: SeamOutcome, problemField: 'capabilitiesProblem' | 'overviewProblem'): void {
+    const patch: Record<string, unknown> = {};
+    if (isProblem(found)) {
+      patch[problemField] = found.problem as SeamProblem;
+      this.stateController.update(patch);
+      this.stateController.redraw();
+      logger.warn(`PlotActions.${problemField} - ${found.problem.problem}`);
+      return;
+    }
+    patch[problemField] = null;
+    this.stateController.update(patch);
+    this.handlePlotData(found.document);
     this.stateController.redraw();
   }
 

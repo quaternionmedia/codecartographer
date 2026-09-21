@@ -26,6 +26,8 @@
   },
   "include": [
     "src/features/graph/extensions/legend_marks.ts",
-    "src/features/graph/services/node_shapes.ts"
+    "src/features/graph/services/node_shapes.ts",
+    "src/features/estate/seam_client.ts",
+    "src/features/graph/services/layout_names.ts"
   ]
 }

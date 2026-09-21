@@ -1,5 +1,5 @@
 {
-  "version": "0.4.0",
+  "version": "0.0.1",
   "geometry": {
     "startDeg": -90,
     "clockwise": true,
@@ -19,7 +19,7 @@
     "chordGapMs": 30,
     "burstSplitMs": 250
   },
-  "notes": "Traces are polar, relative to menu center. r in density-independent units. thetaDeg uses screen convention where -90 is up. 'expectHighlights' is the edge-triggered sequence of item indices (null = none); 'expectLabels' is the label each highlight effect carried, which must be resolvable without consulting live state. v0.3.0 adds: the outward cancel bound r_cancel = cancelScale * r1, identical in both commit styles; hub-latch highlight suppression; the ring ceiling; prefix-freeness of a chord vocabulary; and the three tempo axes (bpm, div, aps) with their MIDI CC mappings. v0.2.0 added pure suites: quant (quantizeTime), tempo (estimateBpm over 24ppqn ticks, median period), chord (classifyBurst), split (splitBursts). v0.4.0 adds the ring-fit suite: fitRing shrinks r1 toward the band minimum before overflowing a viewport that cannot contain it, and clampRingCentre centres rather than clamping when the viewport is smaller than the ring, because a naive clamp inverts its own bounds and pushes the ring off the opposite edge. Cases may carry a `geom` override; the state machine reads geometry from its own state rather than a module global.",
+  "notes": "Traces are polar, relative to menu center. r in density-independent units. thetaDeg uses screen convention where -90 is up. 'expectHighlights' is the edge-triggered sequence of item indices (null = none); 'expectLabels' is the label each highlight effect carried, which must be resolvable without consulting live state. v0.3.0 adds: the outward cancel bound r_cancel = cancelScale * r1, identical in both commit styles; hub-latch highlight suppression; the ring ceiling; prefix-freeness of a chord vocabulary; and the three tempo axes (bpm, div, aps) with their MIDI CC mappings. v0.2.0 added pure suites: quant (quantizeTime), tempo (estimateBpm over 24ppqn ticks, median period), chord (classifyBurst), split (splitBursts). v0.4.0 adds the ring-fit suite: fitRing shrinks r1 toward the band minimum before overflowing a viewport that cannot contain it, and clampRingCentre centres rather than clamping when the viewport is smaller than the ring, because a naive clamp inverts its own bounds and pushes the ring off the opposite edge. Cases may carry a `geom` override; the state machine reads geometry from its own state rather than a module global. v0.5.0 pins the constants a perturbation sweep found unpinned. A vector suite that passes while a constant moves is not testing that constant, and the sweep is now the way to ask: perturb each value in the geometry/time blocks and see whether anything fails. longPressMs and slop remain unpinnable from core traces by construction -- the machine takes an explicit `longpress` event and slop lives in the input adapter -- so they are checklist items rather than vector clauses, and that is stated instead of implied. v0.6.0 adds the cell layer of adr/DRAFT-the-menu-addresses-nine-cells.md: placement order, the centre holding nothing at every size, reachability of every occupied cell by direction alone, grid movement clamping at the edge, and the chord in both orders. It also pins the bound that record did not state -- a cell's direction is its wedge's angle at N<=4 and is not above it, because cardinals-first and clockwise-from-top are the same order only for four items. A cell is an address for an item; it is not a second geometry, and every polar case above is unchanged.",
   "cases": [
     {
       "name": "angle-to-index basics, N=4",
@@ -883,7 +883,7 @@
         ],
         "expectPrefixFree": false,
         "expectCollisions": [
-          "de ⊂ del"
+          "de \u2282 del"
         ]
       }
     },
@@ -1235,6 +1235,430 @@
         "committed": null,
         "cancelled": true
       }
+    },
+    {
+      "name": "r_cancel boundary at r1=108: 145.7 commits",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "down",
+          "r": 145.7,
+          "thetaDeg": 0
+        },
+        {
+          "t": 160,
+          "type": "up",
+          "r": 145.7,
+          "thetaDeg": 0
+        }
+      ],
+      "expectHighlights": [
+        1
+      ],
+      "expect": {
+        "committed": 1,
+        "cancelled": false
+      }
+    },
+    {
+      "name": "r_cancel boundary at r1=108: 145.9 cancels",
+      "n": 4,
+      "trace": [
+        {
+          "t": 0,
+          "type": "open"
+        },
+        {
+          "t": 100,
+          "type": "down",
+          "r": 145.9,
+          "thetaDeg": 0
+        },
+        {
+          "t": 160,
+          "type": "up",
+          "r": 145.9,
+          "thetaDeg": 0
+        }
+      ],
+      "expectHighlights": [],
+      "expect": {
+        "committed": null,
+        "cancelled": true
+      }
+    },
+    {
+      "name": "chord: a gap of exactly chordGapMs is still a chord",
+      "chord": {
+        "evts": [
+          {
+            "k": "p",
+            "t": 0
+          },
+          {
+            "k": "i",
+            "t": 30
+          },
+          {
+            "k": "n",
+            "t": 60
+          }
+        ],
+        "expectWord": "pin",
+        "expectChorded": true
+      }
+    },
+    {
+      "name": "chord: a fifth of a millisecond past chordGapMs is typed",
+      "chord": {
+        "evts": [
+          {
+            "k": "p",
+            "t": 0
+          },
+          {
+            "k": "i",
+            "t": 30.2
+          },
+          {
+            "k": "n",
+            "t": 60.4
+          }
+        ],
+        "expectWord": "pin",
+        "expectChorded": false
+      }
+    },
+    {
+      "name": "burst split: a gap of exactly burstSplitMs does not split",
+      "split": {
+        "evts": [
+          {
+            "k": "h",
+            "t": 0
+          },
+          {
+            "k": "d",
+            "t": 250
+          }
+        ],
+        "expectWords": [
+          "hd"
+        ]
+      }
+    },
+    {
+      "name": "burst split: one millisecond past burstSplitMs splits",
+      "split": {
+        "evts": [
+          {
+            "k": "h",
+            "t": 0
+          },
+          {
+            "k": "d",
+            "t": 251
+          }
+        ],
+        "expectWords": [
+          "h",
+          "d"
+        ]
+      }
+    },
+    {
+      "name": "clampRingCentre: the top inset binds when the ring is small enough",
+      "clamp": [
+        {
+          "x": 400,
+          "y": 10,
+          "vw": 900,
+          "vh": 900,
+          "r1": 30,
+          "expectX": 400,
+          "expectY": 64
+        },
+        {
+          "x": 400,
+          "y": 10,
+          "vw": 900,
+          "vh": 900,
+          "r1": 108,
+          "expectX": 400,
+          "expectY": 132
+        }
+      ]
+    },
+    {
+      "name": "cell placement: four items sit at the cardinals",
+      "cells": [
+        {
+          "place": 4,
+          "expectCells": [
+            8,
+            6,
+            2,
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cell placement: corners fill only above four",
+      "cells": [
+        {
+          "place": 5,
+          "expectCells": [
+            8,
+            6,
+            2,
+            4,
+            9
+          ]
+        },
+        {
+          "place": 8,
+          "expectCells": [
+            8,
+            6,
+            2,
+            4,
+            9,
+            3,
+            1,
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cell placement: eight is legal, nine will not fit",
+      "cells": [
+        {
+          "place": 8,
+          "expectCells": [
+            8,
+            6,
+            2,
+            4,
+            9,
+            3,
+            1,
+            7
+          ]
+        },
+        {
+          "place": 9,
+          "expectThrows": true
+        }
+      ]
+    },
+    {
+      "name": "the centre never holds an item, at any menu size",
+      "cells": [
+        {
+          "centre": 1
+        },
+        {
+          "centre": 2
+        },
+        {
+          "centre": 3
+        },
+        {
+          "centre": 4
+        },
+        {
+          "centre": 5
+        },
+        {
+          "centre": 6
+        },
+        {
+          "centre": 7
+        },
+        {
+          "centre": 8
+        }
+      ]
+    },
+    {
+      "name": "every cardinal is reachable by direction alone, N=4",
+      "cells": [
+        {
+          "n": 4,
+          "from": 8,
+          "toItem": "left",
+          "expectCell": 4
+        },
+        {
+          "n": 4,
+          "from": 8,
+          "toItem": "right",
+          "expectCell": 6
+        },
+        {
+          "n": 4,
+          "from": 8,
+          "toItem": "down",
+          "expectCell": 2
+        },
+        {
+          "n": 4,
+          "from": 2,
+          "toItem": "up",
+          "expectCell": 8
+        }
+      ]
+    },
+    {
+      "name": "direction never moves the cursor backwards",
+      "cells": [
+        {
+          "n": 8,
+          "from": 6,
+          "toItem": "right",
+          "expectCell": 6
+        },
+        {
+          "n": 8,
+          "from": 4,
+          "toItem": "left",
+          "expectCell": 4
+        }
+      ]
+    },
+    {
+      "name": "a greyed cell is not a landing place",
+      "cells": [
+        {
+          "n": 4,
+          "from": 8,
+          "toItem": "left",
+          "allowed": [
+            2,
+            6
+          ],
+          "expectCell": 8
+        }
+      ]
+    },
+    {
+      "name": "grid movement clamps at the edge rather than wrapping",
+      "cells": [
+        {
+          "from": 7,
+          "step": "left",
+          "expectCell": 7
+        },
+        {
+          "from": 7,
+          "step": "up",
+          "expectCell": 7
+        },
+        {
+          "from": 3,
+          "step": "down",
+          "expectCell": 3
+        },
+        {
+          "from": 5,
+          "step": "up",
+          "expectCell": 8
+        }
+      ]
+    },
+    {
+      "name": "two directions name the corner between them, in either order",
+      "cells": [
+        {
+          "chord": [
+            "up",
+            "left"
+          ],
+          "expectCell": 7
+        },
+        {
+          "chord": [
+            "left",
+            "up"
+          ],
+          "expectCell": 7
+        },
+        {
+          "chord": [
+            "up",
+            "right"
+          ],
+          "expectCell": 9
+        },
+        {
+          "chord": [
+            "down",
+            "left"
+          ],
+          "expectCell": 1
+        },
+        {
+          "chord": [
+            "down",
+            "right"
+          ],
+          "expectCell": 3
+        }
+      ]
+    },
+    {
+      "name": "opposed and repeated directions name no corner",
+      "cells": [
+        {
+          "chord": [
+            "up",
+            "down"
+          ],
+          "expectCell": null
+        },
+        {
+          "chord": [
+            "left",
+            "right"
+          ],
+          "expectCell": null
+        },
+        {
+          "chord": [
+            "up",
+            "up"
+          ],
+          "expectCell": null
+        }
+      ]
+    },
+    {
+      "name": "cell direction is the wedge angle at four items and not above",
+      "cells": [
+        {
+          "agreesWithRing": 1,
+          "expectAgrees": true
+        },
+        {
+          "agreesWithRing": 4,
+          "expectAgrees": true
+        },
+        {
+          "agreesWithRing": 5,
+          "expectAgrees": false
+        },
+        {
+          "agreesWithRing": 8,
+          "expectAgrees": false
+        }
+      ]
     }
   ]
 }

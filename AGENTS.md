@@ -12,16 +12,23 @@ other briefing, read this file fully before your first commit or edit.
 2. This project's own decision records live in `governance/qm/adr/` — inside
    the submodule, on this project's own branch, not at this repo's root — as
    `ADR-NNNN` (numbered locally, at ratification) or `DRAFT-*.md` before
-   ratification. A human ratifies; you draft. **There are eleven of them
-   already**, and they carry the reasoning behind most non-obvious structure
-   here; read the index before proposing a change to the parser, the cache,
-   or the layout.
-3. **Everything you produce arrives as a pull request.** Work on a branch and
-   open a PR for human review — in this repo, and in the `governance/qm`
-   submodule when you touch this project's records there. Never commit to,
-   merge into, or push a shared branch directly, and never merge your own
-   work, however small or mechanical the change looks. If you cannot open a
-   PR, hand the branch back rather than merging it.
+   ratification. A human ratifies; you draft. **Read the index in
+   `governance/qm/adr/README.md` before proposing a change** to the parser,
+   the cache, the layout or the radial menu -- the records carry the
+   reasoning behind most non-obvious structure here, and `ls
+   governance/qm/adr/DRAFT-*.md` is the count.
+3. **Everything you produce arrives as a pull request, and the pull request
+   is an audit record rather than a request for anyone's attention.** Work on
+   a branch, open a PR, assign the person who asked for the work, and never
+   request a review -- in this repo, and in the `governance/qm` submodule when
+   you touch this project's records there (that PR is based on
+   `project/codecartographer`, never on `main`). Get every gate green.
+   **Nothing reaches `main` without the human's explicit click**: leave the
+   green PR open and say so in the handoff. Never push `main` directly, and
+   never close a PR by pushing its commits onto its base -- pushing first
+   *merges* it. `governance/qm/AGENTS.md` item 3 and
+   `governance/qm/handbook/async-contract.md` §1-3 are the rules; where this
+   summary and those disagree, they win and this is repaired.
 4. **Human-only contributorship applies to every commit you make here** (see
    `governance/qm/records/DRAFT-human-only-contributorship.md`): do not add
    yourself, your model name, or any co-author trailer naming an unmonitored
@@ -63,29 +70,38 @@ Python backend (FastAPI) plus a TypeScript frontend under `web/`, with
 ## Running it
 
 ```sh
-uv venv
-uv pip install -e ".[dev]"
+uv sync --extra dev       # the lockfile is the environment
 
 uv run codecarto dev      # backend and frontend together
-uv run codecarto serve    # backend only
-uv run codecarto web      # frontend only
+uv run codecarto serve    # backend only; `serve --help` prints the port
+uv run codecarto web      # frontend only, http://localhost:1234
 ```
 
-**Never bind a default port.** Other agent sessions run on this workstation
-at the same time, in other repositories, and `codecarto serve` defaults to
-`127.0.0.1:8000` — which is exactly the port another QM project was already
-serving when a session spent an afternoon measuring the wrong program. Pass a
-non-default port, and ask whatever you are measuring what it is rather than
-trusting that a 200 means it is yours.
+**The port is a constant the corpus allocates, and it is not 8000.**
+`codecarto.cli.DEFAULT_PORT` is what `uv run qm dashboard` in the corpus
+assigns this project -- one fixed port per surface so that several of this
+org's servers can run on one workstation without a reader measuring the wrong
+one, which has happened here for an afternoon. Other agent sessions run on this
+workstation at the same time. Override with `CODECARTO_PORT` or `--port` when
+you need a second instance, and **ask whatever you are measuring what it is**
+(`/openapi.json` names this app `codecarto`) rather than trusting that a 200
+means it is yours. The browser tests bind their own non-default ports and
+refuse to reuse a server they did not start.
 
 ## Tests
 
 ```sh
-uv run pytest tests -q
+uv run pytest tests -q               # the Python suite; pure Python, no browser or Node
+cd web && npm run typecheck          # the front end compiles
+cd web && npm run test:pure && npm run test:state && npm run test:rad
+cd web && npm run test:e2e           # starts its own servers on non-default ports
 ```
 
-355 tests, around three minutes. Pure Python — no browser or Node needed, which
-is why CI runs them without installing either.
+The command prints the count and the time; neither is restated here. **Unset
+`MONGODB_URI` before timing anything** -- with it set and no database listening,
+the suite waits on server selection and reports several minutes for work that
+takes under one. `tests/test_docs_routes.py` reads the documents against the
+application and fails when a route, a proxy prefix or a port is stated wrongly.
 
 A passing test is not evidence until it has been seen to fail. After writing a
 check, break the thing it names and confirm the check goes red.

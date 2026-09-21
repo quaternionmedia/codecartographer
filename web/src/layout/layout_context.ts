@@ -39,6 +39,7 @@ import type { NodeViewState } from '../features/graph/rad/host/view_state';
 import type { GraphOps } from '../features/graph/rad/host/graph_intents';
 import type { MenuContext } from '../features/graph/rad/core/types';
 import type { GraphNode, GraphEdge } from '../features/graph/services/graph_types';
+import { backendLayoutName } from '../features/graph/services/layout_names';
 
 export type { DockPanelId } from './panel_registry';
 
@@ -47,19 +48,10 @@ export type { DockPanelId } from './panel_registry';
 /** localStorage key for the user-saved default Golden Layout configuration. */
 const SAVED_LAYOUT_KEY = 'cc:gl-layout:default';
 
-function convertLayout(frontendLayout: string): string {
-  const map: Record<string, string> = {
-    spring_layout: 'Spring',
-    spectral_layout: 'Spectral',
-    kamada_kawai_layout: 'Kamada_Kawai',
-    circular_layout: 'Circular',
-    spiral_layout: 'Spiral',
-    random_layout: 'Random',
-    shell_layout: 'Shell',
-    sorted_square_layout: 'Sorted_Square',
-  };
-  return map[frontendLayout] ?? 'Spring';
-}
+// The menu's registry name, as the backend spells it. One rule in
+// `layout_names.ts`; this used to be a second private table that fell back to
+// 'Spring' for any name it did not list, including `compound_layout`.
+const convertLayout = backendLayoutName;
 
 function findFileByUrl(folder: RawFolder, url: string): RawFile | null {
   for (const f of folder.files) {
@@ -150,6 +142,23 @@ export class LayoutContext {
   // ── Public helpers ─────────────────────────────────────────────────────────
 
   /** Shallow-merge updates into panelState then trigger a Mithril redraw. */
+  /**
+   * Run a plot and remember it as the one a layout change re-runs.
+   *
+   * **A LAYOUT CHOICE IS A CHOICE ABOUT THE GRAPH ON THE CANVAS**, whichever
+   * seam drew it. `onGraphStylingChange` re-runs `_lastPlotAction` when the
+   * layout changes, and rad's `relayout` verb does the same -- but only the
+   * code-map paths ever set it. An estate graph drawn from the Topology,
+   * Capabilities or Overview panel was never remembered, so choosing a
+   * different layout in Graph Settings changed the setting and nothing else:
+   * the selection was kept and not applied until somebody pressed draw again,
+   * which nobody guesses. Every panel that draws goes through this.
+   */
+  public async plotWith(action: () => Promise<void>): Promise<void> {
+    this._lastPlotAction = action;
+    await action();
+  }
+
   public updatePanelState(updates: Partial<ControlPanelState>): void {
     this.panelState = { ...this.panelState, ...updates };
     m.redraw();
@@ -174,6 +183,27 @@ export class LayoutContext {
     }
   }
 
+  /**
+   * Bring a panel's tab to the front of its stack.
+   *
+   * A panel opened from the "+" menu lands in the main stack beside the Graph
+   * panel, so after a reader presses "draw" the graph is drawn behind the
+   * controls they pressed it from -- which the browser tests measured as every
+   * node present and every node hidden. The drawing goes where the reader can
+   * see it; a panel that is not in a stack has nothing to focus and is left.
+   */
+  public focusDockPanel(panelId: DockPanelId): void {
+    const item = this._layoutManager?.findFirstComponentItemById(panelId);
+    if (!item) return;
+    // `ComponentItem.focus()` marks the item focused and leaves the stack's
+    // active tab alone -- the first version called it and the graph stayed
+    // behind. The stack is what shows one tab and hides the rest.
+    const stack = item.parent as { setActiveComponentItem?: (i: typeof item, focus: boolean) => void } | null;
+    if (stack && typeof stack.setActiveComponentItem === 'function') {
+      stack.setActiveComponentItem(item, true);
+    }
+  }
+
   /** Re-open a closed dock panel, or add it fresh if it isn't in the layout at all. */
   public restoreDockPanel(panelId: DockPanelId): void {
     if (!this._layoutManager) return;
@@ -182,6 +212,8 @@ export class LayoutContext {
 
     if (this._layoutManager.findFirstComponentItemById(panelId)) {
       this.showDockPanel(panelId);
+      // Present but behind another tab is not "shown" to anybody.
+      this.focusDockPanel(panelId);
       return;
     }
 

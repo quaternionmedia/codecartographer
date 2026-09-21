@@ -476,22 +476,37 @@ export class StreamingGraphRenderer {
     const src = this.nodeById.get(sourceId);
     const tgt = this.nodeById.get(targetId);
 
-    this.linkGroup
+    // **THE CHANNELS RIDE IN `metadata`.** gJGF puts every edge attribute the
+    // serializer was given -- `color`, `size`, `style`, `measured`, `hover` --
+    // under `edge.metadata`, and this read `edge.color` at the top level, which
+    // is never there. So a topology whose caveat said "an unmeasured edge is
+    // drawn dashed, never thin" drew every edge solid grey at one width: the
+    // producer's care at the far end, lost at the last step. A top-level field
+    // still wins when a caller sets one.
+    const md = (edge.metadata ?? {}) as Record<string, unknown>;
+    const colour = (edge.color as string) || (md.color as string) || '#555';
+    const width = typeof md.size === 'number' ? md.size : this.styling.edgeWidth!;
+    const style = (edge.style as string) || (md.style as string) || 'solid';
+    const title = (md.hover as string) || (md.title as string) || '';
+
+    const line = this.linkGroup
       .append('line')
       .attr('class', 'stream-edge')
       .attr('data-from', sourceId)
       .attr('data-to', targetId)
+      .attr('data-style', style)
       .attr('x1', src?.x ?? 0)
       .attr('y1', src?.y ?? 0)
       .attr('x2', tgt?.x ?? 0)
       .attr('y2', tgt?.y ?? 0)
-      .attr('stroke', (edge.color as string) || '#555')
+      .attr('stroke', colour)
       .attr('stroke-opacity', this.styling.edgeOpacity! * 0.6)
-      .attr('stroke-width', this.styling.edgeWidth!)
-      .attr('opacity', 0)
-      .transition()
-      .duration(180)
-      .attr('opacity', 1);
+      .attr('stroke-width', width)
+      .attr('opacity', 0);
+    if (style === 'dashed') line.attr('stroke-dasharray', '6,4');
+    else if (style === 'dotted') line.attr('stroke-dasharray', '2,3');
+    if (title) line.append('title').text(title);
+    line.transition().duration(180).attr('opacity', 1);
   }
 
   // ── Extension seam ─────────────────────────────────────────────────────────

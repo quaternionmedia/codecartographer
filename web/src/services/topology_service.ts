@@ -22,6 +22,8 @@
  */
 
 import { logger } from '../core/logger';
+import { classify } from '../features/estate/seam_client';
+import type { SeamProblem } from '../features/estate/seam_client';
 import { RequestHandler } from './request_handler';
 
 /**
@@ -36,15 +38,14 @@ import { RequestHandler } from './request_handler';
  * Everything below takes the *inner* document, because that is what arrives.
  */
 
-export interface TopologyProblem {
-  /** Present only when the harness could not be reached. */
+/**
+ * Why nothing was drawn. **THE SAME SHAPE EVERY SEAM USES** (`SeamProblem`),
+ * kept under this name because the panel and the state field carry it; the
+ * `unreachable` flag stays so anything that still checks for it reads true.
+ */
+export interface TopologyProblem extends SeamProblem {
+  /** Present on every problem, whichever of the three absences it was. */
   unreachable: true;
-  /** What is wrong, in a sentence. */
-  problem: string;
-  /** What the reader can do about it. Empty when there is nothing they could. */
-  remedy: string;
-  /** The URL that was tried, so a wrong base is visible. */
-  where: string;
 }
 
 export interface TopologyChoice {
@@ -79,18 +80,9 @@ export interface TopologyRequest {
  * checked for `unreachable` would treat that as a graph.
  */
 function problemOf(found: unknown, url: string): TopologyProblem | null {
-  if (found === null || found === undefined) {
-    return {
-      unreachable: true,
-      problem: 'the front end could not reach its own API',
-      remedy: 'check that the codecarto server is running',
-      where: url,
-    };
-  }
-  if (typeof found === 'object' && 'unreachable' in (found as object)) {
-    return found as TopologyProblem;
-  }
-  return null;
+  const outcome = classify(found, url);
+  if (outcome.kind === 'ok') return null;
+  return { ...outcome.problem, unreachable: true };
 }
 
 export class TopologyService {

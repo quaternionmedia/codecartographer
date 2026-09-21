@@ -2,8 +2,14 @@
 
 REST API documentation for Codecarto backend.
 
-**Base URL:** `http://127.0.0.1:8000`
-**Interactive Docs:** `http://127.0.0.1:8000/docs`
+**Base URL:** `http://127.0.0.1:<port>` — the port is `codecarto.cli.DEFAULT_PORT`,
+the constant `uv run qm dashboard` in the corpus allocates to this project;
+`uv run codecarto serve --help` prints it, and `CODECARTO_PORT` or `--port`
+overrides it. The examples below write `$API` for that base.
+**Interactive Docs:** `$API/docs` — every route the running server registered,
+which is the authority; this page is the map.
+**Identity:** `$API/openapi.json` names the app `codecarto`. Ask before believing
+a port: several of this org's servers run on one workstation.
 
 ---
 
@@ -17,6 +23,13 @@ REST API documentation for Codecarto backend.
 | `/repo` | repo | GitHub + local repository tree operations |
 | `/pam` | pam | PAM auth log monitor |
 | `/palette` | palette | Color palette management |
+| `/lexicon` | lexicon | Hand-authored language lexicons, as graphs |
+| `/topology` | topology | The harness's flows, as graph data |
+| `/capabilities` | capabilities | What each named thing this estate can do has reached |
+| `/overview` | overview | dossier's reading of the estate, as graph data |
+| `/estate` | estate | Every seam above and whether each is there |
+| `/auth` | auth | Which GitHub credential source is active |
+| `/db` | db | Graphbase, when `MONGODB_URI` is set |
 
 ---
 
@@ -412,7 +425,7 @@ field in `GET /c-parser/cache`'s entries). Counterpart to
 `DELETE /parse/cache/{key}`.
 
 ```bash
-curl -X DELETE "http://127.0.0.1:8000/c-parser/cache/git-git"
+curl -X DELETE "$API/c-parser/cache/git-git"
 ```
 
 ---
@@ -447,8 +460,8 @@ recursive tree response.
 
 **Example:**
 ```bash
-curl "http://127.0.0.1:8000/repo/tree?url=https://github.com/fastapi/fastapi"
-curl "http://127.0.0.1:8000/repo/tree?url=/path/to/local/project"
+curl "$API/repo/tree?url=https://github.com/fastapi/fastapi"
+curl "$API/repo/tree?url=/path/to/local/project"
 ```
 
 **Response:**
@@ -653,6 +666,96 @@ Token-spelling → contexts lookup (which layers/groups a token appears
 in) — the join `unified_parser_service.py`'s `annotate_lexicon` flag
 uses to enrich real parsed graphs (see `POST /parse/unified` above).
 
+
+---
+
+## Estate Endpoints
+
+Four routers draw things this project does not own — the harness's topologies,
+the corpus's capability registry, dossier's overview seam — and one says whether
+each is there. They share two rules, stated in each router's docstring: **they
+serve a codecarto graph, not a picture of one** (a `networkx` graph handed to
+`GraphSerializer`, so every layout, palette and extension applies), and **an
+absence is a sentence, never an empty graph** (status 200; `results` carries
+`unreachable` or `unreadable`, a `problem`, a `remedy` and `where`). The front
+end's `web/src/features/estate/seam_client.ts` tells the outcomes apart.
+
+### GET `/estate/seams`
+
+Every seam this window reads, probed once, as rows: `name`, `role`, `ok`,
+`where`, `schema`, `detail`, `problem`, `remedy`, `routes`, `panel`. `ok` means
+the far side answered with the shape this window expects — the harness's
+encoding document, the registry file's `capabilities` list — not that a port
+answered; *something answered and it was not the harness* is its own `problem`.
+`live` counts the identified rows and `caveat` is the sentence to read first.
+Always 200: an estate with nothing up is not a fault in the window looking at it.
+
+### GET `/topology/gjgf?kind=&subject=&level=&layout=&palette_id=`
+
+One of the harness's topologies as `GraphData` — `{graph, metadata}` — laid out
+by any registered layout. `kind` names a shape (`GET /topology/available` lists
+them); `subject` instead asks what the thread archive says about one project,
+which the harness serves on loopback only. `metadata` carries `kind:
+"topology"`, `caveat`, `measured`, `unmeasured`, `source` and `surveyed`: an
+edge whose weight nobody measured is drawn dashed, never thin, and the caveat
+says how much of the picture that is.
+
+### GET `/topology/available`
+
+What the harness offers and what this server can lay it out with:
+`topologies` (each with `topology`, `caption`, `status`, `boxes`, `arrows`),
+the harness's `encoding` (which channel carries which axis), and `layouts`. When
+the harness is not answering, `topologies` is empty and the envelope carries the
+`unreachable` sentence with the command that starts it.
+
+### GET `/topology/data?kind=&subject=&level=`
+
+What this window drew, edge by edge — widths, styles, whether each was measured
+— so two windows onto one topology can be compared with each other rather than
+only with the payload both were handed.
+
+### GET `/capabilities/gjgf?layout=&palette_id=`
+
+The capability registry (`governance/qm/ci/capability-registry.yaml`) as
+`GraphData`. Every edge is one the registry declared — a capability claims one
+rung, lives in one repository, and points at evidence per rung — and nothing is
+added to make the picture connected. A rung with no evidence draws nothing; the
+count of those is `metadata.unmeasured`. `metadata.kind` is `"capabilities"`.
+
+### GET `/capabilities/data`
+
+Every declaration with its rungs and pointers, without a layout: `rungs`,
+`capabilities` (each with `id`, `title`, `repo`, `phase`, `stated_by`,
+`stated_on`, `what`, `cannot_see`, `evidence`), `unmeasured`, `caveat`. A pin
+that predates the registry answers `unreadable` with the propagation that moves
+it.
+
+### GET `/overview/gjgf?seam=&layout=&palette_id=`
+
+dossier's overview seam (`dossier overview --json`) as `GraphData`. The one
+relation drawn is that a section lists a subject; the masthead figures ride in
+`metadata.masthead`, and `metadata.generated_at` / `metadata.written_at` say
+when the reading was made. Every name is whatever the producer published —
+redaction is inherited, never repeated. `metadata.kind` is `"overview"`.
+
+**Any estate route, given a layout nobody registered**, answers 200 with
+`unreadable`, the registry's own message and the registered names. Spellings
+are normalised once (`Kamada Kawai`, `Kamada_Kawai`, `kamada_kawai_layout` are
+one layout) and the result does not depend on which was sent. The seam is read
+from `seam`, else `DOSSIER_OVERVIEW_SEAM`, else `overview.json` in the working
+directory; a seam whose `schema` this window does not know is declined rather
+than guessed.
+
+### GET `/overview/data?seam=`
+
+The sections themselves: `scope`, `generated_from` (how far back the sync
+reached), `generated_at` (when the producer took the picture, when the seam
+carries it), `written_at` (when the seam file was written -- a fact about the
+file, shown when the producer's stamp is absent), `masthead` (each figure with
+the producer's `label`, `value` and `note`), `sections` (each with `title` and
+`rows`), `caveat`. The same reading the terminal prints as tables, so the two
+windows can be compared.
+
 ---
 
 ## Palette Endpoints
@@ -723,10 +826,10 @@ Allowed origins (configurable in `main.py`):
 
 ```bash
 # 1. Fetch directory tree
-curl "http://127.0.0.1:8000/repo/tree?url=https://github.com/user/myrepo"
+curl "$API/repo/tree?url=https://github.com/user/myrepo"
 
 # 2. Parse to depth-2 (symbols) with the unified parser
-curl -X POST "http://127.0.0.1:8000/parse/unified" \
+curl -X POST "$API/parse/unified" \
   -H "Content-Type: application/json" \
   -d '{
     "directory": { <paste /repo/tree response data> },
@@ -738,7 +841,7 @@ curl -X POST "http://127.0.0.1:8000/parse/unified" \
 ### Check available language parsers
 
 ```bash
-curl "http://127.0.0.1:8000/parse/languages"
+curl "$API/parse/languages"
 # -> { "languages": { "python": [".py"], "c": [".c", ".h"] } }
 ```
 
@@ -750,7 +853,7 @@ For the D3/Gravis UI, `/parse/unified` with `.c`/`.h` extensions produces
 equivalent results in gJGF form instead.
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/c-parser/directory" \
+curl -X POST "$API/c-parser/directory" \
   -H "Content-Type: application/json" \
   -d '{ "path": "/home/user/linux/kernel/sched", "max_files": 50 }'
 ```

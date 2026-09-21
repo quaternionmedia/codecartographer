@@ -32,7 +32,7 @@ uv run codecarto dev [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--host` | `127.0.0.1` | Backend host address |
-| `--port` | `8000` | Backend port |
+| `--port` | `codecarto.cli.DEFAULT_PORT` -- the constant the corpus allocates; `--help` prints it | Backend port; `CODECARTO_PORT` also sets it |
 | `--no-frontend` | `false` | Skip starting frontend |
 
 **Examples:**
@@ -51,10 +51,10 @@ uv run codecarto dev --port 8080
 uv run codecarto dev --host 0.0.0.0
 ```
 
-**Output:**
-- Backend: http://127.0.0.1:8000
-- Frontend: http://localhost:1234
-- API Docs: http://127.0.0.1:8000/docs
+**Output:** the command prints the backend address, the frontend address
+(`http://localhost:1234`) and the API docs address as it starts them. The
+backend port is not restated here because the constant is the source; asking
+the server (`/openapi.json` names it `codecarto`) beats trusting a page.
 
 ---
 
@@ -71,7 +71,7 @@ uv run codecarto serve [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--host` | `127.0.0.1` | Host address |
-| `--port` | `8000` | Port number |
+| `--port` | `codecarto.cli.DEFAULT_PORT` -- the constant the corpus allocates; `--help` prints it | Port number; `CODECARTO_PORT` also sets it |
 | `--reload/--no-reload` | `--reload` | Enable hot reload |
 
 **Examples:**

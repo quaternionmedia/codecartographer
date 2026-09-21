@@ -58,11 +58,17 @@ class Reach:
     status: int | None = None
 
 
-def fetch(path: str, base: str | None = None) -> Reach:
-    """One document from the harness.
+def fetch(path: str, base: str | None = None,
+          remedy_404: str | None = None) -> Reach:
+    """One document from the harness -- or, given `base`, from any sibling.
 
     Never raises. A front end that threw on a missing harness would turn "not
     started yet" into a 500, and the page would report a fault in itself.
+
+    `remedy_404` is what a caller asking a different server says about a route
+    it does not have; the default sentence is the harness's, and would send a
+    reader of the prose seam to re-index an archive that has nothing to do with
+    it.
     """
     where = f"{base or base_url()}{path}"
     request = urllib.request.Request(where, headers={"Accept": "application/json"})
@@ -78,7 +84,8 @@ def fetch(path: str, base: str | None = None) -> Reach:
                 problem=(f"the harness is running and has no {path}. "
                          f"{detail}" if detail else
                          f"the harness is running but does not serve {path}"),
-                remedy=("this build of the harness predates the topology "
+                remedy=(remedy_404 if remedy_404 is not None else
+                        "this build of the harness predates the topology "
                         "routes, or the archive it needs has not been indexed"))
         return Reach(False, where, status=error.code,
                      problem=f"the harness refused: {error.code} {detail}",

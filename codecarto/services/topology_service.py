@@ -194,7 +194,6 @@ def render(payload: dict[str, Any],
     for box in payload.get("boxes") or []:
         kind = str(box.get("kind") or "")
         node_type = KIND_TO_TYPE.get(kind, DEFAULT_TYPE)
-        style = palette_service.style_for_type(node_type, palette)
         address = str(box.get("note") or "")
         view.nodes.append({
             "id": str(box.get("id") or ""),
@@ -203,14 +202,11 @@ def render(payload: dict[str, Any],
             # carried so a renderer can show one and open the other.
             "address": address,
             "content": content_for(address),
+            "kind": kind,
             # The palette's vocabulary, carried on the node so anything else in
             # this project can restyle it without knowing what a topology is.
-            "type": node_type,
-            "base": style.base,
-            "kind": kind,
-            "shape": style.shape,
-            "color": style.color,
-            "size": style.size,
+            # `palette_service.vocabulary` says why a service carries the look.
+            **palette_service.vocabulary(node_type, palette),
             "note": str(box.get("note") or ""),
             "count": box.get("count"),
         })
@@ -356,6 +352,10 @@ def metadata(view: RenderedTopology, document: dict[str, Any],
     """
     chosen = options or PlotOptions(layout="Kamada Kawai")
     return {
+        # Which seam drew this, so a panel shows its own seam's caveat and not
+        # whichever graph happens to be on the canvas. The capability and
+        # overview views carry the same key.
+        "kind": "topology",
         "layout": chosen.layout,
         "type": chosen.type,
         "palette_id": chosen.palette_id,
@@ -368,9 +368,11 @@ def metadata(view: RenderedTopology, document: dict[str, Any],
         "measured": view.measured,
         "unmeasured": view.unmeasured,
         "caveat": view.caveat(),
-        "background_color": "#151a21",
-        "node_label_color": "#e4e9f0",
-        "edge_label_color": "#8b93a1",
+        # No colours here. Three hard-coded hex values used to ride in this
+        # metadata from the gravis era; the canvas themes its background and
+        # labels from the application's tokens and the front end overwrote
+        # them on arrival. A display constant in a data document is a
+        # boundary crossed for nothing.
     }
 
 

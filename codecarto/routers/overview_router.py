@@ -31,7 +31,7 @@ from typing import Any
 from fastapi import APIRouter, Query
 
 from codecarto.models.plot_data import PlotOptions
-from codecarto.services import overview_service
+from codecarto.services import estate_service, overview_service
 from codecarto.util.utilities import generate_return
 
 OverviewRouter = APIRouter()
@@ -76,8 +76,13 @@ async def overview_gjgf(
         return _unreadable(reading)
 
     options = _options(layout, palette_id)
+    try:
+        graph = overview_service.as_gjgf(reading, options)
+    except ValueError as error:
+        return generate_return(results=estate_service.unknown_layout(
+            error, f"/overview/gjgf?layout={layout}"))
     return generate_return(results={
-        "graph": overview_service.as_gjgf(reading, options),
+        "graph": graph,
         "metadata": overview_service.metadata(reading, options),
     })
 
@@ -94,6 +99,8 @@ async def overview_data(seam: str | None = Query(None)) -> dict[str, Any]:
         "source": reading.source,
         "scope": reading.scope,
         "generated_from": reading.generated_from,
+        "generated_at": reading.generated_at,
+        "written_at": reading.written_at,
         "masthead": reading.masthead,
         "sections": reading.sections,
         "caveat": overview_service.caveat(reading),

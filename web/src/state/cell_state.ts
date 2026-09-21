@@ -6,6 +6,8 @@ import { ConfigManager, DebugManager } from './config_manager';
 import { GraphStylingOptions, ParserOptions, GraphRendererType } from './types';
 import { GraphData } from '../features/graph';
 import type { TopologyChoices, TopologyProblem } from '../services/topology_service';
+import type { SeamProblem } from '../features/estate/seam_client';
+import type { CapabilitiesDocument, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
 import { Directory } from '../components/models/source';
 
 export interface ICell extends MeiosisCell<ICellState> {}
@@ -39,6 +41,20 @@ export interface ICellState {
   topologyKind: string;
   /** The project the archive was read for, when a subject was asked about. */
   topologySubject: string;
+  /**
+   * The liveness table, or null before anybody asked. The same null-versus-
+   * empty rule as `topologyChoices`: null is "not looked yet", a document with
+   * no live row is "the server looked and nothing is up".
+   */
+  estateSeams: SeamsDocument | null;
+  /** Why the table could not be read -- only ever this window's own API. */
+  estateProblem: SeamProblem | null;
+  /** The registry's declarations as the panel lists them, or null before asked. */
+  capabilitiesReading: CapabilitiesDocument | null;
+  capabilitiesProblem: SeamProblem | null;
+  /** dossier's sections as the panel lists them, or null before asked. */
+  overviewReading: OverviewDocument | null;
+  overviewProblem: SeamProblem | null;
   parserOptions: ParserOptions;
   selectedRenderer: GraphRendererType;
   availableLanguages: Record<string, string[]> | null;
@@ -61,6 +77,12 @@ export class CellState implements ICellState {
   public topologyProblem: TopologyProblem | null = null;
   public topologyKind: string = 'delegation';
   public topologySubject: string = '';
+  public estateSeams: SeamsDocument | null = null;
+  public estateProblem: SeamProblem | null = null;
+  public capabilitiesReading: CapabilitiesDocument | null = null;
+  public capabilitiesProblem: SeamProblem | null = null;
+  public overviewReading: OverviewDocument | null = null;
+  public overviewProblem: SeamProblem | null = null;
   public graphStyling: GraphStylingOptions = {
     layout: 'spring_layout',
     enablePhysics: true,

@@ -25,8 +25,15 @@ import { createGraphbasePanel } from './panels/graphbase_panel';
 import { createGraphSettingsPanel } from './panels/graph_settings_panel';
 import { createActionsPanel } from './panels/actions_panel';
 import { createTopologyPanel } from './panels/topology_panel';
+import { createEstatePanel } from './panels/estate_panel';
+import { createCapabilitiesPanel } from './panels/capabilities_panel';
+import { createOverviewPanel } from './panels/overview_panel';
 
-export type DockPanelId = 'graph' | 'file-tree' | 'upload-panel' | 'repo-panel' | 'graphbase-panel' | 'graph-settings-panel' | 'plotbar' | 'topology-panel';
+export type DockPanelId =
+  | 'graph' | 'file-tree' | 'upload-panel' | 'repo-panel' | 'graphbase-panel'
+  | 'graph-settings-panel' | 'plotbar'
+  // The estate: what is up, and the three seams this window draws.
+  | 'estate-panel' | 'topology-panel' | 'capabilities-panel' | 'overview-panel';
 
 export interface PanelDefinition {
   readonly id: DockPanelId;
@@ -46,11 +53,32 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     mount: (ctx, el) => m.mount(el, createGraphPanel(ctx)),
   },
   {
+    id: 'estate-panel',
+    menuLabel: 'Estate',
+    config: { type: 'component', componentType: 'estate-panel', id: 'estate-panel', title: '⌂ Estate', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createEstatePanel(ctx)),
+  },
+  {
     id: 'topology-panel',
     menuLabel: 'Topology',
     config: { type: 'component', componentType: 'topology-panel', id: 'topology-panel', title: '⌁ Topology', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createTopologyPanel(ctx)),
+  },
+  {
+    id: 'capabilities-panel',
+    menuLabel: 'Capabilities',
+    config: { type: 'component', componentType: 'capabilities-panel', id: 'capabilities-panel', title: '⊚ Capabilities', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createCapabilitiesPanel(ctx)),
+  },
+  {
+    id: 'overview-panel',
+    menuLabel: 'Overview',
+    config: { type: 'component', componentType: 'overview-panel', id: 'overview-panel', title: '▤ Overview', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createOverviewPanel(ctx)),
   },
   {
     id: 'file-tree',

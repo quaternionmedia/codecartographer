@@ -5,11 +5,27 @@ import { defineConfig, devices } from '@playwright/test';
  * server automatically — most of this app's meaningful behavior (parsing,
  * rendering a real graph) requires a live backend, not just a static page.
  *
- * baseURL uses `localhost`, not `127.0.0.1`: the backend's CORS allowlist
- * (codecarto/main.py) only lists `http://localhost:1234`/`1235` — the two
- * resolve to the same machine but are different CORS origins, and
- * `127.0.0.1` gets silently blocked.
+ * **THE PORTS ARE NOBODY'S DEFAULTS, AND NOTHING ALREADY LISTENING IS REUSED.**
+ * This used to start the backend on 8000 and reuse whatever was already there.
+ * On a workstation running several of this org's servers at once, "already
+ * there" was regularly another project, and an afternoon was spent measuring
+ * it (`governance/qm/handbook/async-contract.md` §4). So: the backend on
+ * 27182 and the dev server on 12340 -- digits of e, the constant `qm dashboard`
+ * gives this project, and ports no default picks; `reuseExistingServer: false`
+ * on both, so a busy port fails the run instead of adopting a stranger; and
+ * `tests/e2e/_identity.spec.ts` asks the API what it is before any other spec
+ * believes an answer from it.
+ *
+ * baseURL uses `localhost`, not `127.0.0.1`: the app talks to its API through
+ * the dev server's proxy, so the browser sees one origin either way, but the
+ * backend's CORS allowlist (codecarto/main.py) names `localhost` and a direct
+ * call from `127.0.0.1` would be silently blocked.
  */
+const API_PORT = 27182;
+const WEB_PORT = 12340;
+const API = `http://127.0.0.1:${API_PORT}`;
+const WEB = `http://localhost:${WEB_PORT}/codecartographer/`;
+
 export default defineConfig({
   testDir: './tests/e2e',
   // webServer starts exactly one backend process, shared by every test --
@@ -26,7 +42,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:1234/codecartographer/',
+    baseURL: WEB,
     trace: 'on-first-retry',
   },
   projects: [
@@ -38,23 +54,28 @@ export default defineConfig({
   webServer: [
     {
       command:
-        'uv run uvicorn codecarto.main:app --host 127.0.0.1 --port 8000',
+        `uv run --no-sync uvicorn codecarto.main:app --host 127.0.0.1 --port ${API_PORT}`,
       cwd: '..',
-      url: 'http://127.0.0.1:8000/docs',
-      reuseExistingServer: !process.env.CI,
+      // The document that names the app, not a page that any server has.
+      url: `${API}/openapi.json`,
+      reuseExistingServer: false,
       timeout: 60_000,
+      // dossier's overview seam, handed over as a fixture so the Overview
+      // panel's happy path runs the real route and the real serializer rather
+      // than a hand-built graph. The shape is what `dossier overview --json`
+      // writes; the names are invented.
+      env: { DOSSIER_OVERVIEW_SEAM: 'web/tests/e2e/fixtures/overview.json' },
     },
     {
       command: 'npm run dev',
-      url: 'http://localhost:1234/codecartographer/',
-      reuseExistingServer: !process.env.CI,
+      url: WEB,
+      reuseExistingServer: false,
       timeout: 30_000,
-      // The dev server proxies API paths, and this says where to. It is stated
-      // rather than defaulted because the backend above is on 8000 while the
-      // trio runs it on 2718 and the container publishes 2020 -- one of the
-      // four addresses this project has meant by "the API", and the reason a
-      // panel could sit forever asking a port nothing answered on.
-      env: { CODECARTO_API: 'http://127.0.0.1:8000' },
+      // The dev server proxies API paths, and this says where to. Stated
+      // rather than defaulted: this project has meant four different addresses
+      // by "the API", and a panel once sat forever asking a port nothing
+      // answered on.
+      env: { CODECARTO_API: API, CODECARTO_WEB_PORT: String(WEB_PORT) },
     },
   ],
 });

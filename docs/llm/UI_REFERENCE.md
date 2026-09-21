@@ -1,30 +1,64 @@
 # UI Reference Guide
 
-Reference for CodeCartographer's control panel and user interface.
+Reference for CodeCartographer's shell, panels, canvas and menus. Where this page and the tree disagree, the tree is right and this page is repaired.
 
 ---
 
 ## Application Shell — Golden Layout
 
-The app uses **Golden Layout 2.x** as its primary shell. All panels are dock tabs that can be freely resized, rearranged, and popped in/out.
+The app uses **Golden Layout 2.x** as its primary shell. Every panel is a
+dockable tab that can be resized, rearranged, closed and re-opened. The list of
+panels is `web/src/layout/panel_registry.ts`, and that file is the authority;
+this table is a reading of it.
 
-| Panel | Default position | Purpose |
-|-------|-----------------|---------|
-| Graph | Main area (top) | D3 graph canvas |
-| Source / Info | Bottom dock tab | File tree, repo info |
-| Actions | Bottom dock tab | Plot/re-plot controls |
+| Panel (menu label) | Registry id | What it is |
+|---|---|---|
+| Graph | `graph` | The one canvas. Every graph in the application draws here — code maps, lexicons, the estate views — through `StreamingGraphRenderer` |
+| Files | `file-tree` | Repository and upload file browser |
+| Upload | `upload-panel` | Local file dropzone, plus the source controls (Load Demo lives here) |
+| Repository | `repo-panel` | GitHub URL fetch, recent graphs, examples |
+| Graphbase | `graphbase-panel` | Durable named bookmarks (needs `MONGODB_URI`) |
+| Graph Settings | `graph-settings-panel` | Layout, physics, styling controls |
+| Actions | `plotbar` | Plot, cancel, status |
+| Estate | `estate-panel` | Every seam this window reads, live or not, with the way to the panel that draws it. In the default dock |
+| Topology | `topology-panel` | Choose one of the harness's flows, or ask what the archive says about a project; the drawing goes to the canvas |
+| Capabilities | `capabilities-panel` | The corpus's capability registry: each declaration and the rung it claims; draw them |
+| Overview | `overview-panel` | dossier's reading of the estate: masthead figures and sections; draw them |
 
-When a panel tab is closed, a **Restore** button appears in the header so it can be re-opened without a page reload. Panels are independently resizable — drag the divider between dock areas.
+**Default layout** (`default_layout.ts`): Graph on top; below it Files on the
+left and a tab stack of Upload (active), Repository, Graph Settings, Actions and
+Estate. Topology, Capabilities and Overview are opened from the **`+`** menu in
+the header — or from a live row in the Estate panel — because each asks its seam
+on open, and a fresh workstation has none up.
+
+**Adding, restoring, saving.** The `+` button (and right-click on the dock) opens
+the add-window menu listing every registered panel not currently open; closing a
+tab and re-adding it goes through the same path. The menu's Layout section saves
+the current arrangement as the default (`localStorage['cc:gl-layout:default']`)
+and resets it.
+
+### The estate panels share three pieces
+
+`web/src/features/estate/`: **`seam_client.ts`** tells the four things a seam can answer
+apart — this window's own API down, the seam unreachable, the seam present and
+unreadable, a document — and is pure, tested under `npm run test:pure`;
+**`problem_view.ts`** is the one way any panel says "nothing was drawn" (what,
+remedy, where it tried, try again); **`provenance.ts`** renders the caveat and
+source a seam put in its graph's metadata, above the controls, and only when the
+canvas holds *that* seam's graph. A panel's problem view wears the panel's class
+prefix (`.topology__problem`, `.capabilities__problem`, …) so its stylesheet and
+its browser tests apply.
 
 ---
 
 ## Control Panel
 
-The control panel is a collapsible sidebar with **two tabs**:
+The source and settings controls (`components/codecarto/control_panel/`) render
+inside the Upload and Repository panels. Two tabs:
 
 | Tab | Purpose |
 |-----|---------|
-| Source | Load data — demo, GitHub repo, cached graphs |
+| Source | Load data — demo, GitHub repo, cached graphs, a lexicon |
 | Graph | Graph settings — layout, physics, styling, compound groups |
 
 ---
@@ -48,6 +82,11 @@ Shown when no repo is loaded. Lists previously parsed graphs from the filesystem
 ## Graph Tab
 
 ### Layout Algorithm
+
+Applies to whatever graph is on the canvas — a code map or an estate graph
+(topology, capabilities, overview). Changing it re-draws the last thing drawn
+with the new layout; the menu's names are the backend registry's, translated by
+one rule in `web/src/features/graph/services/layout_names.ts`.
 
 | Value | Description |
 |-------|-------------|
@@ -222,4 +261,10 @@ PlotActions / StreamingGraphRenderer — graph updates
 
 ### Re-open a Closed Panel
 1. Close any dock tab (×).
-2. Click the **Restore** button that appears in the header.
+2. Click **`+`** in the header and choose the panel from the list.
+
+### See What Is Up
+1. Click the **Estate** tab in the bottom dock.
+2. Each seam is a row: identified (with what it said about itself) or down (with
+   the command that would change that). **ask again** re-probes.
+3. A live row's **open …** button opens the panel that draws that seam.

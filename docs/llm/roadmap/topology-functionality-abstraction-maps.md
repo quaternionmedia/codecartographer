@@ -17,7 +17,7 @@ parsing:
   `external_module` nodes), and directory hierarchy, across every
   language `ParserRegistry` knows (Python via `PythonCustomAST`, C via
   libclang with cross-file `calls`/`FIELD_OF`/`POINTS_TO` resolution,
-  12 more languages via `regex_language_parser.py`).
+  and every other language `regex_language_parser.py` lists).
 - Known gap, already scoped, not started: naive per-file directory
   walking misses real build context for C (generated headers,
   per-file compiler flags) — see

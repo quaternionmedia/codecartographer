@@ -10,15 +10,25 @@ const API = process.env.CODECARTO_API || 'http://127.0.0.1:2718';
 
 // Every path the API owns. A prefix missing from this list is a request the
 // dev server tries to answer itself and cannot, so the list is the contract.
+// Every prefix the backend mounts. `tests/test_docs_routes.py` reads this list
+// and fails when a mounted prefix is missing from it -- a prefix absent here is
+// a request the dev server tries to answer itself and cannot.
 const API_PATHS = [
-  '/topology', '/plotter', '/palette', '/repo', '/parse', '/lexicon',
+  '/topology', '/capabilities', '/overview', '/estate',
+  '/plotter', '/palette', '/repo', '/parse', '/lexicon',
   '/c-parser', '/pam', '/db', '/auth', '/docs', '/openapi.json',
 ];
 
 export default {
   root: 'src',
   server: {
-    port: 1234,
+    // The port is stated, and it is strict. Without `strictPort`, a busy 1234
+    // made Vite move to 1235 and print it -- while every document here, and the
+    // browser tests' config, said 1234. A reader then measured whatever held
+    // 1234, which on this workstation is very often another project's server.
+    // Failing is the honest answer; `CODECARTO_WEB_PORT` moves it on purpose.
+    port: Number(process.env.CODECARTO_WEB_PORT) || 1234,
+    strictPort: true,
     host: '0.0.0.0',
     proxy: Object.fromEntries(
       API_PATHS.map((path) => [path, { target: API, changeOrigin: true }]),

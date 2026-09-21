@@ -32,7 +32,7 @@ from typing import Any
 from fastapi import APIRouter, Query
 
 from codecarto.models.plot_data import PlotOptions
-from codecarto.services import capability_service
+from codecarto.services import capability_service, estate_service
 from codecarto.util.utilities import generate_return
 
 CapabilityRouter = APIRouter()
@@ -78,8 +78,13 @@ async def capabilities_gjgf(
         return _unreadable(reading)
 
     options = _options(layout, palette_id)
+    try:
+        graph = capability_service.as_gjgf(reading, options)
+    except ValueError as error:
+        return generate_return(results=estate_service.unknown_layout(
+            error, f"/capabilities/gjgf?layout={layout}"))
     return generate_return(results={
-        "graph": capability_service.as_gjgf(reading, options),
+        "graph": graph,
         "metadata": capability_service.metadata(reading, options),
     })
 
