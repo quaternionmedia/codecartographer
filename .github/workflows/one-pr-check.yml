@@ -54,15 +54,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # **ONLY THE GOVERNANCE SUBMODULE, INITIALISED BELOW** -- the one
-          # departure from the seed's copy, for the reason adr-lint.yml gives:
-          # `submodules: true` is all-or-nothing and this project also has a
-          # private submodule the runner has no credentials for, so the seed's
-          # checkout aborted with `remote: Repository not found` before the
-          # check ran a line. Seen on the first pull request that carried it.
+          # departure from the seed's copy. `submodules: true` is all-or-nothing
+          # and this project also has a private submodule the runner has no
+          # credentials for, so the seed's checkout aborted with
+          # `remote: Repository not found` before the check ran a line.
           submodules: false
 
       - name: Check out the governance submodule only
-        run: git submodule update --init governance/qm
+        run: git submodule update --init --depth 1 governance/qm
 
       - uses: actions/setup-python@v5
         with:
@@ -78,4 +77,18 @@ jobs:
           # script exits non-zero rather than reporting a repository it could
           # not read as compliant.
           GH_TOKEN: ${{ github.token }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+
+      # The body is posted under the contributor's account and is their statement
+      # of the change; a sentence addressed to them is a tool talking to its
+      # operator under the operator's name. Written to a file first: a body is
+      # multi-line and may hold anything, and an argument would re-parse it.
+      - name: This pull request speaks as its contributor, to the world
+        run: |
+          printf '%s' "$PR_BODY" > "$RUNNER_TEMP/pr-body.md"
+          python governance/qm/project-seed/ci/check_pr_voice.py \
+            --body-file "$RUNNER_TEMP/pr-body.md" \
+            --contributor "$PR_AUTHOR"
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
