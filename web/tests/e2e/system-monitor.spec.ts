@@ -18,7 +18,9 @@ import { test, expect } from '@playwright/test';
 test('the renderer draws whatever definition styling selects', async ({ page }) => {
   await page.goto('/');
   const outcome = await page.evaluate(async () => {
+    // @ts-expect-error -- an absolute Vite dev-server URL, resolved in the browser at run time
     const core = await import('/features/graph/services/system_core.ts');
+    // @ts-expect-error -- an absolute Vite dev-server URL, resolved in the browser at run time
     const mod = await import('/features/graph/services/system_renderer.ts');
 
     const definition = {
@@ -81,8 +83,11 @@ test('moat is derived from its clone and replays real history', async ({ page })
     'no moat clone beside this backend — the derivation from real contents is the subject, so nothing is faked');
 
   const outcome = await page.evaluate(async () => {
+    // @ts-expect-error -- an absolute Vite dev-server URL, resolved in the browser at run time
     const derived = await import('/features/graph/services/derived_system.ts');
+    // @ts-expect-error -- an absolute Vite dev-server URL, resolved in the browser at run time
     const core = await import('/features/graph/services/system_core.ts');
+    // @ts-expect-error -- an absolute Vite dev-server URL, resolved in the browser at run time
     const mod = await import('/features/graph/services/system_renderer.ts');
 
     const moat = new derived.DerivedSystemDefinition('moat');
@@ -99,8 +104,11 @@ test('moat is derived from its clone and replays real history', async ({ page })
       systemMode: 'demo',
     } as never);
     // load() fetches compose+events, then the demo replays paced history —
-    // wait long enough for the first change frame to land in the log.
-    await new Promise(resolve => setTimeout(resolve, 3500));
+    // wait until the first change frame lands in the log, up to 30 s.
+    for (let waited = 0; waited < 30000; waited += 100) {
+      if ((container.querySelector('.sys-log')?.textContent ?? '').includes('REPLAY')) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
 
     const labels = [...container.querySelectorAll('.sys-node')]
       .map(el => el.textContent ?? '');
