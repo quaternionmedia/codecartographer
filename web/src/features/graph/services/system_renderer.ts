@@ -1,95 +1,27 @@
 import { IGraphRenderer } from './base_renderer';
 import { GraphStylingOptions } from '../../../state/types';
 
-// ─── Public types (exported for subclass use) ─────────────────────────────────
+// ─── Types, registry and pure layout live in system_core.ts ─────────────────
+// Re-exported so existing importers keep one import site.
+export {
+  SystemDefinitionRegistry,
+  type SystemDefinition,
+  type SystemNode,
+  type SystemEdge,
+  type SystemEvent,
+  type SystemNodeState,
+  type SystemRendererCallbacks,
+} from './system_core';
 
-/** A node in a system architecture diagram. Position is fractional [0,1]. */
-export interface SystemNode {
-  label: string;
-  sub?: string;
-  /** Horizontal position: 0 = left edge, 1 = right edge */
-  px: number;
-  /** Vertical position: 0 = top edge, 1 = bottom edge */
-  py: number;
-  /** Arbitrary category string — drives default border color */
-  type: string;
-}
-
-/** A directed edge between two nodes. */
-export interface SystemEdge {
-  from: string;
-  to: string;
-  style: 'solid' | 'dashed' | 'dim';
-  label?: string;
-}
-
-/**
- * A generic event from the system being visualized.
- * Requires at minimum `event_type` (string) and optionally `timestamp` (seconds).
- * All other fields are subclass-specific.
- */
-export interface SystemEvent {
-  event_type: string;
-  timestamp?: number;
-  [key: string]: unknown;
-}
-
-/** Visual state of a rendered node. */
-export type SystemNodeState = 'idle' | 'active' | 'success' | 'failed';
-
-// ─── SystemDefinition plugin API ──────────────────────────────────────────────
-
-/**
- * Callbacks passed into SystemDefinition.handleEvent() so definition objects
- * can drive the renderer without holding a `this` reference.
- */
-export interface SystemRendererCallbacks {
-  setNodeState(id: string, state: SystemNodeState): void;
-  firePacket(from: string, to: string, color: string): void;
-  log(text: string, level: 'ok' | 'err' | 'warn' | 'dim'): void;
-  resetAllNodes(): void;
-}
-
-/**
- * A self-contained system architecture definition.
- * Register an instance with SystemDefinitionRegistry to make it selectable
- * from the control panel.
- */
-export interface SystemDefinition {
-  id: string;
-  name: string;
-  description: string;
-  getNodes(): Record<string, SystemNode>;
-  getEdges(): SystemEdge[];
-  getDemoEvents(): SystemEvent[];
-  handleEvent(ev: SystemEvent, cb: SystemRendererCallbacks): void;
-  /** WebSocket path relative to wsBase, e.g. '/pam/ws/live' */
-  wsPath: string;
-  /** HTTP status/health path, e.g. '/pam/status' */
-  httpStatusPath: string;
-}
-
-/** Registry of all registered SystemDefinitions. */
-export class SystemDefinitionRegistry {
-  private static _defs = new Map<string, SystemDefinition>();
-
-  static register(def: SystemDefinition): void {
-    this._defs.set(def.id, def);
-  }
-
-  static get(id: string): SystemDefinition | undefined {
-    return this._defs.get(id);
-  }
-
-  static all(): SystemDefinition[] {
-    return [...this._defs.values()];
-  }
-
-  /** Returns the first registered definition, or undefined if none registered. */
-  static default(): SystemDefinition | undefined {
-    return this._defs.values().next().value as SystemDefinition | undefined;
-  }
-}
+import {
+  SystemDefinitionRegistry,
+  type SystemDefinition,
+  type SystemNode,
+  type SystemEdge,
+  type SystemEvent,
+  type SystemNodeState,
+  type SystemRendererCallbacks,
+} from './system_core';
 
 // ─── Cubic bezier helper ──────────────────────────────────────────────────────
 
@@ -125,42 +57,57 @@ function edgeKey(from: string, to: string): string {
  *   - Node state management and CSS class toggling
  *   - Log strip with level coloring
  *
- * Subclasses must implement:
- *   - `type` / `name` (IGraphRenderer identity)
- *   - `getNodes()` → Record<string, SystemNode>
- *   - `getEdges()` → SystemEdge[]
- *   - `getDemoEvents()` → SystemEvent[]  (each event needs a `timestamp` in seconds)
- *   - `handleEvent(ev)` → void  (maps event fields to setNodeState / firePacket calls)
+ * The renderer is CONCRETE and definition-driven: what to draw and how events
+ * map onto it come from the SystemDefinition selected by `styling.systemId`
+ * out of SystemDefinitionRegistry. This class owns the machinery only.
  *
- * Subclasses may optionally override:
- *   - `nodeTypeColor(type)` → CSS color string
+ * A definition provides:
+ *   - `getNodes()` / `getEdges()` — the diagram
+ *   - `getDemoEvents()` — the canned sequence (each event needs a `timestamp`)
+ *   - `handleEvent(ev, cb)` — event → visual state, through the callbacks
+ *   - `wsPath` — the live/replay feed, '' for none
+ *   - optionally `load()` (async derivation) and `nodeTypeColor()`
  *
- * See `pam_renderer.ts` for a complete worked example.
+ * See `pam_definition.ts` for a hand-drawn worked example and
+ * `derived_system.ts` for one derived from a repository's contents.
  */
-export abstract class SystemRenderer implements IGraphRenderer {
+export class SystemRenderer implements IGraphRenderer {
   // ── IGraphRenderer identity ───────────────────────────────────────────────
   readonly type = 'system';
-  /** Human-readable name shown in the header and control panel. */
-  abstract readonly name: string;
 
-  // ── Abstract data providers — implemented by each concrete subclass ────────
-  /** Return the nodes for this system diagram. */
-  protected abstract getNodes(): Record<string, SystemNode>;
-  /** Return the edges for this system diagram. */
-  protected abstract getEdges(): SystemEdge[];
-  /** Return the demo event sequence (each event needs a `timestamp` in seconds). */
-  protected abstract getDemoEvents(): SystemEvent[];
   /**
-   * Handle a single system event and update visual state.
-   * Use the protected helpers (setNodeState, firePacket, log, resetAllNodes)
-   * to drive the renderer.
+   * The definition being rendered. Resolved per render() from
+   * `styling.systemId` via SystemDefinitionRegistry, so one renderer
+   * instance serves whichever system the control panel selects.
    */
-  protected abstract handleEvent(ev: SystemEvent): void;
-  /**
-   * WebSocket path relative to the base URL for live event streaming.
-   * Example: '/pam/ws/live'
-   */
-  protected abstract readonly wsPath: string;
+  private _def: SystemDefinition | null = null;
+
+  get name(): string { return this._def?.name ?? 'System Monitor'; }
+
+  /** The callbacks handed to SystemDefinition.handleEvent — the whole surface
+   *  a definition may drive the renderer through. */
+  private get _callbacks(): SystemRendererCallbacks {
+    return {
+      setNodeState: (id, state) => this.setNodeState(id, state),
+      firePacket: (from, to, color) => this.firePacket(from, to, color),
+      log: (text, level) => this.log(text, level),
+      resetAllNodes: () => this.resetAllNodes(),
+    };
+  }
+
+  // ── Definition delegation (kept as methods so the private implementation
+  //    below is untouched by the definition refactor) ────────────────────────
+  protected getNodes(): Record<string, SystemNode> {
+    return this._def?.getNodes() ?? {};
+  }
+  protected getEdges(): SystemEdge[] { return this._def?.getEdges() ?? []; }
+  protected getDemoEvents(): SystemEvent[] {
+    return this._def?.getDemoEvents() ?? [];
+  }
+  protected handleEvent(ev: SystemEvent): void {
+    this._def?.handleEvent(ev, this._callbacks);
+  }
+  protected get wsPath(): string { return this._def?.wsPath ?? ''; }
 
   // ── Private state (internal to SystemRenderer) ────────────────────────────
   private _nodeEls: Map<string, HTMLElement> = new Map();
@@ -182,14 +129,41 @@ export abstract class SystemRenderer implements IGraphRenderer {
     this._edgePaths.clear();
     this._eventCount = 0;
 
+    const s = styling as Record<string, unknown> | undefined;
+    const systemId = (s?.systemId as string | undefined) ?? '';
+    // The selected definition, or whichever registered first. Nothing is
+    // hard-wired here: 'pam' is one registration among others.
+    this._def = SystemDefinitionRegistry.get(systemId)
+      ?? SystemDefinitionRegistry.default()
+      ?? null;
+    if (!this._def) {
+      container.textContent =
+        'No system definitions are registered — nothing to monitor.';
+      return;
+    }
+
+    const httpBase = (s?.systemHttpBase as string | undefined) ?? '';
+    const load = this._def.load?.({ httpBase }) ?? Promise.resolve();
+    void load.then(
+      () => this._start(container, s),
+      (why: unknown) => {
+        // The failure is the content. Drawing a stale or empty diagram here
+        // would read as a quiet system, which is the monitor lying.
+        container.textContent =
+          `${this.name}: could not derive the system — ${String(why)}. ` +
+          'Is the backend running? `uv run codecarto dev` starts it.';
+      });
+  }
+
+  private _start(container: HTMLElement, s?: Record<string, unknown>): void {
+    if (!container.isConnected) return; // the viewer navigated away mid-load
     this._injectStyles(container);
     this._buildLayout(container);
     this._runDemo();
 
-    const s = styling as Record<string, unknown> | undefined;
     const wsBase = s?.systemWsBase as string | undefined;
-    const mode   = s?.pamMode      as string | undefined;
-    if (mode !== 'demo' && wsBase) {
+    const mode = (s?.systemMode ?? s?.pamMode) as string | undefined;
+    if (mode !== 'demo' && wsBase && this.wsPath) {
       this._connectLive(`${wsBase}${this.wsPath}`);
     }
   }
@@ -302,9 +276,11 @@ export abstract class SystemRenderer implements IGraphRenderer {
 
   /**
    * Return a CSS color string for a node type.
-   * Override in subclasses to add custom types.
+   * A definition may override per type; unmatched types fall back here.
    */
   protected nodeTypeColor(type: string): string {
+    const fromDef = this._def?.nodeTypeColor?.(type);
+    if (fromDef) return fromDef;
     const map: Record<string, string> = {
       service:  'var(--c-accent,     #00d4ff)',
       core:     'var(--c-font,       #00ff41)',
@@ -617,7 +593,13 @@ export abstract class SystemRenderer implements IGraphRenderer {
     ws.onmessage = (e: MessageEvent): void => {
       try {
         const msg = JSON.parse(e.data as string) as Record<string, unknown>;
-        if (msg.type === 'event') {
+        if (typeof msg.event_type === 'string') {
+          // A bare event frame — the shape /system/ws/replay sends. The PAM
+          // feed wraps its events in an envelope, handled below.
+          this._eventCount++;
+          if (this._statsEl) this._statsEl.textContent = `events: ${this._eventCount}`;
+          this.handleEvent(msg as unknown as SystemEvent);
+        } else if (msg.type === 'event') {
           this._eventCount++;
           if (this._statsEl) this._statsEl.textContent = `events: ${this._eventCount}`;
           this.handleEvent(msg.data as SystemEvent);

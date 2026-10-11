@@ -100,6 +100,7 @@ dev.sh
 
 # rad conformance build output
 web/dist-rad/
+web/dist-system/
 
 # pure-logic test build output
 web/dist-pure/

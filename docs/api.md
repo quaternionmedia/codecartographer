@@ -22,6 +22,7 @@ a port: several of this org's servers run on one workstation.
 | `/c-parser` | c-parser | C/H semantic parsing (requires `[c-parsing]` optional dep) |
 | `/repo` | repo | GitHub + local repository tree operations |
 | `/pam` | pam | PAM auth log monitor |
+| `/system` | system | Derived system diagrams, read from a local clone |
 | `/palette` | palette | Color palette management |
 | `/lexicon` | lexicon | Hand-authored language lexicons, as graphs |
 | `/topology` | topology | The harness's flows, as graph data |
@@ -548,6 +549,33 @@ Stream real-time PAM events as JSON objects:
 Replay a captured session's events at 3x speed.
 
 ---
+
+---
+
+## Derived System Endpoints
+
+A diagram derived from a repository's own declarations by
+`codecarto/services/system_composer.py`, rather than drawn by hand. The
+repository is named, and found beside this checkout by that name; a name with a
+path separator or a leading dot is refused.
+
+### GET `/system/repos`
+
+The repositories this server can find beside its checkout, and where each is.
+
+### GET `/system/compose?repo=moat`
+
+The components and edges the named repository declares.
+
+### GET `/system/events?repo=moat&limit=30`
+
+Recent changes and in-flight branches in the named repository (`limit`: 1-200,
+default 30).
+
+### WebSocket `/system/ws/replay?repo=moat`
+
+The same changes replayed at a readable pace. Every frame carries
+`"replay": true`; it is the clone's history, not a live feed.
 
 ---
 
