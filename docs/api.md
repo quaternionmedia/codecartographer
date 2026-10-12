@@ -90,9 +90,9 @@ bypass the response cache (the cache key doesn't vary on this field).
 **Response:**
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "parse/unified - Success",
-  "data": {
+  "results": {
     "graph": {
       "nodes": {
         "dir::myrepo": { "metadata": { "depth": 0, "kind": "directory", "label": "myrepo", "language": "unknown" }},
@@ -195,9 +195,9 @@ List all registered language parsers and their file extensions.
 **Response:**
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "parse/languages - Success",
-  "data": {
+  "results": {
     "languages": {
       "python": [".py"],
       "c": [".c", ".h"]
@@ -244,8 +244,8 @@ Convert GraphData JSON to pre-rendered HTML for the Notebook renderer.
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": { "text/html": "<html>...</html>" }
+  "status": 200,
+  "results": { "text/html": "<html>...</html>" }
 }
 ```
 
@@ -268,8 +268,8 @@ Parse a single C/H source file.
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": {
+  "status": 200,
+  "results": {
     "graph": {
       "nodes": [...],
       "edges": [...],
@@ -407,8 +407,8 @@ caches" for why these aren't merged into one.
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": {
+  "status": 200,
+  "results": {
     "entries": [
       { "key": "git-git", "owner": "git", "repo": "git", "url": "...", "ts": 1234567890.0, "age_seconds": 120, "size_bytes": 45000000 }
     ]
@@ -467,9 +467,9 @@ curl "$API/repo/tree?url=/path/to/local/project"
 **Response:**
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "read_github_url - Success",
-  "data": {
+  "results": {
     "info": { "owner": "fastapi", "name": "fastapi", "url": "..." },
     "size": 1234567,
     "root": { "name": "fastapi", "files": [...], "folders": [...] },
@@ -779,23 +779,27 @@ response to mistake for a successful lookup.
 
 ## Response Format
 
-All endpoints use a consistent envelope:
+Routes answer in `generate_return`'s envelope (`codecarto/util/utilities.py`):
 
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "route/action - Success",
-  "data": { ... }
+  "results": { ... }
 }
 ```
 
+The estate routes put an absence inside a 200 (`results.unreadable` or
+`results.unreachable`, with `problem`, `remedy` and `where`), because the route
+worked and the thing it reads was not there.
+
 ### Error Response
+
+A route that fails raises, and the server answers with the HTTP status and the
+message alone (`main.py`'s `http_exception_handler`):
+
 ```json
-{
-  "code": 404,
-  "message": "Error description",
-  "data": { "source": "function_name", "params": { ... } }
-}
+{ "message": "Error description" }
 ```
 
 ### Error Codes
@@ -816,7 +820,6 @@ All endpoints use a consistent envelope:
 Allowed origins (configurable in `main.py`):
 - `http://localhost:1234` (Vite dev / parcel)
 - `http://localhost:1235` (Vite alt)
-- `http://localhost:5000` (development tools)
 
 ---
 
