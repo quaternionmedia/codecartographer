@@ -41,6 +41,7 @@ def get_local_repo(
             'dist', 'build', '.eggs', '*.egg-info',
             '.vs', '.idea', '.vscode',
             'bin', 'obj', # .NET build output
+            'target',     # Cargo's (and Maven's) build output -- gigabytes, none of it source
         ]
     
     repo_path = Path(path).resolve()

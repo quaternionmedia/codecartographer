@@ -40,6 +40,9 @@ These are the recommended endpoints. They work across all registered languages
 (.py via Python parser, .c/.h via C parser) and produce gJGF output that any renderer
 can display.
 
+Folder and file ids are the path from the root (`file::ws/crates/hal/src/lib.rs`),
+so two files with one name are two nodes.
+
 ### POST `/parse/unified`
 
 Parse a directory tree to the requested depth and return a gJGF graph.

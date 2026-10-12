@@ -123,6 +123,20 @@ their origin file via each node's `file` attribute if you want correct
 `contains` edges — see `_merge_batch_subgraph` for the depth==2 convention
 the unified pipeline uses.
 
+**A file's key is `File.url or File.name`**, and that is what a node's `file`
+attribute should hold. A file with neither unique -- two uploaded `lib.rs` --
+is given its place in the tree as a `tree://` url before batching, so two files
+with one name are never one key. Folder and file node ids are the path from
+the root (`file::ws/crates/hal/src/lib.rs`) for the same reason.
+
+**A batch parser that knows facts *about files*** -- a declaration naming
+another file, an import reaching one, a file-level attribute -- sets
+`graph.graph["file_relations"]` (`[(source, target, attrs)]`, each end a node
+id or a file key, `attrs["kind"]` the edge kind) and `graph.graph["file_meta"]`
+(`{file_key: {...}}`, merged into that file node's `meta`). The parser does not
+create file nodes -- the walk does -- so the pipeline resolves the keys to them,
+in the in-memory and the streaming paths alike.
+
 ### Unified node schema helpers
 
 ```python

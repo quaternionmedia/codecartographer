@@ -338,15 +338,21 @@ class UnifiedParserService:
         def position_for(file_id: str) -> tuple[float, float]:
             return positions.get(file_id, (0.0, 0.0))
 
-        def node_events_for(sub: nx.DiGraph, file_id_by_stem: dict[str, str]) -> list[str]:
+        def node_events_for(sub: nx.DiGraph, file_id_by_stem: dict[str, str],
+                            file_id_by_key: Optional[dict[str, str]] = None) -> list[str]:
             """Place each node near its origin file's position (grouped, so
             files batched together don't all collapse onto the same point),
             then emit node events followed by edge events."""
+            by_key = file_id_by_key or {}
+
+            def origin(ndata: dict) -> str:
+                attr = ndata.get("file", "")
+                return by_key.get(attr) or file_id_by_stem.get(attr, "")
+
             events: list[str] = []
             by_file: dict[str, list[tuple[str, dict]]] = {}
             for nid, ndata in sub.nodes(data=True):
-                fid = file_id_by_stem.get(ndata.get("file", ""), "")
-                by_file.setdefault(fid, []).append((nid, ndata))
+                by_file.setdefault(origin(ndata), []).append((nid, ndata))
 
             for file_id, sym_nodes in by_file.items():
                 px, py = position_for(file_id)
@@ -372,9 +378,20 @@ class UnifiedParserService:
             for nid, ndata in sub.nodes(data=True):
                 if ndata.get("depth") != 2:
                     continue
-                fid = file_id_by_stem.get(ndata.get("file", ""))
+                fid = origin(ndata)
                 if fid:
                     events.append(f"event: edge\ndata: {json.dumps({'source': fid, 'target': nid, 'kind': 'contains'})}\n\n")
+
+            # Cross-file relations a batch parser stated (Rust's `declares` and
+            # `depends_on`, a linker script's `includes`), resolved the same
+            # way `_apply_file_facts` resolves them for the in-memory path.
+            known = set(sub.nodes) | set(by_key.values())
+            for source, target, attrs in sub.graph.get("file_relations") or []:
+                src = source if source in sub else by_key.get(source)
+                dst = target if target in sub else by_key.get(target)
+                if src in known and dst in known and src != dst:
+                    edge = {"source": src, "target": dst, **attrs}
+                    events.append(f"event: edge\ndata: {json.dumps(edge)}\n\n")
 
             return events
 
@@ -386,7 +403,7 @@ class UnifiedParserService:
             raw = await fetch_raw(dl_url)
             if raw is None:
                 return []
-            file_id = f"file::{folder_name}/{file_name}"
+            file_id = f"file::{folder_name}/{file_name}"  # folder_name is the path from the root
             if getattr(parser, "language", None) == "python":
                 python_raw_by_file_id[file_id] = raw
                 dependency_file_id_by_stem[Path(file_name).stem] = file_id
@@ -399,7 +416,7 @@ class UnifiedParserService:
                 return []
             if annotate_lexicon:
                 annotate_graph_with_lexicon(sub, getattr(parser, "language", ""))
-            return node_events_for(sub, {Path(file_name).stem: file_id})
+            return node_events_for(sub, {Path(file_name).stem: file_id}, {dl_url: file_id})
 
         async def fetch_and_parse_batch(
             parser, entries: list[tuple[str, str, str]]
@@ -412,11 +429,13 @@ class UnifiedParserService:
             raws = await asyncio.gather(*(fetch_raw(du) for _, _, du in entries))
             files: list[File] = []
             file_id_by_stem: dict[str, str] = {}
+            file_id_by_key: dict[str, str] = {}
             for (folder_name, file_name, dl_url), raw in zip(entries, raws):
                 if raw is None:
                     continue
                 files.append(File(url=dl_url, name=file_name, size=0, raw=raw))
                 file_id_by_stem[Path(file_name).stem] = f"file::{folder_name}/{file_name}"
+                file_id_by_key[dl_url] = f"file::{folder_name}/{file_name}"
 
             if not files:
                 return []
@@ -433,7 +452,7 @@ class UnifiedParserService:
                 return []
             if annotate_lexicon:
                 annotate_graph_with_lexicon(sub, getattr(parser, "language", ""))
-            return node_events_for(sub, file_id_by_stem)
+            return node_events_for(sub, file_id_by_stem, file_id_by_key)
 
         # Split into per-file (progressive) vs batch_whole_tree (correctness
         # over progressiveness — e.g. C, for cross-file CALLS resolution).
@@ -613,9 +632,18 @@ class UnifiedParserService:
         depth: int,
         allowed_exts: set[str],
         pending: dict[int, tuple[object, list[tuple[File, str]]]],
+        path: Optional[str] = None,
     ) -> str:
-        """Add a depth-0 directory node and recurse into its contents."""
-        folder_id = f"dir::{folder.name}"
+        """Add a depth-0 directory node and recurse into its contents.
+
+        **AN ID IS THE PATH FROM THE ROOT, NOT THE FOLDER'S NAME.** Two folders
+        named `src` are two folders. Keyed by name alone, every crate's `src`
+        and every crate's `src/lib.rs` in a Cargo workspace were one node
+        carrying all of their symbols -- and so was every package's `tests` --
+        with nothing in the picture to say so.
+        """
+        path = path or folder.name
+        folder_id = f"dir::{path}"
 
         graph.add_node(
             folder_id,
@@ -649,7 +677,7 @@ class UnifiedParserService:
         parseable_files: list[tuple[File, str]] = []
         for ext, file_list in files_by_ext.items():
             for file in file_list:
-                file_id = f"file::{folder.name}/{file.name}"
+                file_id = f"file::{path}/{file.name}"
 
                 graph.add_node(
                     file_id,
@@ -678,17 +706,26 @@ class UnifiedParserService:
                 try:
                     sub = parser.parse_files([file], depth=depth)
                     _merge_subgraph(graph, sub, file_id)
+                    _apply_file_facts(graph, sub, {_file_key(file): file_id})
                 except Exception:
                     pass  # Best-effort; directory structure still present
             for key, (parser, items) in batch_items.items():
                 if key not in pending:
                     pending[key] = (parser, [])
-                pending[key][1].extend(items)
+                # A batch parser keys files by `url or name`, and two uploaded
+                # `lib.rs` have the same name. A file with no url is given its
+                # place in the tree -- under a scheme no disk path has, so an
+                # adapter that opens real files (C's) never opens one by it.
+                pending[key][1].extend(
+                    (f if f.url else f.model_copy(update={"url": f"tree://{fid[len('file::'):]}"}), fid)
+                    for f, fid in items
+                )
 
         # ── Subfolders ────────────────────────────────────────────────────────
         for subfolder in folder.folders:
             UnifiedParserService._walk_folder(
-                graph, subfolder, folder_id, depth, allowed_exts, pending
+                graph, subfolder, folder_id, depth, allowed_exts, pending,
+                path=f"{path}/{subfolder.name}",
             )
 
         return folder_id
@@ -737,12 +774,19 @@ def _collect_parseable(
     folder: Folder,
     allowed_exts: set[str],
     result: list[tuple[str, str, str]],
+    path: Optional[str] = None,
 ) -> None:
-    """Collect (folder_name, file_name, download_url) for parseable files."""
-    for owning_folder, f in folder.iter_files():
+    """Collect (folder_path, file_name, download_url) for parseable files.
+
+    `folder_path` runs from the root as `_walk_folder` builds ids, so the file
+    id a symbol is attached to is the id the structure phase streamed."""
+    path = path or folder.name
+    for f in folder.files:
         ext = Path(f.name).suffix.lower()
         if ext in allowed_exts and f.url:
-            result.append((owning_folder.name, f.name, f.url))
+            result.append((path, f.name, f.url))
+    for sub in folder.folders:
+        _collect_parseable(sub, allowed_exts, result, f"{path}/{sub.name}")
 
 
 def _ext_to_language(ext: str) -> str:
@@ -902,22 +946,28 @@ def _parse_pending_batches(
     for parser, file_entries in pending.values():
         files = [f for f, _ in file_entries]
         file_id_by_stem = {Path(f.name).stem: fid for f, fid in file_entries}
+        file_id_by_key = {_file_key(f): fid for f, fid in file_entries}
 
         try:
             sub = parser.parse_files(files, depth=depth)
         except Exception:
             continue  # Best-effort; directory structure still present
 
-        _merge_batch_subgraph(graph, sub, file_id_by_stem)
+        _merge_batch_subgraph(graph, sub, file_id_by_stem, file_id_by_key)
+        _apply_file_facts(graph, sub, file_id_by_key)
 
 
 def _merge_batch_subgraph(
     graph: nx.DiGraph,
     sub: nx.DiGraph,
     file_id_by_stem: dict[str, str],
+    file_id_by_key: Optional[dict[str, str]] = None,
 ) -> None:
     """Merge a whole-tree batch's subgraph, attributing each top-level
-    (depth=2) node to its origin file via the node's `file` stem.
+    (depth=2) node to its origin file via the node's `file` attribute: the
+    file's full key (`File.url or File.name`) when the parser kept it, its
+    stem otherwise. The stem is how the C adapter attributes, and it cannot
+    tell two `lib.rs` apart; the key can.
 
     Depth=3 nodes (fields, enum constants, …) are deliberately NOT given a
     direct file edge — they already have a structural edge from their
@@ -926,9 +976,55 @@ def _merge_batch_subgraph(
     graph.add_nodes_from(sub.nodes(data=True))
     graph.add_edges_from(sub.edges(data=True))
 
+    by_key = file_id_by_key or {}
     for node_id, data in sub.nodes(data=True):
         if data.get("depth") != 2:
             continue
-        file_id = file_id_by_stem.get(data.get("file", ""))
+        origin = data.get("file", "")
+        file_id = by_key.get(origin) or file_id_by_stem.get(origin)
         if file_id and not graph.has_edge(file_id, node_id):
             graph.add_edge(file_id, node_id, **make_edge("contains"))
+
+
+def _file_key(file: File) -> str:
+    """What a parser writes in a node's `file` attribute for this file."""
+    return file.url or file.name
+
+
+def _apply_file_facts(
+    graph: nx.DiGraph,
+    sub: nx.DiGraph,
+    file_id_by_key: dict[str, str],
+) -> list[tuple[str, str, dict]]:
+    """Carry what a parser said *about files* onto the file nodes.
+
+    A parser does not create the depth-1 file nodes -- the walk does -- so
+    anything it knows about a file travels on its graph's attributes, keyed
+    by the file key it was given:
+
+    - `sub.graph["file_meta"]`: `{file_key: {...}}`, merged into that file
+      node's `meta` (Rust's `#![no_std]`, say).
+    - `sub.graph["file_relations"]`: `[(source, target, attrs)]`, where each
+      end is a node id already in the graph or a file key, and `attrs` carries
+      the edge `kind` (`declares`, `depends_on`, `includes`, ...).
+
+    Returns the edges it added, resolved to node ids, so a streaming caller
+    can emit them. An end that resolves to nothing is dropped: it named a
+    file this parse does not contain.
+    """
+    for key, facts in (sub.graph.get("file_meta") or {}).items():
+        file_id = file_id_by_key.get(key)
+        if file_id and file_id in graph:
+            graph.nodes[file_id].setdefault("meta", {}).update(facts)
+    added: list[tuple[str, str, dict]] = []
+    for source, target, attrs in sub.graph.get("file_relations") or []:
+        src = source if source in graph else file_id_by_key.get(source)
+        dst = target if target in graph else file_id_by_key.get(target)
+        if not src or not dst or src == dst:
+            continue
+        edge = {**make_edge(attrs.get("kind", "depends_on")),
+                **{k: v for k, v in attrs.items() if k != "kind"}}
+        if not graph.has_edge(src, dst):
+            graph.add_edge(src, dst, **edge)
+            added.append((src, dst, edge))
+    return added
