@@ -14,7 +14,7 @@ import pytest
 
 from codecarto.services import construct_service
 from codecarto.services.lexicon_service import LexiconService
-from codecarto.services.parsers import c_language_parser
+from codecarto.services.parsers import c_language_parser, linker_script_parser, rust_language_parser
 
 VOCABULARY = construct_service.load()
 IDS = {c.id for c in VOCABULARY.constructs}
@@ -57,6 +57,11 @@ def test_every_look_is_a_shape_the_canvas_draws():
     assert shapes <= construct_service.CANVAS_SHAPES
 
 
+def test_rust_parser_kinds_and_the_vocabulary_agree_both_ways():
+    mapped = set(VOCABULARY.languages["rust"].kinds)
+    assert set(rust_language_parser.KINDS) == mapped
+
+
 def test_c_adapter_kinds_are_all_mapped():
     c_kinds = c_language_parser._DEPTH_2_KINDS | c_language_parser._DEPTH_3_KINDS
     assert c_kinds == set(VOCABULARY.languages["c"].kinds)
@@ -73,6 +78,14 @@ def test_c_reference_design_and_the_vocabulary_agree():
         if actual != (look.shape, look.color):
             disagree.append((kind, actual, (look.shape, look.color)))
     assert not disagree
+
+
+def test_linker_kinds_are_mapped():
+    graph = linker_script_parser.LinkerScriptParser().parse_files([
+        linker_script_parser.File(name="m.x", raw="MEMORY { RAM : ORIGIN = 0, LENGTH = 1K }\n"
+                                                   "ENTRY(r)\nx = 1;\nSECTIONS { .t : { } > RAM }")])
+    kinds = {d["kind"] for _, d in graph.nodes(data=True)}
+    assert kinds == set(VOCABULARY.languages["linker"].kinds)
 
 
 # ── annotate ──────────────────────────────────────────────────────────────────

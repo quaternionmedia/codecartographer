@@ -26,7 +26,8 @@
 │  ┌─────────────────────────▼───────────────────────────────┐    │
 │  │                      Parsers                             │    │
 │  │  PythonLanguageParser  CLangaugeParser                   │    │
-│  │  RegexLanguageParser   (20 languages, Phase 1 regex)    │    │
+│  │  RustLanguageParser    LinkerScriptParser                │    │
+│  │  RegexLanguageParser   (one regex adapter per language)  │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
 └─────────────────────────┬───────────────────────────────────────┘
                           │
@@ -82,7 +83,9 @@ codecarto/
 │       ├── python_language_parser.py   # Python (custom AST visitor)
 │       ├── c_language_parser.py        # C/H (libclang adapter, batch_whole_tree)
 │       ├── c_parser.py                 # libclang core
-│       ├── regex_language_parser.py    # 20-language regex adapter (Phase 1)
+│       ├── rust_language_parser.py     # Rust, item level (tokenizer, batch_whole_tree)
+│       ├── linker_script_parser.py     # GNU ld scripts and memory.x
+│       ├── regex_language_parser.py    # one regex adapter per language (Phase 1)
 │       └── pam_parser.py              # PAM log parser
 │
 ├── models/

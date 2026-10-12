@@ -23,6 +23,8 @@ services/
     ├── language_parser.py     # LanguageParser Protocol + ParserRegistry
     ├── python_language_parser.py
     ├── c_language_parser.py
+    ├── rust_language_parser.py   # Rust at the item level: tokenizer, module tree, relations
+    ├── linker_script_parser.py   # GNU ld scripts and memory.x: regions, sections, symbols
     ├── regex_language_parser.py  # one regex adapter per language; `_LANGUAGES` is the list
     └── ASTs/
         └── python_custom_ast.py

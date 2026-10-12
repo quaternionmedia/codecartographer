@@ -37,8 +37,9 @@ a port: several of this org's servers run on one workstation.
 ## Unified Parse Endpoints
 
 These are the recommended endpoints. They work across all registered languages
-(.py via Python parser, .c/.h via C parser) and produce gJGF output that any renderer
-can display.
+(`GET /parse/languages` lists them: Python by its AST, C/C++ by libclang, Rust by
+an item-level reader, linker scripts by theirs, the rest by a regex per language)
+and produce gJGF output that any renderer can display.
 
 Folder and file ids are the path from the root (`file::ws/crates/hal/src/lib.rs`),
 so two files with one name are two nodes.
