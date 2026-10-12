@@ -137,6 +137,28 @@ id or a file key, `attrs["kind"]` the edge kind) and `graph.graph["file_meta"]`
 create file nodes -- the walk does -- so the pipeline resolves the keys to them,
 in the in-memory and the streaming paths alike.
 
+### Joining the construct vocabulary
+
+A parser's `kind` says what its language calls a thing. To have its nodes carry
+`construct` (what the thing *is*, the same in every language), drawn with the
+shared looks and read by the chrestomathy, add the language under `languages:`
+in `codecarto/data/constructs.yaml`:
+
+- `kinds`: each kind the parser emits, to a construct. A parser that exports
+  its kinds is held to the map in both directions by
+  `tests/test_construct_service.py`.
+- `qualifiers`, `attributes`, `macros`, `meta`: what in a node's `meta` makes it
+  *also* a facet (`unsafe` -> `memory.unsafe`, `#[interrupt]` ->
+  `firmware.interrupt`).
+- `refine`: a kind that is a different construct when a meta flag is set (a
+  Rust `enum` with `c_like` is an enumeration, not a sum type).
+
+Add the language's spellings under each construct's `spelled:` -- every token
+there must be in that language's lexicon, and a language with no spelling gets
+a `note` saying how it does without. A parser may call
+`construct_service.annotate(graph)` itself; the pipeline calls it on every parse
+regardless, and a look the parser set is never overwritten.
+
 ### Unified node schema helpers
 
 ```python

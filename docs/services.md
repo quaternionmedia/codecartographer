@@ -16,6 +16,7 @@ services/
 ├── cache_service.py           # Parsed-graph + repo-tree cache (filesystem + optional MongoDB)
 ├── c_parser_service.py        # C-specific parse orchestration (libclang)
 ├── lexicon_service.py         # Hand-authored language lexicons -> graph
+├── construct_service.py       # What a node is across languages; the chrestomathy
 ├── graph_serializer.py        # Graph JSON serialization
 ├── position_service.py        # Node positioning
 └── parsers/
@@ -227,6 +228,19 @@ endpoints in `docs/api.md`.
 | `load(language)` | Load + validate a language's YAML into a `Lexicon` |
 | `to_graph(lexicon)` | Project to an `nx.DiGraph` |
 | `to_json(lexicon)` | Project to the node-link `{nodes, links}` shape the plotter consumes |
+
+---
+
+## construct_service
+
+**File:** `construct_service.py`, data in `data/constructs.yaml`
+
+What a parsed node *is*, said once for every language the vocabulary lists.
+`annotate(graph)` stamps `construct` and `meta.facets` and gives a node with no
+look of its own its construct's; the unified pipeline runs it on every parse.
+`reading(id)`, `table()` and `as_graph(id)` are the chrestomathy behind
+`/lexicon/constructs` and `/lexicon/chrestomathy/*`. `layer_color(ordinal)` is
+the one abstraction-layer ramp.
 
 ---
 

@@ -38,7 +38,7 @@ the chrestomathy of code -- is `plans/the-web-window.md` in the governance corpu
 
 | Document | Description |
 |----------|-------------|
-| [roadmap/lexicon.md](llm/roadmap/lexicon.md) | Language lexicons on abstraction layers -- C and Python shipped, a third language is the next step |
+| [roadmap/lexicon.md](llm/roadmap/lexicon.md) | Language lexicons on abstraction layers -- C, Python and Rust -- and the construct vocabulary the chrestomathy reads |
 | [roadmap/topology-functionality-abstraction-maps.md](llm/roadmap/topology-functionality-abstraction-maps.md) | What maps of code and of systems already mean here, and what is open |
 | [roadmap/c_parser_phase3_compile_commands.md](llm/roadmap/c_parser_phase3_compile_commands.md) | C parser phase 3 — compile_commands.json support |
 

@@ -24,7 +24,7 @@ a port: several of this org's servers run on one workstation.
 | `/pam` | pam | PAM auth log monitor |
 | `/system` | system | Derived system diagrams, read from a local clone |
 | `/palette` | palette | Color palette management |
-| `/lexicon` | lexicon | Hand-authored language lexicons, as graphs |
+| `/lexicon` | lexicon | Hand-authored language lexicons, the construct vocabulary and the chrestomathy |
 | `/topology` | topology | The harness's flows, as graph data |
 | `/capabilities` | capabilities | What each named thing this estate can do has reached |
 | `/overview` | overview | dossier's reading of the estate, as graph data |
@@ -42,6 +42,11 @@ can display.
 
 Folder and file ids are the path from the root (`file::ws/crates/hal/src/lib.rs`),
 so two files with one name are two nodes.
+
+Every node a language in `codecarto/data/constructs.yaml` produces also carries
+`construct` -- what it *is*, the same across languages (`type.product` for a C or
+Rust struct) -- and, where its qualifiers, attributes or body say so,
+`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`).
 
 ### POST `/parse/unified`
 
@@ -696,6 +701,32 @@ dump — that shape isn't recognized by the frontend renderer at all
 Token-spelling → contexts lookup (which layers/groups a token appears
 in) — the join `unified_parser_service.py`'s `annotate_lexicon` flag
 uses to enrich real parsed graphs (see `POST /parse/unified` above).
+Annotated nodes also carry `layer_color`, which "Color By: Abstraction
+Layer" draws and the legend names.
+
+### GET `/lexicon/constructs`
+
+The construct vocabulary (`codecarto/data/constructs.yaml`) as an index: each
+construct's `id`, `name`, `gloss`, whether it is a `facet` (something a node can
+*also* be) and the `languages` that spell or parse it. Registered before
+`/lexicon/{language}`, which would otherwise answer for it.
+
+### GET `/lexicon/chrestomathy/{construct}`
+
+One construct set beside itself across every language: per language, the
+`tokens` that spell it with their lexicon `contexts` (layer and group), the
+parser `kinds` that realise it, what `carried_by` a facet in source (`#[interrupt]`,
+`qualifier volatile`), and a `note`. **A language with no spelling is a row with
+its note, never a missing row** -- Rust has no `volatile`, C has no method. An
+unknown construct is a 200 with `unreadable`, `problem` and the known ids as
+`remedy`.
+
+### GET `/lexicon/chrestomathy/{construct}/gjgf?layout=`
+
+The same reading as `GraphData`: the construct at the centre, each language
+around it (a silent one on a dashed edge, its note as the hover), tokens
+coloured by abstraction layer. `metadata.kind` is `chrestomathy`, with the
+`layers` ramp and the `caveat`.
 
 
 ---
