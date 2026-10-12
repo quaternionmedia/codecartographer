@@ -6,6 +6,8 @@ import type { TopologyChoices, TopologyProblem, TopologyRequest } from '../servi
 import { EstateService } from '../features/estate/estate_service';
 import type { CapabilitiesDocument, DrawRequest, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
 import { isProblem } from '../features/estate/seam_client';
+import { CartographyService } from '../features/cartography/cartography_service';
+import type { CargoDocument, ChrestomathyDocument, ConstructIndex } from '../features/cartography/cartography_service';
 import type { SeamOutcome, SeamProblem } from '../features/estate/seam_client';
 import { RepoService } from '../features/repository';
 import { GraphData } from '../features/graph';
@@ -598,6 +600,58 @@ export class PlotActions {
     this._draw(found, 'overviewProblem');
   }
 
+  // --- code cartography: a Cargo workspace, and the chrestomathy ------------
+  //
+  // The same four outcomes and the same two fields per reading as the estate
+  // above: a document or the sentence saying why there is none.
+
+  /** What the server reads at a workspace path. Draws nothing; runs nothing. */
+  async loadCargoReading(path: string): Promise<void> {
+    this.stateController.update({ cargoPath: path });
+    const found = await CartographyService.cargoData(this.stateController.api.cargo, path);
+    this._settle(found, 'cargoReading', 'cargoProblem');
+  }
+
+  /** The workspace as a graph, on the canvas. */
+  async drawCargo(options: { features?: boolean; transitive?: boolean } = {}): Promise<void> {
+    this.stateController.clear();
+    const found = await CartographyService.cargoGraph(this.stateController.api.cargo, {
+      path: this.stateController.state.cargoPath,
+      layout: this._layout(),
+      ...options,
+    });
+    this._draw(found, 'cargoProblem');
+  }
+
+  /** Every construct, for the panel's choice. */
+  async loadConstructIndex(): Promise<void> {
+    const found = await CartographyService.constructs(this.stateController.api.lexicon);
+    if (isProblem(found)) {
+      this.stateController.update({ constructIndex: null, chrestomathyProblem: found.problem });
+    } else {
+      this.stateController.update({ constructIndex: found.document as unknown as ConstructIndex });
+    }
+    this.stateController.redraw();
+  }
+
+  /** One construct across every language, for the panel's table. */
+  async loadChrestomathy(construct: string): Promise<void> {
+    this.stateController.update({ constructChosen: construct });
+    const found = await CartographyService.chrestomathy(this.stateController.api.lexicon, construct);
+    this._settle(found, 'chrestomathyReading', 'chrestomathyProblem');
+  }
+
+  /** The chosen construct as a graph, tokens coloured by abstraction layer. */
+  async drawChrestomathy(): Promise<void> {
+    this.stateController.clear();
+    const found = await CartographyService.chrestomathyGraph(
+      this.stateController.api.lexicon,
+      this.stateController.state.constructChosen,
+      this._layout(),
+    );
+    this._draw(found, 'chrestomathyProblem');
+  }
+
   private _layout(): string {
     return convertLayoutToBackend(this.stateController.state.graphStyling.layout);
   }
@@ -605,8 +659,8 @@ export class PlotActions {
   /** Put a document in one field and clear the other, or the reverse. */
   private _settle(
     found: SeamOutcome,
-    readingField: 'capabilitiesReading' | 'overviewReading',
-    problemField: 'capabilitiesProblem' | 'overviewProblem',
+    readingField: 'capabilitiesReading' | 'overviewReading' | 'cargoReading' | 'chrestomathyReading',
+    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'cargoProblem' | 'chrestomathyProblem',
   ): void {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {
@@ -614,7 +668,8 @@ export class PlotActions {
       patch[problemField] = found.problem;
       logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
     } else {
-      patch[readingField] = found.document as unknown as CapabilitiesDocument | OverviewDocument;
+      patch[readingField] = found.document as unknown as
+        CapabilitiesDocument | OverviewDocument | CargoDocument | ChrestomathyDocument;
       patch[problemField] = null;
     }
     this.stateController.update(patch);
@@ -629,7 +684,10 @@ export class PlotActions {
    * claim, and a false one. **AND REDRAW**: `update` changes state without
    * repainting, and this resolves outside any DOM handler.
    */
-  private _draw(found: SeamOutcome, problemField: 'capabilitiesProblem' | 'overviewProblem'): void {
+  private _draw(
+    found: SeamOutcome,
+    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'cargoProblem' | 'chrestomathyProblem',
+  ): void {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {
       patch[problemField] = found.problem as SeamProblem;

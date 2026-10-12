@@ -77,6 +77,10 @@ ESTATE_PANELS = (
     "web/src/features/estate/estate_service.ts",
     "web/src/features/estate/problem_view.ts",
     "web/src/features/estate/provenance.ts",
+    "web/src/layout/panels/cargo_panel.ts",
+    "web/src/layout/panels/chrestomathy_panel.ts",
+    "web/src/features/cartography/cartography_service.ts",
+    "web/src/features/cartography/chrestomathy_rows.ts",
 )
 
 
