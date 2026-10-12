@@ -97,6 +97,7 @@ export class StreamingGraphRenderer {
       labelSize: styling?.labelSize ?? 9,
       labelColor: styling?.labelColor ?? '#aaaaaa',
       interactionProfile: styling?.interactionProfile ?? 'default',
+      colorBy: styling?.colorBy ?? 'auto',
     };
 
     container.innerHTML = '';
@@ -231,6 +232,17 @@ export class StreamingGraphRenderer {
     }
     if (options.labelColor !== undefined) {
       this.labelGroup.selectAll('text').attr('fill', options.labelColor);
+    }
+    if (options.colorBy !== undefined) {
+      // Recolour in place: the drawn graph is the same graph, read by a
+      // different property. `data-base-fill` moves too, so a highlight that
+      // restores the base restores the colour now chosen.
+      for (const [id, el] of this._nodeGroupEl) {
+        const n = this.nodeById.get(id);
+        if (!n) continue;
+        const fill = this._fillFor(n);
+        d3.select(el).select('path').attr('fill', fill).attr('data-base-fill', fill);
+      }
     }
     if (options.showCompoundGroups !== undefined) {
       if (options.showCompoundGroups) {
@@ -369,10 +381,10 @@ export class StreamingGraphRenderer {
     // Cache element for O(1) drag-propagation lookups (avoids per-frame CSS selector)
     this._nodeGroupEl.set(node.id, group.node()!);
 
-    const baseFill = (node.color as string) || 'steelblue';
+    const baseFill = this._fillFor(node);
     group
       .append('path')
-      .attr('d', this._nodePath(node.shape as string, size))
+      .attr('d', this._nodePath(node.shape as string, size, this._sidesOf(node)))
       .attr('fill', baseFill)
       // Remembered so a colour override can be undone without re-deriving
       // the parser's visual grammar here.
@@ -767,8 +779,30 @@ export class StreamingGraphRenderer {
   }
 
   /** Shapes come from `node_shapes`, so the legend's swatches match. */
-  private _nodePath(shape: string | undefined, s: number): string {
-    return nodePath(shape, s);
+  /**
+   * The fill a node is drawn with.
+   *
+   * **"COLOR BY: ABSTRACTION LAYER" READS `layer_color`, WHICH THE SERVER SETS.**
+   * The option existed and nothing read it once the renderer that did was
+   * deleted -- choosing it changed a setting and not a pixel. The ramp lives
+   * with the lexicons (`construct_service.LAYER_RAMP`); a node with no layer
+   * keeps its own colour, as the control's tooltip says.
+   */
+  private _fillFor(node: GraphNode): string {
+    if (this.styling.colorBy === 'layer' && typeof node.layer_color === 'string') {
+      return node.layer_color;
+    }
+    return (node.color as string) || 'steelblue';
+  }
+
+  /** `meta.sides`, for the `ngon` shape the C and Rust parsers draw records with. */
+  private _sidesOf(node: GraphNode): number | undefined {
+    const meta = node.meta as { sides?: unknown } | undefined;
+    return typeof meta?.sides === 'number' ? meta.sides : undefined;
+  }
+
+  private _nodePath(shape: string | undefined, s: number, sides?: number): string {
+    return nodePath(shape, s, sides);
   }
 
   private _updateEdgesForNode(nodeId: string, x: number, y: number): void {
