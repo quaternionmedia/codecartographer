@@ -166,6 +166,8 @@ class Reading:
     build_success: bool | None = None
     firmware: dict[str, Any] = field(default_factory=dict)
     lock: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    memory: dict[str, dict[str, Any]] = field(default_factory=dict)
+    """Per recorded map, by binary: each region's measured use."""
     notes: list[str] = field(default_factory=list)
     reason: str = ""
     newest_source: float = 0.0
@@ -248,8 +250,66 @@ def read(path: Path | str, documents: Path | str | None = None) -> Reading:
 
     check_doc = _read_check(reading, docs_dir, root)
     reading.documents.append(check_doc)
+    for map_path in sorted(docs_dir.glob("*.map")) if docs_dir.is_dir() else []:
+        reading.documents.append(_read_map(reading, map_path, docs_dir, root))
     reading.firmware = _firmware(root, reading, memory_maps, toml)
     return reading
+
+
+def _read_map(reading: Reading, map_path: Path, docs_dir: Path, root: Path) -> Document:
+    """A recorded link map, measured against the regions its binary links into.
+
+    The binary is the map's name (`blinky.map` is the `blinky` bin target);
+    its regions are the map's own memory table when the linker printed one
+    (GNU ld), else the `memory.x` beside the package that owns the binary."""
+    from codecarto.services import link_map_service
+
+    doc = _document(docs_dir, map_path.name, reading.newest_source, root)
+    link_map = link_map_service.read(map_path)
+    if not link_map.ok:
+        doc.problem = link_map.reason
+        return doc
+    owner = next((p for p in reading.packages if p.member and any(
+        t.name == map_path.stem and "bin" in t.kinds for t in p.targets)), None)
+    regions = list(link_map.regions)
+    if not regions and owner is not None:
+        regions = _regions_of(root, owner.memory_maps)
+    if not regions:
+        doc.problem = ("no memory regions to measure against: the map prints none, and no "
+                       f"package with a `{map_path.stem}` binary has a memory.x")
+        return doc
+    reading.memory[map_path.stem] = {
+        "map": map_path.name,
+        "format": link_map.format,
+        "package": owner.name if owner else "",
+        "regions": [u.as_dict() for u in link_map_service.usage(link_map, regions)],
+        "recorded_at": doc.generated_at,
+        "stale": doc.stale,
+    }
+    doc.used = True
+    if doc.stale:
+        doc.problem = "a source changed after this link was recorded"
+    return doc
+
+
+def _regions_of(root: Path, paths: list[str]) -> list:
+    """The regions the linker scripts at *paths* declare, with their sizes."""
+    from codecarto.models.source_data import File
+    from codecarto.services.link_map_service import Region
+    from codecarto.services.parsers.linker_script_parser import LinkerScriptParser
+
+    files = []
+    for rel in paths:
+        try:
+            files.append(File(name=Path(rel).name, url=str(root / rel),
+                              raw=(root / rel).read_text(encoding="utf-8")))
+        except OSError:
+            continue
+    graph = LinkerScriptParser().parse_files(files)
+    return [Region(d["label"], d["meta"]["origin_value"], d["meta"]["length_bytes"])
+            for _, d in graph.nodes(data=True)
+            if d.get("kind") == "region" and d["meta"].get("origin_value") is not None
+            and d["meta"].get("length_bytes")]
 
 
 def _walk(root: Path, reading: Reading) -> tuple[list[Path], list[Path], float]:
@@ -781,13 +841,17 @@ def as_graph(reading: Reading, features: bool = False, transitive: bool = False)
                     (d.target == target.name or (not d.target and kind0 == "lib"))]
             counts = _diagnostic_counts(mine)
             label = "build.rs" if kind0 == "custom-build" else f"{kind0} {target.name}"
-            graph.add_node(target_id, label=label + _count_label(counts), kind="target", depth=2,
-                           shape=shape, color=color,
+            memory = reading.memory.get(target.name) if kind0 == "bin" else None
+            fills = ", ".join(f"{r['name']} {r['fill']:.1%}" for r in memory["regions"]) if memory else ""
+            graph.add_node(target_id, label=label + _count_label(counts) + (f" · {fills}" if fills else ""),
+                           kind="target", depth=2, shape=shape, color=color,
                            meta={"kinds": target.kinds, "src": target.src, "declared": target.declared,
                                  "diagnostics": counts,
-                                 "messages": [f"{d.level}: {d.message} ({d.file}:{d.line})" for d in mine[:20]]},
+                                 "messages": [f"{d.level}: {d.message} ({d.file}:{d.line})" for d in mine[:20]],
+                                 **({"memory": memory} if memory else {})},
                            file=target.src,
-                           hover=f"{label} — {target.src}" + (f" — {mine[0].level}: {mine[0].message}" if mine else ""))
+                           hover=f"{label} — {target.src}" + (f" — {mine[0].level}: {mine[0].message}" if mine else "")
+                           + (f" — linked: {fills}, from {memory['map']}" if memory else ""))
             graph.add_edge(crate_id, target_id, kind="contains", label="target")
             if kind0 == "custom-build":
                 script_id = target_id
@@ -910,6 +974,9 @@ def caveat(reading: Reading) -> str:
     else:
         parts.append(f"Diagnostics are what rustc said at {check.generated_at}"
                      + (", and a source has changed since." if check.stale else "."))
+    for binary, memory in sorted(reading.memory.items()):
+        parts.append(f"{binary}'s memory use is its linker map, recorded at {memory['recorded_at']}"
+                     + (", and a source has changed since." if memory["stale"] else "."))
     if reading.notes:
         parts.append(" ".join(reading.notes))
     return " ".join(parts)
@@ -932,6 +999,7 @@ def metadata(reading: Reading, options: Any = None) -> dict[str, Any]:
         "build_success": reading.build_success,
         "documents": [asdict(d) for d in reading.documents],
         "firmware": reading.firmware,
+        "memory": reading.memory,
         "caveat": caveat(reading),
     }
 
@@ -958,6 +1026,7 @@ def as_data(reading: Reading) -> dict[str, Any]:
         "scripts": reading.scripts,
         "build_success": reading.build_success,
         "firmware": reading.firmware,
+        "memory": reading.memory,
         "notes": reading.notes,
         "caveat": caveat(reading),
     }

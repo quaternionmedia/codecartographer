@@ -51,7 +51,9 @@ Rust struct) -- and, where its qualifiers, attributes or body say so,
 `meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`). A local
 Rust repository with a recorded `target/codecarto/check.jsonl` has rustc's
 diagnostics on the items they name (`meta.diagnostics`, `meta.messages`,
-`meta.diagnostics_recorded_at`).
+`meta.diagnostics_recorded_at`), and with a recorded `target/codecarto/<bin>.map`
+the linker script's regions and sections carry what the link measured
+(`meta.measured`) and functions and statics their size (`meta.bytes`).
 
 ### POST `/parse/unified`
 
@@ -758,20 +760,23 @@ memory maps. A dependency edge is labelled and coloured by its kind; a
 dev-dependency, an optional one and a platform-specific one are dashed and say
 their condition. `features=true` adds features and what each enables;
 `transitive=true` adds the lockfile's dependencies of dependencies. Targets
-carry the recorded diagnostics in their label and `meta.diagnostics`.
+carry the recorded diagnostics in their label and `meta.diagnostics`; a binary
+with a recorded link map carries each region's fill in its label and
+`meta.memory`.
 
 `metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
 `metadata.json` is newer than every manifest, `manifests` otherwise -- a stale
 document is not used, and says so), `generated_at`, every `documents` row with
-`present`, `used`, `stale` and `problem`, the recorded `diagnostics` counts,
-`build_success`, `firmware`, and the `caveat`.
+`present`, `used`, `stale` and `problem` -- a recorded `<bin>.map` among them --
+the recorded `diagnostics` counts, `build_success`, `firmware`, and the `caveat`.
 
 ### GET `/cargo/data?path=`
 
 The reading without a layout: `packages` (with `dependencies`, `targets`,
 `features`, `resolved_features`, `no_std`, `links`, `memory_maps`), `documents`,
-`diagnostics`, `artifacts`, `scripts`, `build_success`, `firmware`, `notes` and
-`caveat` -- comparable with what `cargo metadata` says rather than only drawable.
+`diagnostics`, `artifacts`, `scripts`, `build_success`, `firmware`, `memory`
+(each recorded map's region use, by binary), `notes` and `caveat` -- comparable
+with what `cargo metadata` says rather than only drawable.
 
 
 ---

@@ -622,6 +622,7 @@ class UnifiedParserService:
 
         if depth >= 2:
             _annotate_recorded_diagnostics(graph, directory)
+            _annotate_recorded_memory(graph, directory)
 
         if annotate_lexicon:
             # A single graph can span multiple languages (a repo isn't
@@ -1014,6 +1015,39 @@ def _annotate_recorded_diagnostics(graph: nx.DiGraph, directory: Directory) -> N
     reading = cargo_service.recorded_diagnostics(root)
     if reading is not None:
         cargo_service.annotate_diagnostics(graph, reading)
+
+
+def _annotate_recorded_memory(graph: nx.DiGraph, directory: Directory) -> None:
+    """Put what the link measured on what it measured: each region's use, each
+    section's size, and each function's bytes.
+
+    Only for a local repository with recorded map files under
+    `target/codecarto/` -- `codecarto cargo record --map <bin>` writes one per
+    binary, and a C build passing `-Wl,-Map=target/codecarto/<name>.map` writes
+    the same. Reads them and runs nothing; a map older than the newest source
+    file in the parse is marked stale on everything it stamps.
+    """
+    root = directory.info.url
+    if not root or "://" in root or not Path(root).is_dir():
+        return
+    maps = sorted((Path(root) / "target" / "codecarto").glob("*.map"))
+    if not maps:
+        return
+    from codecarto.services import link_map_service
+
+    newest = 0.0
+    for _, f in directory.root.iter_files():
+        try:
+            newest = max(newest, Path(f.url).stat().st_mtime)
+        except (OSError, ValueError):
+            continue
+    for path in maps:
+        link_map = link_map_service.read(path)
+        if not link_map.ok:
+            continue
+        recorded_at, _ = link_map_service.age(path)
+        link_map_service.annotate(graph, link_map, owner=path.stem, recorded_at=recorded_at,
+                                  stale=newest > path.stat().st_mtime)
 
 
 def _file_key(file: File) -> str:

@@ -237,7 +237,7 @@ class TestGraph:
         meta = cargo_service.metadata(reading)
         assert meta["kind"] == "cargo" and meta["engine"] == "cargo metadata"
         assert meta["generated_at"] and meta["caveat"]
-        assert [d["name"] for d in meta["documents"]] == ["metadata.json", "check.jsonl"]
+        assert [d["name"] for d in meta["documents"]] == ["metadata.json", "check.jsonl", "blinky.map"]
 
 
 # ── The dev loop on the code map ──────────────────────────────────────────────
@@ -360,3 +360,59 @@ def test_record_reports_a_timeout_and_keeps_what_arrived(tmp_path, monkeypatch):
     assert result.exit_code == 1
     assert "did not finish in 1s" in result.output
     assert (tmp_path / cargo_service.DOCUMENTS / "metadata.json").read_text() == '{"version": 1'
+
+
+# ── A recorded link map ───────────────────────────────────────────────────────
+
+
+def test_a_recorded_map_measures_its_binary(tmp_path):
+    reading = cargo_service.read(copy_workspace(tmp_path, "current"))
+    doc = next(d for d in reading.documents if d.name == "blinky.map")
+    assert doc.used and not doc.stale
+    memory = reading.memory["blinky"]
+    assert memory["package"] == "blinky" and memory["format"] == "lld"
+    flash = next(r for r in memory["regions"] if r["name"] == "FLASH")
+    assert flash["used_bytes"] == 0x1130 + 0xe
+    label = cargo_service.as_graph(reading).nodes["target::blinky::bin::blinky"]["label"]
+    assert label.endswith("FLASH 0.8%, RAM 0.0%")
+    assert "blinky's memory use is its linker map" in cargo_service.caveat(reading)
+
+
+def test_a_map_with_nothing_to_measure_against_says_so(tmp_path):
+    root = copy_workspace(tmp_path, "current")
+    (root / "crates" / "blinky" / "memory.x").unlink()
+    reading = cargo_service.read(root)
+    doc = next(d for d in reading.documents if d.name == "blinky.map")
+    assert not doc.used and "no memory regions" in doc.problem
+    assert "blinky" not in reading.memory
+
+
+def test_record_links_a_binary_for_its_map(tmp_path, monkeypatch):
+    """The map is the linker's own output: the command asks for it, and a
+    build that wrote none is a failure, not a document."""
+    ran = []
+
+    class Done:
+        stdout, stderr, returncode = "", "", 0
+
+    def fake_run(command, **kwargs):
+        ran.append(command[1:])
+        if command[1] == "rustc":
+            target = command[-1].split("-Map=", 1)[1]
+            Path(target).write_text("     VMA      LMA     Size Align Out     In      Symbol\n")
+        return Done()
+
+    monkeypatch.setattr("shutil.which", lambda name: "cargo")
+    monkeypatch.setattr("subprocess.run", fake_run)
+    result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
+    assert result.exit_code == 0, result.output
+    expected = (tmp_path / cargo_service.DOCUMENTS / "blinky.map").resolve().as_posix()
+    assert ran[-1] == ["rustc", "--profile", "release", "--bin", "blinky", "--offline", "--",
+                       "-C", f"link-arg=-Map={expected}"]
+    assert (tmp_path / cargo_service.DOCUMENTS / "blinky.map").is_file()
+
+    (tmp_path / cargo_service.DOCUMENTS / "blinky.map").unlink()
+    monkeypatch.setattr("subprocess.run", lambda command, **kwargs: Done())
+    result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
+    assert result.exit_code == 1
+    assert "the linker wrote no blinky.map" in result.output

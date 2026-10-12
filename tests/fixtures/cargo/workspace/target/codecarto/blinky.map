@@ -1,0 +1,34 @@
+     VMA      LMA     Size Align Out     In      Symbol
+20020000 20020000        0     1 _stack_start = ORIGIN ( RAM ) + LENGTH ( RAM )
+ 8000000  8000000      400     4 .vector_table
+ 8000000  8000000        4     4         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-5f2c1a7e9b3d4c60.blinky.4a1b2c3d-cgu.0.rcgu.o:(.vector_table.reset_vector)
+ 8000000  8000000        0     1                 __RESET_VECTOR
+ 8000004  8000004       38     4         /ws/target/thumbv7em-none-eabihf/release/deps/libcortex_m_rt-2a8e6f1c0b9d7e34.rlib(cortex_m_rt-2a8e6f1c0b9d7e34.cortex_m_rt.9f8e7d6c-cgu.0.rcgu.o):(.vector_table.exceptions)
+ 8000004  8000004        0     1                 __EXCEPTIONS
+ 800003c  800003c      3c4     4         /ws/target/thumbv7em-none-eabihf/release/deps/libcortex_m_rt-2a8e6f1c0b9d7e34.rlib(cortex_m_rt-2a8e6f1c0b9d7e34.cortex_m_rt.9f8e7d6c-cgu.0.rcgu.o):(.vector_table.interrupts)
+ 800003c  800003c        0     1                 __INTERRUPTS
+ 8000400  8000400      b50     4 .text
+ 8000400  8000400       a4     2         /ws/target/thumbv7em-none-eabihf/release/deps/libcortex_m_rt-2a8e6f1c0b9d7e34.rlib(cortex_m_rt-2a8e6f1c0b9d7e34.cortex_m_rt.9f8e7d6c-cgu.0.rcgu.o):(.text.Reset)
+ 8000400  8000400       a4     1                 Reset
+ 80004a4  80004a4       2e     2         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-5f2c1a7e9b3d4c60.blinky.4a1b2c3d-cgu.0.rcgu.o:(.text.main)
+ 80004a4  80004a4       2e     1                 main
+ 80004d2  80004d2       1c     2         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-5f2c1a7e9b3d4c60.blinky.4a1b2c3d-cgu.0.rcgu.o:(.text._ZN6blinky5delay17h5e1d2c3b4a596877E)
+ 80004d2  80004d2       1c     1                 blinky::delay::h5e1d2c3b4a596877
+ 80004ee  80004ee       12     2         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-5f2c1a7e9b3d4c60.blinky.4a1b2c3d-cgu.0.rcgu.o:(.text.SysTick)
+ 80004ee  80004ee       12     1                 SysTick
+ 8000500  8000500       26     2         /ws/target/thumbv7em-none-eabihf/release/deps/libhal-0d9e8f7a6b5c4d3e.rlib(hal-0d9e8f7a6b5c4d3e.hal.7c6b5a49-cgu.0.rcgu.o):(.text._ZN60_$LT$hal..gpio..pin..Pin$u20$as$u20$hal..gpio..OutputPin$GT$8set_high17h0a1b2c3d4e5f6071E)
+ 8000500  8000500       26     1                 _$LT$hal..gpio..pin..Pin$u20$as$u20$hal..gpio..OutputPin$GT$::set_high::h0a1b2c3d4e5f6071
+ 8000526  8000526       28     2         /ws/target/thumbv7em-none-eabihf/release/deps/libhal-0d9e8f7a6b5c4d3e.rlib(hal-0d9e8f7a6b5c4d3e.hal.7c6b5a49-cgu.0.rcgu.o):(.text._ZN60_$LT$hal..gpio..pin..Pin$u20$as$u20$hal..gpio..OutputPin$GT$7set_low17h1b2c3d4e5f607182E)
+ 8000526  8000526       28     1                 _$LT$hal..gpio..pin..Pin$u20$as$u20$hal..gpio..OutputPin$GT$::set_low::h1b2c3d4e5f607182
+ 800054e  800054e      a02     2         /ws/target/thumbv7em-none-eabihf/release/deps/libcore-6a5b4c3d2e1f0a9b.rlib(core-6a5b4c3d2e1f0a9b.core.1a2b3c4d-cgu.0.rcgu.o):(.text._ZN4core9panicking5panic17h3c4d5e6f70819293E)
+ 800054e  800054e      a02     1                 core::panicking::panic::h3c4d5e6f70819293
+ 8000f50  8000f50      1e0     4 .rodata
+ 8000f50  8000f50      1e0     4         /ws/target/thumbv7em-none-eabihf/release/deps/libcore-6a5b4c3d2e1f0a9b.rlib(core-6a5b4c3d2e1f0a9b.core.1a2b3c4d-cgu.0.rcgu.o):(.rodata..L__unnamed_1)
+20000000  8001130        0     4 .data
+20000000  8001130        4     4 .bss
+20000000  8001130        4     4         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-5f2c1a7e9b3d4c60.blinky.4a1b2c3d-cgu.0.rcgu.o:(.bss._ZN6blinky5TICKS17h7a8b9c0d1e2f3a4bE)
+20000000  8001130        4     1                 blinky::TICKS::h7a8b9c0d1e2f3a4b
+20000004  8001134        0     4 .uninit
+20000008  8001130        e     2 .ram_func
+20000008  8001130        e     2         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-5f2c1a7e9b3d4c60.blinky.4a1b2c3d-cgu.0.rcgu.o:(.ram_func)
+20000008  8001130        e     1                 fast_path
