@@ -1080,3 +1080,36 @@ class TestLexiconAnnotation:
             event_type, data = _parse_sse_chunk(chunk)
             if event_type == "node":
                 assert "layer_ordinal" not in data
+
+
+# ── Node ids carry the path ───────────────────────────────────────────────────
+
+
+class TestPathQualifiedIds:
+    """Two folders with one name are two folders. Keyed by name, every crate's
+    `src` and `src/lib.rs` in a workspace merged into one node holding all their
+    symbols. Mutation: build `folder_id` from `folder.name` again -- this fails."""
+
+    @staticmethod
+    def two_crates() -> Directory:
+        def crate(name: str) -> Folder:
+            return Folder(name=name, folders=[Folder(name="src", files=[
+                File(name="lib.rs", raw=f"pub fn {name}_entry() {{}}\n")])])
+
+        root = Folder(name="ws", folders=[Folder(name="crates", folders=[crate("alpha"), crate("beta")])])
+        return Directory(info=RepoInfo(name="ws"), root=root)
+
+    def test_same_named_folders_and_files_stay_apart(self):
+        g = UnifiedParserService.build_graph(self.two_crates(), depth=2, extensions=None)
+        dirs = {n for n, d in g.nodes(data=True) if d.get("kind") == "directory"}
+        assert {"dir::ws/crates/alpha/src", "dir::ws/crates/beta/src"} <= dirs
+        files = {n for n, d in g.nodes(data=True) if d.get("kind") == "file"}
+        assert files == {"file::ws/crates/alpha/src/lib.rs", "file::ws/crates/beta/src/lib.rs"}
+
+    def test_a_batch_keeps_files_that_share_a_name_apart(self):
+        """No url, same name: the batch keys each by its place in the tree."""
+        g = UnifiedParserService.build_graph(self.two_crates(), depth=2, extensions=None)
+        owner = {g.nodes[v]["label"]: u for u, v, d in g.edges(data=True)
+                 if d["kind"] == "contains" and g.nodes[v].get("kind") == "function"}
+        assert owner == {"alpha_entry": "file::ws/crates/alpha/src/lib.rs",
+                         "beta_entry": "file::ws/crates/beta/src/lib.rs"}

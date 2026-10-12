@@ -24,7 +24,8 @@ a port: several of this org's servers run on one workstation.
 | `/pam` | pam | PAM auth log monitor |
 | `/system` | system | Derived system diagrams, read from a local clone |
 | `/palette` | palette | Color palette management |
-| `/lexicon` | lexicon | Hand-authored language lexicons, as graphs |
+| `/lexicon` | lexicon | Hand-authored language lexicons, the construct vocabulary and the chrestomathy |
+| `/cargo` | cargo | A Cargo workspace and its last recorded build, as graph data -- read, never run |
 | `/topology` | topology | The harness's flows, as graph data |
 | `/capabilities` | capabilities | What each named thing this estate can do has reached |
 | `/overview` | overview | dossier's reading of the estate, as graph data |
@@ -37,8 +38,18 @@ a port: several of this org's servers run on one workstation.
 ## Unified Parse Endpoints
 
 These are the recommended endpoints. They work across all registered languages
-(.py via Python parser, .c/.h via C parser) and produce gJGF output that any renderer
-can display.
+(`GET /parse/languages` lists them: Python by its AST, C/C++ by libclang, Rust by
+an item-level reader, linker scripts by theirs, the rest by a regex per language)
+and produce gJGF output that any renderer can display.
+
+Every node a language in `codecarto/data/constructs.yaml` produces also carries
+`construct` -- what it *is*, the same across languages (`type.product` for a C or
+Rust struct) -- and, where its qualifiers, attributes or body say so,
+`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`). Node and
+file ids are the path from the root (`file::ws/crates/hal/src/lib.rs`), so two
+files with one name are two nodes. A local Rust repository with a recorded
+`target/codecarto/check.jsonl` has rustc's diagnostics on the items they name
+(`meta.diagnostics`, `meta.messages`, `meta.diagnostics_recorded_at`).
 
 ### POST `/parse/unified`
 
@@ -91,9 +102,9 @@ bypass the response cache (the cache key doesn't vary on this field).
 **Response:**
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "parse/unified - Success",
-  "data": {
+  "results": {
     "graph": {
       "nodes": {
         "dir::myrepo": { "metadata": { "depth": 0, "kind": "directory", "label": "myrepo", "language": "unknown" }},
@@ -196,9 +207,9 @@ List all registered language parsers and their file extensions.
 **Response:**
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "parse/languages - Success",
-  "data": {
+  "results": {
     "languages": {
       "python": [".py"],
       "c": [".c", ".h"]
@@ -245,8 +256,8 @@ Convert GraphData JSON to pre-rendered HTML for the Notebook renderer.
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": { "text/html": "<html>...</html>" }
+  "status": 200,
+  "results": { "text/html": "<html>...</html>" }
 }
 ```
 
@@ -269,8 +280,8 @@ Parse a single C/H source file.
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": {
+  "status": 200,
+  "results": {
     "graph": {
       "nodes": [...],
       "edges": [...],
@@ -408,8 +419,8 @@ caches" for why these aren't merged into one.
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": {
+  "status": 200,
+  "results": {
     "entries": [
       { "key": "git-git", "owner": "git", "repo": "git", "url": "...", "ts": 1234567890.0, "age_seconds": 120, "size_bytes": 45000000 }
     ]
@@ -468,9 +479,9 @@ curl "$API/repo/tree?url=/path/to/local/project"
 **Response:**
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "read_github_url - Success",
-  "data": {
+  "results": {
     "info": { "owner": "fastapi", "name": "fastapi", "url": "..." },
     "size": 1234567,
     "root": { "name": "fastapi", "files": [...], "folders": [...] },
@@ -693,6 +704,72 @@ dump — that shape isn't recognized by the frontend renderer at all
 Token-spelling → contexts lookup (which layers/groups a token appears
 in) — the join `unified_parser_service.py`'s `annotate_lexicon` flag
 uses to enrich real parsed graphs (see `POST /parse/unified` above).
+Annotated nodes also carry `layer_color`, which "Color By: Abstraction
+Layer" draws and the legend names.
+
+### GET `/lexicon/constructs`
+
+The construct vocabulary (`codecarto/data/constructs.yaml`) as an index: each
+construct's `id`, `name`, `gloss`, whether it is a `facet` (something a node can
+*also* be) and the `languages` that spell or parse it. Registered before
+`/lexicon/{language}`, which would otherwise answer for it.
+
+### GET `/lexicon/chrestomathy/{construct}`
+
+One construct set beside itself across every language: per language, the
+`tokens` that spell it with their lexicon `contexts` (layer and group), the
+parser `kinds` that realise it, what `carried_by` a facet in source (`#[interrupt]`,
+`qualifier volatile`), and a `note`. **A language with no spelling is a row with
+its note, never a missing row** -- Rust has no `volatile`, C has no method. An
+unknown construct is a 200 with `unreadable`, `problem` and the known ids as
+`remedy`.
+
+### GET `/lexicon/chrestomathy/{construct}/gjgf?layout=`
+
+The same reading as `GraphData`: the construct at the centre, each language
+around it (a silent one on a dashed edge, its note as the hover), tokens
+coloured by abstraction layer. `metadata.kind` is `chrestomathy`, with the
+`layers` ramp and the `caveat`.
+
+---
+
+## Cargo Endpoints (`/cargo`)
+
+A Cargo workspace's crates, targets, dependencies, features, native libraries
+and device targets, and what the last recorded build said. **The window never
+runs cargo**: running it on a path runs that path's build scripts, proc macros
+and configured `rustc`. It reads manifests (`Cargo.toml`, `Cargo.lock`,
+`.cargo/config.toml`, memory maps) and the two documents
+`uv run codecarto cargo record <path>` writes under `<path>/target/codecarto/`:
+`metadata.json` (`cargo metadata --format-version 1`) and `check.jsonl`
+(`cargo check --message-format=json`). The same envelope and absence rules as the
+estate routes below: status 200, and a path that is not a workspace is
+`unreadable` with a `problem`, a `remedy` and `where`.
+
+### GET `/cargo/gjgf?path=&layout=&palette_id=&features=&transitive=`
+
+The workspace as `GraphData`. Nodes: the workspace, each member crate with its
+targets (lib, bin, build script, proc macro, tests), external crates, native
+libraries (`links`, and `cargo:rustc-link-lib` from a recorded build script),
+device targets from `.cargo/config.toml` (a `runner` is shown, never run) and
+memory maps. A dependency edge is labelled and coloured by its kind; a
+dev-dependency, an optional one and a platform-specific one are dashed and say
+their condition. `features=true` adds features and what each enables;
+`transitive=true` adds the lockfile's dependencies of dependencies. Targets
+carry the recorded diagnostics in their label and `meta.diagnostics`.
+
+`metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
+`metadata.json` is newer than every manifest, `manifests` otherwise -- a stale
+document is not used, and says so), `generated_at`, every `documents` row with
+`present`, `used`, `stale` and `problem`, the recorded `diagnostics` counts,
+`build_success`, `firmware`, and the `caveat`.
+
+### GET `/cargo/data?path=`
+
+The reading without a layout: `packages` (with `dependencies`, `targets`,
+`features`, `resolved_features`, `no_std`, `links`, `memory_maps`), `documents`,
+`diagnostics`, `artifacts`, `scripts`, `build_success`, `firmware`, `notes` and
+`caveat` -- comparable with what `cargo metadata` says rather than only drawable.
 
 
 ---
@@ -807,23 +884,27 @@ response to mistake for a successful lookup.
 
 ## Response Format
 
-All endpoints use a consistent envelope:
+Routes answer in `generate_return`'s envelope (`codecarto/util/utilities.py`):
 
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "route/action - Success",
-  "data": { ... }
+  "results": { ... }
 }
 ```
 
+The estate, Cargo and chrestomathy routes put an absence inside a 200
+(`results.unreadable` or `results.unreachable`, with `problem`, `remedy` and
+`where`), because the route worked and the thing it reads was not there.
+
 ### Error Response
+
+A route that fails raises, and the server answers with the HTTP status and the
+message alone (`main.py`'s `http_exception_handler`):
+
 ```json
-{
-  "code": 404,
-  "message": "Error description",
-  "data": { "source": "function_name", "params": { ... } }
-}
+{ "message": "Error description" }
 ```
 
 ### Error Codes
@@ -844,7 +925,6 @@ All endpoints use a consistent envelope:
 Allowed origins (configurable in `main.py`):
 - `http://localhost:1234` (Vite dev / parcel)
 - `http://localhost:1235` (Vite alt)
-- `http://localhost:5000` (development tools)
 
 ---
 

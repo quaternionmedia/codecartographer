@@ -55,12 +55,17 @@ ESTATE_SERVICES = (
     "codecarto/services/capability_service.py",
     "codecarto/services/overview_service.py",
     "codecarto/services/qmcp_client.py",
+    # A Cargo workspace is read the same way a seam is: manifests and the
+    # documents cargo wrote, never a write and never a run.
+    "codecarto/services/cargo_service.py",
+    "codecarto/services/construct_service.py",
 )
 ESTATE_ROUTERS = (
     "codecarto/routers/estate_router.py",
     "codecarto/routers/topology_router.py",
     "codecarto/routers/capability_router.py",
     "codecarto/routers/overview_router.py",
+    "codecarto/routers/cargo_router.py",
 )
 # Controls, not canvases, and not stores.
 ESTATE_PANELS = (

@@ -14,6 +14,7 @@ Three tiers exist, from lightest to most capable:
 |------|------|-------------|
 | **Phase 1 — Regex** | `regex_language_parser.py` | Any language where top-level symbols (functions, classes, structs, headings, SQL tables, …) can be identified by a line-anchored regex. Zero new dependencies. Add a `_PATTERNS` list + one entry in `_LANGUAGES`. |
 | **Dedicated libclang** | `c_language_parser.py` | C/C++ only. Cross-file `CALLS` resolution, `#include` tracking via `unsaved_files`. Requires `uv sync --extra c-parsing`. |
+| **Structural reader** | `rust_language_parser.py`, `linker_script_parser.py` | A tokenizer and brace matcher, stdlib only, for a language whose items are delimited by keywords and brackets: nesting, attributes, the module tree, relations each labelled with how they were resolved. Stops where name resolution begins; that is the compiler's. |
 | **Phase 2 — tree-sitter** (planned) | not yet implemented | Full AST quality for all languages. Stubs declared in `pyproject.toml` under `[multilang]` optional deps. Planned to replace regex parsers per language when accuracy becomes a priority. |
 
 **Currently registered parsers and extensions:**
@@ -24,7 +25,8 @@ Three tiers exist, from lightest to most capable:
 | C/C++ | `.c`, `.h`, `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hxx` (libclang) |
 | JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs` |
 | TypeScript | `.ts`, `.tsx`, `.cts`, `.mts` |
-| Rust | `.rs` |
+| Rust | `.rs` (RustLanguageParser — item-level structural reader) |
+| Linker scripts | `.ld`, `.lds`, `.x` (LinkerScriptParser — MEMORY, SECTIONS, symbols) |
 | Go | `.go` |
 | Java | `.java` |
 | C# | `.cs` |
@@ -122,6 +124,36 @@ per-folder. You're responsible for attributing resulting nodes back to
 their origin file via each node's `file` attribute if you want correct
 `contains` edges — see `_merge_batch_subgraph` for the depth==2 convention
 the unified pipeline uses.
+
+### Joining the construct vocabulary
+
+A parser's `kind` says what its language calls a thing. To have its nodes carry
+`construct` (what the thing *is*, the same in every language), drawn with the
+shared looks and read by the chrestomathy, add the language under `languages:`
+in `codecarto/data/constructs.yaml`:
+
+- `kinds`: each kind the parser emits, to a construct. `tests/test_construct_service.py`
+  holds a parser that exports its kinds (`rust_language_parser.KINDS`) to the
+  map in both directions.
+- `qualifiers`, `attributes`, `macros`, `meta`: what in a node's `meta` makes it
+  *also* a facet (`unsafe` -> `memory.unsafe`, `#[interrupt]` ->
+  `firmware.interrupt`).
+- `refine`: a kind that is a different construct when a meta flag is set (a
+  Rust `enum` with `c_like` is an enumeration, not a sum type).
+
+Add the language's spellings under each construct's `spelled:` -- every token
+there must be in that language's lexicon, and a language with no spelling gets
+a `note` saying how it does without. A parser may call
+`construct_service.annotate(graph)` itself; the pipeline calls it on every parse
+regardless, and a look the parser set is never overwritten.
+
+A batch parser that knows facts *about files* -- a `mod` declaration naming a
+file, a `use` reaching another file, `#![no_std]` -- sets
+`graph.graph["file_relations"]` (`[(source, target, attrs)]`, each end a node id
+or a file key) and `graph.graph["file_meta"]` (`{file_key: {...}}`); the
+pipeline resolves file keys to the file nodes it created. The file key is
+`File.url or File.name`, and a file with neither unique gets its place in the
+tree as a `tree://` url, so two `lib.rs` are never one.
 
 ### Unified node schema helpers
 

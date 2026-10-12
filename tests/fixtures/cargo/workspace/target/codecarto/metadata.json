@@ -1,0 +1,541 @@
+{
+  "packages": [
+    {
+      "name": "hal",
+      "version": "0.1.0",
+      "id": "path+file:///ws/crates/hal#0.1.0",
+      "license": null,
+      "source": null,
+      "dependencies": [
+        {
+          "name": "defmt",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "req": "^0.3",
+          "kind": null,
+          "rename": null,
+          "optional": true,
+          "uses_default_features": true,
+          "features": [],
+          "target": null,
+          "registry": null
+        },
+        {
+          "name": "heapless",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "req": "^0.8",
+          "kind": null,
+          "rename": null,
+          "optional": false,
+          "uses_default_features": true,
+          "features": [],
+          "target": null,
+          "registry": null
+        }
+      ],
+      "targets": [
+        {
+          "name": "hal",
+          "kind": [
+            "lib"
+          ],
+          "crate_types": [
+            "lib"
+          ],
+          "src_path": "/ws/crates/hal/src/lib.rs",
+          "edition": "2021",
+          "doctest": true,
+          "test": true
+        }
+      ],
+      "features": {
+        "default": [
+          "stm32f4"
+        ],
+        "defmt": [
+          "dep:defmt"
+        ],
+        "stm32f4": []
+      },
+      "manifest_path": "/ws/crates/hal/Cargo.toml",
+      "edition": "2021",
+      "links": null
+    },
+    {
+      "name": "blinky",
+      "version": "0.1.0",
+      "id": "path+file:///ws/crates/blinky#0.1.0",
+      "license": null,
+      "source": null,
+      "dependencies": [
+        {
+          "name": "cortex-m-rt",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "req": "^0.7",
+          "kind": null,
+          "rename": null,
+          "optional": false,
+          "uses_default_features": true,
+          "features": [],
+          "target": null,
+          "registry": null
+        },
+        {
+          "name": "hal",
+          "source": null,
+          "req": "*",
+          "kind": null,
+          "rename": null,
+          "optional": false,
+          "uses_default_features": false,
+          "features": [],
+          "target": null,
+          "registry": null,
+          "path": "/ws/crates/hal"
+        },
+        {
+          "name": "panic-halt",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "req": "^0.2",
+          "kind": null,
+          "rename": null,
+          "optional": false,
+          "uses_default_features": true,
+          "features": [],
+          "target": null,
+          "registry": null
+        }
+      ],
+      "targets": [
+        {
+          "name": "blinky",
+          "kind": [
+            "bin"
+          ],
+          "crate_types": [
+            "bin"
+          ],
+          "src_path": "/ws/crates/blinky/src/main.rs",
+          "edition": "2021",
+          "doctest": false,
+          "test": true
+        },
+        {
+          "name": "build-script-build",
+          "kind": [
+            "custom-build"
+          ],
+          "crate_types": [
+            "bin"
+          ],
+          "src_path": "/ws/crates/blinky/build.rs",
+          "edition": "2021",
+          "doctest": false,
+          "test": true
+        }
+      ],
+      "features": {},
+      "manifest_path": "/ws/crates/blinky/Cargo.toml",
+      "edition": "2021",
+      "links": null
+    },
+    {
+      "name": "host-tool",
+      "version": "0.1.0",
+      "id": "path+file:///ws/crates/host-tool#0.1.0",
+      "license": null,
+      "source": null,
+      "dependencies": [
+        {
+          "name": "clap",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "req": "^4",
+          "kind": null,
+          "rename": null,
+          "optional": false,
+          "uses_default_features": true,
+          "features": [],
+          "target": null,
+          "registry": null
+        },
+        {
+          "name": "hal",
+          "source": null,
+          "req": "*",
+          "kind": null,
+          "rename": null,
+          "optional": false,
+          "uses_default_features": false,
+          "features": [],
+          "target": null,
+          "registry": null,
+          "path": "/ws/crates/hal"
+        },
+        {
+          "name": "cc",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "req": "^1",
+          "kind": "build",
+          "rename": null,
+          "optional": false,
+          "uses_default_features": true,
+          "features": [],
+          "target": null,
+          "registry": null
+        },
+        {
+          "name": "proptest",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "req": "^1",
+          "kind": "dev",
+          "rename": null,
+          "optional": false,
+          "uses_default_features": true,
+          "features": [],
+          "target": null,
+          "registry": null
+        },
+        {
+          "name": "libc",
+          "source": "registry+https://github.com/rust-lang/crates.io-index",
+          "req": "^0.2",
+          "kind": null,
+          "rename": null,
+          "optional": false,
+          "uses_default_features": true,
+          "features": [],
+          "target": "cfg(unix)",
+          "registry": null
+        }
+      ],
+      "targets": [
+        {
+          "name": "host-tool",
+          "kind": [
+            "bin"
+          ],
+          "crate_types": [
+            "bin"
+          ],
+          "src_path": "/ws/crates/host-tool/src/main.rs",
+          "edition": "2021",
+          "doctest": false,
+          "test": true
+        },
+        {
+          "name": "build-script-build",
+          "kind": [
+            "custom-build"
+          ],
+          "crate_types": [
+            "bin"
+          ],
+          "src_path": "/ws/crates/host-tool/build.rs",
+          "edition": "2021",
+          "doctest": false,
+          "test": true
+        }
+      ],
+      "features": {},
+      "manifest_path": "/ws/crates/host-tool/Cargo.toml",
+      "edition": "2021",
+      "links": "crc"
+    },
+    {
+      "name": "cc",
+      "version": "1.0.90",
+      "id": "registry+https://github.com/rust-lang/crates.io-index#cc@1.0.90",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "dependencies": [],
+      "targets": [],
+      "features": {},
+      "manifest_path": "/opt/cargo/registry/src/index.crates.io/cc-1.0.90/Cargo.toml",
+      "edition": "2021",
+      "links": null
+    },
+    {
+      "name": "clap",
+      "version": "4.5.4",
+      "id": "registry+https://github.com/rust-lang/crates.io-index#clap@4.5.4",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "dependencies": [],
+      "targets": [],
+      "features": {},
+      "manifest_path": "/opt/cargo/registry/src/index.crates.io/clap-4.5.4/Cargo.toml",
+      "edition": "2021",
+      "links": null
+    },
+    {
+      "name": "cortex-m-rt",
+      "version": "0.7.3",
+      "id": "registry+https://github.com/rust-lang/crates.io-index#cortex-m-rt@0.7.3",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "dependencies": [],
+      "targets": [],
+      "features": {},
+      "manifest_path": "/opt/cargo/registry/src/index.crates.io/cortex-m-rt-0.7.3/Cargo.toml",
+      "edition": "2021",
+      "links": null
+    },
+    {
+      "name": "defmt",
+      "version": "0.3.6",
+      "id": "registry+https://github.com/rust-lang/crates.io-index#defmt@0.3.6",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "dependencies": [],
+      "targets": [],
+      "features": {},
+      "manifest_path": "/opt/cargo/registry/src/index.crates.io/defmt-0.3.6/Cargo.toml",
+      "edition": "2021",
+      "links": null
+    },
+    {
+      "name": "heapless",
+      "version": "0.8.0",
+      "id": "registry+https://github.com/rust-lang/crates.io-index#heapless@0.8.0",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "dependencies": [],
+      "targets": [],
+      "features": {},
+      "manifest_path": "/opt/cargo/registry/src/index.crates.io/heapless-0.8.0/Cargo.toml",
+      "edition": "2021",
+      "links": null
+    },
+    {
+      "name": "libc",
+      "version": "0.2.153",
+      "id": "registry+https://github.com/rust-lang/crates.io-index#libc@0.2.153",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "dependencies": [],
+      "targets": [],
+      "features": {},
+      "manifest_path": "/opt/cargo/registry/src/index.crates.io/libc-0.2.153/Cargo.toml",
+      "edition": "2021",
+      "links": null
+    },
+    {
+      "name": "panic-halt",
+      "version": "0.2.0",
+      "id": "registry+https://github.com/rust-lang/crates.io-index#panic-halt@0.2.0",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "dependencies": [],
+      "targets": [],
+      "features": {},
+      "manifest_path": "/opt/cargo/registry/src/index.crates.io/panic-halt-0.2.0/Cargo.toml",
+      "edition": "2021",
+      "links": null
+    },
+    {
+      "name": "proptest",
+      "version": "1.4.0",
+      "id": "registry+https://github.com/rust-lang/crates.io-index#proptest@1.4.0",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "dependencies": [],
+      "targets": [],
+      "features": {},
+      "manifest_path": "/opt/cargo/registry/src/index.crates.io/proptest-1.4.0/Cargo.toml",
+      "edition": "2021",
+      "links": null
+    }
+  ],
+  "workspace_members": [
+    "path+file:///ws/crates/hal#0.1.0",
+    "path+file:///ws/crates/blinky#0.1.0",
+    "path+file:///ws/crates/host-tool#0.1.0"
+  ],
+  "workspace_default_members": [
+    "path+file:///ws/crates/hal#0.1.0",
+    "path+file:///ws/crates/blinky#0.1.0",
+    "path+file:///ws/crates/host-tool#0.1.0"
+  ],
+  "resolve": {
+    "root": null,
+    "nodes": [
+      {
+        "id": "path+file:///ws/crates/hal#0.1.0",
+        "dependencies": [
+          "registry+https://github.com/rust-lang/crates.io-index#heapless@0.8.0"
+        ],
+        "features": [
+          "default",
+          "stm32f4"
+        ],
+        "deps": [
+          {
+            "name": "heapless",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#heapless@0.8.0",
+            "dep_kinds": [
+              {
+                "kind": null,
+                "target": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "path+file:///ws/crates/blinky#0.1.0",
+        "dependencies": [
+          "registry+https://github.com/rust-lang/crates.io-index#cortex-m-rt@0.7.3",
+          "path+file:///ws/crates/hal#0.1.0",
+          "registry+https://github.com/rust-lang/crates.io-index#panic-halt@0.2.0"
+        ],
+        "features": [],
+        "deps": [
+          {
+            "name": "cortex_m_rt",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#cortex-m-rt@0.7.3",
+            "dep_kinds": [
+              {
+                "kind": null,
+                "target": null
+              }
+            ]
+          },
+          {
+            "name": "hal",
+            "pkg": "path+file:///ws/crates/hal#0.1.0",
+            "dep_kinds": [
+              {
+                "kind": null,
+                "target": null
+              }
+            ]
+          },
+          {
+            "name": "panic_halt",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#panic-halt@0.2.0",
+            "dep_kinds": [
+              {
+                "kind": null,
+                "target": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "path+file:///ws/crates/host-tool#0.1.0",
+        "dependencies": [
+          "registry+https://github.com/rust-lang/crates.io-index#cc@1.0.90",
+          "registry+https://github.com/rust-lang/crates.io-index#clap@4.5.4",
+          "path+file:///ws/crates/hal#0.1.0",
+          "registry+https://github.com/rust-lang/crates.io-index#libc@0.2.153",
+          "registry+https://github.com/rust-lang/crates.io-index#proptest@1.4.0"
+        ],
+        "features": [],
+        "deps": [
+          {
+            "name": "cc",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#cc@1.0.90",
+            "dep_kinds": [
+              {
+                "kind": "build",
+                "target": null
+              }
+            ]
+          },
+          {
+            "name": "clap",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#clap@4.5.4",
+            "dep_kinds": [
+              {
+                "kind": null,
+                "target": null
+              }
+            ]
+          },
+          {
+            "name": "hal",
+            "pkg": "path+file:///ws/crates/hal#0.1.0",
+            "dep_kinds": [
+              {
+                "kind": null,
+                "target": null
+              }
+            ]
+          },
+          {
+            "name": "libc",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#libc@0.2.153",
+            "dep_kinds": [
+              {
+                "kind": null,
+                "target": "cfg(unix)"
+              }
+            ]
+          },
+          {
+            "name": "proptest",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#proptest@1.4.0",
+            "dep_kinds": [
+              {
+                "kind": "dev",
+                "target": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#cc@1.0.90",
+        "dependencies": [],
+        "features": [],
+        "deps": []
+      },
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#clap@4.5.4",
+        "dependencies": [],
+        "features": [],
+        "deps": []
+      },
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#cortex-m-rt@0.7.3",
+        "dependencies": [],
+        "features": [],
+        "deps": []
+      },
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#defmt@0.3.6",
+        "dependencies": [],
+        "features": [],
+        "deps": []
+      },
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#heapless@0.8.0",
+        "dependencies": [],
+        "features": [],
+        "deps": []
+      },
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#libc@0.2.153",
+        "dependencies": [],
+        "features": [],
+        "deps": []
+      },
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#panic-halt@0.2.0",
+        "dependencies": [],
+        "features": [],
+        "deps": []
+      },
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#proptest@1.4.0",
+        "dependencies": [],
+        "features": [],
+        "deps": []
+      }
+    ]
+  },
+  "target_directory": "/ws/target",
+  "version": 1,
+  "workspace_root": "/ws",
+  "metadata": null
+}
