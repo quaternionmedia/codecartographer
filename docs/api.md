@@ -25,6 +25,7 @@ a port: several of this org's servers run on one workstation.
 | `/system` | system | Derived system diagrams, read from a local clone |
 | `/palette` | palette | Color palette management |
 | `/lexicon` | lexicon | Hand-authored language lexicons, the construct vocabulary and the chrestomathy |
+| `/cargo` | cargo | A Cargo workspace and its last recorded build, as graph data -- read, never run |
 | `/topology` | topology | The harness's flows, as graph data |
 | `/capabilities` | capabilities | What each named thing this estate can do has reached |
 | `/overview` | overview | dossier's reading of the estate, as graph data |
@@ -47,7 +48,10 @@ so two files with one name are two nodes.
 Every node a language in `codecarto/data/constructs.yaml` produces also carries
 `construct` -- what it *is*, the same across languages (`type.product` for a C or
 Rust struct) -- and, where its qualifiers, attributes or body say so,
-`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`).
+`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`). A local
+Rust repository with a recorded `target/codecarto/check.jsonl` has rustc's
+diagnostics on the items they name (`meta.diagnostics`, `meta.messages`,
+`meta.diagnostics_recorded_at`).
 
 ### POST `/parse/unified`
 
@@ -728,6 +732,46 @@ The same reading as `GraphData`: the construct at the centre, each language
 around it (a silent one on a dashed edge, its note as the hover), tokens
 coloured by abstraction layer. `metadata.kind` is `chrestomathy`, with the
 `layers` ramp and the `caveat`.
+
+---
+
+## Cargo Endpoints (`/cargo`)
+
+A Cargo workspace's crates, targets, dependencies, features, native libraries
+and device targets, and what the last recorded build said. **The window never
+runs cargo**: running it on a path runs that path's build scripts, proc macros
+and configured `rustc`. It reads manifests (`Cargo.toml`, `Cargo.lock`,
+`.cargo/config.toml`, memory maps) and the two documents
+`uv run codecarto cargo record <path>` writes under `<path>/target/codecarto/`:
+`metadata.json` (`cargo metadata --format-version 1`) and `check.jsonl`
+(`cargo check --message-format=json`). The same envelope and absence rules as the
+estate routes below: status 200, and a path that is not a workspace is
+`unreadable` with a `problem`, a `remedy` and `where`.
+
+### GET `/cargo/gjgf?path=&layout=&palette_id=&features=&transitive=`
+
+The workspace as `GraphData`. Nodes: the workspace, each member crate with its
+targets (lib, bin, build script, proc macro, tests), external crates, native
+libraries (`links`, and `cargo:rustc-link-lib` from a recorded build script),
+device targets from `.cargo/config.toml` (a `runner` is shown, never run) and
+memory maps. A dependency edge is labelled and coloured by its kind; a
+dev-dependency, an optional one and a platform-specific one are dashed and say
+their condition. `features=true` adds features and what each enables;
+`transitive=true` adds the lockfile's dependencies of dependencies. Targets
+carry the recorded diagnostics in their label and `meta.diagnostics`.
+
+`metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
+`metadata.json` is newer than every manifest, `manifests` otherwise -- a stale
+document is not used, and says so), `generated_at`, every `documents` row with
+`present`, `used`, `stale` and `problem`, the recorded `diagnostics` counts,
+`build_success`, `firmware`, and the `caveat`.
+
+### GET `/cargo/data?path=`
+
+The reading without a layout: `packages` (with `dependencies`, `targets`,
+`features`, `resolved_features`, `no_std`, `links`, `memory_maps`), `documents`,
+`diagnostics`, `artifacts`, `scripts`, `build_success`, `firmware`, `notes` and
+`caveat` -- comparable with what `cargo metadata` says rather than only drawable.
 
 
 ---

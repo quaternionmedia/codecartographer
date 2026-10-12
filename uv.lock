@@ -264,6 +264,7 @@ dependencies = [
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -326,6 +327,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "requests", specifier = ">=2.28.0" },
     { name = "scipy", specifier = ">=1.7.3" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=1.1" },
     { name = "tree-sitter", marker = "extra == 'multilang'", specifier = ">=0.21" },
     { name = "tree-sitter-c", marker = "extra == 'multilang'", specifier = ">=0.21" },
     { name = "tree-sitter-cpp", marker = "extra == 'multilang'", specifier = ">=0.21" },

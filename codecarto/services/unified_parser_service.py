@@ -620,6 +620,9 @@ class UnifiedParserService:
         # runs on every parse rather than behind a flag nobody sets.
         construct_service.annotate(graph)
 
+        if depth >= 2:
+            _annotate_recorded_diagnostics(graph, directory)
+
         if annotate_lexicon:
             # A single graph can span multiple languages (a repo isn't
             # mono-language) - annotate each one present that also has a
@@ -991,6 +994,26 @@ def _merge_batch_subgraph(
         file_id = by_key.get(origin) or file_id_by_stem.get(origin)
         if file_id and not graph.has_edge(file_id, node_id):
             graph.add_edge(file_id, node_id, **make_edge("contains"))
+
+
+def _annotate_recorded_diagnostics(graph: nx.DiGraph, directory: Directory) -> None:
+    """Put what `rustc` last said on the Rust items it said it about.
+
+    Only for a local repository with a recorded `target/codecarto/check.jsonl`
+    at its root -- `codecarto cargo record` writes one. Reads that document and
+    runs nothing; an item carries the time the check was recorded beside its
+    counts, so a reader can tell a current complaint from an old one.
+    """
+    if not any(d.get("language") == "rust" for _, d in graph.nodes(data=True)):
+        return
+    root = directory.info.url
+    if not root or "://" in root or not Path(root).is_dir():
+        return
+    from codecarto.services import cargo_service
+
+    reading = cargo_service.recorded_diagnostics(root)
+    if reading is not None:
+        cargo_service.annotate_diagnostics(graph, reading)
 
 
 def _file_key(file: File) -> str:
