@@ -183,6 +183,7 @@ uv run codecarto docker-down
 - [CLI](docs/cli.md) and [API](docs/api.md) — the two command surfaces
 - [Contributing](docs/contributing.md) — working on this project
 - [UI Reference](docs/llm/UI_REFERENCE.md) — the shell, every panel, the one canvas and the radial menu
+- [Rust and the firmware languages](docs/llm/roadmap/rust.md) — Rust, Cargo, linker scripts and the construct vocabulary that sets them beside C
 
 Decision records live on the `governance/qm` submodule, under `adr/`. The plan
 this window is built to -- the estate frame, the topology designer, and the
