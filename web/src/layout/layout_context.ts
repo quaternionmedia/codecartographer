@@ -32,6 +32,7 @@ import { infoLine, sourceLine } from '../features/graph/services/node_info';
 import type { BundledExample } from '../features/examples/examples';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
+import { readSavedLayout } from './saved_layout';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
 import { GraphSurface } from '../features/graph/services/graph_surface';
@@ -241,15 +242,34 @@ export class LayoutContext {
 
   // ── Layout persistence ─────────────────────────────────────────────────────
 
-  /** The saved layout if one exists and parses cleanly, else the built-in default. */
+  /**
+   * The saved layout if it can be loaded, else the built-in default.
+   *
+   * A saved layout that names a window this version does not register is
+   * dropped here, before Golden Layout reads it: Golden Layout throws on an
+   * unregistered component type, and the page would boot with no windows.
+   */
   public loadInitialLayoutConfig(): LayoutConfig {
+    let raw: string | null = null;
     try {
-      const raw = localStorage.getItem(SAVED_LAYOUT_KEY);
-      if (raw) return JSON.parse(raw) as LayoutConfig;
+      raw = localStorage.getItem(SAVED_LAYOUT_KEY);
     } catch {
-      /* corrupt/old-format entry — fall through to built-in default */
+      /* storage blocked: nothing saved to read */
     }
+    const saved = readSavedLayout(raw, PanelRegistry.all().map((def) => def.id));
+    if (saved.kind === 'usable') return saved.config as LayoutConfig;
+    if (saved.kind === 'unusable') this.dropSavedLayout(saved.why);
     return DEFAULT_LAYOUT_CONFIG;
+  }
+
+  /** Forget the saved layout, and say why the default is showing instead. */
+  public dropSavedLayout(why: string): void {
+    try {
+      localStorage.removeItem(SAVED_LAYOUT_KEY);
+    } catch {
+      /* storage blocked: there is nothing to remove */
+    }
+    ToastManager.show(`The saved layout was not loaded: ${why}. Showing the default.`, 8_000);
   }
 
   /** Persist the live layout (panel arrangement + sizes) as the local default. */
