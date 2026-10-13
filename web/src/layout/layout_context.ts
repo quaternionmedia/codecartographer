@@ -262,9 +262,23 @@ export class LayoutContext {
       /* storage blocked: nothing saved to read */
     }
     const saved = readSavedLayout(raw, PanelRegistry.all().map((def) => def.id));
-    if (saved.kind === 'usable') return saved.config as LayoutConfig;
+    if (saved.kind === 'usable') {
+      if (saved.renamed.length) this._keepRenamedLayout(saved.config, saved.renamed);
+      return saved.config as LayoutConfig;
+    }
     if (saved.kind === 'unusable') this.dropSavedLayout(saved.why);
     return DEFAULT_LAYOUT_CONFIG;
+  }
+
+  /** Save a layout whose merged windows were renamed, and say so once. */
+  private _keepRenamedLayout(config: object, renamed: string[]): void {
+    try {
+      localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(config));
+    } catch {
+      /* storage blocked: the renamed layout still loads this time */
+    }
+    const names = renamed.map((id) => `'${id}'`).join(', ');
+    ToastManager.show(`The saved layout's ${names} window(s) are the Open window in this version.`, 8_000);
   }
 
   /** Forget the saved layout, and say why the default is showing instead. */

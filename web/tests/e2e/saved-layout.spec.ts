@@ -69,3 +69,42 @@ test('a saved layout naming only known windows is loaded as saved', async ({ pag
   await expect(page.locator('.lm_tab', { hasText: 'Graph Settings' })).toHaveCount(0);
   expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).not.toBeNull();
 });
+
+test('a saved layout with Upload, Repository and Actions boots with one Open window', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(({ key }) => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem(key, JSON.stringify({
+      root: {
+        type: 'column',
+        content: [
+          { type: 'component', componentType: 'graph', title: '◈ Graph', id: 'graph' },
+          {
+            type: 'stack',
+            content: [
+              { type: 'component', componentType: 'upload-panel', title: '↑ Upload', id: 'upload-panel' },
+              { type: 'component', componentType: 'repo-panel', title: '⬇ Repository', id: 'repo-panel' },
+              { type: 'component', componentType: 'plotbar', title: '▶ Actions', id: 'plotbar' },
+              { type: 'component', componentType: 'estate-panel', title: '⌂ Estate', id: 'estate-panel' },
+            ],
+          },
+        ],
+      },
+    }));
+  }, { key: KEY });
+
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+
+  // Mutation: drop the renames -- the layout is dropped for the default,
+  // whose Graph Settings tab appears, and this fails.
+  await expect(page.locator('.lm_tab', { hasText: 'Open' })).toHaveCount(1);
+  await expect(page.locator('.lm_tab', { hasText: 'Estate' })).toHaveCount(1);
+  await expect(page.locator('.lm_tab', { hasText: 'Graph Settings' })).toHaveCount(0);
+  await expect(page.locator('.lm_tab', { hasText: /Upload|Repository|Actions/ })).toHaveCount(0);
+  expect(errors).toEqual([]);
+  // Saved back renamed, so the next boot reads it as it is.
+  expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toContain('"componentType":"open"');
+});
