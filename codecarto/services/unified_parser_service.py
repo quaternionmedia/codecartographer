@@ -84,6 +84,8 @@ class UnifiedParserService:
         options = PlotOptions(layout=layout, type="d3")
         gjgf = GraphSerializer.serialize_to_gjgf(graph, options)
         meta = GraphSerializer.create_metadata(graph, options)
+        if graph.graph.get("notes"):
+            meta["notes"] = list(graph.graph["notes"])
         return {"graph": gjgf, "metadata": meta}
 
     @staticmethod
@@ -147,6 +149,8 @@ class UnifiedParserService:
         meta_event = {"nodeCount": len(nodes_list), "edgeCount": len(edges_raw), "layout": layout}
         yield f"event: meta\ndata: {json.dumps(meta_event)}\n\n"
         await asyncio.sleep(0)
+        for note in graph.graph.get("notes", []):
+            yield note_event(note)
 
         # Yield nodes sorted by depth (shallowest first = roots appear first)
         sorted_nodes = sorted(nodes_list, key=lambda n: (n.get("depth", 9), n.get("id", "")))
@@ -448,8 +452,8 @@ class UnifiedParserService:
                 # request this server is handling (same reasoning as
                 # c_parser_router.py's /c-parser/stream-github thread).
                 sub = await asyncio.to_thread(parser.parse_files, files, depth=depth)
-            except Exception:
-                return []
+            except Exception as exc:
+                return [note_event(_unparsed(parser, len(files), exc))]
             if sub.number_of_nodes() == 0:
                 return []
             if annotate_lexicon:
@@ -939,6 +943,17 @@ def _merge_subgraph(
             graph.add_edge(file_node_id, root, **make_edge("contains"))
 
 
+def note_event(message: str) -> str:
+    """An SSE event for what no node can say: a parser that could not run over
+    files the graph still draws. The client shows it beside the graph."""
+    return f"event: note\ndata: {json.dumps({'message': message})}\n\n"
+
+
+def _unparsed(parser: object, count: int, error: Exception) -> str:
+    language = getattr(parser, "language", "") or type(parser).__name__
+    return f"{count} {language} file(s) drawn without their contents: {error}"
+
+
 def _parse_pending_batches(
     graph: nx.DiGraph,
     pending: dict[int, tuple[object, list[tuple[File, str]]]],
@@ -961,8 +976,11 @@ def _parse_pending_batches(
 
         try:
             sub = parser.parse_files(files, depth=depth)
-        except Exception:
-            continue  # Best-effort; directory structure still present
+        except Exception as exc:
+            # The files are still drawn; what could not be read in them is
+            # said, so an empty file is not read as a file with nothing in it.
+            graph.graph.setdefault("notes", []).append(_unparsed(parser, len(files), exc))
+            continue
 
         _merge_batch_subgraph(graph, sub, file_id_by_stem, file_id_by_key)
         _apply_file_facts(graph, sub, file_id_by_key)

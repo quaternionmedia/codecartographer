@@ -17,7 +17,7 @@
  * (`test-results/`), so what it looked like is kept beside the run that drew it.
  */
 
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
 import { dismissOnboardingModal } from './helpers';
@@ -31,6 +31,11 @@ async function openFromMenu(page: Page, label: RegExp, panelClass: string): Prom
   await page.locator('.gl-app-header__add-btn').click();
   await page.locator('.gl-add-panel-menu__item', { hasText: label }).click();
   await page.locator(panelClass).waitFor({ state: 'visible' });
+}
+
+async function saysOnce(panel: Locator, caveat: string): Promise<void> {
+  const sentence = (await panel.locator(caveat).innerText()).trim();
+  await expect(panel.getByText(sentence, { exact: true })).toHaveCount(1);
 }
 
 async function record(page: Page, name: string): Promise<void> {
@@ -58,8 +63,11 @@ test.describe('the Cargo panel', () => {
     await expect(page.locator('.graph-node').first()).toBeVisible({ timeout: SETTLED });
     await expect(page.locator('.graph-node[data-node-id="crate::hal"]')).toHaveCount(1);
     await expect(page.locator('.graph-node[data-node-id="native::crc"]')).toHaveCount(1);
-    // The caveat rides in from the metadata, above the controls.
+    // The caveat rides in from the metadata, above the controls -- and is
+    // said there once, not again below by the reading that carries the same
+    // sentence.
     await expect(panel.locator('.cargo__caveat')).not.toBeEmpty();
+    await saysOnce(panel, '.cargo__caveat');
     await record(page, 'cargo-panel');
   });
 
@@ -95,6 +103,8 @@ test.describe('the Chrestomathy panel', () => {
     await expect(page.locator('.graph-node[data-node-id="construct:memory.volatile"]'))
       .toHaveCount(1, { timeout: SETTLED });
     await expect(page.locator('.graph-node[data-node-id="token:c:volatile"]')).toHaveCount(1);
+
+    await saysOnce(panel, '.chrestomathy__caveat');
 
     // Tokens carry their abstraction layer, and the key names it.
     await page.locator('.graph-legend__header').click();

@@ -356,6 +356,9 @@ async def stream_from_url(request: StreamUrlRequest):
         async def generate():
             acc_nodes: dict = {}
             acc_edges: list = []
+            # A graph a parser could not finish is not kept: replayed from the
+            # cache it would arrive without the note that says what is missing.
+            noted = False
             try:
                 async for chunk in UnifiedParserService.stream_parse_url(
                     url=request.url,
@@ -365,8 +368,9 @@ async def stream_from_url(request: StreamUrlRequest):
                     annotate_lexicon=request.annotate_lexicon,
                 ):
                     _accumulate(chunk, acc_nodes, acc_edges)
+                    noted = noted or chunk.startswith("event: note\n")
                     yield chunk
-                    if chunk.startswith("event: done\n") and key:
+                    if chunk.startswith("event: done\n") and key and not noted:
                         _write_stream_cache(key, _label, request.url, mode_key, request.layout, acc_nodes, acc_edges)
             except Exception as exc:
                 yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"

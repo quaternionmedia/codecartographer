@@ -619,8 +619,10 @@ issue described in *GitHub token resolution order* (`governance/qm/adr/`).
 
 ## Graphbase Endpoints (`/db/*`)
 
-Mounted **only** when `MONGODB_URI` env var is set. All routes return 404
-otherwise. See `governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why this
+Mounted **only** when `MONGODB_URI` env var is set. Otherwise `GET /db/`
+answers `{"available": false, "reason": "..."}` -- the front end asks it
+whether the store is on, and an unmounted route's 404 was a browser console
+error on every page -- and every other `/db/*` route returns 404. See `governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why this
 store is separate from the filesystem `CacheService`.
 
 The graphbase submodule exposes three typed collections:

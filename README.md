@@ -25,8 +25,8 @@ git clone https://github.com/quaternionmedia/codecartographer.git
 cd codecartographer
 git submodule init && git submodule update
 
-# The lockfile is the environment
-uv sync --extra dev
+# The lockfile is the environment; c-parsing is libclang, which reads C
+uv sync --extra dev --extra c-parsing
 ```
 
 ### Start Development
@@ -147,8 +147,8 @@ For parsing public GitHub repositories:
 ## Development
 
 ```bash
-# Install dev dependencies
-uv sync --extra dev
+# Install dev dependencies (a sync without c-parsing removes libclang)
+uv sync --extra dev --extra c-parsing
 
 # Run linter
 uv run codecarto lint

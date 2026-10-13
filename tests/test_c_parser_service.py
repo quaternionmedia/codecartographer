@@ -613,3 +613,42 @@ class TestCLanguageParserProjectRoot:
 
         labels = {d.get("label") for _, d in g.nodes(data=True)}
         assert "solo_fn" in labels
+
+
+@requires_libclang
+class TestNamesKeepTheirNamespaces:
+    """C keeps tags, each record's members and each function's locals apart
+    from file-scope names; a node id that did not merged them into one node,
+    and the second declaration was never drawn."""
+
+    def test_a_tag_a_variable_two_fields_and_two_locals_are_six_nodes(self, tmp_path):
+        """Mutation: id every declaration as `stem::name` -- `config` and
+        `struct config` are one node, the two `x` fields one, the two `n`
+        locals one, and this fails."""
+        from codecarto.services.parsers.c_parser import CParser
+
+        source = tmp_path / "unit.c"
+        source.write_text(
+            "struct config { int baud; } config;\n"
+            "struct point { int x; };\n"
+            "struct size { int x; };\n"
+            "int f(void) { int n = 0; return n; }\n"
+            "int g(void) { int n = 1; return n; }\n"
+        )
+        result = CParser().parse_files([source])
+        kinds = {n["id"]: n["kind"] for n in result["nodes"]}
+        assert kinds["unit::struct config"] == "struct"
+        assert kinds["unit::config"] == "variable"
+        assert kinds["unit::struct point::x"] == kinds["unit::struct size::x"] == "field"
+        assert kinds["unit::f::n"] == kinds["unit::g::n"] == "variable"
+        assert kinds["unit::f"] == "function"  # a file-scope name is unchanged
+
+    def test_a_field_is_contained_by_its_record(self, tmp_path):
+        from codecarto.services.parsers.c_parser import CParser
+
+        source = tmp_path / "unit.c"
+        source.write_text("struct point { int x; int y; };\n")
+        result = CParser().parse_files([source])
+        field_of = {(e["src"], e["dst"]) for e in result["edges"] if e["kind"] == "FIELD_OF"}
+        assert field_of == {("unit::struct point", "unit::struct point::x"),
+                            ("unit::struct point", "unit::struct point::y")}

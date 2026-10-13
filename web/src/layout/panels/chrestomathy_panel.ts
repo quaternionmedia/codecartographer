@@ -18,7 +18,7 @@ import m from 'mithril';
 
 import type { LayoutContext } from '../layout_context';
 import { ProblemView } from '../../features/estate/problem_view';
-import { Provenance } from '../../features/estate/provenance';
+import { Provenance, caveatShown } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import { chrestomathyRows } from '../../features/cartography/chrestomathy_rows';
 import '../../features/estate/estate.css';
@@ -95,7 +95,7 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
                     m('td', row.note),
                   ]))),
               ]),
-              m('p.estate-view__hint', reading.caveat),
+              caveatShown(metadata, 'chrestomathy') ? null : m('p.estate-view__hint', reading.caveat),
               m('button.estate-view__draw', {
                 onclick: () => void ctx
                   .plotWith(() => ctx.actions.plot.drawChrestomathy())

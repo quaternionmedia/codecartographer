@@ -28,6 +28,7 @@ import {
 import { PlotService } from '../services/plot_service';
 import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
+import { infoLine, sourceLine } from '../features/graph/services/node_info';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
@@ -689,15 +690,16 @@ export class LayoutContext {
         r.fitTo(subtree);
       },
 
+      // `show`, not `hint`: a hint speaks once a session, and these are
+      // verbs a person uses again (node_info.ts says why that matters).
       viewSource: (id) => {
         const node = renderer()?.getNodes().find((n) => n.id === id);
-        if (node?.file) ToastManager.hint('rad-source', String(node.file));
+        const source = node ? sourceLine(node) : null;
+        if (source) ToastManager.show(source, 8_000);
       },
       showInfo: (id) => {
         const node = renderer()?.getNodes().find((n) => n.id === id);
-        if (node) {
-          ToastManager.hint('rad-info', `${node.label ?? node.id} · ${node.kind ?? 'node'}`);
-        }
+        if (node) ToastManager.show(infoLine(node), 8_000);
       },
     };
   }
@@ -760,6 +762,11 @@ export class LayoutContext {
    * in the place a reader is already looking, rather than as a graph that
    * merely looks oddly circular.
    */
+  /** What a parser said it could not read, kept in the status line after its toast is gone. */
+  private static _notesNote(notes: string[]): string {
+    return notes.length ? ` — ${notes.join('; ')}` : '';
+  }
+
   private _fallbackNote(renderer: StreamingGraphRenderer): string {
     const { placed, total } = renderer.layoutFallback();
     if (placed === 0) return '';
@@ -812,6 +819,7 @@ export class LayoutContext {
 
     const accNodes: { id: string; [k: string]: unknown }[] = [];
     const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
+    const notes: string[] = [];
     let nodeCount = 0;
 
     this._mountAndStream((renderer) =>
@@ -839,6 +847,10 @@ export class LayoutContext {
             accEdges.push(edge as any);
             renderer.addEdge(edge as any);
           },
+          onNote: (message) => {
+            notes.push(message);
+            ToastManager.show(message, 15_000);
+          },
           onDone: (elapsed_ms, from_cache) => {
             this._cancelStream = null;
             renderer.finalize();
@@ -863,7 +875,7 @@ export class LayoutContext {
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
             this.updatePanelState({
               isLoading: false,
-              statusMessage: msg + this._fallbackNote(renderer),
+              statusMessage: msg + this._fallbackNote(renderer) + LayoutContext._notesNote(notes),
               progress: null,
             });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
@@ -896,6 +908,7 @@ export class LayoutContext {
 
     const accNodes: { id: string; [k: string]: unknown }[] = [];
     const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
+    const notes: string[] = [];
     let nodeCount = 0;
 
     this._mountAndStream((renderer) =>
@@ -924,6 +937,10 @@ export class LayoutContext {
             accEdges.push(edge as any);
             renderer.addEdge(edge as any);
           },
+          onNote: (message) => {
+            notes.push(message);
+            ToastManager.show(message, 15_000);
+          },
           onDone: (elapsed_ms, from_cache) => {
             this._cancelStream = null;
             renderer.finalize();
@@ -947,7 +964,7 @@ export class LayoutContext {
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
             this.updatePanelState({
               isLoading: false,
-              statusMessage: msg + this._fallbackNote(renderer),
+              statusMessage: msg + this._fallbackNote(renderer) + LayoutContext._notesNote(notes),
               progress: null,
             });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
