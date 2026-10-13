@@ -395,24 +395,39 @@ def test_record_links_a_binary_for_its_map(tmp_path, monkeypatch):
     class Done:
         stdout, stderr, returncode = "", "", 0
 
+    metadata = json.dumps({"version": 1, "workspace_members": ["path+file:///ws/crates/blinky#0.1.0"],
+                           "packages": [{"id": "path+file:///ws/crates/blinky#0.1.0", "name": "blinky",
+                                         "targets": [{"name": "blinky", "kind": ["bin"]}]}]})
+
     def fake_run(command, **kwargs):
         ran.append(command[1:])
+        done = Done()
+        if command[1] == "metadata":
+            done.stdout = metadata
         if command[1] == "rustc":
             target = command[-1].split("-Map=", 1)[1]
             Path(target).write_text("     VMA      LMA     Size Align Out     In      Symbol\n")
-        return Done()
+        return done
 
     monkeypatch.setattr("shutil.which", lambda name: "cargo")
     monkeypatch.setattr("subprocess.run", fake_run)
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
     assert result.exit_code == 0, result.output
     expected = (tmp_path / cargo_service.DOCUMENTS / "blinky.map").resolve().as_posix()
-    assert ran[-1] == ["rustc", "--profile", "release", "--bin", "blinky", "--offline", "--",
-                       "-C", f"link-arg=-Map={expected}"]
+    # A workspace with no root package: cargo will not guess whose binary it is.
+    assert ran[-1] == ["rustc", "--profile", "release", "--package", "blinky", "--bin", "blinky",
+                       "--offline", "--", "-C", f"link-arg=-Map={expected}"]
     assert (tmp_path / cargo_service.DOCUMENTS / "blinky.map").is_file()
 
     (tmp_path / cargo_service.DOCUMENTS / "blinky.map").unlink()
-    monkeypatch.setattr("subprocess.run", lambda command, **kwargs: Done())
+
+    def no_map(command, **kwargs):
+        done = Done()
+        if command[1] == "metadata":
+            done.stdout = metadata
+        return done
+
+    monkeypatch.setattr("subprocess.run", no_map)
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
     assert result.exit_code == 1
     assert "the linker wrote no blinky.map" in result.output

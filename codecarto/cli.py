@@ -676,7 +676,8 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
     \b
         metadata.json   cargo metadata --format-version 1
         check.jsonl     cargo check --workspace --message-format=json
-        BIN.map         cargo rustc --profile release --bin BIN -- -C link-arg=-Map=...
+        BIN.map         cargo rustc --profile release --package PKG --bin BIN
+                            -- -C link-arg=-Map=...   (PKG: the member with that bin)
     """
     import shlex
     import shutil
@@ -702,14 +703,43 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
          [cargo_bin, "check", "--workspace", "--message-format=json", *offline,
           *(["--all-targets"] if all_targets else [])], True),
     ]
+    def package_of(binary: str) -> str | None:
+        """The workspace package that owns a binary, from the metadata just
+        recorded: `cargo rustc` in a workspace with no root package will not
+        guess it."""
+        import json
+
+        try:
+            data = json.loads((out / cargo_service.METADATA_DOCUMENT).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        members = set(data.get("workspace_members") or [])
+        for package in data.get("packages") or []:
+            if package.get("id") in members and any(
+                    t.get("name") == binary and "bin" in (t.get("kind") or [])
+                    for t in package.get("targets") or []):
+                return package.get("name")
+        return None
+
     for binary in maps:
         # The linker writes the map itself; cargo's output is not the document.
-        target = out / f"{binary}.map"
-        steps.append((target.name,
-                      [cargo_bin, "rustc", "--profile", profile, "--bin", binary, *offline, "--",
-                       *shlex.split(map_flag.format(path=target.as_posix()))], False))
+        def link(binary: str = binary) -> list[str] | None:
+            package = package_of(binary)
+            if package is None:
+                return None
+            target = out / f"{binary}.map"
+            return [cargo_bin, "rustc", "--profile", profile, "--package", package, "--bin", binary,
+                    *offline, "--", *shlex.split(map_flag.format(path=target.as_posix()))]
+        steps.append((f"{binary}.map", link, False))
     failed = False
     for name, command, captured in steps:
+        if callable(command):
+            command = command()
+            if command is None:
+                failed = True
+                click.secho(f"✗ no workspace package has a binary named {name[:-4]}, "
+                            f"by the {cargo_service.METADATA_DOCUMENT} just recorded", fg="red")
+                continue
         click.secho(f"→ cargo {' '.join(command[1:])}", fg="cyan")
         stderr = ""
         try:

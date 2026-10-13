@@ -69,21 +69,32 @@ the build that is flashed -- and keeps its map; a C build passing
 
 - **A region's use** is the sections the link placed in it at run time, plus
   the load images of sections run from elsewhere (`.data`, a `.ram_func`).
-  `.bss`, `.uninit`, a stack or heap have no load image -- told by name, since
-  LLD's map does not print a section's type, and pinned by a test whose map
-  gives `.bss` a flash load address the way a linker does.
+  Neither map prints a section's type, so a section has no load image when it
+  holds nothing with contents -- only zeroed input (`.bss.*`, `COMMON`), or no
+  input at all, as a stack reserved with `. = . + size` has, for which GNU ld
+  still prints a load address -- or is named for zeroed memory (`.bss`,
+  `.uninit`). Against a real link it agrees with `arm-none-eabi-size`.
 - **On the code map**, the linker script's regions and sections carry what was
   measured (`meta.measured`, and a tooltip that says it), and functions and
   statics carry `meta.bytes`: a symbol is demangled (Rust's legacy mangling,
   and the half-demangled form LLD prints) and joined within the crate it was
   compiled in, by name and, for a method, its impl's type -- only where one
-  item answers. A symbol from outside the parse (`core`, a runtime) is counted,
-  not drawn.
+  item answers. A C name one file declares and another defines is joined to
+  the file the map's object names. GNU ld lists no `static`; built with
+  `-fdata-sections` and `-ffunction-sections`, one is read from the section
+  GCC named for it (`.bss.rx_buffer`). A symbol from outside the parse (`core`,
+  a runtime, the C library) is counted, not drawn.
 - **On the crate graph**, the binary's target says its fill per region, and the
   map is a document row with its age, stale once a source changes after it.
 
 What it cannot see: inlined code has no symbol, so its bytes are its caller's;
 and a map is only as current as the link that wrote it.
+
+Two of the test maps are ones the linkers wrote: rust-lld's for a Cortex-M
+`blinky` recorded by `codecarto cargo record --map`, and arm-none-eabi-ld's for
+a small C firmware. Each found what maps written from the documentation had
+not -- printed symbol sizes, mapping symbols, the names LTO and cortex-m-rt
+give, a reserved stack with a load address, unlisted statics.
 
 ## What the Rust reader knows, and how
 

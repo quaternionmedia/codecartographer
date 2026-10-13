@@ -328,7 +328,7 @@ Runs, in PATH:
 cargo metadata --format-version 1 --offline                 # -> target/codecarto/metadata.json
 cargo check --workspace --message-format=json --offline     # -> target/codecarto/check.jsonl
 # and, for each --map BIN, a link that keeps the linker's map:
-cargo rustc --profile release --bin BIN --offline -- -C link-arg=-Map=<PATH>/target/codecarto/BIN.map
+cargo rustc --profile release --package PKG --bin BIN --offline -- -C link-arg=-Map=<PATH>/target/codecarto/BIN.map
 ```
 
 A check that finds errors still writes its document -- recording the
@@ -342,7 +342,10 @@ PATH it says so and exits 1; the window still draws the manifests.
 so a build that finishes without one is a failure, not a document. `--map-flag`
 is how the linker is asked -- the default suits `rust-lld`; a GCC linker wants
 `'-C link-arg=-Wl,-Map={path}'`. `--profile` is the build measured, `release` by
-default because that is the one flashed.
+default because that is the one flashed. `PKG` is the workspace member with a
+binary named `BIN`, read from the `metadata.json` just recorded -- `cargo rustc`
+will not guess it in a workspace with no root package -- and a `BIN` no member
+has is said by name and fails the run.
 
 ---
 
