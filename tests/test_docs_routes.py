@@ -3,8 +3,10 @@
 Every tracked Markdown file outside the two submodules is read against the tree
 it describes, and each check here fails on a document that disagrees with it:
 
-- every prefix `codecarto.main.app` mounts appears in the README's table, under
-  a heading in `docs/api.md`, and in `web/vite.config.js`'s `API_PATHS`;
+- every prefix `codecarto.main.app` mounts appears in `docs/api.md`'s overview
+  table and under one of its headings, and in `web/vite.config.js`'s
+  `API_PATHS`;
+- the README is an onramp: at most `README_LINES` lines;
 - no document names the port this project no longer binds, or a test count;
 - every relative link resolves, and so does every repository path written in
   backticks in prose, unless `EXAMPLE_PATHS` names it;
@@ -120,10 +122,22 @@ def prefixes() -> set[str]:
     return found
 
 
-def test_readme_table_names_every_mounted_prefix(prefixes):
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    missing = sorted(p for p in prefixes if f"| `{p}` |" not in readme)
-    assert not missing, f"README.md's API table lacks a row for: {missing}"
+def test_api_overview_table_names_every_mounted_prefix(prefixes):
+    api = (ROOT / "docs" / "api.md").read_text(encoding="utf-8")
+    overview = re.search(r"^## Overview\n(.*?)(?=^## )", api, re.M | re.S)
+    assert overview, "docs/api.md has no '## Overview' section"
+    missing = sorted(p for p in prefixes if f"| `{p}` |" not in overview.group(1))
+    assert not missing, f"docs/api.md's overview table lacks a row for: {missing}"
+
+
+README_LINES = 60
+
+
+def test_the_readme_is_an_onramp():
+    """What the README would add past this belongs on a page under `docs/`."""
+    lines = (ROOT / "README.md").read_text(encoding="utf-8").splitlines()
+    assert len(lines) <= README_LINES, (
+        f"README.md is {len(lines)} lines; move the depth to docs/ and link it")
 
 
 def test_api_reference_has_a_heading_for_every_mounted_prefix(prefixes):

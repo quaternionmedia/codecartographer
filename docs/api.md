@@ -33,6 +33,11 @@ a port: several of this org's servers run on one workstation.
 | `/auth` | auth | Which GitHub credential source is active |
 | `/db` | db | Graphbase, when `MONGODB_URI` is set |
 
+`/app` serves the built web application from `web/dist` when a build is present.
+While developing, the frontend's dev server proxies each prefix above to the
+backend, so the app and its API share an origin as they do in production;
+`API_PATHS` in `web/vite.config.js` is that list.
+
 ---
 
 ## Unified Parse Endpoints
@@ -279,8 +284,8 @@ Convert GraphData JSON to pre-rendered HTML for the Notebook renderer.
 
 ## C Parser Endpoints
 
-Require the optional `[c-parsing]` dependency group (libclang).
-Install with: `uv pip install 'codecarto[c-parsing]'`
+Require the optional `c-parsing` extra (libclang), which the install in
+[Getting Started](getting-started.md) includes.
 
 ### POST `/c-parser/file`
 
