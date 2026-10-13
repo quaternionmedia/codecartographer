@@ -95,7 +95,7 @@ codecarto/
 ├── models/
 │   ├── source_data.py       # File, Folder, Directory
 │   └── custom_layouts/
-│       └── compound_layout.py  # 3-pass hierarchical layout
+│       └── compound_layout.py  # 4-pass hierarchical layout
 │
 └── static/                # Bundled HTML assets (c-visualizer, pam-frontend)
 ```
