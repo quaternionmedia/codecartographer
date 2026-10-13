@@ -88,6 +88,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       try { await ctx.actions.plot.initializeLanguages(); m.redraw(); } catch { /* non-fatal */ }
       try { await ctx.actions.plot.initializeLexiconLanguages(); m.redraw(); } catch { /* non-fatal */ }
       await ctx.refreshCache();
+      void ctx.refreshExamples();
       ctx.refreshGraphbase();        // probe graphbase — sets graphbaseAvailable
       ctx.refreshGithubAuthStatus(); // probe GitHub auth — surfaces bad-token early
     },

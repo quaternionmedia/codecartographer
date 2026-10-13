@@ -19,6 +19,7 @@ services/
 ├── construct_service.py       # What a node is across languages; the chrestomathy
 ├── cargo_service.py           # A Cargo workspace from manifests and recorded cargo documents
 ├── link_map_service.py        # A linker's map file: sections, symbols, each region's measured use
+├── examples_service.py        # The examples bundled under examples/, for the project selector
 ├── graph_serializer.py        # Graph JSON serialization
 ├── position_service.py        # Node positioning
 └── parsers/
@@ -273,6 +274,19 @@ measures each region's use at run time and as load images; `annotate(graph,
 map, ...)` puts the figures on a parsed code map's regions, sections, functions
 and statics; `demangle` and `symbol_key` turn a Rust symbol back into the path,
 type and function it was compiled from.
+
+---
+
+## examples_service
+
+**File:** `examples_service.py`
+
+The examples bundled with a checkout, for the project selector: `bundled()`
+lists each one `BUNDLED` names whose directory exists under `examples/`, with
+the absolute path it is read from and whether it is a Cargo workspace. Only what
+is named is offered, and an installed package, which has no `examples/`, offers
+none. `examples/rust-firmware` carries the records real cargo and rust-lld wrote
+for it, its absolute paths rewritten; its README says how to record it afresh.
 
 ---
 

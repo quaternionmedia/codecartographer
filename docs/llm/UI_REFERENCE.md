@@ -16,7 +16,7 @@ this table is a reading of it.
 | Graph | `graph` | The one canvas. Every graph in the application draws here — code maps, lexicons, the estate views — through `StreamingGraphRenderer` |
 | Files | `file-tree` | Repository and upload file browser |
 | Upload | `upload-panel` | Local file dropzone, plus the source controls (Load Demo lives here) |
-| Repository | `repo-panel` | GitHub URL fetch, recent graphs, examples |
+| Repository | `repo-panel` | GitHub URL or local path fetch, recent graphs, and the project selector: examples by language, Rust first. A bundled example (`examples/`, from `GET /repo/examples`) leads its group with a filled chip: it is read from this checkout with its recorded documents, so it needs no network, and a Cargo workspace's records are loaded into the Cargo panel as it opens. The GitHub examples draw the code map only -- a fetched repository brings no records of a build |
 | Graphbase | `graphbase-panel` | Durable named bookmarks (needs `MONGODB_URI`) |
 | Graph Settings | `graph-settings-panel` | Layout, physics, styling controls |
 | Actions | `plotbar` | Plot, cancel, status |

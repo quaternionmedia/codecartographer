@@ -534,6 +534,18 @@ GitHub calls. The result is a `Directory` model in the same shape as
 
 ---
 
+### GET `/repo/examples`
+
+The examples bundled with this checkout (`examples/` at the repository root),
+for the project selector to offer beside its GitHub ones: each with `id`,
+`label`, `language`, `title`, the absolute `path` it is read from, and `cargo`
+-- whether it is a Cargo workspace, whose recorded documents the selector also
+loads into the Cargo panel. Only what `codecarto/services/examples_service.py`
+names is offered, and an installed package, which has no `examples/`, answers
+an empty list.
+
+---
+
 ## PAM Monitor Endpoints
 
 ### GET `/pam/ui`

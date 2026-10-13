@@ -29,6 +29,7 @@ import { PlotService } from '../services/plot_service';
 import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
 import { infoLine, sourceLine } from '../features/graph/services/node_info';
+import type { BundledExample } from '../features/examples/examples';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
@@ -92,6 +93,7 @@ export class LayoutContext {
 
   /** Cached graph entries fetched from the backend cache endpoint. */
   public cachedGraphs: CachedEntry[] | null = null;
+  public bundledExamples: BundledExample[] = [];
 
   /** GitHub auth status from the backend's /auth/github endpoint. */
   public githubAuthStatus: { source: string; authenticated: boolean; token_prefix?: string } | null = null;
@@ -281,6 +283,7 @@ export class LayoutContext {
       availableLanguages: s.availableLanguages ?? null,
       availableLexiconLanguages: s.availableLexiconLanguages ?? [],
       cachedGraphs: this.cachedGraphs,
+      bundledExamples: this.bundledExamples,
     };
   }
 
@@ -450,6 +453,20 @@ export class LayoutContext {
   public async deleteGraphbaseHistoryEntry(urlHash: string, capturedAt: number): Promise<void> {
     const ok = await GraphbaseService.deleteHistoryEntry(this.appState.api.db, urlHash, capturedAt);
     if (ok) await this.refreshGraphbase();
+  }
+
+  /** What examples this checkout bundles, for the project selector. */
+  public async refreshExamples(): Promise<void> {
+    try {
+      const resp = await fetch(`${this.appState.api.repoReader}/examples`);
+      if (resp.ok) {
+        const data = await resp.json();
+        this.bundledExamples = (data?.results?.examples as BundledExample[]) ?? [];
+        m.redraw();
+      }
+    } catch {
+      /* non-fatal: the GitHub examples are still offered */
+    }
   }
 
   /** Fetch and refresh the backend graph-cache list. */
@@ -1046,6 +1063,13 @@ export class LayoutContext {
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: `Error loading ${language} lexicon` });
         }
+      },
+
+      onBundledExample: (example) => {
+        this.panelCallbacks.onRepoSubmit(example.url);
+        // Its recorded cargo documents are part of it: the Cargo panel reads
+        // them now, so opening that panel shows the workspace already read.
+        if (example.cargo) void this.actions.plot.loadCargoReading(example.url);
       },
 
       onRepoSubmit: (url: string) => {

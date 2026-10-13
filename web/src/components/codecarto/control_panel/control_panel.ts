@@ -1,4 +1,6 @@
 import m from 'mithril';
+import { exampleGroups } from '../../../features/examples/examples';
+import type { BundledExample, Example } from '../../../features/examples/examples';
 import { animations } from '../../../core/animations';
 import { Directory, RawFile } from '../../models/source';
 import { DirectoryContent } from '../../qm_comp_lib/directory/directory';
@@ -55,6 +57,8 @@ export interface ControlPanelCallbacks {
   onExpandAll?: () => Promise<void>;
   onCancel?: () => void;
   onLoadFromCache?: (key: string) => void;
+  /** A bundled example: plot it, and read a Cargo workspace's records into the Cargo panel. */
+  onBundledExample?: (example: Example) => void;
   onEvictCache?: (key: string) => void;
   onClearRepo?: () => void;
 }
@@ -80,6 +84,8 @@ export interface ControlPanelContent {
   availableLanguages: Record<string, string[]> | null;
   availableLexiconLanguages: string[];
   cachedGraphs: CachedEntry[] | null;
+  /** What `GET /repo/examples` offers; empty before it answers, or in an installed package. */
+  bundledExamples: BundledExample[];
 }
 
 export type ControlPanelMode = 'full' | 'source' | 'upload' | 'repo' | 'graph';
@@ -332,49 +338,27 @@ export function ControlPanel(
             ])
           : null,
 
-        // Example chips (when no repo loaded)
-        !hasRepo ? m('div.panel-source__examples', [
-          m('span.panel-settings__label-compact', 'Python'),
-          m('div.panel-source__example-chips', [
-            ...[
-              { label: 'requests', url: 'https://github.com/psf/requests',    title: 'requests — small repo (~2 MB), full content' },
-              { label: 'Flask',    url: 'https://github.com/pallets/flask',   title: 'Flask — medium repo (~8 MB), structure only' },
-              { label: 'React',    url: 'https://github.com/facebook/react',  title: 'React — large repo (~25 MB), structure only' },
-              { label: 'CPython',  url: 'https://github.com/python/cpython',  title: 'CPython — xlarge repo (~200 MB), shallow root' },
-              { label: 'Linux',    url: 'https://github.com/torvalds/linux',  title: 'Linux — xxlarge repo (~1 GB+), shallow root' },
-            ].map(ex =>
+        // The project selector: each language's examples, Rust first, the
+        // bundled ones (no network, no toolchain) leading their group. Shown
+        // with a repository loaded too, so another is one click away.
+        m('div.panel-source__examples', exampleGroups(content.bundledExamples).flatMap((group) => [
+          m('span.panel-settings__label-compact', group.language),
+          m('div.panel-source__example-chips', { 'data-language': group.language.toLowerCase() },
+            group.examples.map((ex) =>
               m('button.panel-source__example-chip', {
+                class: ex.bundled ? 'panel-source__example-chip--bundled' : '',
                 title: ex.title,
+                'data-example': ex.label,
                 onclick: (e: MouseEvent) => {
                   animations.buttonPress(e.currentTarget as Element);
                   onStateChange({ repoUrl: ex.url, codeSourceMode: 'repo' });
-                  callbacks.onRepoSubmit(ex.url);
+                  if (ex.bundled && callbacks.onBundledExample) callbacks.onBundledExample(ex);
+                  else callbacks.onRepoSubmit(ex.url);
                 },
                 disabled: state.isLoading,
-              }, ex.label)
-            ),
-          ]),
-          m('span.panel-settings__label-compact', 'C'),
-          m('div.panel-source__example-chips', [
-            ...[
-              { label: 'git',     url: 'https://github.com/git/git',            title: 'git — the VCS itself, written in C (~30 MB), structure only' },
-              { label: 'curl',    url: 'https://github.com/curl/curl',         title: 'curl — ubiquitous networking library in C (~10 MB), full content' },
-              { label: 'Lua',     url: 'https://github.com/lua/lua',           title: 'Lua 5.x — reference VM in C (~1 MB), full content' },
-              { label: 'SQLite',  url: 'https://github.com/sqlite/sqlite',     title: 'SQLite — most deployed DB in C (~15 MB), structure only' },
-              { label: 'Redis',   url: 'https://github.com/redis/redis',       title: 'Redis — systems C data structures (~5 MB), full content' },
-            ].map(ex =>
-              m('button.panel-source__example-chip', {
-                title: ex.title,
-                onclick: (e: MouseEvent) => {
-                  animations.buttonPress(e.currentTarget as Element);
-                  onStateChange({ repoUrl: ex.url, codeSourceMode: 'repo' });
-                  callbacks.onRepoSubmit(ex.url);
-                },
-                disabled: state.isLoading,
-              }, ex.label)
-            ),
-          ]),
-        ]) : null,
+              }, ex.label),
+            )),
+        ])),
 
         // Loaded repo — compact status line; the tree itself lives in the Files panel
         hasRepo ? m('div.panel-source__repo-loaded', [
