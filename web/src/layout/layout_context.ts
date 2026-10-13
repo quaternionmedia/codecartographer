@@ -76,15 +76,12 @@ export class LayoutContext {
 
   // Reactive UI-only state shared by the docked panels.
   public panelState: ControlPanelState = {
-    isOpen: true,
-    activeTab: 'source',
     codeSourceMode: 'upload',
     repoUrl: '',
     currentTheme: 'forest',
     isLoading: false,
     statusMessage: 'Ready',
     progress: null,
-    panelHeight: 380,
     graphSections: { layout: true, visual: false, theme: false },
     parseDepth: 2,
   };

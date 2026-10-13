@@ -14,11 +14,9 @@ import { ControlPanel } from '../../components/codecarto/control_panel';
 export function createRepoPanel(ctx: LayoutContext): m.Component {
   return {
     view: () => {
-      const panelState = { ...ctx.panelState, isOpen: true };
-
       return m('div.gl-panel.gl-panel--controls.gl-panel--controls-repo', [
         ControlPanel(
-          panelState,
+          ctx.panelState,
           ctx.panelCallbacks,
           (updates) => ctx.updatePanelState(updates),
           ctx.getControlPanelContent(),
