@@ -14,6 +14,14 @@ test('Info names the node, what its parser called it, and where it is', () => {
   assert.equal(infoLine(node), 'delay · rust function · src/main.rs:12');
 });
 
+test('Info says what the node is across languages, and what else it is', () => {
+  const node = {
+    id: 'x', label: 'SysTick', language: 'rust', kind: 'function', file: 'src/main.rs', line: 28,
+    construct_name: 'Function', meta: { facets: ['firmware.interrupt'] },
+  };
+  assert.equal(infoLine(node), 'SysTick · rust function · Function (firmware.interrupt) · src/main.rs:28');
+});
+
 test('a node from no file is still described, by what is known', () => {
   assert.equal(infoLine({ id: 'crate::hal', label: 'hal', kind: 'crate' }), 'hal · crate');
   assert.equal(infoLine({ id: 'bare' }), 'bare');

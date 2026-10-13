@@ -24,8 +24,8 @@ import * as d3 from 'd3';
 import { BaseExtension } from './base';
 import type { GraphNode, GraphEdge } from '../services/graph_types';
 import { nodePath } from '../services/node_shapes';
-import { edgeMarks, layerMarks, nodeMarks, readable } from './legend_marks';
-import type { EdgeMark, LayerMark, NodeMark } from './legend_marks';
+import { constructMarks, edgeMarks, layerMarks, nodeMarks, readable } from './legend_marks';
+import type { ConstructMark, EdgeMark, LayerMark, NodeMark } from './legend_marks';
 import './legend_extension.css';
 
 const SWATCH = 16;
@@ -48,6 +48,7 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
     const nodes_ = nodeMarks(nodes);
     const edges_ = edgeMarks(edges);
     const layers_ = layerMarks(nodes);
+    const constructs_ = constructMarks(nodes);
 
     const root = document.createElement('div');
     root.className = 'graph-legend';
@@ -77,6 +78,9 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
     }
     if (layers_.length) {
       body.appendChild(this.section('Abstraction layers', layers_.map((m) => this.layerRow(m))));
+    }
+    if (constructs_.length) {
+      body.appendChild(this.section('Constructs', constructs_.map((m) => this.constructRow(m))));
     }
     if (!nodes_.length && !edges_.length) {
       const empty = document.createElement('p');
@@ -155,6 +159,24 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
       .attr('fill', mark.color);
     const label = mark.name ? `L${mark.ordinal} ${mark.name}` : `Layer ${mark.ordinal}`;
     return this.row(svg.node() as SVGSVGElement, label, mark.count);
+  }
+
+  private constructRow(mark: ConstructMark): HTMLElement {
+    const svg = d3
+      .create('svg')
+      .attr('width', SWATCH)
+      .attr('height', SWATCH)
+      .attr('class', 'graph-legend__swatch')
+      .attr('aria-hidden', 'true');
+    svg
+      .append('circle')
+      .attr('cx', SWATCH / 2)
+      .attr('cy', SWATCH / 2)
+      .attr('r', SWATCH / 2 - 2)
+      .attr('fill', mark.color);
+    const row = this.row(svg.node() as SVGSVGElement, mark.name, mark.count);
+    row.dataset.construct = mark.construct;
+    return row;
   }
 
   private edgeRow(mark: EdgeMark): HTMLElement {

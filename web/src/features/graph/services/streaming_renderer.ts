@@ -786,6 +786,11 @@ export class StreamingGraphRenderer {
     if (this.styling.colorBy === 'layer' && typeof node.layer_color === 'string') {
       return node.layer_color;
     }
+    // What a node *is*, the same colour in every language: a C struct and a
+    // Rust struct read alike, whatever look each parser gave them.
+    if (this.styling.colorBy === 'construct' && typeof node.construct_color === 'string') {
+      return node.construct_color;
+    }
     return (node.color as string) || 'steelblue';
   }
 

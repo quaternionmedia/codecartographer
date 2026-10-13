@@ -48,7 +48,11 @@ so two files with one name are two nodes.
 Every node a language in `codecarto/data/constructs.yaml` produces also carries
 `construct` -- what it *is*, the same across languages (`type.product` for a C or
 Rust struct) -- and, where its qualifiers, attributes or body say so,
-`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`). A local
+`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`), and, for
+a construct with a look, `construct_color` and `construct_name` (what "Color By:
+Construct" draws and the key names). Every graph route stamps these as it
+serializes, and a cached graph is stamped again as it is replayed, so any graph
+on the canvas can be read by `POST /lexicon/chrestomathy/census`. A local
 Rust repository with a recorded `target/codecarto/check.jsonl` has rustc's
 diagnostics on the items they name (`meta.diagnostics`, `meta.messages`,
 `meta.diagnostics_recorded_at`), and with a recorded `target/codecarto/<bin>.map`
@@ -729,6 +733,18 @@ parser `kinds` that realise it, what `carried_by` a facet in source (`#[interrup
 its note, never a missing row** -- Rust has no `volatile`, C has no method. An
 unknown construct is a 200 with `unreadable`, `problem` and the known ids as
 `remedy`.
+
+### POST `/lexicon/chrestomathy/census`
+
+The chrestomathy of a graph. Body: `{"nodes": [{"id", "language", "kind",
+"construct"?, "meta"?: {"facets"?}}]}` -- the nodes on the canvas. Answers the
+`constructs` and `facets` present, each with its `name`, `gloss`, `look`,
+`count`, the `languages` it occurs in with their counts, and the `ids` of the
+nodes that are it; then what was not placed: `unplaced` (a listed language's
+kind the vocabulary does not map), `outside` (a language it does not list) and
+`unlabelled` (no language at all), with the `caveat`. A node that arrived
+without a stamp is stamped by the same rule as a drawn graph; nothing sent is
+changed.
 
 ### GET `/lexicon/chrestomathy/{construct}/gjgf?layout=`
 

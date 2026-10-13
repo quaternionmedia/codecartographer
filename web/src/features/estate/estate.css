@@ -338,3 +338,19 @@
 
 .cartography__table tr.is-silent td { color: var(--c-font-muted); font-style: italic; }
 .cartography__layer { display: block; color: var(--c-font-muted); }
+.cartography__table tr.is-shared td:first-child { border-left: 2px solid var(--c-secondary, #00ff41); }
+.cartography__table tr.is-chosen td { background: rgba(127, 127, 127, 0.12); }
+.cartography__table tr.is-facet td:first-child { font-style: italic; }
+
+.cartography__link,
+.cartography__show {
+  font: inherit;
+  color: var(--c-font);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline dotted;
+}
+.cartography__show { color: var(--c-font-muted); }

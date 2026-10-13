@@ -35,7 +35,9 @@ gives it:
 - **Cartography and chrestomathy.** Shipped: `annotate_lexicon` in the parse
   flow, layer colouring with legend rows, a third lexicon (Rust), the construct
   vocabulary and a Chrestomathy panel across every language it lists
-  ([`rust.md`](rust.md)). Remaining: the panel the Estate table's prose row
+  ([`rust.md`](rust.md)), and any graph on the canvas read as one -- a census
+  of its constructs by language, Color By: Construct, and View → Compare on
+  any node. Remaining: the panel the Estate table's prose row
   lacks -- a thread's topics drawn with the same caveat discipline as every
   other seam -- and the looksatwords bridge both ways.
 

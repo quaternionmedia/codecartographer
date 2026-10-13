@@ -159,3 +159,21 @@ test('an ngon is a polygon of its own sides, and a pentagon without them', () =>
   assert.equal(nodePath('ngon', 8).split(' L ').length, 5);
   assert.notEqual(nodePath('ngon', 8, 6), nodePath('circle', 8));
 });
+
+// --- constructs ------------------------------------------------------------------
+
+test('the constructs key is one row per construct, whichever language drew it', async () => {
+  /* Mutation: key the rows on language and construct -- a C struct and a Rust
+     struct become two rows and this fails. */
+  const { constructMarks } = await import('../../dist-pure/features/graph/extensions/legend_marks.js');
+  const marks = constructMarks([
+    { language: 'c', construct: 'type.product', construct_name: 'Product type', construct_color: '#4a9eff' },
+    { language: 'rust', construct: 'type.product', construct_name: 'Product type', construct_color: '#4a9eff' },
+    { language: 'rust', construct: 'callable.function', construct_name: 'Function', construct_color: '#ff9d3d' },
+    { language: 'javascript', kind: 'function' },
+  ]);
+  assert.deepEqual(marks.map((m) => [m.construct, m.name, m.color, m.count]), [
+    ['type.product', 'Product type', '#4a9eff', 2],
+    ['callable.function', 'Function', '#ff9d3d', 1],
+  ]);
+});

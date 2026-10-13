@@ -16,6 +16,8 @@ export interface InfoNode {
   language?: unknown;
   file?: unknown;
   line?: unknown;
+  construct_name?: unknown;
+  meta?: unknown;
   [key: string]: unknown;
 }
 
@@ -26,11 +28,18 @@ export function sourceLine(node: InfoNode): string | null {
   return `${node.file}${line}`;
 }
 
-/** `delay · rust function · src/main.rs:12` -- name, what its parser called it, where. */
+/**
+ * `delay · rust function · Function (memory.unsafe) · src/main.rs:12` -- name,
+ * what its parser called it, what it is across languages and what else it is,
+ * where.
+ */
 export function infoLine(node: InfoNode): string {
   const parts = [String(node.label ?? node.id)];
   const what = [node.language, node.kind].filter((x) => typeof x === 'string' && x).join(' ');
   if (what) parts.push(what);
+  const facets = (node.meta as { facets?: unknown } | undefined)?.facets;
+  const also = Array.isArray(facets) && facets.length ? ` (${facets.join(', ')})` : '';
+  if (typeof node.construct_name === 'string') parts.push(node.construct_name + also);
   const source = sourceLine(node);
   if (source) parts.push(source);
   return parts.join(' · ');

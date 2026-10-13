@@ -53,6 +53,8 @@ export interface GraphOps {
   // ── leaves the canvas ──────────────────────────────────────────────────
   viewSource(id: string): void;
   showInfo(id: string): void;
+  /** Open the chrestomathy at what this node is, across languages. */
+  compare(id: string): void;
 }
 
 export interface RouterOptions {
@@ -114,6 +116,9 @@ export function createIntentRouter(opts: RouterOptions): (intent: Intent) => voi
         return;
       case 'node-info':
         if (first) ops.showInfo(first);
+        return;
+      case 'compare':
+        if (first) ops.compare(first);
         return;
 
       default:

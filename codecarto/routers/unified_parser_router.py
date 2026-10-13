@@ -20,6 +20,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from codecarto.models.source_data import Directory, RepoInfo, Folder
+from codecarto.services import construct_service
 from codecarto.util.exceptions import CodeCartoException, proc_exception
 from codecarto.util.utilities import generate_return
 
@@ -95,6 +96,9 @@ async def _stream_cached_graph(cached: dict, layout: str):
                 if k != "metadata":
                     flat[k] = v
             flat.update(nd.get("metadata", {}))
+            # A graph cached before the vocabulary named something still says
+            # what it is when it is replayed.
+            construct_service.stamp(flat)
             nodes_list.append(flat)
     meta = {
         "nodeCount": len(nodes_list),

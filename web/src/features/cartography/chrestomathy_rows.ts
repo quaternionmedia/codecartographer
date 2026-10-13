@@ -53,6 +53,65 @@ export function layerLabels(contexts: readonly TokenContextLike[]): string[] {
   return [...seen.entries()].sort((a, b) => a[1] - b[1]).map(([label]) => label);
 }
 
+export interface CensusRowLike {
+  id: string;
+  name: string;
+  facet: boolean;
+  count: number;
+  languages: Array<{ language: string; display_name: string; count: number }>;
+  ids: string[];
+}
+
+export interface CensusLike {
+  constructs: CensusRowLike[];
+  facets: CensusRowLike[];
+  unplaced: Array<{ language: string; display_name: string; kind: string; count: number }>;
+  outside: Array<{ language: string; count: number }>;
+  unlabelled: number;
+}
+
+export interface CensusLine {
+  id: string;
+  name: string;
+  count: number;
+  /** `Rust 12 · C 3`, most first. */
+  spread: string;
+  /** Written in more than one language on this canvas: the comparison is right here. */
+  shared: boolean;
+  facet: boolean;
+  ids: string[];
+}
+
+/** The constructs on the canvas, then what they can also be, as the panel lists them. */
+export function censusLines(census: CensusLike): CensusLine[] {
+  return [...census.constructs, ...census.facets].map((row) => ({
+    id: row.id,
+    name: row.name,
+    count: row.count,
+    spread: row.languages.map((l) => `${l.display_name || l.language} ${l.count}`).join(' · '),
+    shared: row.languages.length > 1,
+    facet: row.facet,
+    ids: row.ids,
+  }));
+}
+
+/**
+ * What the census could not place, each as a sentence. A graph read as only
+ * its placed nodes would claim the vocabulary covers what it does not, so the
+ * rest is said, never dropped.
+ */
+export function censusGaps(census: CensusLike): string[] {
+  const gaps = census.unplaced.map((u) =>
+    `${u.count} ${u.display_name || u.language} ${u.kind} node(s): a kind the vocabulary does not place`);
+  for (const o of census.outside) {
+    gaps.push(`${o.count} ${o.language} node(s): a language the vocabulary does not list`);
+  }
+  if (census.unlabelled) {
+    gaps.push(`${census.unlabelled} node(s) with no language: folders, files, or a graph that is not code`);
+  }
+  return gaps;
+}
+
 export function chrestomathyRows(languages: readonly ChrestomathyLanguageLike[]): ChrestomathyRow[] {
   return languages.map((row) => {
     const tokens = row.tokens.map((t) => t.token);

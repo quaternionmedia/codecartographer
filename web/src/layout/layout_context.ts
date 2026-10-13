@@ -533,6 +533,7 @@ export class LayoutContext {
       pinned: !!(id && this._nodeViewState[id]?.pinned),
       hasSource: !!node?.file,
       hasGroup: (node?.depth as number | undefined) !== undefined && (node!.depth as number) < 2,
+      hasConstruct: typeof node?.construct === 'string',
       selectionCount: this._radSelection.size,
       anyHidden: anyHidden(this._nodeViewState),
       // The streaming renderer has no force simulation; positions come from
@@ -559,6 +560,32 @@ export class LayoutContext {
   private _replaceSelection(nodes: GraphNode[]): void {
     this._radSelection.clear();
     for (const n of nodes) this._radSelection.add(n);
+  }
+
+  /**
+   * The nodes on the canvas now, whichever panel or parse drew them: the
+   * graph of record first, complete by the time it is set, and the renderer's
+   * own when nothing is recorded.
+   */
+  public canvasNodes(): GraphNode[] {
+    const recorded = this._normaliseGraph(this.appState.state.graphData).nodes;
+    return recorded.length ? recorded : this._streamingRenderer?.getNodes() ?? [];
+  }
+
+  /**
+   * Frame these nodes and make them the selection the radial menu's selection
+   * ring acts on -- how the chrestomathy points back at the graph it read.
+   * Returns how many were on the canvas.
+   */
+  public showOnCanvas(ids: readonly string[]): number {
+    const r = this._streamingRenderer;
+    if (!r) return 0;
+    const wanted = new Set(ids);
+    const found = r.getNodes().filter((n) => wanted.has(n.id));
+    this._replaceSelection(found);
+    if (found.length) r.fitTo(found.map((n) => n.id));
+    this.focusDockPanel('graph');
+    return found.length;
   }
 
   /** A verb the ring shows disabled, refused out loud if it ever commits. */
@@ -700,6 +727,14 @@ export class LayoutContext {
       showInfo: (id) => {
         const node = renderer()?.getNodes().find((n) => n.id === id);
         if (node) ToastManager.show(infoLine(node), 8_000);
+      },
+      // What this node is, beside every language that writes it. The panel
+      // reads `constructChosen`, which loading sets, so it opens on it.
+      compare: (id) => {
+        const node = renderer()?.getNodes().find((n) => n.id === id);
+        if (typeof node?.construct !== 'string') return;
+        void this.actions.plot.loadChrestomathy(node.construct);
+        this.restoreDockPanel('chrestomathy-panel');
       },
     };
   }

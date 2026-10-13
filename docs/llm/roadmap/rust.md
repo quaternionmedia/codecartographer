@@ -8,7 +8,7 @@ buy, because a capability here first asks which engine should own it.
 
 ## The shape
 
-Four readings, one vocabulary, one canvas.
+Five readings, one vocabulary, one canvas.
 
 | Reading | Reads | Module | Route or flow |
 |---|---|---|---|
@@ -16,6 +16,7 @@ Four readings, one vocabulary, one canvas.
 | Linker scripts | `.ld`, `.lds`, `memory.x` | `services/parsers/linker_script_parser.py` | the unified parse |
 | A Cargo workspace | `Cargo.toml`, `Cargo.lock`, `.cargo/config.toml`, and what cargo recorded | `services/cargo_service.py` | `/cargo/gjgf`, `/cargo/data`, the Cargo panel |
 | One construct across languages | `data/constructs.yaml` and the lexicons | `services/construct_service.py` | `/lexicon/chrestomathy/...`, the Chrestomathy panel |
+| Any graph as a chrestomathy | every graph a route serves, stamped as it is serialized | `construct_service.stamp`, `census` | `/lexicon/chrestomathy/census`, the panel's *On the canvas*, Color By: Construct, View → Compare |
 
 The vocabulary that joins them is `codecarto/data/constructs.yaml`. A parser
 keeps its own `kind` (what the language calls a thing); every node of a language

@@ -119,6 +119,48 @@ export interface LayerMark {
   count: number;
 }
 
+export interface ConstructMark {
+  construct: string;
+  name: string;
+  color: string;
+  count: number;
+}
+
+export interface ConstructedNode {
+  construct?: unknown;
+  construct_name?: unknown;
+  construct_color?: unknown;
+  [key: string]: unknown;
+}
+
+/**
+ * The constructs the drawn nodes are, most numerous first.
+ *
+ * **WHAT "COLOR BY: CONSTRUCT" MEANS, IN THE KEY.** The server stamps each node
+ * the vocabulary places with its construct and that construct's colour and
+ * name; the key names each and counts it, so a C struct and a Rust struct are
+ * one row. A node the vocabulary did not place has no construct, and this
+ * does not invent one.
+ */
+export function constructMarks(nodes: readonly ConstructedNode[]): ConstructMark[] {
+  const seen = new Map<string, ConstructMark>();
+  for (const node of nodes) {
+    if (typeof node.construct !== 'string' || typeof node.construct_color !== 'string') continue;
+    const found = seen.get(node.construct);
+    if (found) {
+      found.count += 1;
+      continue;
+    }
+    seen.set(node.construct, {
+      construct: node.construct,
+      name: typeof node.construct_name === 'string' ? node.construct_name : node.construct,
+      color: node.construct_color,
+      count: 1,
+    });
+  }
+  return [...seen.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
 export interface LayeredNode {
   layer_ordinal?: unknown;
   layer_color?: unknown;

@@ -162,6 +162,18 @@ def _node_id(cursor) -> str:
     return f"{stem}::{cursor.spelling}"
 
 
+def _automatic(cursor, cindex) -> bool:
+    """A variable declared in a function body without `static` or `extern`:
+    it lives for one call, unlike a file-scope or static one."""
+    scope = cursor.semantic_parent
+    if scope is None or scope.kind != cindex.CursorKind.FUNCTION_DECL:
+        return False
+    try:
+        return cursor.storage_class not in (cindex.StorageClass.STATIC, cindex.StorageClass.EXTERN)
+    except Exception:
+        return False
+
+
 def _get_qualifiers(cursor, cindex) -> list:
     quals = []
     try:
@@ -245,6 +257,8 @@ def _pass1_declarations(tu, in_target, nodes, edges, edge_set, cindex):
                         if c.kind == cindex.CursorKind.PARM_DECL
                     )
                     n['is_definition'] = cursor.is_definition()
+                elif kind == 'variable' and _automatic(cursor, cindex):
+                    n['automatic'] = True
 
                 nodes[nid] = n
 

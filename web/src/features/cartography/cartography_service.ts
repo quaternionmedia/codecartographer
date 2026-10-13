@@ -110,6 +110,30 @@ export interface ChrestomathyDocument {
   caveat: string;
 }
 
+/** One construct a graph's nodes are: in which languages, and which nodes. */
+export interface CensusRow {
+  id: string;
+  name: string;
+  gloss: string;
+  facet: boolean;
+  look: { shape: string; color: string } | null;
+  count: number;
+  languages: Array<{ language: string; display_name: string; count: number }>;
+  ids: string[];
+}
+
+/** `/lexicon/chrestomathy/census`: the chrestomathy of the graph on the canvas. */
+export interface CensusDocument {
+  nodes: number;
+  constructs: CensusRow[];
+  facets: CensusRow[];
+  unplaced: Array<{ language: string; display_name: string; kind: string; count: number }>;
+  outside: Array<{ language: string; count: number }>;
+  unlabelled: number;
+  source: string;
+  caveat: string;
+}
+
 const flag = (value: boolean | undefined): string | undefined => (value ? 'true' : undefined);
 
 export class CartographyService {
@@ -133,6 +157,11 @@ export class CartographyService {
 
   public static chrestomathy(lexiconUrl: string, construct: string): Promise<SeamOutcome> {
     return read(get, `${lexiconUrl}/chrestomathy/${encodeURIComponent(construct)}`);
+  }
+
+  /** Read a graph's nodes as the constructs they are. A POST: the graph is the question. */
+  public static census(lexiconUrl: string, nodes: ReadonlyArray<Record<string, unknown>>): Promise<SeamOutcome> {
+    return read((url) => RequestHandler.postRequest(url, { nodes }), `${lexiconUrl}/chrestomathy/census`);
   }
 
   public static chrestomathyGraph(lexiconUrl: string, construct: string, layout?: string): Promise<SeamOutcome> {

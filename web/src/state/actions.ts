@@ -7,7 +7,9 @@ import { EstateService } from '../features/estate/estate_service';
 import type { CapabilitiesDocument, DrawRequest, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
 import { isProblem } from '../features/estate/seam_client';
 import { CartographyService } from '../features/cartography/cartography_service';
-import type { CargoDocument, ChrestomathyDocument, ConstructIndex } from '../features/cartography/cartography_service';
+import type {
+  CargoDocument, CensusDocument, ChrestomathyDocument, ConstructIndex,
+} from '../features/cartography/cartography_service';
 import type { SeamOutcome, SeamProblem } from '../features/estate/seam_client';
 import { RepoService } from '../features/repository';
 import { GraphData } from '../features/graph';
@@ -641,6 +643,27 @@ export class PlotActions {
     this._settle(found, 'chrestomathyReading', 'chrestomathyProblem');
   }
 
+  /**
+   * The chrestomathy of the graph on the canvas: which constructs its nodes
+   * are, in which languages. A stamped node is sent with its stamp; one that
+   * arrived without one is sent with its whole `meta`, so the server's one
+   * rule can place it -- the client never decides a construct.
+   */
+  async loadCensus(nodes: ReadonlyArray<Record<string, unknown>>): Promise<void> {
+    const sent = nodes.map((n) => {
+      const meta = n.meta && typeof n.meta === 'object' ? (n.meta as Record<string, unknown>) : {};
+      return {
+        id: n.id,
+        language: n.language,
+        kind: n.kind,
+        construct: n.construct,
+        meta: typeof n.construct === 'string' ? { facets: meta.facets } : meta,
+      };
+    });
+    const found = await CartographyService.census(this.stateController.api.lexicon, sent);
+    this._settle(found, 'chrestomathyCensus', 'censusProblem');
+  }
+
   /** The chosen construct as a graph, tokens coloured by abstraction layer. */
   async drawChrestomathy(): Promise<void> {
     this.stateController.clear();
@@ -659,8 +682,10 @@ export class PlotActions {
   /** Put a document in one field and clear the other, or the reverse. */
   private _settle(
     found: SeamOutcome,
-    readingField: 'capabilitiesReading' | 'overviewReading' | 'cargoReading' | 'chrestomathyReading',
-    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'cargoProblem' | 'chrestomathyProblem',
+    readingField:
+      'capabilitiesReading' | 'overviewReading' | 'cargoReading' | 'chrestomathyReading' | 'chrestomathyCensus',
+    problemField:
+      'capabilitiesProblem' | 'overviewProblem' | 'cargoProblem' | 'chrestomathyProblem' | 'censusProblem',
   ): void {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {
@@ -669,7 +694,7 @@ export class PlotActions {
       logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
     } else {
       patch[readingField] = found.document as unknown as
-        CapabilitiesDocument | OverviewDocument | CargoDocument | ChrestomathyDocument;
+        CapabilitiesDocument | OverviewDocument | CargoDocument | ChrestomathyDocument | CensusDocument;
       patch[problemField] = null;
     }
     this.stateController.update(patch);

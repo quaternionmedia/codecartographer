@@ -64,3 +64,44 @@ test('layers are distinct and machine-facing first', () => {
   ]);
   assert.deepEqual(labels, ['L0 Memory · storage', 'L5 Compile-time · evaluation']);
 });
+
+// --- the census: any graph read as its constructs ----------------------------
+
+const census = {
+  constructs: [
+    { id: 'callable.function', name: 'Function', facet: false, count: 15, ids: ['r1', 'c1'],
+      languages: [{ language: 'rust', display_name: 'Rust', count: 12 }, { language: 'c', display_name: 'C', count: 3 }] },
+    { id: 'type.sum', name: 'Sum type', facet: false, count: 2, ids: ['r9'],
+      languages: [{ language: 'rust', display_name: 'Rust', count: 2 }] },
+  ],
+  facets: [
+    { id: 'memory.unsafe', name: 'Unsafe', facet: true, count: 1, ids: ['r1'],
+      languages: [{ language: 'rust', display_name: 'Rust', count: 1 }] },
+  ],
+  unplaced: [{ language: 'rust', display_name: 'Rust', kind: 'doc_comment', count: 4 }],
+  outside: [{ language: 'javascript', count: 30 }],
+  unlabelled: 7,
+};
+
+test('a construct written in two languages on one canvas is marked: the comparison is right there', async () => {
+  const { censusLines } = await import('../../dist-pure/features/cartography/chrestomathy_rows.js');
+  const lines = censusLines(census);
+  assert.deepEqual(lines.map((l) => [l.id, l.spread, l.shared, l.facet]), [
+    ['callable.function', 'Rust 12 · C 3', true, false],
+    ['type.sum', 'Rust 2', false, false],
+    ['memory.unsafe', 'Rust 1', false, true],
+  ]);
+  assert.deepEqual(lines[0].ids, ['r1', 'c1']);
+});
+
+test('what the census could not place is said, every kind of it', async () => {
+  /* Mutation: drop the unplaced sentences -- a graph would read as wholly
+     covered by the vocabulary, and this fails. */
+  const { censusGaps } = await import('../../dist-pure/features/cartography/chrestomathy_rows.js');
+  assert.deepEqual(censusGaps(census), [
+    '4 Rust doc_comment node(s): a kind the vocabulary does not place',
+    '30 javascript node(s): a language the vocabulary does not list',
+    '7 node(s) with no language: folders, files, or a graph that is not code',
+  ]);
+  assert.deepEqual(censusGaps({ ...census, unplaced: [], outside: [], unlabelled: 0 }), []);
+});

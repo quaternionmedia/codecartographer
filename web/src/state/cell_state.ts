@@ -8,7 +8,9 @@ import { GraphData } from '../features/graph';
 import type { TopologyChoices, TopologyProblem } from '../services/topology_service';
 import type { SeamProblem } from '../features/estate/seam_client';
 import type { CapabilitiesDocument, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
-import type { CargoDocument, ChrestomathyDocument, ConstructIndex } from '../features/cartography/cartography_service';
+import type {
+  CargoDocument, CensusDocument, ChrestomathyDocument, ConstructIndex,
+} from '../features/cartography/cartography_service';
 import { Directory } from '../components/models/source';
 
 export interface ICell extends MeiosisCell<ICellState> {}
@@ -66,6 +68,9 @@ export interface ICellState {
   constructChosen: string;
   chrestomathyReading: ChrestomathyDocument | null;
   chrestomathyProblem: SeamProblem | null;
+  /** The graph on the canvas, read as the constructs its nodes are; null before read. */
+  chrestomathyCensus: CensusDocument | null;
+  censusProblem: SeamProblem | null;
   parserOptions: ParserOptions;
   selectedRenderer: GraphRendererType;
   availableLanguages: Record<string, string[]> | null;
@@ -101,6 +106,8 @@ export class CellState implements ICellState {
   public constructChosen: string = 'type.product';
   public chrestomathyReading: ChrestomathyDocument | null = null;
   public chrestomathyProblem: SeamProblem | null = null;
+  public chrestomathyCensus: CensusDocument | null = null;
+  public censusProblem: SeamProblem | null = null;
   public graphStyling: GraphStylingOptions = {
     layout: 'spring_layout',
     enablePhysics: true,

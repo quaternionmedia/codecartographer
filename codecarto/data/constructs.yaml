@@ -12,7 +12,9 @@
 #     every node of a language listed under `languages:`, and gives a node
 #     that carries no look of its own the construct's `look`.
 #   - The chrestomathy (`/lexicon/chrestomathy/...`) sets one construct beside
-#     itself across every language that spells it, from `spelled:`.
+#     itself across every language that spells it, from `spelled:`; and its
+#     census (`/lexicon/chrestomathy/census`) reads any graph on the canvas as
+#     the constructs its nodes are, in the languages they are written in.
 #   - Tests hold it to the lexicons (every token named here is in that
 #     language's lexicon), to the parsers (every kind a parser can emit maps
 #     here) and to the C reference design (C's own shapes and colours agree
@@ -164,6 +166,15 @@ constructs:
       rust: {tokens: [static]}
       python: {note: "A module-level name."}
 
+  - id: storage.local
+    name: Local variable
+    gloss: A name bound for one call of a function, gone when the call returns.
+    look: {shape: circle, color: "#9aa5b8"}
+    spelled:
+      c: {note: "A declaration inside a body. Its storage class, auto, is the default and is never written."}
+      rust: {tokens: [let]}
+      python: {note: "An assignment inside a def binds a local; global and nonlocal say it does not."}
+
   # ── Namespaces ─────────────────────────────────────────────────────────────
   - id: namespace.module
     name: Module
@@ -173,6 +184,15 @@ constructs:
       rust: {tokens: [mod]}
       python: {note: "A file is a module; a directory with __init__.py is a package."}
       c: {note: "None. A translation unit is the nearest thing, and every external name shares one space."}
+
+  - id: namespace.package
+    name: Package
+    gloss: The unit a build tool resolves, versions and builds -- what a dependency names.
+    look: {shape: square, color: "#6d28d9"}
+    spelled:
+      rust: {tokens: [crate], note: "A Cargo package, named in Cargo.toml; each of its targets compiles as one crate."}
+      c: {note: "None in the language: a library or an executable is what a build system names."}
+      python: {note: "A distribution named in pyproject.toml; import names the modules inside it."}
 
   - id: namespace.import
     name: Import
@@ -365,6 +385,9 @@ languages:
       variable: storage.static
       field: member.field
       enum_constant: member.variant
+    refine:
+      # A variable declared in a body without static or extern lives for one call.
+      - {kind: variable, meta: automatic, construct: storage.local}
     qualifiers:
       volatile: memory.volatile
       static: linkage.internal
@@ -433,6 +456,12 @@ languages:
     kinds:
       label: code.label
       section: layout.section
+
+  cargo:
+    # The crate graph `cargo_service` draws from what cargo resolved.
+    kinds:
+      crate: namespace.package
+      external_crate: namespace.package
 
   linker:
     kinds:
