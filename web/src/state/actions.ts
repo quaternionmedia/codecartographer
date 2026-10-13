@@ -432,7 +432,7 @@ export class PlotActions {
 
   /**
    * Load and display a language's standalone Lexicon graph (Option A —
-   * see docs/llm/roadmap/lexicon.md). Switchable: grows automatically as
+   * see docs/roadmap/lexicon.md). Switchable: grows automatically as
    * more languages get a lexicon YAML, no frontend change needed.
    */
   async loadLexicon(language: string): Promise<void> {
