@@ -665,7 +665,7 @@ export function ControlPanel(
                   m('span.panel-settings__label-compact', 'Color By'),
                   m('select.panel-settings__select', {
                     value: styling.colorBy ?? 'auto',
-                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/llm/roadmap/lexicon.md); Construct mode by what each node is, alike across languages (codecarto/data/constructs.yaml). A node without one keeps its own colour.',
+                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/llm/roadmap/lexicon.md); Construct mode by what each node is, alike across languages (codecarto/data/constructs.yaml). A node without one keeps its own color.',
                     onchange: (e: Event) => {
                       callbacks.onGraphStylingChange({ colorBy: (e.target as HTMLSelectElement).value });
                     },

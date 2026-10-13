@@ -3,7 +3,7 @@
  *
  * Mounts the repository / uploaded-file directory browser into a Golden Layout
  * panel. When a repository is loaded the tree is shown; otherwise a prompt
- * guides the user to the Controls panel.
+ * names the panels that load one.
  */
 
 import m from 'mithril';
@@ -81,7 +81,7 @@ export function createFileTreePanel(ctx: LayoutContext): m.Component {
           ? m('div.gl-file-tree__empty', [
               m('span.gl-file-tree__empty-icon', '◉'),
               m('p.gl-file-tree__empty-text',
-                'No source loaded. Use the Controls panel to fetch a GitHub repo or upload files.',
+                'No source loaded. Fetch a repository in the Repository panel, or add files in the Upload panel.',
               ),
             ])
           : null,

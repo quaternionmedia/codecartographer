@@ -1,8 +1,8 @@
 /**
  * AddPanelMenu
  *
- * Small dropdown opened by the header "+" button or a right-click on the
- * dock area. Lists registered panels not currently in the layout (add a
+ * Small dropdown opened by the header "+" button or a Ctrl+right-click on
+ * the dock area. Lists registered panels not currently in the layout (add a
  * window) plus layout save/reset actions. Closes on outside click, on
  * Escape, or after an action is taken.
  */

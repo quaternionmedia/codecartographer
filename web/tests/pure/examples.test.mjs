@@ -18,7 +18,7 @@ test('Rust leads, and its bundled example leads Rust', () => {
   /* Mutation: append bundled examples instead of putting them first -- the
      one example that needs no network sits behind five that do, and this fails. */
   const groups = exampleGroups([blinky]);
-  assert.deepEqual(groups.map((g) => g.language), ['Rust', 'C', 'Python']);
+  assert.deepEqual(groups.map((g) => g.language), ['Rust', 'C', 'Python', 'JavaScript']);
   const first = groups[0].examples[0];
   assert.deepEqual([first.label, first.url, first.bundled, first.cargo],
     ['blinky (recorded)', '/checkout/examples/rust-firmware', true, true]);

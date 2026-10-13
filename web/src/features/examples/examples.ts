@@ -66,6 +66,7 @@ export const GITHUB_EXAMPLES: readonly ExampleGroup[] = [
       { label: 'Lua', url: 'https://github.com/lua/lua', title: 'Lua 5.x — reference VM in C (~1 MB), full content' },
       { label: 'SQLite', url: 'https://github.com/sqlite/sqlite', title: 'SQLite — most deployed DB in C (~15 MB), structure only' },
       { label: 'Redis', url: 'https://github.com/redis/redis', title: 'Redis — systems C data structures (~5 MB), full content' },
+      { label: 'Linux', url: 'https://github.com/torvalds/linux', title: 'Linux — xxlarge repo (~1 GB+), shallow root' },
     ],
   },
   {
@@ -73,9 +74,13 @@ export const GITHUB_EXAMPLES: readonly ExampleGroup[] = [
     examples: [
       { label: 'requests', url: 'https://github.com/psf/requests', title: 'requests — small repo (~2 MB), full content' },
       { label: 'Flask', url: 'https://github.com/pallets/flask', title: 'Flask — medium repo (~8 MB), structure only' },
-      { label: 'React', url: 'https://github.com/facebook/react', title: 'React — large repo (~25 MB), structure only' },
       { label: 'CPython', url: 'https://github.com/python/cpython', title: 'CPython — xlarge repo (~200 MB), shallow root' },
-      { label: 'Linux', url: 'https://github.com/torvalds/linux', title: 'Linux — xxlarge repo (~1 GB+), shallow root' },
+    ],
+  },
+  {
+    language: 'JavaScript',
+    examples: [
+      { label: 'React', url: 'https://github.com/facebook/react', title: 'React — large repo (~25 MB), structure only' },
     ],
   },
 ];

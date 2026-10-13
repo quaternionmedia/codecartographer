@@ -17,7 +17,7 @@ const STEPS = [
   {
     icon: '📁',
     title: 'Load a repository',
-    body: 'Paste a GitHub URL in the Source tab, or upload files. The ▶ Actions tab plots and cancels. Recent cached graphs appear at the bottom of the Source tab.',
+    body: 'Paste a GitHub URL or a local path in the Repository tab and press → Fetch, or drop files in the Upload tab. ⚡ Load Demo draws a sample graph. The ▶ Actions tab plots and cancels.',
   },
   {
     icon: '◈',

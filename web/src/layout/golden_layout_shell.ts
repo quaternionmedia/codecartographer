@@ -1,14 +1,13 @@
 /**
  * GoldenLayoutShell
  *
- * Top-level Mithril component that bootstraps a Golden Layout instance and
- * distributes the application UI across dockable panels.
+ * Top-level Mithril component: the application header and the Golden Layout
+ * dock under it.
  *
- * Panels registered:
- *   • 'graph'         — D3 / vis-network visualisation canvas
- *   • 'file-tree'     — Repository / uploaded-file browser
- *
- * Golden Layout is now the primary shell.
+ * Every panel in `panel_registry.ts` is registered here as a Golden Layout
+ * component, and the saved layout (or `default_layout.ts`) is loaded. The
+ * header holds the "+" add-window menu, the GitHub auth indicator, a Restore
+ * button for each closed panel, and the help button.
  */
 
 import m from 'mithril';
