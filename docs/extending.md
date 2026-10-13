@@ -278,7 +278,7 @@ to 3) plus its degree, unless the node already carries a `size`.
 `PlotActions.createGraphVnode()` (`web/src/state/actions.ts`) uses the renderer
 selected in the settings; else the one `metadata.type` names; else the first
 registered whose `canHandle(data)` is true; else `d3`. The
-[UI reference](ui.md) says where the selection is made.
+[UI reference](ui.md#graph-settings) says where the selection is made.
 
 Given gJGF, the notebook renderer asks `POST /plotter/render/html` to render it
 with gravis on the server. These `metadata` keys theme that page, each also

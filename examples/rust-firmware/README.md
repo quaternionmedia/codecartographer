@@ -8,7 +8,7 @@ a `SysTick` handler counting ticks into a `static mut` and a `#[no_mangle]`
 function placed in `.ram_func`. `crates/blinky/memory.x` lays out an
 STM32F411-shaped part: 512 KiB of flash, 128 KiB of RAM.
 
-It is in the project selector's Rust examples as **blinky (recorded)**, because
+It leads the [Open panel's](../../docs/ui.md#open) Rust examples as **blinky (recorded)**, because
 it is the one example that shows everything codecarto reads of a Rust firmware
 without a Rust toolchain on the machine: the code map, the linker script's
 regions, the Cargo panel's crates and targets, rustc's one warning on the line

@@ -53,8 +53,8 @@ Every node a language in `codecarto/data/constructs.yaml` produces also carries
 `construct` -- what it *is*, the same across languages (`type.product` for a C or
 Rust struct) -- and, where its qualifiers, attributes or body say so,
 `meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`), and, for
-a construct with a look, `construct_color` and `construct_name` (what "Color By:
-Construct" draws and the key names). Every graph route stamps these as it
+a construct with a look, `construct_color` and `construct_name` (what
+[Color By](ui.md#graph-settings) draws for a construct, and the key names). Every graph route stamps these as it
 serializes, and a cached graph is stamped again as it is replayed, so any graph
 on the canvas can be read by `POST /lexicon/chrestomathy/census`. A local
 Rust repository with a recorded `target/codecarto/check.jsonl` has rustc's
@@ -732,8 +732,8 @@ end cannot draw the node-link shape.
 Token-spelling → contexts lookup (which layers/groups a token appears
 in) — the join `unified_parser_service.py`'s `annotate_lexicon` flag
 uses to enrich real parsed graphs (see `POST /parse/unified` above).
-Annotated nodes also carry `layer_color`, which "Color By: Abstraction
-Layer" draws and the legend names.
+Annotated nodes also carry `layer_color`, which
+[Color By](ui.md#graph-settings) draws for an abstraction layer, and the legend names.
 
 ### GET `/lexicon/constructs`
 

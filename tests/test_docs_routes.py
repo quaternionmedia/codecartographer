@@ -16,8 +16,11 @@ it describes, and each check here fails on a document that disagrees with it:
 - every environment variable the code reads is in `docs/cli.md`'s table, and
   every one a document names is read by the code;
 - `docs/index.md` links every page under `docs/`;
-- the UI reference names every registered panel, and the default layout and
-  the source tree agree with the registry and the dev proxy.
+- the UI reference names every registered panel; under each radial ring, every
+  item that ring builds and no other; and the keys and the hold that open and
+  move a ring, as the code binds them;
+- the default layout and the source tree agree with the registry and the dev
+  proxy.
 
 The application, the click tree and the code are the sources; nothing here
 keeps a list of routes, commands or variables of its own.
@@ -508,6 +511,92 @@ def test_ui_reference_names_every_registered_panel():
     reference = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
     missing = sorted(i for i in ids if f"`{i}`" not in reference)
     assert not missing, f"docs/ui.md's panel table lacks: {missing}"
+
+
+RAD = ROOT / "web" / "src" / "features" / "graph" / "rad"
+BOLD = re.compile(r"\*\*([^*\n]+)\*\*")
+
+
+def _ui_sections() -> dict[str, str]:
+    """{heading text: body} for every heading in `docs/ui.md`; a body runs to
+    the next heading of any level."""
+    text = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
+    parts = re.split(r"^#{1,6} +(.+?)\s*$", text, flags=re.M)
+    return dict(zip(parts[1::2], parts[2::2]))
+
+
+def _labels(body: str) -> set[str]:
+    """Every item label written in a stretch of `resolve.ts`: a quoted label,
+    both branches of a conditional one, and the fixed words of a template."""
+    found = set()
+    for value in re.findall(r"\blabel:\s*([^,\n]+)", body):
+        quoted = re.findall(r"'([^']+)'", value)
+        if quoted:
+            found.update(quoted)
+            continue
+        template = re.match(r"`([^`$]*)", value.strip())
+        if template and template.group(1).strip():
+            found.add(template.group(1).strip())
+    return found
+
+
+def _rings_built() -> dict[str, set[str]]:
+    """{'<Name> ring': labels} for every `function <name>Ring(` in `resolve.ts`,
+    and {'Color submenu': labels} for `COLOUR_RING`. A submenu written inside a
+    ring's function (View) is that ring's."""
+    source = (RAD / "host" / "resolve.ts").read_text(encoding="utf-8")
+    rings = {f"{name.capitalize()} ring": _labels(body) for name, body in re.findall(
+        r"^function (\w+)Ring\([^)]*\)[^{]*\{(.*?)^\}", source, re.M | re.S)}
+    colour = re.search(r"^const COLOUR_RING\b[^=]*=\s*\[(.*?)^\];", source, re.M | re.S)
+    if colour:
+        rings["Color submenu"] = _labels(colour.group(1))
+    return rings
+
+
+def test_ui_reference_names_every_ring_item_and_no_other():
+    """Each ring `resolve.ts` builds has a `### <Name> ring` section in the UI
+    reference, and the items it offers are the bold words in that section: all
+    of them, and nothing the code does not build. A section for a ring the code
+    does not build is a ring the reader cannot open."""
+    rings = _rings_built()
+    assert rings and all(rings.values()), (
+        f"read {rings} from resolve.ts; the ring or label pattern is stale")
+    sections = {name: body for name, body in _ui_sections().items()
+                if re.fullmatch(r"\w+ ring|\w+ submenu", name)}
+    wrong = [f"no section '### {name}'" for name in sorted(set(rings) - set(sections))]
+    wrong += [f"'### {name}' names a ring resolve.ts does not build"
+              for name in sorted(set(sections) - set(rings))]
+    for name in sorted(set(rings) & set(sections)):
+        named = set(BOLD.findall(sections[name]))
+        if rings[name] - named:
+            wrong.append(f"{name} lacks {sorted(rings[name] - named)}")
+        if named - rings[name]:
+            wrong.append(f"{name} names {sorted(named - rings[name])}, which it does not build")
+    assert not wrong, f"docs/ui.md and resolve.ts disagree about the radial menu: {wrong}"
+
+
+def test_ui_reference_names_the_keys_and_the_hold_that_work_a_ring():
+    """The keys `attach.ts` binds -- the one that opens a ring and the ones
+    that move inside it -- are the keys in backticks under `### Opening a ring`
+    and `### Keys in a ring`, and the hold that opens one is the time
+    `geometry.ts` sets."""
+    attach = (RAD / "dom" / "attach.ts").read_text(encoding="utf-8")
+    inside = re.search(r"\[([^\]]*)\]\.includes\(ev\.key\)", attach)
+    opening = re.findall(r"ev\.key === '([^']+)'", attach)
+    hold = re.search(r"\blongPressMs:\s*(\d+)",
+                     (RAD / "core" / "geometry.ts").read_text(encoding="utf-8"))
+    assert inside and opening and hold, (
+        "attach.ts or geometry.ts no longer reads as expected; the key or hold pattern is stale")
+    bound = set(re.findall(r"'([^']+)'", inside.group(1))) | set(opening)
+
+    sections = _ui_sections()
+    assert {"Opening a ring", "Keys in a ring"} <= set(sections), (
+        "docs/ui.md has no '### Opening a ring' or '### Keys in a ring'")
+    named = set(CODE_SPAN.findall(sections["Opening a ring"] + sections["Keys in a ring"]))
+    assert named == bound, (
+        f"docs/ui.md names keys {sorted(named)}; attach.ts binds {sorted(bound)}")
+    assert f"{hold.group(1)} ms" in sections["Opening a ring"], (
+        f"geometry.ts holds for {hold.group(1)} ms; '### Opening a ring' does not say so")
 
 
 def test_no_source_directory_is_shadowed_by_the_dev_proxy(prefixes):
