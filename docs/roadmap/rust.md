@@ -1,128 +1,12 @@
-# Rust and the firmware languages
+# Rust and the firmware languages: next
 
-How codecarto reads Rust -- its source, its Cargo workspace, its dev loop and
-its build -- and the languages below it that firmware is made of, and how all of
-them are set beside C and Python so the chrestomathy can compare them. What is
-shipped is described as it is; what is next is named with the engine it would
-buy, because a capability here first asks which engine should own it.
+**State:** open — delete when the six steps below have landed.
 
-## The shape
-
-Five readings, one vocabulary, one canvas.
-
-| Reading | Reads | Module | Route or flow |
-|---|---|---|---|
-| Rust source | `.rs` files, item by item | `services/parsers/rust_language_parser.py` | the unified parse (`/parse/*`), like every language |
-| Linker scripts | `.ld`, `.lds`, `memory.x` | `services/parsers/linker_script_parser.py` | the unified parse |
-| A Cargo workspace | `Cargo.toml`, `Cargo.lock`, `.cargo/config.toml`, and what cargo recorded | `services/cargo_service.py` | `/cargo/gjgf`, `/cargo/data`, the Cargo panel |
-| One construct across languages | `data/constructs.yaml` and the lexicons | `services/construct_service.py` | `/lexicon/chrestomathy/...`, the Chrestomathy panel |
-| Any graph as a chrestomathy | every graph a route serves, stamped as it is serialized | `construct_service.stamp`, `census` | `/lexicon/chrestomathy/census`, the panel's *On the canvas*, Color By: Construct, View → Compare |
-
-The vocabulary that joins them is `codecarto/data/constructs.yaml`. A parser
-keeps its own `kind` (what the language calls a thing); every node of a language
-the vocabulary lists also gets `construct` (what it *is*) and, where its
-qualifiers, attributes or body say so, `meta.facets`. That is the
-standardisation: a C `struct` and a Rust `struct` are `type.product` and are
-drawn alike; a Rust `enum` whose variants carry data is `type.sum` while C's
-`enum` is `type.enumeration`; an `#[interrupt]` handler, a `#[link_section]`
-static and a linker script's output section all name `layout.section` or
-`firmware.interrupt`, so a reader can follow one idea from the source to the
-memory map.
-
-## The dev loop
-
-```text
-edit  ->  uv run codecarto cargo record <workspace> [--map <bin>]  ->  the window reads it
-             runs cargo metadata and cargo check, and with           crate graph, diagnostics and
-             --map links <bin> asking the linker for its map         memory use on the targets and
-             writes target/codecarto/*.json[l] and <bin>.map         on the items they name
-```
-
-`codecarto cargo record` is the **only** place this project runs cargo. Running
-cargo runs the workspace's build scripts and proc macros and its configured
-`rustc`, so it is a person's act on a workspace they would build -- never a
-route's, which anyone who can reach the port could trigger on any path. The
-window reads what was recorded and says how old it is:
-
-- `metadata.json` newer than every manifest is cargo's own resolution, used as
-  it stands. Older, it is **not used** -- the manifests are read instead and the
-  reading says why. A resolution delivered stale looks checked.
-- `check.jsonl` puts rustc's diagnostics on the crate graph's targets and, in a
-  local parse of the same repository, on the innermost Rust item whose lines
-  hold each one, with `diagnostics_recorded_at` beside the counts. A source
-  changed after the check is reported as `stale`; nothing re-checks.
-- `<bin>.map` -- the linker's map of a release link -- measures what the
-  linker script only declares: each region's use against its length, at run
-  time and as load images, each section's size, and the bytes each function and
-  static occupies. See *The memory map, measured* below.
-- No document is a sentence: "no diagnostics drawn, which is not the same as a
-  clean build".
-
-## The memory map, measured
-
-`services/link_map_service.py` reads the map a linker writes when asked
-(`-Map=<file>`), in the two shapes firmware is linked with: GNU ld's
-(`arm-none-eabi-gcc -Wl,-Map=...`, which also prints the memory table) and
-LLD's (`rust-lld`, the default for Rust's embedded targets, which does not).
-`codecarto cargo record --map <bin>` links `<bin>` with `--profile release` --
-the build that is flashed -- and keeps its map; a C build passing
-`-Wl,-Map=target/codecarto/<name>.map` writes one the window reads the same way.
-
-- **A region's use** is the sections the link placed in it at run time, plus
-  the load images of sections run from elsewhere (`.data`, a `.ram_func`).
-  Neither map prints a section's type, so a section has no load image when it
-  holds nothing with contents -- only zeroed input (`.bss.*`, `COMMON`), or no
-  input at all, as a stack reserved with `. = . + size` has, for which GNU ld
-  still prints a load address -- or is named for zeroed memory (`.bss`,
-  `.uninit`). Against a real link it agrees with `arm-none-eabi-size`.
-- **On the code map**, the linker script's regions and sections carry what was
-  measured (`meta.measured`, and a tooltip that says it), and functions and
-  statics carry `meta.bytes`: a symbol is demangled (Rust's legacy mangling,
-  and the half-demangled form LLD prints) and joined within the crate it was
-  compiled in, by name and, for a method, its impl's type -- only where one
-  item answers. A C name one file declares and another defines is joined to
-  the file the map's object names. GNU ld lists no `static`; built with
-  `-fdata-sections` and `-ffunction-sections`, one is read from the section
-  GCC named for it (`.bss.rx_buffer`). A symbol from outside the parse (`core`,
-  a runtime, the C library) is counted, not drawn.
-- **On the crate graph**, the binary's target says its fill per region, and the
-  map is a document row with its age, stale once a source changes after it.
-
-What it cannot see: inlined code has no symbol, so its bytes are its caller's;
-and a map is only as current as the link that wrote it.
-
-Two of the test maps are ones the linkers wrote: rust-lld's for a Cortex-M
-`blinky` recorded by `codecarto cargo record --map`, and arm-none-eabi-ld's for
-a small C firmware. Each found what maps written from the documentation had
-not -- printed symbol sizes, mapping symbols, the names LTO and cortex-m-rt
-give, a reserved stack with a load address, unlisted statics.
-
-## What the Rust reader knows, and how
-
-The reader is a tokenizer and a brace matcher -- stdlib only, the same tier as
-the regex parsers it replaces for `.rs`, and deliberately no further. Items,
-their nesting, visibility, qualifiers, attributes, `extern` blocks and ABIs,
-receivers, field types and the calls in a body are what a tokenizer can know.
-Name resolution, types and macro expansion are the compiler's, and each relation
-it draws says how it was found (`resolution` on the edge): `module-tree` for a
-`use` walked through the `mod` declarations, `crate-by-directory` for a sibling
-crate recognised by its directory, `unique-name` for a call, impl or field type
-resolved only because exactly one local item has the name. Its module
-docstring lists every relation.
-
-What it does not do, on purpose: expand macros (an item inside `cfg_if!` or
-`bitflags!` is a `macro_invocation`, not its expansion), resolve a method call
-on anything but `self`, or follow a `use` through a re-export it cannot see.
-
-## Holding the joins
-
-Each join drifts silently -- a renamed token, a new parser kind, a changed
-colour -- and the picture still draws, so each is a test
-(`tests/test_construct_service.py`): every token the vocabulary names is in that
-language's lexicon; the Rust parser's `KINDS` and the vocabulary map each other
-exactly; every C kind is mapped; C's reference design (`c_language_parser`'s
-shapes and colours) agrees with the vocabulary's looks; every look is a shape
-the canvas draws. Each guard was broken once and seen red.
+What is shipped -- the Rust reader, linker scripts and link maps, the Cargo
+workspace and the dev loop that records it -- is in
+[Architecture](../architecture.md#rust-cargo-and-the-firmware-languages) and
+[Services](../services.md#link_map_service). Each step below is named with the
+engine it would buy.
 
 ## Next, in order
 
@@ -137,26 +21,17 @@ the canvas draws. Each guard was broken once and seen red.
    `#[repr(C)]` register blocks the reader already finds, a HAL's structs would
    point at the hardware they model.
 3. **C firmware at parity.** `.ino` sketches through the C adapter (as C++),
-   `compile_commands.json` (`c_parser_phase3_compile_commands.md`), and clang's
-   machine-readable diagnostics, so a C workspace has the same overlay a Rust
-   one has.
+   `compile_commands.json` ([c_parser_phase3_compile_commands.md](c_parser_phase3_compile_commands.md)),
+   and clang's machine-readable diagnostics, so a C workspace has the same
+   overlay a Rust one has.
 4. **The build itself.** `cargo build --timings` and the unit graph (unstable
    today) would draw what compiled, in what order, for how long. Read from a
    recorded document, as the check is.
 5. **Running firmware.** probe-rs and defmt logs as a monitoring overlay on the
    same graph: which handler ran, from a recorded trace. The `monitoring` rung,
    reached the same way.
-6. **More of the chrestomathy.** Lexicons for C++, assembly directives and the
-   linker script; constructs for ownership, generics and closures; Python's
-   facets.
+6. **More of the chrestomathy**: the lexicons and constructs in
+   [lexicon.md](lexicon.md).
 
 `tree-sitter` is declared in the `multilang` extra and imported nowhere. An org
 record decides whether it joins the house stack before any code imports it.
-
-## Where to start reading
-
-`rust_language_parser.py`'s docstring, then `constructs.yaml`'s header, then
-`cargo_service.py`'s docstring -- each says what it cannot see. The fixture
-`tests/fixtures/cargo/workspace` is a small firmware workspace (a HAL, a
-`no_std` binary with `memory.x`, a host tool whose build script compiles C) with
-recorded cargo documents, and every behaviour above has a test that reads it.

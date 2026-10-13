@@ -32,7 +32,7 @@ uv run codecarto dev [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--host` | `127.0.0.1` | Backend host address |
-| `--port` | `codecarto.cli.DEFAULT_PORT` -- the constant the corpus allocates; `--help` prints it | Backend port; `CODECARTO_PORT` also sets it |
+| `--port` | `codecarto.cli.DEFAULT_PORT`; `--help` prints it | Backend port; `CODECARTO_PORT` also sets it |
 | `--no-frontend` | `false` | Skip starting frontend |
 
 **Examples:**
@@ -51,10 +51,8 @@ uv run codecarto dev --port 8080
 uv run codecarto dev --host 0.0.0.0
 ```
 
-**Output:** the command prints the backend address, the frontend address
-(`http://localhost:1234`) and the API docs address as it starts them. The
-backend port is not restated here because the constant is the source; asking
-the server (`/openapi.json` names it `codecarto`) beats trusting a page.
+**Output:** Prints the backend, frontend and API-docs addresses as it starts
+them.
 
 ---
 
@@ -71,7 +69,7 @@ uv run codecarto serve [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--host` | `127.0.0.1` | Host address |
-| `--port` | `codecarto.cli.DEFAULT_PORT` -- the constant the corpus allocates; `--help` prints it | Port number; `CODECARTO_PORT` also sets it |
+| `--port` | `codecarto.cli.DEFAULT_PORT`; `--help` prints it | Port number; `CODECARTO_PORT` also sets it |
 | `--reload/--no-reload` | `--reload` | Enable hot reload |
 
 **Examples:**
@@ -298,10 +296,9 @@ on every node: `directory`, `file`, `class`, `function`, `import` and
 
 ### `cargo`
 
-Group command for Cargo workspaces. **`read` runs nothing; `record` is the one
-place this project runs cargo**, because running cargo runs the workspace's
-build scripts and proc macros -- a person's act on a workspace they would build,
-never a route's.
+Group command for Cargo workspaces. `read` only reads files. `record` runs
+cargo, which executes the workspace's build scripts and proc macros, so run it
+only on a workspace you would build.
 
 | Command | Description |
 |---------|-------------|
@@ -341,7 +338,8 @@ diagnostics is the point -- and says cargo's exit status. `--all-targets` checks
 tests, examples and benches too (a `no_std` binary usually cannot build them);
 `--online` lets cargo reach the network; a command that outlives `--timeout`
 (600s by default) keeps what arrived and says it is partial. Without cargo on
-PATH it says so and exits 1; the window still draws the manifests.
+PATH it says so and exits 1; the window still draws the manifests. How the
+window reads what this writes is in [Architecture](architecture.md#rust-cargo-and-the-firmware-languages).
 
 `--map BIN` (repeatable) links a binary and keeps its map: the linker writes it,
 so a build that finishes without one is a failure, not a document. `--map-flag`

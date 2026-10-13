@@ -216,6 +216,23 @@ graph = parser.parse(folder)
 1), and `_add_python_dependency_edges()` adds Python's `depends_on` edges between
 files at depth 2 and deeper.
 
+### RustLanguageParser
+
+**File:** `parsers/rust_language_parser.py`
+
+A tokenizer and a brace matcher, standard library only. Items, their nesting,
+visibility, qualifiers, attributes, `extern` blocks and ABIs, receivers, field
+types and the calls in a body are what it reads. Name resolution, types and
+macro expansion are the compiler's, and each relation it draws says how it was
+found (`resolution` on the edge): `module-tree` for a `use` walked through the
+`mod` declarations, `crate-by-directory` for a sibling crate recognised by its
+directory, `unique-name` for a call, impl or field type resolved only because
+exactly one local item has the name. Its module docstring lists every relation.
+
+It does not expand macros (an item inside `cfg_if!` or `bitflags!` is a
+`macro_invocation`), resolve a method call on anything but `self`, or follow a
+`use` through a re-export it cannot see.
+
 ---
 
 ## LexiconService
@@ -225,8 +242,8 @@ files at depth 2 and deeper.
 Loads a hand-authored per-language lexicon (reserved words/operators on
 a hierarchy of abstraction layers, from `data/lexicons/<language>.yaml`)
 and projects it into the same graph pipeline the parsers use. See
-`docs/roadmap/lexicon.md` for the full design and the `/lexicon/*`
-endpoints in `docs/api.md`.
+`docs/architecture.md`, *Lexicons and the construct vocabulary*, and the
+`/lexicon/*` endpoints in `docs/api.md`.
 
 ### Methods
 
@@ -277,6 +294,37 @@ measures each region's use at run time and as load images; `annotate(graph,
 map, ...)` puts the figures on a parsed code map's regions, sections, functions
 and statics; `demangle` and `symbol_key` turn a Rust symbol back into the path,
 type and function it was compiled from.
+
+It reads both shapes firmware is linked with: GNU ld's (`arm-none-eabi-gcc
+-Wl,-Map=...`, which also prints the memory table) and LLD's (`rust-lld`, the
+default for Rust's embedded targets, which does not). `codecarto cargo record
+--map <bin>` links with `--profile release`, the build that is flashed, and
+keeps the map; a C build passing `-Wl,-Map=target/codecarto/<name>.map` writes
+one read the same way.
+
+- **A region's use** is the sections the link placed in it at run time, plus
+  the load images of sections run from elsewhere (`.data`, a `.ram_func`).
+  Neither map prints a section's type, so a section has no load image when it
+  holds nothing with contents -- only zeroed input (`.bss.*`, `COMMON`), or no
+  input at all, as a stack reserved with `. = . + size` has -- or is named for
+  zeroed memory (`.bss`, `.uninit`). Against a real link it agrees with
+  `arm-none-eabi-size`.
+- **On the code map**, the linker script's regions and sections carry
+  `meta.measured`, and functions and statics carry `meta.bytes`. A symbol is
+  demangled (Rust's legacy mangling, and the half-demangled form LLD prints)
+  and joined within the crate it was compiled in, by name and, for a method,
+  its impl's type, only where one item answers. A C name one file declares and
+  another defines is joined to the file the map's object names. GNU ld lists no
+  `static`; built with `-fdata-sections` and `-ffunction-sections`, one is read
+  from the section GCC named for it (`.bss.rx_buffer`). A symbol from outside
+  the parse (`core`, a runtime, the C library) is counted, not drawn.
+- **On the crate graph**, the binary's target says its fill per region, and
+  the map is a document row with its age, stale once a source changes after it.
+
+What it cannot see: inlined code has no symbol, so its bytes are its caller's;
+and a map is only as current as the link that wrote it. Two of the test maps
+under `tests/fixtures/linkmaps/` are ones the linkers wrote: rust-lld's for a
+Cortex-M `blinky` and arm-none-eabi-ld's for a small C firmware.
 
 ---
 
@@ -347,7 +395,9 @@ Serializes NetworkX graphs to JSON format for client-side rendering.
 
 #### `serialize_to_gjgf(graph, options, isDependencyPlot)`
 
-Convert NetworkX graph to Graph JSON Format (gJGF) with layout positions.
+Convert NetworkX graph to Graph JSON Format (gJGF) with layout positions. A
+multigraph keeps every edge between a pair of nodes, and a node that already
+has a `size` keeps it.
 
 ```python
 from codecarto.services.graph_serializer import GraphSerializer

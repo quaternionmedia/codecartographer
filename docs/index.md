@@ -19,15 +19,11 @@ These pages explain how to install, run and extend Codecarto.
 
 - [Roadmap](roadmap/README.md): the index of planned work
 - [Rust and the firmware languages](roadmap/rust.md)
-- [Language lexicons](roadmap/lexicon.md)
-- [Maps of code and of systems](roadmap/topology-functionality-abstraction-maps.md)
+- [Lexicons and constructs](roadmap/lexicon.md)
 - [C parsing from `compile_commands.json`](roadmap/c_parser_phase3_compile_commands.md)
 - [Large repositories](roadmap/large-repos.md)
 
-## Notes
-
-- [Integrating rad into a web host](llm/RAD_INTEGRATION_HANDOFF.md)
-- [Consolidation notes](consolidation.md)
-
-The plan the estate panels are built to is `governance/qm/plans/the-web-window.md`
-in the governance corpus.
+The panels that draw other projects' data -- the topology, capability and
+overview panels -- are built to a plan in the governance corpus, the
+organisation's shared decisions vendored here as a submodule:
+`governance/qm/plans/the-web-window.md`.

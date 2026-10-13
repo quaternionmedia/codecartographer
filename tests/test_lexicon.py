@@ -88,7 +88,7 @@ def test_missing_language_raises():
 # Parametrized over LexiconService.available() so a new language YAML gets
 # this coverage for free — no per-language test needed, same "generic
 # router/tests" property the language-agnostic parts of this feature already
-# have. See docs/roadmap/lexicon.md's "Adding a language" section.
+# have. See docs/extending.md's "Adding a lexicon".
 
 
 @pytest.mark.parametrize("language", LexiconService.available())

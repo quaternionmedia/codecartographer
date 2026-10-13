@@ -129,9 +129,15 @@ web/src/
 │   │   └── renderers.ts             # renderer registry (gravis, notebook, system)
 │   ├── extensions/                  # drag, zoom, selection, highlight, tooltip, colour, legend
 │   └── rad/                         # the radial menu, conformant to rad's vectors
+│       ├── core/                    # geometry, state machine, time, chords: no DOM, no app imports
+│       ├── session.ts               # createSession(), the seam rad's standard names
+│       ├── dom/                     # the SVG ring and its pointer input
+│       ├── host/                    # the only part that knows the app: verbs, menus, intents
+│       └── conformance/             # replays rad's governed vectors (npm run test:rad)
 │
 ├── state/
 │   ├── types.ts             # GraphStylingOptions, app state shapes
+│   ├── config_manager.ts    # the API's address: a meta tag, else the page's origin, else settings
 │   ├── api_base.ts          # API endpoint base URLs
 │   └── state_controller.ts  # Meiosis cell wrapper
 │
@@ -160,8 +166,8 @@ how a renderer reads them, are in [Extending](extending.md#the-node-schema).
 Each language adapter implements the `LanguageParser` protocol
 (`language`, `extensions`, `parse_files(files, depth)`) and registers itself
 with `ParserRegistry` when `codecarto/services/parsers/__init__.py` imports
-it. The registry
-maps an extension to its parser; `GET /parse/languages` lists every one.
+it. The registry maps an extension to its parser; `GET /parse/languages` lists
+every one.
 
 **`batch_whole_tree`.** By default the walk (`_walk_folder`) hands a parser one
 file at a time. A parser that sets `batch_whole_tree = True` (C, Rust, linker
@@ -322,13 +328,91 @@ moves its whole subtree. The circles are drawn only for `compound_layout`, in a
 so they sit behind links and nodes. Where the layout and its outline toggle
 are chosen is in the [UI reference](ui.md).
 
+## Lexicons and the construct vocabulary
+
+A lexicon is a hand-authored ontology of one language's reserved words and
+operators, arranged on abstraction layers from machine-facing (ordinal 0) to
+abstract. Three exist, in `codecarto/data/lexicons/`: C, Python (the shorter
+template) and Rust, whose layers follow C's wherever the two languages answer
+the same question. `models/lexicon.py` is the schema, `lexicon_service.py`
+loads and validates a YAML file and projects it to a graph, and
+`lexicon_router.py` serves `/lexicon/*`.
+
+**Its own graph.** `GET /lexicon/{language}/graph` projects the lexicon through
+`LexiconService.to_graph()` and `GraphSerializer`, the pipeline every parsed
+graph uses, so it lays out and draws like one.
+
+**Joined to parsed code.** With `annotate_lexicon: true` on a parse,
+`lexicon_bridge.annotate_graph_with_lexicon()` looks up each node's `kind`
+through a per-language map to the keyword it spells (`_KIND_TOKEN_MAP`) and,
+where a parser exposes them, its tokenized qualifiers (`_QUALIFIER_META_KEY`),
+and stamps `layer_ordinal`, `layer_color` and `meta.lexicon_layers` on a match.
+A lexicon holds keywords and operators, not identifiers, so a node's name
+never matches. What does:
+
+- **C**: `struct`, `union`, `enum` and `typedef` by kind, and `static`,
+  `extern`, `register`, `const` and `volatile` from `meta.qualifiers`.
+- **Python**: `class` and `import` by kind, `def` from kind `function`, and
+  `for` from kind `loop` (depth 3).
+- **Rust**: its item kinds by the keyword each spells (`fn` for `function` and
+  `method`, `mod` for `module`, ...), and `pub`, `unsafe`, `async`, `const`,
+  `extern`, `mut` and `static` from `meta.qualifiers`.
+
+**The construct vocabulary.** `codecarto/data/constructs.yaml` names what a
+token or a parser kind *is*, the same in every language it lists: a C `struct`
+and a Rust `struct` are `type.product` and are drawn alike; a Rust `enum` whose
+variants carry data is `type.sum`, C's `enum` is `type.enumeration`; an
+`#[interrupt]` handler and a linker script's output section name
+`firmware.interrupt` and `layout.section`. `construct_service` stamps every
+node with its `construct` and `meta.facets`, and reads one construct across
+languages for `/lexicon/chrestomathy/*`. Lexicons and constructs together are
+the chrestomathy: one construct set beside itself in every language.
+
+## Rust, Cargo and the firmware languages
+
+Five readings share the vocabulary above and draw on the one canvas:
+
+| Reading | Reads | Module | Route |
+|---|---|---|---|
+| Rust source | `.rs` files, item by item | `services/parsers/rust_language_parser.py` | `/parse/*`, like every language |
+| Linker scripts | `.ld`, `.lds`, `memory.x` | `services/parsers/linker_script_parser.py` | `/parse/*` |
+| A Cargo workspace | `Cargo.toml`, `Cargo.lock`, `.cargo/config.toml`, and what cargo recorded | `services/cargo_service.py` | `/cargo/gjgf`, `/cargo/data` |
+| A linker's map | the map file a link wrote | `services/link_map_service.py` | on `/parse/*` and `/cargo/*` graphs |
+| One construct across languages | `data/constructs.yaml` and the lexicons | `services/construct_service.py` | `/lexicon/chrestomathy/*` |
+
+**The dev loop.** A person runs cargo; the window reads what it wrote:
+
+```text
+edit  ->  uv run codecarto cargo record <workspace> [--map <bin>]  ->  the window reads it
+             runs cargo metadata and cargo check, and with           crate graph, diagnostics and
+             --map links <bin> asking the linker for its map         memory use on the targets and
+             writes target/codecarto/*.json[l] and <bin>.map         on the items they name
+```
+
+Each recorded document is read with its age ([CLI](cli.md#cargo-record) has
+the command):
+
+- `metadata.json` newer than every manifest is cargo's own resolution. An older
+  one is not used: the manifests are read instead, and the reading says why.
+- `check.jsonl` puts rustc's diagnostics on the crate graph's targets and, in a
+  local parse of the same repository, on the innermost Rust item whose lines
+  hold each one, with `diagnostics_recorded_at`. A source changed after the
+  check is reported `stale`; nothing re-checks.
+- `<bin>.map` measures what the linker script only declares; see
+  [Services](services.md#link_map_service).
+- With no document, the reading says "no diagnostics drawn, which is not the
+  same as a clean build".
+
+Each module's docstring says what it cannot see; start with
+`rust_language_parser.py`, then `constructs.yaml`'s header, then
+`cargo_service.py`. `tests/fixtures/cargo/workspace` is a small firmware
+workspace (a HAL, a `no_std` binary with `memory.x`, a host tool whose build
+script compiles C) with recorded cargo documents.
+
 ## Calculated, stored, displayed
 
-Every figure on the screen was calculated somewhere, may have been stored
-somewhere, and is displayed here. The three are different places with
-different owners, and a window that blurs them is how two windows onto one
-estate start disagreeing. `tests/test_boundaries.py` is the check; this is the
-statement.
+For each kind of graph, this table names what calculates it, what stores it and
+what displays it. `tests/test_boundaries.py` checks the rules below.
 
 | | who calculates | who stores | who displays |
 |---|---|---|---|
@@ -340,21 +424,18 @@ statement.
 | **Cargo workspaces** (`/cargo`) | cargo resolves the workspace and rustc checks it, when a person runs `codecarto cargo record`; this backend reads the manifests and those documents, counts diagnostics per target, measures each recorded link map's region use, and lays out | the two documents, in the workspace's own `target/codecarto/`, written on a person's command; nothing on this side | the canvas; the Cargo panel names the engine that answered and each document's age and staleness |
 | **Chrestomathy** (`/lexicon/chrestomathy`) | nothing new: the hand-authored construct vocabulary and lexicons are read and laid out | the YAML files, shipped in the package | the canvas, tokens coloured from the one layer ramp; the panel's table, a language with no spelling included |
 
-**Rules, and where each was learned.**
+**Rules.**
 
 1. **The window calculates two things and no more: a layout, and the palette's
    vocabulary for a kind.** Layouts are `PositionService`; the vocabulary is
    `palette_service.vocabulary`, the one place a kind becomes a shape, colour
-   and size (three services once held three private copies). The serializer
-   does not apply the palette, which is why a service carries the result; the
-   right eventual home is the serializer, so a service sets `type` alone.
+   and size. The serializer does not apply the palette, so a service carries
+   the result.
 2. **A calculation does not depend on how the caller spelled its name.**
-   `layout_key` normalises once and everything downstream keys on the result.
-   The same layout used to come out five times larger for `Kamada_Kawai` than
-   for `Kamada Kawai`, and `compound_layout` — the menu's own name — raised.
-3. **A data document carries no display constants.** Three hex colours rode in
-   the topology metadata and the front end overwrote them on arrival. The canvas
-   themes itself from the application's tokens.
+   `layout_key` normalises once and everything downstream keys on the result:
+   `Kamada_Kawai`, `Kamada Kawai` and `kamada_kawai_layout` are one layout.
+3. **A data document carries no display constants.** The canvas themes itself
+   from the application's tokens.
 4. **The estate services and panels store nothing.** No cache, no database, no
    `localStorage`. What a panel remembers between renders is application state
    and is gone with the tab. The one thing persisted on this side of the estate
@@ -371,12 +452,9 @@ statement.
 7. **A layout choice is a choice about the graph on the canvas, whichever seam
    drew it.** Every panel that draws goes through `LayoutContext.plotWith`, so
    changing the layout in Graph Settings — or rad's `relayout` — re-runs the
-   last draw with the new one. The estate draws were once not remembered, and
-   the setting changed while the canvas did not.
+   last draw with the new one.
 8. **One translation between the menu's names and the backend's.**
    `layout_names.ts` strips `_layout` and capitalises; there is no fallback.
-   Two hand tables used to fall back to `Spring` for any name they did not
-   list.
 9. **A construct's look is the code map's visual grammar, said once.** Parsers
    own how their nodes look; `constructs.yaml` is where looks shared across
    languages live, and a node keeps any look its parser gave it. The estate
@@ -417,11 +495,11 @@ All non-obvious structural choices are documented as ADR drafts in
 
 | ADR | Decision |
 |-----|----------|
-| *Parser/cache unification* | Deleted legacy router generations; `batch_whole_tree` opt-in for cross-file C parsing |
-| *Golden Layout as primary shell* | Replaced monolithic `codecarto.ts`; panel registry in `panel_registry.ts` |
+| *Parser/cache unification* | One parse pipeline over `ParserRegistry`; `batch_whole_tree` opt-in for cross-file C parsing |
+| *Golden Layout as primary shell* | Golden Layout is the shell; panels are registered in `panel_registry.ts` |
 | *Compound hierarchical layout* | 4-pass dirs→files→symbols→sub-symbols orbit algorithm |
 | *CacheService vs graphbase* | TTL'd content-addressed cache vs. user-named durable store — kept separate |
-| *GL panel registry + add-window menu* | Generalized from hardcoded map; real `LayoutManager` import fixed restore bug |
+| *GL panel registry + add-window menu* | One registry of panels, and a "+" menu that adds any of them |
 | *D3 hierarchy layout improvements* | Hierarchical drag, per-depth labels, cumulative spread scaling |
 
 ## Extension Points
