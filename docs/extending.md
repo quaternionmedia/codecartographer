@@ -506,8 +506,8 @@ async def pam_ui(request: Request):
 
 ## Testing Changes
 
-The test commands are in [`AGENTS.md`](../../AGENTS.md), *Tests*; running the
-application is in [Getting Started](../getting-started.md).
+The test commands are in [`AGENTS.md`](../AGENTS.md), *Tests*; running the
+application is in [Getting Started](getting-started.md).
 
 ---
 

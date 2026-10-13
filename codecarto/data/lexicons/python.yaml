@@ -3,7 +3,7 @@
 #
 # Second lexicon in this repo (after C), added deliberately compact — three
 # layers instead of C's five — as the simpler onboarding example for anyone
-# adding a third language. See docs/llm/roadmap/lexicon.md's "Adding a
+# adding a third language. See docs/roadmap/lexicon.md's "Adding a
 # language" section for what wiring Option B (parser enrichment) for a new
 # language actually requires.
 #

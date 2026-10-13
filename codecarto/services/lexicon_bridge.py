@@ -1,6 +1,6 @@
 """Joins real parsed-graph nodes to a language's Lexicon abstraction layers.
 
-This is Lexicon "Option B" (see ``docs/llm/roadmap/lexicon.md``): a
+This is Lexicon "Option B" (see ``docs/roadmap/lexicon.md``): a
 :class:`~codecarto.models.lexicon.Lexicon` token's spelling is the join key,
 but only keywords/operators actually appear as node ``kind`` values or
 tokenized qualifier lists — a node's ``label`` (a declared identifier like

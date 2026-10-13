@@ -505,9 +505,9 @@ def test_ui_reference_names_every_registered_panel():
     registry = (ROOT / "web" / "src" / "layout" / "panel_registry.ts").read_text(encoding="utf-8")
     ids = set(re.findall(r"^\s+id: '([a-z-]+)',", registry, re.M))
     assert ids, "no panel ids found in panel_registry.ts; the pattern is stale"
-    reference = (ROOT / "docs" / "llm" / "UI_REFERENCE.md").read_text(encoding="utf-8")
+    reference = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
     missing = sorted(i for i in ids if f"`{i}`" not in reference)
-    assert not missing, f"docs/llm/UI_REFERENCE.md's panel table lacks: {missing}"
+    assert not missing, f"docs/ui.md's panel table lacks: {missing}"
 
 
 def test_no_source_directory_is_shadowed_by_the_dev_proxy(prefixes):

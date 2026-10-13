@@ -65,7 +65,7 @@ This is the core UX feature that makes the single-large-graph experience work.
 > been retired in favour of `streaming_renderer.ts`. The sub-sections are
 > kept because 2-B's merge semantics and 2-C's position handling are still
 > the design in force; read them for the reasoning, not for the paths. See
-> `UI_REFERENCE.md` for what a reader actually presses.
+> [the UI reference](../ui.md) for what a reader actually presses.
 
 ### 2-A. Double-click to expand
 

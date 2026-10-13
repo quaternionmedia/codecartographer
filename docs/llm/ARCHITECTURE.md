@@ -698,4 +698,4 @@ Fixing this properly requires implementing GL's "virtual layout" or "binding con
 | `web/src/features/graph/rad/` | The radial menu, incl. onViewSource (github.com/blob/#L) |
 | `web/src/features/graph/extensions/legend_extension.ts` | The graph key, built from what was drawn |
 | `web/src/features/graph/services/renderers.ts` | Renderer registry (gravis, notebook, system) |
-| `docs/llm/EXTENDING.md` | How to add renderers, language parsers, endpoints |
+| `docs/extending.md` | How to add renderers, language parsers, endpoints |

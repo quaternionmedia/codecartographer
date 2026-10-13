@@ -91,7 +91,7 @@ Parse a directory tree to the requested depth and return a gJGF graph.
 **`annotate_lexicon`** (default `false`): stamp Lexicon abstraction-layer
 data (`layer_ordinal`, `meta.lexicon_layers`) onto nodes whose language
 has one (`c`, `python` and `rust`; `GET /lexicon/` lists them — see
-`docs/llm/roadmap/lexicon.md`).
+`docs/roadmap/lexicon.md`).
 Opt-in: existing callers see no change. Requests with this set to `true`
 bypass the response cache (the cache key doesn't vary on this field).
 
@@ -715,7 +715,7 @@ Delete a specific history entry.
 
 Hand-authored per-language ontologies (reserved words/operators on a
 hierarchy of abstraction layers), projected into the same graph pipeline
-the parsers use. See `docs/llm/roadmap/lexicon.md` for the full design.
+the parsers use. See `docs/roadmap/lexicon.md` for the full design.
 
 ### GET `/lexicon/`
 

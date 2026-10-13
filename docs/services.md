@@ -223,7 +223,7 @@ depth>=2), not by separate parser classes.
 Loads a hand-authored per-language lexicon (reserved words/operators on
 a hierarchy of abstraction layers, from `data/lexicons/<language>.yaml`)
 and projects it into the same graph pipeline the parsers use. See
-`docs/llm/roadmap/lexicon.md` for the full design and the `/lexicon/*`
+`docs/roadmap/lexicon.md` for the full design and the `/lexicon/*`
 endpoints in `docs/api.md`.
 
 ### Methods

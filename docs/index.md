@@ -11,21 +11,21 @@ These pages explain how to install, run and extend Codecarto.
 - [Architecture](architecture.md): the backend, the frontend, and how a graph
   gets from one to the other
 - [Services](services.md): the service layer, module by module
-- [Extending](llm/EXTENDING.md): adding a parser, renderer, styling option,
+- [Extending](extending.md): adding a parser, renderer, styling option,
   extension or route
-- [UI reference](llm/UI_REFERENCE.md): the panels, the canvas and the menus
+- [UI reference](ui.md): the panels, the canvas and the menus
 - [Architecture in depth](llm/ARCHITECTURE.md): the parse pipelines, the
   caches and the graphbase store
 - [Renderers](llm/RENDERER_GUIDE.md): the renderer registry and each renderer
 
 ## Open work
 
-- [Roadmap](llm/roadmap/README.md): the index of planned work
-- [Rust and the firmware languages](llm/roadmap/rust.md)
-- [Language lexicons](llm/roadmap/lexicon.md)
-- [Maps of code and of systems](llm/roadmap/topology-functionality-abstraction-maps.md)
-- [C parsing from `compile_commands.json`](llm/roadmap/c_parser_phase3_compile_commands.md)
-- [Large repositories](llm/LARGE_REPOS.md)
+- [Roadmap](roadmap/README.md): the index of planned work
+- [Rust and the firmware languages](roadmap/rust.md)
+- [Language lexicons](roadmap/lexicon.md)
+- [Maps of code and of systems](roadmap/topology-functionality-abstraction-maps.md)
+- [C parsing from `compile_commands.json`](roadmap/c_parser_phase3_compile_commands.md)
+- [Large repositories](roadmap/large-repos.md)
 
 ## Notes
 

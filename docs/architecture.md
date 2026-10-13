@@ -280,7 +280,7 @@ All non-obvious structural choices are documented as ADR drafts in
 Add a `_PATTERNS` list and one entry in `_LANGUAGES` in
 `codecarto/services/parsers/regex_language_parser.py`.
 The new extensions appear in `/parse/languages` immediately.
-See `docs/llm/EXTENDING.md` for the full guide including the
+See `docs/extending.md` for the full guide including the
 `batch_whole_tree` option for cross-file languages.
 
 ### Adding a New GL Panel

@@ -46,7 +46,7 @@ both.
 
 **In the browser.** Open http://localhost:1234, pick an example from the project
 selector or give it a GitHub URL or a local path, and the graph streams onto the
-canvas as each file is parsed. The [UI reference](llm/UI_REFERENCE.md) names
+canvas as each file is parsed. The [UI reference](ui.md) names
 each panel and control.
 
 **From the command line.**
@@ -73,6 +73,6 @@ gives the full order the server tries.
 ## Next
 
 - [Architecture](architecture.md): how the pieces fit
-- [Extending](llm/EXTENDING.md): adding a parser, renderer, panel or route
+- [Extending](extending.md): adding a parser, renderer, panel or route
 - [`AGENTS.md`](../AGENTS.md): how a change is made here, the test commands and
   the gates
