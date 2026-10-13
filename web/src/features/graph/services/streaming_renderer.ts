@@ -424,30 +424,22 @@ export class StreamingGraphRenderer {
     }
 
     // ── Source navigation ──────────────────────────────────────────────────
-    // Right-click or double-click on a symbol node → open github.com/blob
-    // view at the node's line number. Right-click calls preventDefault() so
-    // the browser's native context menu never appears; double-click is the
-    // modifier-key-free alternative.
+    // Double-click on a symbol node → open its source at the line.
+    //
+    // **RIGHT-CLICK IS THE RADIAL MENU'S.** A handler here once opened the
+    // source on right-click and stopped the event, and on every other node
+    // stopped it for nothing -- so rad, which listens on the canvas, never
+    // heard a right-click on any node, and the node ring could not be opened
+    // by mouse at all. rad prevents the browser's menu itself, and offers the
+    // source as View → Source.
     const depth = (node.depth as number) ?? 0;
     const line  = Number(node.line)  || 0;
     const file  = (node.file as string) || '';
 
     if (depth >= 2 && line > 0) {
-      group
-        .on('contextmenu', (event: MouseEvent) => {
-          event.preventDefault();
-          event.stopPropagation();
-          this._openSource(file, line, (node.label as string) || node.id, event.clientX, event.clientY);
-        })
-        .on('dblclick', (event: MouseEvent) => {
-          event.stopPropagation();
-          this._openSource(file, line, (node.label as string) || node.id, event.clientX, event.clientY);
-        });
-    } else if (depth < 2) {
-      // Dir/file nodes: right-click only prevents browser menu (no source to show)
-      group.on('contextmenu', (event: MouseEvent) => {
-        event.preventDefault();
+      group.on('dblclick', (event: MouseEvent) => {
         event.stopPropagation();
+        this._openSource(file, line, (node.label as string) || node.id, event.clientX, event.clientY);
       });
     }
 
