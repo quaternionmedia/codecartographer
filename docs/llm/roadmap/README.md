@@ -1,8 +1,7 @@
 # Roadmap
 
 Forward-looking design docs for work that's been scoped but not fully
-built — distinct from `docs/llm/archive/legacy/`, which holds
-completed-and-shipped survey/implementation write-ups.
+built.
 
 | Doc | What it's about |
 |---|---|

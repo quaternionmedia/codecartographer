@@ -181,7 +181,7 @@ uv run codecarto docker-down
 - [Getting Started](docs/getting-started.md) — install, run, first graph
 - [Architecture](docs/architecture.md) — how the pieces fit
 - [CLI](docs/cli.md) and [API](docs/api.md) — the two command surfaces
-- [Contributing](docs/contributing.md) — working on this project
+- [Contributing](.github/CONTRIBUTING.md) — working on this project
 - [UI Reference](docs/llm/UI_REFERENCE.md) — the shell, every panel, the one canvas and the radial menu
 - [Rust and the firmware languages](docs/llm/roadmap/rust.md) — Rust, Cargo, linker scripts and the construct vocabulary that sets them beside C
 
