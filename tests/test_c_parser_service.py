@@ -219,6 +219,26 @@ class TestParseDirectoryDiagnostics:
         assert diag["unknown_type"] == 0
         assert diag["files_with_warnings"] == 0
 
+    @pytest.mark.parametrize("target", ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc",
+                                        "thumbv7em-none-eabihf"])
+    def test_the_stubs_parse_clean_for_every_target(self, tmp_path, target):
+        """The stub headers are read for whatever target libclang parses for,
+        and that is the host unless told otherwise -- so a check that ran only
+        on Windows passed while every Linux parse said `size_t` was unknown.
+        Each target is named here, so any host sees all three. Mutation: drop
+        `#include <stddef.h>` from the sys/types.h stub -- Linux and Cortex-M
+        fail; type size_t as `unsigned long` again -- Windows fails."""
+        from codecarto.services.parsers.c_parser import CParser, default_parse_args
+
+        source = tmp_path / "main.c"
+        source.write_text(
+            "#include <unistd.h>\n#include <pthread.h>\n#include <stdint.h>\n#include <stddef.h>\n"
+            "int main(void) { pthread_t t; size_t n = 0; uint32_t x = 1; sleep(0); return (int)(x + n); }\n"
+        )
+        result = CParser().parse_files([source], extra_args=default_parse_args() + ["-target", target])
+        diag = result["meta"]["diagnostics"]
+        assert (diag["missing_header"], diag["unknown_type"], diag["files_with_warnings"]) == (0, 0, 0)
+
     def test_genuinely_missing_header_is_classified_and_flagged(self, tmp_path):
         from codecarto.services.c_parser_service import CParserService
 
