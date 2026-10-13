@@ -22,7 +22,7 @@ import { HOST_VERBS } from './vocabulary.js';
  * how a menu opened on a partially-streamed graph stays honest.
  */
 export interface MenuFacts {
-  /** Unified-schema depth: 0 dir, 1 file, 2 symbol. */
+  /** Unified-schema depth: 0 dir, 1 file, 2 symbol, 3 sub-symbol. */
   depth?: number;
   /** Unified-schema kind, e.g. 'function', 'class', 'directory'. */
   kind?: string;
@@ -63,12 +63,20 @@ const COLOUR_RING: MenuItem[] = [
 ];
 
 /**
- * Depth 2 is the deepest tier the parser emits, so a symbol has nothing to
- * expand into. Expanding is what makes a large repo navigable, so it takes
- * the 12 o'clock wedge — index 0, the one a straight-up flick reaches.
+ * The deepest tier a parser emits. A symbol (depth 2) can hold sub-symbols at
+ * depth 3: a C or Rust struct's fields, a Rust impl's or trait's methods, a
+ * Python function's arguments and calls. `expand` asks the server for this
+ * depth, so a symbol parsed at the default depth 2 can be opened into them,
+ * and a depth-3 node has nothing to expand into.
+ */
+export const DEEPEST_DEPTH = 3;
+
+/**
+ * Expanding is what makes a large repo navigable, so it takes the 12 o'clock
+ * wedge — index 0, the one a straight-up flick reaches.
  */
 function nodeRing(f: MenuFacts): MenuItem[] {
-  const canExpand = (f.depth ?? 0) < 2;
+  const canExpand = (f.depth ?? 0) < DEEPEST_DEPTH;
   return [
     { id: 'expand', label: 'Expand', action: 'expand', enabled: canExpand },
     { id: 'collapse', label: 'Collapse', action: 'collapse', enabled: !!f.hasRenderedChildren },

@@ -41,6 +41,7 @@ import { viewActions, EMPTY_VIEW_STATE, anyHidden } from '../features/graph/rad/
 import type { NodeViewState } from '../features/graph/rad/host/view_state';
 import type { GraphOps } from '../features/graph/rad/host/graph_intents';
 import type { MenuContext } from '../features/graph/rad/core/types';
+import { DEEPEST_DEPTH } from '../features/graph/rad/host/resolve';
 import type { GraphNode, GraphEdge } from '../features/graph/services/graph_types';
 import { backendLayoutName } from '../features/graph/services/layout_names';
 
@@ -659,7 +660,7 @@ export class LayoutContext {
         let added = 0;
         try {
           for (const id of ids) {
-            const payload = await PlotService.expandNode(this.appState.api.parse, directory, id, 3);
+            const payload = await PlotService.expandNode(this.appState.api.parse, directory, id, DEEPEST_DEPTH);
             const { nodes, edges } = this._normaliseGraph(payload);
             // The subgraph includes the node that was expanded; mergeGraph
             // skips ids already on the canvas, so this is idempotent.
