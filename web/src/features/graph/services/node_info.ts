@@ -1,5 +1,6 @@
 /**
- * What the radial menu's View → Source and View → Info say about a node.
+ * What the radial menu's View → Info says about a node, and where View →
+ * Source and a double-click take the reader.
  *
  * **EVERY USE SAYS IT.** Both verbs once spoke through a once-per-session
  * hint, so the second Info, and every Info after it, opened the menu,
@@ -21,7 +22,7 @@ export interface InfoNode {
   [key: string]: unknown;
 }
 
-/** `src/main.rs:12`, or null for a node that came from no file. */
+/** `src/main.rs:12`, `src/main.rs` with no line, or null for a node that came from no file. */
 export function sourceLine(node: InfoNode): string | null {
   if (typeof node.file !== 'string' || !node.file) return null;
   const line = typeof node.line === 'number' && node.line > 0 ? `:${node.line}` : '';
@@ -43,4 +44,33 @@ export function infoLine(node: InfoNode): string {
   const source = sourceLine(node);
   if (source) parts.push(source);
   return parts.join(' · ');
+}
+
+/**
+ * Where View → Source and a double-click on a node take the reader: the file's
+ * page on its forge, at the node's line when one is known and at the top of
+ * the file when not; or, for a file read from disk, which a browser page
+ * cannot open, the file and line to name beside the node.
+ *
+ * Null for a node from no file. That is the one rule for whether either route
+ * is offered.
+ */
+export type SourceTarget =
+  | { kind: 'forge'; href: string }
+  | { kind: 'local'; text: string };
+
+const RAW_GITHUB = /^https:\/\/raw\.githubusercontent\.com\/([^/]+\/[^/]+)\/([^/]+)\/(.+)$/;
+
+export function sourceTarget(node: InfoNode): SourceTarget | null {
+  const where = sourceLine(node);
+  if (where === null) return null;
+  const file = node.file as string;
+  const line = typeof node.line === 'number' && node.line > 0 ? node.line : 0;
+  const raw = file.match(RAW_GITHUB);
+  if (raw) {
+    const anchor = line ? `#L${line}` : '';
+    return { kind: 'forge', href: `https://github.com/${raw[1]}/blob/${raw[2]}/${raw[3]}${anchor}` };
+  }
+  if (/^https?:\/\//.test(file)) return { kind: 'forge', href: file };
+  return { kind: 'local', text: `${String(node.label ?? node.id)}  ${where}` };
 }

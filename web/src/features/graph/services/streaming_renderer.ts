@@ -16,6 +16,7 @@ import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
+import { sourceTarget } from './node_info';
 
 // Nodes rendered per animation frame. Scales with total so large repos
 // finish in ~2s while small repos show clearly progressive animation.
@@ -424,7 +425,9 @@ export class StreamingGraphRenderer {
     }
 
     // ── Source navigation ──────────────────────────────────────────────────
-    // Double-click on a symbol node → open its source at the line.
+    // Double-click opens the node's source through `openSource`, the opener
+    // View → Source uses. On a node from no file it opens nothing, and the
+    // double-click goes on to the zoom.
     //
     // **RIGHT-CLICK IS THE RADIAL MENU'S.** A handler here once opened the
     // source on right-click and stopped the event, and on every other node
@@ -432,16 +435,9 @@ export class StreamingGraphRenderer {
     // heard a right-click on any node, and the node ring could not be opened
     // by mouse at all. rad prevents the browser's menu itself, and offers the
     // source as View → Source.
-    const depth = (node.depth as number) ?? 0;
-    const line  = Number(node.line)  || 0;
-    const file  = (node.file as string) || '';
-
-    if (depth >= 2 && line > 0) {
-      group.on('dblclick', (event: MouseEvent) => {
-        event.stopPropagation();
-        this._openSource(file, line, (node.label as string) || node.id, event.clientX, event.clientY);
-      });
-    }
+    group.on('dblclick', (event: MouseEvent) => {
+      if (this.openSource(node.id, { x: event.clientX, y: event.clientY })) event.stopPropagation();
+    });
 
     // Drag support (no simulation — positions are pre-computed)
     group.call(
@@ -702,43 +698,49 @@ export class StreamingGraphRenderer {
   }
 
   /**
-   * Open the source location for a symbol node.
-   * GitHub raw URLs are converted to github.com/blob/#L{line} in a new tab.
-   * Non-URL file paths show a small in-page toast at the click position.
+   * Open a node's source: its forge page in a new tab, or for a file read from
+   * disk a badge naming the file and line beside `at` (the node's own place on
+   * screen when not given). View → Source and a double-click both call this.
+   * False for a node from no file, which opens nothing.
    */
-  private _openSource(file: string, line: number, label: string, cx: number, cy: number): void {
-    const rawMatch = file.match(
-      /^https:\/\/raw\.githubusercontent\.com\/([^/]+\/[^/]+)\/([^/]+)\/(.+)$/
-    );
-    if (rawMatch) {
-      window.open(
-        `https://github.com/${rawMatch[1]}/blob/${rawMatch[2]}/${rawMatch[3]}#L${line}`,
-        '_blank', 'noopener',
-      );
-    } else if (file.startsWith('http')) {
-      window.open(file, '_blank', 'noopener');
-    } else {
-      // Local file — show a compact floating badge near the cursor
-      const badge = document.createElement('div');
-      badge.style.cssText = [
-        'position:fixed',
-        `left:${cx + 8}px`,
-        `top:${cy - 28}px`,
-        'z-index:9999',
-        'background:#1a1a1a',
-        'border:1px solid #00ff4140',
-        'color:#00ff41',
-        'padding:4px 8px',
-        'font-size:11px',
-        'font-family:monospace',
-        'border-radius:4px',
-        'pointer-events:none',
-        'white-space:nowrap',
-      ].join(';');
-      badge.textContent = `${label}  ${file}:${line}`;
-      document.body.appendChild(badge);
-      setTimeout(() => badge.remove(), 3500);
+  openSource(id: string, at?: { x: number; y: number }): boolean {
+    const node = this.nodeById.get(id);
+    const target = node ? sourceTarget(node) : null;
+    if (!target) return false;
+    if (target.kind === 'forge') {
+      window.open(target.href, '_blank', 'noopener');
+      return true;
     }
+
+    const point = at ?? this._screenCentreOf(id);
+    document.querySelectorAll('.source-badge').forEach((old) => old.remove());
+    const badge = document.createElement('div');
+    badge.className = 'source-badge';
+    badge.style.cssText = [
+      'position:fixed',
+      `left:${point.x + 8}px`,
+      `top:${point.y - 28}px`,
+      'z-index:9999',
+      'background:#1a1a1a',
+      'border:1px solid #00ff4140',
+      'color:#00ff41',
+      'padding:4px 8px',
+      'font-size:11px',
+      'font-family:monospace',
+      'border-radius:4px',
+      'pointer-events:none',
+      'white-space:nowrap',
+    ].join(';');
+    badge.textContent = target.text;
+    document.body.appendChild(badge);
+    setTimeout(() => badge.remove(), 3500);
+    return true;
+  }
+
+  /** Where a node is drawn, in viewport coordinates; the canvas centre if it is not. */
+  private _screenCentreOf(id: string): { x: number; y: number } {
+    const rect = (this._nodeGroupEl.get(id) ?? this.svg.node())?.getBoundingClientRect();
+    return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : { x: 0, y: 0 };
   }
 
   private _shouldShowLabel(depth: number): boolean {
