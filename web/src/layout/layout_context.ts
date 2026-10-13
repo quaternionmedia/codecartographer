@@ -1100,7 +1100,7 @@ export class LayoutContext {
           .then(() => {
             const dir = this.appState.repo.content;
             if (dir?.is_partial)
-              ToastManager.hint('stub-folders', 'Large repo: click a folder ▶ to expand it, or use "Expand All"');
+              ToastManager.hint('stub-folders', 'Large repo: a folder marked … is unread; click it to read it, or use "Expand All" in the Files panel');
             m.redraw();
           })
           .catch(() => { /* sidebar still works */ });

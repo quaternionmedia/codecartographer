@@ -33,6 +33,13 @@ export function createFileTreePanel(ctx: LayoutContext): m.Component {
                   folders: repoDir.root.folders,
                   files: repoDir.root.files,
                   onUrlFileClicked: (url: string) => ctx.panelCallbacks.onRepoFileClick(url),
+                  // A large repository arrives with its folders unread. Given
+                  // this, an empty folder is drawn with `…` and reads itself
+                  // on click; without it, an empty folder in a partial tree
+                  // could not be opened at all.
+                  onFolderExpand: repoDir.is_partial
+                    ? (path: string) => ctx.panelCallbacks.onFolderExpand(path)
+                    : undefined,
                 }),
               ]),
               m('div.gl-file-tree__actions', [
