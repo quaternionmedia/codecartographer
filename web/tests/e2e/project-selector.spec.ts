@@ -6,7 +6,7 @@
  * they draw is the same streaming path every repository takes. The bundled one
  * is read from this checkout, so it is clicked, and what it promises is
  * checked: a code map whose memory regions are measured, and a Cargo panel that
- * already holds the workspace.
+ * comes forward holding the workspace.
  */
 
 import { expect, test } from '@playwright/test';
@@ -31,11 +31,14 @@ test('the bundled Rust example leads, and opens with its records', async ({ page
   await expect(flash.locator('title')).toContainText('of 512.0 KiB used');
   await page.screenshot({ path: test.info().outputPath('bundled-example.png'), fullPage: true });
 
-  // The Cargo panel already holds the workspace: nothing to type, nothing to read.
+  // The Cargo panel comes forward holding the workspace: nothing to type,
+  // nothing to read, nothing to open. A source that loads data for a panel
+  // brings that panel forward.
   // Mutation: do not load the reading on click -- the panel opens empty and this fails.
-  await page.locator('.gl-app-header__add-btn').click();
-  await page.locator('.gl-add-panel-menu__item', { hasText: /^Cargo$/ }).click();
+  // Mutation: do not open the panel -- it is not on screen and this fails.
   const cargo = page.locator('.gl-panel--cargo');
   await expect(cargo.locator('.estate__row[data-crate="blinky"]')).toBeVisible({ timeout: SETTLED });
   await expect(cargo).toContainText('blinky.map');
+  // ...and the code map the same click drew stays in view beside it.
+  await expect(page.locator('.graph-node').first()).toBeVisible();
 });

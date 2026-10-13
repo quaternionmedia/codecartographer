@@ -1091,9 +1091,13 @@ export class LayoutContext {
 
       onBundledExample: (example) => {
         this.panelCallbacks.onRepoSubmit(example.url);
-        // Its recorded cargo documents are part of it: the Cargo panel reads
-        // them now, so opening that panel shows the workspace already read.
-        if (example.cargo) void this.actions.plot.loadCargoReading(example.url);
+        // Its recorded cargo documents are part of it. A source that loads
+        // data for a panel brings that panel forward, as View ▸ Compare
+        // brings the Chrestomathy panel.
+        if (example.cargo) {
+          void this.actions.plot.loadCargoReading(example.url);
+          this.openPanel('cargo-panel');
+        }
       },
 
       onRepoSubmit: (url: string) => {
