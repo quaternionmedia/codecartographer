@@ -8,15 +8,12 @@ These pages explain how to install, run and extend Codecarto.
 - [CLI](cli.md): every `codecarto` command, its options, and the environment
   variables the code reads
 - [API](api.md): every route the backend serves, and the envelope it answers in
-- [Architecture](architecture.md): the backend, the frontend, and how a graph
-  gets from one to the other
+- [Architecture](architecture.md): the backend, the frontend, the parse
+  pipelines, the caches, and how a graph gets from one to the other
 - [Services](services.md): the service layer, module by module
-- [Extending](extending.md): adding a parser, renderer, styling option,
-  extension or route
+- [Extending](extending.md): the node schema, the renderers, and adding a
+  parser, renderer, styling option, extension or route
 - [UI reference](ui.md): the panels, the canvas and the menus
-- [Architecture in depth](llm/ARCHITECTURE.md): the parse pipelines, the
-  caches and the graphbase store
-- [Renderers](llm/RENDERER_GUIDE.md): the renderer registry and each renderer
 
 ## Open work
 

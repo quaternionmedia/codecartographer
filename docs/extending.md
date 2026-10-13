@@ -90,11 +90,11 @@ _instance = JavaScriptLanguageParser()
 ParserRegistry.register(_instance)
 ```
 
-### Step 2: Import in `unified_parser_service.py`
+### Step 2: Import it in `codecarto/services/parsers/__init__.py`
 
 ```python
-# At the top of unified_parser_service.py (alongside existing adapters):
-import codecarto.services.parsers.js_language_parser  # noqa: F401
+# codecarto/services/parsers/__init__.py, beside the other adapters:
+from . import js_language_parser  # noqa: F401
 ```
 
 That's it. The new parser is now available via `/parse/unified` for `.js`/`.ts`/`.mjs` files.
@@ -107,7 +107,7 @@ By default `_walk_folder` dispatches one file at a time:
 are self-contained — true for Python (and for most languages, including the
 JavaScript example above). If your parser needs to resolve references
 *across* files in one call (the way `CLangaugeParser` resolves cross-file
-`CALLS` edges — see `docs/llm/ARCHITECTURE.md`'s `batch_whole_tree` section),
+`CALLS` edges — see [Architecture](architecture.md#the-unified-graph)),
 set:
 
 ```python
@@ -160,42 +160,100 @@ a `note` saying how it does without. A parser may call
 `construct_service.annotate(graph)` itself; the pipeline calls it on every parse
 regardless, and a look the parser set is never overwritten.
 
-### Unified node schema helpers
+---
+
+## The node schema
+
+Every node a parser emits is built by `make_node()`, and every edge by
+`make_edge()`, both in `codecarto/services/parsers/language_parser.py`:
 
 ```python
-# make_node: returns a dict of node attributes
 attrs = make_node(
     node_id,                # unique string ID
     depth=2,                # 0=dir, 1=file, 2=symbol, 3=sub-symbol
     language="javascript",
     kind="function",        # 'class'|'function'|'struct'|'enum'|...
     label="myFunc",
-    file="src/app.js",
+    file="src/app.js",      # the file's key: File.url or File.name
     line=42,
     meta={"async": True},   # any language-specific extras
-    # Visual grammar — parsers own these; renderers read them directly:
-    shape="hexagon",        # 'circle'|'square'|'diamond'|'hexagon'|'triangle'|'ngon'|...
-    color="#00ff41",        # hex colour hint
+    shape="hexagon",        # optional: the parser's visual grammar
+    color="#00ff41",        # optional: a hex colour
 )
 
-# make_edge: returns edge attribute dict
 edge_attrs = make_edge("contains", weight=1.0)
 ```
 
-> **Principle**: parsers set `shape` and `color` so that no language-specific logic
-> is needed in any renderer. The D3 renderer reads `node.shape` / `node.color` directly.
-> It only falls back to its own heuristics for nodes that have neither field set (e.g. raw
-> directory/file nodes emitted by the directory walker).
->
-> The `'ngon'` shape draws an N-sided polygon. Set `meta["sides"]` to control the
-> polygon order (clamped 3–12 by the renderer). Used by the C parser for `struct`/`union`
-> nodes where `sides = min(max(field_count, 3), 10)`.
+| field | holds |
+|-------|-------|
+| `depth` | 0 directory, 1 file, 2 top-level symbol, 3 sub-symbol |
+| `language` | the parser's `language`; `unknown` for directories |
+| `kind` | what the language calls the thing: `class`, `function`, `struct`, `import`, ... |
+| `label`, `file`, `line` | the name shown, the file's key, the line it starts on |
+| `meta` | language-specific extras: `sides` for a C struct, `qualifiers`, `param_count`, ... |
+| `shape`, `color` | optional; drawn as given |
+
+The pipeline adds the rest: `construct`, `meta.facets`, `construct_color` and
+`construct_name` from the construct vocabulary (below); `layer_ordinal` and
+`layer_color` when the lexicon is joined; and `has_parse_warning`, at the top
+level, when the node's file produced parser errors. An edge's `kind` is
+`contains` for nesting, `depends_on` between files, and the parser's own
+otherwise (`CALLS`, `FIELD_OF`, ...).
+
+### Visual grammar
+
+A parser sets `shape` and `color`, so no renderer holds language-specific
+logic. The two parsers that set them:
+
+| language | kind | shape | color |
+|----------|------|-------|-------|
+| Python | `module` | diamond | `#9b59b6` |
+| Python | `class` | square | `#00d4ff` |
+| Python | `function` | hexagon | `#00ff41` |
+| Python | `import` | triangle | `#e74c3c` |
+| Python | `call` | hexagon | `#00aa2a` |
+| C | `struct`, `union` | ngon, `meta.sides` from the field count | `#4a9eff`, `#6ab0e8` |
+| C | `function` | diamond | `#ff9d3d` |
+| C | `enum` | circle | `#a855f7` |
+| C | `typedef` | circle | `#22d3ee` |
+| C | `field` | square | `#3d5070` |
+
+`ngon` draws a polygon with `meta.sides` sides, clamped to 3 to 12.
+
+A node without them is given one on the canvas (`StreamingGraphRenderer`):
+a directory is a grey diamond, a file a purple square, a function a hexagon, a
+class or struct a square, an import or call a triangle, and anything else a
+circle. `GraphSerializer` sizes a node by depth (40, 20, 10 and 6 for depths 0
+to 3) plus its degree, unless the node already carries a `size`.
 
 ---
 
-## Adding a New Renderer
+## Renderers
 
-### Step 1: Create renderer class
+`web/src/features/graph/services/renderers.ts` registers four renderers with
+`GraphRendererRegistry`, and `d3` is the default:
+
+| type | class | draws | chosen by its data |
+|------|-------|-------|--------------------|
+| `d3` | `D3GraphRenderer` | gJGF, handed to `StreamingGraphRenderer`, the canvas every graph draws on | yes: `{graph: {nodes, edges}, metadata}` |
+| `gravis` | `GravisGraphRenderer` | gJGF, through vis-network, loaded on first use | yes: gJGF |
+| `notebook` | `NotebookGraphRenderer` | pre-rendered HTML, `{"text/html": "..."}`, in an iframe | yes: `text/html` |
+| `system` | `SystemRenderer` | a `SystemDefinition`'s diagram and its live events; see *System Renderers* | no |
+
+`PlotActions.createGraphVnode()` (`web/src/state/actions.ts`) uses the renderer
+selected in the settings; else the one `metadata.type` names; else the first
+registered whose `canHandle(data)` is true; else `d3`. The
+[UI reference](ui.md) says where the selection is made.
+
+Given gJGF, the notebook renderer asks `POST /plotter/render/html` to render it
+with gravis on the server. These `metadata` keys theme that page, each also
+accepted in camelCase: `background_color`, `edge_color`, `node_label_color`,
+`edge_label_color`, `arrow_color`, `node_border_color`, `node_label_size`,
+`edge_label_size`.
+
+### Adding a renderer
+
+#### Step 1: Create renderer class
 
 ```typescript
 // web/src/features/graph/services/my_renderer.ts
@@ -213,9 +271,7 @@ export class MyRenderer implements IGraphRenderer {
   }
 
   canHandle(data: unknown): boolean {
-    // Return true for auto-detection, false for opt-in only.
-    // Use false if your renderer is a specialised view that should
-    // not capture standard gJGF graphs (like CSemanticRenderer).
+    // True to be chosen for this data; false to be chosen only by name.
     if (!data || typeof data !== 'object') return false;
     return 'graph' in data && 'nodes' in (data as any).graph;
   }
@@ -226,7 +282,7 @@ export class MyRenderer implements IGraphRenderer {
 }
 ```
 
-### Step 2: Register
+#### Step 2: Register
 
 ```typescript
 // web/src/features/graph/services/renderers.ts
@@ -234,14 +290,14 @@ import { MyRenderer } from './my_renderer';
 GraphRendererRegistry.register('myrenderer', () => new MyRenderer());
 ```
 
-### Step 3: Add to type union
+#### Step 3: Add to type union
 
 ```typescript
 // web/src/state/types.ts
 export type GraphRendererType = 'd3' | 'gravis' | 'notebook' | 'system' | 'myrenderer';
 ```
 
-### Step 4: Add UI option
+#### Step 4: Add UI option
 
 ```typescript
 // In control_panel.ts renderer dropdown:
@@ -297,7 +353,9 @@ m('input[type=range]', {
 
 ## Adding a New Graph Extension
 
-Extensions add interactivity to the D3 renderer.
+Extensions add interactivity to the canvas. `web/src/features/graph/extensions/`
+holds drag, zoom, selection, highlight, tooltip, colour and the legend; rad,
+the radial menu, mounts the same way from `rad/host/rad_extension.ts`.
 
 ### Step 1: Create extension
 
@@ -398,50 +456,37 @@ get my(): string { return `${this._base}/${this._my}`; }
 
 ---
 
-## Chrestromathy Integration Reference
+## Standalone visualizers: C and PAM
 
-Two specialised visualization systems originally adapted from an external Chrestromathy
-reference project. HTML frontends now ship as packaged assets in `codecarto/static/`
-(`c-visualizer.html`, `pam-frontend.html`) so they're included in the built wheel.
+Two routers serve HTML pages of their own. The pages are packaged in
+`codecarto/static/` (`c-visualizer.html`, `pam-frontend.html`), so the wheel
+carries them.
 
-### C Semantic Parser (`c-parsing` optional group)
+### C (`c-parsing` extra)
 
-Parses C/H source files via libclang into a semantic graph.
+C reaches the canvas as gJGF like every other language: the parser's `shape`
+and `color` carry its visual grammar. The files:
 
-**Output is gJGF** (converted by `c_language_parser.py`). Visual grammar (ngon for struct,
-diamond for function, etc.) is encoded in `node.shape` / `node.color` by the parser, so D3
-renders C graphs correctly without any renderer-level language logic.
+- `codecarto/services/parsers/c_parser.py`: `CParser`, with libclang imported
+  lazily. `parse_files()` takes an optional `contents: dict[path_str, text]`
+  that it passes to libclang as `unsaved_files`, so content with no file on
+  disk can be parsed.
+- `codecarto/services/c_parser_service.py`: path validation, error wrapping,
+  and the repository-extraction cache (`list_cached_repos`, `evict_repo_cache`).
+- `codecarto/routers/c_parser_router.py`: `/c-parser/*`; the two C pipelines
+  are in [Architecture](architecture.md#c-two-pipelines).
+- `codecarto/services/parsers/c_language_parser.py`: `CLangaugeParser`, the
+  `/parse/*` adapter, with `batch_whole_tree = True`.
+- `codecarto/static/c-visualizer.html`, served by `GET /c-parser/visualizer`.
 
-`CSemanticRenderer` exists as an **unregistered opt-in** class (`canHandle()` = false,
-not in `renderers.ts`). It is a standalone deep-dive tool, not part of the main renderer
-dropdown.
+An optional dependency is imported where it is used, never at module level:
 
-**Key files:**
-- Low-level parser: `codecarto/services/parsers/c_parser.py` — `CParser` class, lazy libclang.
-  `parse_files()` takes an optional `contents: dict[path_str, text]` passed to
-  libclang as `unsaved_files`, so content with no real file on disk (e.g.
-  fetched from GitHub) can still be parsed.
-- Service layer: `codecarto/services/c_parser_service.py` — path validation + error wrapping
-  + the repo-extraction cache (`list_cached_repos`/`evict_repo_cache`)
-- REST router: `codecarto/routers/c_parser_router.py` — `POST /c-parser/file|directory|github` (blocking) + `POST /c-parser/stream-github` (SSE, real per-file libclang progress — see `docs/llm/ARCHITECTURE.md`'s "C semantic stream path") + `GET /c-parser/cache` / `DELETE /c-parser/cache/{key}`
-- Unified adapter: `codecarto/services/parsers/c_language_parser.py` — `CLangaugeParser`.
-  Sets `batch_whole_tree = True` so the unified pipeline collects every C/H
-  file across the whole tree before parsing (needed for cross-file `CALLS`
-  resolution) — see `docs/llm/ARCHITECTURE.md`'s `batch_whole_tree` section
-  if you're writing a new language adapter that also needs whole-tree context.
-- Frontend: no dedicated renderer. C parser output is gJGF, so it draws on the
-  same canvas as everything else. A polygon-specific renderer existed and was
-  removed once the output became gJGF.
-- Standalone visualizer HTML: `codecarto/static/c-visualizer.html` (served by `GET /c-parser/visualizer`)
-
-**Optional dependency pattern** (system-level libs):
 ```toml
 # pyproject.toml
 [project.optional-dependencies]
 c-parsing = ["libclang>=16.0.0"]
 ```
 ```python
-# Lazy import — never at module level when optional:
 def _get_clang():
     global _clang, _clang_idx
     if _clang_idx is not None:
@@ -456,50 +501,33 @@ def _get_clang():
     ...
 ```
 
----
+### PAM
 
-### PAM Auth Visualizer (real-time system monitoring)
+The PAM monitor tails an auth log, or journald, and streams each PAM event over
+a WebSocket as a JSON object; it draws no gJGF.
 
-Tails `/var/log/auth.log` (or journald) in a background thread, streams PAM events
-over WebSocket. No gJGF output — events are raw JSON dicts.
+- `codecarto/services/parsers/pam_parser.py`: the line parser, regular
+  expressions over the standard library.
+- `codecarto/routers/pam_router.py`: REST, the WebSockets and the page.
+- `codecarto/static/pam-frontend.html`, served by `GET /pam/ui` with its
+  URLs rewritten to the origin that served it.
 
-**Key files:**
-- Parser: `codecarto/services/parsers/pam_parser.py` — regex-based, pure stdlib
-- Router: `codecarto/routers/pam_router.py` — REST + WebSocket + HTML frontend serving
-- Frontend HTML: `codecarto/static/pam-frontend.html` (served by `GET /pam/ui`)
-- Frontend: "PAM Monitor" button in Tools tab -> `GET /pam/ui`
+`main.py`'s startup hook calls `on_pam_startup()`, which starts the tailer
+through `start_threaded_feeder` (`codecarto/util/threaded_feeder.py`) and a
+loop that broadcasts each event to `/pam/ws/live`. The tailer reads journald
+when `PAM_USE_JOURNALD` is set, and otherwise `PAM_LOG_FILE` or the first
+readable system auth log:
 
-**Background task pattern:**
 ```python
-# In on_pam_startup():
-_event_queue = asyncio.Queue()
-loop = asyncio.get_event_loop()
-t = threading.Thread(target=_tail_thread, args=(log_path, _event_queue, loop), daemon=True)
-t.start()
-asyncio.create_task(_broadcast_loop(_event_queue))
+def make_tail_worker(queue: asyncio.Queue, loop: asyncio.AbstractEventLoop):
+    def worker() -> None:
+        for line in tail_file(log_path, from_start=False):
+            ev = parse_line(line)
+            if ev:
+                asyncio.run_coroutine_threadsafe(queue.put(ev.to_dict()), loop)
+    return worker
 
-# In _tail_thread (runs in thread, not async):
-asyncio.run_coroutine_threadsafe(queue.put(ev.to_dict()), loop)
-```
-
-**Startup hook** (in `main.py`):
-```python
-@app.on_event("startup")
-async def startup():
-    from codecarto.routers.pam_router import on_pam_startup
-    await on_pam_startup()
-```
-
-**HTML frontend URL patching:**
-```python
-@PamRouter.get("/ui")
-async def pam_ui(request: Request):
-    html = html_path.read_text(encoding='utf-8')
-    http_base = str(request.base_url).rstrip('/')
-    ws_base = http_base.replace('http://', 'ws://', 1)
-    html = html.replace('ws://localhost:8765/ws/live', f'{ws_base}/pam/ws/live')
-    html = html.replace("'http://localhost:8765'", f"'{http_base}/pam'")
-    return HTMLResponse(html)
+_event_queue = start_threaded_feeder(make_tail_worker)
 ```
 
 ---

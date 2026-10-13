@@ -98,7 +98,7 @@ class CLangaugeParser:
     # them to parse_files() in one batch, instead of dispatching one file
     # at a time like every other language. Cross-file CALLS/type edges only
     # resolve when CParser sees the full file set together — see
-    # docs/llm/ARCHITECTURE.md's "C semantic stream path" / "batch_whole_tree".
+    # docs/architecture.md, "The unified graph" and "C: two pipelines".
     batch_whole_tree: ClassVar[bool] = True
 
     # Shared parent directory assigned to every virtual (no-real-disk-path)
