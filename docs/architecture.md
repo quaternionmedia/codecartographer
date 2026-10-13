@@ -14,7 +14,7 @@
 │  │                       Routers                            │    │
 │  │  /parse /repo /plotter /c-parser /pam /lexicon /palette │    │
 │  │  /topology /capabilities /overview /estate  /db (opt)   │    │
-│  │  /cargo                                                 │    │
+│  │  /cargo /system /auth                                   │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
 │  ┌─────────────────────────▼───────────────────────────────┐    │
 │  │                      Services                            │    │
@@ -58,6 +58,7 @@ codecarto/
 │   ├── repo_router.py            # /repo/*   (GitHub tree, local paths)
 │   ├── c_parser_router.py        # /c-parser/* (libclang semantic parse)
 │   ├── pam_router.py             # /pam/*    (PAM log monitor, WebSocket)
+│   ├── system_router.py          # /system/* a system diagram derived from a sibling clone
 │   ├── lexicon_router.py         # /lexicon/* (lexicons, the construct vocabulary, the chrestomathy)
 │   ├── cargo_router.py           # /cargo/*  a Cargo workspace and its recorded build, as GraphData
 │   ├── palette_router.py         # /palette/*
@@ -66,6 +67,7 @@ codecarto/
 │   ├── overview_router.py        # /overview/*     dossier's seam, as GraphData
 │   ├── estate_router.py          # /estate/seams   every seam above, identified or not
 │   └── app_router.py             # /app, the built front end on the API's origin
+│                                 # (/auth/github is declared in main.py itself)
 │
 ├── services/
 │   ├── unified_parser_service.py  # orchestrates all language parsing
@@ -89,7 +91,7 @@ codecarto/
 │       ├── c_parser.py                 # libclang core
 │       ├── rust_language_parser.py     # Rust, item level (tokenizer, batch_whole_tree)
 │       ├── linker_script_parser.py     # GNU ld scripts and memory.x
-│       ├── regex_language_parser.py    # one regex adapter per language (Phase 1)
+│       ├── regex_language_parser.py    # one regex adapter per language
 │       └── pam_parser.py              # PAM log parser
 │
 ├── models/
@@ -146,8 +148,10 @@ web/src/
 │
 └── services/
     ├── plot_service.ts          # SSE stream helpers
-    ├── repo_service.ts          # repo tree fetch/expand
     └── graphbase_service.ts     # /db/bookmarks client
+
+web/src/features/repository/services/
+    └── repo_service.ts          # repo tree fetch/expand
 ```
 
 ## Data Flow
@@ -264,7 +268,7 @@ All non-obvious structural choices are documented as ADR drafts in
 |-----|----------|
 | *Parser/cache unification* | Deleted legacy router generations; `batch_whole_tree` opt-in for cross-file C parsing |
 | *Golden Layout as primary shell* | Replaced monolithic `codecarto.ts`; panel registry in `panel_registry.ts` |
-| *Compound hierarchical layout* | 3-pass dirs→files→symbols orbit algorithm |
+| *Compound hierarchical layout* | 4-pass dirs→files→symbols→sub-symbols orbit algorithm |
 | *CacheService vs graphbase* | TTL'd content-addressed cache vs. user-named durable store — kept separate |
 | *GL panel registry + add-window menu* | Generalized from hardcoded map; real `LayoutManager` import fixed restore bug |
 | *D3 hierarchy layout improvements* | Hierarchical drag, per-depth labels, cumulative spread scaling |

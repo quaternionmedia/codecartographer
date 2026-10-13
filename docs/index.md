@@ -14,8 +14,8 @@
 | [Contributing](../.github/CONTRIBUTING.md) | Development guidelines |
 
 The plan this window is built to -- the estate frame, the topology designer, and
-the chrestomathy of code -- is `plans/the-web-window.md` in the governance corpus
-(`governance/qm` once the pin carries it).
+the chrestomathy of code -- is `governance/qm/plans/the-web-window.md` in the
+governance corpus.
 
 ## LLM / AI Context
 
@@ -26,11 +26,14 @@ the chrestomathy of code -- is `plans/the-web-window.md` in the governance corpu
 | [UI_REFERENCE.md](llm/UI_REFERENCE.md) | Control panel, Golden Layout shell, radial menu, streaming renderer |
 | [RENDERER_GUIDE.md](llm/RENDERER_GUIDE.md) | Renderer plugin system — D3, Gravis, Notebook, System |
 | [LARGE_REPOS.md](llm/LARGE_REPOS.md) | Scaling roadmap (phases 1–6) |
+| [RAD_INTEGRATION_HANDOFF.md](llm/RAD_INTEGRATION_HANDOFF.md) | Integrating rad, the radial menu, into a web host |
+| [consolidation.md](consolidation.md) | Consolidation notes |
 
 ## Roadmap
 
 | Document | Description |
 |----------|-------------|
+| [roadmap/README.md](llm/roadmap/README.md) | The roadmap's index, and what falls to this repository from the web window's plan |
 | [roadmap/lexicon.md](llm/roadmap/lexicon.md) | Language lexicons on abstraction layers -- C, Python and Rust -- and the construct vocabulary the chrestomathy reads |
 | [roadmap/rust.md](llm/roadmap/rust.md) | Rust, Cargo, linker scripts and the construct vocabulary the chrestomathy reads |
 | [roadmap/topology-functionality-abstraction-maps.md](llm/roadmap/topology-functionality-abstraction-maps.md) | What maps of code and of systems already mean here, and what is open |

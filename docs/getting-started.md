@@ -122,14 +122,8 @@ curl "$API/estate/seams"
 
 ## GitHub Token (Optional)
 
-For analyzing GitHub repositories, create a personal access token:
-
-1. Go to [GitHub Settings > Tokens](https://github.com/settings/tokens)
-2. Generate new token with `public_repo` scope
-3. Create `token.txt` in project root:
-   ```
-   ghp_your_token_here
-   ```
+Run `gh auth login` once; the server reads its token. The full order the server
+tries is in [Services](services.md#github-token).
 
 ## Docker (Optional)
 

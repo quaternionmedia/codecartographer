@@ -44,9 +44,8 @@ dependencies = [
 c-parsing = [
     "libclang>=16.0.0",
 ]
-# Phase 2: full AST quality via tree-sitter (replaces regex parsers per language).
-# Install with: uv add --optional multilang
-# All packages must be compatible versions — check tree-sitter release notes.
+# tree-sitter and its grammars. Nothing in the package imports them; every
+# language is read by the parsers under codecarto/services/parsers/.
 multilang = [
     "tree-sitter>=0.21",
     "tree-sitter-python>=0.21",

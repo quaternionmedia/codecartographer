@@ -60,7 +60,7 @@ uv run codecarto cargo record .   # Run cargo there; write target/codecarto/ for
 # Utilities
 uv run codecarto parse FILE       # Parse a Python file
 uv run codecarto info             # Show environment info
-uv run codecarto lint             # Run linter
+uv run codecarto lint             # Run ruff (in the dev extra)
 
 # Docker
 uv run codecarto docker           # Start containers
@@ -76,7 +76,7 @@ uv run codecarto repo scan . -e .py -e .js
 # Generate different graph types
 uv run codecarto repo graph . -t ast         # AST graph (default)
 uv run codecarto repo graph . -t directory   # Directory structure
-uv run codecarto repo graph . -t dependency  # Import dependencies
+uv run codecarto repo graph . -t dependency  # The same graph as ast
 
 # Output as JSON
 uv run codecarto repo scan . -o json
@@ -138,11 +138,8 @@ codecartographer/
 
 ## GitHub Token (Optional)
 
-For parsing public GitHub repositories:
-
-1. Go to [GitHub Settings > Tokens](https://github.com/settings/tokens)
-2. Generate a new token with `public_repo` scope
-3. Create `token.txt` in the project root with your token
+Run `gh auth login` once; the server reads its token. The full order the server
+tries is in [`docs/services.md`](docs/services.md#github-token).
 
 ## Development
 

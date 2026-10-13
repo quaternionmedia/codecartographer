@@ -12,10 +12,9 @@ Three tiers exist, from lightest to most capable:
 
 | Tier | File | When to use |
 |------|------|-------------|
-| **Phase 1 — Regex** | `regex_language_parser.py` | Any language where top-level symbols (functions, classes, structs, headings, SQL tables, …) can be identified by a line-anchored regex. Zero new dependencies. Add a `_PATTERNS` list + one entry in `_LANGUAGES`. |
+| **Regex** | `regex_language_parser.py` | Any language where top-level symbols (functions, classes, structs, headings, SQL tables, …) can be identified by a line-anchored regex. Zero new dependencies. Add a `_PATTERNS` list + one entry in `_LANGUAGES`. |
 | **Dedicated libclang** | `c_language_parser.py` | C/C++ only. Cross-file `CALLS` resolution, `#include` tracking via `unsaved_files`. Requires `uv sync --extra c-parsing`. |
 | **Structural reader** | `rust_language_parser.py`, `linker_script_parser.py` | A tokenizer and brace matcher, stdlib only, for a language whose items are delimited by keywords and brackets: nesting, attributes, the module tree, relations each labelled with how they were resolved. Stops where name resolution begins; that is the compiler's. |
-| **Phase 2 — tree-sitter** (planned) | not yet implemented | Full AST quality for all languages. Stubs declared in `pyproject.toml` under `[multilang]` optional deps. Planned to replace regex parsers per language when accuracy becomes a priority. |
 
 **Currently registered parsers and extensions:**
 
@@ -253,22 +252,7 @@ m('option', { value: 'myrenderer' }, 'My Custom Renderer'),
 
 ## Adding a New Styling Option
 
-### Step 1: Add to schema
-
-```typescript
-// web/src/features/graph/config/styling_schema.ts
-{
-  key: 'myOption',
-  label: 'My Option',
-  type: 'range',  // 'range' | 'color' | 'boolean' | 'select'
-  category: 'node',
-  default: 10,
-  min: 0, max: 100, step: 5,
-  description: 'What this option does',
-},
-```
-
-### Step 2: Update interface
+### Step 1: Update interface
 
 ```typescript
 // web/src/state/types.ts
@@ -278,7 +262,7 @@ export interface GraphStylingOptions {
 }
 ```
 
-### Step 3: Add default
+### Step 2: Add default
 
 ```typescript
 // web/src/state/cell_state.ts
@@ -286,6 +270,20 @@ public graphStyling: GraphStylingOptions = {
   // ...existing...
   myOption: 10,
 };
+```
+
+### Step 3: Add a control
+
+The Graph Settings panel renders `ControlPanel`'s settings controls; each one
+reads `styling` and reports a change through `onGraphStylingChange`:
+
+```typescript
+// web/src/components/codecarto/control_panel/control_panel.ts
+m('input[type=range]', {
+  min: 0, max: 100, step: 5, value: styling.myOption,
+  oninput: (e: Event) => callbacks.onGraphStylingChange({
+    myOption: parseFloat((e.target as HTMLInputElement).value) }),
+}),
 ```
 
 ### Step 4: Apply in renderer
@@ -518,7 +516,7 @@ uv run pytest tests/test_unified_parser_service.py -v
 cd web && node_modules/.bin/vite build
 
 # Run backend
-uv run codecarto
+uv run codecarto serve
 
 # Run frontend dev server
 cd web && node_modules/.bin/vite
@@ -546,9 +544,9 @@ Two definitions ship, and they are the two ways to build one:
   lays that out. Events (`/system/events`) are the history of the same
   contents; the WebSocket replays them, labelled as a replay. The diagram is
   about the system the repository describes, never about the repository, and
-  a chart added to the repo appears with no layout edit. See
-  `adr/DRAFT-the-system-monitor-derives-its-diagram.md` in the governance
-  submodule's records for why derivation beat curation.
+  a chart added to the repo appears with no layout edit. Why derivation beat
+  curation is the draft record *The system monitor derives its diagram*,
+  proposed on the project's record branch in the governance corpus.
 
 ### Adding a new system
 

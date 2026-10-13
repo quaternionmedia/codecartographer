@@ -250,9 +250,9 @@ uv run codecarto repo graph [PATH] [OPTIONS]
 
 | Type | Description |
 |------|-------------|
-| `ast` | Abstract Syntax Tree - code structure |
-| `directory` | File/folder hierarchy |
-| `dependency` | Import relationships |
+| `ast` | Folders, files, their symbols (classes, functions, imports), and the file-to-file dependency edges the pipeline resolves |
+| `directory` | Folders and files only |
+| `dependency` | The same graph as `ast`: the pipeline resolves dependency edges alongside symbols, and has no dependencies-only view |
 
 **Examples:**
 
@@ -263,7 +263,7 @@ uv run codecarto repo graph .
 # Directory structure graph
 uv run codecarto repo graph . -t directory
 
-# Dependency graph
+# The same graph as -t ast
 uv run codecarto repo graph . -t dependency
 
 # JSON output for processing
@@ -280,12 +280,17 @@ uv run codecarto repo graph . -t ast -o json
   Edges: 456
 
   Node types:
-    - Constant: 89
-    - Name: 67
-    - Function: 23
-    - Import: 18
-    ...
+    - import: 131
+    - function: 64
+    - class: 16
+    - file: 12
+    - external_module: 8
+    - directory: 3
 ```
+
+Each node's `kind` is what the text output counts, and what `-o json` carries
+on every node: `directory`, `file`, `class`, `function`, `import` and
+`external_module` for Python; each parser's own kinds for the other languages.
 
 ---
 
@@ -413,7 +418,9 @@ uv run codecarto info
 
 ### `lint`
 
-Run linting on the codebase using ruff.
+Run `ruff check` over the `codecarto` package. ruff is in the `dev` extra
+(`uv sync --extra dev`); without it the command says so and exits 1, and it
+exits 1 when ruff finds issues.
 
 ```bash
 uv run codecarto lint [OPTIONS]
@@ -469,12 +476,34 @@ uv run codecarto docker-down
 | `1` | General error |
 | `2` | Command line usage error |
 
+A command that prints `✗` exits 1. With `-o json`, the status lines go to
+stderr and stdout carries the JSON alone.
+
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `DEBUG` | Enable debug output for errors |
-| `VIRTUAL_ENV` | Virtual environment path |
+Every variable the code reads. `tests/test_docs_routes.py` fails when the code
+reads one this table does not name, or this table names one nothing reads.
+
+| Variable | Read by | Effect, and the value when unset |
+|----------|---------|----------------------------------|
+| `CODECARTO_PORT` | `dev`, `serve` | The backend port; `codecarto.cli.DEFAULT_PORT` |
+| `CODECARTO_WEB_PORT` | `web/vite.config.js` | The frontend dev server's port; 1234 |
+| `CODECARTO_WEB_HOST` | `web/vite.config.js` | The address the frontend dev server binds; `localhost` |
+| `CODECARTO_API` | `web/vite.config.js` | The backend the dev server proxies API paths to; `codecarto.cli.DEFAULT_PORT` on 127.0.0.1 |
+| `CODECARTO_FORGE` | `/topology` | The forge a topology box's repository link points at; `https://github.com` |
+| `CODECARTO_REPO_ROOTS` | `/system` | Directories searched for a named repository, separated by the OS path separator; the checkout's parent and grandparent |
+| `CC_CACHE_TTL` | the caches | Seconds a cached repository tree, parsed graph or extracted C source stays fresh; 86400 |
+| `CC_GITHUB_TOKEN` | GitHub reads | A GitHub token, read first; the full order is in `docs/services.md`, *GitHub Token* |
+| `GITHUB_TOKEN` | GitHub reads | A GitHub token, read after `gh auth token` |
+| `GH_TOKEN` | GitHub reads | Read when `GITHUB_TOKEN` is unset |
+| `MONGODB_URI` | `/db`, the caches | Mounts the graphbase routes under `/db` and adds MongoDB behind the cache; both off |
+| `QMCP_URL` | `/topology`, `/estate` | Where the harness (qmcp) answers; `http://127.0.0.1:3141` |
+| `LOOKSATWORDS_URL` | `/estate` | Where looksatwords answers; `http://127.0.0.1:1414` |
+| `DOSSIER_OVERVIEW_SEAM` | `/overview`, `/estate` | The overview seam file read when a request names none; `overview.json` in the working directory |
+| `PAM_LOG_FILE` | `/pam` | The log the PAM monitor tails; the first readable of `/var/log/auth.log`, `secure`, `messages`, `syslog` |
+| `PAM_USE_JOURNALD` | `/pam` | `1`, `true` or `yes` reads PAM events from journald instead of a file |
+| `DEBUG` | `repo graph` | Any value prints the traceback when the graph fails |
+| `VIRTUAL_ENV` | `info` | Shown as the active virtual environment; set by activating one |
 
 ## Tips
 
@@ -488,20 +517,18 @@ codecarto --help
 
 ### Piping JSON Output
 
+With `-o json`, stdout is the JSON alone, so it pipes.
+
 ```bash
-# Parse to jq
+# The scan's statistics
 uv run codecarto repo scan . -o json | jq '.stats'
 
 # Save to file
 uv run codecarto repo graph . -o json > graph.json
-```
 
-### Combining with Other Tools
+# Every file over 10 KB, at any depth
+uv run codecarto repo scan . -o json | jq '.. | objects | select(has("raw") and .size > 10000) | .url'
 
-```bash
-# Find large Python files
-uv run codecarto repo scan . -o json | jq '.structure.files[] | select(.size > 10000)'
-
-# Count functions per file
-uv run codecarto repo graph . -o json | jq '[.nodes[] | select(.type == "Function")] | length'
+# Count the functions
+uv run codecarto repo graph . -o json | jq '[.nodes[] | select(.kind == "function")] | length'
 ```

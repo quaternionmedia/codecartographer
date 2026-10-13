@@ -85,7 +85,8 @@ Parse a directory tree to the requested depth and return a gJGF graph.
 
 **`annotate_lexicon`** (default `false`): stamp Lexicon abstraction-layer
 data (`layer_ordinal`, `meta.lexicon_layers`) onto nodes whose language
-has one (currently `c`, `python` — see `docs/llm/roadmap/lexicon.md`).
+has one (`c`, `python` and `rust`; `GET /lexicon/` lists them — see
+`docs/llm/roadmap/lexicon.md`).
 Opt-in: existing callers see no change. Requests with this set to `true`
 bypass the response cache (the cache key doesn't vary on this field).
 
@@ -210,9 +211,10 @@ rooted at `node_id` and its descendants.
 
 ### GET `/parse/languages`
 
-List all registered language parsers and their file extensions.
+List all registered language parsers and their file extensions: one key per
+language, each with the extensions it reads.
 
-**Response:**
+**Response** (the first four of the languages):
 ```json
 {
   "status": 200,
@@ -220,7 +222,10 @@ List all registered language parsers and their file extensions.
   "results": {
     "languages": {
       "python": [".py"],
-      "c": [".c", ".h"]
+      "c": [".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hxx"],
+      "rust": [".rs"],
+      "linker": [".ld", ".lds", ".x"],
+      ...
     }
   }
 }
@@ -265,6 +270,7 @@ Convert GraphData JSON to pre-rendered HTML for the Notebook renderer.
 ```json
 {
   "status": 200,
+  "message": "Success",
   "results": { "text/html": "<html>...</html>" }
 }
 ```
@@ -289,6 +295,7 @@ Parse a single C/H source file.
 ```json
 {
   "status": 200,
+  "message": "c-parser/file - Success",
   "results": {
     "graph": {
       "nodes": [...],
@@ -428,6 +435,7 @@ caches" for why these aren't merged into one.
 ```json
 {
   "status": 200,
+  "message": "c-parser/cache - Success",
   "results": {
     "entries": [
       { "key": "git-git", "owner": "git", "repo": "git", "url": "...", "ts": 1234567890.0, "age_seconds": 120, "size_bytes": 45000000 }
@@ -499,8 +507,10 @@ curl "$API/repo/tree?url=/path/to/local/project"
 ```
 
 **Notes:**
-- GitHub: repos > 1 GB are rejected; requires a token for private repos
-  (place in `/run/secrets/github_token` or `token.txt`)
+- GitHub: no repository is refused for its size; one of 50 MB or more gets the
+  shallow listing above. A private repository needs a token, resolved in the
+  order `docs/services.md` gives under *GitHub Token* (`gh auth login` is
+  enough on a workstation)
 - Local: default extension filter is every extension `ParserRegistry`
   knows about (not just `.py`); default excludes `.git`, `.venv`,
   `node_modules`, `.vs`, `.idea`, `bin`, `obj`, etc. (see
@@ -704,7 +714,7 @@ the parsers use. See `docs/llm/roadmap/lexicon.md` for the full design.
 
 ### GET `/lexicon/`
 
-List available language ids (e.g. `{"languages": ["c", "python"]}`).
+List available language ids (`results.languages`, e.g. `["c", "python", "rust"]`).
 
 ### GET `/lexicon/{language}`
 
@@ -987,7 +997,7 @@ curl -X POST "$API/parse/unified" \
 
 ```bash
 curl "$API/parse/languages"
-# -> { "languages": { "python": [".py"], "c": [".c", ".h"] } }
+# -> results.languages: { "python": [".py"], "c": [".c", ".h", ".cpp", ...], "rust": [".rs"], ... }
 ```
 
 ### Parse a local C directory (dedicated C-parser pipeline)
