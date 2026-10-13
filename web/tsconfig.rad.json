@@ -24,6 +24,9 @@
     "src/features/graph/rad/core/**/*.ts",
     "src/features/graph/rad/conformance/**/*.ts",
     "src/features/graph/rad/session.ts",
+    // The public surface: it re-exports core/ and session.ts, and carries the
+    // vector version the conformance suite checks against the file it loads.
+    "src/features/graph/rad/index.ts",
 
     // host/ is codecartographer-specific and mostly imports application code,
     // which does not belong in this build. These two files are the exception:
