@@ -635,7 +635,7 @@ issue described in *GitHub token resolution order* (`governance/qm/adr/`).
 {
   "source": "gh CLI keyring",
   "authenticated": true,
-  "token_prefix": "gho_Ccw0…"
+  "token_prefix": "gho_XXXX…"
 }
 ```
 
