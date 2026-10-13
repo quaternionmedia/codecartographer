@@ -6,8 +6,8 @@
  *
  * Every panel in `panel_registry.ts` is registered here as a Golden Layout
  * component, and the saved layout (or `default_layout.ts`) is loaded. The
- * header holds the "+" add-window menu, the GitHub auth indicator, a Restore
- * button for each closed panel, and the help button.
+ * header holds the "+" add-window menu, the GitHub auth indicator and the
+ * help button.
  */
 
 import m from 'mithril';
@@ -15,7 +15,7 @@ import { GoldenLayout } from 'golden-layout';
 
 import type { ICell } from '../state/cell_state';
 import { LayoutContext } from './layout_context';
-import { PanelRegistry, DockPanelId } from './panel_registry';
+import { PanelRegistry } from './panel_registry';
 import { AddPanelMenu } from './components/add_panel_menu';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 
@@ -44,13 +44,6 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
 
   const closeMenu = (): void => { if (menuOpen) { menuOpen = false; m.redraw(); } };
 
-  const registerDockPanelLifecycle = (container: any, panelId: DockPanelId): void => {
-    // GL2 destroys the container on close — 'beforeComponentRelease' is the correct event.
-    // 'close' is not emitted by ComponentContainer in GL 2.x.
-    container.on('beforeComponentRelease', () => ctx.hideDockPanel(panelId));
-    container.on('show', () => ctx.showDockPanel(panelId));
-  };
-
   /** Mount GL panels after the host element exists in the DOM. */
   function initGoldenLayout(hostElement: HTMLElement): void {
     glInstance = new GoldenLayout(hostElement);
@@ -59,7 +52,6 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
     for (const def of PanelRegistry.all()) {
       glInstance.registerComponentFactoryFunction(def.id, (container) => {
         container.element.style.cssText = `width:100%;height:100%;overflow:${def.overflow};`;
-        registerDockPanelLifecycle(container, def.id);
         def.mount(ctx, container.element);
       });
     }
@@ -144,16 +136,6 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
                   ctx.githubAuthStatus.authenticated ? 'GH' : 'GH?'),
               ])
             : null,
-          ctx.hiddenDockPanels.length > 0
-            ? m('div.gl-app-header__restore',
-                ctx.hiddenDockPanels.map((panelId) =>
-                  m('button.gl-app-header__restore-btn', {
-                    onclick: () => ctx.restoreDockPanel(panelId),
-                    title: `Restore ${panelId}`,
-                  }, `Restore ${PanelRegistry.get(panelId)?.menuLabel ?? panelId}`),
-                ),
-              )
-            : null,
           m('button.gl-app-header__help-btn', {
             onclick: () => HelpModal.open(),
             title: 'Help & walkthrough',
@@ -170,17 +152,6 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
           onremove: () => {
             glInstance?.destroy();
             glInstance = null;
-          },
-          // Ctrl+right-click on the dock area opens the add-window menu.
-          // Plain right-click is left to the radial menu on the canvas (which
-          // calls preventDefault itself) or falls through to the browser's
-          // native menu on empty chrome areas.
-          oncontextmenu: (e: MouseEvent) => {
-            if (!e.ctrlKey) return;
-            e.preventDefault();
-            menuPos = { x: e.clientX, y: e.clientY };
-            menuOpen = true;
-            m.redraw();
           },
         }),
 

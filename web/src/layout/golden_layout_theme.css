@@ -295,29 +295,6 @@
   flex: 1;
 }
 
-.gl-app-header__restore {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: 8px;
-}
-
-.gl-app-header__restore-btn {
-  padding: 4px 8px;
-  border: 1px solid var(--c-border, #00ff4140);
-  background: transparent;
-  color: var(--c-secondary, #00ff41);
-  font-size: 0.72em;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.gl-app-header__restore-btn:hover {
-  background: var(--c-primary-light, #1a1a1a);
-  border-color: var(--c-secondary, #00ff41);
-}
-
 /* GitHub auth indicator */
 .gl-app-header__gh-auth {
   display: flex;
