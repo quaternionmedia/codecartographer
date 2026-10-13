@@ -53,7 +53,7 @@ test('an unread folder in a partial tree reads itself on click', async ({ page }
 
   await page.goto('/');
   await dismissOnboardingModal(page);
-  await page.locator('.lm_tab', { hasText: 'Repository' }).click();
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
   await page.locator('.panel-source__url-input input').fill(REPO);
   await page.locator('.panel-source__url-input button.primary').click();
 

@@ -18,7 +18,7 @@ const SETTLED = 30_000;
 test('the bundled Rust example leads, and opens with its records', async ({ page }) => {
   await page.goto('/');
   await dismissOnboardingModal(page);
-  await page.locator('.lm_tab', { hasText: 'Repository' }).click();
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
 
   const rust = page.locator('.panel-source__example-chips[data-language="rust"]');
   await expect(rust.locator('button').first()).toHaveText('blinky (recorded)', { timeout: SETTLED });

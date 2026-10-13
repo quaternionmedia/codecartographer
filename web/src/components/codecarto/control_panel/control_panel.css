@@ -773,3 +773,137 @@
   color: var(--c-bg);
   border-color: var(--c-accent);
 }
+
+/* ── Open panel ───────────────────────────────────────────────────────────── */
+
+/* Each column scrolls; its sections keep their height rather than shrinking
+   under one another. */
+.panel-open .panel-source__left {
+  overflow-y: auto;
+}
+.panel-open .panel-source__left > *,
+.panel-open .panel-source__right > * {
+  flex: none;
+}
+
+.panel-source__cached-save,
+.panel-source__cached-saved {
+  background: none;
+  border: none;
+  color: var(--c-font-muted);
+  padding: 0 3px;
+  font-size: 0.8em;
+  flex-shrink: 0;
+}
+.panel-source__cached-save { cursor: pointer; opacity: 0.6; }
+.panel-source__cached-save:hover { opacity: 1; color: var(--c-secondary); }
+.panel-source__cached-saved { color: var(--c-secondary); }
+
+.panel-open__parse-summary {
+  flex: 1;
+  min-width: 0;
+  margin: 0 var(--spacing-sm);
+  font-size: 0.72em;
+  color: var(--c-font-muted);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Plot bar: the one Plot / Cancel, at the foot of the Open panel ────────── */
+
+.panel-plotbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: var(--border-size-thin) solid var(--c-border);
+}
+
+.panel-plotbar__plot,
+.panel-plotbar__cancel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  margin: 0;
+  border: 1px solid var(--c-secondary, #00ff41);
+  background: transparent;
+  color: var(--c-secondary, #00ff41);
+  font-size: 0.82em;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.panel-plotbar__plot:hover:not(:disabled) {
+  background: rgba(0, 255, 65, 0.1);
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+}
+.panel-plotbar__cancel {
+  border-color: var(--c-error, #e74c3c);
+  color: var(--c-error, #e74c3c);
+}
+.panel-plotbar__cancel:hover:not(:disabled) {
+  background: rgba(231, 76, 60, 0.1);
+}
+.panel-plotbar__plot:disabled,
+.panel-plotbar__cancel:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.panel-plotbar__status {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78em;
+  color: var(--c-font-muted, #00aa2a);
+}
+.panel-plotbar__progress-wrap {
+  width: 100%;
+  height: 2px;
+  background: var(--c-primary-light, #1a1a1a);
+  overflow: hidden;
+}
+.panel-plotbar__progress {
+  height: 100%;
+  background: var(--c-secondary, #00ff41);
+  transition: width 0.2s ease;
+}
+.panel-plotbar__progress--indeterminate {
+  width: 40%;
+  animation: plotbar-progress-indeterminate 1.4s infinite ease-in-out;
+}
+@keyframes plotbar-progress-indeterminate {
+  0%   { transform: translateX(-150%); }
+  100% { transform: translateX(350%); }
+}
+.panel-plotbar__status-text {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.panel-plotbar__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-font-muted, #00aa2a);
+  flex-shrink: 0;
+}
+.panel-plotbar__status-dot--active {
+  background: var(--c-secondary, #00ff41);
+  box-shadow: 0 0 6px var(--c-secondary, #00ff41);
+  animation: plotbar-pulse-dot 1s ease-in-out infinite;
+}
+@keyframes plotbar-pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}

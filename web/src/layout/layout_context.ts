@@ -77,7 +77,6 @@ export class LayoutContext {
 
   // Reactive UI-only state shared by the docked panels.
   public panelState: ControlPanelState = {
-    codeSourceMode: 'upload',
     repoUrl: '',
     currentTheme: 'forest',
     isLoading: false,
@@ -85,6 +84,7 @@ export class LayoutContext {
     progress: null,
     graphSections: { layout: true, visual: false, theme: false },
     parseDepth: 2,
+    parseOptionsOpen: false,
   };
 
   /** Files uploaded via the local file picker (not stored in Meiosis state). */
@@ -308,6 +308,8 @@ export class LayoutContext {
       availableLexiconLanguages: s.availableLexiconLanguages ?? [],
       cachedGraphs: this.cachedGraphs,
       bundledExamples: this.bundledExamples,
+      graphbaseAvailable: this.graphbaseAvailable,
+      savedUrls: this.graphbaseBookmarks.map((b) => b.url),
     };
   }
 
@@ -386,7 +388,7 @@ export class LayoutContext {
 
   /** Load a graphbase bookmark: stream the URL with the saved settings. */
   public loadGraphbaseBookmark(bookmark: GraphbaseBookmark): void {
-    this.updatePanelState({ repoUrl: bookmark.url, codeSourceMode: 'repo' });
+    this.updatePanelState({ repoUrl: bookmark.url });
     this._startStreamFromUrl(bookmark.url);
     this.actions.repo.fetchRepository(bookmark.url)
       .then(() => m.redraw())
@@ -441,7 +443,7 @@ export class LayoutContext {
 
     // If the snapshot has a URL, also populate the file tree
     if (snap.meta?.url) {
-      this.updatePanelState({ repoUrl: snap.meta.url, codeSourceMode: 'repo' });
+      this.updatePanelState({ repoUrl: snap.meta.url });
       this.actions.repo.fetchRepository(snap.meta.url)
         .then(() => m.redraw())
         .catch(() => {});
@@ -1060,6 +1062,25 @@ export class LayoutContext {
     );
   }
 
+  /**
+   * Plot added files, every one given, at the parse depth the Open panel
+   * shows; one file clicked in the Files panel and Plot over all of them both
+   * come here.
+   */
+  private async _plotUploads(files: RawFile[]): Promise<void> {
+    const many = files.length === 1 ? files[0].name : `${files.length} files`;
+    this.updatePanelState({ isLoading: true, statusMessage: `Plotting ${many}\u2026` });
+    this._lastPlotAction = async () => {
+      await this.actions.plot.plotUploads(files, this.panelState.parseDepth);
+    };
+    try {
+      await this._lastPlotAction();
+      this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+    } catch {
+      this.updatePanelState({ isLoading: false, statusMessage: `Error plotting ${many}` });
+    }
+  }
+
   // ── Callback builder ───────────────────────────────────────────────────────
 
   private _buildCallbacks(): ControlPanelCallbacks {
@@ -1132,16 +1153,25 @@ export class LayoutContext {
         this._startStream(singleFileDir, `Plotting ${file.name}\u2026`);
       },
 
-      onPlotWholeRepo: () => {
-        if (this.panelState.codeSourceMode === 'repo' && this.panelState.repoUrl) {
-          this._lastPlotAction = () => { this.panelCallbacks.onPlotWholeRepo(); };
-          this._startStreamFromUrl(this.panelState.repoUrl);
+      /**
+       * The Open panel's Plot: the loaded repository, by its URL when it has
+       * one; else every added file; else the URL in the field, fetched and
+       * drawn as → Fetch does.
+       */
+      onPlot: () => {
+        const repo = this.appState.repo.content;
+        const url = this.panelState.repoUrl.trim();
+        if (repo && repo.size > 0) {
+          this._lastPlotAction = () => { this.panelCallbacks.onPlot(); };
+          if (url) this._startStreamFromUrl(url);
+          else this._startStream(repo, 'Streaming graph\u2026');
           return;
         }
-        const repoContent = this.appState.repo.content;
-        if (!repoContent || repoContent.size === 0) return;
-        this._lastPlotAction = () => { this.panelCallbacks.onPlotWholeRepo(); };
-        this._startStream(repoContent, 'Streaming graph\u2026');
+        if (this.uploadedFiles.length > 0) {
+          void this._plotUploads([...this.uploadedFiles]);
+          return;
+        }
+        if (url) this.panelCallbacks.onRepoSubmit(url);
       },
 
       onFileUpload: (files: FileList) => {
@@ -1180,30 +1210,7 @@ export class LayoutContext {
       },
 
       onUploadedFileClick: async (file: RawFile) => {
-        this.updatePanelState({ isLoading: true, statusMessage: 'Plotting file...' });
-        this._lastPlotAction = async () => { await this.actions.plot.plotUploadedFile(file); };
-        try {
-          await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
-        } catch {
-          this.updatePanelState({ isLoading: false, statusMessage: 'Error plotting file' });
-        }
-      },
-
-      onPlotAllUploads: async () => {
-        if (this.uploadedFiles.length > 0) {
-          this.updatePanelState({ isLoading: true, statusMessage: 'Plotting all files...' });
-          this._lastPlotAction = async () => {
-            if (this.uploadedFiles.length > 0)
-              await this.actions.plot.plotUploadedFile(this.uploadedFiles[0]);
-          };
-          try {
-            await this._lastPlotAction();
-            this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
-          } catch {
-            this.updatePanelState({ isLoading: false, statusMessage: 'Error plotting files' });
-          }
-        }
+        await this._plotUploads([file]);
       },
 
       onThemeChange: (theme: string) => {
@@ -1270,7 +1277,7 @@ export class LayoutContext {
         const entry = this.cachedGraphs?.find((e) => e.key === key);
         if (!entry) return;
         // Streaming from the URL will hit the backend cache and replay instantly.
-        this.updatePanelState({ repoUrl: entry.url, codeSourceMode: 'repo' });
+        this.updatePanelState({ repoUrl: entry.url });
         this._startStreamFromUrl(entry.url);
         // fetchRepository populates state.repo.content, which the Files panel
         // reads — without this the recalled graph renders but the tree stays empty.
@@ -1282,7 +1289,11 @@ export class LayoutContext {
       onClearRepo: () => {
         this.appState.clearRepoData();
         this.uploadedFiles = [];
-        this.updatePanelState({ repoUrl: '', codeSourceMode: 'repo' });
+        this.updatePanelState({ repoUrl: '' });
+      },
+
+      onSaveRecent: (entry) => {
+        void this.saveGraphbaseBookmark(entry.label || entry.url.replace('https://github.com/', ''), entry.url);
       },
 
       onEvictCache: async (key: string) => {

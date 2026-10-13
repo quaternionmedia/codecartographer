@@ -730,21 +730,23 @@ export class PlotActions {
   /**
    * Plot a single uploaded file via /parse/unified
    */
-  async plotUploadedFile(file: RawFile): Promise<void> {
+  /** Plot added files as one directory, every file given, at `depth`. */
+  async plotUploads(files: RawFile[], depth: number): Promise<void> {
     this.stateController.clear();
     try {
       const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
       const opts   = this.stateController.state.parserOptions;
       const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
-      const dir    = new Directory(new RepoInfo(), 1, new RawFolder('upload', file.size, [file]));
+      const size   = files.reduce((total, f) => total + f.size, 0);
+      const dir    = new Directory(new RepoInfo(), files.length, new RawFolder('upload', size, files));
       const data   = await PlotService.plotUnified(
-        this.stateController.api.parse, dir, 2, exts, layout, undefined, opts.annotateLexicon
+        this.stateController.api.parse, dir, depth, exts, layout, undefined, opts.annotateLexicon
       );
       if (!data) throw new Error('No data returned from parse/unified');
       this.stateController.update({ parseDirectory: dir });
       this.handlePlotData(data);
     } catch (error) {
-      console.error('Failed to plot uploaded file:', error);
+      console.error('Failed to plot uploaded files:', error);
       throw error;
     }
   }

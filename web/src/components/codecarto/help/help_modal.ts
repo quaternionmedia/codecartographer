@@ -17,7 +17,7 @@ const STEPS = [
   {
     icon: '📁',
     title: 'Load a repository',
-    body: 'Paste a GitHub URL or a local path in the Repository tab and press → Fetch, or drop files in the Upload tab. ⚡ Load Demo draws a sample graph. The ▶ Actions tab plots and cancels.',
+    body: 'Everything starts in the Open panel: paste a GitHub URL or a local path and press → Fetch, pick an example, drop files, or press ⚡ Load Demo. ▶ Plot at its foot draws what is open, and Cancel stops it; recent graphs and the parse options are there too.',
   },
   {
     icon: '◈',

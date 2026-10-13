@@ -20,11 +20,9 @@ import type { ComponentItemConfig } from 'golden-layout';
 import type { LayoutContext } from './layout_context';
 import { createGraphPanel } from './panels/graph_panel';
 import { createFileTreePanel } from './panels/file_tree_panel';
-import { createUploadPanel } from './panels/upload_panel';
-import { createRepoPanel } from './panels/repo_panel';
+import { createOpenPanel } from './panels/open_panel';
 import { createGraphbasePanel } from './panels/graphbase_panel';
 import { createGraphSettingsPanel } from './panels/graph_settings_panel';
-import { createActionsPanel } from './panels/actions_panel';
 import { createTopologyPanel } from './panels/topology_panel';
 import { createEstatePanel } from './panels/estate_panel';
 import { createCapabilitiesPanel } from './panels/capabilities_panel';
@@ -33,8 +31,7 @@ import { createCargoPanel } from './panels/cargo_panel';
 import { createChrestomathyPanel } from './panels/chrestomathy_panel';
 
 export type DockPanelId =
-  | 'graph' | 'file-tree' | 'upload-panel' | 'repo-panel' | 'graphbase-panel'
-  | 'graph-settings-panel' | 'plotbar'
+  | 'graph' | 'open' | 'file-tree' | 'graphbase-panel' | 'graph-settings-panel'
   // The estate: what is up, and the three seams this window draws.
   | 'estate-panel' | 'topology-panel' | 'capabilities-panel' | 'overview-panel'
   // Code cartography past one parse: a Rust workspace, and one construct read
@@ -57,6 +54,13 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     config: { type: 'component', componentType: 'graph', id: 'graph', title: '◈ Graph', isClosable: true },
     overflow: 'hidden',
     mount: (ctx, el) => m.mount(el, createGraphPanel(ctx)),
+  },
+  {
+    id: 'open',
+    menuLabel: 'Open',
+    config: { type: 'component', componentType: 'open', id: 'open', title: '⬇ Open', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createOpenPanel(ctx)),
   },
   {
     id: 'estate-panel',
@@ -108,20 +112,6 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     mount: (ctx, el) => m.mount(el, createFileTreePanel(ctx)),
   },
   {
-    id: 'upload-panel',
-    menuLabel: 'Upload',
-    config: { type: 'component', componentType: 'upload-panel', id: 'upload-panel', title: '↑ Upload', isClosable: true },
-    overflow: 'auto',
-    mount: (ctx, el) => m.mount(el, createUploadPanel(ctx)),
-  },
-  {
-    id: 'repo-panel',
-    menuLabel: 'Repository',
-    config: { type: 'component', componentType: 'repo-panel', id: 'repo-panel', title: '⬇ Repository', isClosable: true },
-    overflow: 'auto',
-    mount: (ctx, el) => m.mount(el, createRepoPanel(ctx)),
-  },
-  {
     id: 'graphbase-panel',
     menuLabel: 'Graphbase',
     config: { type: 'component', componentType: 'graphbase-panel', id: 'graphbase-panel', title: '▦ Graphbase', isClosable: true },
@@ -134,13 +124,6 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     config: { type: 'component', componentType: 'graph-settings-panel', id: 'graph-settings-panel', title: 'Graph Settings', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createGraphSettingsPanel(ctx)),
-  },
-  {
-    id: 'plotbar',
-    menuLabel: 'Actions',
-    config: { type: 'component', componentType: 'plotbar', id: 'plotbar', title: '▶ Actions', isClosable: true },
-    overflow: 'auto',
-    mount: (ctx, el) => m.mount(el, createActionsPanel(ctx)),
   },
 ];
 
