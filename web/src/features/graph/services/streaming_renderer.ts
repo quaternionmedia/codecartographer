@@ -14,9 +14,12 @@ import { GraphNode, GraphEdge } from './graph_types';
 import { nodePath } from './node_shapes';
 import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager } from './compound_layout';
+import type { GroupBounds } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
 import { sourceTarget } from './node_info';
+import { fitTransform } from './fit';
+import type { Circle } from './fit';
 
 // Nodes rendered per animation frame. Scales with total so large repos
 // finish in ~2s while small repos show clearly progressive animation.
@@ -74,6 +77,9 @@ export class StreamingGraphRenderer {
   private _backgroundGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
   private _compoundManager = new CompoundLayoutManager();
   private _childrenMap: Map<string, string[]> = new Map();
+  // The group outlines as last drawn, so a fit frames them; empty while
+  // Group Outlines is off.
+  private _groupBounds: GroupBounds[] = [];
   // O(1) lookup for child drag propagation — populated in _renderNode, avoids CSS selector per-frame
   private _nodeGroupEl = new Map<string, SVGGElement>();
 
@@ -250,6 +256,7 @@ export class StreamingGraphRenderer {
         this._drawCompoundBackgrounds();
       } else {
         this._backgroundGroup.selectAll('*').remove();
+        this._groupBounds = [];
       }
     }
   }
@@ -285,11 +292,12 @@ export class StreamingGraphRenderer {
       // More work to do — schedule next frame
       this._scheduleLoop();
     } else if (this._streamDone) {
-      // Everything rendered — fit the view and draw compound group backgrounds
-      this._fitView();
+      // Everything rendered: draw the group outlines, then fit the view to
+      // the graph with them, since they are drawn too.
       if (this.styling.showCompoundGroups !== false) {
         this._drawCompoundBackgrounds();
       }
+      this._fitView();
     }
     // else: queues empty but stream not done yet — wait for more addNode calls
   }
@@ -618,34 +626,33 @@ export class StreamingGraphRenderer {
   }
 
   /**
-   * Fit the viewport to a subset of nodes.
+   * Fit the viewport to a subset of nodes: each node's extent, and the group
+   * outline drawn around any of them, framed whole (fit.ts).
    *
    * Split out of `_fitView` so `focus-group` can frame one subtree. A verb
    * that says "focus" and fits the whole graph is the kind of near-miss the
    * legacy menu was full of.
    */
   private _fitNodes(nodes: GraphNode[]): void {
-    if (nodes.length === 0) return;
-
-    const avgX = nodes.reduce((s, n) => s + (n.x ?? 0), 0) / nodes.length;
-    const avgY = nodes.reduce((s, n) => s + (n.y ?? 0), 0) / nodes.length;
-    const minX = Math.min(...nodes.map(n => n.x ?? 0));
-    const maxX = Math.max(...nodes.map(n => n.x ?? 0));
-    const minY = Math.min(...nodes.map(n => n.y ?? 0));
-    const maxY = Math.max(...nodes.map(n => n.y ?? 0));
-
-    const rangeX = maxX - minX || 1;
-    const rangeY = maxY - minY || 1;
-    const scale = 0.85 * Math.min(this.width / rangeX, this.height / rangeY);
-    const tx = this.width / 2 - scale * avgX;
-    const ty = this.height / 2 - scale * avgY;
+    const ids = new Set(nodes.map((n) => n.id));
+    // A shape drawn at `size` reaches 1.5 × size at most (a triangle's apex).
+    const circles: Circle[] = nodes.map((n) => ({
+      x: n.x ?? 0,
+      y: n.y ?? 0,
+      r: 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n),
+    }));
+    for (const b of this._groupBounds) {
+      if (ids.has(b.nodeId)) circles.push({ x: b.cx, y: b.cy, r: b.radius });
+    }
+    const t = fitTransform(circles, { width: this.width, height: this.height });
+    if (!t) return;
 
     this.svg
       .transition()
       .duration(700)
       .call(
         this.zoom.transform as any,
-        d3.zoomIdentity.translate(tx, ty).scale(scale)
+        d3.zoomIdentity.translate(t.x, t.y).scale(t.k)
       );
   }
 
@@ -660,6 +667,7 @@ export class StreamingGraphRenderer {
       this.styling.nodeSize! * 3.0,
     );
     this._childrenMap = this._compoundManager.computeChildrenMap(nodes, this._allEdges);
+    this._groupBounds = bounds;
     this._backgroundGroup.selectAll('*').remove();
     for (const b of bounds) {
       const isDir = b.depth === 0;

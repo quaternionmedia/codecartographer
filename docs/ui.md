@@ -201,7 +201,8 @@ Id `graph-settings-panel`. In the default arrangement.
   on GitHub at the node's line, or at the top of the file when it has none. For
   a file read from disk, which the browser cannot open, a badge beside the node
   names the file and line. A double-click anywhere else zooms in.
-- When a stream finishes, the view fits the whole graph.
+- When a stream finishes, the view fits the whole graph: every node and every
+  group outline, inside a margin, centred on what is drawn.
 - **The legend** sits at the bottom left. Its header gives the totals; click it
   to list the node and edge kinds actually drawn, each with its swatch and
   count.
