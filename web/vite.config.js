@@ -16,7 +16,7 @@ const API = process.env.CODECARTO_API || 'http://127.0.0.1:2718';
 const API_PATHS = [
   '/topology', '/capabilities', '/overview', '/estate',
   '/plotter', '/palette', '/repo', '/parse', '/lexicon',
-  '/c-parser', '/pam', '/db', '/auth', '/docs', '/openapi.json',
+  '/c-parser', '/pam', '/system', '/db', '/auth', '/docs', '/openapi.json',
 ];
 
 export default {

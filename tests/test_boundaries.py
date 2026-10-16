@@ -55,6 +55,7 @@ ESTATE_SERVICES = (
     "codecarto/services/capability_service.py",
     "codecarto/services/overview_service.py",
     "codecarto/services/qmcp_client.py",
+    "codecarto/services/construct_service.py",
 )
 ESTATE_ROUTERS = (
     "codecarto/routers/estate_router.py",
