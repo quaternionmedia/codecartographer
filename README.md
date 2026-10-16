@@ -94,7 +94,8 @@ addresses on startup; `serve --help` names the backend's default port.
 | `/repo` | GitHub repository reading |
 | `/c-parser` | C parsing via libclang, plus a standalone visualizer page |
 | `/pam` | PAM session capture, replay, and a standalone visualizer page |
-| `/lexicon` | Hand-authored language lexicons, as graphs |
+| `/system` | A system diagram derived from a local clone's own contents, its recent changes, and a paced replay of them |
+| `/lexicon` | Hand-authored language lexicons, the construct vocabulary, and the chrestomathy across languages |
 | `/topology` | The harness's flows, as graph data the app plots |
 | `/capabilities` | What each named thing this estate can do has reached |
 | `/overview` | dossier's reading of the estate, drawn here from the seam it produces |

@@ -1,0 +1,317 @@
+# Rust language lexicon — reserved words and operators arranged on a hierarchy
+# of abstractions, from the machine up.
+#
+# The third lexicon, and the first written to be read beside another: its
+# layers follow C's where the two languages answer the same question (where a
+# value lives; what a bit pattern is; how structure is composed; how control
+# moves; how names reach each other; what is decided before the program runs),
+# so the chrestomathy can set a C layer next to a Rust one and the difference
+# is the language, not the filing. `codecarto/data/constructs.yaml` is where a
+# construct is joined across languages; this file only says what Rust spells.
+#
+# Two deliberate departures from "reserved words only", each marked by `role`
+# so nobody reads them as keywords:
+#   - Rust's primitive types (`u8`, `i32`, `bool`, `str`) are not reserved —
+#     they are names in the prelude — but they are what C's `char`/`int`/
+#     `unsigned` are compared with, so layer 1 carries them, role-marked.
+#   - Weak keywords (`union`, `macro_rules`, `safe`, `raw`) are keywords only
+#     in one position. They are listed, with the position as their role.
+#
+# `since` is the edition a token became reserved in. No `since` = Rust 2015.
+
+language: rust
+display_name: "Rust"
+standards: [rust2015, rust2018, rust2021, rust2024]
+
+keywords:
+  layers:
+    - ordinal: 0
+      name: "Memory, ownership & unsafety"
+      gloss: >
+        Who owns a value, who may change it, and where the compiler stops
+        checking. Rust's machine-facing layer is about permission rather than
+        placement: `static` places storage as C's does, but `mut` and `unsafe`
+        are what an embedded reader looks for first — a `static mut` is shared
+        mutable state, and `unsafe` is where the C rules come back.
+      groups:
+        - name: "storage"
+          tokens:
+            - {token: static}
+        - name: "mutability & borrowing"
+          tokens:
+            - {token: mut}
+            - {token: ref, role: "bind by reference in a pattern"}
+            - {token: move, role: "closure takes ownership of its captures"}
+            - {token: raw, role: "weak: &raw const / &raw mut, a pointer with no reference made"}
+        - name: "unsafety"
+          tokens:
+            - {token: unsafe}
+            - {token: safe, role: "weak: an item inside `unsafe extern` declared safe to call", since: rust2024}
+
+    - ordinal: 1
+      name: "Primitive types & literal values"
+      gloss: >
+        Sizes and interpretations of bit patterns. Unlike C, the widths are in
+        the names (`u8`, `i32`), and none of the names is reserved; `true` and
+        `false` are.
+      groups:
+        - name: "literal keyword"
+          tokens:
+            - {token: "true"}
+            - {token: "false"}
+        - name: "fixed-width integer (prelude name, not reserved)"
+          tokens:
+            - {token: u8, role: "primitive type, not a reserved word"}
+            - {token: u16, role: "primitive type, not a reserved word"}
+            - {token: u32, role: "primitive type, not a reserved word"}
+            - {token: u64, role: "primitive type, not a reserved word"}
+            - {token: u128, role: "primitive type, not a reserved word"}
+            - {token: i8, role: "primitive type, not a reserved word"}
+            - {token: i16, role: "primitive type, not a reserved word"}
+            - {token: i32, role: "primitive type, not a reserved word"}
+            - {token: i64, role: "primitive type, not a reserved word"}
+            - {token: i128, role: "primitive type, not a reserved word"}
+        - name: "pointer-sized & other primitive (prelude name, not reserved)"
+          tokens:
+            - {token: usize, role: "primitive type, not a reserved word"}
+            - {token: isize, role: "primitive type, not a reserved word"}
+            - {token: f32, role: "primitive type, not a reserved word"}
+            - {token: f64, role: "primitive type, not a reserved word"}
+            - {token: bool, role: "primitive type, not a reserved word"}
+            - {token: char, role: "primitive type, not a reserved word"}
+            - {token: str, role: "primitive type, not a reserved word"}
+
+    - ordinal: 2
+      name: "Aggregate & user-defined types"
+      gloss: >
+        Composing structure. C has struct, union and enum; Rust keeps all
+        three, makes `enum` a tagged sum type that may carry data, and adds the
+        two words C has no equivalent for — `trait` names behaviour, `impl`
+        attaches it. `fn` sits here because in Rust a function is an item
+        declared beside the types, not a body hung off a declaration.
+      groups:
+        - name: "aggregate"
+          tokens:
+            - {token: struct}
+            - {token: enum}
+            - {token: union, role: "weak: an untagged union, only before a name"}
+        - name: "alias"
+          tokens:
+            - {token: type}
+        - name: "callable"
+          tokens:
+            - {token: fn}
+        - name: "behaviour"
+          tokens:
+            - {token: trait}
+            - {token: impl}
+            - {token: dyn, since: rust2018}
+            - {token: for, role: "impl Trait for Type"}
+            - {token: where}
+
+    - ordinal: 3
+      name: "Control flow"
+      gloss: >
+        Sequencing, selection and iteration. Every one of these is an
+        expression with a value, which is the difference from C a reader meets
+        first; `match` is the switch that must cover every case.
+      groups:
+        - name: "selection"
+          tokens:
+            - {token: if}
+            - {token: else}
+            - {token: match}
+        - name: "iteration"
+          tokens:
+            - {token: loop}
+            - {token: while}
+            - {token: for, role: "for pattern in iterator"}
+            - {token: in}
+        - name: "jump"
+          tokens:
+            - {token: break}
+            - {token: continue}
+            - {token: return}
+        - name: "binding"
+          tokens:
+            - {token: let}
+        - name: "suspension"
+          tokens:
+            - {token: async, since: rust2018}
+            - {token: await, since: rust2018}
+
+    - ordinal: 4
+      name: "Modules, paths & linkage"
+      gloss: >
+        How names reach each other, and how Rust meets code that is not Rust.
+        `extern` is the FFI boundary — `extern "C"` blocks declare C functions,
+        `extern "C" fn` exports one — and `pub` is the only visibility C has no
+        word for beyond `static`.
+      groups:
+        - name: "module system"
+          tokens:
+            - {token: mod}
+            - {token: use}
+            - {token: crate}
+            - {token: super}
+            - {token: self}
+            - {token: Self}
+        - name: "visibility"
+          tokens:
+            - {token: pub}
+        - name: "linkage & conversion"
+          tokens:
+            - {token: extern}
+            - {token: as, role: "cast, or rename in a use"}
+
+    - ordinal: 5
+      name: "Compile-time reasoning & contracts"
+      gloss: >
+        Words that act on the program rather than on its values. `const`
+        evaluates before the program runs; `macro_rules!` rewrites the program
+        itself. The reserved words below have no meaning yet and cannot be
+        used as names.
+      groups:
+        - name: "compile-time evaluation"
+          tokens:
+            - {token: const}
+        - name: "metaprogramming"
+          tokens:
+            - {token: macro_rules, role: "weak: before `!` at item position"}
+        - name: "reserved for future use"
+          tokens:
+            - {token: abstract}
+            - {token: become}
+            - {token: box}
+            - {token: do}
+            - {token: final}
+            - {token: macro}
+            - {token: override}
+            - {token: priv}
+            - {token: typeof}
+            - {token: unsized}
+            - {token: virtual}
+            - {token: yield}
+            - {token: try, since: rust2018}
+            - {token: gen, since: rust2024}
+
+operators:
+  layers:
+    - ordinal: 0
+      name: "Memory & references"
+      gloss: >
+        Borrowing and following references. `&` makes a reference the compiler
+        checks, not an address; `*` follows one. A raw pointer's dereference
+        is the same `*`, inside `unsafe`.
+      groups:
+        - name: "borrow & dereference"
+          tokens:
+            - {token: "&", role: "borrow (shared reference)"}
+            - {token: "&mut", role: "borrow (exclusive reference)"}
+            - {token: "*", role: "dereference"}
+        - name: "member & index"
+          tokens:
+            - {token: "[]", role: "index"}
+            - {token: ".", role: "field or method"}
+
+    - ordinal: 1
+      name: "Bitwise"
+      gloss: >
+        Values as bit vectors — register masks and protocol fields. `!` is
+        both bitwise and logical not; there is no `~`.
+      groups:
+        - name: "logical-bit"
+          tokens:
+            - {token: "&", role: "bitwise and"}
+            - {token: "|", role: "bitwise or"}
+            - {token: "^", role: "bitwise xor"}
+            - {token: "!", role: "bitwise not (on integers)"}
+        - name: "shift"
+          tokens:
+            - {token: "<<", role: "left shift"}
+            - {token: ">>", role: "right shift (arithmetic on signed)"}
+
+    - ordinal: 2
+      name: "Arithmetic"
+      gloss: >
+        Numeric computation. No `++` or `--`; overflow panics in a debug build
+        and wraps in release unless a wrapping or checked method says which.
+      groups:
+        - name: "binary arithmetic"
+          tokens:
+            - {token: "+", role: "add"}
+            - {token: "-", role: "subtract or negate"}
+            - {token: "*", role: "multiply"}
+            - {token: "/", role: "divide"}
+            - {token: "%", role: "remainder"}
+
+    - ordinal: 3
+      name: "Comparison & logic"
+      gloss: >
+        Truth values. As in C, `&&` and `||` short-circuit.
+      groups:
+        - name: "relational"
+          tokens:
+            - {token: "==", role: "equal"}
+            - {token: "!=", role: "not equal"}
+            - {token: "<", role: "less"}
+            - {token: ">", role: "greater"}
+            - {token: "<=", role: "less or equal"}
+            - {token: ">=", role: "greater or equal"}
+        - name: "short-circuit logic"
+          tokens:
+            - {token: "&&", role: "logical and"}
+            - {token: "||", role: "logical or"}
+            - {token: "!", role: "logical not (on bool)"}
+
+    - ordinal: 4
+      name: "Assignment"
+      gloss: >
+        A value flowing back into a place. Assignment is an expression of type
+        `()`, so `if (x = y)` is a type error rather than a bug.
+      groups:
+        - name: "simple"
+          tokens:
+            - {token: "=", role: "assign"}
+        - name: "compound"
+          tokens:
+            - {token: "+=", role: "add-assign"}
+            - {token: "-=", role: "sub-assign"}
+            - {token: "*=", role: "mul-assign"}
+            - {token: "/=", role: "div-assign"}
+            - {token: "%=", role: "rem-assign"}
+            - {token: "&=", role: "and-assign"}
+            - {token: "|=", role: "or-assign"}
+            - {token: "^=", role: "xor-assign"}
+            - {token: "<<=", role: "lshift-assign"}
+            - {token: ">>=", role: "rshift-assign"}
+
+    - ordinal: 5
+      name: "Paths, patterns & propagation"
+      gloss: >
+        The operators that structure a program rather than compute a value:
+        paths, ranges, match arms, closures, attributes, macro calls, and `?`,
+        which returns an error to the caller where C would test and `goto`.
+      groups:
+        - name: "path & signature"
+          tokens:
+            - {token: "::", role: "path separator"}
+            - {token: "->", role: "return type"}
+            - {token: "=>", role: "match arm"}
+        - name: "range & pattern"
+          tokens:
+            - {token: "..", role: "range, or rest pattern"}
+            - {token: "..=", role: "inclusive range"}
+            - {token: "@", role: "bind a pattern to a name"}
+            - {token: "|", role: "or-pattern, or closure parameters"}
+            - {token: "_", role: "wildcard"}
+        - name: "propagation & conversion"
+          tokens:
+            - {token: "?", role: "propagate an error or none"}
+            - {token: "as", role: "primitive cast"}
+        - name: "metaprogramming"
+          tokens:
+            - {token: "!", role: "macro invocation"}
+            - {token: "#", role: "attribute"}
+            - {token: "$", role: "macro metavariable"}
+            - {token: "'", role: "lifetime or label"}
