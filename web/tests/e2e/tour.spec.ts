@@ -53,10 +53,18 @@ async function animationsDone(page: Page): Promise<void> {
 }
 
 /**
- * The fit after a stream is a 700 ms d3 transition and the group outlines
- * fade in over 800 ms, which `getAnimations` does not see; a screenshot taken
- * sooner catches them half way.
+ * A graph's stream ends after its last node and edge are drawn, and only then
+ * are its group outlines drawn and the view fitted; a larger graph, such as
+ * the demo, takes seconds. Wait for the outlines, when the graph has groups,
+ * then for the fit's 700 ms d3 transition and the outlines' 800 ms fade,
+ * which `getAnimations` does not see.
  */
+async function graphDrawn(page: Page): Promise<void> {
+  await expect(page.locator('.compound-group circle').first()).toBeAttached({ timeout: SETTLED });
+  await settle(page);
+}
+
+/** Wait out the window's d3 transitions and CSS animations. */
 async function settle(page: Page): Promise<void> {
   await page.waitForTimeout(1_500);
   await animationsDone(page);
@@ -135,7 +143,7 @@ test('a first visit, the Open panel, and the bundled example', async ({ page }) 
     await open.locator('[data-example="blinky (recorded)"]').click();
     await expect(page.locator(FLASH)).toHaveCount(1, { timeout: SETTLED });
     await expect(page.locator('.gl-panel--cargo')).toBeVisible();
-    await settle(page);
+    await graphDrawn(page);
     await shot('06 bundled example drawn, Cargo forward', page);
   });
 
@@ -207,7 +215,7 @@ test('the demo graph', async ({ page }) => {
     await expect(page.locator('.graph-node[data-node-id]').first()).toBeVisible({ timeout: SETTLED });
     // Off the button, which a hover would otherwise show in the screenshot.
     await page.mouse.move(800, 300);
-    await settle(page);
+    await graphDrawn(page);
     await shot('14 demo graph', page);
   });
 });
@@ -240,6 +248,7 @@ test('a layout saved before the Open panel', async ({ page }) => {
   await test.step('15 migrated to one Open window', async () => {
     await expect(page.locator('.gl-panel--open')).toBeVisible();
     await expect(page.locator('.cc-toast').first()).toBeVisible();
+    await animationsDone(page);
     await shot('15 old saved layout migrated', page);
   });
 });
