@@ -595,6 +595,129 @@ def repo_graph(path: str, ext: tuple, output: str, graph_type: str):
             traceback.print_exc()
 
 
+@cli.group()
+def cargo():
+    """
+    Cargo workspaces: read one, or record what cargo says about it.
+
+    \b
+        codecarto cargo read PATH     What the window will draw (runs nothing)
+        codecarto cargo record PATH   Run cargo, write target/codecarto/
+    """
+    pass
+
+
+@cargo.command("read")
+@click.argument("path", type=click.Path(exists=True, file_okay=False), default=".")
+@click.option("--json", "as_json", is_flag=True, help="Print the reading as JSON")
+def cargo_read(path: str, as_json: bool):
+    """
+    Print what the /cargo routes would draw for PATH. Runs nothing.
+    """
+    import json
+
+    from codecarto.services import cargo_service
+
+    reading = cargo_service.read(path)
+    if not reading.ok:
+        click.secho(f"✗ {reading.reason}", fg="red")
+        raise SystemExit(1)
+    if as_json:
+        click.echo(json.dumps(cargo_service.as_data(reading), indent=2, default=str))
+        return
+    click.secho(f"📦 {Path(path).resolve()} — read from {reading.engine}", fg="green")
+    for package in reading.packages:
+        if not package.member:
+            continue
+        extras = [x for x in (package.no_std and f"no_std {package.no_std}",
+                              package.links and f"links {package.links}") if x]
+        click.echo(f"  {package.name} {package.version}"
+                   + (f"  [{', '.join(extras)}]" if extras else ""))
+        for dep in package.dependencies:
+            click.echo(f"    → {dep.name} {dep.version or dep.req}  ({dep.kind}"
+                       + (", optional" if dep.optional else "")
+                       + (f", {dep.platform}" if dep.platform else "") + ")")
+    for doc in reading.documents:
+        state = ("used" if doc.used else "not used") if doc.present else "absent"
+        click.echo(f"  {doc.name}: {state}" + (f" — {doc.problem}" if doc.problem else ""))
+    counts = {}
+    for d in reading.diagnostics:
+        counts[d.level] = counts.get(d.level, 0) + 1
+    if counts:
+        click.echo("  diagnostics: " + ", ".join(f"{n} {level}" for level, n in sorted(counts.items())))
+    click.echo()
+    click.echo(f"  {cargo_service.caveat(reading)}")
+
+
+@cargo.command("record")
+@click.argument("path", type=click.Path(exists=True, file_okay=False), default=".")
+@click.option("--all-targets", is_flag=True,
+              help="Check tests, examples and benches too (a no_std bin usually cannot build them)")
+@click.option("--online", is_flag=True,
+              help="Let cargo reach the network; by default it is run --offline")
+@click.option("--timeout", default=600, show_default=True, help="Seconds each cargo command may take")
+def cargo_record(path: str, all_targets: bool, online: bool, timeout: int):
+    """
+    Run cargo in PATH and write what it says to PATH/target/codecarto/.
+
+    \b
+    This RUNS THE WORKSPACE'S CODE: `cargo check` compiles build scripts and
+    proc macros and executes them. Run it on a workspace you would build. The
+    window itself never runs cargo; it reads the two files this writes:
+
+        metadata.json   cargo metadata --format-version 1
+        check.jsonl     cargo check --workspace --message-format=json
+    """
+    import shutil
+
+    from codecarto.services import cargo_service
+
+    cargo_bin = shutil.which("cargo")
+    if cargo_bin is None:
+        click.secho("✗ cargo is not on PATH, so there is nothing to record. "
+                    "Install a Rust toolchain (https://rustup.rs) and run this again; "
+                    "the window still draws the manifests without it.", fg="red")
+        raise SystemExit(1)
+
+    root = Path(path).resolve()
+    out = root / cargo_service.DOCUMENTS
+    out.mkdir(parents=True, exist_ok=True)
+    offline = [] if online else ["--offline"]
+    steps = [
+        (cargo_service.METADATA_DOCUMENT,
+         [cargo_bin, "metadata", "--format-version", "1", *offline]),
+        (cargo_service.CHECK_DOCUMENT,
+         [cargo_bin, "check", "--workspace", "--message-format=json", *offline,
+          *(["--all-targets"] if all_targets else [])]),
+    ]
+    failed = False
+    for name, command in steps:
+        click.secho(f"→ cargo {' '.join(command[1:])}", fg="cyan")
+        try:
+            result = subprocess.run(command, cwd=root, capture_output=True, text=True,
+                                    timeout=timeout, encoding="utf-8", errors="replace")
+            stdout, code = result.stdout, result.returncode
+        except subprocess.TimeoutExpired as expired:
+            # A bound that fires is reported: what arrived is kept, and said to be partial.
+            stdout = (expired.stdout or b"").decode("utf-8", "replace") \
+                if isinstance(expired.stdout, bytes) else (expired.stdout or "")
+            code = None
+        (out / name).write_text(stdout, encoding="utf-8")
+        if code is None:
+            failed = True
+            click.secho(f"  ✗ did not finish in {timeout}s; {name} holds only what arrived", fg="red")
+        elif code != 0 and name == cargo_service.METADATA_DOCUMENT:
+            failed = True
+            click.secho(f"  ✗ exited {code}: {result.stderr.strip().splitlines()[-1] if result.stderr.strip() else ''}",
+                        fg="red")
+        else:
+            # A failing check still wrote its diagnostics, which is what it is for.
+            click.secho(f"  ✓ wrote {(out / name).relative_to(root).as_posix()}"
+                        + (f" (cargo exited {code})" if code else ""), fg="green")
+    if failed:
+        raise SystemExit(1)
+
+
 def _format_size(size_bytes: int) -> str:
     """Format file size in human-readable format."""
     for unit in ["B", "KB", "MB", "GB"]:

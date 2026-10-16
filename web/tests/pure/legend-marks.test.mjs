@@ -133,3 +133,29 @@ test('every known shape draws a distinct path', () => {
 test('a shape nobody registered falls back to the circle', () => {
   assert.equal(nodePath('trapezoid', 8), nodePath('circle', 8));
 });
+
+// --- abstraction layers ----------------------------------------------------------
+
+test('the layers key counts only nodes a lexicon placed, machine-facing first', async () => {
+  const { layerMarks } = await import('../../dist-pure/features/graph/extensions/legend_marks.js');
+  const marks = layerMarks([
+    { layer_ordinal: 2, layer_color: '#eab308', meta: { lexicon_layers: [{ layer_ordinal: 2, layer_name: 'Aggregate' }] } },
+    { layer_ordinal: 0, layer_color: '#ef4444' },
+    { layer_ordinal: 2, layer_color: '#eab308' },
+    { kind: 'function' },
+    { layer_ordinal: -1 },
+  ]);
+  assert.deepEqual(marks.map((m) => [m.ordinal, m.name, m.color, m.count]), [
+    [0, '', '#ef4444', 1],
+    [2, 'Aggregate', '#eab308', 2],
+  ]);
+});
+
+test('an ngon is a polygon of its own sides, and a pentagon without them', () => {
+  /* Mutation: drop the `ngon` case -- the C parser's records draw as circles
+     again and this fails. */
+  const seven = nodePath('ngon', 8, 7);
+  assert.equal(seven.split(' L ').length, 7);
+  assert.equal(nodePath('ngon', 8).split(' L ').length, 5);
+  assert.notEqual(nodePath('ngon', 8, 6), nodePath('circle', 8));
+});

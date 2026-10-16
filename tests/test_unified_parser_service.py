@@ -1080,3 +1080,86 @@ class TestLexiconAnnotation:
             event_type, data = _parse_sse_chunk(chunk)
             if event_type == "node":
                 assert "layer_ordinal" not in data
+
+
+# ── Node ids carry the path; a batch parser states facts about files ─────────
+
+
+class _BatchProbe:
+    """A stand-in batch parser: one item per file, and two facts about files.
+
+    The pipeline's handling of a batch -- keys, attribution, file facts -- is
+    tested here against this rather than against a real language, so the test
+    says what the pipeline does and nothing about any parser."""
+
+    language = "probe"
+    extensions = [".probe"]
+    batch_whole_tree = True
+    seen: list = []
+
+    def parse_files(self, files, depth=2):
+        g = nx.DiGraph()
+        keys = [f.url or f.name for f in files]
+        type(self).seen = keys
+        for key in keys:
+            g.add_node(f"probe::{key}", depth=2, language="probe", kind="item",
+                       label=key.split("/")[-3] + ":item", file=key, line=1, meta={})
+        if len(keys) >= 2:
+            g.graph["file_relations"] = [(keys[0], keys[1], {"kind": "depends_on",
+                                                             "resolution": "probe"})]
+        g.graph["file_meta"] = {keys[0]: {"probed": True}}
+        return g
+
+
+@pytest.fixture
+def probe_parser(monkeypatch):
+    from codecarto.services.parsers.language_parser import ParserRegistry
+
+    monkeypatch.setitem(ParserRegistry._parsers, ".probe", _BatchProbe())
+    return _BatchProbe
+
+
+def _two_packages() -> Directory:
+    def package(name: str) -> Folder:
+        return Folder(name=name, folders=[Folder(name="src", files=[
+            File(name="lib.probe", raw="x")])])
+
+    return Directory(info=RepoInfo(name="ws"),
+                     root=Folder(name="ws", folders=[package("alpha"), package("beta")]))
+
+
+ALPHA = "file::ws/alpha/src/lib.probe"
+BETA = "file::ws/beta/src/lib.probe"
+
+
+class TestPathQualifiedIds:
+    """Two folders with one name are two folders. Keyed by name, every
+    package's `src` and `src/lib.*` merged into one node holding all their
+    symbols, and nothing in the picture said so."""
+
+    def test_same_named_folders_and_files_stay_apart(self, probe_parser):
+        """Mutation: build `folder_id` from `folder.name` again -- this fails."""
+        g = UnifiedParserService.build_graph(_two_packages(), depth=2, extensions=None)
+        dirs = {n for n, d in g.nodes(data=True) if d.get("kind") == "directory"}
+        assert {"dir::ws/alpha/src", "dir::ws/beta/src"} <= dirs
+        files = {n for n, d in g.nodes(data=True) if d.get("kind") == "file"}
+        assert files == {ALPHA, BETA}
+
+    def test_a_batch_keys_files_that_share_a_name_by_their_place(self, probe_parser):
+        """No url, one name: each is batched under its place in the tree.
+        Mutation: batch url-less files as they are -- the keys collide and
+        this fails."""
+        g = UnifiedParserService.build_graph(_two_packages(), depth=2, extensions=None)
+        assert sorted(probe_parser.seen) == ["tree://ws/alpha/src/lib.probe",
+                                             "tree://ws/beta/src/lib.probe"]
+        owner = {g.nodes[v]["label"]: u for u, v, d in g.edges(data=True)
+                 if d["kind"] == "contains" and g.nodes[v].get("kind") == "item"}
+        assert owner == {"alpha:item": ALPHA, "beta:item": BETA}
+
+    def test_what_a_batch_parser_says_about_files_reaches_the_file_nodes(self, probe_parser):
+        """Mutation: drop `_apply_file_facts` from `_parse_pending_batches` --
+        this fails."""
+        g = UnifiedParserService.build_graph(_two_packages(), depth=2, extensions=None)
+        assert g.edges[ALPHA, BETA]["kind"] == "depends_on"
+        assert g.edges[ALPHA, BETA]["resolution"] == "probe"
+        assert g.nodes[ALPHA]["meta"]["probed"] is True
