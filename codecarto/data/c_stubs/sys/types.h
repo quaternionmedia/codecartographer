@@ -3,6 +3,10 @@
 #define _CODECARTO_STUB_SYS_TYPES_H
 
 #include <stdint.h>
+/* POSIX: <sys/types.h> defines size_t, and <unistd.h> declares read() and
+ * write() with it. Without this, a parse for any target whose compiler does
+ * not declare size_t itself (every one but MSVC's) said "unknown type name". */
+#include <stddef.h>
 
 typedef long      ssize_t;
 typedef int        pid_t;

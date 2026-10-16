@@ -19,7 +19,7 @@ import m from 'mithril';
 
 import type { LayoutContext } from '../layout_context';
 import { ProblemView } from '../../features/estate/problem_view';
-import { Provenance } from '../../features/estate/provenance';
+import { Provenance, caveatShown } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import '../../features/estate/estate.css';
 
@@ -105,7 +105,7 @@ export function createOverviewPanel(ctx: LayoutContext): m.Component {
                     m('span.estate__actions',
                       m('span.estate-view__rung', `${(section.rows ?? []).length} row(s)`)),
                   ]))),
-                m('p.estate-view__hint', reading.caveat),
+                caveatShown(metadata, 'overview') ? null : m('p.estate-view__hint', reading.caveat),
                 m('p.estate__where', ['from ', m('code', reading.source),
                   reading.generated_from ? `, ${reading.generated_from}` : '',
                   // When the producer stamped its reading, else when the file

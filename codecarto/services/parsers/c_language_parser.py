@@ -85,8 +85,9 @@ _EDGE_KIND_MAP: dict[str, str] = {
 class CLangaugeParser:
     """LanguageParser implementation for C/H source files.
 
-    Falls back gracefully when libclang is not installed: parse_files()
-    returns an empty graph rather than raising an ImportError.
+    Without libclang, parse_files() raises the ImportError that says how to
+    install it; the unified pipeline still draws the files and passes the
+    reason on as a note beside the graph.
     """
 
     language: ClassVar[str] = "c"
