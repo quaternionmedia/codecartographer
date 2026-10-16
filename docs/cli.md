@@ -289,6 +289,54 @@ uv run codecarto repo graph . -t ast -o json
 
 ---
 
+## Rust Workspace Commands
+
+### `cargo`
+
+Group command for Cargo workspaces. **`read` runs nothing; `record` is the one
+place this project runs cargo**, because running cargo runs the workspace's
+build scripts and proc macros -- a person's act on a workspace they would build,
+never a route's.
+
+| Command | Description |
+|---------|-------------|
+| `read` | Print what the `/cargo` routes would draw for a path |
+| `record` | Run `cargo metadata` and `cargo check` in a path and write what they say to `target/codecarto/` |
+
+### `cargo read`
+
+```bash
+uv run codecarto cargo read [PATH] [--json]
+```
+
+Prints which engine answered (`cargo metadata` when a recorded `metadata.json`
+is newer than every manifest, `manifests` otherwise), each member crate and its
+dependencies with their kind and condition, which recorded documents were found
+and used, the diagnostics counts, and the caveat. `--json` prints the reading
+`/cargo/data` serves. Exits 1, with the reason, when PATH holds no `Cargo.toml`.
+
+### `cargo record`
+
+```bash
+uv run codecarto cargo record [PATH] [--all-targets] [--online] [--timeout SECONDS]
+```
+
+Runs, in PATH:
+
+```bash
+cargo metadata --format-version 1 --offline                 # -> target/codecarto/metadata.json
+cargo check --workspace --message-format=json --offline     # -> target/codecarto/check.jsonl
+```
+
+A check that finds errors still writes its document -- recording the
+diagnostics is the point -- and says cargo's exit status. `--all-targets` checks
+tests, examples and benches too (a `no_std` binary usually cannot build them);
+`--online` lets cargo reach the network; a command that outlives `--timeout`
+(600s by default) keeps what arrived and says it is partial. Without cargo on
+PATH it says so and exits 1; the window still draws the manifests.
+
+---
+
 ## Utility Commands
 
 ### `parse`
