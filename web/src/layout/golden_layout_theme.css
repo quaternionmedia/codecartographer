@@ -181,6 +181,29 @@
   max-height: 60vh;
 }
 
+/* One line per file (qm_comp_lib/directory/files.ts): its name, then its raw
+   link when it has one. A long name is cut short rather than wrapped. */
+.gl-file-tree__tree .file_container {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.gl-file-tree__tree .file {
+  min-width: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gl-file-tree__tree .file_raw_btn {
+  flex: none;
+  font-size: 0.8em;
+  color: var(--c-font-muted, #00aa2a);
+  text-decoration: underline dotted;
+}
+
 .gl-file-tree__actions {
   display: flex;
   flex-direction: column;

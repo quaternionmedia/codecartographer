@@ -147,8 +147,10 @@ spelling is a row saying so. **draw the construct** draws it.
 
 Id `file-tree`. In the default arrangement.
 
-The loaded repository's tree, and the added files. Click a file to draw that
-file alone. In a large repository a folder marked … has not been read; click it
+The loaded repository's tree, and the added files, one line each. Click a file
+to draw that file alone. A file from GitHub has a *raw* link beside its name
+that opens its contents in a new tab; a file read from disk has none, since the
+browser cannot open it. In a large repository a folder marked … has not been read; click it
 to read it, or **⊞ Expand All** to read them all. With nothing loaded, it points
 at the Open panel.
 

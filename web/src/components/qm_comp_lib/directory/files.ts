@@ -42,7 +42,12 @@ export const FileList: m.Component<FileListAttrs> = {
             onUrlFileClicked: onUrlFileClicked,
             allowedExtensions: allowedExtensions,
           }),
-          m('a.file_raw_btn', { href: file.url, target: '_blank' }, 'raw'),
+          // A file read from disk has a disk path for its url, which no
+          // browser page can open, so only a file with a web address (a
+          // GitHub file's raw.githubusercontent.com) is offered a raw link.
+          /^https?:\/\//.test(file.url)
+            ? m('a.file_raw_btn', { href: file.url, target: '_blank', rel: 'noopener' }, 'raw')
+            : null,
         ])
       ),
     ]);
