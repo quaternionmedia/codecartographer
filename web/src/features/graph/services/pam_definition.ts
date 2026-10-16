@@ -1,8 +1,9 @@
 import {
-  SystemRenderer,
+  SystemDefinition,
   SystemNode,
   SystemEdge,
   SystemEvent,
+  SystemRendererCallbacks,
 } from './system_renderer';
 
 // ─── PAM architecture diagram data ───────────────────────────────────────────
@@ -71,26 +72,30 @@ const DEMO_EVENTS: SystemEvent[] = [
   { event_type: 'access_granted',service: 'sshd', user: 'alice',                  timestamp: 4.5 },
 ];
 
-// ─── Concrete PAM renderer ────────────────────────────────────────────────────
+// ─── The PAM definition ───────────────────────────────────────────────────────
 
 /**
- * Linux PAM authentication flow renderer.
+ * Linux PAM authentication flow, as a SystemDefinition.
  *
- * Extends SystemRenderer with PAM-specific nodes, edges, demo events and
- * event-to-visual-state mapping.
+ * This was the renderer's only subclass; it is now one registration among
+ * others, with identical nodes, edges, demo sequence and event mapping —
+ * the current functionality, retained behind the generic seam.
  *
  * Demo sequence: alice SSH login via SSSD/Kerberos (~5 s cycle).
  * Live mode connects to /pam/ws/live and streams real /var/log/auth.log events.
  */
-export class PamRenderer extends SystemRenderer {
-  readonly name = 'PAM Auth Monitor';
-  protected readonly wsPath = '/pam/ws/live';
+export const PAM_DEFINITION: SystemDefinition = {
+  id: 'pam',
+  name: 'PAM Auth Monitor',
+  description: 'Linux PAM authentication flow from /var/log/auth.log',
+  wsPath: '/pam/ws/live',
+  httpStatusPath: '/pam/status',
 
-  protected getNodes(): Record<string, SystemNode> { return PAM_NODES; }
-  protected getEdges(): SystemEdge[]               { return PAM_EDGES;  }
-  protected getDemoEvents(): SystemEvent[]          { return DEMO_EVENTS; }
+  getNodes(): Record<string, SystemNode> { return PAM_NODES; },
+  getEdges(): SystemEdge[]               { return PAM_EDGES; },
+  getDemoEvents(): SystemEvent[]         { return DEMO_EVENTS; },
 
-  protected handleEvent(ev: SystemEvent): void {
+  handleEvent(ev: SystemEvent, cb: SystemRendererCallbacks): void {
     const CYAN   = '#00d4ff';
     const GREEN  = '#00ffb3';
     const ORANGE = '#ff6b35';
@@ -102,17 +107,17 @@ export class PamRenderer extends SystemRenderer {
 
     switch (type) {
       case 'pam_start':
-        this.setNodeState('app',     'active');
-        this.setNodeState('pamconf', 'active');
-        this.setNodeState('libpam',  'active');
-        this.firePacket('app', 'libpam', CYAN);
+        cb.setNodeState('app',     'active');
+        cb.setNodeState('pamconf', 'active');
+        cb.setNodeState('libpam',  'active');
+        cb.firePacket('app', 'libpam', CYAN);
         break;
 
       case 'module_call': {
         const id = pamModuleToNode(module, phase);
         if (id) {
-          this.setNodeState(id, 'active');
-          this.firePacket('libpam', id, CYAN);
+          cb.setNodeState(id, 'active');
+          cb.firePacket('libpam', id, CYAN);
         }
         break;
       }
@@ -120,59 +125,59 @@ export class PamRenderer extends SystemRenderer {
       case 'module_result': {
         const id = pamModuleToNode(module, phase);
         if (id) {
-          this.setNodeState(id, success ? 'success' : 'failed');
-          if (success) this.firePacket(id, 'libpam', GREEN);
+          cb.setNodeState(id, success ? 'success' : 'failed');
+          if (success) cb.firePacket(id, 'libpam', GREEN);
         }
         break;
       }
 
       case 'sssd_call':
-        this.setNodeState('sssd', 'active');
-        this.firePacket('mod_sss_a', 'sssd', CYAN);
+        cb.setNodeState('sssd', 'active');
+        cb.firePacket('mod_sss_a', 'sssd', CYAN);
         break;
 
       case 'sssd_result':
-        this.setNodeState('sssd',     success ? 'success' : 'failed');
-        this.setNodeState('sssd_nss', success ? 'active'  : 'failed');
-        if (success) this.firePacket('sssd', 'libpam', GREEN);
+        cb.setNodeState('sssd',     success ? 'success' : 'failed');
+        cb.setNodeState('sssd_nss', success ? 'active'  : 'failed');
+        if (success) cb.firePacket('sssd', 'libpam', GREEN);
         break;
 
       case 'krb_call':
-        this.setNodeState('krb', 'active');
-        this.firePacket('sssd', 'krb', CYAN);
+        cb.setNodeState('krb', 'active');
+        cb.firePacket('sssd', 'krb', CYAN);
         break;
 
       case 'krb_result':
-        this.setNodeState('krb', success ? 'success' : 'failed');
-        if (success) this.firePacket('krb', 'sssd', GREEN);
+        cb.setNodeState('krb', success ? 'success' : 'failed');
+        if (success) cb.firePacket('krb', 'sssd', GREEN);
         break;
 
       case 'session_open':
-        this.setNodeState('mod_limits', 'success');
-        this.setNodeState('mod_mkhome', 'success');
-        this.firePacket('libpam', 'mod_limits', ORANGE);
+        cb.setNodeState('mod_limits', 'success');
+        cb.setNodeState('mod_mkhome', 'success');
+        cb.firePacket('libpam', 'mod_limits', ORANGE);
         break;
 
       case 'access_granted':
-        this.setNodeState('app',    'success');
-        this.setNodeState('libpam', 'success');
-        this.firePacket('libpam', 'app', GREEN);
-        this.log('ACCESS GRANTED', 'ok');
+        cb.setNodeState('app',    'success');
+        cb.setNodeState('libpam', 'success');
+        cb.firePacket('libpam', 'app', GREEN);
+        cb.log('ACCESS GRANTED', 'ok');
         break;
 
       case 'access_denied':
-        this.setNodeState('libpam', 'failed');
-        this.setNodeState('app',    'failed');
-        this.log('ACCESS DENIED', 'err');
+        cb.setNodeState('libpam', 'failed');
+        cb.setNodeState('app',    'failed');
+        cb.log('ACCESS DENIED', 'err');
         break;
 
       case 'pam_end':
         // Brief pause then reset — let the animation breathe
-        setTimeout(() => this.resetAllNodes(), 2000);
+        setTimeout(() => cb.resetAllNodes(), 2000);
         break;
     }
-  }
-}
+  },
+};
 
 // ─── PAM-private helper ───────────────────────────────────────────────────────
 

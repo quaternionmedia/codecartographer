@@ -588,7 +588,7 @@ export function ControlPanel(
           m('option', { value: 'd3' }, 'D3.js (Force-directed)'),
           m('option', { value: 'gravis' }, 'Gravis (vis-network)'),
           m('option', { value: 'notebook' }, 'Notebook (Static HTML)'),
-          m('option', { value: 'system' }, 'System Monitor (PAM)'),
+          m('option', { value: 'system' }, 'System Monitor'),
         ]),
       ]),
 
@@ -598,7 +598,7 @@ export function ControlPanel(
         SystemDefinitionRegistry.all().length > 1 ? m('div.panel-settings__group', [
           m('span.panel-settings__label-compact', 'System'),
           m('select.panel-settings__select', {
-            value: styling.systemId ?? 'pam',
+            value: styling.systemId ?? 'moat',
             onchange: (e: Event) => {
               callbacks.onGraphStylingChange({ systemId: (e.target as HTMLSelectElement).value });
             },
@@ -611,15 +611,18 @@ export function ControlPanel(
         m('span.panel-settings__label-compact', 'Mode'),
         m('div', { style: { display: 'flex', gap: '6px', marginTop: '6px' } }, [
           m('button.panel-settings__option', {
-            class: (styling as Record<string, unknown>).pamMode !== 'live' ? 'panel-settings__option--active' : '',
-            onclick: () => callbacks.onGraphStylingChange({ pamMode: 'demo' }),
+            class: (styling as Record<string, unknown>).systemMode !== 'live' ? 'panel-settings__option--active' : '',
+            onclick: () => callbacks.onGraphStylingChange({ systemMode: 'demo' }),
           }, 'Demo'),
           m('button.panel-settings__option', {
-            class: (styling as Record<string, unknown>).pamMode === 'live' ? 'panel-settings__option--active' : '',
-            onclick: () => callbacks.onGraphStylingChange({ pamMode: 'live' }),
+            class: (styling as Record<string, unknown>).systemMode === 'live' ? 'panel-settings__option--active' : '',
+            onclick: () => callbacks.onGraphStylingChange({ systemMode: 'live' }),
           }, 'Live'),
         ]),
-        m('p.panel-settings__hint', 'Demo always works. Live streams system events via WebSocket.'),
+        m('p.panel-settings__hint',
+          'Demo replays the derived history on a loop. Live streams over the '
+          + "definition's WebSocket — the PAM feed tails auth.log; a derived "
+          + 'system replays its clone once, labelled as a replay.'),
       ]) : null,
 
       // Layout section
@@ -770,13 +773,14 @@ export function ControlPanel(
                   m('span.panel-settings__label-compact', 'Color By'),
                   m('select.panel-settings__select', {
                     value: styling.colorBy ?? 'auto',
-                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/llm/roadmap/lexicon.md); nodes without a layer fall back to the default.',
+                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/llm/roadmap/lexicon.md); Construct mode by what each node is, alike across languages (codecarto/data/constructs.yaml). A node without one keeps its own colour.',
                     onchange: (e: Event) => {
                       callbacks.onGraphStylingChange({ colorBy: (e.target as HTMLSelectElement).value });
                     },
                   }, [
                     m('option', { value: 'auto' }, 'Auto (depth/kind)'),
                     m('option', { value: 'layer' }, 'Abstraction Layer'),
+                    m('option', { value: 'construct' }, 'Construct (across languages)'),
                   ]),
                 ]),
                 m('div.panel-settings__group', [
