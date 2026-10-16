@@ -4,8 +4,8 @@
  * One polar convention (contract §2): angle origin −90° (12 o'clock),
  * clockwise. Radii in density-independent units.
  *
- * Ported from quaternionmedia/rad @ d362abd. Semantics are fixed by
- * conformance/vectors.json v0.4.0 — see core/README.md.
+ * Ported from quaternionmedia/rad @ d362abd. Semantics are fixed by the
+ * governed vectors this host replays, web/tests/rad/vectors.v0.0.1.json.
  */
 import type { Geometry } from './types.js';
 

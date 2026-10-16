@@ -1,0 +1,9 @@
+[package]
+name = "blinky"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+hal = { path = "../hal" }
+cortex-m-rt = "0.7"
+panic-halt = "0.2"
