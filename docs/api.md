@@ -2,14 +2,13 @@
 
 REST API documentation for Codecarto backend.
 
-**Base URL:** `http://127.0.0.1:<port>` — the port is `codecarto.cli.DEFAULT_PORT`,
-the constant `uv run qm dashboard` in the corpus allocates to this project;
-`uv run codecarto serve --help` prints it, and `CODECARTO_PORT` or `--port`
-overrides it. The examples below write `$API` for that base.
-**Interactive Docs:** `$API/docs` — every route the running server registered,
-which is the authority; this page is the map.
-**Identity:** `$API/openapi.json` names the app `codecarto`. Ask before believing
-a port: several of this org's servers run on one workstation.
+**Base URL:** `http://127.0.0.1:<port>`, where the port is
+`codecarto.cli.DEFAULT_PORT`; `uv run codecarto serve --help` prints it, and
+`CODECARTO_PORT` or `--port` overrides it. The examples write `$API` for that
+base.
+**Interactive docs:** `$API/docs` lists every route the running server
+registered.
+**Identity:** `$API/openapi.json` names the app `codecarto`.
 
 ---
 
@@ -22,22 +21,47 @@ a port: several of this org's servers run on one workstation.
 | `/c-parser` | c-parser | C/H semantic parsing (requires `[c-parsing]` optional dep) |
 | `/repo` | repo | GitHub + local repository tree operations |
 | `/pam` | pam | PAM auth log monitor |
+| `/system` | system | Derived system diagrams, read from a local clone |
 | `/palette` | palette | Color palette management |
-| `/lexicon` | lexicon | Hand-authored language lexicons, as graphs |
+| `/lexicon` | lexicon | Hand-authored language lexicons, the construct vocabulary and the chrestomathy |
+| `/cargo` | cargo | A Cargo workspace and its last recorded build, as graph data -- read, never run |
 | `/topology` | topology | The harness's flows, as graph data |
-| `/capabilities` | capabilities | What each named thing this estate can do has reached |
+| `/capabilities` | capabilities | The governance corpus's capability registry, as graph data |
 | `/overview` | overview | dossier's reading of the estate, as graph data |
 | `/estate` | estate | Every seam above and whether each is there |
 | `/auth` | auth | Which GitHub credential source is active |
 | `/db` | db | Graphbase, when `MONGODB_URI` is set |
+
+`/app` serves the built web application from `web/dist` when a build is present.
+While developing, the frontend's dev server proxies each prefix above to the
+backend, so the app and its API share an origin as they do in production;
+`API_PATHS` in `web/vite.config.js` is that list.
 
 ---
 
 ## Unified Parse Endpoints
 
 These are the recommended endpoints. They work across all registered languages
-(.py via Python parser, .c/.h via C parser) and produce gJGF output that any renderer
-can display.
+(`GET /parse/languages` lists them: Python by its AST, C/C++ by libclang, Rust by
+an item-level reader, linker scripts by theirs, the rest by a regex per language)
+and produce gJGF output that any renderer can display.
+
+Folder and file ids are the path from the root (`file::ws/crates/hal/src/lib.rs`),
+so two files with one name are two nodes.
+
+Every node a language in `codecarto/data/constructs.yaml` produces also carries
+`construct` -- what it *is*, the same across languages (`type.product` for a C or
+Rust struct) -- and, where its qualifiers, attributes or body say so,
+`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`), and, for
+a construct with a look, `construct_color` and `construct_name` (what "Color By:
+Construct" draws and the key names). Every graph route stamps these as it
+serializes, and a cached graph is stamped again as it is replayed, so any graph
+on the canvas can be read by `POST /lexicon/chrestomathy/census`. A local
+Rust repository with a recorded `target/codecarto/check.jsonl` has rustc's
+diagnostics on the items they name (`meta.diagnostics`, `meta.messages`,
+`meta.diagnostics_recorded_at`), and with a recorded `target/codecarto/<bin>.map`
+the linker script's regions and sections carry what the link measured
+(`meta.measured`) and functions and statics their size (`meta.bytes`).
 
 ### POST `/parse/unified`
 
@@ -65,9 +89,10 @@ Parse a directory tree to the requested depth and return a gJGF graph.
 
 **`annotate_lexicon`** (default `false`): stamp Lexicon abstraction-layer
 data (`layer_ordinal`, `meta.lexicon_layers`) onto nodes whose language
-has one (currently `c`, `python` — see `docs/llm/roadmap/lexicon.md`).
-Opt-in: existing callers see no change. Requests with this set to `true`
-bypass the response cache (the cache key doesn't vary on this field).
+has one (`c`, `python` and `rust`; `GET /lexicon/` lists them — see
+`docs/architecture.md`, *Lexicons and the construct vocabulary*). Requests
+with this set to `true` bypass the response cache, whose key does not include
+it.
 
 **`layout` values:**
 
@@ -90,9 +115,9 @@ bypass the response cache (the cache key doesn't vary on this field).
 **Response:**
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "parse/unified - Success",
-  "data": {
+  "results": {
     "graph": {
       "nodes": {
         "dir::myrepo": { "metadata": { "depth": 0, "kind": "directory", "label": "myrepo", "language": "unknown" }},
@@ -190,17 +215,21 @@ rooted at `node_id` and its descendants.
 
 ### GET `/parse/languages`
 
-List all registered language parsers and their file extensions.
+List all registered language parsers and their file extensions: one key per
+language, each with the extensions it reads.
 
-**Response:**
+**Response** (the first four of the languages):
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "parse/languages - Success",
-  "data": {
+  "results": {
     "languages": {
       "python": [".py"],
-      "c": [".c", ".h"]
+      "c": [".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hxx"],
+      "rust": [".rs"],
+      "linker": [".ld", ".lds", ".x"],
+      ...
     }
   }
 }
@@ -210,11 +239,7 @@ List all registered language parsers and their file extensions.
 
 ## Plotter Endpoints
 
-Only two routes remain here — the rest of `/plotter/*` (`whole_repo`,
-`whole_repo_deps`, `folder`, `file`, `url`, `local_directory`) were dead
-code (zero frontend callers, fully superseded by `/parse/unified`) and were
-removed in the parser/cache unification pass. Use `/parse/unified` for
-parsing; these two are demo/rendering utilities, not parse entry points.
+Two demo and rendering routes. To parse, use `/parse/unified`.
 
 ### POST `/plotter/demo`
 
@@ -244,8 +269,9 @@ Convert GraphData JSON to pre-rendered HTML for the Notebook renderer.
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": { "text/html": "<html>...</html>" }
+  "status": 200,
+  "message": "Success",
+  "results": { "text/html": "<html>...</html>" }
 }
 ```
 
@@ -253,8 +279,8 @@ Convert GraphData JSON to pre-rendered HTML for the Notebook renderer.
 
 ## C Parser Endpoints
 
-Require the optional `[c-parsing]` dependency group (libclang).
-Install with: `uv pip install 'codecarto[c-parsing]'`
+Require the optional `c-parsing` extra (libclang), which the install in
+[Getting Started](getting-started.md) includes.
 
 ### POST `/c-parser/file`
 
@@ -268,8 +294,9 @@ Parse a single C/H source file.
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": {
+  "status": 200,
+  "message": "c-parser/file - Success",
+  "results": {
     "graph": {
       "nodes": [...],
       "edges": [...],
@@ -293,14 +320,14 @@ Parse a single C/H source file.
 }
 ```
 
-> **Note:** `/c-parser/*` returns a legacy flat `{nodes, edges, meta}` dict, not
-> gJGF — the frontend's `adaptCGraphToGJGF` converts it. `/parse/unified` with
-> `.c`/`.h` extensions produces gJGF natively and, since the unification pass,
-> the *same* cross-file CALLS resolution, stub-header diagnostics, and
+> **Note:** `/c-parser/*` returns a flat `{nodes, edges, meta}` dict, not
+> gJGF, and the web application does not call it. `/parse/unified` with
+> `.c`/`.h` extensions produces gJGF natively, with the *same* cross-file
+> CALLS resolution, stub-header diagnostics, and
 > `has_parse_warning` flagging as this dedicated pipeline — both call into the
 > same `CParser` engine (per-symbol extras like `field_count`/`qualifiers`
 > live under each unified node's `meta` field instead of top-level). Prefer
-> `/parse/unified` unless you specifically need this legacy flat shape.
+> `/parse/unified` unless you need this flat shape.
 
 When parsing without a `compile_commands.json` (i.e. `parse_files`/`parse_directory`,
 which backs `/c-parser/file`, `/c-parser/directory`, and `/c-parser/github`), each
@@ -347,21 +374,18 @@ file-by-file progress events.
 
 ### POST `/c-parser/stream-github`
 
-Streamed variant of `/c-parser/github`, used by the "C" example chips
-(git, curl, Lua, SQLite, Redis) in earlier frontend builds. The current
-web UI routes those chips through the unified `/parse/stream-url` flow;
-this endpoint remains available for direct/manual callers. libclang parsing
+Streamed variant of `/c-parser/github`. The web application's C examples go
+through `/parse/stream-url`; this route is for direct callers. libclang parsing
 is synchronous CPU-bound work, so it runs in a background thread while this
-endpoint drains its progress queue and forwards SSE events in real time —
-see "C semantic stream path" in `docs/llm/ARCHITECTURE.md` for the full
-design rationale.
+endpoint drains its progress queue and forwards SSE events as they arrive —
+see `docs/architecture.md`, *C: two pipelines*.
 
 **Request Body:** same as `/c-parser/github`.
 
 **Response:** `Content-Type: text/event-stream`:
 
 If the request matches a cached parsed graph (`CacheService`, Cache A — see
-`docs/llm/ARCHITECTURE.md` "Two C-parser caches"), all events are replayed
+`docs/architecture.md`, *The two caches*), all events are replayed
 instantly (`from_cache: true`) with positions baked into each node and a
 `reposition` event restoring the saved layout.
 
@@ -401,14 +425,15 @@ List extracted GitHub repos in the C-parser's repo cache (newest first).
 This is a *different* cache from `GET /parse/cache` — that one lists cached
 *parsed graphs*; this one lists cached *extracted source trees* (downloaded
 zip contents, re-parsed fresh on every request — only the download+extract
-step is skipped on a hit). See `docs/llm/ARCHITECTURE.md`'s "Two C-parser
-caches" for why these aren't merged into one.
+step is skipped on a hit). `docs/architecture.md`, *The two caches*, sets
+the two side by side.
 
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": {
+  "status": 200,
+  "message": "c-parser/cache - Success",
+  "results": {
     "entries": [
       { "key": "git-git", "owner": "git", "repo": "git", "url": "...", "ts": 1234567890.0, "age_seconds": 120, "size_bytes": 45000000 }
     ]
@@ -441,8 +466,8 @@ request. There is no separate set of local-only endpoints.
 
 Fetch the directory tree of a GitHub repository **or** a local path.
 
-For GitHub URLs, the result is cached (see "Two C-parser caches" in
-ARCHITECTURE.md for the cache layout) — a repeat call for the same repo
+For GitHub URLs, the result is cached (see `docs/architecture.md`, *The two
+caches*, for the layout) — a repeat call for the same repo
 within `CC_CACHE_TTL` (default 24h) returns instantly with no GitHub calls.
 On a cache miss, the repo's full tree is fetched in two GitHub API calls
 (`github_service.fetch_tree_fast`, the Git Trees API) regardless of repo
@@ -467,9 +492,9 @@ curl "$API/repo/tree?url=/path/to/local/project"
 **Response:**
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "read_github_url - Success",
-  "data": {
+  "results": {
     "info": { "owner": "fastapi", "name": "fastapi", "url": "..." },
     "size": 1234567,
     "root": { "name": "fastapi", "files": [...], "folders": [...] },
@@ -479,8 +504,10 @@ curl "$API/repo/tree?url=/path/to/local/project"
 ```
 
 **Notes:**
-- GitHub: repos > 1 GB are rejected; requires a token for private repos
-  (place in `/run/secrets/github_token` or `token.txt`)
+- GitHub: no repository is refused for its size; one of 50 MB or more gets the
+  shallow listing above. A private repository needs a token, resolved in the
+  order `docs/services.md` gives under *GitHub Token* (`gh auth login` is
+  enough on a workstation)
 - Local: default extension filter is every extension `ParserRegistry`
   knows about (not just `.py`); default excludes `.git`, `.venv`,
   `node_modules`, `.vs`, `.idea`, `bin`, `obj`, etc. (see
@@ -511,6 +538,18 @@ returning a full `Directory` with `is_partial: false`.
 If the full tree is already cached the response is served immediately with no
 GitHub calls. The result is a `Directory` model in the same shape as
 `/repo/tree`.
+
+---
+
+### GET `/repo/examples`
+
+The examples bundled with this checkout (`examples/` at the repository root),
+for the project selector to offer beside its GitHub ones: each with `id`,
+`label`, `language`, `title`, the absolute `path` it is read from, and `cargo`
+-- whether it is a Cargo workspace, whose recorded documents the selector also
+loads into the Cargo panel. Only what `codecarto/services/examples_service.py`
+names is offered, and an installed package, which has no `examples/`, answers
+an empty list.
 
 ---
 
@@ -551,6 +590,33 @@ Replay a captured session's events at 3x speed.
 
 ---
 
+## Derived System Endpoints
+
+A diagram derived from a repository's own declarations by
+`codecarto/services/system_composer.py`, rather than drawn by hand. The
+repository is named, and found beside this checkout by that name; a name with a
+path separator or a leading dot is refused.
+
+### GET `/system/repos`
+
+The repositories this server can find beside its checkout, and where each is.
+
+### GET `/system/compose?repo=moat`
+
+The components and edges the named repository declares.
+
+### GET `/system/events?repo=moat&limit=30`
+
+Recent changes and in-flight branches in the named repository (`limit`: 1-200,
+default 30).
+
+### WebSocket `/system/ws/replay?repo=moat`
+
+The same changes replayed at a readable pace. Every frame carries
+`"replay": true`; it is the clone's history, not a live feed.
+
+---
+
 ## Auth Endpoints
 
 ### GET `/auth/github`
@@ -564,7 +630,7 @@ issue described in *GitHub token resolution order* (`governance/qm/adr/`).
 {
   "source": "gh CLI keyring",
   "authenticated": true,
-  "token_prefix": "gho_Ccw0…"
+  "token_prefix": "gho_XXXX…"
 }
 ```
 
@@ -576,11 +642,12 @@ issue described in *GitHub token resolution order* (`governance/qm/adr/`).
 
 ## Graphbase Endpoints (`/db/*`)
 
-Mounted **only** when `MONGODB_URI` env var is set. All routes return 404
-otherwise. See `governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why this
-store is separate from the filesystem `CacheService`.
+Mounted only when `MONGODB_URI` is set. Without it, `GET /db/` returns
+`{"available": false, "reason": …}` and every other `/db/*` route returns 404.
+See `governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why this store
+is separate from the filesystem `CacheService`.
 
-The graphbase submodule exposes three typed collections:
+The graphbase submodule exposes four collections:
 
 | Collection | Purpose | Key |
 |------------|---------|-----|
@@ -639,11 +706,12 @@ Delete a specific history entry.
 
 Hand-authored per-language ontologies (reserved words/operators on a
 hierarchy of abstraction layers), projected into the same graph pipeline
-the parsers use. See `docs/llm/roadmap/lexicon.md` for the full design.
+the parsers use. `docs/architecture.md`, *Lexicons and the construct
+vocabulary*, describes them.
 
 ### GET `/lexicon/`
 
-List available language ids (e.g. `{"languages": ["c", "python"]}`).
+List available language ids (`results.languages`, e.g. `["c", "python", "rust"]`).
 
 ### GET `/lexicon/{language}`
 
@@ -656,29 +724,106 @@ serialization pipeline (`GraphSerializer.serialize_to_gjgf`, real layout
 positions included) every parsed-code graph uses, so it renders through
 the existing D3 pipeline unchanged. Token nodes carry `layer_ordinal`
 and `kind` for coloring by abstraction level (see the `colorBy: 'layer'`
-styling option). **Not** `LexiconService.to_json()`'s plain node-link
-dump — that shape isn't recognized by the frontend renderer at all
-(verified directly; an earlier version of this doc claimed otherwise).
+styling option). Use this route, not `LexiconService.to_json()`; the front
+end cannot draw the node-link shape.
 
 ### GET `/lexicon/{language}/index`
 
 Token-spelling → contexts lookup (which layers/groups a token appears
 in) — the join `unified_parser_service.py`'s `annotate_lexicon` flag
 uses to enrich real parsed graphs (see `POST /parse/unified` above).
+Annotated nodes also carry `layer_color`, which "Color By: Abstraction
+Layer" draws and the legend names.
+
+### GET `/lexicon/constructs`
+
+The construct vocabulary (`codecarto/data/constructs.yaml`) as an index: each
+construct's `id`, `name`, `gloss`, whether it is a `facet` (something a node can
+*also* be) and the `languages` that spell or parse it. Registered before
+`/lexicon/{language}`, which would otherwise answer for it.
+
+### GET `/lexicon/chrestomathy/{construct}`
+
+One construct set beside itself across every language: per language, the
+`tokens` that spell it with their lexicon `contexts` (layer and group), the
+parser `kinds` that realise it, what `carried_by` a facet in source (`#[interrupt]`,
+`qualifier volatile`), and a `note`. **A language with no spelling is a row with
+its note, never a missing row** -- Rust has no `volatile`, C has no method. An
+unknown construct is a 200 with `unreadable`, `problem` and the known ids as
+`remedy`.
+
+### POST `/lexicon/chrestomathy/census`
+
+The chrestomathy of a graph. Body: `{"nodes": [{"id", "language", "kind",
+"construct"?, "meta"?: {"facets"?}}]}` -- the nodes on the canvas. Answers the
+`constructs` and `facets` present, each with its `name`, `gloss`, `look`,
+`count`, the `languages` it occurs in with their counts, and the `ids` of the
+nodes that are it; then what was not placed: `unplaced` (a listed language's
+kind the vocabulary does not map), `outside` (a language it does not list) and
+`unlabelled` (no language at all), with the `caveat`. A node that arrived
+without a stamp is stamped by the same rule as a drawn graph; nothing sent is
+changed.
+
+### GET `/lexicon/chrestomathy/{construct}/gjgf?layout=`
+
+The same reading as `GraphData`: the construct at the centre, each language
+around it (a silent one on a dashed edge, its note as the hover), tokens
+coloured by abstraction layer. `metadata.kind` is `chrestomathy`, with the
+`layers` ramp and the `caveat`.
+
+---
+
+## Cargo Endpoints (`/cargo`)
+
+A Cargo workspace's crates, targets, dependencies, features, native libraries
+and device targets, and what the last recorded build said. **The window never
+runs cargo**: running it on a path runs that path's build scripts, proc macros
+and configured `rustc`. It reads manifests (`Cargo.toml`, `Cargo.lock`,
+`.cargo/config.toml`, memory maps) and the two documents
+`uv run codecarto cargo record <path>` writes under `<path>/target/codecarto/`:
+`metadata.json` (`cargo metadata --format-version 1`) and `check.jsonl`
+(`cargo check --message-format=json`). The same envelope and absence rules as the
+estate routes below: status 200, and a path that is not a workspace is
+`unreadable` with a `problem`, a `remedy` and `where`.
+
+### GET `/cargo/gjgf?path=&layout=&palette_id=&features=&transitive=`
+
+The workspace as `GraphData`. Nodes: the workspace, each member crate with its
+targets (lib, bin, build script, proc macro, tests), external crates, native
+libraries (`links`, and `cargo:rustc-link-lib` from a recorded build script),
+device targets from `.cargo/config.toml` (a `runner` is shown, never run) and
+memory maps. A dependency edge is labelled and coloured by its kind; a
+dev-dependency, an optional one and a platform-specific one are dashed and say
+their condition. `features=true` adds features and what each enables;
+`transitive=true` adds the lockfile's dependencies of dependencies. Targets
+carry the recorded diagnostics in their label and `meta.diagnostics`; a binary
+with a recorded link map carries each region's fill in its label and
+`meta.memory`.
+
+`metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
+`metadata.json` is newer than every manifest, `manifests` otherwise -- a stale
+document is not used, and says so), `generated_at`, every `documents` row with
+`present`, `used`, `stale` and `problem` -- a recorded `<bin>.map` among them --
+the recorded `diagnostics` counts, `build_success`, `firmware`, and the `caveat`.
+
+### GET `/cargo/data?path=`
+
+The reading without a layout: `packages` (with `dependencies`, `targets`,
+`features`, `resolved_features`, `no_std`, `links`, `memory_maps`), `documents`,
+`diagnostics`, `artifacts`, `scripts`, `build_success`, `firmware`, `memory`
+(each recorded map's region use, by binary), `notes` and `caveat` -- comparable
+with what `cargo metadata` says rather than only drawable.
 
 
 ---
 
 ## Estate Endpoints
 
-Four routers draw things this project does not own — the harness's topologies,
-the corpus's capability registry, dossier's overview seam — and one says whether
-each is there. They share two rules, stated in each router's docstring: **they
-serve a codecarto graph, not a picture of one** (a `networkx` graph handed to
-`GraphSerializer`, so every layout, palette and extension applies), and **an
-absence is a sentence, never an empty graph** (status 200; `results` carries
-`unreachable` or `unreadable`, a `problem`, a `remedy` and `where`). The front
-end's `web/src/features/estate/seam_client.ts` tells the outcomes apart.
+These routes draw data other projects produce, and `/estate/seams` says
+whether each source is there. The drawing routes return `{graph, metadata}`.
+When the source is missing they still return 200, with `results.unreachable`
+or `results.unreadable`, plus `problem`, `remedy` and `where`. The front end's
+`web/src/features/estate/seam_client.ts` tells the outcomes apart.
 
 ### GET `/estate/seams`
 
@@ -779,23 +924,27 @@ response to mistake for a successful lookup.
 
 ## Response Format
 
-All endpoints use a consistent envelope:
+Routes answer in `generate_return`'s envelope (`codecarto/util/utilities.py`):
 
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "route/action - Success",
-  "data": { ... }
+  "results": { ... }
 }
 ```
 
+The estate routes put an absence inside a 200 (`results.unreadable` or
+`results.unreachable`, with `problem`, `remedy` and `where`), because the route
+worked and the thing it reads was not there.
+
 ### Error Response
+
+A route that fails raises, and the server answers with the HTTP status and the
+message alone (`main.py`'s `http_exception_handler`):
+
 ```json
-{
-  "code": 404,
-  "message": "Error description",
-  "data": { "source": "function_name", "params": { ... } }
-}
+{ "message": "Error description" }
 ```
 
 ### Error Codes
@@ -816,7 +965,6 @@ All endpoints use a consistent envelope:
 Allowed origins (configurable in `main.py`):
 - `http://localhost:1234` (Vite dev / parcel)
 - `http://localhost:1235` (Vite alt)
-- `http://localhost:5000` (development tools)
 
 ---
 
@@ -842,7 +990,7 @@ curl -X POST "$API/parse/unified" \
 
 ```bash
 curl "$API/parse/languages"
-# -> { "languages": { "python": [".py"], "c": [".c", ".h"] } }
+# -> results.languages: { "python": [".py"], "c": [".c", ".h", ".cpp", ...], "rust": [".rs"], ... }
 ```
 
 ### Parse a local C directory (dedicated C-parser pipeline)

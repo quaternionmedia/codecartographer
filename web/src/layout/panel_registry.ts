@@ -10,7 +10,8 @@
  * by ParserRegistry (backend) and the D3/Gravis/Notebook renderer registry
  * (frontend) elsewhere in this codebase.
  *
- * See ADR 0005 (governance/qm/adr/) for why this generalization exists.
+ * See governance/qm/adr/DRAFT-panel-registry-and-add-window-menu.md for why
+ * this generalization exists.
  */
 
 import m from 'mithril';
@@ -28,12 +29,17 @@ import { createTopologyPanel } from './panels/topology_panel';
 import { createEstatePanel } from './panels/estate_panel';
 import { createCapabilitiesPanel } from './panels/capabilities_panel';
 import { createOverviewPanel } from './panels/overview_panel';
+import { createCargoPanel } from './panels/cargo_panel';
+import { createChrestomathyPanel } from './panels/chrestomathy_panel';
 
 export type DockPanelId =
   | 'graph' | 'file-tree' | 'upload-panel' | 'repo-panel' | 'graphbase-panel'
   | 'graph-settings-panel' | 'plotbar'
   // The estate: what is up, and the three seams this window draws.
-  | 'estate-panel' | 'topology-panel' | 'capabilities-panel' | 'overview-panel';
+  | 'estate-panel' | 'topology-panel' | 'capabilities-panel' | 'overview-panel'
+  // Code cartography past one parse: a Rust workspace, and one construct read
+  // across every language.
+  | 'cargo-panel' | 'chrestomathy-panel';
 
 export interface PanelDefinition {
   readonly id: DockPanelId;
@@ -81,6 +87,20 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     mount: (ctx, el) => m.mount(el, createOverviewPanel(ctx)),
   },
   {
+    id: 'cargo-panel',
+    menuLabel: 'Cargo',
+    config: { type: 'component', componentType: 'cargo-panel', id: 'cargo-panel', title: '⚙ Cargo', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createCargoPanel(ctx)),
+  },
+  {
+    id: 'chrestomathy-panel',
+    menuLabel: 'Chrestomathy',
+    config: { type: 'component', componentType: 'chrestomathy-panel', id: 'chrestomathy-panel', title: '⇄ Chrestomathy', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createChrestomathyPanel(ctx)),
+  },
+  {
     id: 'file-tree',
     menuLabel: 'Files',
     config: { type: 'component', componentType: 'file-tree', id: 'file-tree', title: '◉ Files', isClosable: true },
@@ -104,7 +124,7 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'graphbase-panel',
     menuLabel: 'Graphbase',
-    config: { type: 'component', componentType: 'graphbase-panel', id: 'graphbase-panel', title: '◈ Graphbase', isClosable: true },
+    config: { type: 'component', componentType: 'graphbase-panel', id: 'graphbase-panel', title: '▦ Graphbase', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createGraphbasePanel(ctx)),
   },

@@ -22,7 +22,7 @@ import { HOST_VERBS } from './vocabulary.js';
  * how a menu opened on a partially-streamed graph stays honest.
  */
 export interface MenuFacts {
-  /** Unified-schema depth: 0 dir, 1 file, 2 symbol. */
+  /** Unified-schema depth: 0 dir, 1 file, 2 symbol, 3 sub-symbol. */
   depth?: number;
   /** Unified-schema kind, e.g. 'function', 'class', 'directory'. */
   kind?: string;
@@ -30,10 +30,12 @@ export interface MenuFacts {
   hasRenderedChildren?: boolean;
   /** True when the node is currently pinned. */
   pinned?: boolean;
-  /** True when a forge URL and line number are resolvable for this node. */
+  /** True when the node names the file it came from: View → Source opens it, at its line when known. */
   hasSource?: boolean;
   /** True when this node belongs to a compound cluster with bounds. */
   hasGroup?: boolean;
+  /** True when the vocabulary placed this node (it carries a `construct`). */
+  hasConstruct?: boolean;
   /** Number of nodes currently selected. */
   selectionCount?: number;
   /** True when at least one node is hidden. */
@@ -61,24 +63,33 @@ const COLOUR_RING: MenuItem[] = [
 ];
 
 /**
- * Depth 2 is the deepest tier the parser emits, so a symbol has nothing to
- * expand into. Expanding is what makes a large repo navigable, so it takes
- * the 12 o'clock wedge — index 0, the one a straight-up flick reaches.
+ * The deepest tier a parser emits. A symbol (depth 2) can hold sub-symbols at
+ * depth 3: a C or Rust struct's fields, a Rust impl's or trait's methods, a
+ * Python function's arguments and calls. `expand` asks the server for this
+ * depth, so a symbol parsed at the default depth 2 can be opened into them,
+ * and a depth-3 node has nothing to expand into.
+ */
+export const DEEPEST_DEPTH = 3;
+
+/**
+ * Expanding is what makes a large repo navigable, so it takes the 12 o'clock
+ * wedge — index 0, the one a straight-up flick reaches.
  */
 function nodeRing(f: MenuFacts): MenuItem[] {
-  const canExpand = (f.depth ?? 0) < 2;
+  const canExpand = (f.depth ?? 0) < DEEPEST_DEPTH;
   return [
     { id: 'expand', label: 'Expand', action: 'expand', enabled: canExpand },
     { id: 'collapse', label: 'Collapse', action: 'collapse', enabled: !!f.hasRenderedChildren },
     { id: 'neighbors', label: 'Neighbours', action: 'select-neighbors' },
     { id: 'pin', label: f.pinned ? 'Unpin' : 'Pin', action: 'pin' },
-    { id: 'colour', label: 'Colour', children: COLOUR_RING },
+    { id: 'colour', label: 'Color', children: COLOUR_RING },
     {
       id: 'view',
       label: 'View',
       children: [
         { id: 'source', label: 'Source', action: HOST_VERBS.VIEW_SOURCE, enabled: !!f.hasSource },
         { id: 'info', label: 'Info', action: HOST_VERBS.NODE_INFO },
+        { id: 'compare', label: 'Compare', action: HOST_VERBS.COMPARE, enabled: !!f.hasConstruct },
         { id: 'focus', label: 'Focus', action: HOST_VERBS.FOCUS_GROUP, enabled: !!f.hasGroup },
       ],
     },
@@ -106,7 +117,7 @@ function canvasRing(f: MenuFacts): MenuItem[] {
       action: 'clear-selection',
       enabled: (f.selectionCount ?? 0) > 0,
     },
-    { id: 'colour', label: 'Colour', children: COLOUR_RING },
+    { id: 'colour', label: 'Color', children: COLOUR_RING },
   ];
 }
 
@@ -116,7 +127,7 @@ function selectionRing(f: MenuFacts): MenuItem[] {
     { id: 'neighbors', label: 'Neighbours', action: 'select-neighbors' },
     { id: 'spread', label: 'Spread', action: 'spread', enabled: !!f.layoutAvailable },
     { id: 'cluster', label: 'Cluster', action: 'cluster', enabled: !!f.layoutAvailable },
-    { id: 'colour', label: 'Colour', children: COLOUR_RING },
+    { id: 'colour', label: 'Color', children: COLOUR_RING },
     { id: 'hide', label: 'Hide', action: 'hide' },
     { id: 'clear', label: 'Deselect', action: 'clear-selection' },
     {

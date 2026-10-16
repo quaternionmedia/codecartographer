@@ -21,6 +21,8 @@ export interface StreamCallbacks {
   onError: (msg: string) => void;
   /** Called on 'fetching' events (stream-url only): status message updates before nodes arrive. */
   onFetching?: (message: string) => void;
+  /** Called on 'note' events: what a parser could not read in files the graph still draws. */
+  onNote?: (message: string) => void;
 }
 
 export class PlotService {
@@ -96,7 +98,7 @@ export class PlotService {
    * Load a language's standalone Lexicon graph (Option A) - the same
    * node-link shape /parse/unified produces, so it renders through the
    * existing pipeline with no renderer changes. See
-   * docs/llm/roadmap/lexicon.md.
+   * docs/roadmap/lexicon.md.
    */
   public static async plotLexicon(
     lexiconUrl: string,
@@ -269,6 +271,7 @@ export class PlotService {
             case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
             case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
             case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, payload.from_cache); break;
+            case 'note':  callbacks.onNote?.(payload.message ?? ''); break;
             case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
           }
         });
@@ -327,6 +330,7 @@ export class PlotService {
             case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
             case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
             case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, payload.from_cache); break;
+            case 'note':  callbacks.onNote?.(payload.message ?? ''); break;
             case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
             // 'phase' events are informational — ignored silently
           }
