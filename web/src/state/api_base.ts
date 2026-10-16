@@ -10,6 +10,7 @@ export class API {
   private _capabilities: string = 'capabilities';
   private _overview: string = 'overview';
   private _estate: string = 'estate';
+  private _cargo: string = 'cargo';
 
   constructor(base: string) {
     this._base = base;
@@ -53,6 +54,10 @@ export class API {
 
   get estate(): string {
     return `${this._base}/${this._estate}`;
+  }
+
+  get cargo(): string {
+    return `${this._base}/${this._cargo}`;
   }
 
   get db(): string {

@@ -1,0 +1,59 @@
+Archive member included to satisfy reference by file (symbol)
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+FLASH            0x0000000008000000 0x0000000000080000 xr
+RAM              0x0000000020000000 0x0000000000020000 xrw
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD build/startup.o
+LOAD build/main.o
+LOAD build/crc.o
+LOAD build/uart.o
+                0x0000000020020000                _estack = (ORIGIN (RAM) + LENGTH (RAM))
+
+.isr_vector     0x0000000008000000      0x188
+                0x0000000008000000                . = ALIGN (0x4)
+ *(.isr_vector)
+ .isr_vector    0x0000000008000000      0x188 build/startup.o
+                0x0000000008000000                g_pfnVectors
+                0x0000000008000188                . = ALIGN (0x4)
+
+.text           0x0000000008000188      0x2a0
+ *(.text)
+ .text          0x0000000008000188       0x5c build/startup.o
+                0x0000000008000188                Reset_Handler
+ .text.main     0x00000000080001e4       0x2c build/main.o
+                0x00000000080001e4                main
+ .text.crc32_update_with_a_long_name
+                0x0000000008000210       0x6a build/crc.o
+                0x0000000008000210                crc32_update_with_a_long_name
+ .text.uart_poll
+                0x000000000800027a      0x1ae build/uart.o
+                0x000000000800027a                uart_poll
+                0x00000000080003f0                uart_isr
+ *fill*         0x0000000008000428        0x0
+
+.ARM.attributes
+                0x0000000000000000       0x2e
+ .ARM.attributes
+                0x0000000000000000       0x2e build/main.o
+
+.data           0x0000000020000000       0x10 load address 0x0000000008000428
+                0x0000000020000000                _sdata = .
+ *(.data)
+ .data.config   0x0000000020000000       0x10 build/main.o
+                0x0000000020000000                config
+
+.bss            0x0000000020000010      0x104
+                0x0000000020000010                _sbss = .
+ *(.bss)
+ .bss.rx_buffer
+                0x0000000020000010      0x100 build/uart.o
+                0x0000000020000010                rx_buffer
+ .bss.calls     0x0000000020000110        0x4 build/crc.o
+                0x0000000020000110                calls
+OUTPUT(build/firmware.elf elf32-littlearm)

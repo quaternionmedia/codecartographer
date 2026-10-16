@@ -49,6 +49,15 @@ class GraphSerializer:
         # front end's own menu is keyed by) was looked up as
         # `compound_layout_layout` and raised. Position is calculated here;
         # the spelling a caller chose is not a parameter of the calculation.
+        # **EVERY GRAPH SAYS WHAT ITS NODES ARE.** Every route's graph passes
+        # here, so this is where the construct vocabulary is applied once for
+        # all of them -- a crate graph, a linker script and a code map alike
+        # reach the canvas able to be read as a chrestomathy. Idempotent, so
+        # a graph its parser already stamped comes out the same.
+        from codecarto.services import construct_service
+
+        construct_service.annotate(ntxGraph)
+
         layout_name = layout_key(options.layout)
         positions = Positions().get_node_positions(graph=ntxGraph, layout_name=layout_name)
 

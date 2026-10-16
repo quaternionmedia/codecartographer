@@ -25,6 +25,7 @@ import type { GraphOps } from './graph_intents.js';
 import { EMPTY_VIEW_STATE, anyHidden } from './view_state.js';
 import type { NodeViewState } from './view_state.js';
 import { resolveToken } from '../dom/theme.js';
+import { VECTOR_VERSION } from '../index.js';
 
 export interface RadExtensionOptions {
   ops: GraphOps;
@@ -47,7 +48,7 @@ export class RadExtension extends BaseExtension<GraphNode, GraphEdge> {
   private attachment: Attachment | null = null;
 
   constructor(private readonly opts: RadExtensionOptions) {
-    super('rad', 'Radial menu', 'QM rad radial menu, conformant to vectors v0.4.0');
+    super('rad', 'Radial menu', `QM rad radial menu, conformant to vectors v${VECTOR_VERSION}`);
   }
 
   public apply(): void {

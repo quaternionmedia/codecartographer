@@ -1,5 +1,5 @@
 /**
- * Graphbase Panel — unified Graph Library
+ * Graphbase Panel
  *
  * Three tiers in one view:
  *   • Snapshots — full node/edge data, instant replay (MongoDB /db/snapshots)
@@ -45,7 +45,7 @@ export function createGraphbasePanel(ctx: LayoutContext): m.Component {
 
         // ── Header ───────────────────────────────────────────────────────────
         m('div.gl-graphbase-panel__header', [
-          m('span.gl-graphbase-panel__title', '◈ Graph Library'),
+          m('span.gl-graphbase-panel__title', 'Graphbase'),
           m('span.gl-graphbase-panel__status', {
             class: available
               ? 'gl-graphbase-panel__status--ok'

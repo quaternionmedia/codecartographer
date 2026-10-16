@@ -1,0 +1,19 @@
+{
+  // Builds the platform-free half of the system monitor to plain ES modules
+  // so the layout and replay functions run under `node --test` with no
+  // browser — the same split, for the same reasons, as tsconfig.rad.json.
+  // `lib` omits DOM, so a stray `document` in system_core.ts is a compile
+  // error here before it is a review comment.
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020"],
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "declaration": false,
+    "outDir": "dist-system",
+    "rootDir": "src/features/graph/services"
+  },
+  "include": ["src/features/graph/services/system_core.ts"]
+}
