@@ -64,6 +64,12 @@ def get_repo_root() -> Path:
     return REPO_ROOT
 
 
+def _fail(message: str) -> None:
+    """Say what failed, on stderr, and exit 1."""
+    click.secho(f"✗ {message}", fg="red", err=True)
+    raise SystemExit(1)
+
+
 def _ensure_npm_dependencies() -> bool:
     """Ensure npm dependencies are installed. Returns True if successful."""
     node_modules = WEB_DIR / "node_modules"
@@ -78,11 +84,11 @@ def _ensure_npm_dependencies() -> bool:
                 text=True
             )
             if result.returncode != 0:
-                click.secho(f"  ✗ npm install failed: {result.stderr}", fg="red")
+                click.secho(f"  ✗ npm install failed: {result.stderr}", fg="red", err=True)
                 return False
             click.secho("  ✓ Dependencies installed", fg="green")
         except FileNotFoundError:
-            click.secho("  ✗ npm not found in PATH", fg="red")
+            click.secho("  ✗ npm not found in PATH", fg="red", err=True)
             return False
     return True
 
@@ -138,15 +144,14 @@ def dev(host: str, port: int, no_frontend: bool):
     if not no_frontend:
         # Start frontend
         if not WEB_DIR.is_dir():
-            click.secho(f"  ✗ Web directory not found at {WEB_DIR}", fg="red")
             backend_proc.terminate()
-            return
-        
+            _fail(f"Web directory not found at {WEB_DIR}")
+
         # Check if node_modules exists, if not run npm install
         if not _ensure_npm_dependencies():
             backend_proc.terminate()
-            return
-        
+            raise SystemExit(1)
+
         click.echo("  → Frontend: http://localhost:1234")
         try:
             frontend_proc = subprocess.Popen(
@@ -155,10 +160,9 @@ def dev(host: str, port: int, no_frontend: bool):
                 shell=True
             )
         except FileNotFoundError:
-            click.secho("  ✗ npm not found in PATH", fg="red")
             backend_proc.terminate()
-            return
-    
+            _fail("npm not found in PATH")
+
     click.echo()
     click.secho("Press Ctrl+C to stop", fg="yellow")
     
@@ -184,13 +188,7 @@ def serve(host: str, port: int, reload: bool):
     """
     Start the FastAPI backend server only.
 
-    \b
-    API endpoints:
-    - /palette   - Color palette management
-    - /parser    - Source code parsing
-    - /plotter   - Graph plotting
-    - /polygraph - Graph operations
-    - /repo      - GitHub repository reading
+    The running server lists every route it mounts at /docs.
     """
     click.secho(f"🌐 Starting Codecarto API server...", fg="green", bold=True)
     click.echo(f"  → http://{host}:{port}")
@@ -221,15 +219,14 @@ def web():
     Frontend will be available at http://localhost:1234
     """
     if not WEB_DIR.is_dir():
-        click.secho(f"✗ Web directory not found at {WEB_DIR}", fg="red")
-        return
-    
+        _fail(f"Web directory not found at {WEB_DIR}")
+
     click.secho("🌍 Starting frontend dev server...", fg="green", bold=True)
-    
+
     # Check if node_modules exists, if not run npm install
     if not _ensure_npm_dependencies():
-        return
-    
+        raise SystemExit(1)
+
     click.echo("  → http://localhost:1234")
     click.echo()
     
@@ -238,7 +235,7 @@ def web():
     except KeyboardInterrupt:
         click.secho("✓ Frontend stopped", fg="green")
     except FileNotFoundError:
-        click.secho("✗ npm not found in PATH", fg="red")
+        _fail("npm not found in PATH")
 
 
 @cli.command()
@@ -257,8 +254,9 @@ def parse(filepath: str, output: str):
     from codecarto.models.source_data import Folder, File
     import json
     
-    click.secho(f"📄 Parsing: {filepath}", fg="green")
-    
+    # With -o json, stdout carries the JSON and nothing else.
+    click.secho(f"📄 Parsing: {filepath}", fg="green", err=output == "json")
+
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             source = f.read()
@@ -298,7 +296,7 @@ def parse(filepath: str, output: str):
                 for ntype, count in sorted(node_types.items()):
                     click.echo(f"    - {ntype}: {count}")
     except Exception as e:
-        click.secho(f"✗ Parse error: {e}", fg="red")
+        _fail(f"Parse error: {e}")
 
 
 @cli.command()
@@ -342,22 +340,25 @@ def info():
 @click.option("--fix", is_flag=True, help="Auto-fix issues with ruff")
 def lint(fix: bool):
     """
-    Run linting on the codebase.
+    Run ruff over the codecarto package.
 
-    Uses ruff for fast Python linting.
+    ruff is in the dev extra. Exits 1 when ruff finds issues or is missing.
     """
+    import shutil
+
     click.secho("🔍 Running linter...", fg="green", bold=True)
-    
-    cmd = ["ruff", "check", str(REPO_ROOT / "codecarto")]
+
+    ruff = shutil.which("ruff")
+    if ruff is None:
+        _fail("ruff not found. `uv sync --extra dev` installs it")
+    cmd = [ruff, "check", str(REPO_ROOT / "codecarto")]
     if fix:
         cmd.append("--fix")
-    
-    try:
-        result = subprocess.run(cmd)
-        if result.returncode == 0:
-            click.secho("✓ No issues found", fg="green")
-    except FileNotFoundError:
-        click.secho("✗ ruff not found. Install with: uv pip install ruff", fg="red")
+
+    result = subprocess.run(cmd)
+    if result.returncode != 0:
+        _fail(f"ruff exited {result.returncode}")
+    click.secho("✓ No issues found", fg="green")
 
 
 @cli.command()
@@ -387,9 +388,9 @@ def docker():
         
         click.secho("✓ Containers started", fg="green")
     except subprocess.CalledProcessError as e:
-        click.secho(f"✗ Docker error: {e}", fg="red")
+        _fail(f"Docker error: {e}")
     except FileNotFoundError:
-        click.secho("✗ docker-compose not found in PATH", fg="red")
+        _fail("docker-compose not found in PATH")
 
 
 @cli.command("docker-down")
@@ -411,9 +412,9 @@ def docker_down():
         )
         click.secho("✓ Containers stopped", fg="green")
     except subprocess.CalledProcessError as e:
-        click.secho(f"✗ Docker error: {e}", fg="red")
+        _fail(f"Docker error: {e}")
     except FileNotFoundError:
-        click.secho("✗ docker-compose not found in PATH", fg="red")
+        _fail("docker-compose not found in PATH")
 
 
 # ============================================================================
@@ -454,10 +455,12 @@ def repo_scan(path: str, ext: tuple, output: str):
     
     extensions = list(ext) if ext else [".py"]
     
-    click.secho(f"📂 Scanning: {Path(path).resolve()}", fg="green")
-    click.echo(f"  Extensions: {', '.join(extensions)}")
-    click.echo()
-    
+    # With -o json, stdout carries the JSON and nothing else.
+    status = output == "json"
+    click.secho(f"📂 Scanning: {Path(path).resolve()}", fg="green", err=status)
+    click.echo(f"  Extensions: {', '.join(extensions)}", err=status)
+    click.echo(err=status)
+
     try:
         directory = get_local_repo(path, extensions=extensions)
         stats = get_file_stats(directory)
@@ -479,7 +482,7 @@ def repo_scan(path: str, ext: tuple, output: str):
             click.echo(f"    Folders: {stats['folders']}")
             click.echo(f"    Total size: {_format_size(stats['total_size'])}")
     except Exception as e:
-        click.secho(f"✗ Scan error: {e}", fg="red")
+        _fail(f"Scan error: {e}")
 
 
 @repo.command("tree")
@@ -507,7 +510,7 @@ def repo_tree(path: str, ext: tuple, depth: int):
         directory = get_local_repo(path, extensions=extensions)
         _print_tree(directory.root, depth=depth)
     except Exception as e:
-        click.secho(f"✗ Error: {e}", fg="red")
+        _fail(f"Error: {e}")
 
 
 @repo.command("graph")
@@ -543,8 +546,11 @@ def repo_graph(path: str, ext: tuple, output: str, graph_type: str):
 
     extensions = list(ext) if ext else [".py"]
 
-    click.secho(f"📊 Generating {graph_type} graph: {Path(path).resolve()}", fg="green")
-    click.echo()
+    # With -o json, stdout carries the JSON and nothing else.
+    status = output == "json"
+    click.secho(f"📊 Generating {graph_type} graph: {Path(path).resolve()}", fg="green",
+                err=status)
+    click.echo(err=status)
 
     try:
         directory = get_local_repo(path, extensions=extensions)
@@ -589,10 +595,188 @@ def repo_graph(path: str, ext: tuple, output: str, graph_type: str):
                 if len(node_types) > 10:
                     click.echo(f"    ... and {len(node_types) - 10} more types")
     except Exception as e:
-        click.secho(f"✗ Graph error: {e}", fg="red")
         import traceback
         if os.environ.get("DEBUG"):
             traceback.print_exc()
+        _fail(f"Graph error: {e}")
+
+
+@cli.group()
+def cargo():
+    """
+    Cargo workspaces: read one, or record what cargo says about it.
+
+    \b
+        codecarto cargo read PATH     What the window will draw (runs nothing)
+        codecarto cargo record PATH   Run cargo, write target/codecarto/
+    """
+    pass
+
+
+@cargo.command("read")
+@click.argument("path", type=click.Path(exists=True, file_okay=False), default=".")
+@click.option("--json", "as_json", is_flag=True, help="Print the reading as JSON")
+def cargo_read(path: str, as_json: bool):
+    """
+    Print what the /cargo routes would draw for PATH. Runs nothing.
+    """
+    import json
+
+    from codecarto.services import cargo_service
+
+    reading = cargo_service.read(path)
+    if not reading.ok:
+        click.secho(f"✗ {reading.reason}", fg="red")
+        raise SystemExit(1)
+    if as_json:
+        click.echo(json.dumps(cargo_service.as_data(reading), indent=2, default=str))
+        return
+    click.secho(f"📦 {Path(path).resolve()} — read from {reading.engine}", fg="green")
+    for package in reading.packages:
+        if not package.member:
+            continue
+        extras = [x for x in (package.no_std and f"no_std {package.no_std}",
+                              package.links and f"links {package.links}") if x]
+        click.echo(f"  {package.name} {package.version}"
+                   + (f"  [{', '.join(extras)}]" if extras else ""))
+        for dep in package.dependencies:
+            click.echo(f"    → {dep.name} {dep.version or dep.req}  ({dep.kind}"
+                       + (", optional" if dep.optional else "")
+                       + (f", {dep.platform}" if dep.platform else "") + ")")
+    for doc in reading.documents:
+        state = ("used" if doc.used else "not used") if doc.present else "absent"
+        click.echo(f"  {doc.name}: {state}" + (f" — {doc.problem}" if doc.problem else ""))
+    counts = {}
+    for d in reading.diagnostics:
+        counts[d.level] = counts.get(d.level, 0) + 1
+    if counts:
+        click.echo("  diagnostics: " + ", ".join(f"{n} {level}" for level, n in sorted(counts.items())))
+    click.echo()
+    click.echo(f"  {cargo_service.caveat(reading)}")
+
+
+@cargo.command("record")
+@click.argument("path", type=click.Path(exists=True, file_okay=False), default=".")
+@click.option("--all-targets", is_flag=True,
+              help="Check tests, examples and benches too (a no_std bin usually cannot build them)")
+@click.option("--online", is_flag=True,
+              help="Let cargo reach the network; by default it is run --offline")
+@click.option("--map", "maps", multiple=True, metavar="BIN",
+              help="Also link BIN and keep the linker's map as target/codecarto/BIN.map (repeatable)")
+@click.option("--map-flag", default="-C link-arg=-Map={path}", show_default=True,
+              help="How the linker is asked for the map; with a GCC linker, "
+                   "'-C link-arg=-Wl,-Map={path}'")
+@click.option("--profile", default="release", show_default=True,
+              help="The profile a --map build uses: the one that is flashed")
+@click.option("--timeout", default=600, show_default=True, help="Seconds each cargo command may take")
+def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_flag: str,
+                 profile: str, timeout: int):
+    """
+    Run cargo in PATH and write what it says to PATH/target/codecarto/.
+
+    \b
+    This RUNS THE WORKSPACE'S CODE: `cargo check` compiles build scripts and
+    proc macros and executes them. Run it on a workspace you would build. The
+    window itself never runs cargo; it reads the files this writes:
+
+    \b
+        metadata.json   cargo metadata --format-version 1
+        check.jsonl     cargo check --workspace --message-format=json
+        BIN.map         cargo rustc --profile release --package PKG --bin BIN
+                            -- -C link-arg=-Map=...   (PKG: the member with that bin)
+    """
+    import shlex
+    import shutil
+
+    from codecarto.services import cargo_service
+
+    cargo_bin = shutil.which("cargo")
+    if cargo_bin is None:
+        click.secho("✗ cargo is not on PATH, so there is nothing to record. "
+                    "Install a Rust toolchain (https://rustup.rs) and run this again; "
+                    "the window still draws the manifests without it.", fg="red")
+        raise SystemExit(1)
+
+    root = Path(path).resolve()
+    out = root / cargo_service.DOCUMENTS
+    out.mkdir(parents=True, exist_ok=True)
+    offline = [] if online else ["--offline"]
+    # (document, command, whether the document is the command's own output)
+    steps = [
+        (cargo_service.METADATA_DOCUMENT,
+         [cargo_bin, "metadata", "--format-version", "1", *offline], True),
+        (cargo_service.CHECK_DOCUMENT,
+         [cargo_bin, "check", "--workspace", "--message-format=json", *offline,
+          *(["--all-targets"] if all_targets else [])], True),
+    ]
+    def package_of(binary: str) -> str | None:
+        """The workspace package that owns a binary, from the metadata just
+        recorded: `cargo rustc` in a workspace with no root package will not
+        guess it."""
+        import json
+
+        try:
+            data = json.loads((out / cargo_service.METADATA_DOCUMENT).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        members = set(data.get("workspace_members") or [])
+        for package in data.get("packages") or []:
+            if package.get("id") in members and any(
+                    t.get("name") == binary and "bin" in (t.get("kind") or [])
+                    for t in package.get("targets") or []):
+                return package.get("name")
+        return None
+
+    for binary in maps:
+        # The linker writes the map itself; cargo's output is not the document.
+        def link(binary: str = binary) -> list[str] | None:
+            package = package_of(binary)
+            if package is None:
+                return None
+            target = out / f"{binary}.map"
+            return [cargo_bin, "rustc", "--profile", profile, "--package", package, "--bin", binary,
+                    *offline, "--", *shlex.split(map_flag.format(path=target.as_posix()))]
+        steps.append((f"{binary}.map", link, False))
+    failed = False
+    for name, command, captured in steps:
+        if callable(command):
+            command = command()
+            if command is None:
+                failed = True
+                click.secho(f"✗ no workspace package has a binary named {name[:-4]}, "
+                            f"by the {cargo_service.METADATA_DOCUMENT} just recorded", fg="red")
+                continue
+        click.secho(f"→ cargo {' '.join(command[1:])}", fg="cyan")
+        stderr = ""
+        try:
+            result = subprocess.run(command, cwd=root, capture_output=True, text=True,
+                                    timeout=timeout, encoding="utf-8", errors="replace")
+            stdout, code, stderr = result.stdout, result.returncode, result.stderr or ""
+        except subprocess.TimeoutExpired as expired:
+            # A bound that fires is reported: what arrived is kept, and said to be partial.
+            stdout = (expired.stdout or b"").decode("utf-8", "replace") \
+                if isinstance(expired.stdout, bytes) else (expired.stdout or "")
+            code = None
+        if captured:
+            (out / name).write_text(stdout, encoding="utf-8")
+        last = stderr.strip().splitlines()[-1] if stderr.strip() else ""
+        if code is None:
+            failed = True
+            click.secho(f"  ✗ did not finish in {timeout}s"
+                        + (f"; {name} holds only what arrived" if captured else ""), fg="red")
+        elif code != 0 and name != cargo_service.CHECK_DOCUMENT:
+            failed = True
+            click.secho(f"  ✗ exited {code}: {last}", fg="red")
+        elif not captured and not (out / name).is_file():
+            failed = True
+            click.secho(f"  ✗ the build finished and the linker wrote no {name}; "
+                        f"try --map-flag for this linker", fg="red")
+        else:
+            # A failing check still wrote its diagnostics, which is what it is for.
+            click.secho(f"  ✓ wrote {(out / name).relative_to(root).as_posix()}"
+                        + (f" (cargo exited {code})" if code else ""), fg="green")
+    if failed:
+        raise SystemExit(1)
 
 
 def _format_size(size_bytes: int) -> str:

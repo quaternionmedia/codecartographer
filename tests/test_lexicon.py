@@ -88,7 +88,7 @@ def test_missing_language_raises():
 # Parametrized over LexiconService.available() so a new language YAML gets
 # this coverage for free — no per-language test needed, same "generic
 # router/tests" property the language-agnostic parts of this feature already
-# have. See docs/llm/roadmap/lexicon.md's "Adding a language" section.
+# have. See docs/roadmap/lexicon.md's "Adding a language" section.
 
 
 @pytest.mark.parametrize("language", LexiconService.available())
@@ -118,6 +118,6 @@ def test_every_lexicon_projects_to_a_connected_graph(language):
     assert nx.number_weakly_connected_components(g) == 1
 
 
-def test_at_least_two_lexicons_available():
+def test_the_shipped_lexicons_are_available():
     """Guards against silently losing a language file."""
-    assert set(LexiconService.available()) >= {"c", "python"}
+    assert set(LexiconService.available()) >= {"c", "python", "rust"}

@@ -1,150 +1,78 @@
 # Getting Started
 
+This page installs Codecarto, runs it, and draws a first graph. It is the one
+setup page; the other documents link here rather than repeat it.
+
 ## Prerequisites
 
-- **Python 3.10+** - [Download](https://www.python.org/downloads/)
-- **UV** - [Install](https://github.com/astral-sh/uv) (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
-- **Node.js 18+** - [Download](https://nodejs.org/) (for frontend)
-- **Git** - [Download](https://git-scm.com/)
+- **Python 3.10+** and **[uv](https://docs.astral.sh/uv/)**
+- **Node.js 18+**, for the frontend
+- **Git**
+- **[GitHub CLI](https://cli.github.com/)**, optional: it gives the server a
+  token for GitHub repositories
 
-## Installation
-
-### 1. Clone the Repository
+## Install
 
 ```bash
 git clone https://github.com/quaternionmedia/codecartographer.git
 cd codecartographer
-
-# Initialize submodules
-git submodule init
-git submodule update
+git submodule update --init governance/qm
+uv sync --locked --extra dev --extra c-parsing
 ```
 
-### 2. Create Virtual Environment
+`uv sync --locked` installs exactly what `uv.lock` pins. The `c-parsing` extra
+is libclang: without it C and C++ files draw empty, and a `uv sync` that leaves
+it out removes it. The `dev` extra carries the test and lint tools.
 
-```bash
-# Create venv with uv
-uv venv
+`governance/qm` holds the project's decision records. The other submodule,
+`graphbase`, is the optional MongoDB store and needs access to its private
+repository; nothing else needs it.
 
-# Activate
-# Linux/macOS:
-source .venv/bin/activate
-
-# Windows PowerShell:
-.venv\Scripts\Activate.ps1
-
-# Windows Git Bash:
-source .venv/Scripts/activate
-```
-
-### 3. Install Dependencies
-
-```bash
-# Install Python packages (including dev dependencies)
-uv pip install -e ".[dev]"
-
-# Frontend dependencies are installed automatically by the CLI
-# Or manually: cd web && npm install
-```
-
-### 4. Verify Installation
-
-```bash
-uv run codecarto --version
-# codecarto, version 0.3.0
-
-uv run codecarto info
-# Shows Python version, dependencies, etc.
-```
-
-## Running Codecarto
-
-### Quick Start (Recommended)
+## Run
 
 ```bash
 uv run codecarto dev
 ```
 
-This starts the backend, on the port `codecarto.cli.DEFAULT_PORT` names (the
-constant the corpus's `qm dashboard` allocates to this project; the command
-prints it, with the `/docs` address), and the frontend on
-`http://localhost:1234`. The port is deliberately not written here: five pages
-once named a port the server had stopped binding.
+This starts the backend and the frontend (http://localhost:1234). Both print
+their addresses; `codecarto serve --help` shows the backend's default port. The
+first run installs the frontend's packages with `npm install`. `Ctrl+C` stops
+both.
 
-Press `Ctrl+C` to stop both servers.
+`codecarto serve` and `codecarto web` start one half each; the
+[CLI reference](cli.md) has every command and option.
 
-### Backend Only
+## A first graph
 
-```bash
-uv run codecarto serve
-# or with options:
-uv run codecarto serve --host 0.0.0.0 --port 8080
-```
+**In the browser.** Open http://localhost:1234, pick an example from the project
+selector or give it a GitHub URL or a local path, and the graph streams onto the
+canvas as each file is parsed. The [UI reference](ui.md) names
+each panel and control.
 
-### Frontend Only
-
-```bash
-uv run codecarto web
-```
-
-## First Analysis
-
-### Analyze a Local Repository
+**From the command line.**
 
 ```bash
-# Scan structure
-uv run codecarto repo scan /path/to/project
-
-# Generate graph
-uv run codecarto repo graph /path/to/project -t ast
+uv run codecarto repo graph .            # counts what a parse of this directory finds
+uv run codecarto repo graph . -o json    # the graph itself
 ```
 
-### Analyze via Web UI
-
-1. Open http://localhost:1234
-2. Enter a GitHub repo URL (e.g., `https://github.com/fastapi/fastapi`)
-3. Click Submit
-4. Browse files and click to visualize
-
-### Analyze via API
+**From the API.** With the backend running, `$API` being the address it printed:
 
 ```bash
-# $API is the backend address `codecarto serve` printed
-
-# The tree of a local directory (the same route reads a GitHub URL)
-curl "$API/repo/tree?url=/path/to/project"
-
-# Every seam this window reads, and whether each is there
-curl "$API/estate/seams"
+curl "$API/repo/tree?url=/path/to/project"   # a local directory's tree; a GitHub URL works too
 ```
 
-`docs/api.md` is the map of the routes; `$API/docs` is the authority.
+The [API reference](api.md) describes each route; the running server lists
+them at `$API/docs`.
 
-## GitHub Token (Optional)
+## GitHub token
 
-For analyzing GitHub repositories, create a personal access token:
+Run `gh auth login` once and the server reads its token; [Services](services.md#github-token)
+gives the full order the server tries.
 
-1. Go to [GitHub Settings > Tokens](https://github.com/settings/tokens)
-2. Generate new token with `public_repo` scope
-3. Create `token.txt` in project root:
-   ```
-   ghp_your_token_here
-   ```
+## Next
 
-## Docker (Optional)
-
-For database functionality:
-
-```bash
-# Start containers
-uv run codecarto docker
-
-# Stop containers
-uv run codecarto docker-down
-```
-
-## Next Steps
-
-- [CLI Reference](cli.md) - All available commands
-- [API Reference](api.md) - REST endpoints
-- [Architecture](architecture.md) - How it works
+- [Architecture](architecture.md): how the pieces fit
+- [Extending](extending.md): adding a parser, renderer, panel or route
+- [`AGENTS.md`](../AGENTS.md): how a change is made here, the test commands and
+  the gates

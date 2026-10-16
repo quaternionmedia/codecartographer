@@ -16,20 +16,27 @@ services/
 ├── cache_service.py           # Parsed-graph + repo-tree cache (filesystem + optional MongoDB)
 ├── c_parser_service.py        # C-specific parse orchestration (libclang)
 ├── lexicon_service.py         # Hand-authored language lexicons -> graph
+├── construct_service.py       # What a node is across languages; the chrestomathy
+├── cargo_service.py           # A Cargo workspace from manifests and recorded cargo documents
+├── link_map_service.py        # A linker's map file: sections, symbols, each region's measured use
+├── examples_service.py        # The examples bundled under examples/, for the project selector
 ├── graph_serializer.py        # Graph JSON serialization
+├── palette_service.py         # A node's base -> the palette's style; the estate vocabulary
 ├── position_service.py        # Node positioning
 └── parsers/
     ├── language_parser.py     # LanguageParser Protocol + ParserRegistry
     ├── python_language_parser.py
     ├── c_language_parser.py
+    ├── rust_language_parser.py   # Rust at the item level: tokenizer, module tree, relations
+    ├── linker_script_parser.py   # GNU ld scripts and memory.x: regions, sections, symbols
     ├── regex_language_parser.py  # one regex adapter per language; `_LANGUAGES` is the list
     └── ASTs/
         └── python_custom_ast.py
 ```
 
-`palette_router.py` reads palettes directly (`DefaultPalette` from
-`models/plot_data.py`, or `DatabaseContext.fetch_palette_by_id` for
-custom ones) — there's no dedicated `PaletteService`.
+`palette_router.py` serves `DefaultPalette` from `models/plot_data.py`. There
+is no palette store, so `/palette/custom` answers `unavailable` (`docs/api.md`).
+`palette_service.py` is where a palette is applied; see *palette_service* below.
 
 ---
 
@@ -63,7 +70,7 @@ directory = get_local_repo(
 | `extensions` | List[str] | `[".py"]` | Extensions to include |
 | `exclude_dirs` | List[str] | See below | Directories to skip |
 
-**Default exclusions:** `.git`, `.venv`, `venv`, `__pycache__`, `node_modules`, `.pytest_cache`, `.mypy_cache`, `dist`, `build`, `.eggs`, `*.egg-info`
+**Default exclusions:** `.git`, `.venv`, `venv`, `__pycache__`, `node_modules`, `.pytest_cache`, `.mypy_cache`, `dist`, `build`, `.eggs`, `*.egg-info`, `.vs`, `.idea`, `.vscode`, `bin`, `obj`, `target`
 
 **Returns:** `Directory` model with `info`, `size`, and `root` (Folder)
 
@@ -91,7 +98,7 @@ Integrates with GitHub API to fetch repository contents.
 #### `get_raw_from_repo(url)`
 
 Fetch a GitHub repository's directory tree, cached via `CacheService`
-(see ARCHITECTURE.md's "Two C-parser caches"). On a cache miss, fetches the
+(see `docs/architecture.md`, *The two caches*). On a cache miss, fetches the
 full tree in two API calls (`fetch_tree_fast`, the Git Trees API) and then
 fetches file content per the repo's size tier — full content for small
 repos, structure only for medium repos, a shallow listing for huge ones.
@@ -126,9 +133,12 @@ content = await get_raw_from_url(
 `create_headers()`. Resolution order (first non-empty wins):
 `CC_GITHUB_TOKEN` env var → `gh auth token` (keyring) → `GITHUB_TOKEN`/
 `GH_TOKEN` env vars → `/run/secrets/github_token` (Docker secret) →
-unauthenticated. See `governance/qm/adr/DRAFT-github-token-resolution.md` for
-why the order is keyring-before-env-var, and `GET /auth/github`
-(`docs/api.md`) to inspect the resolved source at runtime.
+unauthenticated, at 60 requests an hour, with a warning in the log. `gh auth
+token` runs with `GITHUB_TOKEN` and `GH_TOKEN` removed from its environment, so
+it answers from the keyring; to use another token, set `CC_GITHUB_TOKEN`. See
+`governance/qm/adr/DRAFT-github-token-resolution.md` for why the order is
+keyring-before-env-var, and `GET /auth/github` (`docs/api.md`) to inspect the
+resolved source at runtime.
 
 ---
 
@@ -141,7 +151,7 @@ each file to its registered `LanguageParser` (via `ParserRegistry`,
 keyed by extension), walks folders to the requested depth, and — for
 languages needing cross-file context (`batch_whole_tree = True`, e.g.
 C) — batches all of that language's files into one parser call instead
-of one-at-a-time. See `docs/llm/ARCHITECTURE.md` for the full pipeline.
+of one-at-a-time. `docs/architecture.md` has the pipeline.
 
 ### Methods
 
@@ -202,10 +212,9 @@ graph = parser.parse(folder)
 
 ---
 
-Directory/file hierarchy and Python import-dependency edges are both
-produced by `UnifiedParserService` itself now (depth=1 for the
-hierarchy; `_add_python_dependency_edges()` for `depends_on` edges at
-depth>=2), not by separate parser classes.
+`UnifiedParserService` builds the directory and file hierarchy itself (depth
+1), and `_add_python_dependency_edges()` adds Python's `depends_on` edges between
+files at depth 2 and deeper.
 
 ---
 
@@ -216,7 +225,7 @@ depth>=2), not by separate parser classes.
 Loads a hand-authored per-language lexicon (reserved words/operators on
 a hierarchy of abstraction layers, from `data/lexicons/<language>.yaml`)
 and projects it into the same graph pipeline the parsers use. See
-`docs/llm/roadmap/lexicon.md` for the full design and the `/lexicon/*`
+`docs/roadmap/lexicon.md` for the full design and the `/lexicon/*`
 endpoints in `docs/api.md`.
 
 ### Methods
@@ -227,6 +236,60 @@ endpoints in `docs/api.md`.
 | `load(language)` | Load + validate a language's YAML into a `Lexicon` |
 | `to_graph(lexicon)` | Project to an `nx.DiGraph` |
 | `to_json(lexicon)` | Project to the node-link `{nodes, links}` shape the plotter consumes |
+
+---
+
+## construct_service
+
+**File:** `construct_service.py`, data in `data/constructs.yaml`
+
+What a parsed node *is*, said once for every language the vocabulary lists.
+`annotate(graph)` stamps `construct` and `meta.facets` and gives a node with no
+look of its own its construct's; the unified pipeline runs it on every parse.
+`reading(id)`, `table()` and `as_graph(id)` are the chrestomathy behind
+`/lexicon/constructs` and `/lexicon/chrestomathy/*`. `layer_color(ordinal)` is
+the one abstraction-layer ramp.
+
+---
+
+## cargo_service
+
+**File:** `cargo_service.py`
+
+A Cargo workspace read without running cargo: `read(path)` returns a `Reading`
+(packages, dependencies, targets, features, firmware facts, the recorded
+documents and their staleness, diagnostics, build-script facts) or a reason.
+`as_graph`, `as_gjgf`, `metadata` and `as_data` serve `/cargo/*`;
+`recorded_diagnostics(root)` and `annotate_diagnostics(graph, reading)` put
+rustc's diagnostics on a parsed code map. The CLI's `cargo record` is the only
+code that runs cargo.
+
+---
+
+## link_map_service
+
+**File:** `link_map_service.py`
+
+A linker's map file in GNU ld's or LLD's shape: `read(path)` returns a `LinkMap`
+(output sections with their run and load addresses, input sections, symbols
+with their sizes, and GNU ld's memory table) or a reason. `usage(map, regions)`
+measures each region's use at run time and as load images; `annotate(graph,
+map, ...)` puts the figures on a parsed code map's regions, sections, functions
+and statics; `demangle` and `symbol_key` turn a Rust symbol back into the path,
+type and function it was compiled from.
+
+---
+
+## examples_service
+
+**File:** `examples_service.py`
+
+The examples bundled with a checkout, for the project selector: `bundled()`
+lists each one `BUNDLED` names whose directory exists under `examples/`, with
+the absolute path it is read from and whether it is a Cargo workspace. Only what
+is named is offered, and an installed package, which has no `examples/`, offers
+none. `examples/rust-firmware` carries the records real cargo and rust-lld wrote
+for it, its absolute paths rewritten; its README says how to record it afresh.
 
 ---
 
@@ -261,7 +324,7 @@ separate.
 C-specific parse orchestration via libclang, used by the dedicated
 `/c-parser/*` endpoints (distinct from C files going through the
 generic `/parse/*` path via `c_language_parser.py` — see
-`docs/llm/ARCHITECTURE.md`'s "Two C-parser caches").
+`docs/architecture.md`, *The two caches*).
 
 ### Methods
 
@@ -326,6 +389,18 @@ metadata = GraphSerializer.create_metadata(graph, options)
 | `Spectral` | Eigenvector-based |
 
 **Client-side Rendering:** The gJGF format is consumed by the frontend D3.js renderer for interactive visualization.
+
+---
+
+## palette_service
+
+**File:** `palette_service.py`
+
+Resolves a node's dotted `base` (`control.cond.if`) into the style a `Palette`
+gives it, walking the dots leftwards to `unknown`: `style_for(base)`,
+`style_for_type(node_type)`, and `apply_to(graph)`, which puts the shape, colour
+and size on every node. `vocabulary(node_type)` is the one place an estate kind
+becomes a shape, colour and size.
 
 ---
 
