@@ -5,11 +5,8 @@ Shared setup for the "background thread feeds an asyncio.Queue" pattern
 used by SSE/WebSocket endpoints that wrap blocking or CPU-bound work
 (libclang parsing, tailing a log file) without freezing the event loop.
 
-Before this, c_parser_router.py's /stream-github and pam_router.py's log
-tailer each hand-rolled the same thread-spawn + queue-feed wiring
-independently — see docs/llm/next_steps/parser_consolidation_and_scope_drift.md,
-finding 2.2. c_parser_router.py's own comment even named the duplication
-("same pattern as pam_router.py's log tailer") without it ever being lifted.
+Used by c_parser_router.py's /stream-github and pam_router.py's log
+tailers (journald and a log file).
 """
 
 import asyncio

@@ -6,7 +6,8 @@
  * functions, no class instances, no host objects. That is what lets an
  * Intent be serialized, queued, replayed, or sent over a wire.
  *
- * Ported from quaternionmedia/rad @ d362abd, vectors v0.4.0.
+ * Ported from quaternionmedia/rad @ d362abd; replays the governed vectors in
+ * web/tests/rad/vectors.v0.0.1.json.
  * The JSON vectors are the governed artifact; this is an implementation of
  * them. If the two disagree, the vectors win and this file is wrong.
  */

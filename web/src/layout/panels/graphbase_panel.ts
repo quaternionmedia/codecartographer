@@ -1,13 +1,12 @@
 /**
- * Graphbase Panel — unified Graph Library
+ * Graphbase Panel
  *
- * Three tiers in one view:
  *   • Snapshots — full node/edge data, instant replay (MongoDB /db/snapshots)
  *   • Saved     — durable URL bookmarks, re-streams on load (/db/bookmarks)
- *   • Recent    — TTL'd filesystem cache entries; ☆ promotes to bookmark
+ *   • History   — renders captured for the loaded URL, when Track is on
  *
- * Snapshots and Saved sections are gated by graphbaseAvailable.
- * Recent always renders from the filesystem cache regardless of MongoDB.
+ * Every section needs Graphbase (MONGODB_URI). The recent graphs the server's
+ * cache holds are listed in the Open panel, where ☆ saves one here.
  */
 
 import m from 'mithril';
@@ -35,17 +34,15 @@ export function createGraphbasePanel(ctx: LayoutContext): m.Component {
       const snapshots = ctx.graphbaseSnapshots;
       const bookmarks = ctx.graphbaseBookmarks;
       const history   = ctx.graphbaseHistory;
-      const recent    = ctx.cachedGraphs ?? [];
       const hasGraph  = !!(ctx.appState.state.graphData);
       const hasUrl    = !!ctx.panelState.repoUrl;
       const loading   = ctx.panelState.isLoading;
-      const savedUrls = new Set(bookmarks.map(b => b.url));
 
       return m('div.gl-graphbase-panel', [
 
         // ── Header ───────────────────────────────────────────────────────────
         m('div.gl-graphbase-panel__header', [
-          m('span.gl-graphbase-panel__title', '◈ Graph Library'),
+          m('span.gl-graphbase-panel__title', 'Graphbase'),
           m('span.gl-graphbase-panel__status', {
             class: available
               ? 'gl-graphbase-panel__status--ok'
@@ -55,7 +52,7 @@ export function createGraphbasePanel(ctx: LayoutContext): m.Component {
 
         !available
           ? m('p.gl-graphbase-panel__hint',
-              'Set MONGODB_URI and restart to enable Snapshots and Saved. Recent graphs always show below.')
+              'Set MONGODB_URI and restart to enable Snapshots, Saved and History. Recent graphs are listed in the Open panel.')
           : null,
 
         // ── Snapshots ─────────────────────────────────────────────────────────
@@ -220,44 +217,6 @@ export function createGraphbasePanel(ctx: LayoutContext): m.Component {
               ])
             : null,
 
-        // ── Recent ────────────────────────────────────────────────────────────
-        m('div.gl-graphbase-panel__section', [
-          m('span.gl-graphbase-panel__section-label', `Recent (${recent.length})`),
-          recent.length > 0
-            ? recent.slice(0, 8).map(e =>
-                m('div.gl-graphbase-panel__entry', { key: e.key }, [
-                  m('div.gl-graphbase-panel__entry-info', [
-                    m('span.gl-graphbase-panel__entry-name',
-                      e.label || e.url.replace('https://github.com/', '')),
-                    m('span.gl-graphbase-panel__entry-url', _ageStr(e.age_seconds)),
-                  ]),
-                  m('div.gl-graphbase-panel__entry-actions', [
-                    m('button.gl-graphbase-panel__load-btn', {
-                      onclick: () => ctx.panelCallbacks.onLoadFromCache?.(e.key),
-                      disabled: loading,
-                      title: 'Replay from cache',
-                    }, '▶'),
-                    available && !savedUrls.has(e.url)
-                      ? m('button.gl-graphbase-panel__promote-btn', {
-                          onclick: () =>
-                            ctx.saveGraphbaseBookmark(
-                              e.label || e.url.replace('https://github.com/', ''),
-                              e.url,
-                            ),
-                          title: 'Save as durable bookmark',
-                        }, '☆')
-                      : available
-                        ? m('span.gl-graphbase-panel__saved-badge', { title: 'Already saved' }, '★')
-                        : null,
-                    m('button.gl-graphbase-panel__delete-btn', {
-                      onclick: () => ctx.panelCallbacks.onEvictCache?.(e.key),
-                      title: 'Remove from cache',
-                    }, '✕'),
-                  ]),
-                ])
-              )
-            : m('p.gl-graphbase-panel__hint', 'No recent graphs — fetch a repo first.'),
-        ]),
       ]);
     },
   };

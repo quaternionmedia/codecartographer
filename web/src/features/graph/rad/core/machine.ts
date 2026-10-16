@@ -4,8 +4,8 @@
  * States: CLOSED → PENDING → OPEN → TRACKING → (SUBMENU→OPEN…) → COMMITTED | CLOSED
  * Two commit styles (release-select, tap-select) over one identical band.
  *
- * Ported from quaternionmedia/rad @ d362abd. Semantics are fixed by
- * conformance/vectors.json v0.4.0.
+ * Ported from quaternionmedia/rad @ d362abd. Semantics are fixed by the
+ * governed vectors this host replays, web/tests/rad/vectors.v0.0.1.json.
  */
 import type { Effect, Geometry, InputEvent, MachineState, MenuItem, MenuSpec } from './types.js';
 import { GEOM, MAX_ITEMS, angleToIndex, inBand, rCancel } from './geometry.js';
