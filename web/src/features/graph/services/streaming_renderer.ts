@@ -14,8 +14,12 @@ import { GraphNode, GraphEdge } from './graph_types';
 import { nodePath } from './node_shapes';
 import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager } from './compound_layout';
+import type { GroupBounds } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
+import { sourceTarget } from './node_info';
+import { fitTransform } from './fit';
+import type { Circle } from './fit';
 
 // Nodes rendered per animation frame. Scales with total so large repos
 // finish in ~2s while small repos show clearly progressive animation.
@@ -73,6 +77,9 @@ export class StreamingGraphRenderer {
   private _backgroundGroup: d3.Selection<SVGGElement, unknown, null, undefined>;
   private _compoundManager = new CompoundLayoutManager();
   private _childrenMap: Map<string, string[]> = new Map();
+  // The group outlines as last drawn, so a fit frames them; empty while
+  // Group Outlines is off.
+  private _groupBounds: GroupBounds[] = [];
   // O(1) lookup for child drag propagation — populated in _renderNode, avoids CSS selector per-frame
   private _nodeGroupEl = new Map<string, SVGGElement>();
 
@@ -97,6 +104,7 @@ export class StreamingGraphRenderer {
       labelSize: styling?.labelSize ?? 9,
       labelColor: styling?.labelColor ?? '#aaaaaa',
       interactionProfile: styling?.interactionProfile ?? 'default',
+      colorBy: styling?.colorBy ?? 'auto',
     };
 
     container.innerHTML = '';
@@ -232,11 +240,23 @@ export class StreamingGraphRenderer {
     if (options.labelColor !== undefined) {
       this.labelGroup.selectAll('text').attr('fill', options.labelColor);
     }
+    if (options.colorBy !== undefined) {
+      // Recolour in place: the drawn graph is the same graph, read by a
+      // different property. `data-base-fill` moves too, so a highlight that
+      // restores the base restores the colour now chosen.
+      for (const [id, el] of this._nodeGroupEl) {
+        const n = this.nodeById.get(id);
+        if (!n) continue;
+        const fill = this._fillFor(n);
+        d3.select(el).select('path').attr('fill', fill).attr('data-base-fill', fill);
+      }
+    }
     if (options.showCompoundGroups !== undefined) {
       if (options.showCompoundGroups) {
         this._drawCompoundBackgrounds();
       } else {
         this._backgroundGroup.selectAll('*').remove();
+        this._groupBounds = [];
       }
     }
   }
@@ -272,11 +292,12 @@ export class StreamingGraphRenderer {
       // More work to do — schedule next frame
       this._scheduleLoop();
     } else if (this._streamDone) {
-      // Everything rendered — fit the view and draw compound group backgrounds
-      this._fitView();
+      // Everything rendered: draw the group outlines, then fit the view to
+      // the graph with them, since they are drawn too.
       if (this.styling.showCompoundGroups !== false) {
         this._drawCompoundBackgrounds();
       }
+      this._fitView();
     }
     // else: queues empty but stream not done yet — wait for more addNode calls
   }
@@ -369,10 +390,10 @@ export class StreamingGraphRenderer {
     // Cache element for O(1) drag-propagation lookups (avoids per-frame CSS selector)
     this._nodeGroupEl.set(node.id, group.node()!);
 
-    const baseFill = (node.color as string) || 'steelblue';
+    const baseFill = this._fillFor(node);
     group
       .append('path')
-      .attr('d', this._nodePath(node.shape as string, size))
+      .attr('d', this._nodePath(node.shape as string, size, this._sidesOf(node)))
       .attr('fill', baseFill)
       // Remembered so a colour override can be undone without re-deriving
       // the parser's visual grammar here.
@@ -381,7 +402,9 @@ export class StreamingGraphRenderer {
       .attr('stroke', '#fff')
       .attr('stroke-width', this.styling.nodeBorderWidth!);
 
-    group.append('title').text(node.label || node.id);
+    // A producer's `hover` says more than the label -- a capability's claim, a
+    // region's measured use -- and edges already show theirs.
+    group.append('title').text((node.hover as string) || node.label || node.id);
 
     // Pop-in entrance animation
     group
@@ -410,32 +433,19 @@ export class StreamingGraphRenderer {
     }
 
     // ── Source navigation ──────────────────────────────────────────────────
-    // Right-click or double-click on a symbol node → open github.com/blob
-    // view at the node's line number. Right-click calls preventDefault() so
-    // the browser's native context menu never appears; double-click is the
-    // modifier-key-free alternative.
-    const depth = (node.depth as number) ?? 0;
-    const line  = Number(node.line)  || 0;
-    const file  = (node.file as string) || '';
-
-    if (depth >= 2 && line > 0) {
-      group
-        .on('contextmenu', (event: MouseEvent) => {
-          event.preventDefault();
-          event.stopPropagation();
-          this._openSource(file, line, (node.label as string) || node.id, event.clientX, event.clientY);
-        })
-        .on('dblclick', (event: MouseEvent) => {
-          event.stopPropagation();
-          this._openSource(file, line, (node.label as string) || node.id, event.clientX, event.clientY);
-        });
-    } else if (depth < 2) {
-      // Dir/file nodes: right-click only prevents browser menu (no source to show)
-      group.on('contextmenu', (event: MouseEvent) => {
-        event.preventDefault();
-        event.stopPropagation();
-      });
-    }
+    // Double-click opens the node's source through `openSource`, the opener
+    // View → Source uses. On a node from no file it opens nothing, and the
+    // double-click goes on to the zoom.
+    //
+    // **RIGHT-CLICK IS THE RADIAL MENU'S.** A handler here once opened the
+    // source on right-click and stopped the event, and on every other node
+    // stopped it for nothing -- so rad, which listens on the canvas, never
+    // heard a right-click on any node, and the node ring could not be opened
+    // by mouse at all. rad prevents the browser's menu itself, and offers the
+    // source as View → Source.
+    group.on('dblclick', (event: MouseEvent) => {
+      if (this.openSource(node.id, { x: event.clientX, y: event.clientY })) event.stopPropagation();
+    });
 
     // Drag support (no simulation — positions are pre-computed)
     group.call(
@@ -616,34 +626,33 @@ export class StreamingGraphRenderer {
   }
 
   /**
-   * Fit the viewport to a subset of nodes.
+   * Fit the viewport to a subset of nodes: each node's extent, and the group
+   * outline drawn around any of them, framed whole (fit.ts).
    *
    * Split out of `_fitView` so `focus-group` can frame one subtree. A verb
    * that says "focus" and fits the whole graph is the kind of near-miss the
    * legacy menu was full of.
    */
   private _fitNodes(nodes: GraphNode[]): void {
-    if (nodes.length === 0) return;
-
-    const avgX = nodes.reduce((s, n) => s + (n.x ?? 0), 0) / nodes.length;
-    const avgY = nodes.reduce((s, n) => s + (n.y ?? 0), 0) / nodes.length;
-    const minX = Math.min(...nodes.map(n => n.x ?? 0));
-    const maxX = Math.max(...nodes.map(n => n.x ?? 0));
-    const minY = Math.min(...nodes.map(n => n.y ?? 0));
-    const maxY = Math.max(...nodes.map(n => n.y ?? 0));
-
-    const rangeX = maxX - minX || 1;
-    const rangeY = maxY - minY || 1;
-    const scale = 0.85 * Math.min(this.width / rangeX, this.height / rangeY);
-    const tx = this.width / 2 - scale * avgX;
-    const ty = this.height / 2 - scale * avgY;
+    const ids = new Set(nodes.map((n) => n.id));
+    // A shape drawn at `size` reaches 1.5 × size at most (a triangle's apex).
+    const circles: Circle[] = nodes.map((n) => ({
+      x: n.x ?? 0,
+      y: n.y ?? 0,
+      r: 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n),
+    }));
+    for (const b of this._groupBounds) {
+      if (ids.has(b.nodeId)) circles.push({ x: b.cx, y: b.cy, r: b.radius });
+    }
+    const t = fitTransform(circles, { width: this.width, height: this.height });
+    if (!t) return;
 
     this.svg
       .transition()
       .duration(700)
       .call(
         this.zoom.transform as any,
-        d3.zoomIdentity.translate(tx, ty).scale(scale)
+        d3.zoomIdentity.translate(t.x, t.y).scale(t.k)
       );
   }
 
@@ -658,6 +667,7 @@ export class StreamingGraphRenderer {
       this.styling.nodeSize! * 3.0,
     );
     this._childrenMap = this._compoundManager.computeChildrenMap(nodes, this._allEdges);
+    this._groupBounds = bounds;
     this._backgroundGroup.selectAll('*').remove();
     for (const b of bounds) {
       const isDir = b.depth === 0;
@@ -696,43 +706,49 @@ export class StreamingGraphRenderer {
   }
 
   /**
-   * Open the source location for a symbol node.
-   * GitHub raw URLs are converted to github.com/blob/#L{line} in a new tab.
-   * Non-URL file paths show a small in-page toast at the click position.
+   * Open a node's source: its forge page in a new tab, or for a file read from
+   * disk a badge naming the file and line beside `at` (the node's own place on
+   * screen when not given). View → Source and a double-click both call this.
+   * False for a node from no file, which opens nothing.
    */
-  private _openSource(file: string, line: number, label: string, cx: number, cy: number): void {
-    const rawMatch = file.match(
-      /^https:\/\/raw\.githubusercontent\.com\/([^/]+\/[^/]+)\/([^/]+)\/(.+)$/
-    );
-    if (rawMatch) {
-      window.open(
-        `https://github.com/${rawMatch[1]}/blob/${rawMatch[2]}/${rawMatch[3]}#L${line}`,
-        '_blank', 'noopener',
-      );
-    } else if (file.startsWith('http')) {
-      window.open(file, '_blank', 'noopener');
-    } else {
-      // Local file — show a compact floating badge near the cursor
-      const badge = document.createElement('div');
-      badge.style.cssText = [
-        'position:fixed',
-        `left:${cx + 8}px`,
-        `top:${cy - 28}px`,
-        'z-index:9999',
-        'background:#1a1a1a',
-        'border:1px solid #00ff4140',
-        'color:#00ff41',
-        'padding:4px 8px',
-        'font-size:11px',
-        'font-family:monospace',
-        'border-radius:4px',
-        'pointer-events:none',
-        'white-space:nowrap',
-      ].join(';');
-      badge.textContent = `${label}  ${file}:${line}`;
-      document.body.appendChild(badge);
-      setTimeout(() => badge.remove(), 3500);
+  openSource(id: string, at?: { x: number; y: number }): boolean {
+    const node = this.nodeById.get(id);
+    const target = node ? sourceTarget(node) : null;
+    if (!target) return false;
+    if (target.kind === 'forge') {
+      window.open(target.href, '_blank', 'noopener');
+      return true;
     }
+
+    const point = at ?? this._screenCentreOf(id);
+    document.querySelectorAll('.source-badge').forEach((old) => old.remove());
+    const badge = document.createElement('div');
+    badge.className = 'source-badge';
+    badge.style.cssText = [
+      'position:fixed',
+      `left:${point.x + 8}px`,
+      `top:${point.y - 28}px`,
+      'z-index:9999',
+      'background:#1a1a1a',
+      'border:1px solid #00ff4140',
+      'color:#00ff41',
+      'padding:4px 8px',
+      'font-size:11px',
+      'font-family:monospace',
+      'border-radius:4px',
+      'pointer-events:none',
+      'white-space:nowrap',
+    ].join(';');
+    badge.textContent = target.text;
+    document.body.appendChild(badge);
+    setTimeout(() => badge.remove(), 3500);
+    return true;
+  }
+
+  /** Where a node is drawn, in viewport coordinates; the canvas centre if it is not. */
+  private _screenCentreOf(id: string): { x: number; y: number } {
+    const rect = (this._nodeGroupEl.get(id) ?? this.svg.node())?.getBoundingClientRect();
+    return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : { x: 0, y: 0 };
   }
 
   private _shouldShowLabel(depth: number): boolean {
@@ -767,8 +783,35 @@ export class StreamingGraphRenderer {
   }
 
   /** Shapes come from `node_shapes`, so the legend's swatches match. */
-  private _nodePath(shape: string | undefined, s: number): string {
-    return nodePath(shape, s);
+  /**
+   * The fill a node is drawn with.
+   *
+   * **"COLOR BY: ABSTRACTION LAYER" READS `layer_color`, WHICH THE SERVER SETS.**
+   * The option existed and nothing read it once the renderer that did was
+   * deleted -- choosing it changed a setting and not a pixel. The ramp lives
+   * with the lexicons (`construct_service.LAYER_RAMP`); a node with no layer
+   * keeps its own colour, as the control's tooltip says.
+   */
+  private _fillFor(node: GraphNode): string {
+    if (this.styling.colorBy === 'layer' && typeof node.layer_color === 'string') {
+      return node.layer_color;
+    }
+    // What a node *is*, the same colour in every language: a C struct and a
+    // Rust struct read alike, whatever look each parser gave them.
+    if (this.styling.colorBy === 'construct' && typeof node.construct_color === 'string') {
+      return node.construct_color;
+    }
+    return (node.color as string) || 'steelblue';
+  }
+
+  /** `meta.sides`, for the `ngon` shape the C and Rust parsers draw records with. */
+  private _sidesOf(node: GraphNode): number | undefined {
+    const meta = node.meta as { sides?: unknown } | undefined;
+    return typeof meta?.sides === 'number' ? meta.sides : undefined;
+  }
+
+  private _nodePath(shape: string | undefined, s: number, sides?: number): string {
+    return nodePath(shape, s, sides);
   }
 
   private _updateEdgesForNode(nodeId: string, x: number, y: number): void {

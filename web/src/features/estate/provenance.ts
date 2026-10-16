@@ -46,11 +46,23 @@ export interface ProvenanceAttrs {
   kind?: string;
 }
 
+/** Whether the strip is drawn for this panel: there is metadata, and it is
+ *  this seam's. */
+function shown(md: EstateMetadata | null | undefined, kind?: string): md is EstateMetadata {
+  return !!md && !(kind && md.kind !== undefined && md.kind !== kind);
+}
+
+/** Whether the strip is already saying a caveat, so a panel that also holds
+ *  the reading's own copy -- the same sentence, from the same producer -- says
+ *  it once. Before a draw the strip is empty and the panel's copy is the one. */
+export function caveatShown(md: EstateMetadata | null | undefined, kind?: string): boolean {
+  return shown(md, kind) && !!md.caveat;
+}
+
 export const Provenance: m.Component<ProvenanceAttrs> = {
   view: ({ attrs }) => {
     const md = attrs.metadata;
-    if (!md) return null;
-    if (attrs.kind && md.kind !== undefined && md.kind !== attrs.kind) return null;
+    if (!shown(md, attrs.kind)) return null;
     const p = attrs.prefix;
     const partial = typeof md.unmeasured === 'number' && md.unmeasured > 0;
 
