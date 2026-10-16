@@ -1,4 +1,12 @@
 import { GraphNode, GraphEdge } from './graph_types';
+import { packEnclose } from 'd3';
+
+/** A circle in graph coordinates. */
+interface Circle {
+  x: number;
+  y: number;
+  r: number;
+}
 
 export interface GroupBounds {
   nodeId: string;
@@ -31,8 +39,10 @@ interface ParentChain {
  * nodes with no matching contains edge, mirroring compound_layout.py's own
  * orphan fallback-ring behavior.
  *
- * For non-compound layouts (spring, circular, etc.) the circles would be
- * nonsensical — callers should only invoke this when layout is 'compound_layout'.
+ * The renderer draws the outlines on every D3 layout while Group Outlines is
+ * on. A layout that does not gather a group together (Spring, Circular) gives
+ * it a wide outline that overlaps others; centring each on its group keeps it
+ * as small as the group allows.
  */
 export class CompoundLayoutManager {
   private _buildParentChain(nodes: GraphNode[], edges: GraphEdge[]): ParentChain {
@@ -105,19 +115,37 @@ export class CompoundLayoutManager {
     return result;
   }
 
+  /**
+   * One outline per directory and per file that holds anything drawn: the
+   * smallest circle enclosing the group -- its own node and what it holds --
+   * plus padding (`padding` for a directory, half of it for a file).
+   *
+   * A file's group is its node and its symbols, sub-symbols included. A
+   * directory's is its node and its files, each by its own outline when it
+   * has one. Centred on the group, not on its node: a layout that does not
+   * place a node amid what it holds (Spring, Circular) would otherwise draw
+   * a circle reaching from the node to its farthest child, twice the size,
+   * and the fit that frames the outlines would draw the graph small.
+   *
+   * `radiusOf` is a node's drawn extent; it defaults to `baseNodeSize`.
+   */
   computeGroupBounds(
     nodes: GraphNode[],
     edges: GraphEdge[],
     padding = 40,
     baseNodeSize = 4,
+    radiusOf: (node: GraphNode) => number = () => baseNodeSize,
   ): GroupBounds[] {
     const { dirs, files, syms2, syms3, fileToDir, sym2ToFile, sym3ToSym2 } =
       this._buildParentChain(nodes, edges);
 
     if (dirs.length === 0 && files.length === 0) return [];
 
+    const circleOf = (n: GraphNode): Circle => ({ x: n.x!, y: n.y!, r: radiusOf(n) });
+    const group = (members: Circle[]): Circle => packEnclose(members.map((c) => ({ ...c })));
+
     // Sub-symbols enclose within their symbol's file transitively, so a
-    // file's circle still covers both levels like it did before.
+    // file's circle covers both levels.
     const symsByFile = new Map<string, GraphNode[]>();
     for (const s of syms2) {
       const f = sym2ToFile.get(s.id);
@@ -136,27 +164,26 @@ export class CompoundLayoutManager {
     }
 
     const bounds: GroupBounds[] = [];
+    const fileCircle = new Map<string, Circle>();
 
-    // ── File bounding circles (enclose their symbols) ──────────────────────
+    // ── File outlines (enclose the file and its symbols) ───────────────────
     for (const f of files) {
       const children = symsByFile.get(f.id) ?? [];
       if (children.length === 0) continue;
-      let maxR = 0;
-      for (const s of children) {
-        const r = Math.hypot(s.x! - f.x!, s.y! - f.y!) + baseNodeSize * 1.0;
-        if (r > maxR) maxR = r;
-      }
+      const c = group([circleOf(f), ...children.map(circleOf)]);
+      const outline = { x: c.x, y: c.y, r: c.r + padding * 0.5 };
+      fileCircle.set(f.id, outline);
       bounds.push({
         nodeId: f.id,
-        cx: f.x!,
-        cy: f.y!,
-        radius: maxR + padding * 0.5,
+        cx: outline.x,
+        cy: outline.y,
+        radius: outline.r,
         label: (f.label as string) || f.id,
         depth: 1,
       });
     }
 
-    // ── Dir bounding circles (enclose files + their symbol orbits) ─────────
+    // ── Directory outlines (enclose the directory and its files' outlines) ─
     const filesByDir = new Map<string, GraphNode[]>();
     for (const f of files) {
       const d = fileToDir.get(f.id);
@@ -169,18 +196,12 @@ export class CompoundLayoutManager {
     for (const d of dirs) {
       const dirFiles = filesByDir.get(d.id) ?? [];
       if (dirFiles.length === 0) continue;
-      let maxR = 0;
-      for (const f of dirFiles) {
-        const fileBound = bounds.find(b => b.nodeId === f.id);
-        const distToFile = Math.hypot(f.x! - d.x!, f.y! - d.y!);
-        const r = distToFile + (fileBound?.radius ?? baseNodeSize * 1.8);
-        if (r > maxR) maxR = r;
-      }
+      const c = group([circleOf(d), ...dirFiles.map((f) => fileCircle.get(f.id) ?? circleOf(f))]);
       bounds.push({
         nodeId: d.id,
-        cx: d.x!,
-        cy: d.y!,
-        radius: maxR + padding,
+        cx: c.x,
+        cy: c.y,
+        radius: c.r + padding,
         label: (d.label as string) || d.id,
         depth: 0,
       });

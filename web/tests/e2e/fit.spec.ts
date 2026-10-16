@@ -92,3 +92,31 @@ test("the census's show frames the nodes it selects", async ({ page }) => {
   await functions.locator('.cartography__show').click();
   await expect.poll(() => outsideTheCanvas(page, selector), { timeout: 5_000 }).toEqual([]);
 });
+
+/** Outline labels that cover another label or a node, by name. */
+async function crowdedLabels(page: Page): Promise<string[]> {
+  return page.locator('.graphRenderer svg').first().evaluate((svg) => {
+    const hit = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    const labels = [...svg.querySelectorAll('.compound-group text')].map((t) => ({ name: t.textContent ?? '', box: t.getBoundingClientRect() }));
+    const nodes = [...svg.querySelectorAll('.graph-node')].map((n) => n.getBoundingClientRect());
+    const crowded: string[] = [];
+    labels.forEach((l, i) => {
+      if (labels.some((o, j) => j !== i && hit(l.box, o.box))) crowded.push(`${l.name} over a label`);
+      if (nodes.some((n) => hit(l.box, n))) crowded.push(`${l.name} over a node`);
+    });
+    return crowded;
+  });
+}
+
+test('no outline label covers another, or a node, in the bundled example or the demo', async ({ page }) => {
+  await drawBundledExample(page);
+  // Mutation: set every label at the top of its outline -- the nearly
+  // concentric directories' labels are written over one another, and this fails.
+  await expect.poll(() => crowdedLabels(page), { timeout: 5_000 }).toEqual([]);
+
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
+  await page.getByRole('button', { name: /Load Demo/i }).first().click();
+  await expect(page.locator('.graph-node[data-node-id*="region::FLASH"]')).toHaveCount(0, { timeout: SETTLED });
+  await expect(page.locator('.compound-group text').first()).toBeAttached({ timeout: SETTLED });
+  await expect.poll(() => crowdedLabels(page), { timeout: 5_000 }).toEqual([]);
+});

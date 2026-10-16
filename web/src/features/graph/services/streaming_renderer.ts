@@ -19,6 +19,7 @@ import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
 import { fitBadgeText, sourceTarget } from './node_info';
 import { fitTransform } from './fit';
+import { placeOutlineLabels } from './outline_labels';
 import type { Circle } from './fit';
 
 // Nodes rendered per animation frame. Scales with total so large repos
@@ -635,12 +636,7 @@ export class StreamingGraphRenderer {
    */
   private _fitNodes(nodes: GraphNode[]): void {
     const ids = new Set(nodes.map((n) => n.id));
-    // A shape drawn at `size` reaches 1.5 × size at most (a triangle's apex).
-    const circles: Circle[] = nodes.map((n) => ({
-      x: n.x ?? 0,
-      y: n.y ?? 0,
-      r: 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n),
-    }));
+    const circles: Circle[] = nodes.map((n) => ({ x: n.x ?? 0, y: n.y ?? 0, r: this._extentOf(n) }));
     for (const b of this._groupBounds) {
       if (ids.has(b.nodeId)) circles.push({ x: b.cx, y: b.cy, r: b.radius });
     }
@@ -658,6 +654,12 @@ export class StreamingGraphRenderer {
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
+  /** How far a node's shape reaches from its centre: a shape drawn at `size`
+   *  reaches 1.5 × size at most (a triangle's apex). */
+  private _extentOf(n: GraphNode): number {
+    return 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n);
+  }
+
   private _drawCompoundBackgrounds(): void {
     const nodes = Array.from(this.nodeById.values());
     const bounds = this._compoundManager.computeGroupBounds(
@@ -665,10 +667,12 @@ export class StreamingGraphRenderer {
       this._allEdges,
       40,
       this.styling.nodeSize! * 3.0,
+      (n) => this._extentOf(n),
     );
     this._childrenMap = this._compoundManager.computeChildrenMap(nodes, this._allEdges);
     this._groupBounds = bounds;
     this._backgroundGroup.selectAll('*').remove();
+    const labels: SVGTextElement[] = [];
     for (const b of bounds) {
       const isDir = b.depth === 0;
       const fill   = isDir ? 'rgba(127,140,141,0.06)' : 'rgba(155,89,182,0.09)';
@@ -689,20 +693,34 @@ export class StreamingGraphRenderer {
         .delay(300)
         .duration(500)
         .style('opacity', 1);
-      grp.append('text')
-        .attr('x', b.cx)
-        .attr('y', b.cy - b.radius + 16)
+      labels.push(grp.append('text')
         .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
         .attr('font-size', isDir ? 11 : 9)
         .attr('fill', isDir ? 'rgba(127,140,141,0.70)' : 'rgba(155,89,182,0.70)')
         .style('pointer-events', 'none')
         .style('opacity', 0)
         .text(b.label)
+        .node()!);
+    }
+    // Each label inside its outline where it covers no other label and no
+    // node (outline_labels.ts), measured as drawn.
+    const places = placeOutlineLabels(
+      bounds.map((b, i) => {
+        const size = labels[i].getBBox();
+        return { cx: b.cx, cy: b.cy, r: b.radius, w: size.width, h: size.height };
+      }),
+      nodes.map((n) => ({ x: n.x ?? 0, y: n.y ?? 0, r: this._extentOf(n) })),
+    );
+    labels.forEach((label, i) => {
+      d3.select(label)
+        .attr('x', places[i].x)
+        .attr('y', places[i].y)
         .transition()
         .delay(300)
         .duration(500)
         .style('opacity', 1);
-    }
+    });
   }
 
   /**

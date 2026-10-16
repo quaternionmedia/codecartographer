@@ -125,7 +125,8 @@ web/src/
 │   │   ├── d3_renderer.ts           # registry entry; hands a finished graph to the above
 │   │   ├── graph_surface.ts         # announces the live canvas so rad/legend can attach
 │   │   ├── graph_types.ts           # GraphNode / GraphEdge / GraphData
-│   │   ├── compound_layout.ts       # CompoundLayoutManager (bounding circles + child map)
+│   │   ├── compound_layout.ts       # CompoundLayoutManager (group outlines + child map)
+│   │   ├── outline_labels.ts        # where each outline's label goes
 │   │   └── renderers.ts             # renderer registry (gravis, notebook, system)
 │   ├── extensions/                  # drag, zoom, selection, highlight, tooltip, colour, legend
 │   └── rad/                         # the radial menu, conformant to rad's vectors
@@ -320,10 +321,15 @@ parser's kind for a struct's fields); a node with neither falls back to its
 about 100 px in the browser (`GraphSerializer`'s `spread`).
 
 On the canvas, `CompoundLayoutManager` (`web/src/features/graph/services/compound_layout.ts`)
-draws a translucent circle behind each directory's and each file's group,
+draws a translucent circle round each directory's and each file's group,
 assigning children by the same containment edges and by nearest position only
-for an orphan. `computeChildrenMap` covers all four tiers, so dragging a node
-moves its whole subtree. The circles are drawn only for `compound_layout`, in a
+for an orphan. A circle is the smallest one enclosing the group -- its own
+node and what it holds, a file's symbols or a directory's files by their own
+circles -- plus padding, so it is centred on the group, wherever the layout put
+the group's node. Each circle's label sits inside it, against the rim, where it
+covers no other label and no node (`outline_labels.ts`). `computeChildrenMap`
+covers all four tiers, so dragging a node moves its whole subtree. The circles
+are drawn on any layout the D3 canvas draws while *Group Outlines* is on, in a
 `<g class="compound-backgrounds">` that is the transform group's first child,
 so they sit behind links and nodes. Where the layout and its outline toggle
 are chosen is in the [UI reference](ui.md#graph-settings).
