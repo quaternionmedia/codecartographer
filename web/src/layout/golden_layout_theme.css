@@ -46,6 +46,14 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
+/* The ✕ is drawn absolutely, 11px wide and 6px in from the tab's right edge
+   (goldenlayout-dark-theme.css), so the right padding is its room: 17px, and
+   a 7px gap before the title. A tab in the overflow list hides its ✕ and
+   keeps the 10px. */
+.lm_tabs > .lm_tab {
+  padding-right: 24px !important;
+}
+
 .lm_tab.lm_active {
   background: var(--c-primary-light, #1a1a1a);
   color: var(--c-secondary, #00ff41);
@@ -173,6 +181,29 @@
   max-height: 60vh;
 }
 
+/* One line per file (qm_comp_lib/directory/files.ts): its name, then its raw
+   link when it has one. A long name is cut short rather than wrapped. */
+.gl-file-tree__tree .file_container {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.gl-file-tree__tree .file {
+  min-width: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gl-file-tree__tree .file_raw_btn {
+  flex: none;
+  font-size: 0.8em;
+  color: var(--c-font-muted, #00aa2a);
+  text-decoration: underline dotted;
+}
+
 .gl-file-tree__actions {
   display: flex;
   flex-direction: column;
@@ -196,6 +227,7 @@
 
 .gl-file-tree__action-btn:hover {
   background: var(--c-primary-light, #1a1a1a);
+  color: var(--c-secondary, #00ff41);
   border-color: var(--c-secondary, #00ff41);
 }
 
@@ -295,29 +327,6 @@
   flex: 1;
 }
 
-.gl-app-header__restore {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: 8px;
-}
-
-.gl-app-header__restore-btn {
-  padding: 4px 8px;
-  border: 1px solid var(--c-border, #00ff4140);
-  background: transparent;
-  color: var(--c-secondary, #00ff41);
-  font-size: 0.72em;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.gl-app-header__restore-btn:hover {
-  background: var(--c-primary-light, #1a1a1a);
-  border-color: var(--c-secondary, #00ff41);
-}
-
 /* GitHub auth indicator */
 .gl-app-header__gh-auth {
   display: flex;
@@ -357,6 +366,7 @@
 .gl-app-header__help-btn:hover,
 .gl-app-header__add-btn:hover {
   background: var(--c-primary-light, #1a1a1a);
+  color: var(--c-secondary, #00ff41);
   box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
 }
 
@@ -394,6 +404,7 @@
 
 .gl-add-panel-menu__item:hover {
   background: var(--c-primary, #0a0a0a);
+  color: var(--c-secondary, #00ff41);
 }
 
 .gl-add-panel-menu__empty {
@@ -425,104 +436,6 @@
   position: relative;
   min-height: 0;
   overflow: hidden;
-}
-
-/* ── Actions (Plotbar) panel ─────────────────────────────────────────────── */
-
-.gl-actions-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
-  overflow-y: auto;
-}
-
-.gl-actions-panel__plot,
-.gl-actions-panel__cancel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border: 1px solid var(--c-secondary, #00ff41);
-  background: transparent;
-  color: var(--c-secondary, #00ff41);
-  font-family: var(--f-root-font, 'Consolas', monospace);
-  font-size: 0.82em;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  width: 100%;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-}
-
-.gl-actions-panel__plot:hover {
-  background: rgba(0, 255, 65, 0.1);
-  box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
-}
-
-.gl-actions-panel__cancel {
-  border-color: var(--c-error, #e74c3c);
-  color: var(--c-error, #e74c3c);
-}
-
-.gl-actions-panel__cancel:hover {
-  background: rgba(231, 76, 60, 0.1);
-}
-
-.gl-actions-panel__status {
-  font-size: 0.78em;
-  color: var(--c-font-muted, #00aa2a);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.gl-actions-panel__progress-bar-wrap {
-  width: 100%;
-  height: 2px;
-  background: var(--c-primary-light, #1a1a1a);
-  overflow: hidden;
-}
-
-.gl-actions-panel__progress-bar {
-  height: 100%;
-  background: var(--c-secondary, #00ff41);
-  transition: width 0.2s ease;
-}
-
-.gl-actions-panel__progress-bar--indeterminate {
-  width: 40%;
-  animation: actions-progress-indeterminate 1.4s infinite ease-in-out;
-}
-
-@keyframes actions-progress-indeterminate {
-  0%   { transform: translateX(-150%); }
-  100% { transform: translateX(350%); }
-}
-
-.gl-actions-panel__status-text {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.gl-actions-panel__status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--c-font-muted, #00aa2a);
-  flex-shrink: 0;
-  transition: background 0.2s ease;
-}
-
-.gl-actions-panel__status-dot--active {
-  background: var(--c-secondary, #00ff41);
-  box-shadow: 0 0 6px var(--c-secondary, #00ff41);
-  animation: pulse-dot 1s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
 }
 
 /* ── Graphbase panel ─────────────────────────────────────────────────────── */
@@ -629,8 +542,8 @@
   border-radius: var(--border-radius, 4px);
   display: flex; align-items: center; justify-content: center;
 }
-.gl-graphbase-panel__load-btn:hover    { border-color: var(--c-secondary, #00ff41); color: var(--c-secondary, #00ff41); }
-.gl-graphbase-panel__delete-btn:hover  { border-color: #e74c3c; color: #e74c3c; }
+.gl-graphbase-panel__load-btn:hover    { background: transparent; border-color: var(--c-secondary, #00ff41); color: var(--c-secondary, #00ff41); }
+.gl-graphbase-panel__delete-btn:hover  { background: transparent; border-color: #e74c3c; color: #e74c3c; }
 .gl-graphbase-panel__promote-btn {
   width: 22px; height: 22px;
   border: 1px solid var(--c-border, #333);
@@ -641,7 +554,7 @@
   border-radius: var(--border-radius, 4px);
   display: flex; align-items: center; justify-content: center;
 }
-.gl-graphbase-panel__promote-btn:hover { border-color: #f39c12; color: #f39c12; }
+.gl-graphbase-panel__promote-btn:hover { background: transparent; border-color: #f39c12; color: #f39c12; }
 .gl-graphbase-panel__saved-badge {
   width: 22px; height: 22px;
   display: flex; align-items: center; justify-content: center;

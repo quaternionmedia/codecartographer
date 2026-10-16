@@ -57,6 +57,7 @@
 
 .topology__chip:hover,
 .topology__chip:focus-visible {
+  background: var(--c-transparent-full);
   color: var(--c-font);
   border-color: var(--c-border-active);
 }
