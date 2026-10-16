@@ -28,8 +28,11 @@ import {
 import { PlotService } from '../services/plot_service';
 import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
+import { infoLine, sourceLine } from '../features/graph/services/node_info';
+import type { BundledExample } from '../features/examples/examples';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
+import { readSavedLayout } from './saved_layout';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
 import { GraphSurface } from '../features/graph/services/graph_surface';
@@ -38,6 +41,7 @@ import { viewActions, EMPTY_VIEW_STATE, anyHidden } from '../features/graph/rad/
 import type { NodeViewState } from '../features/graph/rad/host/view_state';
 import type { GraphOps } from '../features/graph/rad/host/graph_intents';
 import type { MenuContext } from '../features/graph/rad/core/types';
+import { DEEPEST_DEPTH } from '../features/graph/rad/host/resolve';
 import type { GraphNode, GraphEdge } from '../features/graph/services/graph_types';
 import { backendLayoutName } from '../features/graph/services/layout_names';
 
@@ -73,15 +77,12 @@ export class LayoutContext {
 
   // Reactive UI-only state shared by the docked panels.
   public panelState: ControlPanelState = {
-    isOpen: true,
-    activeTab: 'source',
     codeSourceMode: 'upload',
     repoUrl: '',
     currentTheme: 'forest',
     isLoading: false,
     statusMessage: 'Ready',
     progress: null,
-    panelHeight: 380,
     graphSections: { layout: true, visual: false, theme: false },
     parseDepth: 2,
   };
@@ -91,6 +92,7 @@ export class LayoutContext {
 
   /** Cached graph entries fetched from the backend cache endpoint. */
   public cachedGraphs: CachedEntry[] | null = null;
+  public bundledExamples: BundledExample[] = [];
 
   /** GitHub auth status from the backend's /auth/github endpoint. */
   public githubAuthStatus: { source: string; authenticated: boolean; token_prefix?: string } | null = null;
@@ -238,15 +240,34 @@ export class LayoutContext {
 
   // ── Layout persistence ─────────────────────────────────────────────────────
 
-  /** The saved layout if one exists and parses cleanly, else the built-in default. */
+  /**
+   * The saved layout if it can be loaded, else the built-in default.
+   *
+   * A saved layout that names a window this version does not register is
+   * dropped here, before Golden Layout reads it: Golden Layout throws on an
+   * unregistered component type, and the page would boot with no windows.
+   */
   public loadInitialLayoutConfig(): LayoutConfig {
+    let raw: string | null = null;
     try {
-      const raw = localStorage.getItem(SAVED_LAYOUT_KEY);
-      if (raw) return JSON.parse(raw) as LayoutConfig;
+      raw = localStorage.getItem(SAVED_LAYOUT_KEY);
     } catch {
-      /* corrupt/old-format entry — fall through to built-in default */
+      /* storage blocked: nothing saved to read */
     }
+    const saved = readSavedLayout(raw, PanelRegistry.all().map((def) => def.id));
+    if (saved.kind === 'usable') return saved.config as LayoutConfig;
+    if (saved.kind === 'unusable') this.dropSavedLayout(saved.why);
     return DEFAULT_LAYOUT_CONFIG;
+  }
+
+  /** Forget the saved layout, and say why the default is showing instead. */
+  public dropSavedLayout(why: string): void {
+    try {
+      localStorage.removeItem(SAVED_LAYOUT_KEY);
+    } catch {
+      /* storage blocked: there is nothing to remove */
+    }
+    ToastManager.show(`The saved layout was not loaded: ${why}. Showing the default.`, 8_000);
   }
 
   /** Persist the live layout (panel arrangement + sizes) as the local default. */
@@ -280,6 +301,7 @@ export class LayoutContext {
       availableLanguages: s.availableLanguages ?? null,
       availableLexiconLanguages: s.availableLexiconLanguages ?? [],
       cachedGraphs: this.cachedGraphs,
+      bundledExamples: this.bundledExamples,
     };
   }
 
@@ -451,6 +473,20 @@ export class LayoutContext {
     if (ok) await this.refreshGraphbase();
   }
 
+  /** What examples this checkout bundles, for the project selector. */
+  public async refreshExamples(): Promise<void> {
+    try {
+      const resp = await fetch(`${this.appState.api.repoReader}/examples`);
+      if (resp.ok) {
+        const data = await resp.json();
+        this.bundledExamples = (data?.results?.examples as BundledExample[]) ?? [];
+        m.redraw();
+      }
+    } catch {
+      /* non-fatal: the GitHub examples are still offered */
+    }
+  }
+
   /** Fetch and refresh the backend graph-cache list. */
   public async refreshCache(): Promise<void> {
     try {
@@ -532,6 +568,7 @@ export class LayoutContext {
       pinned: !!(id && this._nodeViewState[id]?.pinned),
       hasSource: !!node?.file,
       hasGroup: (node?.depth as number | undefined) !== undefined && (node!.depth as number) < 2,
+      hasConstruct: typeof node?.construct === 'string',
       selectionCount: this._radSelection.size,
       anyHidden: anyHidden(this._nodeViewState),
       // The streaming renderer has no force simulation; positions come from
@@ -558,6 +595,32 @@ export class LayoutContext {
   private _replaceSelection(nodes: GraphNode[]): void {
     this._radSelection.clear();
     for (const n of nodes) this._radSelection.add(n);
+  }
+
+  /**
+   * The nodes on the canvas now, whichever panel or parse drew them: the
+   * graph of record first, complete by the time it is set, and the renderer's
+   * own when nothing is recorded.
+   */
+  public canvasNodes(): GraphNode[] {
+    const recorded = this._normaliseGraph(this.appState.state.graphData).nodes;
+    return recorded.length ? recorded : this._streamingRenderer?.getNodes() ?? [];
+  }
+
+  /**
+   * Frame these nodes and make them the selection the radial menu's selection
+   * ring acts on -- how the chrestomathy points back at the graph it read.
+   * Returns how many were on the canvas.
+   */
+  public showOnCanvas(ids: readonly string[]): number {
+    const r = this._streamingRenderer;
+    if (!r) return 0;
+    const wanted = new Set(ids);
+    const found = r.getNodes().filter((n) => wanted.has(n.id));
+    this._replaceSelection(found);
+    if (found.length) r.fitTo(found.map((n) => n.id));
+    this.focusDockPanel('graph');
+    return found.length;
   }
 
   /** A verb the ring shows disabled, refused out loud if it ever commits. */
@@ -597,7 +660,7 @@ export class LayoutContext {
         let added = 0;
         try {
           for (const id of ids) {
-            const payload = await PlotService.expandNode(this.appState.api.parse, directory, id, 3);
+            const payload = await PlotService.expandNode(this.appState.api.parse, directory, id, DEEPEST_DEPTH);
             const { nodes, edges } = this._normaliseGraph(payload);
             // The subgraph includes the node that was expanded; mergeGraph
             // skips ids already on the canvas, so this is idempotent.
@@ -689,15 +752,24 @@ export class LayoutContext {
         r.fitTo(subtree);
       },
 
+      // `show`, not `hint`: a hint speaks once a session, and these are
+      // verbs a person uses again (node_info.ts says why that matters).
       viewSource: (id) => {
         const node = renderer()?.getNodes().find((n) => n.id === id);
-        if (node?.file) ToastManager.hint('rad-source', String(node.file));
+        const source = node ? sourceLine(node) : null;
+        if (source) ToastManager.show(source, 8_000);
       },
       showInfo: (id) => {
         const node = renderer()?.getNodes().find((n) => n.id === id);
-        if (node) {
-          ToastManager.hint('rad-info', `${node.label ?? node.id} · ${node.kind ?? 'node'}`);
-        }
+        if (node) ToastManager.show(infoLine(node), 8_000);
+      },
+      // What this node is, beside every language that writes it. The panel
+      // reads `constructChosen`, which loading sets, so it opens on it.
+      compare: (id) => {
+        const node = renderer()?.getNodes().find((n) => n.id === id);
+        if (typeof node?.construct !== 'string') return;
+        void this.actions.plot.loadChrestomathy(node.construct);
+        this.restoreDockPanel('chrestomathy-panel');
       },
     };
   }
@@ -760,6 +832,11 @@ export class LayoutContext {
    * in the place a reader is already looking, rather than as a graph that
    * merely looks oddly circular.
    */
+  /** What a parser said it could not read, kept in the status line after its toast is gone. */
+  private static _notesNote(notes: string[]): string {
+    return notes.length ? ` — ${notes.join('; ')}` : '';
+  }
+
   private _fallbackNote(renderer: StreamingGraphRenderer): string {
     const { placed, total } = renderer.layoutFallback();
     if (placed === 0) return '';
@@ -812,6 +889,7 @@ export class LayoutContext {
 
     const accNodes: { id: string; [k: string]: unknown }[] = [];
     const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
+    const notes: string[] = [];
     let nodeCount = 0;
 
     this._mountAndStream((renderer) =>
@@ -839,6 +917,10 @@ export class LayoutContext {
             accEdges.push(edge as any);
             renderer.addEdge(edge as any);
           },
+          onNote: (message) => {
+            notes.push(message);
+            ToastManager.show(message, 15_000);
+          },
           onDone: (elapsed_ms, from_cache) => {
             this._cancelStream = null;
             renderer.finalize();
@@ -863,7 +945,7 @@ export class LayoutContext {
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
             this.updatePanelState({
               isLoading: false,
-              statusMessage: msg + this._fallbackNote(renderer),
+              statusMessage: msg + this._fallbackNote(renderer) + LayoutContext._notesNote(notes),
               progress: null,
             });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
@@ -896,6 +978,7 @@ export class LayoutContext {
 
     const accNodes: { id: string; [k: string]: unknown }[] = [];
     const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
+    const notes: string[] = [];
     let nodeCount = 0;
 
     this._mountAndStream((renderer) =>
@@ -924,6 +1007,10 @@ export class LayoutContext {
             accEdges.push(edge as any);
             renderer.addEdge(edge as any);
           },
+          onNote: (message) => {
+            notes.push(message);
+            ToastManager.show(message, 15_000);
+          },
           onDone: (elapsed_ms, from_cache) => {
             this._cancelStream = null;
             renderer.finalize();
@@ -947,7 +1034,7 @@ export class LayoutContext {
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
             this.updatePanelState({
               isLoading: false,
-              statusMessage: msg + this._fallbackNote(renderer),
+              statusMessage: msg + this._fallbackNote(renderer) + LayoutContext._notesNote(notes),
               progress: null,
             });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
@@ -996,6 +1083,13 @@ export class LayoutContext {
         }
       },
 
+      onBundledExample: (example) => {
+        this.panelCallbacks.onRepoSubmit(example.url);
+        // Its recorded cargo documents are part of it: the Cargo panel reads
+        // them now, so opening that panel shows the workspace already read.
+        if (example.cargo) void this.actions.plot.loadCargoReading(example.url);
+      },
+
       onRepoSubmit: (url: string) => {
         this.panelState.repoUrl = url;
         this._lastPlotAction = () => { this.panelCallbacks.onRepoSubmit(url); };
@@ -1004,7 +1098,7 @@ export class LayoutContext {
           .then(() => {
             const dir = this.appState.repo.content;
             if (dir?.is_partial)
-              ToastManager.hint('stub-folders', 'Large repo: click a folder ▶ to expand it, or use "Expand All"');
+              ToastManager.hint('stub-folders', 'Large repo: a folder marked … is unread; click it to read it, or use "Expand All" in the Files panel');
             m.redraw();
           })
           .catch(() => { /* sidebar still works */ });

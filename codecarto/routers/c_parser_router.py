@@ -83,7 +83,7 @@ async def list_c_repo_cache() -> dict:
 
     Counterpart to GET /parse/cache — that one lists cached *parsed graphs*;
     this one lists cached *extracted source trees* (a different cache, see
-    docs/llm/ARCHITECTURE.md). Repos here are re-parsed fresh on every
+    docs/architecture.md, "The two caches"). Repos here are re-parsed fresh on every
     request; only the download+extract step is skipped on a hit.
     """
     from codecarto.services.c_parser_service import CParserService
@@ -185,7 +185,7 @@ def _compute_layout_positions(nodes: list[dict], edges: list[dict], layout: str)
     Reuses the same Positions service + scaling GraphSerializer applies for
     every other parse path, so a C repo streamed through this endpoint ends
     up laid out identically to one parsed through /parse/unified with the
-    same layout choice — see docs/llm/ARCHITECTURE.md.
+    same layout choice — see docs/architecture.md, "C: two pipelines".
     """
     if not nodes:
         return {}

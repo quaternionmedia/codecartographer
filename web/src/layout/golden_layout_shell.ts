@@ -1,14 +1,13 @@
 /**
  * GoldenLayoutShell
  *
- * Top-level Mithril component that bootstraps a Golden Layout instance and
- * distributes the application UI across dockable panels.
+ * Top-level Mithril component: the application header and the Golden Layout
+ * dock under it.
  *
- * Panels registered:
- *   • 'graph'         — D3 / vis-network visualisation canvas
- *   • 'file-tree'     — Repository / uploaded-file browser
- *
- * Golden Layout is now the primary shell.
+ * Every panel in `panel_registry.ts` is registered here as a Golden Layout
+ * component, and the saved layout (or `default_layout.ts`) is loaded. The
+ * header holds the "+" add-window menu, the GitHub auth indicator, a Restore
+ * button for each closed panel, and the help button.
  */
 
 import m from 'mithril';
@@ -18,6 +17,7 @@ import type { ICell } from '../state/cell_state';
 import { LayoutContext } from './layout_context';
 import { PanelRegistry, DockPanelId } from './panel_registry';
 import { AddPanelMenu } from './components/add_panel_menu';
+import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 
 import { HelpModal, HelpModalComponent } from '../components/codecarto/help/help_modal';
 import { ToastContainer } from '../components/codecarto/help/toast';
@@ -67,7 +67,17 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
     // Known limitation: GL 2.x pop-out opens a new window but Mithril component
     // factories are bound to the original window — components never mount in pop-outs.
     // popInOnClose: true (default_layout.ts) auto-returns panels on pop-out close.
-    glInstance.loadLayout(ctx.loadInitialLayoutConfig());
+    const initial = ctx.loadInitialLayoutConfig();
+    try {
+      glInstance.loadLayout(initial);
+    } catch (err) {
+      // The saved layout passed the check in `loadInitialLayoutConfig` and
+      // Golden Layout refused it anyway. Boot the default rather than a page
+      // with no windows. The default itself failing is a bug, and throws.
+      if (initial === DEFAULT_LAYOUT_CONFIG) throw err;
+      ctx.dropSavedLayout(`Golden Layout refused it (${err instanceof Error ? err.message : String(err)})`);
+      glInstance.loadLayout(DEFAULT_LAYOUT_CONFIG);
+    }
   }
 
   return {
@@ -88,6 +98,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       try { await ctx.actions.plot.initializeLanguages(); m.redraw(); } catch { /* non-fatal */ }
       try { await ctx.actions.plot.initializeLexiconLanguages(); m.redraw(); } catch { /* non-fatal */ }
       await ctx.refreshCache();
+      void ctx.refreshExamples();
       ctx.refreshGraphbase();        // probe graphbase — sets graphbaseAvailable
       ctx.refreshGithubAuthStatus(); // probe GitHub auth — surfaces bad-token early
     },
@@ -161,9 +172,9 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
             glInstance = null;
           },
           // Ctrl+right-click on the dock area opens the add-window menu.
-          // Plain right-click is left to the graph renderer's own contextmenu
-          // handlers (which call preventDefault themselves for node targets) or
-          // falls through to the browser's native menu on empty chrome areas.
+          // Plain right-click is left to the radial menu on the canvas (which
+          // calls preventDefault itself) or falls through to the browser's
+          // native menu on empty chrome areas.
           oncontextmenu: (e: MouseEvent) => {
             if (!e.ctrlKey) return;
             e.preventDefault();

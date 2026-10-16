@@ -35,6 +35,15 @@ def _find_folder_at_path(root: Folder, path: str) -> Folder | None:
     return node
 
 
+@RepoReaderRouter.get("/examples")
+async def list_examples() -> dict:
+    """The examples bundled with this checkout, each with the absolute path it
+    is read from -- the project selector offers them beside its GitHub ones."""
+    from codecarto.services import examples_service
+
+    return generate_return(200, "list_examples - Success", {"examples": examples_service.bundled()})
+
+
 @RepoReaderRouter.get("/tree")
 async def get_repo_directory_tree(url: str) -> dict:
     """

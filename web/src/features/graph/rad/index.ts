@@ -18,7 +18,12 @@
  * That is checked — see `scripts/rad-core-lint.mjs`.
  */
 
-export const VECTOR_VERSION = '0.4.0';
+/**
+ * The vector version this port replays: the version field of
+ * `web/tests/rad/vectors.v0.0.1.json`, whose filename carries it too.
+ * `tests/rad/conformance.test.mjs` fails when the three disagree.
+ */
+export const VECTOR_VERSION = '0.0.1';
 
 export type {
   Effect,
