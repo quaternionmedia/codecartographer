@@ -498,14 +498,18 @@ export function ControlPanel(
     ]);
   };
 
+  // The quick starts lead the left column and the examples close it: in the
+  // default dock the Open panel is a short stack under the canvas, and the
+  // empty canvas sends a first-time reader to ⚡ Load Demo, so the URL, the
+  // local files and the demo are drawn above the column's fold.
   const renderOpenTab = () =>
     m('div.panel-section.panel-source.panel-open.panel-section--active', [
       m('div.panel-source__2col', [
         m('div.panel-source__left', [
           renderUrlSection(),
-          renderExamples(),
           renderLocalFiles(),
           renderQuickStart(),
+          renderExamples(),
         ]),
         m('div.panel-source__right', [
           renderRecent(),

@@ -107,14 +107,15 @@
   padding-left: var(--spacing-md);
 }
 
-/* Upload dropzone */
+/* Upload dropzone: one line, icon beside the text, so the demo and the
+   lexicons below it are in view in the default dock's short Open panel. */
 .panel-upload__dropzone {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
   border: 2px dashed var(--c-border);
   border-radius: var(--border-radius-lg);
   background-color: var(--c-primary-light);

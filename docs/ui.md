@@ -54,20 +54,21 @@ Open panel.
 
 Id `open`. In the default arrangement, in front.
 
-Where a graph starts. From top to bottom on the left:
+Where a graph starts. From top to bottom on the left, the quick starts first,
+so that in the default arrangement they are in view without scrolling:
 
 - **A GitHub URL or a local path**, then `→ Fetch` or Enter: draws it and loads
   its tree into the Files panel. Once loaded, a line names the repository and
   its size, and its ✕ clears the repository and any added files.
+- **Local files**: drop them on the box or click it to browse. They are listed
+  in the Files panel.
+- **Demo and lexicons**: ⚡ Load Demo draws a sample graph, and each language
+  with a lexicon has a 📖 button that draws it.
 - **The examples**, by language, Rust first. A bundled example leads its group
   as a filled chip: it is read from this checkout with the documents its build
   recorded, so it needs no network, and a Cargo workspace's records go to the
   Cargo panel, which comes forward. A GitHub example draws the code map only;
   its tooltip says how much of the repository is drawn.
-- **Local files**: drop them on the box or click it to browse. They are listed
-  in the Files panel.
-- **Demo and lexicons**: ⚡ Load Demo draws a sample graph, and each language
-  with a lexicon has a 📖 button that draws it.
 
 On the right:
 

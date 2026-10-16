@@ -68,6 +68,35 @@ test('the recent graphs are listed in Open, and not in Graphbase', async ({ page
   await expect(graphbase).not.toContainText(/Recent \(/);
 });
 
+test.describe('in the default dock at 1600×1000', () => {
+  test.use({ viewport: { width: 1600, height: 1000 } });
+
+  test('the local files, Load Demo and the lexicons are in view without scrolling', async ({ page }) => {
+    await page.goto('/');
+    await dismissOnboardingModal(page);
+    const open = page.locator('.gl-panel--open');
+    await expect(open).toBeVisible();
+    // The bundled examples and the lexicons arrive after the page; wait for
+    // both, so the column is measured at its full height.
+    await expect(open.locator('[data-example="blinky (recorded)"]')).toBeAttached({ timeout: SETTLED });
+    const lexicons = open.getByRole('button', { name: /Lexicon$/ });
+    await expect(lexicons.first()).toBeAttached({ timeout: SETTLED });
+
+    // In view means unclipped by the column that scrolls, not only inside the
+    // window: the intersection Playwright measures is clipped by every
+    // scrolling ancestor.
+    // Mutation: put the examples back above Local files -- the dropzone and
+    // Load Demo sit below the column's fold, and this fails.
+    await expect(open.locator('.panel-upload__dropzone')).toBeInViewport({ ratio: 1 });
+    await expect(open.getByRole('button', { name: /Load Demo/i })).toBeInViewport({ ratio: 1 });
+    // Mutation: stack the dropzone's icon over its text with its full padding
+    // again -- the first lexicon runs past the fold, and this fails.
+    for (const lexicon of await lexicons.all()) {
+      await expect(lexicon).toBeInViewport({ ratio: 1 });
+    }
+  });
+});
+
 test('the parse options are folded to one line until opened', async ({ page }) => {
   await page.goto('/');
   await dismissOnboardingModal(page);
