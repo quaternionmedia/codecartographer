@@ -1,0 +1,128 @@
+     VMA      LMA     Size Align Out     In      Symbol
+       0        0        0     1 _stack_start = ORIGIN(RAM) + LENGTH(RAM)
+       0        0        0     1 PROVIDE(NonMaskableInt = DefaultHandler)
+       0        0        0     1 PROVIDE(MemoryManagement = DefaultHandler)
+       0        0        0     1 PROVIDE(BusFault = DefaultHandler)
+       0        0        0     1 PROVIDE(UsageFault = DefaultHandler)
+       0        0        0     1 PROVIDE(SVCall = DefaultHandler)
+       0        0        0     1 PROVIDE(DebugMonitor = DefaultHandler)
+       0        0        0     1 PROVIDE(PendSV = DefaultHandler)
+       0        0        0     1 PROVIDE(DefaultHandler = DefaultHandler_)
+       0        0        0     1 PROVIDE(HardFault = HardFault_)
+       0        0        0     1 PROVIDE(__pre_init = DefaultPreInit)
+       0        0        0     1 PROVIDE(_ram_end = ORIGIN(RAM) + LENGTH(RAM))
+ 8000000  8000000      400     4 .vector_table
+ 8000000  8000000        0     1         __vector_table = .
+ 8000000  8000000        4     1         LONG(_stack_start & 0xFFFFFFF8)
+ 8000004  8000004        4     4         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.vector_table.reset_vector)
+ 8000004  8000004        4     1                 __RESET_VECTOR
+ 8000008  8000008        0     1         __exceptions = .
+ 8000008  8000008       38     4         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.vector_table.exceptions)
+ 8000008  8000008       38     1                 __EXCEPTIONS
+ 8000040  8000040        0     1         __eexceptions = .
+ 8000040  8000040      3c0     4         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.vector_table.interrupts)
+ 8000040  8000040      3c0     1                 __INTERRUPTS
+ 8000400  8000400        0     1 PROVIDE(_stext = ALIGN(ADDR(.vector_table) + SIZEOF(.vector_table), ALIGNOF(.text)))
+ 8000400  8000400       b0     4 .text
+ 8000400  8000400        0     1         __stext = .
+ 8000400  8000400       58     4         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.Reset)
+ 8000400  8000400        0     1                 $t
+ 8000401  8000401       3e     1                 Reset
+ 8000440  8000440        0     1                 $d
+ 8000458  8000458       14     2         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.text.SysTick)
+ 8000458  8000458        0     1                 $t
+ 8000459  8000459       14     1                 SysTick
+ 800046c  800046c       2a     2         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.text._RNvCshsHBALq9cIr_6blinky18___cortex_m_rt_main)
+ 800046c  800046c        0     1                 $t
+ 800046d  800046d       2a     1                 blinky::__cortex_m_rt_main
+ 8000496  8000496        8     2         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.text.main)
+ 8000496  8000496        0     1                 $t
+ 8000497  8000497        8     1                 main
+ 800049e  800049e        6     2         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.text.DefaultHandler_)
+ 800049e  800049e        0     1                 $t
+ 800049f  800049f        6     1                 DefaultHandler_
+ 80004a4  80004a4        6     2         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.text.DefaultPreInit)
+ 80004a4  80004a4        0     1                 $t
+ 80004a5  80004a5        6     1                 DefaultPreInit
+ 80004aa  80004aa        6     2         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.HardFault.default)
+ 80004aa  80004aa        0     1                 $t
+ 80004ab  80004ab        6     1                 HardFault_
+ 80004b0  80004b0        0     1         . = ALIGN(4)
+ 80004b0  80004b0        0     1         __etext = .
+ 80004b0  80004b0        0     4 .rodata
+ 80004b0  80004b0        0     1         . = ALIGN(4)
+ 80004b0  80004b0        0     1         __srodata = .
+ 80004b0  80004b0        0     1         . = ALIGN(4)
+ 80004b0  80004b0        0     1         __erodata = .
+20000000 20000000        0     4 .data
+20000000 20000000        0     1         . = ALIGN(4)
+20000000 20000000        0     1         __sdata = .
+20000000 20000000        0     1         . = ALIGN(4)
+20000000 20000000        0     1 . = ALIGN(4)
+20000000 20000000        0     1 __edata = .
+20000000 20000000        0     1 __sidata = LOADADDR(.data)
+ 80004c0  80004c0        0    32 .gnu.sgstubs
+ 80004c0  80004c0        0     1         . = ALIGN(32)
+ 80004c0  80004c0        0     1         __veneer_base = .
+ 80004c0  80004c0        0     1         . = ALIGN(32)
+ 80004c0  80004c0        0     1 . = ALIGN(32)
+ 80004c0  80004c0        0     1 __veneer_limit = .
+20000000 20000000        4     4 .bss
+20000000 20000000        0     1         . = ALIGN(4)
+20000000 20000000        0     1         __sbss = .
+20000000 20000000        4     4         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.bss._RNvCshsHBALq9cIr_6blinky5TICKS.0)
+20000000 20000000        4     1                 blinky::TICKS (.0)
+20000004 20000004        0     1         . = ALIGN(4)
+20000004 20000004        0     1 . = ALIGN(4)
+20000004 20000004        0     1 __ebss = .
+20000004 20000004        0     4 .uninit
+20000004 20000004        0     1         . = ALIGN(4)
+20000004 20000004        0     1         __suninit = .
+20000004 20000004        0     1         . = ALIGN(4)
+20000004 20000004        0     1         __euninit = .
+20000004 20000004        0     1 . = ALIGN(4)
+20000004 20000004        0     1 PROVIDE(__sheap = .)
+20000004 20000004        0     1 PROVIDE(_stack_end = .)
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+20000004 20000004        0     1 
+       0        0       ba     1 .debug_loc
+       0        0       ba     1         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.debug_loc)
+       0        0      359     1 .debug_abbrev
+       0        0      359     1         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.debug_abbrev)
+       0        0      91f     1 .debug_info
+       0        0      91f     1         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.debug_info)
+       0        0       90     1 .debug_aranges
+       0        0       90     1         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.debug_aranges)
+       0        0       48     1 .debug_ranges
+       0        0       48     1         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.debug_ranges)
+       0        0      c18     1 .debug_str
+       0        0      c18     1         <internal>:(.debug_str)
+       0        0       99     1 .comment
+       0        0       99     1         <internal>:(.comment)
+       0        0       3c     1 .ARM.attributes
+       0        0       3c     1         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.ARM.attributes)
+       0        0       e8     4 .debug_frame
+       0        0       e8     4         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.debug_frame)
+       0        0      2de     1 .debug_line
+       0        0      2de     1         /ws/target/thumbv7em-none-eabihf/release/deps/blinky-91066cfc96bfcd9a.blinky.cb66e04c4a32eeed-cgu.0.rcgu.o:(.debug_line)
+       0        0      340     4 .symtab
+       0        0      340     4         <internal>:(.symtab)
+       0        0       d6     1 .shstrtab
+       0        0       d6     1         <internal>:(.shstrtab)
+       0        0      237     1 .strtab
+       0        0      237     1         <internal>:(.strtab)

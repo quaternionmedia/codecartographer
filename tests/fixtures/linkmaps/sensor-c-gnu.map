@@ -1,0 +1,255 @@
+Archive member included to satisfy reference by file (symbol)
+
+/opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libg_nano.a(libc_a-memset.o)
+                              build/uart.o (memset)
+
+Discarded input sections
+
+ .text          0x00000000        0x0 build/startup.o
+ .data          0x00000000        0x0 build/startup.o
+ .bss           0x00000000        0x0 build/startup.o
+ .text.Default_Handler
+                0x00000000        0x2 build/startup.o
+ .text          0x00000000        0x0 build/main.o
+ .data          0x00000000        0x0 build/main.o
+ .bss           0x00000000        0x0 build/main.o
+ .text          0x00000000        0x0 build/crc.o
+ .data          0x00000000        0x0 build/crc.o
+ .bss           0x00000000        0x0 build/crc.o
+ .text          0x00000000        0x0 build/uart.o
+ .data          0x00000000        0x0 build/uart.o
+ .bss           0x00000000        0x0 build/uart.o
+ .text          0x00000000        0x0 /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libg_nano.a(libc_a-memset.o)
+ .data          0x00000000        0x0 /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libg_nano.a(libc_a-memset.o)
+ .bss           0x00000000        0x0 /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libg_nano.a(libc_a-memset.o)
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+FLASH            0x08000000         0x00080000         xr
+RAM              0x20000000         0x00020000         xrw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+LOAD build/startup.o
+LOAD build/main.o
+LOAD build/crc.o
+LOAD build/uart.o
+START GROUP
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/thumb/v7e-m+fp/hard\libgcc.a
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libg_nano.a
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libc_nano.a
+END GROUP
+START GROUP
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/thumb/v7e-m+fp/hard\libgcc.a
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libc_nano.a
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libnosys.a
+END GROUP
+START GROUP
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/thumb/v7e-m+fp/hard\libgcc.a
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libc_nano.a
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libnosys.a
+END GROUP
+                0x20020000                        _estack = (ORIGIN (RAM) + LENGTH (RAM))
+                0x00000800                        _Min_Stack_Size = 0x800
+
+.isr_vector     0x08000000       0xdc
+                0x08000000                        . = ALIGN (0x4)
+ *(.isr_vector)
+ .isr_vector    0x08000000       0xdc build/startup.o
+                0x08000000                g_pfnVectors
+                0x080000dc                        . = ALIGN (0x4)
+
+.text           0x080000dc      0x1c8
+                0x080000dc                        . = ALIGN (0x4)
+ *(.text)
+ *(.text*)
+ .text.Reset_Handler
+                0x080000dc       0x40 build/startup.o
+                0x080000dc                Reset_Handler
+ .text.SysTick_Handler
+                0x0800011c       0x10 build/main.o
+                0x0800011c                SysTick_Handler
+ .text.startup.main
+                0x0800012c       0x58 build/main.o
+                0x0800012c                main
+ .text.crc32_update
+                0x08000184       0x60 build/crc.o
+                0x08000184                crc32_update
+ .text.uart_init
+                0x080001e4       0x2c build/uart.o
+                0x080001e4                uart_init
+ .text.uart_write
+                0x08000210       0x1e build/uart.o
+                0x08000210                uart_write
+ *fill*         0x0800022e        0x2 
+ .text.uart_read
+                0x08000230       0x38 build/uart.o
+                0x08000230                uart_read
+ .text.USART2_IRQHandler
+                0x08000268       0x2c build/uart.o
+                0x08000268                USART2_IRQHandler
+ .text.memset   0x08000294       0x10 /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libg_nano.a(libc_a-memset.o)
+                0x08000294                memset
+ *(.glue_7)
+ .glue_7        0x080002a4        0x0 linker stubs
+ *(.glue_7t)
+ .glue_7t       0x080002a4        0x0 linker stubs
+                0x080002a4                        . = ALIGN (0x4)
+                0x080002a4                        _etext = .
+
+.vfp11_veneer   0x080002a4        0x0
+ .vfp11_veneer  0x080002a4        0x0 linker stubs
+
+.v4_bx          0x080002a4        0x0
+ .v4_bx         0x080002a4        0x0 linker stubs
+
+.iplt           0x080002a4        0x0
+ .iplt          0x080002a4        0x0 build/startup.o
+
+.rodata         0x080002a4       0x14
+                0x080002a4                        . = ALIGN (0x4)
+ *(.rodata)
+ *(.rodata*)
+ .rodata.banner
+                0x080002a4       0x11 build/main.o
+                0x080002b8                        . = ALIGN (0x4)
+ *fill*         0x080002b5        0x3 
+                0x080002b8                        _sidata = LOADADDR (.data)
+
+.rel.dyn        0x080002b8        0x0
+ .rel.iplt      0x080002b8        0x0 build/startup.o
+
+.data           0x20000000        0xc load address 0x080002b8
+                0x20000000                        . = ALIGN (0x4)
+                0x20000000                        _sdata = .
+ *(.data)
+ *(.data*)
+ .data.config   0x20000000        0xc build/main.o
+                0x20000000                config
+                0x2000000c                        . = ALIGN (0x4)
+                0x2000000c                        _edata = .
+
+.igot.plt       0x2000000c        0x0 load address 0x080002c4
+ .igot.plt      0x2000000c        0x0 build/startup.o
+
+.bss            0x2000000c      0x510 load address 0x080002c4
+                0x2000000c                        . = ALIGN (0x4)
+                0x2000000c                        _sbss = .
+ *(.bss)
+ *(.bss*)
+ .bss.ticks     0x2000000c        0x4 build/main.o
+ .bss.crc_calls
+                0x20000010        0x4 build/crc.o
+                0x20000010                crc_calls
+ .bss.table     0x20000014      0x400 build/crc.o
+ .bss.rx_tail   0x20000414        0x4 build/uart.o
+ .bss.rx_head   0x20000418        0x4 build/uart.o
+ .bss.rx_buffer
+                0x2000041c      0x100 build/uart.o
+ *(COMMON)
+                0x2000051c                        . = ALIGN (0x4)
+                0x2000051c                        _ebss = .
+
+._user_stack    0x2000051c      0x804 load address 0x080002c4
+                0x20000520                        . = ALIGN (0x8)
+ *fill*         0x2000051c        0x4 
+                0x20000d20                        . = (. + _Min_Stack_Size)
+ *fill*         0x20000520      0x800 
+                0x20000d20                        . = ALIGN (0x8)
+
+/DISCARD/
+ libc.a(*)
+ libm.a(*)
+ libgcc.a(*)
+
+.ARM.attributes
+                0x00000000       0x34
+ *(.ARM.attributes)
+ .ARM.attributes
+                0x00000000       0x34 build/startup.o
+ .ARM.attributes
+                0x00000034       0x34 build/main.o
+ .ARM.attributes
+                0x00000068       0x34 build/crc.o
+ .ARM.attributes
+                0x0000009c       0x34 build/uart.o
+ .ARM.attributes
+                0x000000d0       0x34 /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libg_nano.a(libc_a-memset.o)
+OUTPUT(build/sensor-c.elf elf32-littlearm)
+LOAD linker stubs
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libc.a
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libm.a
+LOAD /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/thumb/v7e-m+fp/hard\libgcc.a
+
+.debug_info     0x00000000      0x867
+ .debug_info    0x00000000      0x183 build/startup.o
+ .debug_info    0x00000183      0x2f8 build/main.o
+ .debug_info    0x0000047b      0x1cf build/crc.o
+ .debug_info    0x0000064a      0x21d build/uart.o
+
+.debug_abbrev   0x00000000      0x554
+ .debug_abbrev  0x00000000       0xfb build/startup.o
+ .debug_abbrev  0x000000fb      0x1cb build/main.o
+ .debug_abbrev  0x000002c6      0x12c build/crc.o
+ .debug_abbrev  0x000003f2      0x162 build/uart.o
+
+.debug_loclists
+                0x00000000      0x240
+ .debug_loclists
+                0x00000000       0x78 build/startup.o
+ .debug_loclists
+                0x00000078       0x48 build/main.o
+ .debug_loclists
+                0x000000c0       0xd2 build/crc.o
+ .debug_loclists
+                0x00000192       0xae build/uart.o
+
+.debug_aranges  0x00000000       0xa8
+ .debug_aranges
+                0x00000000       0x28 build/startup.o
+ .debug_aranges
+                0x00000028       0x28 build/main.o
+ .debug_aranges
+                0x00000050       0x20 build/crc.o
+ .debug_aranges
+                0x00000070       0x38 build/uart.o
+
+.debug_rnglists
+                0x00000000       0xb5
+ .debug_rnglists
+                0x00000000       0x34 build/startup.o
+ .debug_rnglists
+                0x00000034       0x31 build/main.o
+ .debug_rnglists
+                0x00000065       0x2b build/crc.o
+ .debug_rnglists
+                0x00000090       0x25 build/uart.o
+
+.debug_line     0x00000000      0x8d7
+ .debug_line    0x00000000      0x17f build/startup.o
+ .debug_line    0x0000017f      0x225 build/main.o
+ .debug_line    0x000003a4      0x236 build/crc.o
+ .debug_line    0x000005da      0x2fd build/uart.o
+
+.debug_str      0x00000000      0x2f6
+ .debug_str     0x00000000      0x2f6 build/startup.o
+                                0x221 (size before relaxing)
+ .debug_str     0x000002f6      0x26f build/main.o
+ .debug_str     0x000002f6      0x21c build/crc.o
+ .debug_str     0x000002f6      0x25b build/uart.o
+
+.comment        0x00000000       0x46
+ .comment       0x00000000       0x46 build/startup.o
+                                 0x47 (size before relaxing)
+ .comment       0x00000046       0x47 build/main.o
+ .comment       0x00000046       0x47 build/crc.o
+ .comment       0x00000046       0x47 build/uart.o
+
+.debug_frame    0x00000000      0x128
+ .debug_frame   0x00000000       0x38 build/startup.o
+ .debug_frame   0x00000038       0x40 build/main.o
+ .debug_frame   0x00000078       0x30 build/crc.o
+ .debug_frame   0x000000a8       0x60 build/uart.o
+ .debug_frame   0x00000108       0x20 /opt/arm-gnu-toolchain-14.3.rel1/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard\libg_nano.a(libc_a-memset.o)

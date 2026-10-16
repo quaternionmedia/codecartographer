@@ -1,22 +1,14 @@
 import m from 'mithril';
+import { exampleGroups } from '../../../features/examples/examples';
+import type { BundledExample, Example } from '../../../features/examples/examples';
 import { animations } from '../../../core/animations';
 import { Directory, RawFile } from '../../models/source';
-import { DirectoryContent } from '../../qm_comp_lib/directory/directory';
 import { SystemDefinitionRegistry } from '../../../features/graph/services/system_renderer';
+import { rendererControls } from '../../../features/graph/services/renderer_controls';
 import { GraphStylingOptions, ParserOptions, GraphRendererType } from '../../../state/types';
 import './control_panel.css';
 
 export type { GraphStylingOptions, ParserOptions, GraphRendererType };
-
-export type TabId = 'source' | 'graph';
-export type CodeSourceMode = 'upload' | 'repo';
-
-export interface Tab {
-  id: TabId;
-  label: string;
-  icon?: string;
-  helpText?: string;
-}
 
 export interface LoadingProgress {
   loaded: number;
@@ -25,17 +17,15 @@ export interface LoadingProgress {
 }
 
 export interface ControlPanelState {
-  isOpen: boolean;
-  activeTab: TabId;
-  codeSourceMode: CodeSourceMode;
   repoUrl: string;
   currentTheme: string;
   isLoading: boolean;
   statusMessage: string;
   progress: LoadingProgress | null;
-  panelHeight: number;
   graphSections: { layout: boolean; visual: boolean; theme: boolean };
   parseDepth: number;  // 1 = files only, 2 = symbols, 3 = sub-symbols
+  /** Whether the Open panel's parse options are shown or folded to one line. */
+  parseOptionsOpen: boolean;
 }
 
 export interface ControlPanelCallbacks {
@@ -43,10 +33,10 @@ export interface ControlPanelCallbacks {
   onLoadLexicon?: (language: string) => void;
   onRepoSubmit: (url: string) => void;
   onRepoFileClick: (url: string) => void;
-  onPlotWholeRepo: () => void;
+  /** Plot the loaded repository, else every added file, else the URL in the field. */
+  onPlot: () => void;
   onFileUpload: (files: FileList) => void;
   onUploadedFileClick: (file: RawFile) => void;
-  onPlotAllUploads: () => void;
   onThemeChange: (theme: string) => void;
   onGraphStylingChange: (options: Partial<GraphStylingOptions>) => void;
   onParserOptionsChange: (options: Partial<ParserOptions>) => void;
@@ -55,7 +45,11 @@ export interface ControlPanelCallbacks {
   onExpandAll?: () => Promise<void>;
   onCancel?: () => void;
   onLoadFromCache?: (key: string) => void;
+  /** A bundled example: plot it, and read a Cargo workspace's records into the Cargo panel. */
+  onBundledExample?: (example: Example) => void;
   onEvictCache?: (key: string) => void;
+  /** Keep a recent graph as a Graphbase bookmark. */
+  onSaveRecent?: (entry: CachedEntry) => void;
   onClearRepo?: () => void;
 }
 
@@ -80,18 +74,29 @@ export interface ControlPanelContent {
   availableLanguages: Record<string, string[]> | null;
   availableLexiconLanguages: string[];
   cachedGraphs: CachedEntry[] | null;
+  /** What `GET /repo/examples` offers; empty before it answers, or in an installed package. */
+  bundledExamples: BundledExample[];
+  /** Whether Graphbase answered, so a recent graph can be saved there. */
+  graphbaseAvailable: boolean;
+  /** The URLs Graphbase holds a bookmark for. */
+  savedUrls: string[];
 }
 
-export type ControlPanelMode = 'full' | 'source' | 'upload' | 'repo' | 'graph';
+/** Which docked panel this renders: Open or Graph Settings. */
+export type ControlPanelMode = 'open' | 'graph';
+
+/** How many recent graphs the Open panel lists. */
+const RECENT_SHOWN = 8;
+
+const PARSE_DEPTHS = [
+  { value: 1, label: 'Files', title: 'Depth 1: directory + file nodes' },
+  { value: 2, label: 'Symbols', title: 'Depth 2: + top-level symbols (classes, functions)' },
+  { value: 3, label: 'Deep', title: 'Depth 3: + sub-symbols (args, fields)' },
+];
 
 export interface ControlPanelRenderOptions {
-  mode?: ControlPanelMode;
+  mode: ControlPanelMode;
 }
-
-const TABS: Tab[] = [
-  { id: 'source', label: 'Source', icon: '📁', helpText: 'Load code and configure parsing' },
-  { id: 'graph',  label: 'Graph',  icon: '◈',  helpText: 'Renderer, layout, visual style and theme' },
-];
 
 const LAYOUT_OPTIONS = [
   { value: 'spring_layout', label: 'Spring' },
@@ -116,87 +121,27 @@ const THEMES = [
   { id: 'candy',     label: 'Candy',     preview: '#ff69eb' },
 ];
 
-/** Creates the slide-up control panel */
+/**
+ * The body of a docked control panel: Open or Graph Settings, by
+ * `options.mode`. Each panel in `layout/panels/` mounts one mode.
+ */
 export function ControlPanel(
   state: ControlPanelState,
   callbacks: ControlPanelCallbacks,
   onStateChange: (updates: Partial<ControlPanelState>) => void,
   content: ControlPanelContent,
-  options: ControlPanelRenderOptions = {}
+  options: ControlPanelRenderOptions,
 ): m.Vnode {
-  const mode = options.mode ?? 'full';
-  const isEmbedded = mode !== 'full';
-
-  // Resize drag state
-  let isDragging = false;
-  let startY = 0;
-  let startHeight = 0;
-
-  const updatePanelHeightVar = (element?: HTMLElement) => {
-    if (isEmbedded) return;
-    if (!element) return;
-    const totalHeight = Math.ceil(element.getBoundingClientRect().height);
-    let effectiveHeight = totalHeight;
-    if (!state.isOpen) {
-      // When the panel is closed the body may still be mid-transition (CSS
-      // `height 0.3s ease-out`). Measuring total − body gives the persistent
-      // chrome (handle + tab bar + status bar) regardless of transition state,
-      // because both values are read in the same synchronous layout flush.
-      const bodyEl = element.querySelector('.control-panel__body') as HTMLElement | null;
-      if (bodyEl) {
-        effectiveHeight = Math.max(0, totalHeight - Math.ceil(bodyEl.getBoundingClientRect().height));
-      }
-    }
-    document.documentElement.style.setProperty('--control-panel-height', `${effectiveHeight}px`);
-  };
-
-  const handleResizeStart = (e: MouseEvent) => {
-    if (!state.isOpen) return;
-    isDragging = true;
-    startY = e.clientY;
-    startHeight = state.panelHeight;
-    document.body.style.cursor = 'ns-resize';
-    document.body.style.userSelect = 'none';
-
-    const handleMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      const delta = startY - e.clientY;
-      const newHeight = Math.max(150, startHeight + delta);
-      onStateChange({ panelHeight: newHeight });
-    };
-
-    const handleEnd = () => {
-      isDragging = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      document.removeEventListener('mousemove', handleMove);
-      document.removeEventListener('mouseup', handleEnd);
-    };
-
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', handleEnd);
-  };
-
-  const togglePanel = () => {
-    onStateChange({ isOpen: !state.isOpen });
-  };
-
-  const setActiveTab = (tabId: TabId) => {
-    if (state.activeTab === tabId) {
-      onStateChange({ isOpen: !state.isOpen });
-    } else {
-      onStateChange({ activeTab: tabId, isOpen: true });
-    }
-  };
+  const { mode } = options;
 
   const handleRepoUrlChange = (e: Event) => {
     const input = e.target as HTMLInputElement;
-    onStateChange({ repoUrl: input.value, codeSourceMode: 'repo' });
+    onStateChange({ repoUrl: input.value });
   };
 
   const handleRepoSubmit = () => {
     if (state.repoUrl.trim()) {
-      onStateChange({ isLoading: true, statusMessage: 'Fetching repository...', codeSourceMode: 'repo' });
+      onStateChange({ isLoading: true, statusMessage: 'Fetching repository...' });
       callbacks.onRepoSubmit(state.repoUrl.trim());
     }
   };
@@ -217,7 +162,6 @@ export function ControlPanel(
     const dropzone = e.currentTarget as HTMLElement;
     dropzone.classList.remove('panel-upload__dropzone--active');
     if (e.dataTransfer?.files.length) {
-      onStateChange({ codeSourceMode: 'upload' });
       callbacks.onFileUpload(e.dataTransfer.files);
     }
   };
@@ -236,7 +180,6 @@ export function ControlPanel(
   const handleFileInput = (e: Event) => {
     const input = e.target as HTMLInputElement;
     if (input.files?.length) {
-      onStateChange({ codeSourceMode: 'upload' });
       callbacks.onFileUpload(input.files);
     }
   };
@@ -250,305 +193,346 @@ export function ControlPanel(
     });
   };
 
-  // ─── Upload / Repo (single-domain, two-column each) ────────────────────────
-  // File browsing for both lives solely in file_tree_panel.ts (the GL "Files"
-  // panel) — these sections are deliberately just the load affordance, not a
-  // second copy of the tree.
+  // ─── Open ──────────────────────────────────────────────────────────────────
+  // Every source a graph is opened from, the parse options once, and the one
+  // Plot / Cancel bar. Browsing what was opened is the Files panel's.
 
-  const renderUploadSection = () => {
-    const activeExts = content.parserOptions.fileExtensions;
-
-    return m('div.panel-source__left', [
-      m('div.panel-source__upload', [
-        m('div.panel-upload__dropzone', {
-          ondrop: handleDrop,
-          ondragover: handleDragOver,
-          ondragleave: handleDragLeave,
-          onclick: () => document.getElementById('file-upload-input')?.click(),
-        }, [
-          m('span.panel-upload__icon', '📁'),
-          m('span.panel-upload__text', 'Drop source files here or click to browse'),
-          m('input#file-upload-input[type=file][multiple]', {
-            style: { display: 'none' },
-            attrs: activeExts.length > 0 ? { accept: activeExts.join(',') } : {},
-            onchange: handleFileInput,
-          }),
-        ]),
-        content.uploadedFiles.length > 0
-          ? m('div.panel-source__upload-summary', `${content.uploadedFiles.length} file(s) uploaded — see Files panel`)
-          : null,
-      ]),
-    ]);
-  };
-
-  const renderRepoSection = () => {
+  /** A GitHub URL or a local path, and what is loaded from one. */
+  const renderUrlSection = () => {
     const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
     const repoInfo = content.repoDirectory?.info;
 
-    return m('div.panel-source__left', [
-      m('div.panel-source__repo', [
-        // URL input
-        m('div.panel-source__url-input', [
-          m('input[type=text]', {
-            placeholder: 'https://github.com/user/repository',
-            value: state.repoUrl,
-            oninput: handleRepoUrlChange,
-            onkeydown: handleKeyDown,
-            disabled: state.isLoading,
-          }),
-          m('button.primary', {
-            onclick: handleRepoSubmit,
-            disabled: !state.repoUrl.trim() || state.isLoading,
-          }, state.isLoading ? '...' : '→ Fetch'),
-        ]),
-
-        // Recent cached graphs (when no repo loaded and cache exists)
-        !hasRepo && content.cachedGraphs && content.cachedGraphs.length > 0
-          ? m('div.panel-source__cached', [
-              m('span.panel-settings__label-compact', 'Recent'),
-              m('div.panel-source__cached-list',
-                content.cachedGraphs.slice(0, 5).map(entry => {
-                  const ageMins = Math.round(entry.age_seconds / 60);
-                  const ageStr = ageMins < 60
-                    ? `${ageMins}m ago`
-                    : `${Math.round(ageMins / 60)}h ago`;
-                  return m('div.panel-source__cached-entry', [
-                    m('button.panel-source__cached-chip', {
-                      onclick: () => callbacks.onLoadFromCache?.(entry.key),
-                      title: `${entry.url}\n${entry.mode} · ${entry.layout}`,
-                      disabled: state.isLoading,
-                    }, [
-                      m('span.panel-source__cached-label', entry.label),
-                      m('span.panel-source__cached-age', ageStr),
-                    ]),
-                    m('button.panel-source__cached-evict', {
-                      onclick: () => callbacks.onEvictCache?.(entry.key),
-                      title: 'Remove from cache',
-                      disabled: state.isLoading,
-                    }, '✕'),
-                  ]);
-                })
-              ),
-            ])
-          : null,
-
-        // Example chips (when no repo loaded)
-        !hasRepo ? m('div.panel-source__examples', [
-          m('span.panel-settings__label-compact', 'Python'),
-          m('div.panel-source__example-chips', [
-            ...[
-              { label: 'requests', url: 'https://github.com/psf/requests',    title: 'requests — small repo (~2 MB), full content' },
-              { label: 'Flask',    url: 'https://github.com/pallets/flask',   title: 'Flask — medium repo (~8 MB), structure only' },
-              { label: 'React',    url: 'https://github.com/facebook/react',  title: 'React — large repo (~25 MB), structure only' },
-              { label: 'CPython',  url: 'https://github.com/python/cpython',  title: 'CPython — xlarge repo (~200 MB), shallow root' },
-              { label: 'Linux',    url: 'https://github.com/torvalds/linux',  title: 'Linux — xxlarge repo (~1 GB+), shallow root' },
-            ].map(ex =>
-              m('button.panel-source__example-chip', {
-                title: ex.title,
-                onclick: (e: MouseEvent) => {
-                  animations.buttonPress(e.currentTarget as Element);
-                  onStateChange({ repoUrl: ex.url, codeSourceMode: 'repo' });
-                  callbacks.onRepoSubmit(ex.url);
-                },
-                disabled: state.isLoading,
-              }, ex.label)
-            ),
-          ]),
-          m('span.panel-settings__label-compact', 'C'),
-          m('div.panel-source__example-chips', [
-            ...[
-              { label: 'git',     url: 'https://github.com/git/git',            title: 'git — the VCS itself, written in C (~30 MB), structure only' },
-              { label: 'curl',    url: 'https://github.com/curl/curl',         title: 'curl — ubiquitous networking library in C (~10 MB), full content' },
-              { label: 'Lua',     url: 'https://github.com/lua/lua',           title: 'Lua 5.x — reference VM in C (~1 MB), full content' },
-              { label: 'SQLite',  url: 'https://github.com/sqlite/sqlite',     title: 'SQLite — most deployed DB in C (~15 MB), structure only' },
-              { label: 'Redis',   url: 'https://github.com/redis/redis',       title: 'Redis — systems C data structures (~5 MB), full content' },
-            ].map(ex =>
-              m('button.panel-source__example-chip', {
-                title: ex.title,
-                onclick: (e: MouseEvent) => {
-                  animations.buttonPress(e.currentTarget as Element);
-                  onStateChange({ repoUrl: ex.url, codeSourceMode: 'repo' });
-                  callbacks.onRepoSubmit(ex.url);
-                },
-                disabled: state.isLoading,
-              }, ex.label)
-            ),
-          ]),
-        ]) : null,
-
-        // Loaded repo — compact status line; the tree itself lives in the Files panel
-        hasRepo ? m('div.panel-source__repo-loaded', [
-          m('div.panel-source__repo-header', [
-            m('span.panel-source__repo-name', `${repoInfo?.owner}/${repoInfo?.name}`),
-            m('span.panel-source__repo-size', `${content.repoDirectory?.size} files`),
-            callbacks.onClearRepo ? m('button.panel-source__repo-clear', {
-              onclick: callbacks.onClearRepo,
-              title: 'Clear repository and go back',
-            }, '✕') : null,
-          ]),
-        ]) : null,
+    return m('div.panel-source__repo', [
+      m('div.panel-source__url-input', [
+        m('input[type=text]', {
+          placeholder: 'https://github.com/user/repository, or a local path',
+          value: state.repoUrl,
+          oninput: handleRepoUrlChange,
+          onkeydown: handleKeyDown,
+          disabled: state.isLoading,
+        }),
+        m('button.primary', {
+          onclick: handleRepoSubmit,
+          disabled: !state.repoUrl.trim() || state.isLoading,
+        }, state.isLoading ? '...' : '→ Fetch'),
       ]),
+
+      // What is loaded, in one line; the tree is the Files panel's.
+      hasRepo ? m('div.panel-source__repo-loaded', [
+        m('div.panel-source__repo-header', [
+          m('span.panel-source__repo-name', `${repoInfo?.owner}/${repoInfo?.name}`),
+          m('span.panel-source__repo-size', `${content.repoDirectory?.size} files`),
+          callbacks.onClearRepo ? m('button.panel-source__repo-clear', {
+            onclick: callbacks.onClearRepo,
+            title: 'Clear the repository',
+          }, '✕') : null,
+        ]),
+      ]) : null,
     ]);
   };
 
-  const renderSourceRight = () => {
-    const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
-    const parser = content.parserOptions;
+  /**
+   * The project selector: each language's examples, Rust first, the bundled
+   * ones (no network, no toolchain) leading their group. Shown with a
+   * repository loaded too, so another is one click away.
+   */
+  const renderExamples = () =>
+    m('div.panel-source__examples', exampleGroups(content.bundledExamples).flatMap((group) => [
+      m('span.panel-settings__label-compact', group.language),
+      m('div.panel-source__example-chips', { 'data-language': group.language.toLowerCase() },
+        group.examples.map((ex) =>
+          m('button.panel-source__example-chip', {
+            class: ex.bundled ? 'panel-source__example-chip--bundled' : '',
+            title: ex.title,
+            'data-example': ex.label,
+            onclick: (e: MouseEvent) => {
+              animations.buttonPress(e.currentTarget as Element);
+              onStateChange({ repoUrl: ex.url });
+              if (ex.bundled && callbacks.onBundledExample) callbacks.onBundledExample(ex);
+              else callbacks.onRepoSubmit(ex.url);
+            },
+            disabled: state.isLoading,
+          }, ex.label),
+        )),
+    ]));
 
-    return m('div.panel-source__right', [
-      // File Extensions
-      m('div.panel-settings__group', [
-        m('span.panel-settings__label-compact', 'Extensions'),
-        content.availableLanguages ? m('div.panel-settings__chips',
-          Object.entries(content.availableLanguages).map(([lang, exts]) => {
-            const active = exts.length > 0 && exts.every(e => parser.fileExtensions.includes(e));
-            return m('button.panel-settings__chip', {
-              class: active ? 'panel-settings__chip--active' : '',
-              onclick: () => {
-                const cur = parser.fileExtensions;
-                callbacks.onParserOptionsChange({
-                  fileExtensions: active
-                    ? cur.filter(e => !exts.includes(e))
-                    : [...new Set([...cur, ...exts])],
-                });
-              },
-            }, lang);
-          })
-        ) : null,
-        m('input.panel-settings__input-compact[type=text]', {
-          value: parser.fileExtensions.join(', '),
-          placeholder: 'Leave empty for all languages',
-          onchange: (e: Event) => {
-            const value = (e.target as HTMLInputElement).value;
-            const extensions = value.split(',').map(ext => ext.trim()).filter(ext => ext.length > 0);
-            callbacks.onParserOptionsChange({ fileExtensions: extensions });
-          },
+  /** Local files, added to what Plot draws; each is listed in the Files panel. */
+  const renderLocalFiles = () => {
+    const activeExts = content.parserOptions.fileExtensions;
+
+    return m('div.panel-source__upload', [
+      m('span.panel-settings__label-compact', 'Local files'),
+      m('div.panel-upload__dropzone', {
+        ondrop: handleDrop,
+        ondragover: handleDragOver,
+        ondragleave: handleDragLeave,
+        onclick: () => document.getElementById('file-upload-input')?.click(),
+      }, [
+        m('span.panel-upload__icon', '📁'),
+        m('span.panel-upload__text', 'Drop source files here or click to browse'),
+        m('input#file-upload-input[type=file][multiple]', {
+          style: { display: 'none' },
+          attrs: activeExts.length > 0 ? { accept: activeExts.join(',') } : {},
+          onchange: handleFileInput,
         }),
       ]),
+      content.uploadedFiles.length > 0
+        ? m('div.panel-source__upload-summary', `${content.uploadedFiles.length} file(s) added — see the Files panel`)
+        : null,
+    ]);
+  };
 
-      // Parse Depth
-      m('div.panel-settings__group', [
-        m('span.panel-settings__label-compact', 'Parse Depth'),
-        m('div.panel-settings__chips',
-          [
-            { value: 1, label: 'Files' },
-            { value: 2, label: 'Symbols' },
-            { value: 3, label: 'Deep' },
-          ].map(opt =>
-            m('button.panel-settings__chip', {
-              class: state.parseDepth === opt.value ? 'panel-settings__chip--active' : '',
-              onclick: () => onStateChange({ parseDepth: opt.value }),
-              title: opt.value === 1 ? 'Depth 1: directory + file nodes'
-                   : opt.value === 2 ? 'Depth 2: + top-level symbols (classes, functions)'
-                   : 'Depth 3: + sub-symbols (args, fields)',
-            }, opt.label)
+  /** The demo, and one button per language with a Lexicon. */
+  const renderQuickStart = () =>
+    m('div.panel-source__quickstart', [
+      m('span.panel-settings__label-compact', 'Demo and lexicons'),
+      m('button.panel-settings__button-option', {
+        onclick: (e: MouseEvent) => {
+          animations.buttonPress(e.currentTarget as Element);
+          callbacks.onDemo();
+        },
+        style: 'width: 100%;',
+      }, [m('span', '⚡'), m('span', 'Load Demo')]),
+
+      // Lexicon: one button per language with an abstraction-layer ontology
+      // (see docs/roadmap/lexicon.md); a language gains one when it gains
+      // a lexicon YAML.
+      content.availableLexiconLanguages.length > 0 && callbacks.onLoadLexicon
+        ? m('div.panel-source__lexicon-picker', { style: 'display: flex; gap: 4px; margin-top: 4px;' },
+            content.availableLexiconLanguages.map((lang) =>
+              m('button.panel-settings__button-option', {
+                key: lang,
+                onclick: (e: MouseEvent) => {
+                  animations.buttonPress(e.currentTarget as Element);
+                  callbacks.onLoadLexicon!(lang);
+                },
+                style: 'flex: 1;',
+                title: `Load the ${lang} Lexicon (abstraction-layer ontology)`,
+              }, [m('span', '📖'), m('span', `${lang} Lexicon`)])
+            )
           )
-        ),
-      ]),
+        : null,
+    ]);
 
-      // Lexicon annotation — stamps abstraction-layer data onto real
-      // parsed nodes where the language has a Lexicon (see
-      // docs/llm/roadmap/lexicon.md); pair with the "Color By: Abstraction
-      // Layer" styling option to actually see it.
-      m('div.panel-settings__group', [
-        m('div.panel-settings__toggle-row', [
-          m('span.panel-settings__label-compact', 'Annotate Lexicon'),
-          m('label.panel-settings__toggle-compact.panel-settings__toggle', [
-            m('input[type=checkbox]', {
-              checked: parser.annotateLexicon,
-              title: 'Stamp abstraction-layer data onto real parsed nodes (currently c, python) — pair with Color By: Abstraction Layer to see it',
-              onchange: (e: Event) => {
-                const checked = (e.target as HTMLInputElement).checked;
-                callbacks.onParserOptionsChange({ annotateLexicon: checked });
-              },
-            }),
-            m('span.panel-settings__toggle-slider'),
+  /**
+   * The graphs the server's cache holds, newest first: the one Recent list.
+   * A chip replays one; ☆ keeps it in Graphbase when Graphbase is up; ✕
+   * drops it from the cache.
+   */
+  const renderRecent = () => {
+    const entries = content.cachedGraphs ?? [];
+    const saved = new Set(content.savedUrls);
+    const ago = (seconds: number) => {
+      const mins = Math.round(seconds / 60);
+      return mins < 60 ? `${mins}m ago` : `${Math.round(mins / 60)}h ago`;
+    };
+
+    return m('div.panel-source__cached', [
+      m('span.panel-settings__label-compact', `Recent (${entries.length})`),
+      entries.length > 0
+        ? m('div.panel-source__cached-list', entries.slice(0, RECENT_SHOWN).map((entry) =>
+            m('div.panel-source__cached-entry', { key: entry.key }, [
+              m('button.panel-source__cached-chip', {
+                onclick: () => callbacks.onLoadFromCache?.(entry.key),
+                title: `${entry.url}\n${entry.mode} · ${entry.layout}`,
+                disabled: state.isLoading,
+              }, [
+                m('span.panel-source__cached-label', entry.label || entry.url.replace('https://github.com/', '')),
+                m('span.panel-source__cached-age', ago(entry.age_seconds)),
+              ]),
+              content.graphbaseAvailable
+                ? saved.has(entry.url)
+                  ? m('span.panel-source__cached-saved', { title: 'Saved in Graphbase' }, '★')
+                  : m('button.panel-source__cached-save', {
+                      onclick: () => callbacks.onSaveRecent?.(entry),
+                      title: 'Save in Graphbase',
+                    }, '☆')
+                : null,
+              m('button.panel-source__cached-evict', {
+                onclick: () => callbacks.onEvictCache?.(entry.key),
+                title: 'Remove from cache',
+                disabled: state.isLoading,
+              }, '✕'),
+            ]),
+          ))
+        : m('p.panel-settings__hint', 'A repository drawn once is kept here, and replays without parsing.'),
+    ]);
+  };
+
+  /** Extensions, depth and Lexicon annotation: what every plot is parsed with. */
+  const renderParseOptions = () => {
+    const parser = content.parserOptions;
+    const depth = PARSE_DEPTHS.find((d) => d.value === state.parseDepth);
+    const summary = [
+      depth ? depth.label : `depth ${state.parseDepth}`,
+      parser.fileExtensions.length ? parser.fileExtensions.join(', ') : 'every language',
+      parser.annotateLexicon ? 'Lexicon' : null,
+    ].filter(Boolean).join(' · ');
+
+    return m('div.panel-open__parse', [
+      m('div.panel-graph__section-header.panel-open__parse-toggle', {
+        onclick: () => onStateChange({ parseOptionsOpen: !state.parseOptionsOpen }),
+        'aria-expanded': String(state.parseOptionsOpen),
+      }, [
+        m('span.panel-graph__section-label', 'Parse options'),
+        m('span.panel-open__parse-summary', summary),
+        m('span.panel-graph__section-chevron', {
+          class: state.parseOptionsOpen ? 'panel-graph__section-chevron--open' : '',
+        }, '▶'),
+      ]),
+      state.parseOptionsOpen ? m('div.panel-graph__section-content', [
+        m('div.panel-settings__group', [
+          m('span.panel-settings__label-compact', 'Extensions'),
+          content.availableLanguages ? m('div.panel-settings__chips',
+            Object.entries(content.availableLanguages).map(([lang, exts]) => {
+              const active = exts.length > 0 && exts.every(e => parser.fileExtensions.includes(e));
+              return m('button.panel-settings__chip', {
+                class: active ? 'panel-settings__chip--active' : '',
+                onclick: () => {
+                  const cur = parser.fileExtensions;
+                  callbacks.onParserOptionsChange({
+                    fileExtensions: active
+                      ? cur.filter(e => !exts.includes(e))
+                      : [...new Set([...cur, ...exts])],
+                  });
+                },
+              }, lang);
+            })
+          ) : null,
+          m('input.panel-settings__input-compact[type=text]', {
+            value: parser.fileExtensions.join(', '),
+            placeholder: 'Leave empty for all languages',
+            onchange: (e: Event) => {
+              const value = (e.target as HTMLInputElement).value;
+              const extensions = value.split(',').map(ext => ext.trim()).filter(ext => ext.length > 0);
+              callbacks.onParserOptionsChange({ fileExtensions: extensions });
+            },
+          }),
+        ]),
+
+        m('div.panel-settings__group', [
+          m('span.panel-settings__label-compact', 'Parse Depth'),
+          m('div.panel-settings__chips',
+            PARSE_DEPTHS.map(opt =>
+              m('button.panel-settings__chip', {
+                class: state.parseDepth === opt.value ? 'panel-settings__chip--active' : '',
+                onclick: () => onStateChange({ parseDepth: opt.value }),
+                title: opt.title,
+              }, opt.label)
+            )
+          ),
+        ]),
+
+        // Lexicon annotation stamps abstraction-layer data onto parsed nodes
+        // whose language has a Lexicon (see docs/roadmap/lexicon.md);
+        // Color By: Abstraction Layer shows it.
+        m('div.panel-settings__group', [
+          m('div.panel-settings__toggle-row', [
+            m('span.panel-settings__label-compact', 'Annotate Lexicon'),
+            m('label.panel-settings__toggle-compact.panel-settings__toggle', [
+              m('input[type=checkbox]', {
+                checked: parser.annotateLexicon,
+                title: 'Stamp abstraction-layer data onto real parsed nodes (currently c, python) — pair with Color By: Abstraction Layer to see it',
+                onchange: (e: Event) => {
+                  const checked = (e.target as HTMLInputElement).checked;
+                  callbacks.onParserOptionsChange({ annotateLexicon: checked });
+                },
+              }),
+              m('span.panel-settings__toggle-slider'),
+            ]),
           ]),
         ]),
-      ]),
+      ]) : null,
+    ]);
+  };
 
-      m('div.panel-source__divider'),
+  /**
+   * The one Plot / Cancel bar. Plot draws the loaded repository when there is
+   * one, else every added file, else the URL in the field; Cancel stops a
+   * stream in flight.
+   */
+  const renderPlotBar = () => {
+    const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
+    const files = content.uploadedFiles.length;
+    const url = state.repoUrl.trim();
+    const target = hasRepo ? 'the loaded repository'
+      : files > 0 ? `the ${files} added file(s)`
+      : url ? url
+      : null;
+    const progress = state.progress;
+    const pct = progress && progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
 
-      m('div.panel-source__spacer'),
-
-      m('div.panel-source__divider'),
-
-      // Quick Start (when nothing loaded)
-      m('div.panel-source__quickstart', [
-        m('span.panel-settings__label-compact', 'Quick Start'),
-        m('button.panel-settings__button-option', {
-          onclick: (e: MouseEvent) => {
-            animations.buttonPress(e.currentTarget as Element);
-            callbacks.onDemo();
-          },
-          style: 'width: 100%;',
-        }, [m('span', '⚡'), m('span', 'Load Demo')]),
-
-        // Lexicon: one button per language with an abstraction-layer
-        // ontology (see docs/llm/roadmap/lexicon.md). Switchable/
-        // extendable — grows automatically as more languages get a
-        // lexicon YAML, no UI change needed.
-        content.availableLexiconLanguages.length > 0 && callbacks.onLoadLexicon
-          ? m('div.panel-source__lexicon-picker', { style: 'display: flex; gap: 4px; margin-top: 4px;' },
-              content.availableLexiconLanguages.map((lang) =>
-                m('button.panel-settings__button-option', {
-                  key: lang,
-                  onclick: (e: MouseEvent) => {
-                    animations.buttonPress(e.currentTarget as Element);
-                    callbacks.onLoadLexicon!(lang);
-                  },
-                  style: 'flex: 1;',
-                  title: `Load the ${lang} Lexicon (abstraction-layer ontology)`,
-                }, [m('span', '📖'), m('span', `${lang} Lexicon`)])
-              )
-            )
+    return m('div.panel-plotbar', [
+      m('button.panel-plotbar__plot', {
+        disabled: !target || state.isLoading,
+        title: target ? `Plot ${target}` : 'Fetch a repository or add files first',
+        onclick: (e: MouseEvent) => {
+          animations.buttonPress(e.currentTarget as Element);
+          callbacks.onPlot();
+        },
+      }, [m('span', '▶'), m('span', 'Plot')]),
+      m('button.panel-plotbar__cancel', {
+        disabled: !state.isLoading,
+        onclick: () => callbacks.onCancel?.(),
+        title: 'Cancel the stream',
+      }, [m('span', '⏹'), m('span', 'Cancel')]),
+      m('div.panel-plotbar__status', [
+        state.isLoading
+          ? m('div.panel-plotbar__progress-wrap', [
+              progress && progress.total > 0
+                ? m('div.panel-plotbar__progress', { style: { width: `${pct}%` } })
+                : m('div.panel-plotbar__progress.panel-plotbar__progress--indeterminate'),
+            ])
           : null,
+        m('span.panel-plotbar__status-text', [
+          m('span.panel-plotbar__status-dot', {
+            class: state.isLoading ? 'panel-plotbar__status-dot--active' : '',
+          }),
+          state.isLoading && progress && progress.phase === 'streaming'
+            ? `Streaming ${progress.loaded}/${progress.total} nodes`
+            : state.isLoading && progress
+              ? `${progress.phase.charAt(0).toUpperCase() + progress.phase.slice(1)}…`
+              : state.statusMessage || 'Ready',
+        ]),
       ]),
     ]);
   };
 
-  const renderSourceTab = (forceVisible = false) => {
-    return m('div.panel-section.panel-source', {
-      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
-    }, [
+  // The quick starts lead the left column and the examples close it: in the
+  // default dock the Open panel is a short stack under the canvas, and the
+  // empty canvas sends a first-time reader to ⚡ Load Demo, so the URL, the
+  // local files and the demo are drawn above the column's fold.
+  const renderOpenTab = () =>
+    m('div.panel-section.panel-source.panel-open.panel-section--active', [
       m('div.panel-source__2col', [
-        m('div.panel-source__left', [renderUploadSection(), renderRepoSection()]),
-        renderSourceRight(),
+        m('div.panel-source__left', [
+          renderUrlSection(),
+          renderLocalFiles(),
+          renderQuickStart(),
+          renderExamples(),
+        ]),
+        // The parse options lead the right column, folded to one line: under a
+        // full Recent list they would sit below the fold of the default dock's
+        // short Open panel. Opened, they push Recent down.
+        m('div.panel-source__right', [
+          renderParseOptions(),
+          renderRecent(),
+        ]),
       ]),
+      renderPlotBar(),
     ]);
-  };
 
-  const renderUploadTab = (forceVisible = false) => {
-    return m('div.panel-section.panel-source', {
-      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
-    }, [
-      m('div.panel-source__2col', [
-        renderUploadSection(),
-        renderSourceRight(),
-      ]),
-    ]);
-  };
+  // ─── Graph Settings (accordion) ────────────────────────────────────────────
 
-  const renderRepoTab = (forceVisible = false) => {
-    return m('div.panel-section.panel-source', {
-      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
-    }, [
-      m('div.panel-source__2col', [
-        renderRepoSection(),
-        renderSourceRight(),
-      ]),
-    ]);
-  };
-
-  // ─── Graph Tab (accordion) ─────────────────────────────────────────────────
-
-  const renderGraphTab = (forceVisible = false) => {
+  const renderGraphTab = () => {
     const styling = content.graphStyling;
     const selectedRenderer = content.selectedRenderer;
     const isSystem = selectedRenderer === 'system';
-    const supportsLayout  = selectedRenderer === 'd3';
-    const supportsPhysics = !['notebook', 'system'].includes(selectedRenderer);
-    const supportsVisual  = !['notebook', 'system'].includes(selectedRenderer);
+    const {
+      layout: supportsLayout,
+      physics: supportsPhysics,
+      visual: supportsVisual,
+    } = rendererControls(selectedRenderer);
     const sections = state.graphSections;
 
     const renderSectionHeader = (label: string, key: keyof typeof sections) =>
@@ -572,9 +556,7 @@ export function ControlPanel(
       }),
     ]);
 
-    return m('div.panel-section.panel-graph', {
-      class: forceVisible || state.activeTab === 'graph' ? 'panel-section--active' : '',
-    }, [
+    return m('div.panel-section.panel-graph.panel-section--active', [
       // Renderer selector — always visible at top
       m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Renderer'),
@@ -585,10 +567,10 @@ export function ControlPanel(
             callbacks.onRendererChange(renderer);
           },
         }, [
-          m('option', { value: 'd3' }, 'D3.js (Force-directed)'),
+          m('option', { value: 'd3' }, 'D3.js (server layout)'),
           m('option', { value: 'gravis' }, 'Gravis (vis-network)'),
           m('option', { value: 'notebook' }, 'Notebook (Static HTML)'),
-          m('option', { value: 'system' }, 'System Monitor (PAM)'),
+          m('option', { value: 'system' }, 'System Monitor'),
         ]),
       ]),
 
@@ -598,7 +580,7 @@ export function ControlPanel(
         SystemDefinitionRegistry.all().length > 1 ? m('div.panel-settings__group', [
           m('span.panel-settings__label-compact', 'System'),
           m('select.panel-settings__select', {
-            value: styling.systemId ?? 'pam',
+            value: styling.systemId ?? 'moat',
             onchange: (e: Event) => {
               callbacks.onGraphStylingChange({ systemId: (e.target as HTMLSelectElement).value });
             },
@@ -611,15 +593,18 @@ export function ControlPanel(
         m('span.panel-settings__label-compact', 'Mode'),
         m('div', { style: { display: 'flex', gap: '6px', marginTop: '6px' } }, [
           m('button.panel-settings__option', {
-            class: (styling as Record<string, unknown>).pamMode !== 'live' ? 'panel-settings__option--active' : '',
-            onclick: () => callbacks.onGraphStylingChange({ pamMode: 'demo' }),
+            class: (styling as Record<string, unknown>).systemMode !== 'live' ? 'panel-settings__option--active' : '',
+            onclick: () => callbacks.onGraphStylingChange({ systemMode: 'demo' }),
           }, 'Demo'),
           m('button.panel-settings__option', {
-            class: (styling as Record<string, unknown>).pamMode === 'live' ? 'panel-settings__option--active' : '',
-            onclick: () => callbacks.onGraphStylingChange({ pamMode: 'live' }),
+            class: (styling as Record<string, unknown>).systemMode === 'live' ? 'panel-settings__option--active' : '',
+            onclick: () => callbacks.onGraphStylingChange({ systemMode: 'live' }),
           }, 'Live'),
         ]),
-        m('p.panel-settings__hint', 'Demo always works. Live streams system events via WebSocket.'),
+        m('p.panel-settings__hint',
+          'Demo replays the derived history on a loop. Live streams over the '
+          + "definition's WebSocket — the PAM feed tails auth.log; a derived "
+          + 'system replays its clone once, labelled as a replay.'),
       ]) : null,
 
       // Layout section
@@ -770,13 +755,14 @@ export function ControlPanel(
                   m('span.panel-settings__label-compact', 'Color By'),
                   m('select.panel-settings__select', {
                     value: styling.colorBy ?? 'auto',
-                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/llm/roadmap/lexicon.md); nodes without a layer fall back to the default.',
+                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/roadmap/lexicon.md); Construct mode by what each node is, alike across languages (codecarto/data/constructs.yaml). A node without one keeps its own color.',
                     onchange: (e: Event) => {
                       callbacks.onGraphStylingChange({ colorBy: (e.target as HTMLSelectElement).value });
                     },
                   }, [
                     m('option', { value: 'auto' }, 'Auto (depth/kind)'),
                     m('option', { value: 'layer' }, 'Abstraction Layer'),
+                    m('option', { value: 'construct' }, 'Construct (across languages)'),
                   ]),
                 ]),
                 m('div.panel-settings__group', [
@@ -869,108 +855,13 @@ export function ControlPanel(
 
   // ─── Main render ───────────────────────────────────────────────────────────
 
-  if (isEmbedded) {
-    const embeddedContent = mode === 'source' ? renderSourceTab(true)
-      : mode === 'upload' ? renderUploadTab(true)
-      : mode === 'repo' ? renderRepoTab(true)
-      : renderGraphTab(true);
+  const body = mode === 'open' ? renderOpenTab() : renderGraphTab();
 
-    return m('div.control-panel.control-panel--embedded', {
-      oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
-      onupdate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
+  return m('div.control-panel.control-panel--embedded', [
+    m('div.control-panel__body.control-panel__body--open', {
+      style: { height: '100%' },
     }, [
-      m('div.control-panel__body.control-panel__body--open', {
-        style: { height: '100%' },
-      }, [
-        m('div.control-panel__content', [
-          embeddedContent,
-        ]),
-      ]),
-    ]);
-  }
-
-  return m('div.control-panel', {
-    oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
-    onupdate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
-  }, [
-    // Resize handle at top (only when open)
-    state.isOpen ? m('div.control-panel__resize', {
-      onmousedown: handleResizeStart,
-    }) : null,
-
-    // Handle bar — icon only
-    m('div.control-panel__handle', {
-      onclick: togglePanel,
-      title: state.isOpen ? 'Close panel' : 'Open panel',
-    }, [
-      m('span.control-panel__handle-icon', {
-        class: state.isOpen ? 'control-panel__handle-icon--open' : '',
-      }, '▲'),
-    ]),
-
-    // Tab bar
-    m('div.control-panel__tabs',
-      TABS.map(tab =>
-        m('button.control-panel__tab', {
-          class: state.activeTab === tab.id ? 'control-panel__tab--active' : '',
-          onclick: () => setActiveTab(tab.id),
-          title: tab.helpText,
-        }, [
-          tab.icon ? m('span', tab.icon + ' ') : null,
-          tab.label,
-        ])
-      )
-    ),
-
-    // Body (collapsible)
-    m('div.control-panel__body', {
-      class: state.isOpen ? 'control-panel__body--open' : '',
-      style: state.isOpen ? { height: `${state.panelHeight}px` } : { height: '0px' },
-    }, [
-      m('div.control-panel__content', [
-        renderSourceTab(),
-        renderGraphTab(),
-      ]),
-    ]),
-
-    // Status bar
-    m('div.control-panel__status', [
-      // Progress bar (thin line at top, visible during loading)
-      state.isLoading && state.progress
-        ? m('div.control-panel__progress-bar', {
-            style: {
-              width: state.progress.total > 0
-                ? `${Math.round((state.progress.loaded / state.progress.total) * 100)}%`
-                : '0%',
-            },
-          })
-        : state.isLoading
-          ? m('div.control-panel__progress-bar.control-panel__progress-bar--indeterminate')
-          : null,
-
-      m('span.control-panel__status-item', [
-        m('span.control-panel__status-dot', {
-          class: state.isLoading ? 'control-panel__status-dot--warning' : '',
-        }),
-        state.isLoading && state.progress && state.progress.phase === 'streaming'
-          ? `Streaming ${state.progress.loaded}/${state.progress.total} nodes`
-          : state.isLoading && state.progress
-            ? `${state.progress.phase.charAt(0).toUpperCase() + state.progress.phase.slice(1)}…`
-            : state.isLoading
-              ? state.statusMessage
-              : state.statusMessage || 'Ready',
-      ]),
-
-      state.isLoading && callbacks.onCancel
-        ? m('button.control-panel__cancel-btn', {
-            onclick: callbacks.onCancel,
-            title: 'Cancel',
-          }, '✕')
-        : null,
-
-      m('span.control-panel__status-context',
-        `${content.selectedRenderer} · ${state.currentTheme}`
-      ),
+      m('div.control-panel__content', [body]),
     ]),
   ]);
 }

@@ -157,7 +157,7 @@
   cursor: pointer;
 }
 
-.estate__open:hover { color: var(--c-font); border-color: var(--c-border-active); }
+.estate__open:hover { background: var(--c-transparent-full); color: var(--c-font); border-color: var(--c-border-active); }
 
 .estate__open[disabled] {
   cursor: default;
@@ -201,10 +201,12 @@
   color: var(--c-font-muted);
 }
 
-/* --- the capabilities and overview panels --------------------------------- */
+/* --- the capabilities, overview, cargo and chrestomathy panels ----------- */
 
 .gl-panel--capabilities,
-.gl-panel--overview {
+.gl-panel--overview,
+.gl-panel--cargo,
+.gl-panel--chrestomathy {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md, 0.75rem);
@@ -296,3 +298,64 @@
   line-height: 1.3;
   color: var(--c-font-muted);
 }
+
+/* --- inputs and tables the cargo and chrestomathy panels add --------------- */
+
+.cartography__input,
+.cartography__select {
+  font-family: var(--f-root-font);
+  font-size: 0.75rem;
+  color: var(--c-font);
+  background: var(--c-background-dark, transparent);
+  border: 1px solid var(--c-font-muted);
+  border-radius: 2px;
+  padding: 0.25rem 0.4rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cartography__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm, 0.5rem);
+  font-size: 0.72rem;
+  color: var(--c-font-muted);
+}
+
+.cartography__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.cartography__table th,
+.cartography__table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.25rem 0.35rem;
+  border-bottom: 1px solid var(--c-border, rgba(127, 127, 127, 0.25));
+}
+
+.cartography__table tr.is-silent td { color: var(--c-font-muted); font-style: italic; }
+.cartography__layer { display: block; color: var(--c-font-muted); }
+.cartography__table tr.is-shared td:first-child { border-left: 2px solid var(--c-secondary, #00ff41); }
+.cartography__table tr.is-chosen td { background: rgba(127, 127, 127, 0.12); }
+.cartography__table tr.is-facet td:first-child { font-style: italic; }
+
+/* Links that are buttons, read in a table row. Inline and with no minimum
+   height, so the global button rule's 32px flex box does not set their text a
+   line below the row's other cells. */
+.cartography__link,
+.cartography__show {
+  display: inline;
+  min-height: 0;
+  font: inherit;
+  color: var(--c-font);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline dotted;
+}
+.cartography__show { color: var(--c-font-muted); }

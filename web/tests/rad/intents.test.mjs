@@ -40,6 +40,7 @@ function spyOps() {
     focusGroup: rec('focusGroup'),
     viewSource: rec('viewSource'),
     showInfo: rec('showInfo'),
+    compare: rec('compare'),
   };
 }
 

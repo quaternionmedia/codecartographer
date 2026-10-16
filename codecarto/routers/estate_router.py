@@ -35,8 +35,13 @@ EstateRouter = APIRouter()
 
 
 @EstateRouter.get("/seams")
-async def estate_seams() -> dict[str, Any]:
-    """Every seam, probed once, with the caveat a reader needs first."""
+def estate_seams() -> dict[str, Any]:
+    """Every seam, probed once, with the caveat a reader needs first.
+
+    A plain `def`, so FastAPI runs it in its threadpool: the probes wait on
+    other servers, up to their timeouts, and on the event loop that wait would
+    hold up every other request.
+    """
     rows = estate_service.survey()
     return generate_return(results={
         "seams": rows,
