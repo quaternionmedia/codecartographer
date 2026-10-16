@@ -57,6 +57,59 @@ async function entryLines(page: Page): Promise<number[]> {
   ));
 }
 
+test('a folder is told from a file, open from closed, and its contents sit inside it', async ({ page }) => {
+  await page.route('**/repo/tree?**', (route) => route.fulfill({
+    json: {
+      status: 200,
+      message: 'stubbed',
+      results: {
+        info: { owner: 'example', name: 'small', url: '/work/small' },
+        size: 2,
+        root: {
+          name: '', size: 0,
+          folders: [{ name: 'src', size: 1, folders: [], files: [{ name: 'main.rs', size: 1, raw: '', url: '/work/small/src/main.rs' }] }],
+          files: [{ name: 'README.md', size: 1, raw: '', url: '/work/small/README.md' }],
+        },
+        is_partial: false,
+      },
+    },
+  }));
+  await page.route('**/parse/stream-url', (route) => route.fulfill({
+    status: 200, contentType: 'text/event-stream', body: 'event: error\ndata: {"message": "stubbed"}\n\n',
+  }));
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
+  await page.locator('.panel-source__url-input input').fill('/work/small');
+  await page.locator('.panel-source__url-input button.primary').click();
+
+  const tree = page.locator('.gl-panel--file-tree');
+  const folder = tree.locator('.folder_button', { hasText: 'src' });
+  const readme = tree.locator('.file', { hasText: 'README.md' });
+  await expect(folder).toBeVisible();
+  const marker = (el: Element) => getComputedStyle(el, '::before').content;
+
+  const closed = await folder.evaluate(marker);
+  const file = await readme.evaluate(marker);
+  // Mutation: drop the tree's markers -- a folder and a file are drawn alike,
+  // and this fails.
+  expect(closed, 'a closed folder is marked').not.toMatch(/^(none|normal|"")$/);
+  expect(file, 'a file is marked').not.toMatch(/^(none|normal|"")$/);
+  expect(closed, 'a folder and a file are marked apart').not.toBe(file);
+
+  await folder.click();
+  const main = tree.locator('.file', { hasText: 'main.rs' });
+  await expect(main).toBeVisible();
+  const opened = await folder.evaluate(marker);
+  expect(opened, 'an open folder is marked apart from a closed one').not.toBe(closed);
+  expect(opened).not.toBe(file);
+  // Mutation: drop the open folder's indent -- main.rs lines up with
+  // README.md, and this fails.
+  const inside = (await main.boundingBox())!.x;
+  const atTheRoot = (await readme.boundingBox())!.x;
+  expect(inside).toBeGreaterThan(atTheRoot + 4);
+});
+
 test("a GitHub file's raw link sits on its name's line", async ({ page }) => {
   await openStubbedTree(page, 'https://github.com/example/small', [
     { name: 'Cargo.toml', url: 'https://raw.githubusercontent.com/example/small/main/Cargo.toml' },

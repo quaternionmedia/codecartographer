@@ -197,6 +197,54 @@
   text-overflow: ellipsis;
 }
 
+/* A folder is marked ▸, and ▾ while open; a file is marked · in the same
+   width, so names line up. An open folder's contents sit indented inside it,
+   along a dashed guide. A folder not yet read (…) and an empty one are dimmed. */
+.gl-file-tree__tree .folder_button {
+  cursor: pointer;
+  color: var(--c-secondary, #00ff41);
+  white-space: nowrap;
+}
+
+.gl-file-tree__tree .folder_button::before,
+.gl-file-tree__tree .file::before {
+  display: inline-block;
+  width: 1.2em;
+}
+
+.gl-file-tree__tree .folder_button::before {
+  content: '▸';
+}
+
+.gl-file-tree__tree .folder_button.active::before {
+  content: '▾';
+}
+
+.gl-file-tree__tree .file::before {
+  content: '·';
+  color: var(--c-font-muted, #00aa2a);
+}
+
+.gl-file-tree__tree .folder_button--stub,
+.gl-file-tree__tree .folder_button--empty {
+  opacity: 0.75;
+}
+
+.gl-file-tree__tree .folder_button--empty {
+  cursor: default;
+}
+
+.gl-file-tree__tree .folder_stub_indicator,
+.gl-file-tree__tree .folder_loading_indicator {
+  color: var(--c-font-muted, #00aa2a);
+}
+
+.gl-file-tree__tree .folder_content {
+  margin-left: 0.45em;
+  padding-left: 0.6em;
+  border-left: 1px dashed var(--c-border, #00ff4140);
+}
+
 .gl-file-tree__tree .file_raw_btn {
   flex: none;
   font-size: 0.8em;
