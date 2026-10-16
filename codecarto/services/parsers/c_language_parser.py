@@ -85,8 +85,9 @@ _EDGE_KIND_MAP: dict[str, str] = {
 class CLangaugeParser:
     """LanguageParser implementation for C/H source files.
 
-    Falls back gracefully when libclang is not installed: parse_files()
-    returns an empty graph rather than raising an ImportError.
+    Without libclang, parse_files() raises the ImportError that says how to
+    install it; the unified pipeline still draws the files and passes the
+    reason on as a note beside the graph.
     """
 
     language: ClassVar[str] = "c"
@@ -97,7 +98,7 @@ class CLangaugeParser:
     # them to parse_files() in one batch, instead of dispatching one file
     # at a time like every other language. Cross-file CALLS/type edges only
     # resolve when CParser sees the full file set together — see
-    # docs/llm/ARCHITECTURE.md's "C semantic stream path" / "batch_whole_tree".
+    # docs/architecture.md, "The unified graph" and "C: two pipelines".
     batch_whole_tree: ClassVar[bool] = True
 
     # Shared parent directory assigned to every virtual (no-real-disk-path)
@@ -220,6 +221,7 @@ class CLangaugeParser:
             if "member_count" in n: meta["member_count"] = n["member_count"]
             if "param_count"  in n: meta["param_count"]  = n["param_count"]
             if "is_definition" in n: meta["is_definition"] = n["is_definition"]
+            if n.get("automatic"): meta["automatic"] = True
 
             # For ngon shapes (struct/union), expose sides so the renderer can
             # draw the correct polygon without knowing it is a C struct.

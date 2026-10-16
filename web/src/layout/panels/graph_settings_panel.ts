@@ -12,11 +12,9 @@ import { ControlPanel } from '../../components/codecarto/control_panel';
 export function createGraphSettingsPanel(ctx: LayoutContext): m.Component {
   return {
     view: () => {
-      const panelState = { ...ctx.panelState, isOpen: true };
-
       return m('div.gl-panel.gl-panel--controls.gl-panel--controls-graph-settings', [
         ControlPanel(
-          panelState,
+          ctx.panelState,
           ctx.panelCallbacks,
           (updates) => ctx.updatePanelState(updates),
           ctx.getControlPanelContent(),

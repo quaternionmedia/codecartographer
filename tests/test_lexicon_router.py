@@ -69,3 +69,30 @@ class TestLexiconRouterEnvelope:
     def test_unknown_language_404(self, client):
         resp = client.get("/lexicon/cobol")
         assert resp.status_code == 404
+
+
+class TestChrestomathyRoutes:
+    """The construct vocabulary and the chrestomathy, under `/lexicon`."""
+
+    def test_constructs_is_not_read_as_a_language(self, client):
+        """Registered before `/{language}`. Mutation: take `/constructs` off the
+        router, so the catch-all answers -- this fails with a 404 for a lexicon
+        named `constructs`."""
+        body = client.get("/lexicon/constructs").json()
+        assert body["status"] == 200
+        ids = {c["id"] for c in body["results"]["constructs"]}
+        assert {"type.product", "type.sum", "layout.section"} <= ids
+
+    def test_one_construct_across_languages(self, client):
+        rows = client.get("/lexicon/chrestomathy/type.product").json()["results"]["languages"]
+        assert {r["language"] for r in rows} >= {"c", "rust", "python"}
+
+    def test_the_graph_rides_the_serializer(self, client):
+        results = client.get("/lexicon/chrestomathy/type.product/gjgf").json()["results"]
+        assert results["metadata"]["kind"] == "chrestomathy"
+        sample = next(iter(results["graph"]["nodes"].values()))
+        assert "x" in sample.get("metadata", sample)
+
+    def test_an_unknown_construct_is_a_sentence(self, client):
+        results = client.get("/lexicon/chrestomathy/no.such/gjgf").json()["results"]
+        assert results["unreadable"] is True and "type.product" in results["remedy"]

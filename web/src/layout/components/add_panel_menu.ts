@@ -1,9 +1,9 @@
 /**
  * AddPanelMenu
  *
- * Small dropdown opened by the header "+" button or a right-click on the
- * dock area. Lists registered panels not currently in the layout (add a
- * window) plus layout save/reset actions. Closes on outside click, on
+ * Small dropdown opened by the header "+" button, the one way to add a
+ * window. Lists every registered panel not in the layout, closed ones
+ * included, plus layout save/reset actions. Closes on outside click, on
  * Escape, or after an action is taken.
  */
 
@@ -46,7 +46,7 @@ export const AddPanelMenu: m.Component<Attrs> = {
       addable.length > 0
         ? addable.map((def) =>
             m('button.gl-add-panel-menu__item', {
-              onclick: () => { ctx.restoreDockPanel(def.id); onClose(); },
+              onclick: () => { ctx.openPanel(def.id); onClose(); },
             }, def.menuLabel),
           )
         : m('div.gl-add-panel-menu__empty', 'All panels open'),
