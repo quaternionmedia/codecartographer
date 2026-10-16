@@ -95,6 +95,28 @@ test.describe('in the default dock at 1600×1000', () => {
       await expect(lexicon).toBeInViewport({ ratio: 1 });
     }
   });
+
+  test('the parse options are in view above a full Recent list', async ({ page }) => {
+    // More recent graphs than the list shows, whatever this server's cache holds.
+    const entries = Array.from({ length: 12 }, (_, i) => ({
+      key: `k${i}`, label: `example/repo-${i}`, url: `https://github.com/example/repo-${i}`,
+      mode: 'symbols', layout: 'spring_layout', ts: 0, age_seconds: 3600 * (i + 1), size_bytes: 1,
+    }));
+    await page.route('**/parse/cache', (route) => route.fulfill({
+      json: { status: 200, message: 'stubbed', results: { entries } },
+    }));
+    await page.goto('/');
+    await dismissOnboardingModal(page);
+    const open = page.locator('.gl-panel--open');
+    await expect(open.locator('.panel-source__cached-chip')).not.toHaveCount(0, { timeout: SETTLED });
+
+    // Mutation: put the parse options back under Recent -- the eight recent
+    // graphs push them below the column's fold, and this fails.
+    await expect(open.locator('.panel-open__parse-summary')).toBeInViewport({ ratio: 1 });
+    // Opened, they push Recent down, and their first choices are in view.
+    await open.locator('.panel-open__parse-toggle').click();
+    await expect(open.locator('.panel-settings__chip').first()).toBeInViewport({ ratio: 1 });
+  });
 });
 
 test('the parse options are folded to one line until opened', async ({ page }) => {

@@ -124,8 +124,6 @@ test('a first visit, the Open panel, and the bundled example', async ({ page }) 
   await test.step('04 the parse options, open', async () => {
     await open.locator('.panel-open__parse-toggle').click();
     await expect(open.getByText('Parse Depth')).toBeVisible();
-    // Under a long Recent list the options open below the column's fold.
-    await open.locator('.panel-open__parse').scrollIntoViewIfNeeded();
     await shot('04 parse options open', open);
     await open.locator('.panel-open__parse-toggle').click();
     await expect(open.getByText('Parse Depth')).toHaveCount(0);
