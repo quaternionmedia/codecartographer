@@ -12,11 +12,13 @@
     "test:e2e": "playwright test",
     "lint:rad": "node scripts/rad-core-lint.mjs",
     "build:rad": "tsc -p tsconfig.rad.json && node -e \"require('fs').writeFileSync('dist-rad/package.json','{\\\"type\\\":\\\"module\\\"}')\"",
-    "test:rad": "npm run lint:rad && npm run build:rad && node --test tests/rad/",
-    "test:state": "node --test tests/state/",
-    "test:families": "node --test tests/families/",
+    "test:rad": "npm run lint:rad && npm run build:rad && node scripts/node-test.mjs tests/rad",
+    "test:state": "node scripts/node-test.mjs tests/state",
+    "test:families": "node scripts/node-test.mjs tests/families",
     "build:pure": "tsc -p tsconfig.pure.json && node -e \"require('fs').writeFileSync('dist-pure/package.json','{\\\"type\\\":\\\"module\\\"}')\"",
-    "test:pure": "npm run build:pure && node --test tests/pure/"
+    "test:pure": "npm run build:pure && node scripts/node-test.mjs tests/pure",
+    "build:system": "tsc -p tsconfig.system.json && node -e \"require('fs').writeFileSync('dist-system/package.json','{\\\"type\\\":\\\"module\\\"}')\"",
+    "test:system": "npm run build:system && node scripts/node-test.mjs tests/system"
   },
   "browserslist": [
     "defaults"

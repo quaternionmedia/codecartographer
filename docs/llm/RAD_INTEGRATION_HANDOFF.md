@@ -1,7 +1,7 @@
 # Integrating rad into a web host — a handoff from the first one
 
 **Status: field notes, not a standard.** The standard is
-[`DRAFT-rad-host-integration-standard.md`](https://github.com/quaternionmedia/rad)
+[`adr/DRAFT-rad-host-integration-standard.md`](https://github.com/quaternionmedia/rad/blob/main/adr/DRAFT-rad-host-integration-standard.md)
 in `quaternionmedia/rad`. This page is what integrating against it actually
 cost in one host, written for the next one — apothecary and benchmark, per the
 *rad release milestones* draft's `v0.0.2`.
@@ -229,7 +229,7 @@ test('every verb the menu can commit reaches a named operation', () => {
 
 **→ upstream:** §5's revision triggers already say that a host found violating
 §5.2 or §5.3 means "§5 needs a check rather than a clause". Those checks
-exist here — [`tests/rad/vocabulary.test.mjs`](../../web/tests/rad/vocabulary.test.mjs)
+exist here — [`web/tests/rad/vocabulary.test.mjs`](../../web/tests/rad/vocabulary.test.mjs)
 and [`intents.test.mjs`](../../web/tests/rad/intents.test.mjs) — and are
 offered as the seed of them. They are ~120 lines and mostly host-agnostic.
 

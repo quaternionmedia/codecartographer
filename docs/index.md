@@ -11,11 +11,11 @@
 | [API Reference](api.md) | REST API endpoints, including the estate seams |
 | [Architecture](architecture.md) | High-level system design |
 | [Services](services.md) | The service layer, module by module |
-| [Contributing](contributing.md) | Development guidelines |
+| [Contributing](../.github/CONTRIBUTING.md) | Development guidelines |
 
 The plan this window is built to -- the estate frame, the topology designer, and
-the chrestomathy of code -- is `plans/the-web-window.md` in the governance corpus
-(`governance/qm` once the pin carries it).
+the chrestomathy of code -- is `governance/qm/plans/the-web-window.md` in the
+governance corpus.
 
 ## LLM / AI Context
 
@@ -26,19 +26,16 @@ the chrestomathy of code -- is `plans/the-web-window.md` in the governance corpu
 | [UI_REFERENCE.md](llm/UI_REFERENCE.md) | Control panel, Golden Layout shell, radial menu, streaming renderer |
 | [RENDERER_GUIDE.md](llm/RENDERER_GUIDE.md) | Renderer plugin system — D3, Gravis, Notebook, System |
 | [LARGE_REPOS.md](llm/LARGE_REPOS.md) | Scaling roadmap (phases 1–6) |
-
-## Development History
-
-| Document | Description |
-|----------|-------------|
-| [history/FRONTEND_MODERNIZATION.md](history/FRONTEND_MODERNIZATION.md) | Frontend modernization phases (Mithril, Meiosis, Golden Layout) |
-| [history/MIGRATION_HISTORY.md](history/MIGRATION_HISTORY.md) | Jupyter → FastAPI API migration |
+| [RAD_INTEGRATION_HANDOFF.md](llm/RAD_INTEGRATION_HANDOFF.md) | Integrating rad, the radial menu, into a web host |
+| [consolidation.md](consolidation.md) | Consolidation notes |
 
 ## Roadmap
 
 | Document | Description |
 |----------|-------------|
-| [roadmap/lexicon.md](llm/roadmap/lexicon.md) | Language lexicons on abstraction layers -- C and Python shipped, a third language is the next step |
+| [roadmap/README.md](llm/roadmap/README.md) | The roadmap's index, and what falls to this repository from the web window's plan |
+| [roadmap/lexicon.md](llm/roadmap/lexicon.md) | Language lexicons on abstraction layers -- C, Python and Rust -- and the construct vocabulary the chrestomathy reads |
+| [roadmap/rust.md](llm/roadmap/rust.md) | Rust, Cargo, linker scripts and the construct vocabulary the chrestomathy reads |
 | [roadmap/topology-functionality-abstraction-maps.md](llm/roadmap/topology-functionality-abstraction-maps.md) | What maps of code and of systems already mean here, and what is open |
 | [roadmap/c_parser_phase3_compile_commands.md](llm/roadmap/c_parser_phase3_compile_commands.md) | C parser phase 3 — compile_commands.json support |
 
@@ -48,7 +45,7 @@ the chrestomathy of code -- is `plans/the-web-window.md` in the governance corpu
 
 Codecarto parses source code repositories into interactive graph visualizations:
 
-- **Multi-language**: Python by AST, C/H by libclang, and a regex parser per language for the rest -- `GET /parse/languages` lists every extension
+- **Multi-language**: Python by AST, C/H by libclang, Rust and linker scripts by structural readers, and a regex parser per language for the rest -- `GET /parse/languages` lists every extension
 - **Streaming**: nodes stream progressively via SSE as each file is parsed
 - **Compound layout**: directories, files, and symbols in nested hierarchical orbits
 - **Interactive**: drag nodes, right-click radial menu, zoom/pan, group outline circles
@@ -76,17 +73,11 @@ docs/
 ├── api.md
 ├── architecture.md
 ├── services.md
-├── contributing.md       ← brief intro; links to .github/CONTRIBUTING.md
-├── history/              ← development history (moved from .github/development/)
-│   ├── FRONTEND_MODERNIZATION.md
-│   └── MIGRATION_HISTORY.md
-├── .diagrams/            ← PlantUML source + rendered images
 └── llm/                  ← LLM-optimized context docs
     ├── ARCHITECTURE.md
     ├── EXTENDING.md
     ├── RENDERER_GUIDE.md
     ├── UI_REFERENCE.md
     ├── LARGE_REPOS.md
-    ├── roadmap/          ← upcoming features
-    └── archive/legacy/   ← superseded historical docs
+    └── roadmap/          ← upcoming features
 ```
