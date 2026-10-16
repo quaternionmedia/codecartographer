@@ -1,11 +1,9 @@
 """
 Tests for codecarto.models.source_data.Folder.iter_files() — the shared
-recursive (folder, file) traversal extracted so callers needing "every
-file under this folder" don't each hand-roll their own recursive walk
-(see docs/llm/next_steps/parser_consolidation_and_scope_drift.md, 1.4).
-Used by _collect_parseable and _add_python_dependency_edges
-(unified_parser_service.py) and _fetch_content_for_folder
-(github_service.py).
+recursive (folder, file) traversal for callers that need every file under
+a folder. Used by _add_python_dependency_edges and
+_annotate_recorded_memory (unified_parser_service.py) and
+_fetch_content_for_folder (github_service.py).
 """
 
 from codecarto.models.source_data import File, Folder

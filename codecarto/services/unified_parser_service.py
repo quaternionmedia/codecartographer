@@ -28,6 +28,7 @@ import networkx as nx
 
 from codecarto.models.source_data import Directory, File, Folder
 from codecarto.models.plot_data import PlotOptions
+from codecarto.services import construct_service
 from codecarto.services.graph_serializer import GraphSerializer
 from codecarto.services.lexicon_bridge import annotate_graph_with_lexicon
 from codecarto.services.lexicon_service import LexiconService
@@ -83,6 +84,8 @@ class UnifiedParserService:
         options = PlotOptions(layout=layout, type="d3")
         gjgf = GraphSerializer.serialize_to_gjgf(graph, options)
         meta = GraphSerializer.create_metadata(graph, options)
+        if graph.graph.get("notes"):
+            meta["notes"] = list(graph.graph["notes"])
         return {"graph": gjgf, "metadata": meta}
 
     @staticmethod
@@ -146,6 +149,8 @@ class UnifiedParserService:
         meta_event = {"nodeCount": len(nodes_list), "edgeCount": len(edges_raw), "layout": layout}
         yield f"event: meta\ndata: {json.dumps(meta_event)}\n\n"
         await asyncio.sleep(0)
+        for note in graph.graph.get("notes", []):
+            yield note_event(note)
 
         # Yield nodes sorted by depth (shallowest first = roots appear first)
         sorted_nodes = sorted(nodes_list, key=lambda n: (n.get("depth", 9), n.get("id", "")))
@@ -338,15 +343,22 @@ class UnifiedParserService:
         def position_for(file_id: str) -> tuple[float, float]:
             return positions.get(file_id, (0.0, 0.0))
 
-        def node_events_for(sub: nx.DiGraph, file_id_by_stem: dict[str, str]) -> list[str]:
+        def node_events_for(sub: nx.DiGraph, file_id_by_stem: dict[str, str],
+                            file_id_by_key: Optional[dict[str, str]] = None) -> list[str]:
             """Place each node near its origin file's position (grouped, so
             files batched together don't all collapse onto the same point),
             then emit node events followed by edge events."""
+            by_key = file_id_by_key or {}
+            construct_service.annotate(sub)
+
+            def origin(ndata: dict) -> str:
+                attr = ndata.get("file", "")
+                return by_key.get(attr) or file_id_by_stem.get(attr, "")
+
             events: list[str] = []
             by_file: dict[str, list[tuple[str, dict]]] = {}
             for nid, ndata in sub.nodes(data=True):
-                fid = file_id_by_stem.get(ndata.get("file", ""), "")
-                by_file.setdefault(fid, []).append((nid, ndata))
+                by_file.setdefault(origin(ndata), []).append((nid, ndata))
 
             for file_id, sym_nodes in by_file.items():
                 px, py = position_for(file_id)
@@ -372,9 +384,20 @@ class UnifiedParserService:
             for nid, ndata in sub.nodes(data=True):
                 if ndata.get("depth") != 2:
                     continue
-                fid = file_id_by_stem.get(ndata.get("file", ""))
+                fid = origin(ndata)
                 if fid:
                     events.append(f"event: edge\ndata: {json.dumps({'source': fid, 'target': nid, 'kind': 'contains'})}\n\n")
+
+            # Cross-file relations a batch parser stated (Rust's `declares` and
+            # `depends_on`, a linker script's `includes`), resolved the same
+            # way `_apply_file_facts` resolves them for the in-memory path.
+            known = set(sub.nodes) | set(by_key.values())
+            for source, target, attrs in sub.graph.get("file_relations") or []:
+                src = source if source in sub else by_key.get(source)
+                dst = target if target in sub else by_key.get(target)
+                if src in known and dst in known and src != dst:
+                    edge = {"source": src, "target": dst, **attrs}
+                    events.append(f"event: edge\ndata: {json.dumps(edge)}\n\n")
 
             return events
 
@@ -386,7 +409,7 @@ class UnifiedParserService:
             raw = await fetch_raw(dl_url)
             if raw is None:
                 return []
-            file_id = f"file::{folder_name}/{file_name}"
+            file_id = f"file::{folder_name}/{file_name}"  # folder_name is the path from the root
             if getattr(parser, "language", None) == "python":
                 python_raw_by_file_id[file_id] = raw
                 dependency_file_id_by_stem[Path(file_name).stem] = file_id
@@ -399,7 +422,7 @@ class UnifiedParserService:
                 return []
             if annotate_lexicon:
                 annotate_graph_with_lexicon(sub, getattr(parser, "language", ""))
-            return node_events_for(sub, {Path(file_name).stem: file_id})
+            return node_events_for(sub, {Path(file_name).stem: file_id}, {dl_url: file_id})
 
         async def fetch_and_parse_batch(
             parser, entries: list[tuple[str, str, str]]
@@ -412,11 +435,13 @@ class UnifiedParserService:
             raws = await asyncio.gather(*(fetch_raw(du) for _, _, du in entries))
             files: list[File] = []
             file_id_by_stem: dict[str, str] = {}
+            file_id_by_key: dict[str, str] = {}
             for (folder_name, file_name, dl_url), raw in zip(entries, raws):
                 if raw is None:
                     continue
                 files.append(File(url=dl_url, name=file_name, size=0, raw=raw))
                 file_id_by_stem[Path(file_name).stem] = f"file::{folder_name}/{file_name}"
+                file_id_by_key[dl_url] = f"file::{folder_name}/{file_name}"
 
             if not files:
                 return []
@@ -427,13 +452,13 @@ class UnifiedParserService:
                 # request this server is handling (same reasoning as
                 # c_parser_router.py's /c-parser/stream-github thread).
                 sub = await asyncio.to_thread(parser.parse_files, files, depth=depth)
-            except Exception:
-                return []
+            except Exception as exc:
+                return [note_event(_unparsed(parser, len(files), exc))]
             if sub.number_of_nodes() == 0:
                 return []
             if annotate_lexicon:
                 annotate_graph_with_lexicon(sub, getattr(parser, "language", ""))
-            return node_events_for(sub, file_id_by_stem)
+            return node_events_for(sub, file_id_by_stem, file_id_by_key)
 
         # Split into per-file (progressive) vs batch_whole_tree (correctness
         # over progressiveness — e.g. C, for cross-file CALLS resolution).
@@ -594,6 +619,15 @@ class UnifiedParserService:
         if depth >= 2:
             _add_python_dependency_edges(graph, directory.root, allowed_exts)
 
+        # What each node *is*, across languages. Cheap, idempotent and
+        # additive -- a node keeps every attribute its parser gave it -- so it
+        # runs on every parse rather than behind a flag nobody sets.
+        construct_service.annotate(graph)
+
+        if depth >= 2:
+            _annotate_recorded_diagnostics(graph, directory)
+            _annotate_recorded_memory(graph, directory)
+
         if annotate_lexicon:
             # A single graph can span multiple languages (a repo isn't
             # mono-language) - annotate each one present that also has a
@@ -613,9 +647,18 @@ class UnifiedParserService:
         depth: int,
         allowed_exts: set[str],
         pending: dict[int, tuple[object, list[tuple[File, str]]]],
+        path: Optional[str] = None,
     ) -> str:
-        """Add a depth-0 directory node and recurse into its contents."""
-        folder_id = f"dir::{folder.name}"
+        """Add a depth-0 directory node and recurse into its contents.
+
+        **AN ID IS THE PATH FROM THE ROOT, NOT THE FOLDER'S NAME.** Two folders
+        named `src` are two folders. Keyed by name alone, every crate's `src`
+        and every crate's `src/lib.rs` in a Cargo workspace were one node
+        carrying all of their symbols -- and so was every package's `tests` --
+        with nothing in the picture to say so.
+        """
+        path = path or folder.name
+        folder_id = f"dir::{path}"
 
         graph.add_node(
             folder_id,
@@ -649,7 +692,7 @@ class UnifiedParserService:
         parseable_files: list[tuple[File, str]] = []
         for ext, file_list in files_by_ext.items():
             for file in file_list:
-                file_id = f"file::{folder.name}/{file.name}"
+                file_id = f"file::{path}/{file.name}"
 
                 graph.add_node(
                     file_id,
@@ -678,17 +721,26 @@ class UnifiedParserService:
                 try:
                     sub = parser.parse_files([file], depth=depth)
                     _merge_subgraph(graph, sub, file_id)
+                    _apply_file_facts(graph, sub, {_file_key(file): file_id})
                 except Exception:
                     pass  # Best-effort; directory structure still present
             for key, (parser, items) in batch_items.items():
                 if key not in pending:
                     pending[key] = (parser, [])
-                pending[key][1].extend(items)
+                # A batch parser keys files by `url or name`, and two uploaded
+                # `lib.rs` have the same name. A file with no url is given its
+                # place in the tree -- under a scheme no disk path has, so an
+                # adapter that opens real files (C's) never opens one by it.
+                pending[key][1].extend(
+                    (f if f.url else f.model_copy(update={"url": f"tree://{fid[len('file::'):]}"}), fid)
+                    for f, fid in items
+                )
 
         # ── Subfolders ────────────────────────────────────────────────────────
         for subfolder in folder.folders:
             UnifiedParserService._walk_folder(
-                graph, subfolder, folder_id, depth, allowed_exts, pending
+                graph, subfolder, folder_id, depth, allowed_exts, pending,
+                path=f"{path}/{subfolder.name}",
             )
 
         return folder_id
@@ -737,12 +789,19 @@ def _collect_parseable(
     folder: Folder,
     allowed_exts: set[str],
     result: list[tuple[str, str, str]],
+    path: Optional[str] = None,
 ) -> None:
-    """Collect (folder_name, file_name, download_url) for parseable files."""
-    for owning_folder, f in folder.iter_files():
+    """Collect (folder_path, file_name, download_url) for parseable files.
+
+    `folder_path` runs from the root as `_walk_folder` builds ids, so the file
+    id a symbol is attached to is the id the structure phase streamed."""
+    path = path or folder.name
+    for f in folder.files:
         ext = Path(f.name).suffix.lower()
         if ext in allowed_exts and f.url:
-            result.append((owning_folder.name, f.name, f.url))
+            result.append((path, f.name, f.url))
+    for sub in folder.folders:
+        _collect_parseable(sub, allowed_exts, result, f"{path}/{sub.name}")
 
 
 def _ext_to_language(ext: str) -> str:
@@ -884,6 +943,17 @@ def _merge_subgraph(
             graph.add_edge(file_node_id, root, **make_edge("contains"))
 
 
+def note_event(message: str) -> str:
+    """An SSE event for what no node can say: a parser that could not run over
+    files the graph still draws. The client shows it beside the graph."""
+    return f"event: note\ndata: {json.dumps({'message': message})}\n\n"
+
+
+def _unparsed(parser: object, count: int, error: Exception) -> str:
+    language = getattr(parser, "language", "") or type(parser).__name__
+    return f"{count} {language} file(s) drawn without their contents: {error}"
+
+
 def _parse_pending_batches(
     graph: nx.DiGraph,
     pending: dict[int, tuple[object, list[tuple[File, str]]]],
@@ -902,22 +972,31 @@ def _parse_pending_batches(
     for parser, file_entries in pending.values():
         files = [f for f, _ in file_entries]
         file_id_by_stem = {Path(f.name).stem: fid for f, fid in file_entries}
+        file_id_by_key = {_file_key(f): fid for f, fid in file_entries}
 
         try:
             sub = parser.parse_files(files, depth=depth)
-        except Exception:
-            continue  # Best-effort; directory structure still present
+        except Exception as exc:
+            # The files are still drawn; what could not be read in them is
+            # said, so an empty file is not read as a file with nothing in it.
+            graph.graph.setdefault("notes", []).append(_unparsed(parser, len(files), exc))
+            continue
 
-        _merge_batch_subgraph(graph, sub, file_id_by_stem)
+        _merge_batch_subgraph(graph, sub, file_id_by_stem, file_id_by_key)
+        _apply_file_facts(graph, sub, file_id_by_key)
 
 
 def _merge_batch_subgraph(
     graph: nx.DiGraph,
     sub: nx.DiGraph,
     file_id_by_stem: dict[str, str],
+    file_id_by_key: Optional[dict[str, str]] = None,
 ) -> None:
     """Merge a whole-tree batch's subgraph, attributing each top-level
-    (depth=2) node to its origin file via the node's `file` stem.
+    (depth=2) node to its origin file via the node's `file` attribute: the
+    file's full key (`File.url or File.name`) when the parser kept it, its
+    stem otherwise. The stem is how the C adapter attributes, and it cannot
+    tell two `lib.rs` apart; the key can.
 
     Depth=3 nodes (fields, enum constants, …) are deliberately NOT given a
     direct file edge — they already have a structural edge from their
@@ -926,9 +1005,108 @@ def _merge_batch_subgraph(
     graph.add_nodes_from(sub.nodes(data=True))
     graph.add_edges_from(sub.edges(data=True))
 
+    by_key = file_id_by_key or {}
     for node_id, data in sub.nodes(data=True):
         if data.get("depth") != 2:
             continue
-        file_id = file_id_by_stem.get(data.get("file", ""))
+        origin = data.get("file", "")
+        file_id = by_key.get(origin) or file_id_by_stem.get(origin)
         if file_id and not graph.has_edge(file_id, node_id):
             graph.add_edge(file_id, node_id, **make_edge("contains"))
+
+
+def _annotate_recorded_diagnostics(graph: nx.DiGraph, directory: Directory) -> None:
+    """Put what `rustc` last said on the Rust items it said it about.
+
+    Only for a local repository with a recorded `target/codecarto/check.jsonl`
+    at its root -- `codecarto cargo record` writes one. Reads that document and
+    runs nothing; an item carries the time the check was recorded beside its
+    counts, so a reader can tell a current complaint from an old one.
+    """
+    if not any(d.get("language") == "rust" for _, d in graph.nodes(data=True)):
+        return
+    root = directory.info.url
+    if not root or "://" in root or not Path(root).is_dir():
+        return
+    from codecarto.services import cargo_service
+
+    reading = cargo_service.recorded_diagnostics(root)
+    if reading is not None:
+        cargo_service.annotate_diagnostics(graph, reading)
+
+
+def _annotate_recorded_memory(graph: nx.DiGraph, directory: Directory) -> None:
+    """Put what the link measured on what it measured: each region's use, each
+    section's size, and each function's bytes.
+
+    Only for a local repository with recorded map files under
+    `target/codecarto/` -- `codecarto cargo record --map <bin>` writes one per
+    binary, and a C build passing `-Wl,-Map=target/codecarto/<name>.map` writes
+    the same. Reads them and runs nothing; a map older than the newest source
+    file in the parse is marked stale on everything it stamps.
+    """
+    root = directory.info.url
+    if not root or "://" in root or not Path(root).is_dir():
+        return
+    maps = sorted((Path(root) / "target" / "codecarto").glob("*.map"))
+    if not maps:
+        return
+    from codecarto.services import link_map_service
+
+    newest = 0.0
+    for _, f in directory.root.iter_files():
+        try:
+            newest = max(newest, Path(f.url).stat().st_mtime)
+        except (OSError, ValueError):
+            continue
+    for path in maps:
+        link_map = link_map_service.read(path)
+        if not link_map.ok:
+            continue
+        recorded_at, _ = link_map_service.age(path)
+        link_map_service.annotate(graph, link_map, owner=path.stem, recorded_at=recorded_at,
+                                  stale=newest > path.stat().st_mtime)
+
+
+def _file_key(file: File) -> str:
+    """What a parser writes in a node's `file` attribute for this file."""
+    return file.url or file.name
+
+
+def _apply_file_facts(
+    graph: nx.DiGraph,
+    sub: nx.DiGraph,
+    file_id_by_key: dict[str, str],
+) -> list[tuple[str, str, dict]]:
+    """Carry what a parser said *about files* onto the file nodes.
+
+    A parser does not create the depth-1 file nodes -- the walk does -- so
+    anything it knows about a file travels on its graph's attributes, keyed
+    by the file key it was given:
+
+    - `sub.graph["file_meta"]`: `{file_key: {...}}`, merged into that file
+      node's `meta` (Rust's `#![no_std]`, say).
+    - `sub.graph["file_relations"]`: `[(source, target, attrs)]`, where each
+      end is a node id already in the graph or a file key, and `attrs` carries
+      the edge `kind` (`declares`, `depends_on`, `includes`, ...).
+
+    Returns the edges it added, resolved to node ids, so a streaming caller
+    can emit them. An end that resolves to nothing is dropped: it named a
+    file this parse does not contain.
+    """
+    for key, facts in (sub.graph.get("file_meta") or {}).items():
+        file_id = file_id_by_key.get(key)
+        if file_id and file_id in graph:
+            graph.nodes[file_id].setdefault("meta", {}).update(facts)
+    added: list[tuple[str, str, dict]] = []
+    for source, target, attrs in sub.graph.get("file_relations") or []:
+        src = source if source in graph else file_id_by_key.get(source)
+        dst = target if target in graph else file_id_by_key.get(target)
+        if not src or not dst or src == dst:
+            continue
+        edge = {**make_edge(attrs.get("kind", "depends_on")),
+                **{k: v for k, v in attrs.items() if k != "kind"}}
+        if not graph.has_edge(src, dst):
+            graph.add_edge(src, dst, **edge)
+            added.append((src, dst, edge))
+    return added

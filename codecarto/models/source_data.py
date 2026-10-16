@@ -22,13 +22,12 @@ class Folder(BaseModel):
     def iter_files(self) -> Iterator[Tuple["Folder", File]]:
         """Yield every (containing_folder, file) pair in this tree, recursively.
 
-        Shared traversal for callers that just need "every file under this
-        folder" (e.g. collecting parseable files by extension, fetching raw
-        content) instead of each hand-rolling its own recursive walk —
-        see docs/llm/next_steps/parser_consolidation_and_scope_drift.md's
-        finding 1.4. Not used by graph-building walks (e.g.
-        UnifiedParserService._walk_folder) that need per-level parent-id/
-        depth context beyond just the immediate containing folder.
+        For callers that need every file under this folder (fetching raw
+        content, joining files to graph nodes by name, finding the newest
+        source). Graph-building walks (e.g.
+        UnifiedParserService._walk_folder) do not use it: they need
+        per-level parent-id and depth context beyond the immediate
+        containing folder.
         """
         for file in self.files:
             yield self, file
