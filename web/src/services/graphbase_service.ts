@@ -48,11 +48,15 @@ async function urlHash(url: string): Promise<string> {
 }
 
 export const GraphbaseService = {
-  /** Returns true when the /db/* router is reachable (MONGODB_URI is set). */
+  /** Returns true when the /db/* router is mounted (MONGODB_URI is set). With
+   *  it off, the server answers `/db/` with `{available: false}` rather than a
+   *  404, so asking is not an error. */
   async isAvailable(dbBase: string): Promise<boolean> {
     try {
       const r = await fetch(`${dbBase}/`, { signal: AbortSignal.timeout(2000) });
-      return r.ok;
+      if (!r.ok) return false;
+      const body = await r.json();
+      return !(body && typeof body === 'object' && (body as { available?: boolean }).available === false);
     } catch {
       return false;
     }

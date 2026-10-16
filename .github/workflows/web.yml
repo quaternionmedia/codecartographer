@@ -1,0 +1,107 @@
+name: Web
+
+# The frontend's suites, on every pull request that can change what they test.
+#
+# `suites` needs only Node: the typecheck, and the pure, state, rad and system
+# suites, which run in node --test against code compiled from web/src. `e2e`
+# drives the real app in Chromium, so it also installs the backend; Playwright
+# starts both servers itself on 27182 and 12340 (web/playwright.config.ts).
+#
+# `test:families` is not run here: it reads families.json from a qm clone
+# beside this one (web/tests/families/reachable.test.mjs), which a runner does
+# not have, so every case would skip and the check would enforce nothing.
+#
+# Not a seed file. This is the project's own workflow and is free to change.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'codecarto/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/web.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  # A second push supersedes the first: nobody reads the result of a run whose
+  # commit has already been replaced.
+  group: web-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  suites:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # graphbase is private and the runner has no credential for it;
+          # nothing under web/ needs a submodule.
+          submodules: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:pure
+      - run: npm run test:state
+      - run: npm run test:rad
+      - run: npm run test:system
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      # The estate panels read the governance corpus; graphbase stays out.
+      - name: Check out the governance submodule only
+        run: git submodule update --init --depth 1 governance/qm
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # The same install as the Python suite: libclang included, so a C graph
+      # draws in the browser as it does locally.
+      - name: Install the backend
+        run: uv sync --locked --extra dev --extra c-parsing
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install the frontend and Chromium
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run the browser suite
+        working-directory: web
+        run: npm run test:e2e
+
+      # Kept from every run that was not cancelled, passed or failed: the
+      # report holds the screenshots tests/e2e/tour.spec.ts attaches, so a
+      # reviewer can see how any pull request's window looks without running it.
+      - name: Keep the browser suite's report, with the tour's screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-suite-report-with-tour-screenshots
+          path: web/playwright-report
+          retention-days: 7

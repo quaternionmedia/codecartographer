@@ -4,12 +4,11 @@ import type { LayoutConfig } from 'golden-layout';
  * Default Golden Layout configuration for Code Cartographer.
  *
  * Panels:
- *   • file-tree   — left sidebar: repository / upload browser
- *   • graph       — main area: the streaming canvas
- *   • upload-panel    — bottom tab, active: local file dropzone and Load Demo
- *   • repo-panel      — bottom tab: GitHub URL fetch + recent/examples
+ *   • graph           — main area: the streaming canvas
+ *   • file-tree       — left sidebar: repository / upload browser
+ *   • open            — bottom tab, active: every source, the parse options,
+ *                       recent graphs, and Plot / Cancel
  *   • graph-settings  — bottom tab: graph styling controls
- *   • plotbar         — bottom tab: plot/cancel/status
  *   • estate-panel    — bottom tab: which seams are up, before anything is drawn
  *
  * The other estate panels (Topology, Capabilities, Overview) are reached from
@@ -75,16 +74,9 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
             content: [
               {
                 type: 'component',
-                componentType: 'upload-panel',
-                title: '↑ Upload',
-                id: 'upload-panel',
-                isClosable: true,
-              },
-              {
-                type: 'component',
-                componentType: 'repo-panel',
-                title: '⬇ Repository',
-                id: 'repo-panel',
+                componentType: 'open',
+                title: '⬇ Open',
+                id: 'open',
                 isClosable: true,
               },
               {
@@ -94,16 +86,9 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
                 id: 'graph-settings-panel',
                 isClosable: true,
               },
-              {
-                type: 'component',
-                componentType: 'plotbar',
-                title: '▶ Actions',
-                id: 'plotbar',
-                isClosable: true,
-              },
               // Present in the dock so a cold reader finds it, and not the
-              // active tab: Upload stays active because Load Demo lives there
-              // and is the first thing a new reader is told to press.
+              // active tab: Open is active, because Load Demo lives there and
+              // is the first thing a new reader is told to press.
               {
                 type: 'component',
                 componentType: 'estate-panel',

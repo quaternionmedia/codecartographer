@@ -44,6 +44,7 @@
 }
 
 .graph-legend__header:hover {
+  background: none;
   color: var(--c-secondary-light);
 }
 
