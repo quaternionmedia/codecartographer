@@ -15,8 +15,8 @@ const API = process.env.CODECARTO_API || 'http://127.0.0.1:2718';
 // a request the dev server tries to answer itself and cannot.
 const API_PATHS = [
   '/topology', '/capabilities', '/overview', '/estate',
-  '/plotter', '/palette', '/repo', '/parse', '/lexicon',
-  '/c-parser', '/pam', '/db', '/auth', '/docs', '/openapi.json',
+  '/plotter', '/palette', '/repo', '/parse', '/lexicon', '/cargo',
+  '/c-parser', '/pam', '/system', '/db', '/auth', '/docs', '/openapi.json',
 ];
 
 export default {
