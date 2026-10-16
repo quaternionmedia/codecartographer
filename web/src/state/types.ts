@@ -36,7 +36,8 @@ export interface GraphStylingOptions {
   nodeBorderWidth: number;     // in pixels
   nodeColorOverride?: string;  // Optional override for automatic node coloring
   // 'auto' (default depth/kind heuristic) | 'layer' (Lexicon Option B
-  // abstraction layer, when present on a node) | 'type' | 'degree' | ...
+  // abstraction layer, when present on a node) | 'construct' (what the node
+  // is, from the construct vocabulary, alike across languages)
   colorBy?: string;
 
   // Edge Appearance
@@ -58,7 +59,7 @@ export interface GraphStylingOptions {
   interactionProfile: string;  // Profile ID (default, cad, gaming, touch)
 
   // System renderer — selects which SystemDefinition to render
-  systemId?: string;           // e.g. 'pam' (default)
+  systemId?: string;           // SystemDefinition id; 'moat' is the default, 'pam' retained
 
   // Per-depth label visibility — overrides showNodeLabels per depth level when present.
   // depth 0 = dir, 1 = file, 2 = symbol, 3 = sub-symbol.
