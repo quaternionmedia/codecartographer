@@ -46,9 +46,6 @@ test("every tab's title ends before its ✕", async ({ page }) => {
 
   // Open every window the + menu offers, until it says none is left.
   for (;;) {
-    // Choosing a window leaves the menu's outside-click listener armed, and it
-    // closes the next menu the + opens; a click on the title spends it first.
-    await page.locator('.gl-app-header__title').click();
     await page.locator('.gl-app-header__add-btn').click();
     const menu = page.locator('.gl-add-panel-menu');
     await expect(menu).toBeVisible();

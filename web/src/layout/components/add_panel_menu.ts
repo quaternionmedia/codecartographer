@@ -17,21 +17,36 @@ interface Attrs {
   onClose: () => void;
 }
 
-export const AddPanelMenu: m.Component<Attrs> = {
-  oncreate: ({ attrs }) => {
+interface State {
+  /** Removes what `oncreate` put on `document`. */
+  teardown?: () => void;
+}
+
+export const AddPanelMenu: m.Component<Attrs, State> = {
+  oncreate: (vnode) => {
+    const { onClose } = vnode.attrs;
+    const onKeydown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose();
+    };
     // Defer listener registration one tick so the click that opened the
     // menu doesn't immediately close it via the same event.
-    setTimeout(() => {
-      document.addEventListener('click', attrs.onClose, { once: true });
+    const timer = setTimeout(() => {
+      document.addEventListener('click', onClose);
       document.addEventListener('keydown', onKeydown);
     }, 0);
+    // Removed when the menu goes, however it goes. Choosing a window stops
+    // its click short of `document`, so a listener that waits to fire once
+    // stays armed after the menu is gone, and closes the next menu the +
+    // opens on the very click that opened it.
+    vnode.state.teardown = () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', onClose);
+      document.removeEventListener('keydown', onKeydown);
+    };
+  },
 
-    function onKeydown(e: KeyboardEvent): void {
-      if (e.key === 'Escape') {
-        document.removeEventListener('keydown', onKeydown);
-        attrs.onClose();
-      }
-    }
+  onremove: (vnode) => {
+    vnode.state.teardown?.();
   },
 
   view: ({ attrs }) => {

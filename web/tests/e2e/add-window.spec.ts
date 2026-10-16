@@ -28,6 +28,33 @@ test('a closed window comes back from the + menu, and the header offers no other
   await expect(estate).toBeVisible();
 });
 
+test('after a window is added, the next + click opens the menu', async ({ page }) => {
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const add = page.locator('.gl-app-header__add-btn');
+  const menu = page.locator('.gl-add-panel-menu');
+
+  await add.click();
+  await menu.locator('.gl-add-panel-menu__item', { hasText: /^Cargo$/ }).click();
+  await expect(menu).toHaveCount(0);
+  await expect(page.locator('.gl-panel--cargo')).toBeVisible();
+
+  // Mutation: leave the closed menu's outside-click listener on `document`
+  // -- it fires on this click, after the + has opened the menu, and closes
+  // it again, and this fails.
+  await add.click();
+  await expect(menu).toBeVisible();
+  // And it opens with the one click alone: still open a moment later.
+  await page.waitForTimeout(300);
+  await expect(menu).toBeVisible();
+
+  // Escape closes it, and leaves nothing behind for the next one either.
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await add.click();
+  await expect(menu).toBeVisible();
+});
+
 test('a Ctrl+right-click on the dock opens no menu', async ({ page }) => {
   await page.goto('/');
   await dismissOnboardingModal(page);
