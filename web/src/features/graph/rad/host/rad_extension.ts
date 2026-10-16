@@ -19,12 +19,14 @@ import type { Session } from '../session.js';
 import { attach } from '../dom/attach.js';
 import type { Attachment } from '../dom/attach.js';
 import { resolveGraphMenu } from './resolve.js';
+import { menuContextFor } from './menu_context.js';
 import type { MenuFacts } from './resolve.js';
 import { createIntentRouter } from './graph_intents.js';
 import type { GraphOps } from './graph_intents.js';
 import { EMPTY_VIEW_STATE, anyHidden } from './view_state.js';
 import type { NodeViewState } from './view_state.js';
 import { resolveToken } from '../dom/theme.js';
+import { VECTOR_VERSION } from '../index.js';
 
 export interface RadExtensionOptions {
   ops: GraphOps;
@@ -47,7 +49,7 @@ export class RadExtension extends BaseExtension<GraphNode, GraphEdge> {
   private attachment: Attachment | null = null;
 
   constructor(private readonly opts: RadExtensionOptions) {
-    super('rad', 'Radial menu', 'QM rad radial menu, conformant to vectors v0.4.0');
+    super('rad', 'Radial menu', `QM rad radial menu, conformant to vectors v${VECTOR_VERSION}`);
   }
 
   public apply(): void {
@@ -84,35 +86,19 @@ export class RadExtension extends BaseExtension<GraphNode, GraphEdge> {
     this.applyViewState();
   }
 
-  /**
-   * Build the MenuContext for a raw event.
-   *
-   * Selection wins over the node under the pointer: acting on a selection the
-   * user built and then losing it because they happened to press over one
-   * member is the kind of thing that teaches people not to select.
-   */
+  /** Build the MenuContext for a raw event; `menu_context.ts` decides which ring. */
   private contextFor(ev: PointerEvent | KeyboardEvent): MenuContext | null {
     const ctx = this.assertContext();
     const rect = ctx.container.getBoundingClientRect();
-
-    const point =
-      'clientX' in ev
+    const pointer = 'clientX' in ev;
+    return menuContextFor({
+      pointer,
+      underPointer: pointer ? nodeIdAt(ev.target) : null,
+      selected: [...ctx.selectedNodes].map((n) => n.id),
+      position: pointer
         ? { x: ev.clientX - rect.left, y: ev.clientY - rect.top }
-        : { x: rect.width / 2, y: rect.height / 2 };
-
-    const selected = [...ctx.selectedNodes].map((n) => n.id);
-    const hovered = 'target' in ev ? nodeIdAt(ev.target) : null;
-
-    if (selected.length > 1) {
-      return { type: 'selection', targetIds: selected, position: point };
-    }
-    if (hovered) {
-      return { type: 'node', targetIds: [hovered], position: point };
-    }
-    if (selected.length === 1) {
-      return { type: 'node', targetIds: selected, position: point };
-    }
-    return { type: 'canvas', targetIds: [], position: point };
+        : { x: rect.width / 2, y: rect.height / 2 },
+    });
   }
 
   private onEffect(_fx: Effect): void {

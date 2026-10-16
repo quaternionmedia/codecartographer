@@ -32,15 +32,20 @@ dependencies = [
     "requests>=2.28.0",
     "httpx>=0.24.0",
     "pymongo>=4.6",
+    # The lexicons, the construct vocabulary and the capability registry are
+    # YAML. Imported at runtime, so declared rather than arriving through an
+    # extra of uvicorn's.
+    "pyyaml>=6.0",
+    # Cargo.toml and Cargo.lock: tomllib is the standard library from 3.11.
+    "tomli>=1.1; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
 c-parsing = [
     "libclang>=16.0.0",
 ]
-# Phase 2: full AST quality via tree-sitter (replaces regex parsers per language).
-# Install with: uv add --optional multilang
-# All packages must be compatible versions — check tree-sitter release notes.
+# tree-sitter and its grammars. Nothing in the package imports them; every
+# language is read by the parsers under codecarto/services/parsers/.
 multilang = [
     "tree-sitter>=0.21",
     "tree-sitter-python>=0.21",
@@ -66,6 +71,7 @@ dev = [
     "mkdocs-material>=9.0.11",
     "mkdocs-exclude>=1.0.2",
     "python-dotenv>=0.19.1",
+    "ruff>=0.17.0",
 ]
 
 [project.scripts]
