@@ -29,6 +29,8 @@ export const HOST_VERBS = {
   NODE_INFO: 'node-info',
   /** Zoom/pan to the bounding circle of this node's compound cluster. */
   FOCUS_GROUP: 'focus-group',
+  /** Set what this node is beside every language that writes it (the chrestomathy). */
+  COMPARE: 'compare',
 } as const;
 
 /**
@@ -52,6 +54,7 @@ export const CHORD_MAP: Record<string, string> = {
   lay: 'relayout',
   src: 'view-source',
   nfo: 'node-info',
+  cmp: 'compare',
   red: 'color:signal',
   blu: 'color:sky',
   tea: 'color:calm',
@@ -82,6 +85,7 @@ export const ALL_VERBS: string[] = [
   HOST_VERBS.VIEW_SOURCE,
   HOST_VERBS.NODE_INFO,
   HOST_VERBS.FOCUS_GROUP,
+  HOST_VERBS.COMPARE,
   'color:signal',
   'color:sky',
   'color:calm',

@@ -94,6 +94,17 @@ test('a symbol cannot be expanded, and a childless node cannot be collapsed', ()
   assert.equal(byId.collapse.enabled, false);
 });
 
+test('View → Compare is offered disabled on a node the vocabulary did not place', () => {
+  // Mutation: enable Compare unconditionally -- a node with no construct opens
+  // a chrestomathy of nothing, and this fails.
+  const compare = (facts) => resolveGraphMenu(
+    { type: 'node', targetIds: ['a'], position: { x: 0, y: 0 } }, facts,
+  ).items.find((i) => i.id === 'view').children.find((i) => i.id === 'compare');
+  assert.equal(compare({ hasConstruct: false }).enabled, false);
+  assert.equal(compare({ hasConstruct: true }).enabled, true);
+  assert.equal(compare({ hasConstruct: true }).action, 'compare');
+});
+
 test('expand takes the 12 o\'clock wedge', () => {
   const spec = resolveGraphMenu(
     { type: 'node', targetIds: ['a'], position: { x: 0, y: 0 } },

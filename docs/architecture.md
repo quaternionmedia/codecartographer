@@ -14,6 +14,7 @@
 │  │                       Routers                            │    │
 │  │  /parse /repo /plotter /c-parser /pam /lexicon /palette │    │
 │  │  /topology /capabilities /overview /estate  /db (opt)   │    │
+│  │  /cargo /system /auth                                   │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
 │  ┌─────────────────────────▼───────────────────────────────┐    │
 │  │                      Services                            │    │
@@ -21,11 +22,14 @@
 │  │  PositionService       CParserService   LexiconService   │    │
 │  │  topology_service  capability_service  overview_service  │    │
 │  │  estate_service (the seam registry)   qmcp_client        │    │
+│  │  construct_service (what a node is, across languages)    │    │
+│  │  cargo_service (manifests and what cargo wrote)          │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
 │  ┌─────────────────────────▼───────────────────────────────┐    │
 │  │                      Parsers                             │    │
 │  │  PythonLanguageParser  CLangaugeParser                   │    │
-│  │  RegexLanguageParser   (20 languages, Phase 1 regex)    │    │
+│  │  RustLanguageParser    LinkerScriptParser                │    │
+│  │  RegexLanguageParser   (one regex adapter per language)  │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
 └─────────────────────────┬───────────────────────────────────────┘
                           │
@@ -54,13 +58,16 @@ codecarto/
 │   ├── repo_router.py            # /repo/*   (GitHub tree, local paths)
 │   ├── c_parser_router.py        # /c-parser/* (libclang semantic parse)
 │   ├── pam_router.py             # /pam/*    (PAM log monitor, WebSocket)
-│   ├── lexicon_router.py         # /lexicon/* (hand-authored ontologies, as graphs)
+│   ├── system_router.py          # /system/* a system diagram derived from a sibling clone
+│   ├── lexicon_router.py         # /lexicon/* (lexicons, the construct vocabulary, the chrestomathy)
+│   ├── cargo_router.py           # /cargo/*  a Cargo workspace and its recorded build, as GraphData
 │   ├── palette_router.py         # /palette/*
 │   ├── topology_router.py        # /topology/*     the harness's shapes, as GraphData
 │   ├── capability_router.py      # /capabilities/* the corpus's registry, as GraphData
 │   ├── overview_router.py        # /overview/*     dossier's seam, as GraphData
 │   ├── estate_router.py          # /estate/seams   every seam above, identified or not
 │   └── app_router.py             # /app, the built front end on the API's origin
+│                                 # (/auth/github is declared in main.py itself)
 │
 ├── services/
 │   ├── unified_parser_service.py  # orchestrates all language parsing
@@ -75,18 +82,22 @@ codecarto/
 │   ├── capability_service.py      # registry YAML -> networkx -> GraphSerializer
 │   ├── overview_service.py        # overview seam -> networkx -> GraphSerializer
 │   ├── estate_service.py          # the seam registry: identity probes, the liveness table
+│   ├── construct_service.py       # what a node *is* across languages; the chrestomathy
+│   ├── cargo_service.py           # manifests + what cargo recorded -> networkx; never runs cargo
 │   └── parsers/
 │       ├── language_parser.py          # LanguageParser Protocol + ParserRegistry
 │       ├── python_language_parser.py   # Python (custom AST visitor)
 │       ├── c_language_parser.py        # C/H (libclang adapter, batch_whole_tree)
 │       ├── c_parser.py                 # libclang core
-│       ├── regex_language_parser.py    # 20-language regex adapter (Phase 1)
+│       ├── rust_language_parser.py     # Rust, item level (tokenizer, batch_whole_tree)
+│       ├── linker_script_parser.py     # GNU ld scripts and memory.x
+│       ├── regex_language_parser.py    # one regex adapter per language
 │       └── pam_parser.py              # PAM log parser
 │
 ├── models/
 │   ├── source_data.py       # File, Folder, Directory
 │   └── custom_layouts/
-│       └── compound_layout.py  # 3-pass hierarchical layout
+│       └── compound_layout.py  # 4-pass hierarchical layout
 │
 └── static/                # Bundled HTML assets (c-visualizer, pam-frontend)
 ```
@@ -137,8 +148,10 @@ web/src/
 │
 └── services/
     ├── plot_service.ts          # SSE stream helpers
-    ├── repo_service.ts          # repo tree fetch/expand
     └── graphbase_service.ts     # /db/bookmarks client
+
+web/src/features/repository/services/
+    └── repo_service.ts          # repo tree fetch/expand
 ```
 
 ## Data Flow
@@ -183,6 +196,8 @@ statement.
 | **Capabilities** (`/capabilities`) | the corpus's registry states claims; this backend counts nothing but the rungs naming no evidence, and lays out | nothing here; the registry is the corpus's file at the governance pin | the canvas; the panel lists the claims as stated, with who stated them and when |
 | **Overview** (`/overview`) | dossier builds masthead figures and sections from its database and writes them as a seam; this backend draws the one relation the seam states (a section lists a subject) and lays out | dossier's seam file — a snapshot; this window reads it and never writes it | the canvas; the panel shows the masthead as written, with the producer's own `note` beside each figure, and when the reading was made |
 | **Liveness** (`/estate/seams`) | this backend probes each seam for a document whose shape it knows | nothing | the Estate panel, one row per seam, the server's `ok` and the server's sentence |
+| **Cargo workspaces** (`/cargo`) | cargo resolves the workspace and rustc checks it, when a person runs `codecarto cargo record`; this backend reads the manifests and those documents, counts diagnostics per target, measures each recorded link map's region use, and lays out | the two documents, in the workspace's own `target/codecarto/`, written on a person's command; nothing on this side | the canvas; the Cargo panel names the engine that answered and each document's age and staleness |
+| **Chrestomathy** (`/lexicon/chrestomathy`) | nothing new: the hand-authored construct vocabulary and lexicons are read and laid out | the YAML files, shipped in the package | the canvas, tokens coloured from the one layer ramp; the panel's table, a language with no spelling included |
 
 **Rules, and where each was learned.**
 
@@ -221,6 +236,19 @@ statement.
    `layout_names.ts` strips `_layout` and capitalises; there is no fallback.
    Two hand tables used to fall back to `Spring` for any name they did not
    list.
+9. **A construct's look is the code map's visual grammar, said once.** Parsers
+   own how their nodes look; `constructs.yaml` is where looks shared across
+   languages live, and a node keeps any look its parser gave it. The estate
+   palette (rule 1) is a different vocabulary for a different kind of graph.
+   **And every graph says what its nodes are**: `GraphSerializer` stamps each
+   node's construct for every route, a cached graph is stamped again as it is
+   replayed, and `construct_service.stamp` is the one place the decision is
+   made -- the census (`/lexicon/chrestomathy/census`) that reads a drawn graph
+   as a chrestomathy calls it too, and the client never decides a construct.
+10. **The window runs nothing it reads.** Running cargo runs a workspace's build
+    scripts, proc macros and configured `rustc`, so no route does: a person runs
+    `codecarto cargo record`, and the window reads what it wrote with its age.
+    A recorded resolution older than a manifest is not used, and says so.
 
 **What a reader should still not expect.** That a seam's *content* is right —
 the probes say a seam is there and is what this window expects, and each seam's
@@ -240,7 +268,7 @@ All non-obvious structural choices are documented as ADR drafts in
 |-----|----------|
 | *Parser/cache unification* | Deleted legacy router generations; `batch_whole_tree` opt-in for cross-file C parsing |
 | *Golden Layout as primary shell* | Replaced monolithic `codecarto.ts`; panel registry in `panel_registry.ts` |
-| *Compound hierarchical layout* | 3-pass dirs→files→symbols orbit algorithm |
+| *Compound hierarchical layout* | 4-pass dirs→files→symbols→sub-symbols orbit algorithm |
 | *CacheService vs graphbase* | TTL'd content-addressed cache vs. user-named durable store — kept separate |
 | *GL panel registry + add-window menu* | Generalized from hardcoded map; real `LayoutManager` import fixed restore bug |
 | *D3 hierarchy layout improvements* | Hierarchical drag, per-depth labels, cumulative spread scaling |
