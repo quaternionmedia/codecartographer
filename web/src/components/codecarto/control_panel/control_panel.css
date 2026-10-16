@@ -325,6 +325,12 @@
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
+/* Bundled: read from disk with its recorded documents, no network needed. */
+.panel-source__example-chip--bundled {
+  background: color-mix(in srgb, var(--c-secondary) 18%, transparent);
+  font-weight: 600;
+}
+
 .panel-source__example-chip:hover {
   background: var(--c-secondary);
   color: var(--c-bg);

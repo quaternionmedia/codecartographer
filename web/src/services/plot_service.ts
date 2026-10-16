@@ -21,6 +21,8 @@ export interface StreamCallbacks {
   onError: (msg: string) => void;
   /** Called on 'fetching' events (stream-url only): status message updates before nodes arrive. */
   onFetching?: (message: string) => void;
+  /** Called on 'note' events: what a parser could not read in files the graph still draws. */
+  onNote?: (message: string) => void;
 }
 
 export class PlotService {
@@ -269,6 +271,7 @@ export class PlotService {
             case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
             case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
             case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, payload.from_cache); break;
+            case 'note':  callbacks.onNote?.(payload.message ?? ''); break;
             case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
           }
         });
@@ -327,6 +330,7 @@ export class PlotService {
             case 'node':  callbacks.onNode(payload as StreamNode, nodeIndex++); break;
             case 'edge':  callbacks.onEdge(payload as StreamEdge); break;
             case 'done':  callbacks.onDone(payload.elapsed_ms ?? 0, payload.from_cache); break;
+            case 'note':  callbacks.onNote?.(payload.message ?? ''); break;
             case 'error': callbacks.onError(payload.message ?? 'Stream error'); break;
             // 'phase' events are informational — ignored silently
           }
