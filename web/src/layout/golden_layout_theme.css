@@ -46,6 +46,14 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
+/* The ✕ is drawn absolutely, 11px wide and 6px in from the tab's right edge
+   (goldenlayout-dark-theme.css), so the right padding is its room: 17px, and
+   a 7px gap before the title. A tab in the overflow list hides its ✕ and
+   keeps the 10px. */
+.lm_tabs > .lm_tab {
+  padding-right: 24px !important;
+}
+
 .lm_tab.lm_active {
   background: var(--c-primary-light, #1a1a1a);
   color: var(--c-secondary, #00ff41);
