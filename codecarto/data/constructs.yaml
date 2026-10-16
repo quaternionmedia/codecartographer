@@ -1,0 +1,471 @@
+# The construct vocabulary — what a parsed thing *is*, said once for every
+# language codecarto reads at the level of structure.
+#
+# A parser says what a language calls something (`kind`: C's `struct`, Rust's
+# `impl`, an assembler's label). This file says what it is (`construct`: a
+# product type, an implementation, a code label), so a C struct and a Rust
+# struct are one construct drawn one way, and a Rust `enum` whose variants
+# carry data is a different construct from C's `enum` even though the keyword
+# is the same. Three things read it:
+#
+#   - `construct_service.annotate` stamps `construct` (and `meta.facets`) on
+#     every node of a language listed under `languages:`, and gives a node
+#     that carries no look of its own the construct's `look`.
+#   - The chrestomathy (`/lexicon/chrestomathy/...`) sets one construct beside
+#     itself across every language that spells it, from `spelled:`; and its
+#     census (`/lexicon/chrestomathy/census`) reads any graph on the canvas as
+#     the constructs its nodes are, in the languages they are written in.
+#   - Tests hold it to the lexicons (every token named here is in that
+#     language's lexicon), to the parsers (every kind a parser can emit maps
+#     here) and to the C reference design (C's own shapes and colours agree
+#     with the looks below).
+#
+# A construct with a `look` can be what a node is. One without is a *facet*:
+# something a node can also be — unsafe, volatile, placed in a section, an
+# interrupt handler — carried in `meta.facets`, never instead of its construct.
+#
+# `look.shape` is one of the canvas's shapes: circle, square, rectangle,
+# triangle, diamond, hexagon, or ngon (a polygon of `meta.sides` sides).
+
+version: 1
+
+constructs:
+  # ── Callables ──────────────────────────────────────────────────────────────
+  - id: callable.function
+    name: Function
+    gloss: A named body of code with parameters, callable from elsewhere.
+    look: {shape: diamond, color: "#ff9d3d"}
+    spelled:
+      c: {note: "No keyword: a declarator with a parameter list and a body."}
+      rust: {tokens: [fn]}
+      python: {tokens: [def]}
+      assembly: {note: "A label that call or bl targets; nothing but its use marks it as a function."}
+
+  - id: callable.method
+    name: Method
+    gloss: A function attached to a type, taking the value it acts on as a parameter.
+    look: {shape: diamond, color: "#ffb86b"}
+    spelled:
+      c: {note: "None. A function whose first parameter is a pointer to the struct is the idiom."}
+      rust: {tokens: [fn, impl], note: "A fn inside an impl or trait block; self is an explicit first parameter."}
+      python: {tokens: [def, class], note: "A def inside a class body; self is explicit by convention."}
+
+  # ── Types ──────────────────────────────────────────────────────────────────
+  - id: type.product
+    name: Product type
+    gloss: A record — every field present at once, laid out together.
+    look: {shape: ngon, color: "#4a9eff"}
+    spelled:
+      c: {tokens: [struct]}
+      rust: {tokens: [struct], note: "Layout is the compiler's choice unless #[repr(C)] fixes it to C's."}
+      python: {tokens: [class], note: "A class holding fields; @dataclass is the closest spelling."}
+
+  - id: type.union
+    name: Untagged union
+    gloss: Several interpretations of one piece of storage, with nothing recording which is current.
+    look: {shape: ngon, color: "#6ab0e8"}
+    spelled:
+      c: {tokens: [union]}
+      rust: {tokens: [union], note: "A weak keyword; reading a field is unsafe because nothing records which was written."}
+
+  - id: type.enumeration
+    name: Enumeration
+    gloss: A set of named constants; a value is exactly one of them and carries nothing else.
+    look: {shape: circle, color: "#a855f7"}
+    spelled:
+      c: {tokens: [enum], note: "Named integer constants; the type converts to and from int freely."}
+      rust: {tokens: [enum], note: "An enum whose variants carry no data. #[repr(u8)] fixes its size for a register or a wire format."}
+      python: {note: "enum.Enum, a library class rather than syntax."}
+
+  - id: type.sum
+    name: Sum type
+    gloss: A tagged choice among alternatives that may each carry data, where the tag is checked.
+    look: {shape: hexagon, color: "#a855f7"}
+    spelled:
+      rust: {tokens: [enum, match], note: "Variants carry fields; match must cover every variant."}
+      c: {tokens: [struct, enum, union], note: "No sum type. A struct holding an enum tag beside a union is the idiom, and nothing checks the tag."}
+      python: {note: "A Union type hint, unchecked when the program runs."}
+
+  - id: type.alias
+    name: Type alias
+    gloss: A second name for an existing type; no new type is made.
+    look: {shape: circle, color: "#22d3ee"}
+    spelled:
+      c: {tokens: [typedef]}
+      rust: {tokens: [type]}
+      python: {note: "Assigning a type to a name, or `type X = ...` from Python 3.12."}
+
+  - id: type.interface
+    name: Interface
+    gloss: A named set of operations a type can provide, separate from any one type.
+    look: {shape: hexagon, color: "#34d399"}
+    spelled:
+      rust: {tokens: [trait]}
+      c: {tokens: [struct], note: "A struct of function pointers, a hand-built vtable, is the idiom."}
+      python: {note: "abc.ABC or typing.Protocol, library rather than syntax."}
+
+  - id: type.implementation
+    name: Implementation
+    gloss: A block attaching behaviour to a type, separately from the type's definition.
+    look: {shape: rectangle, color: "#2dd4bf"}
+    spelled:
+      rust: {tokens: [impl, for], note: "impl Type { .. } adds methods; impl Trait for Type { .. } provides an interface."}
+      c: {note: "None: functions are free, and belong to a type only by naming convention."}
+      python: {tokens: [class], note: "Behaviour is written inside the class body, with the data."}
+
+  - id: type.class
+    name: Class
+    gloss: Data and the behaviour that acts on it, declared as one thing.
+    look: {shape: square, color: "#4a9eff"}
+    spelled:
+      python: {tokens: [class]}
+      rust: {tokens: [struct, impl], note: "Split in two on purpose: the struct holds the data, impl blocks attach behaviour, traits say what it can do."}
+      c: {tokens: [struct], note: "The data only; behaviour is free functions."}
+
+  # ── Members ────────────────────────────────────────────────────────────────
+  - id: member.field
+    name: Field
+    gloss: One named part of a record.
+    look: {shape: square, color: "#3d5070"}
+    spelled:
+      c: {note: "A declaration inside a struct or union body."}
+      rust: {note: "name: Type inside a struct body, with its own pub."}
+      python: {note: "An attribute assigned in __init__, or annotated in the class body."}
+
+  - id: member.variant
+    name: Variant
+    gloss: One alternative of an enumeration or sum type.
+    look: {shape: diamond, color: "#6d28d9"}
+    spelled:
+      c: {tokens: [enum], note: "An enumerator: an int constant with a name."}
+      rust: {tokens: [enum], note: "A variant, which may carry its own fields."}
+
+  - id: member.associated
+    name: Associated item
+    gloss: A type or constant that belongs to a trait or an implementation rather than to a value.
+    look: {shape: circle, color: "#94a3b8"}
+    spelled:
+      rust: {tokens: [type, const], note: "Inside a trait or impl: type Item; const N: usize."}
+
+  # ── Storage ────────────────────────────────────────────────────────────────
+  - id: storage.constant
+    name: Constant
+    gloss: A named value fixed before the program runs.
+    look: {shape: triangle, color: "#eab308"}
+    spelled:
+      c: {tokens: [const], note: "A const object still has an address; #define is the older spelling and has no type."}
+      rust: {tokens: [const], note: "Inlined at each use; it has no single address."}
+      python: {note: "None: an upper-case name by convention."}
+
+  - id: storage.static
+    name: Static storage
+    gloss: One instance that lives for the whole program, at a fixed address.
+    look: {shape: circle, color: "#607090"}
+    spelled:
+      c: {tokens: [static], note: "Any file-scope variable has static storage; the keyword narrows its linkage."}
+      rust: {tokens: [static]}
+      python: {note: "A module-level name."}
+
+  - id: storage.local
+    name: Local variable
+    gloss: A name bound for one call of a function, gone when the call returns.
+    look: {shape: circle, color: "#9aa5b8"}
+    spelled:
+      c: {note: "A declaration inside a body. Its storage class, auto, is the default and is never written."}
+      rust: {tokens: [let]}
+      python: {note: "An assignment inside a def binds a local; global and nonlocal say it does not."}
+
+  # ── Namespaces ─────────────────────────────────────────────────────────────
+  - id: namespace.module
+    name: Module
+    gloss: A named scope that groups items and controls which names leave it.
+    look: {shape: square, color: "#8b5cf6"}
+    spelled:
+      rust: {tokens: [mod]}
+      python: {note: "A file is a module; a directory with __init__.py is a package."}
+      c: {note: "None. A translation unit is the nearest thing, and every external name shares one space."}
+
+  - id: namespace.package
+    name: Package
+    gloss: The unit a build tool resolves, versions and builds -- what a dependency names.
+    look: {shape: square, color: "#6d28d9"}
+    spelled:
+      rust: {tokens: [crate], note: "A Cargo package, named in Cargo.toml; each of its targets compiles as one crate."}
+      c: {note: "None in the language: a library or an executable is what a build system names."}
+      python: {note: "A distribution named in pyproject.toml; import names the modules inside it."}
+
+  - id: namespace.import
+    name: Import
+    gloss: Bringing a name defined elsewhere into this scope.
+    look: {shape: triangle, color: "#64748b"}
+    spelled:
+      c: {note: "#include, textual inclusion by the preprocessor rather than a name."}
+      rust: {tokens: [use, crate]}
+      python: {tokens: [import]}
+
+  # ── Linkage & the foreign boundary ─────────────────────────────────────────
+  - id: linkage.foreign-block
+    name: Foreign declarations
+    gloss: A block of functions or data declared here and defined in another language.
+    look: {shape: rectangle, color: "#f97316"}
+    spelled:
+      rust: {tokens: [extern], note: "extern \"C\" { .. } declares C functions; calling one is unsafe."}
+      c: {tokens: [extern], note: "A declaration with no definition, resolved by the linker."}
+
+  # ── Metaprogramming ────────────────────────────────────────────────────────
+  - id: meta.macro
+    name: Macro definition
+    gloss: A rule that rewrites source before it is compiled.
+    look: {shape: circle, color: "#7f8c8d"}
+    spelled:
+      c: {note: "#define, a preprocessor directive rather than a keyword; it sees text, not syntax."}
+      rust: {tokens: [macro_rules], note: "macro_rules! matches token trees and is hygienic."}
+
+  - id: meta.macro-call
+    name: Macro invocation
+    gloss: A use of a macro that produces items where it stands.
+    look: {shape: circle, color: "#95a5a6"}
+    spelled:
+      rust: {note: "name!(..) at item position; the bang marks it, so it is never mistaken for a call."}
+      c: {note: "Indistinguishable from a function call at the use site."}
+
+  # ── Below the language: assembly and the linker ────────────────────────────
+  - id: code.label
+    name: Code label
+    gloss: A name for an address in the instruction stream.
+    look: {shape: diamond, color: "#fb923c"}
+    spelled:
+      assembly: {note: "name: — the line's address, named."}
+      c: {tokens: [goto], note: "A goto label; to the linker, every function name is one."}
+      rust: {note: "None in Rust itself; global_asm! carries assembly that defines one."}
+
+  - id: layout.section
+    name: Section
+    gloss: A named run of output the linker places as a unit — code, read-only data, initialised data, zeroed data.
+    look: {shape: rectangle, color: "#f59e0b"}
+    spelled:
+      linker: {note: "An output section in SECTIONS { .. }, placed with > REGION."}
+      assembly: {note: ".section, or .text / .data / .bss."}
+      c: {note: "__attribute__((section(\".x\"))), a GNU extension."}
+      rust: {note: "#[link_section = \".x\"] on a static or fn."}
+
+  - id: layout.region
+    name: Memory region
+    gloss: A range of addresses on the device — flash, RAM — with an origin and a length.
+    look: {shape: square, color: "#d97706"}
+    spelled:
+      linker: {note: "A MEMORY { NAME (rwx) : ORIGIN = .., LENGTH = .. } entry."}
+      rust: {note: "memory.x beside the crate, read by cortex-m-rt's link.x."}
+      c: {note: "None in the language; the linker script is where the device's memory is described."}
+
+  - id: linkage.symbol
+    name: Linker symbol
+    gloss: A name the linker resolves to an address, defined by the script or exported by code.
+    look: {shape: circle, color: "#a3e635"}
+    spelled:
+      linker: {note: "name = expr; or PROVIDE(name = expr)."}
+      assembly: {note: ".global name."}
+      rust: {note: "#[no_mangle] keeps an item's name as its symbol."}
+
+  - id: firmware.entry
+    name: Entry point
+    gloss: Where execution starts after reset or load.
+    look: {shape: triangle, color: "#ef4444"}
+    spelled:
+      linker: {note: "ENTRY(symbol)."}
+      rust: {note: "#[entry] from cortex-m-rt, with #![no_main]: the runtime's reset handler calls it."}
+      c: {note: "main for a hosted program; on a device, the reset handler the vector table names."}
+      assembly: {note: "_start, or Reset_Handler."}
+
+  # ── Control ────────────────────────────────────────────────────────────────
+  - id: control.loop
+    name: Loop
+    gloss: Repeating a body until a condition or an iterator ends it.
+    look: {shape: circle, color: "#94a3b8"}
+    spelled:
+      c: {tokens: [for, while, do]}
+      rust: {tokens: [loop, while, for]}
+      python: {tokens: [for, while]}
+
+  # ── Facets: what a node can also be ────────────────────────────────────────
+  - id: memory.unsafe
+    name: Unchecked memory access
+    gloss: Code the compiler does not prove memory-safe.
+    spelled:
+      rust: {tokens: [unsafe], note: "Marks the fn, block, trait or impl where the programmer, not the compiler, upholds the rules."}
+      c: {note: "All of it; there is no checked subset to leave."}
+
+  - id: memory.volatile
+    name: Volatile access
+    gloss: A read or write that must happen exactly as written — a device register, memory shared with an interrupt.
+    spelled:
+      c: {tokens: [volatile], note: "A type qualifier: every access through such an lvalue is a side effect."}
+      rust: {note: "No keyword: core::ptr::read_volatile and write_volatile, chosen per access rather than per type."}
+
+  - id: memory.shared-mutable
+    name: Shared mutable global
+    gloss: One writable instance every part of the program can reach.
+    spelled:
+      rust: {tokens: [static, mut], note: "static mut: every access is unsafe; Mutex or atomics are the checked spelling."}
+      c: {tokens: [static], note: "Any non-const file-scope variable."}
+
+  - id: layout.repr
+    name: Layout control
+    gloss: Fixing how a type is laid out in memory, for hardware or another language.
+    spelled:
+      rust: {note: "#[repr(C)], #[repr(packed)], #[repr(transparent)], #[repr(u8)]."}
+      c: {note: "C's layout is the default; __attribute__((packed)) changes it."}
+
+  - id: linkage.export
+    name: Exported symbol
+    gloss: An item whose name reaches the linker unchanged, for another language or a vector table.
+    spelled:
+      rust: {note: "#[no_mangle] or #[export_name = \"..\"], usually with extern \"C\"."}
+      c: {tokens: [extern], note: "External linkage is the default for functions."}
+
+  - id: linkage.extern
+    name: Foreign or external
+    gloss: Declared here and defined elsewhere, or reached across a language boundary.
+    spelled:
+      c: {tokens: [extern]}
+      rust: {tokens: [extern], note: "extern \"C\" fn uses the C calling convention; in an extern block, a declaration."}
+
+  - id: linkage.internal
+    name: Internal linkage
+    gloss: Visible only inside its own unit.
+    spelled:
+      c: {tokens: [static], note: "static at file scope: this translation unit only."}
+      rust: {tokens: [pub], note: "The default — an item is private unless pub says otherwise."}
+
+  - id: firmware.interrupt
+    name: Interrupt handler
+    gloss: A function the hardware calls through the vector table.
+    spelled:
+      rust: {note: "#[interrupt] or #[exception] from cortex-m-rt."}
+      c: {note: "A function named in the vector table, often marked __attribute__((interrupt))."}
+
+  - id: firmware.panic-handler
+    name: Panic handler
+    gloss: What runs when the program cannot continue and there is no operating system to report to.
+    spelled:
+      rust: {note: "#[panic_handler], required by a #![no_std] binary."}
+      c: {note: "None: abort, or a hand-written fault handler."}
+
+  - id: exec.async
+    name: Suspendable function
+    gloss: A function that can pause and be resumed by an executor.
+    spelled:
+      rust: {tokens: [async, await]}
+      python: {tokens: [async, await]}
+
+  - id: exec.compile-time
+    name: Compile-time evaluation
+    gloss: Computation finished before the program runs.
+    spelled:
+      rust: {tokens: [const], note: "const fn and const items."}
+      c: {tokens: [_Static_assert, sizeof], note: "Constant expressions, and the preprocessor's #if."}
+
+  - id: asm.inline
+    name: Inline assembly
+    gloss: Instructions written directly inside another language's source.
+    spelled:
+      rust: {note: "asm! inside a fn, global_asm! at item position."}
+      c: {note: "asm or __asm__, a compiler extension."}
+      assembly: {note: "The whole file."}
+
+languages:
+  c:
+    kinds:
+      function: callable.function
+      struct: type.product
+      union: type.union
+      enum: type.enumeration
+      typedef: type.alias
+      macro: meta.macro
+      variable: storage.static
+      field: member.field
+      enum_constant: member.variant
+    refine:
+      # A variable declared in a body without static or extern lives for one call.
+      - {kind: variable, meta: automatic, construct: storage.local}
+    qualifiers:
+      volatile: memory.volatile
+      static: linkage.internal
+      extern: linkage.extern
+
+  rust:
+    kinds:
+      function: callable.function
+      method: callable.method
+      struct: type.product
+      enum: type.sum
+      union: type.union
+      trait: type.interface
+      impl: type.implementation
+      module: namespace.module
+      type: type.alias
+      const: storage.constant
+      static: storage.static
+      use: namespace.import
+      extern_crate: namespace.import
+      extern_block: linkage.foreign-block
+      macro: meta.macro
+      macro_invocation: meta.macro-call
+      field: member.field
+      variant: member.variant
+      assoc_type: member.associated
+      assoc_const: member.associated
+    refine:
+      # A Rust enum whose variants carry no data is an enumeration, not a sum type.
+      - {kind: enum, meta: c_like, construct: type.enumeration}
+    qualifiers:
+      unsafe: memory.unsafe
+      async: exec.async
+      const: exec.compile-time
+      extern: linkage.extern
+    attributes:
+      repr: layout.repr
+      link_section: layout.section
+      no_mangle: linkage.export
+      export_name: linkage.export
+      entry: firmware.entry
+      interrupt: firmware.interrupt
+      exception: firmware.interrupt
+      pre_init: firmware.entry
+      panic_handler: firmware.panic-handler
+      naked: asm.inline
+    meta:
+      # A meta key the parser sets when a body did the thing.
+      unsafe_blocks: memory.unsafe
+      volatile_accesses: memory.volatile
+      shared_mutable: memory.shared-mutable
+    macros:
+      asm: asm.inline
+      global_asm: asm.inline
+      naked_asm: asm.inline
+
+  python:
+    kinds:
+      module: namespace.module
+      class: type.class
+      function: callable.function
+      import: namespace.import
+      loop: control.loop
+
+  assembly:
+    kinds:
+      label: code.label
+      section: layout.section
+
+  cargo:
+    # The crate graph `cargo_service` draws from what cargo resolved.
+    kinds:
+      crate: namespace.package
+      external_crate: namespace.package
+
+  linker:
+    kinds:
+      region: layout.region
+      section: layout.section
+      entry: firmware.entry
+      symbol: linkage.symbol

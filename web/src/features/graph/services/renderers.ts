@@ -31,14 +31,17 @@ export { D3GraphRenderer } from './d3_renderer';
 export { NotebookGraphRenderer } from './notebook_renderer';
 export { GravisGraphRenderer } from './gravis_renderer';
 export { SystemRenderer, SystemDefinitionRegistry } from './system_renderer';
-export { PamRenderer } from './pam_renderer';
+export { PAM_DEFINITION } from './pam_definition';
+export { DerivedSystemDefinition } from './derived_system';
 
 // Import for initialization
 import { GraphRendererRegistry } from './base_renderer';
 import { D3GraphRenderer } from './d3_renderer';
 import { NotebookGraphRenderer } from './notebook_renderer';
 import { GravisGraphRenderer } from './gravis_renderer';
-import { PamRenderer } from './pam_renderer';
+import { SystemRenderer, SystemDefinitionRegistry } from './system_renderer';
+import { PAM_DEFINITION } from './pam_definition';
+import { DerivedSystemDefinition } from './derived_system';
 
 /**
  * Initialize all renderers and register them
@@ -55,9 +58,14 @@ function initializeRenderers(): void {
   // Renderer dropdown)
   GraphRendererRegistry.register('gravis', () => new GravisGraphRenderer());
 
-  // Register PAM system renderer as 'system' — the concrete subclass owns all
-  // PAM-specific data/logic; extend SystemRenderer for additional system types
-  GraphRendererRegistry.register('system', () => new PamRenderer());
+  // The system renderer is generic: what it draws comes from the
+  // SystemDefinition selected by styling.systemId. PAM is one registration;
+  // moat's derived homelab is another and the default. Registration order
+  // matters only as the last-resort fallback (SystemDefinitionRegistry
+  // .default() returns the first registered).
+  SystemDefinitionRegistry.register(PAM_DEFINITION);
+  SystemDefinitionRegistry.register(new DerivedSystemDefinition('moat'));
+  GraphRendererRegistry.register('system', () => new SystemRenderer());
 
   // Set D3 as default for new graphs
   GraphRendererRegistry.setDefault('d3');

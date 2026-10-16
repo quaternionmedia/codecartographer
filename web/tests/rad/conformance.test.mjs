@@ -18,6 +18,7 @@ import { dirname, join } from 'node:path';
 
 import { runConformanceWith, checkGeometryBlock } from '../../dist-rad/conformance/run.js';
 import { createSession } from '../../dist-rad/session.js';
+import { VECTOR_VERSION } from '../../dist-rad/index.js';
 // The vocabulary this host actually binds, not a copy of it. One governed
 // vector (`source: "CHORD_MAP"`) asserts it is prefix-free, so importing the
 // real thing is what makes that vector mean something here.
@@ -32,6 +33,9 @@ const vectors = JSON.parse(readFileSync(join(here, `vectors.v${PINNED}.json`), '
 
 test('the vector file on disk is the version this host claims', () => {
   assert.equal(vectors.version, PINNED);
+  // Mutation: leave VECTOR_VERSION at a version the file is not -- the port
+  // claims vectors it does not replay, and this fails.
+  assert.equal(VECTOR_VERSION, PINNED, 'rad/index.ts claims a vector version this suite does not load');
 });
 
 test('declared constants match the vector set', () => {
