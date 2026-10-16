@@ -14,6 +14,7 @@ Three tiers exist, from lightest to most capable:
 |------|------|-------------|
 | **Phase 1 — Regex** | `regex_language_parser.py` | Any language where top-level symbols (functions, classes, structs, headings, SQL tables, …) can be identified by a line-anchored regex. Zero new dependencies. Add a `_PATTERNS` list + one entry in `_LANGUAGES`. |
 | **Dedicated libclang** | `c_language_parser.py` | C/C++ only. Cross-file `CALLS` resolution, `#include` tracking via `unsaved_files`. Requires `uv sync --extra c-parsing`. |
+| **Structural reader** | `rust_language_parser.py`, `linker_script_parser.py` | A tokenizer and brace matcher, stdlib only, for a language whose items are delimited by keywords and brackets: nesting, attributes, the module tree, relations each labelled with how they were resolved. Stops where name resolution begins; that is the compiler's. |
 | **Phase 2 — tree-sitter** (planned) | not yet implemented | Full AST quality for all languages. Stubs declared in `pyproject.toml` under `[multilang]` optional deps. Planned to replace regex parsers per language when accuracy becomes a priority. |
 
 **Currently registered parsers and extensions:**
@@ -24,7 +25,8 @@ Three tiers exist, from lightest to most capable:
 | C/C++ | `.c`, `.h`, `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hxx` (libclang) |
 | JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs` |
 | TypeScript | `.ts`, `.tsx`, `.cts`, `.mts` |
-| Rust | `.rs` |
+| Rust | `.rs` (RustLanguageParser — item-level structural reader) |
+| Linker scripts | `.ld`, `.lds`, `.x` (LinkerScriptParser — MEMORY, SECTIONS, symbols) |
 | Go | `.go` |
 | Java | `.java` |
 | C# | `.cs` |
@@ -122,6 +124,42 @@ per-folder. You're responsible for attributing resulting nodes back to
 their origin file via each node's `file` attribute if you want correct
 `contains` edges — see `_merge_batch_subgraph` for the depth==2 convention
 the unified pipeline uses.
+
+**A file's key is `File.url or File.name`**, and that is what a node's `file`
+attribute should hold. A file with neither unique -- two uploaded `lib.rs` --
+is given its place in the tree as a `tree://` url before batching, so two files
+with one name are never one key. Folder and file node ids are the path from
+the root (`file::ws/crates/hal/src/lib.rs`) for the same reason.
+
+**A batch parser that knows facts *about files*** -- a declaration naming
+another file, an import reaching one, a file-level attribute -- sets
+`graph.graph["file_relations"]` (`[(source, target, attrs)]`, each end a node
+id or a file key, `attrs["kind"]` the edge kind) and `graph.graph["file_meta"]`
+(`{file_key: {...}}`, merged into that file node's `meta`). The parser does not
+create file nodes -- the walk does -- so the pipeline resolves the keys to them,
+in the in-memory and the streaming paths alike.
+
+### Joining the construct vocabulary
+
+A parser's `kind` says what its language calls a thing. To have its nodes carry
+`construct` (what the thing *is*, the same in every language), drawn with the
+shared looks and read by the chrestomathy, add the language under `languages:`
+in `codecarto/data/constructs.yaml`:
+
+- `kinds`: each kind the parser emits, to a construct. A parser that exports
+  its kinds is held to the map in both directions by
+  `tests/test_construct_service.py`.
+- `qualifiers`, `attributes`, `macros`, `meta`: what in a node's `meta` makes it
+  *also* a facet (`unsafe` -> `memory.unsafe`, `#[interrupt]` ->
+  `firmware.interrupt`).
+- `refine`: a kind that is a different construct when a meta flag is set (a
+  Rust `enum` with `c_like` is an enumeration, not a sum type).
+
+Add the language's spellings under each construct's `spelled:` -- every token
+there must be in that language's lexicon, and a language with no spelling gets
+a `note` saying how it does without. A parser may call
+`construct_service.annotate(graph)` itself; the pipeline calls it on every parse
+regardless, and a look the parser set is never overwritten.
 
 ### Unified node schema helpers
 
@@ -490,101 +528,84 @@ cd web && node_modules/.bin/vite
 
 ## System Renderers (non-graph visualizations)
 
-`SystemRenderer` is an abstract base class for **fixed-layout system architecture diagrams
-with live event feeds**. It handles all shared infrastructure:
+`SystemRenderer` is a **concrete, definition-driven** renderer for fixed-layout
+system diagrams with live event feeds. It owns the machinery — DOM layout at
+fractional positions, SVG bezier edges, packet animation, the WebSocket
+lifecycle, the demo loop, the log strip and badge — and everything it draws
+comes from a `SystemDefinition` selected by `styling.systemId` out of
+`SystemDefinitionRegistry`.
 
-- DOM layout (nodes at fractional positions, SVG bezier edges)
-- Packet animations (cubic bezier, pure `requestAnimationFrame`)
-- WebSocket lifecycle (connect → cancel demo → backfill → live → reconnect on close)
-- Demo loop (auto-plays built-in event sequence, loops continuously)
-- Log strip + badge state
+Two definitions ship, and they are the two ways to build one:
 
-The renderer type string is `'system'` in `GraphRendererType`. Currently `PamRenderer`
-is the concrete implementation registered under that key.
+- **`pam_definition.ts`** — hand-drawn. The Linux PAM stack is a known, fixed
+  system, so its nodes and edges are authored data. Live mode tails
+  `/var/log/auth.log` via `/pam/ws/live`.
+- **`derived_system.ts`** — derived. `DerivedSystemDefinition('moat')` asks the
+  backend (`/system/compose`) what the moat repository *declares* — charts,
+  the ArgoCD Applications that deploy them, terraform, container apps — and
+  lays that out. Events (`/system/events`) are the history of the same
+  contents; the WebSocket replays them, labelled as a replay. The diagram is
+  about the system the repository describes, never about the repository, and
+  a chart added to the repo appears with no layout edit. See
+  `adr/DRAFT-the-system-monitor-derives-its-diagram.md` in the governance
+  submodule's records for why derivation beat curation.
 
-### Creating a new system renderer
+### Adding a new system
 
-**Step 1 — Subclass `SystemRenderer`**
+**Step 1 — write a `SystemDefinition`** (an object or class; no subclassing):
 
 ```typescript
-// web/src/features/graph/services/my_renderer.ts
-import { SystemRenderer, SystemNode, SystemEdge, SystemEvent } from './system_renderer';
+import { SystemDefinition } from './system_core';
 
-const MY_NODES: Record<string, SystemNode> = {
-  frontend: { label: 'Frontend', sub: 'nginx',    px: .1, py: .5, type: 'service' },
-  backend:  { label: 'API',      sub: 'fastapi',  px: .5, py: .5, type: 'backend' },
-  db:       { label: 'Database', sub: 'postgres', px: .9, py: .5, type: 'storage' },
+export const MY_SYSTEM: SystemDefinition = {
+  id: 'my-system',
+  name: 'My System',
+  description: 'what it shows',
+  wsPath: '',                      // '' = demo only
+  httpStatusPath: '',
+  getNodes: () => ({
+    frontend: { label: 'Frontend', sub: 'nginx',    px: .1, py: .5, type: 'service' },
+    backend:  { label: 'API',      sub: 'fastapi',  px: .5, py: .5, type: 'backend' },
+  }),
+  getEdges: () => [{ from: 'frontend', to: 'backend', style: 'dim' }],
+  getDemoEvents: () => [{ event_type: 'ping', timestamp: 0.5 }],
+  handleEvent: (ev, cb) => {
+    if (ev.event_type === 'ping') cb.setNodeState('backend', 'active');
+  },
 };
-
-const MY_EDGES: SystemEdge[] = [
-  { from: 'frontend', to: 'backend', style: 'dim'    },
-  { from: 'backend',  to: 'db',      style: 'dashed' },
-];
-
-const DEMO_EVENTS: SystemEvent[] = [
-  { event_type: 'request',  timestamp: 0 },
-  { event_type: 'db_query', timestamp: 0.5 },
-  { event_type: 'response', timestamp: 1.0, success: true },
-];
-
-export class MyRenderer extends SystemRenderer {
-  readonly type = 'system';   // use 'system' (the registered key)
-  readonly name = 'My System';
-
-  protected getNodes()       { return MY_NODES;    }
-  protected getEdges()       { return MY_EDGES;    }
-  protected getDemoEvents()  { return DEMO_EVENTS; }
-
-  protected handleEvent(ev: SystemEvent): void {
-    switch (ev.event_type) {
-      case 'request':
-        this.setNodeState('frontend', 'active');
-        this.firePacket('frontend', 'backend', '#00d4ff');
-        break;
-      case 'db_query':
-        this.setNodeState('db', 'active');
-        this.firePacket('backend', 'db', '#00d4ff');
-        break;
-      case 'response':
-        this.setNodeState('backend', ev.success ? 'success' : 'failed');
-        this.firePacket('backend', 'frontend', '#00ffb3');
-        this.log('Request complete', 'ok');
-        break;
-    }
-  }
-}
 ```
 
-**Step 2 — Register it** in `renderers.ts`:
+For a system another repository declares, instantiate
+`new DerivedSystemDefinition('<sibling-repo-name>')` instead — the backend
+resolves the name beside the checkout (`CODECARTO_REPO_ROOTS` overrides the
+roots), and `/system/repos` lists what is reachable.
+
+**Step 2 — register it** in `renderers.ts`'s `initializeRenderers()`:
 
 ```typescript
-import { MyRenderer } from './my_renderer';
-// inside initializeRenderers():
-GraphRendererRegistry.register('system', () => new MyRenderer());
+SystemDefinitionRegistry.register(MY_SYSTEM);
 ```
 
-**Step 3 — No other changes needed.** The `'system'` type is already in `GraphRendererType`,
-the dropdown already shows "System Monitor", and `createSystemVnode()` in `actions.ts`
-already injects `pamWsUrl` / `pamMode` via the `GraphStylingOptions` index signature.
+**Step 3 — nothing else.** The control panel's System dropdown lists every
+registered definition; `styling.systemId` selects one ('moat' is the default).
+A definition may also provide `load()` (async derivation before first draw —
+throwing shows the failure instead of an empty diagram) and `nodeTypeColor()`.
 
-### Key `SystemRenderer` API
+### The callback surface
 
-| Method | Access | Purpose |
-|---|---|---|
-| `getNodes()` | abstract protected | Return node map with fractional `px`/`py` positions |
-| `getEdges()` | abstract protected | Return edge list |
-| `getDemoEvents()` | abstract protected | Return demo event sequence |
-| `handleEvent(ev)` | abstract protected | Map one event to node states + packets |
-| `setNodeState(id, state)` | protected | Set `'idle'`/`'active'`/`'success'`/`'failed'` |
-| `resetAllNodes()` | protected | Reset all nodes to `'idle'` |
-| `firePacket(from, to, color)` | protected | Animate a packet along the bezier edge |
-| `log(text, level)` | protected | Append a line to the log strip |
-| `setBadge(text, cls)` | protected | Update the header badge (DEMO / LIVE / OFFLINE) |
-| `nodeTypeColor(type)` | protected override | Map node `type` string to CSS color string |
+`handleEvent(ev, cb)` drives the renderer through `cb` — the whole surface:
+
+| Callback | Purpose |
+|---|---|
+| `setNodeState(id, state)` | `'idle'` / `'active'` / `'success'` / `'failed'` |
+| `resetAllNodes()` | Reset all nodes to `'idle'` |
+| `firePacket(from, to, color)` | Animate a packet along the bezier edge |
+| `log(text, level)` | Append a line to the log strip |
 
 ### Node type default palette
 
-The base class maps these `type` strings to CSS theme variables:
+Unmatched by a definition's `nodeTypeColor`, these `type` strings map to CSS
+theme variables:
 
 | type | CSS variable |
 |---|---|
@@ -596,18 +617,19 @@ The base class maps these `type` strings to CSS theme variables:
 | `storage` | `--c-warning` |
 | `external` | `--c-font-muted` |
 
-Override `nodeTypeColor(type: string): string` to add custom types.
+The derived definition adds `infrastructure`, `deployer`, `chart`,
+`application`.
 
 ### Live WebSocket protocol
 
-The base `connectLive(wsUrl)` method expects JSON messages with this shape:
+`connectLive(wsUrl)` accepts two frame shapes:
 
 ```json
-{ "type": "event",    "data": { "event_type": "...", ... } }
+{ "event_type": "...", ... }                          // bare — /system/ws/replay
+{ "type": "event",    "data": { "event_type": "..." } }  // enveloped — /pam/ws/live
 { "type": "backfill", "events": [ ... ] }
 { "type": "connected" }
 ```
 
-The PAM backend (`pam_router.py`) already emits this format on `/pam/ws/live`.
-
-See `pam_renderer.ts` (~150 lines) for a complete worked example.
+The platform-free half (types, registry, layout, replay sequencing) lives in
+`system_core.ts` and is tested with `npm run test:system` — no browser.
