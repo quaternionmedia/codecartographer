@@ -54,6 +54,22 @@ test('a code map is read as the constructs it holds, and points back at them', a
   // What the vocabulary could not place is said, not dropped.
   await expect(canvas.locator('.chrestomathy__gap').first()).toBeVisible();
 
+  // Every column has a heading, and a row's cells read on one line: the
+  // first line of text in each cell starts at the same height.
+  const headings = await canvas.locator('thead th').allInnerTexts();
+  expect(headings.filter((h) => !h.trim()), `census headings ${JSON.stringify(headings)}`).toEqual([]);
+  const tops = await functions.locator('td').evaluateAll((cells) =>
+    cells.map((cell) => {
+      const text = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT).nextNode();
+      const range = document.createRange();
+      range.selectNodeContents(text as Node);
+      return range.getBoundingClientRect().top;
+    }),
+  );
+  // Mutation: let the global button rule size the census's links again --
+  // the name and show sit lower than the row's other cells, and this fails.
+  expect(Math.max(...tops) - Math.min(...tops), `text tops ${tops}`).toBeLessThan(2);
+
   // A row is a way into the comparison...
   await functions.locator('.cartography__link').click();
   await expect(page.locator('.gl-panel--chrestomathy tr[data-language="rust"]')).toContainText('fn');

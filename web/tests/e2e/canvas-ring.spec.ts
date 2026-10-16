@@ -10,6 +10,35 @@ import { expect, test } from '@playwright/test';
 
 import { dismissOnboardingModal } from './helpers';
 
+test("a greyed item's label is dimmed with its wedge", async ({ page }) => {
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.getByRole('button', { name: /Load Demo/i }).first().click();
+  await expect(page.locator('.graph-node[data-node-id]').first()).toBeVisible({ timeout: 20_000 });
+
+  // With nothing selected or hidden, the canvas ring offers items greyed.
+  await page.locator('.graphRenderer svg').first().click({ button: 'right', position: { x: 8, y: 8 } });
+  const ring = page.locator('.rad-root');
+  await expect(ring).toHaveAttribute('aria-label', 'canvas');
+
+  // A wedge's label is the text drawn right after it.
+  const drawn = await ring.locator('[role="menuitem"]').evaluateAll((wedges) =>
+    wedges.map((wedge) => ({
+      label: wedge.getAttribute('aria-label'),
+      disabled: wedge.getAttribute('aria-disabled') === 'true',
+      wedge: Number(getComputedStyle(wedge).opacity),
+      text: Number(getComputedStyle(wedge.nextElementSibling as Element).opacity),
+    })),
+  );
+  expect(drawn.filter((d) => d.disabled).length).toBeGreaterThan(0);
+  for (const d of drawn) {
+    // Mutation: draw every label at full opacity again -- a greyed item's
+    // label reads as enabled, and this fails.
+    expect(d.text, `${d.label}'s label`).toBe(d.wedge);
+    expect(d.wedge < 1, `${d.label} is drawn greyed`).toBe(d.disabled);
+  }
+});
+
 test('Deselect is reached from the canvas ring while nodes are selected', async ({ page }) => {
   await page.goto('/');
   await dismissOnboardingModal(page);
@@ -17,7 +46,7 @@ test('Deselect is reached from the canvas ring while nodes are selected', async 
   const node = page.locator('.graph-node[data-node-id]').first();
   await expect(node).toBeVisible({ timeout: 20_000 });
 
-  // Select the node and its neighbours: Neighbours is the node ring's third wedge.
+  // Select the node and its neighbors: Neighbors is the node ring's third wedge.
   await node.evaluate((el) => (el.closest('[tabindex]') as HTMLElement | null)?.focus());
   await node.click({ button: 'right' });
   for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');

@@ -342,8 +342,13 @@
 .cartography__table tr.is-chosen td { background: rgba(127, 127, 127, 0.12); }
 .cartography__table tr.is-facet td:first-child { font-style: italic; }
 
+/* Links that are buttons, read in a table row. Inline and with no minimum
+   height, so the global button rule's 32px flex box does not set their text a
+   line below the row's other cells. */
 .cartography__link,
 .cartography__show {
+  display: inline;
+  min-height: 0;
   font: inherit;
   color: var(--c-font);
   background: none;

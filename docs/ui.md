@@ -238,7 +238,7 @@ A greyed item is offered but not available here; choosing it closes the ring.
 |---|---|---|
 | 1 | **Expand** | Asks the server for what lies under the node, using the directory the last parse read, and adds it. Greyed on a sub-symbol, which has nothing under it |
 | 2 | **Collapse** | Removes what is drawn under the node. Greyed when nothing is |
-| 3 | **Neighbours** | Selects the node and every node one edge away |
+| 3 | **Neighbors** | Selects the node and every node one edge away |
 | 4 | **Pin** / **Unpin** | Marks the node with a gold outline |
 | 5 | **Color** ▸ | The [Color submenu](#color-submenu) |
 | 6 | **View** ▸ | **Source** opens the node's source, as a double-click does; greyed on a node that names no file. **Info** shows the node's name, what its parser called it, its construct and where it is. **Compare** opens the Chrestomathy panel at the node's construct; greyed when the vocabulary did not place it. **Focus** frames the node and everything inside it; greyed below files |
@@ -250,7 +250,7 @@ A greyed item is offered but not available here; choosing it closes the ring.
 | | Item | Does |
 |---|---|---|
 | 1 | **Expand** | Expands every selected node |
-| 2 | **Neighbours** | Adds every node one edge away |
+| 2 | **Neighbors** | Adds every node one edge away |
 | 3 | **Spread** | Greyed: positions come from the server's layout |
 | 4 | **Cluster** | Greyed, as Spread |
 | 5 | **Color** ▸ | The [Color submenu](#color-submenu) |
