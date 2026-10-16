@@ -28,12 +28,17 @@ import { createTopologyPanel } from './panels/topology_panel';
 import { createEstatePanel } from './panels/estate_panel';
 import { createCapabilitiesPanel } from './panels/capabilities_panel';
 import { createOverviewPanel } from './panels/overview_panel';
+import { createCargoPanel } from './panels/cargo_panel';
+import { createChrestomathyPanel } from './panels/chrestomathy_panel';
 
 export type DockPanelId =
   | 'graph' | 'file-tree' | 'upload-panel' | 'repo-panel' | 'graphbase-panel'
   | 'graph-settings-panel' | 'plotbar'
   // The estate: what is up, and the three seams this window draws.
-  | 'estate-panel' | 'topology-panel' | 'capabilities-panel' | 'overview-panel';
+  | 'estate-panel' | 'topology-panel' | 'capabilities-panel' | 'overview-panel'
+  // Code cartography past one parse: a Rust workspace, and one construct read
+  // across every language.
+  | 'cargo-panel' | 'chrestomathy-panel';
 
 export interface PanelDefinition {
   readonly id: DockPanelId;
@@ -79,6 +84,20 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     config: { type: 'component', componentType: 'overview-panel', id: 'overview-panel', title: '▤ Overview', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createOverviewPanel(ctx)),
+  },
+  {
+    id: 'cargo-panel',
+    menuLabel: 'Cargo',
+    config: { type: 'component', componentType: 'cargo-panel', id: 'cargo-panel', title: '⚙ Cargo', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createCargoPanel(ctx)),
+  },
+  {
+    id: 'chrestomathy-panel',
+    menuLabel: 'Chrestomathy',
+    config: { type: 'component', componentType: 'chrestomathy-panel', id: 'chrestomathy-panel', title: '⇄ Chrestomathy', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createChrestomathyPanel(ctx)),
   },
   {
     id: 'file-tree',

@@ -32,6 +32,12 @@ dependencies = [
     "requests>=2.28.0",
     "httpx>=0.24.0",
     "pymongo>=4.6",
+    # The lexicons, the construct vocabulary and the capability registry are
+    # YAML. Imported at runtime, so declared rather than arriving through an
+    # extra of uvicorn's.
+    "pyyaml>=6.0",
+    # Cargo.toml and Cargo.lock: tomllib is the standard library from 3.11.
+    "tomli>=1.1; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]

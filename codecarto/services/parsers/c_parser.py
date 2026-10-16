@@ -93,8 +93,8 @@ def _get_clang():
         import clang.cindex as cindex
     except ImportError as exc:
         raise ImportError(
-            "libclang Python bindings are not installed. "
-            "Install with: uv pip install 'codecarto[c-parsing]'"
+            "libclang is not installed, so C and C++ declarations cannot be read. "
+            "Install it with: uv sync --extra c-parsing"
         ) from exc
 
     for candidate in _LIBCLANG_CANDIDATES:
@@ -134,9 +134,44 @@ def _cursor_map(cindex):
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+_TAGS = {'STRUCT_DECL': 'struct', 'UNION_DECL': 'union', 'ENUM_DECL': 'enum'}
+
+
+def _named(cursor) -> bool:
+    return bool(cursor.spelling) and 'unnamed' not in cursor.spelling and 'anonymous' not in cursor.spelling
+
+
 def _node_id(cursor) -> str:
+    """A declaration's id: its file's stem and its name, in the namespace and
+    scope C gives the name. A tag is not an ordinary identifier (`struct config
+    config;` declares two things), a field belongs to its record, and a local
+    to its function -- so each is qualified by what C keeps it apart by, and a
+    file-scope name stays `stem::name`."""
     stem = Path(cursor.location.file.name).stem if cursor.location.file else '__global'
+    kind = cursor.kind.name
+    if kind in _TAGS:
+        return f"{stem}::{_TAGS[kind]} {cursor.spelling}"
+    scope = cursor.semantic_parent
+    # A member of an anonymous record belongs to the nearest record with a name.
+    while kind == 'FIELD_DECL' and scope is not None and scope.kind.name in _TAGS and not _named(scope):
+        scope = scope.semantic_parent
+    if kind == 'FIELD_DECL' and scope is not None and scope.kind.name in _TAGS:
+        return f"{_node_id(scope)}::{cursor.spelling}"
+    if kind == 'VAR_DECL' and scope is not None and scope.kind.name == 'FUNCTION_DECL':
+        return f"{stem}::{scope.spelling}::{cursor.spelling}"
     return f"{stem}::{cursor.spelling}"
+
+
+def _automatic(cursor, cindex) -> bool:
+    """A variable declared in a function body without `static` or `extern`:
+    it lives for one call, unlike a file-scope or static one."""
+    scope = cursor.semantic_parent
+    if scope is None or scope.kind != cindex.CursorKind.FUNCTION_DECL:
+        return False
+    try:
+        return cursor.storage_class not in (cindex.StorageClass.STATIC, cindex.StorageClass.EXTERN)
+    except Exception:
+        return False
 
 
 def _get_qualifiers(cursor, cindex) -> list:
@@ -222,6 +257,8 @@ def _pass1_declarations(tu, in_target, nodes, edges, edge_set, cindex):
                         if c.kind == cindex.CursorKind.PARM_DECL
                     )
                     n['is_definition'] = cursor.is_definition()
+                elif kind == 'variable' and _automatic(cursor, cindex):
+                    n['automatic'] = True
 
                 nodes[nid] = n
 
