@@ -378,7 +378,7 @@ class CParserService:
         Counterpart to CacheService.list_cached() for the *other* cache —
         this one holds extracted source trees (see _REPO_CACHE_DIR), not
         parsed graphs. Kept separate on purpose: they cache different
-        things. See docs/llm/ARCHITECTURE.md's "Two C-parser caches".
+        things. See docs/architecture.md, "The two caches".
         """
         if not _REPO_CACHE_DIR.is_dir():
             return []

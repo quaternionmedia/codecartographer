@@ -1,0 +1,16 @@
+[package]
+name = "hal"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+heapless = { workspace = true }
+
+[features]
+default = ["stm32f4"]
+stm32f4 = []
+defmt = ["dep:defmt"]
+
+[dependencies.defmt]
+version = "0.3"
+optional = true

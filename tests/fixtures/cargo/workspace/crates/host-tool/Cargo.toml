@@ -1,0 +1,18 @@
+[package]
+name = "host-tool"
+version.workspace = true
+edition.workspace = true
+links = "crc"
+
+[dependencies]
+hal = { path = "../hal", default-features = false }
+clap = "4"
+
+[build-dependencies]
+cc = "1"
+
+[dev-dependencies]
+proptest = "1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

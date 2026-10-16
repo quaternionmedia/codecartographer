@@ -3,8 +3,10 @@
  *
  * The rad interaction contract's Conformance clause §2 requires a conformant
  * implementation to keep the state machine and geometry in a platform-free
- * core, "enforced by a grep lint in CI". The reference implementation cannot
- * run this check on itself — its core shares a file with an SVG renderer, so
+ * core, "enforced by a grep lint in CI". This lint is the first step of
+ * `npm run test:rad`; no workflow in .github/workflows runs that yet, so here
+ * it is enforced wherever the suite is run, not in CI. The reference
+ * implementation cannot run this check on itself — its core shares a file with an SVG renderer, so
  * there is nothing to grep but a comment banner (rad's C13).
  *
  * This port can, so it does. Two rules:
