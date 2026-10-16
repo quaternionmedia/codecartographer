@@ -17,7 +17,7 @@ import { CompoundLayoutManager } from './compound_layout';
 import type { GroupBounds } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
-import { sourceTarget } from './node_info';
+import { fitBadgeText, sourceTarget } from './node_info';
 import { fitTransform } from './fit';
 import type { Circle } from './fit';
 
@@ -722,12 +722,20 @@ export class StreamingGraphRenderer {
 
     const point = at ?? this._screenCentreOf(id);
     document.querySelectorAll('.source-badge').forEach((old) => old.remove());
+    // The badge stays inside the canvas: a path from a deep checkout is wider
+    // than the space to the pointer's right, and often than the canvas.
+    const canvas = this.getContainer().getBoundingClientRect();
+    const inset = 4;
+    const room = Math.max(0, canvas.width - 2 * inset);
     const badge = document.createElement('div');
     badge.className = 'source-badge';
     badge.style.cssText = [
       'position:fixed',
-      `left:${point.x + 8}px`,
-      `top:${point.y - 28}px`,
+      'left:0',
+      'top:0',
+      `max-width:${room}px`,
+      'box-sizing:border-box',
+      'overflow:hidden',
       'z-index:9999',
       'background:#1a1a1a',
       'border:1px solid #00ff4140',
@@ -736,11 +744,26 @@ export class StreamingGraphRenderer {
       'font-size:11px',
       'font-family:monospace',
       'border-radius:4px',
-      'pointer-events:none',
+      // It takes the pointer, so its title shows the whole path when the
+      // text is shortened; it sits beside the pointer, never under it.
+      'cursor:default',
       'white-space:nowrap',
     ].join(';');
+    badge.title = target.text;
     badge.textContent = target.text;
     document.body.appendChild(badge);
+    // Shortened from the middle when it does not fit (node_info.ts). The font
+    // is monospace, so a character's width is the measured mean.
+    const padding = 16;
+    const textWidth = badge.scrollWidth - padding;
+    const chrome = badge.offsetWidth - badge.clientWidth + padding; // border and padding
+    if (textWidth + chrome > room && target.text.length > 0) {
+      const perChar = textWidth / target.text.length;
+      badge.textContent = fitBadgeText(target.text, Math.floor((room - chrome) / perChar));
+    }
+    const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
+    badge.style.left = `${clamp(point.x + 8, canvas.left + inset, canvas.right - inset - badge.offsetWidth)}px`;
+    badge.style.top = `${clamp(point.y - 28, canvas.top + inset, canvas.bottom - inset - badge.offsetHeight)}px`;
     setTimeout(() => badge.remove(), 3500);
     return true;
   }

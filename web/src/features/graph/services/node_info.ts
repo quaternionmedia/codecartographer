@@ -74,3 +74,22 @@ export function sourceTarget(node: InfoNode): SourceTarget | null {
   if (/^https?:\/\//.test(file)) return { kind: 'forge', href: file };
   return { kind: 'local', text: `${String(node.label ?? node.id)}  ${where}` };
 }
+
+/**
+ * A local badge's text in at most `maxChars`: whole when it fits, else the
+ * node's name, `…`, and the end of the path from a separator on, so the file
+ * and line stay. An ellipsis at the end, which CSS gives, would cut the line.
+ * With no room for the name, the end of the text alone.
+ */
+export function fitBadgeText(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  if (maxChars < 1) return '';
+  const split = text.indexOf('  ');
+  const name = split > 0 ? text.slice(0, split + 2) : '';
+  const room = maxChars - name.length - 1;
+  if (room < 1) return `…${text.slice(text.length - (maxChars - 1))}`;
+  let tail = text.slice(text.length - room);
+  const separator = tail.search(/[\\/]/);
+  if (separator > 0) tail = tail.slice(separator);
+  return `${name}…${tail}`;
+}

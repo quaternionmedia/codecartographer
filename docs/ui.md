@@ -200,7 +200,9 @@ Id `graph-settings-panel`. In the default arrangement.
 - **Double-click a node** that names a file to open its source: the file's page
   on GitHub at the node's line, or at the top of the file when it has none. For
   a file read from disk, which the browser cannot open, a badge beside the node
-  names the file and line. A double-click anywhere else zooms in.
+  names the file and line, kept inside the canvas. A path too long for the
+  canvas is shortened in its middle, and the badge's tooltip has it whole. A
+  double-click anywhere else zooms in.
 - When a stream finishes, the view fits the whole graph: every node and every
   group outline, inside a margin, centred on what is drawn.
 - **The legend** sits at the bottom left. Its header gives the totals; click it

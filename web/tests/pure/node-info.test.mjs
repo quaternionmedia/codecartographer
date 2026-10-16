@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { infoLine, sourceLine, sourceTarget } from '../../dist-pure/features/graph/services/node_info.js';
+import { fitBadgeText, infoLine, sourceLine, sourceTarget } from '../../dist-pure/features/graph/services/node_info.js';
 
 test('Info names the node, what its parser called it, and where it is', () => {
   const node = { id: 'rust::x', label: 'delay', language: 'rust', kind: 'function', file: 'src/main.rs', line: 12 };
@@ -54,4 +54,30 @@ test('a file read from disk is named beside the node, with its line when known',
 test('a node from no file offers no source', () => {
   assert.equal(sourceTarget({ id: 'dir::src', file: '', line: 0 }), null);
   assert.equal(sourceTarget({ id: 'crate::hal' }), null);
+});
+
+test('a badge too long for the canvas keeps the name and the end of the path', () => {
+  /* Mutation: cut the end off instead, as a CSS ellipsis does -- the line
+     number goes, and this fails. */
+  const text = 'delay  /home/runner/work/codecartographer/examples/rust-firmware/crates/blinky/src/main.rs:21';
+  const short = fitBadgeText(text, 40);
+  assert.ok(short.length <= 40, `${short} is ${short.length} long`);
+  assert.ok(short.startsWith('delay  …/'), short);
+  assert.ok(short.endsWith('/src/main.rs:21'), short);
+  // Cut at a separator, so no directory's name is left half there.
+  assert.match(short, /^delay  …\/[^/]+\//);
+});
+
+test('a badge that fits is left whole, and Windows paths are cut at a backslash', () => {
+  assert.equal(fitBadgeText('main.rs  /ws/src/main.rs', 40), 'main.rs  /ws/src/main.rs');
+  const win = fitBadgeText(String.raw`build.rs  C:\Users\peter\repos\qm\examples\rust-firmware\crates\blinky\build.rs`, 36);
+  assert.ok(win.length <= 36, win);
+  assert.match(win, /^build\.rs  …\\.*\\blinky\\build\.rs$/);
+});
+
+test('a canvas too narrow for the name keeps the end of the text', () => {
+  const short = fitBadgeText('a_very_long_function_name  /ws/src/main.rs:21', 12);
+  assert.ok(short.length <= 12, short);
+  assert.ok(short.startsWith('…') && short.endsWith('main.rs:21'), short);
+  assert.equal(fitBadgeText('anything at all', 0), '');
 });
