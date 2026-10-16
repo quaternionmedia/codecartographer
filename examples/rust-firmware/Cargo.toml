@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/hal", "crates/blinky"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[workspace.dependencies]
+heapless = "0.8"
+
+[profile.release]
+debug = true
+lto = true
+opt-level = "s"

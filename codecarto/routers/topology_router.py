@@ -38,6 +38,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Query
+from fastapi.concurrency import run_in_threadpool
 
 from codecarto.models.plot_data import PlotOptions
 from codecarto.services import estate_service, qmcp_client, topology_service
@@ -63,8 +64,11 @@ def _options(layout: str, palette_id: str) -> PlotOptions:
 
 
 async def _fetch(kind: str, subject: str | None, level: int):
-    return (qmcp_client.relations(subject) if subject
-            else qmcp_client.shape(kind, level))
+    """Ask the harness from the threadpool: `qmcp_client` blocks on HTTP, up to
+    its timeout, and the event loop must keep serving other requests."""
+    if subject:
+        return await run_in_threadpool(qmcp_client.relations, subject)
+    return await run_in_threadpool(qmcp_client.shape, kind, level)
 
 
 def _unreachable(reach) -> dict[str, Any]:
@@ -127,11 +131,12 @@ async def topology_gjgf(
 
 
 @TopologyRouter.get("/available")
-async def topology_available() -> dict[str, Any]:
+def topology_available() -> dict[str, Any]:
     """Every topology the harness offers, for a picker to fill itself from.
 
     Separate from the views so a control panel can populate without drawing
-    anything -- the front end asks this once and the answer is small.
+    anything -- the front end asks this once and the answer is small. A plain
+    `def`, so the wait on the harness happens in the threadpool.
     """
     reach = qmcp_client.topologies()
     if not reach.ok:

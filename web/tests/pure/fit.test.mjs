@@ -1,0 +1,88 @@
+/**
+ * The fit frames the bounding box of what is drawn, inside a margin.
+ *
+ *   npm run test:pure
+ */
+
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import { FIT_DEFAULTS, boundsOf, fitTransform } from '../../dist-pure/features/graph/services/fit.js';
+
+const VIEW = { width: 1600, height: 600 };
+const EPS = 1e-6;
+
+/** Where a circle's box lands on screen under a transform. */
+function onScreen(t, { x, y, r }) {
+  return {
+    left: (x - r) * t.k + t.x,
+    right: (x + r) * t.k + t.x,
+    top: (y - r) * t.k + t.y,
+    bottom: (y + r) * t.k + t.y,
+  };
+}
+
+function assertInside(t, circles, view = VIEW, margin = FIT_DEFAULTS.margin) {
+  for (const c of circles) {
+    const s = onScreen(t, c);
+    assert.ok(s.left >= margin - EPS && s.right <= view.width - margin + EPS,
+      `circle at (${c.x}, ${c.y}) r ${c.r} spans x ${s.left}..${s.right} on a ${view.width} canvas`);
+    assert.ok(s.top >= margin - EPS && s.bottom <= view.height - margin + EPS,
+      `circle at (${c.x}, ${c.y}) r ${c.r} spans y ${s.top}..${s.bottom} on a ${view.height} canvas`);
+  }
+}
+
+test("the frame is centred on the bounding box, not the nodes' average", () => {
+  /* Mutation: centre on the average of the circles' centres -- the crowd on
+     the left pulls the frame off the box's middle, and this fails. */
+  const circles = [
+    ...Array.from({ length: 9 }, (_, i) => ({ x: -100 + i, y: 0, r: 4 })),
+    { x: 300, y: 0, r: 4 },
+  ];
+  const t = fitTransform(circles, VIEW);
+  const box = boundsOf(circles);
+  assert.ok(Math.abs(((box.minX + box.maxX) / 2) * t.k + t.x - VIEW.width / 2) < EPS);
+  assert.ok(Math.abs(((box.minY + box.maxY) / 2) * t.k + t.y - VIEW.height / 2) < EPS);
+  assertInside(t, circles);
+});
+
+test('a group outline wider than its nodes is framed whole', () => {
+  /* Mutation: frame the circles' centres and not their extents -- the outline
+     runs off the canvas, and this fails. */
+  const nodes = [{ x: -50, y: -20, r: 4 }, { x: 50, y: 20, r: 4 }];
+  const outline = { x: 0, y: 0, r: 180 };
+  const t = fitTransform([...nodes, outline], VIEW);
+  assertInside(t, [...nodes, outline]);
+  assert.ok(t.k < fitTransform(nodes, VIEW).k, 'the outline widens the frame');
+});
+
+test('the tighter axis fills the canvas up to the margin', () => {
+  /* Mutation: scale by 0.85 of the fit instead of to the margin -- the frame
+     stops short of it, and this fails. */
+  const circles = [{ x: 0, y: -100, r: 10 }, { x: 40, y: 100, r: 10 }];
+  const t = fitTransform(circles, VIEW);
+  const top = Math.min(...circles.map((c) => onScreen(t, c).top));
+  const bottom = Math.max(...circles.map((c) => onScreen(t, c).bottom));
+  assert.ok(Math.abs(top - FIT_DEFAULTS.margin) < EPS, `top edge at ${top}`);
+  assert.ok(Math.abs(bottom - (VIEW.height - FIT_DEFAULTS.margin)) < EPS, `bottom edge at ${bottom}`);
+});
+
+test('one small node is framed at the most a fit zooms in, centred', () => {
+  /* Mutation: drop the upper limit -- one 4px node fills the canvas, and this
+     fails. */
+  const t = fitTransform([{ x: 30, y: -12, r: 4 }], VIEW);
+  assert.equal(t.k, FIT_DEFAULTS.maxScale);
+  assert.ok(Math.abs(30 * t.k + t.x - VIEW.width / 2) < EPS);
+  assert.ok(Math.abs(-12 * t.k + t.y - VIEW.height / 2) < EPS);
+});
+
+test('a graph too large for the canvas is held at the zoom limit', () => {
+  const t = fitTransform([{ x: -1e6, y: 0, r: 1 }, { x: 1e6, y: 0, r: 1 }], VIEW);
+  assert.equal(t.k, FIT_DEFAULTS.minScale);
+});
+
+test('nothing to frame, or nothing with a place, gives no transform', () => {
+  assert.equal(fitTransform([], VIEW), null);
+  assert.equal(fitTransform([{ x: NaN, y: 0, r: 4 }], VIEW), null);
+  assert.equal(boundsOf([]), null);
+});
