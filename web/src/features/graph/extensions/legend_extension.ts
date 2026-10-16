@@ -24,8 +24,8 @@ import * as d3 from 'd3';
 import { BaseExtension } from './base';
 import type { GraphNode, GraphEdge } from '../services/graph_types';
 import { nodePath } from '../services/node_shapes';
-import { edgeMarks, nodeMarks, readable } from './legend_marks';
-import type { EdgeMark, NodeMark } from './legend_marks';
+import { edgeMarks, layerMarks, nodeMarks, readable } from './legend_marks';
+import type { EdgeMark, LayerMark, NodeMark } from './legend_marks';
 import './legend_extension.css';
 
 const SWATCH = 16;
@@ -47,6 +47,7 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
     const edges = ctx.data.edges ?? [];
     const nodes_ = nodeMarks(nodes);
     const edges_ = edgeMarks(edges);
+    const layers_ = layerMarks(nodes);
 
     const root = document.createElement('div');
     root.className = 'graph-legend';
@@ -73,6 +74,9 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
     }
     if (edges_.length) {
       body.appendChild(this.section('Edges', edges_.map((m) => this.edgeRow(m))));
+    }
+    if (layers_.length) {
+      body.appendChild(this.section('Abstraction layers', layers_.map((m) => this.layerRow(m))));
     }
     if (!nodes_.length && !edges_.length) {
       const empty = document.createElement('p');
@@ -133,6 +137,24 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
       .attr('stroke', 'currentColor')
       .attr('stroke-width', 1);
     return this.row(svg.node() as SVGSVGElement, readable(mark.kind), mark.count);
+  }
+
+  private layerRow(mark: LayerMark): HTMLElement {
+    const svg = d3
+      .create('svg')
+      .attr('width', SWATCH)
+      .attr('height', SWATCH)
+      .attr('class', 'graph-legend__swatch')
+      .attr('aria-hidden', 'true');
+    svg
+      .append('rect')
+      .attr('x', 2)
+      .attr('y', 2)
+      .attr('width', SWATCH - 4)
+      .attr('height', SWATCH - 4)
+      .attr('fill', mark.color);
+    const label = mark.name ? `L${mark.ordinal} ${mark.name}` : `Layer ${mark.ordinal}`;
+    return this.row(svg.node() as SVGSVGElement, label, mark.count);
   }
 
   private edgeRow(mark: EdgeMark): HTMLElement {
