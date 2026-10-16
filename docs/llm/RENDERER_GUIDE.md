@@ -34,7 +34,7 @@ from the renderer dropdown in the Graph tab.
 - **Data format**: `{ "text/html": "<html>..." }`
 - **Auto-detected**: yes (when data has `text/html` key)
 
-### SystemRenderer / PamRenderer
+### SystemRenderer (definition-driven: pam_definition, derived_system)
 - **Type**: `'system'`
 - **Use case**: Fixed-layout system architecture diagrams with live event feeds (e.g. PAM auth)
 - **Features**: WebSocket live events, packet animations, demo loop, node state badges

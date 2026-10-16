@@ -101,8 +101,10 @@ export class PlotActions {
   }
 
   /**
-   * Create vnode for the system renderer (PAM Auth Monitor).
-   * Does not require graph data — the renderer has its own built-in demo.
+   * Create vnode for the system renderer.
+   * Does not require graph data — the selected SystemDefinition brings its
+   * own diagram and demo; 'moat' (derived from the sibling clone) is the
+   * default, PAM remains selectable.
    */
   public createSystemVnode(): void {
     const styling     = this.stateController.state.graphStyling;
@@ -110,8 +112,9 @@ export class PlotActions {
     const wsBase      = httpBase.replace(/^http/, 'ws');
     const systemStyling = {
       ...styling,
-      systemId:      styling.systemId ?? 'pam',
+      systemId:      styling.systemId ?? 'moat',
       systemWsBase:  wsBase,
+      systemHttpBase: httpBase,
       // Legacy fields kept for backwards compatibility
       pamHttpBase:   `${httpBase}/pam`,
       pamWsUrl:      `${wsBase}/pam/ws/live`,

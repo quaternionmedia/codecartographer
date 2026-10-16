@@ -16,7 +16,9 @@
     "test:state": "node --test tests/state/",
     "test:families": "node --test tests/families/",
     "build:pure": "tsc -p tsconfig.pure.json && node -e \"require('fs').writeFileSync('dist-pure/package.json','{\\\"type\\\":\\\"module\\\"}')\"",
-    "test:pure": "npm run build:pure && node --test tests/pure/"
+    "test:pure": "npm run build:pure && node --test tests/pure/",
+    "build:system": "tsc -p tsconfig.system.json && node -e \"require('fs').writeFileSync('dist-system/package.json','{\\\"type\\\":\\\"module\\\"}')\"",
+    "test:system": "npm run build:system && node --test tests/system/"
   },
   "browserslist": [
     "defaults"
