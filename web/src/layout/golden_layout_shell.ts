@@ -1,14 +1,13 @@
 /**
  * GoldenLayoutShell
  *
- * Top-level Mithril component that bootstraps a Golden Layout instance and
- * distributes the application UI across dockable panels.
+ * Top-level Mithril component: the application header and the Golden Layout
+ * dock under it.
  *
- * Panels registered:
- *   • 'graph'         — D3 / vis-network visualisation canvas
- *   • 'file-tree'     — Repository / uploaded-file browser
- *
- * Golden Layout is now the primary shell.
+ * Every panel in `panel_registry.ts` is registered here as a Golden Layout
+ * component, and the saved layout (or `default_layout.ts`) is loaded. The
+ * header holds the "+" add-window menu, the GitHub auth indicator and the
+ * help button.
  */
 
 import m from 'mithril';
@@ -16,8 +15,9 @@ import { GoldenLayout } from 'golden-layout';
 
 import type { ICell } from '../state/cell_state';
 import { LayoutContext } from './layout_context';
-import { PanelRegistry, DockPanelId } from './panel_registry';
+import { PanelRegistry } from './panel_registry';
 import { AddPanelMenu } from './components/add_panel_menu';
+import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 
 import { HelpModal, HelpModalComponent } from '../components/codecarto/help/help_modal';
 import { ToastContainer } from '../components/codecarto/help/toast';
@@ -44,13 +44,6 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
 
   const closeMenu = (): void => { if (menuOpen) { menuOpen = false; m.redraw(); } };
 
-  const registerDockPanelLifecycle = (container: any, panelId: DockPanelId): void => {
-    // GL2 destroys the container on close — 'beforeComponentRelease' is the correct event.
-    // 'close' is not emitted by ComponentContainer in GL 2.x.
-    container.on('beforeComponentRelease', () => ctx.hideDockPanel(panelId));
-    container.on('show', () => ctx.showDockPanel(panelId));
-  };
-
   /** Mount GL panels after the host element exists in the DOM. */
   function initGoldenLayout(hostElement: HTMLElement): void {
     glInstance = new GoldenLayout(hostElement);
@@ -59,7 +52,9 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
     for (const def of PanelRegistry.all()) {
       glInstance.registerComponentFactoryFunction(def.id, (container) => {
         container.element.style.cssText = `width:100%;height:100%;overflow:${def.overflow};`;
-        registerDockPanelLifecycle(container, def.id);
+        // A saved layout keeps the tab titles it was saved with, a renamed
+        // window's included; the registry's title is the one drawn.
+        if (def.config.title) container.setTitle(def.config.title);
         def.mount(ctx, container.element);
       });
     }
@@ -67,7 +62,17 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
     // Known limitation: GL 2.x pop-out opens a new window but Mithril component
     // factories are bound to the original window — components never mount in pop-outs.
     // popInOnClose: true (default_layout.ts) auto-returns panels on pop-out close.
-    glInstance.loadLayout(ctx.loadInitialLayoutConfig());
+    const initial = ctx.loadInitialLayoutConfig();
+    try {
+      glInstance.loadLayout(initial);
+    } catch (err) {
+      // The saved layout passed the check in `loadInitialLayoutConfig` and
+      // Golden Layout refused it anyway. Boot the default rather than a page
+      // with no windows. The default itself failing is a bug, and throws.
+      if (initial === DEFAULT_LAYOUT_CONFIG) throw err;
+      ctx.dropSavedLayout(`Golden Layout refused it (${err instanceof Error ? err.message : String(err)})`);
+      glInstance.loadLayout(DEFAULT_LAYOUT_CONFIG);
+    }
   }
 
   return {
@@ -88,6 +93,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       try { await ctx.actions.plot.initializeLanguages(); m.redraw(); } catch { /* non-fatal */ }
       try { await ctx.actions.plot.initializeLexiconLanguages(); m.redraw(); } catch { /* non-fatal */ }
       await ctx.refreshCache();
+      void ctx.refreshExamples();
       ctx.refreshGraphbase();        // probe graphbase — sets graphbaseAvailable
       ctx.refreshGithubAuthStatus(); // probe GitHub auth — surfaces bad-token early
     },
@@ -133,16 +139,6 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
                   ctx.githubAuthStatus.authenticated ? 'GH' : 'GH?'),
               ])
             : null,
-          ctx.hiddenDockPanels.length > 0
-            ? m('div.gl-app-header__restore',
-                ctx.hiddenDockPanels.map((panelId) =>
-                  m('button.gl-app-header__restore-btn', {
-                    onclick: () => ctx.restoreDockPanel(panelId),
-                    title: `Restore ${panelId}`,
-                  }, `Restore ${PanelRegistry.get(panelId)?.menuLabel ?? panelId}`),
-                ),
-              )
-            : null,
           m('button.gl-app-header__help-btn', {
             onclick: () => HelpModal.open(),
             title: 'Help & walkthrough',
@@ -159,17 +155,6 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
           onremove: () => {
             glInstance?.destroy();
             glInstance = null;
-          },
-          // Ctrl+right-click on the dock area opens the add-window menu.
-          // Plain right-click is left to the graph renderer's own contextmenu
-          // handlers (which call preventDefault themselves for node targets) or
-          // falls through to the browser's native menu on empty chrome areas.
-          oncontextmenu: (e: MouseEvent) => {
-            if (!e.ctrlKey) return;
-            e.preventDefault();
-            menuPos = { x: e.clientX, y: e.clientY };
-            menuOpen = true;
-            m.redraw();
           },
         }),
 

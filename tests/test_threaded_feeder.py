@@ -1,8 +1,7 @@
 """
 Tests for codecarto.util.threaded_feeder.start_threaded_feeder — the
-shared thread-spawn + queue-feed wiring extracted from
-c_parser_router.py's /stream-github and pam_router.py's log tailer (see
-docs/llm/next_steps/parser_consolidation_and_scope_drift.md, 2.2).
+thread-spawn + queue-feed wiring shared by c_parser_router.py's
+/stream-github and pam_router.py's log tailers.
 """
 
 import asyncio

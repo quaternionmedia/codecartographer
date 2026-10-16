@@ -109,3 +109,101 @@ export function marksCover(
 ): number {
   return marks.reduce((total, mark) => total + mark.count, 0);
 }
+
+/** An abstraction layer present in the graph, and how many nodes sit on it. */
+export interface LayerMark {
+  ordinal: number;
+  /** The layer's name in the lexicon that placed the node, when the node said. */
+  name: string;
+  color: string;
+  count: number;
+}
+
+export interface ConstructMark {
+  construct: string;
+  name: string;
+  color: string;
+  count: number;
+}
+
+export interface ConstructedNode {
+  construct?: unknown;
+  construct_name?: unknown;
+  construct_color?: unknown;
+  [key: string]: unknown;
+}
+
+/**
+ * The constructs the drawn nodes are, most numerous first.
+ *
+ * **WHAT "COLOR BY: CONSTRUCT" MEANS, IN THE KEY.** The server stamps each node
+ * the vocabulary places with its construct and that construct's colour and
+ * name; the key names each and counts it, so a C struct and a Rust struct are
+ * one row. A node the vocabulary did not place has no construct, and this
+ * does not invent one.
+ */
+export function constructMarks(nodes: readonly ConstructedNode[]): ConstructMark[] {
+  const seen = new Map<string, ConstructMark>();
+  for (const node of nodes) {
+    if (typeof node.construct !== 'string' || typeof node.construct_color !== 'string') continue;
+    const found = seen.get(node.construct);
+    if (found) {
+      found.count += 1;
+      continue;
+    }
+    seen.set(node.construct, {
+      construct: node.construct,
+      name: typeof node.construct_name === 'string' ? node.construct_name : node.construct,
+      color: node.construct_color,
+      count: 1,
+    });
+  }
+  return [...seen.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+export interface LayeredNode {
+  layer_ordinal?: unknown;
+  layer_color?: unknown;
+  meta?: unknown;
+}
+
+/**
+ * The abstraction layers the drawn nodes sit on, machine-facing first.
+ *
+ * **WHAT "COLOR BY: ABSTRACTION LAYER" MEANS, IN THE KEY.** A colour that
+ * carries a layer is a state, and no state rides on colour alone: the key names
+ * each layer the graph holds and counts its nodes. Only nodes the server placed
+ * on a layer (`layer_ordinal`, from a lexicon) are counted; the rest have no
+ * layer, which this does not invent.
+ *
+ * Several languages number their layers alike on purpose, so one ordinal can
+ * carry two names; the first seen is shown.
+ */
+export function layerMarks(nodes: readonly LayeredNode[]): LayerMark[] {
+  const seen = new Map<number, LayerMark>();
+  for (const node of nodes) {
+    if (typeof node.layer_ordinal !== 'number' || node.layer_ordinal < 0) continue;
+    const ordinal = node.layer_ordinal;
+    const found = seen.get(ordinal);
+    if (found) {
+      found.count += 1;
+      continue;
+    }
+    seen.set(ordinal, {
+      ordinal,
+      name: layerName(node.meta, ordinal),
+      color: typeof node.layer_color === 'string' ? node.layer_color : DEFAULT_NODE_COLOR,
+      count: 1,
+    });
+  }
+  return [...seen.values()].sort((a, b) => a.ordinal - b.ordinal);
+}
+
+function layerName(meta: unknown, ordinal: number): string {
+  const layers = (meta as { lexicon_layers?: unknown } | undefined)?.lexicon_layers;
+  if (!Array.isArray(layers)) return '';
+  const match = layers.find(
+    (c) => (c as { layer_ordinal?: unknown }).layer_ordinal === ordinal,
+  ) as { layer_name?: unknown } | undefined;
+  return typeof match?.layer_name === 'string' ? match.layer_name : '';
+}
