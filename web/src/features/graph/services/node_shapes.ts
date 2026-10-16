@@ -10,8 +10,10 @@
  * `s` is the half-extent: a shape drawn at `s` fits a box of `2s`, centred on
  * the origin, so a caller can place it with a translate and nothing else.
  */
-export function nodePath(shape: string | undefined, s: number): string {
+export function nodePath(shape: string | undefined, s: number, sides?: number): string {
   switch (shape) {
+    case 'ngon':
+      return polygonPath(s, sides);
     case 'square':
     case 'rectangle':
       return `M ${-s} ${-s} L ${s} ${-s} L ${s} ${s} L ${-s} ${s} Z`;
@@ -44,5 +46,29 @@ export const KNOWN_SHAPES = [
   'triangle',
   'diamond',
   'hexagon',
+  'ngon',
   'circle',
 ] as const;
+
+/**
+ * A regular polygon of `sides` sides, a vertex at the top.
+ *
+ * **THE C PARSER ASKED FOR THIS AND THE CANVAS DREW A CIRCLE.** Its structs and
+ * unions carry `shape: 'ngon'` with `meta.sides` set from the field count -- the
+ * c-visualizer's grammar, where a record's outline says how many parts it has --
+ * and until this case existed every one of them fell through to the default.
+ * The construct vocabulary gives Rust's records the same shape, so a C struct
+ * and a Rust struct of seven fields are now one mark.
+ *
+ * Clamped to 3..12, as the parser contract says. With no count it is a
+ * pentagon, deliberately not six: a hexagon is already a shape of its own here.
+ */
+export function polygonPath(s: number, sides?: number): string {
+  const n = Math.min(12, Math.max(3, Math.round(sides ?? 5)));
+  const points: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const angle = -Math.PI / 2 + (2 * Math.PI * i) / n;
+    points.push(`${(s * Math.cos(angle)).toFixed(2)} ${(s * Math.sin(angle)).toFixed(2)}`);
+  }
+  return `M ${points.join(' L ')} Z`;
+}

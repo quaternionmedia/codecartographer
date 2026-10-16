@@ -7,7 +7,7 @@
  *
  * These are ported in full because the conformance vectors cover them, and a
  * partial port makes "conformant" a description of intent. This host binds
- * none of them to a clock today — see host/README.md.
+ * none of them to a clock today.
  *
  * Ported from quaternionmedia/rad @ d362abd.
  */

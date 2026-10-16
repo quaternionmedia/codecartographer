@@ -1,5 +1,10 @@
 name: "Copilot Setup Steps"
 
+# The environment a Copilot coding agent starts in, made the way AGENTS.md
+# says to make it: the lockfile's Python environment with C parsing, the
+# frontend's packages and Chromium, and the governance corpus the agent is
+# told to read first. Nothing else.
+
 on:
   workflow_dispatch:
   push:
@@ -25,15 +30,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: "pip"
+          # graphbase is private and the runner has no credential for it.
+          submodules: false
 
-      - name: Install Python dependencies
-        run: pip install -e ".[dev]"
+      - name: Check out the governance submodule only
+        run: git submodule update --init --depth 1 governance/qm
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the Python environment the lockfile pins
+        run: uv sync --locked --extra dev --extra c-parsing
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -42,6 +51,8 @@ jobs:
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
-      - name: Install frontend dependencies
+      - name: Install frontend dependencies and Chromium
         working-directory: web
-        run: npm ci
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
