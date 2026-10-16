@@ -1,6 +1,7 @@
 """Joins real parsed-graph nodes to a language's Lexicon abstraction layers.
 
-This is Lexicon "Option B" (see ``docs/llm/roadmap/lexicon.md``): a
+The join to parsed code (see ``docs/architecture.md``, "Lexicons and the
+construct vocabulary"): a
 :class:`~codecarto.models.lexicon.Lexicon` token's spelling is the join key,
 but only keywords/operators actually appear as node ``kind`` values or
 tokenized qualifier lists — a node's ``label`` (a declared identifier like
@@ -25,6 +26,7 @@ from __future__ import annotations
 
 import networkx as nx
 
+from codecarto.services.construct_service import layer_color
 from codecarto.services.lexicon_service import LexiconService
 
 # kind -> token spelling, explicit per language (not derived from casing —
@@ -46,13 +48,34 @@ _KIND_TOKEN_MAP: dict[str, dict[str, str]] = {
         "class": "class",
         "function": "def",
         "import": "import",
-        "loop": "for",  # depth 3 only - see lexicon.md's Option B coverage note
+        "loop": "for",  # depth 3 only
+    },
+    # rust_language_parser.py's kinds are its own names for items, and four
+    # of them are not the keyword: `function`/`method` are `fn`, `module` is
+    # `mod`, `macro` is `macro_rules`, an extern block is `extern`.
+    "rust": {
+        "function": "fn",
+        "method": "fn",
+        "struct": "struct",
+        "enum": "enum",
+        "union": "union",
+        "trait": "trait",
+        "impl": "impl",
+        "module": "mod",
+        "type": "type",
+        "const": "const",
+        "static": "static",
+        "use": "use",
+        "extern_crate": "crate",
+        "extern_block": "extern",
+        "macro": "macro_rules",
     },
 }
 
 # language -> meta key holding an already-tokenized keyword/qualifier list.
 _QUALIFIER_META_KEY: dict[str, str] = {
     "c": "qualifiers",
+    "rust": "qualifiers",  # pub, unsafe, async, const, extern, mut, static
 }
 
 
@@ -96,3 +119,6 @@ def annotate_graph_with_lexicon(graph: nx.DiGraph, language: str) -> None:
         meta = data.setdefault("meta", {})
         meta["lexicon_layers"] = matches
         data["layer_ordinal"] = min(m["layer_ordinal"] for m in matches)
+        # The colour "Color By: Abstraction Layer" draws, decided here so the
+        # canvas has one ramp to read rather than one of its own.
+        data["layer_color"] = layer_color(data["layer_ordinal"])

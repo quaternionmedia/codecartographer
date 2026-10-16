@@ -17,7 +17,7 @@ const STEPS = [
   {
     icon: '📁',
     title: 'Load a repository',
-    body: 'Paste a GitHub URL in the Source tab, or upload files. The ▶ Actions tab plots and cancels. Recent cached graphs appear at the bottom of the Source tab.',
+    body: 'Paste a GitHub URL or a local path in the Repository tab and press → Fetch, or drop files in the Upload tab. ⚡ Load Demo draws a sample graph. The ▶ Actions tab plots and cancels.',
   },
   {
     icon: '◈',
@@ -27,12 +27,12 @@ const STEPS = [
   {
     icon: '⚙',
     title: 'Tune the visualization',
-    body: 'Open the Graph Settings tab to change the layout algorithm, toggle physics, adjust node size, labels, and pick a color theme.',
+    body: 'Open the Graph Settings tab to choose the renderer and the layout algorithm, adjust node size, labels and color, and pick a theme.',
   },
   {
     icon: '⊞',
     title: 'Manage panels',
-    body: 'Drag tabs to rearrange. Click ✕ to close a panel — a Restore button appears in the top bar to bring it back. Resize panels by dragging the dividers.',
+    body: 'Drag tabs to rearrange, and drag the dividers to resize. Click ✕ to close a panel. The + button in the top bar adds a panel, closed ones included, and saves or resets the layout.',
   },
 ];
 

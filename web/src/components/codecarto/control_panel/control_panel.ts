@@ -1,22 +1,17 @@
 import m from 'mithril';
+import { exampleGroups } from '../../../features/examples/examples';
+import type { BundledExample, Example } from '../../../features/examples/examples';
 import { animations } from '../../../core/animations';
 import { Directory, RawFile } from '../../models/source';
 import { DirectoryContent } from '../../qm_comp_lib/directory/directory';
 import { SystemDefinitionRegistry } from '../../../features/graph/services/system_renderer';
+import { rendererControls } from '../../../features/graph/services/renderer_controls';
 import { GraphStylingOptions, ParserOptions, GraphRendererType } from '../../../state/types';
 import './control_panel.css';
 
 export type { GraphStylingOptions, ParserOptions, GraphRendererType };
 
-export type TabId = 'source' | 'graph';
 export type CodeSourceMode = 'upload' | 'repo';
-
-export interface Tab {
-  id: TabId;
-  label: string;
-  icon?: string;
-  helpText?: string;
-}
 
 export interface LoadingProgress {
   loaded: number;
@@ -25,15 +20,12 @@ export interface LoadingProgress {
 }
 
 export interface ControlPanelState {
-  isOpen: boolean;
-  activeTab: TabId;
   codeSourceMode: CodeSourceMode;
   repoUrl: string;
   currentTheme: string;
   isLoading: boolean;
   statusMessage: string;
   progress: LoadingProgress | null;
-  panelHeight: number;
   graphSections: { layout: boolean; visual: boolean; theme: boolean };
   parseDepth: number;  // 1 = files only, 2 = symbols, 3 = sub-symbols
 }
@@ -55,6 +47,8 @@ export interface ControlPanelCallbacks {
   onExpandAll?: () => Promise<void>;
   onCancel?: () => void;
   onLoadFromCache?: (key: string) => void;
+  /** A bundled example: plot it, and read a Cargo workspace's records into the Cargo panel. */
+  onBundledExample?: (example: Example) => void;
   onEvictCache?: (key: string) => void;
   onClearRepo?: () => void;
 }
@@ -80,18 +74,16 @@ export interface ControlPanelContent {
   availableLanguages: Record<string, string[]> | null;
   availableLexiconLanguages: string[];
   cachedGraphs: CachedEntry[] | null;
+  /** What `GET /repo/examples` offers; empty before it answers, or in an installed package. */
+  bundledExamples: BundledExample[];
 }
 
-export type ControlPanelMode = 'full' | 'source' | 'upload' | 'repo' | 'graph';
+/** Which docked panel this renders: Upload, Repository or Graph Settings. */
+export type ControlPanelMode = 'upload' | 'repo' | 'graph';
 
 export interface ControlPanelRenderOptions {
-  mode?: ControlPanelMode;
+  mode: ControlPanelMode;
 }
-
-const TABS: Tab[] = [
-  { id: 'source', label: 'Source', icon: '📁', helpText: 'Load code and configure parsing' },
-  { id: 'graph',  label: 'Graph',  icon: '◈',  helpText: 'Renderer, layout, visual style and theme' },
-];
 
 const LAYOUT_OPTIONS = [
   { value: 'spring_layout', label: 'Spring' },
@@ -116,78 +108,18 @@ const THEMES = [
   { id: 'candy',     label: 'Candy',     preview: '#ff69eb' },
 ];
 
-/** Creates the slide-up control panel */
+/**
+ * The body of a docked control panel: Upload, Repository or Graph Settings,
+ * by `options.mode`. Each panel in `layout/panels/` mounts one mode.
+ */
 export function ControlPanel(
   state: ControlPanelState,
   callbacks: ControlPanelCallbacks,
   onStateChange: (updates: Partial<ControlPanelState>) => void,
   content: ControlPanelContent,
-  options: ControlPanelRenderOptions = {}
+  options: ControlPanelRenderOptions,
 ): m.Vnode {
-  const mode = options.mode ?? 'full';
-  const isEmbedded = mode !== 'full';
-
-  // Resize drag state
-  let isDragging = false;
-  let startY = 0;
-  let startHeight = 0;
-
-  const updatePanelHeightVar = (element?: HTMLElement) => {
-    if (isEmbedded) return;
-    if (!element) return;
-    const totalHeight = Math.ceil(element.getBoundingClientRect().height);
-    let effectiveHeight = totalHeight;
-    if (!state.isOpen) {
-      // When the panel is closed the body may still be mid-transition (CSS
-      // `height 0.3s ease-out`). Measuring total − body gives the persistent
-      // chrome (handle + tab bar + status bar) regardless of transition state,
-      // because both values are read in the same synchronous layout flush.
-      const bodyEl = element.querySelector('.control-panel__body') as HTMLElement | null;
-      if (bodyEl) {
-        effectiveHeight = Math.max(0, totalHeight - Math.ceil(bodyEl.getBoundingClientRect().height));
-      }
-    }
-    document.documentElement.style.setProperty('--control-panel-height', `${effectiveHeight}px`);
-  };
-
-  const handleResizeStart = (e: MouseEvent) => {
-    if (!state.isOpen) return;
-    isDragging = true;
-    startY = e.clientY;
-    startHeight = state.panelHeight;
-    document.body.style.cursor = 'ns-resize';
-    document.body.style.userSelect = 'none';
-
-    const handleMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      const delta = startY - e.clientY;
-      const newHeight = Math.max(150, startHeight + delta);
-      onStateChange({ panelHeight: newHeight });
-    };
-
-    const handleEnd = () => {
-      isDragging = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      document.removeEventListener('mousemove', handleMove);
-      document.removeEventListener('mouseup', handleEnd);
-    };
-
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', handleEnd);
-  };
-
-  const togglePanel = () => {
-    onStateChange({ isOpen: !state.isOpen });
-  };
-
-  const setActiveTab = (tabId: TabId) => {
-    if (state.activeTab === tabId) {
-      onStateChange({ isOpen: !state.isOpen });
-    } else {
-      onStateChange({ activeTab: tabId, isOpen: true });
-    }
-  };
+  const { mode } = options;
 
   const handleRepoUrlChange = (e: Event) => {
     const input = e.target as HTMLInputElement;
@@ -332,49 +264,27 @@ export function ControlPanel(
             ])
           : null,
 
-        // Example chips (when no repo loaded)
-        !hasRepo ? m('div.panel-source__examples', [
-          m('span.panel-settings__label-compact', 'Python'),
-          m('div.panel-source__example-chips', [
-            ...[
-              { label: 'requests', url: 'https://github.com/psf/requests',    title: 'requests — small repo (~2 MB), full content' },
-              { label: 'Flask',    url: 'https://github.com/pallets/flask',   title: 'Flask — medium repo (~8 MB), structure only' },
-              { label: 'React',    url: 'https://github.com/facebook/react',  title: 'React — large repo (~25 MB), structure only' },
-              { label: 'CPython',  url: 'https://github.com/python/cpython',  title: 'CPython — xlarge repo (~200 MB), shallow root' },
-              { label: 'Linux',    url: 'https://github.com/torvalds/linux',  title: 'Linux — xxlarge repo (~1 GB+), shallow root' },
-            ].map(ex =>
+        // The project selector: each language's examples, Rust first, the
+        // bundled ones (no network, no toolchain) leading their group. Shown
+        // with a repository loaded too, so another is one click away.
+        m('div.panel-source__examples', exampleGroups(content.bundledExamples).flatMap((group) => [
+          m('span.panel-settings__label-compact', group.language),
+          m('div.panel-source__example-chips', { 'data-language': group.language.toLowerCase() },
+            group.examples.map((ex) =>
               m('button.panel-source__example-chip', {
+                class: ex.bundled ? 'panel-source__example-chip--bundled' : '',
                 title: ex.title,
+                'data-example': ex.label,
                 onclick: (e: MouseEvent) => {
                   animations.buttonPress(e.currentTarget as Element);
                   onStateChange({ repoUrl: ex.url, codeSourceMode: 'repo' });
-                  callbacks.onRepoSubmit(ex.url);
+                  if (ex.bundled && callbacks.onBundledExample) callbacks.onBundledExample(ex);
+                  else callbacks.onRepoSubmit(ex.url);
                 },
                 disabled: state.isLoading,
-              }, ex.label)
-            ),
-          ]),
-          m('span.panel-settings__label-compact', 'C'),
-          m('div.panel-source__example-chips', [
-            ...[
-              { label: 'git',     url: 'https://github.com/git/git',            title: 'git — the VCS itself, written in C (~30 MB), structure only' },
-              { label: 'curl',    url: 'https://github.com/curl/curl',         title: 'curl — ubiquitous networking library in C (~10 MB), full content' },
-              { label: 'Lua',     url: 'https://github.com/lua/lua',           title: 'Lua 5.x — reference VM in C (~1 MB), full content' },
-              { label: 'SQLite',  url: 'https://github.com/sqlite/sqlite',     title: 'SQLite — most deployed DB in C (~15 MB), structure only' },
-              { label: 'Redis',   url: 'https://github.com/redis/redis',       title: 'Redis — systems C data structures (~5 MB), full content' },
-            ].map(ex =>
-              m('button.panel-source__example-chip', {
-                title: ex.title,
-                onclick: (e: MouseEvent) => {
-                  animations.buttonPress(e.currentTarget as Element);
-                  onStateChange({ repoUrl: ex.url, codeSourceMode: 'repo' });
-                  callbacks.onRepoSubmit(ex.url);
-                },
-                disabled: state.isLoading,
-              }, ex.label)
-            ),
-          ]),
-        ]) : null,
+              }, ex.label),
+            )),
+        ])),
 
         // Loaded repo — compact status line; the tree itself lives in the Files panel
         hasRepo ? m('div.panel-source__repo-loaded', [
@@ -448,7 +358,7 @@ export function ControlPanel(
 
       // Lexicon annotation — stamps abstraction-layer data onto real
       // parsed nodes where the language has a Lexicon (see
-      // docs/llm/roadmap/lexicon.md); pair with the "Color By: Abstraction
+      // docs/roadmap/lexicon.md); pair with the "Color By: Abstraction
       // Layer" styling option to actually see it.
       m('div.panel-settings__group', [
         m('div.panel-settings__toggle-row', [
@@ -485,7 +395,7 @@ export function ControlPanel(
         }, [m('span', '⚡'), m('span', 'Load Demo')]),
 
         // Lexicon: one button per language with an abstraction-layer
-        // ontology (see docs/llm/roadmap/lexicon.md). Switchable/
+        // ontology (see docs/roadmap/lexicon.md). Switchable/
         // extendable — grows automatically as more languages get a
         // lexicon YAML, no UI change needed.
         content.availableLexiconLanguages.length > 0 && callbacks.onLoadLexicon
@@ -507,21 +417,8 @@ export function ControlPanel(
     ]);
   };
 
-  const renderSourceTab = (forceVisible = false) => {
-    return m('div.panel-section.panel-source', {
-      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
-    }, [
-      m('div.panel-source__2col', [
-        m('div.panel-source__left', [renderUploadSection(), renderRepoSection()]),
-        renderSourceRight(),
-      ]),
-    ]);
-  };
-
-  const renderUploadTab = (forceVisible = false) => {
-    return m('div.panel-section.panel-source', {
-      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
-    }, [
+  const renderUploadTab = () => {
+    return m('div.panel-section.panel-source.panel-section--active', [
       m('div.panel-source__2col', [
         renderUploadSection(),
         renderSourceRight(),
@@ -529,10 +426,8 @@ export function ControlPanel(
     ]);
   };
 
-  const renderRepoTab = (forceVisible = false) => {
-    return m('div.panel-section.panel-source', {
-      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
-    }, [
+  const renderRepoTab = () => {
+    return m('div.panel-section.panel-source.panel-section--active', [
       m('div.panel-source__2col', [
         renderRepoSection(),
         renderSourceRight(),
@@ -540,15 +435,17 @@ export function ControlPanel(
     ]);
   };
 
-  // ─── Graph Tab (accordion) ─────────────────────────────────────────────────
+  // ─── Graph Settings (accordion) ────────────────────────────────────────────
 
-  const renderGraphTab = (forceVisible = false) => {
+  const renderGraphTab = () => {
     const styling = content.graphStyling;
     const selectedRenderer = content.selectedRenderer;
     const isSystem = selectedRenderer === 'system';
-    const supportsLayout  = selectedRenderer === 'd3';
-    const supportsPhysics = !['notebook', 'system'].includes(selectedRenderer);
-    const supportsVisual  = !['notebook', 'system'].includes(selectedRenderer);
+    const {
+      layout: supportsLayout,
+      physics: supportsPhysics,
+      visual: supportsVisual,
+    } = rendererControls(selectedRenderer);
     const sections = state.graphSections;
 
     const renderSectionHeader = (label: string, key: keyof typeof sections) =>
@@ -572,9 +469,7 @@ export function ControlPanel(
       }),
     ]);
 
-    return m('div.panel-section.panel-graph', {
-      class: forceVisible || state.activeTab === 'graph' ? 'panel-section--active' : '',
-    }, [
+    return m('div.panel-section.panel-graph.panel-section--active', [
       // Renderer selector — always visible at top
       m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Renderer'),
@@ -585,10 +480,10 @@ export function ControlPanel(
             callbacks.onRendererChange(renderer);
           },
         }, [
-          m('option', { value: 'd3' }, 'D3.js (Force-directed)'),
+          m('option', { value: 'd3' }, 'D3.js (server layout)'),
           m('option', { value: 'gravis' }, 'Gravis (vis-network)'),
           m('option', { value: 'notebook' }, 'Notebook (Static HTML)'),
-          m('option', { value: 'system' }, 'System Monitor (PAM)'),
+          m('option', { value: 'system' }, 'System Monitor'),
         ]),
       ]),
 
@@ -598,7 +493,7 @@ export function ControlPanel(
         SystemDefinitionRegistry.all().length > 1 ? m('div.panel-settings__group', [
           m('span.panel-settings__label-compact', 'System'),
           m('select.panel-settings__select', {
-            value: styling.systemId ?? 'pam',
+            value: styling.systemId ?? 'moat',
             onchange: (e: Event) => {
               callbacks.onGraphStylingChange({ systemId: (e.target as HTMLSelectElement).value });
             },
@@ -611,15 +506,18 @@ export function ControlPanel(
         m('span.panel-settings__label-compact', 'Mode'),
         m('div', { style: { display: 'flex', gap: '6px', marginTop: '6px' } }, [
           m('button.panel-settings__option', {
-            class: (styling as Record<string, unknown>).pamMode !== 'live' ? 'panel-settings__option--active' : '',
-            onclick: () => callbacks.onGraphStylingChange({ pamMode: 'demo' }),
+            class: (styling as Record<string, unknown>).systemMode !== 'live' ? 'panel-settings__option--active' : '',
+            onclick: () => callbacks.onGraphStylingChange({ systemMode: 'demo' }),
           }, 'Demo'),
           m('button.panel-settings__option', {
-            class: (styling as Record<string, unknown>).pamMode === 'live' ? 'panel-settings__option--active' : '',
-            onclick: () => callbacks.onGraphStylingChange({ pamMode: 'live' }),
+            class: (styling as Record<string, unknown>).systemMode === 'live' ? 'panel-settings__option--active' : '',
+            onclick: () => callbacks.onGraphStylingChange({ systemMode: 'live' }),
           }, 'Live'),
         ]),
-        m('p.panel-settings__hint', 'Demo always works. Live streams system events via WebSocket.'),
+        m('p.panel-settings__hint',
+          'Demo replays the derived history on a loop. Live streams over the '
+          + "definition's WebSocket — the PAM feed tails auth.log; a derived "
+          + 'system replays its clone once, labelled as a replay.'),
       ]) : null,
 
       // Layout section
@@ -770,13 +668,14 @@ export function ControlPanel(
                   m('span.panel-settings__label-compact', 'Color By'),
                   m('select.panel-settings__select', {
                     value: styling.colorBy ?? 'auto',
-                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/llm/roadmap/lexicon.md); nodes without a layer fall back to the default.',
+                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/roadmap/lexicon.md); Construct mode by what each node is, alike across languages (codecarto/data/constructs.yaml). A node without one keeps its own color.',
                     onchange: (e: Event) => {
                       callbacks.onGraphStylingChange({ colorBy: (e.target as HTMLSelectElement).value });
                     },
                   }, [
                     m('option', { value: 'auto' }, 'Auto (depth/kind)'),
                     m('option', { value: 'layer' }, 'Abstraction Layer'),
+                    m('option', { value: 'construct' }, 'Construct (across languages)'),
                   ]),
                 ]),
                 m('div.panel-settings__group', [
@@ -869,108 +768,15 @@ export function ControlPanel(
 
   // ─── Main render ───────────────────────────────────────────────────────────
 
-  if (isEmbedded) {
-    const embeddedContent = mode === 'source' ? renderSourceTab(true)
-      : mode === 'upload' ? renderUploadTab(true)
-      : mode === 'repo' ? renderRepoTab(true)
-      : renderGraphTab(true);
+  const body = mode === 'upload' ? renderUploadTab()
+    : mode === 'repo' ? renderRepoTab()
+    : renderGraphTab();
 
-    return m('div.control-panel.control-panel--embedded', {
-      oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
-      onupdate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
+  return m('div.control-panel.control-panel--embedded', [
+    m('div.control-panel__body.control-panel__body--open', {
+      style: { height: '100%' },
     }, [
-      m('div.control-panel__body.control-panel__body--open', {
-        style: { height: '100%' },
-      }, [
-        m('div.control-panel__content', [
-          embeddedContent,
-        ]),
-      ]),
-    ]);
-  }
-
-  return m('div.control-panel', {
-    oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
-    onupdate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
-  }, [
-    // Resize handle at top (only when open)
-    state.isOpen ? m('div.control-panel__resize', {
-      onmousedown: handleResizeStart,
-    }) : null,
-
-    // Handle bar — icon only
-    m('div.control-panel__handle', {
-      onclick: togglePanel,
-      title: state.isOpen ? 'Close panel' : 'Open panel',
-    }, [
-      m('span.control-panel__handle-icon', {
-        class: state.isOpen ? 'control-panel__handle-icon--open' : '',
-      }, '▲'),
-    ]),
-
-    // Tab bar
-    m('div.control-panel__tabs',
-      TABS.map(tab =>
-        m('button.control-panel__tab', {
-          class: state.activeTab === tab.id ? 'control-panel__tab--active' : '',
-          onclick: () => setActiveTab(tab.id),
-          title: tab.helpText,
-        }, [
-          tab.icon ? m('span', tab.icon + ' ') : null,
-          tab.label,
-        ])
-      )
-    ),
-
-    // Body (collapsible)
-    m('div.control-panel__body', {
-      class: state.isOpen ? 'control-panel__body--open' : '',
-      style: state.isOpen ? { height: `${state.panelHeight}px` } : { height: '0px' },
-    }, [
-      m('div.control-panel__content', [
-        renderSourceTab(),
-        renderGraphTab(),
-      ]),
-    ]),
-
-    // Status bar
-    m('div.control-panel__status', [
-      // Progress bar (thin line at top, visible during loading)
-      state.isLoading && state.progress
-        ? m('div.control-panel__progress-bar', {
-            style: {
-              width: state.progress.total > 0
-                ? `${Math.round((state.progress.loaded / state.progress.total) * 100)}%`
-                : '0%',
-            },
-          })
-        : state.isLoading
-          ? m('div.control-panel__progress-bar.control-panel__progress-bar--indeterminate')
-          : null,
-
-      m('span.control-panel__status-item', [
-        m('span.control-panel__status-dot', {
-          class: state.isLoading ? 'control-panel__status-dot--warning' : '',
-        }),
-        state.isLoading && state.progress && state.progress.phase === 'streaming'
-          ? `Streaming ${state.progress.loaded}/${state.progress.total} nodes`
-          : state.isLoading && state.progress
-            ? `${state.progress.phase.charAt(0).toUpperCase() + state.progress.phase.slice(1)}…`
-            : state.isLoading
-              ? state.statusMessage
-              : state.statusMessage || 'Ready',
-      ]),
-
-      state.isLoading && callbacks.onCancel
-        ? m('button.control-panel__cancel-btn', {
-            onclick: callbacks.onCancel,
-            title: 'Cancel',
-          }, '✕')
-        : null,
-
-      m('span.control-panel__status-context',
-        `${content.selectedRenderer} · ${state.currentTheme}`
-      ),
+      m('div.control-panel__content', [body]),
     ]),
   ]);
 }
