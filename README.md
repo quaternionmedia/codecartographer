@@ -25,8 +25,8 @@ git clone https://github.com/quaternionmedia/codecartographer.git
 cd codecartographer
 git submodule init && git submodule update
 
-# The lockfile is the environment
-uv sync --extra dev
+# The lockfile is the environment; c-parsing is libclang, which reads C
+uv sync --extra dev --extra c-parsing
 ```
 
 ### Start Development
@@ -52,6 +52,10 @@ uv run codecarto web              # Start frontend
 uv run codecarto repo scan .      # Scan repo structure
 uv run codecarto repo tree .      # Display directory tree
 uv run codecarto repo graph .     # Generate code graph
+
+# Rust workspaces
+uv run codecarto cargo read .     # What the window draws for a workspace (runs nothing)
+uv run codecarto cargo record .   # Run cargo there; write target/codecarto/ for the window
 
 # Utilities
 uv run codecarto parse FILE       # Parse a Python file
@@ -94,7 +98,9 @@ addresses on startup; `serve --help` names the backend's default port.
 | `/repo` | GitHub repository reading |
 | `/c-parser` | C parsing via libclang, plus a standalone visualizer page |
 | `/pam` | PAM session capture, replay, and a standalone visualizer page |
-| `/lexicon` | Hand-authored language lexicons, as graphs |
+| `/system` | A system diagram derived from a local clone's own contents, its recent changes, and a paced replay of them |
+| `/lexicon` | Hand-authored language lexicons, the construct vocabulary, and the chrestomathy across languages |
+| `/cargo` | A Cargo workspace's crates, targets, dependencies and last recorded build -- read, never run |
 | `/topology` | The harness's flows, as graph data the app plots |
 | `/capabilities` | What each named thing this estate can do has reached |
 | `/overview` | dossier's reading of the estate, drawn here from the seam it produces |
@@ -141,8 +147,8 @@ For parsing public GitHub repositories:
 ## Development
 
 ```bash
-# Install dev dependencies
-uv sync --extra dev
+# Install dev dependencies (a sync without c-parsing removes libclang)
+uv sync --extra dev --extra c-parsing
 
 # Run linter
 uv run codecarto lint
@@ -175,8 +181,9 @@ uv run codecarto docker-down
 - [Getting Started](docs/getting-started.md) — install, run, first graph
 - [Architecture](docs/architecture.md) — how the pieces fit
 - [CLI](docs/cli.md) and [API](docs/api.md) — the two command surfaces
-- [Contributing](docs/contributing.md) — working on this project
+- [Contributing](.github/CONTRIBUTING.md) — working on this project
 - [UI Reference](docs/llm/UI_REFERENCE.md) — the shell, every panel, the one canvas and the radial menu
+- [Rust and the firmware languages](docs/llm/roadmap/rust.md) — Rust, Cargo, linker scripts and the construct vocabulary that sets them beside C
 
 Decision records live on the `governance/qm` submodule, under `adr/`. The plan
 this window is built to -- the estate frame, the topology designer, and the
