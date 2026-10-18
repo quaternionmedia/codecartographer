@@ -32,7 +32,7 @@
     "vis-network": "^10.0.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.64.1",
     "@types/d3": "^7.4.3",
     "@types/mithril": "^2.2.9",
     "typescript": "^7.0.2",
