@@ -46,6 +46,62 @@ async function openFromMenu(page: Page, label: string): Promise<void> {
   await page.locator('.gl-add-panel-menu__item', { hasText: new RegExp(`^${label}$`) }).click();
 }
 
+/** The shell's dock element and Golden Layout's root in it, rounded. */
+async function dockSizes(page: Page): Promise<{ host: number[]; root: number[] }> {
+  return page.evaluate(() => {
+    const host = document.querySelector('.gl-shell__body') as HTMLElement;
+    const root = host.querySelector(':scope > .lm_root') as HTMLElement;
+    const size = (element: HTMLElement) => {
+      const box = element.getBoundingClientRect();
+      return [Math.round(box.width), Math.round(box.height)];
+    };
+    return { host: size(host), root: size(root) };
+  });
+}
+
+/**
+ * Two frames and a task: the frame whose layout sees the new size, which is
+ * when the browser tells Golden Layout, and one more, with Golden Layout's
+ * zero-delay timer between them. Its default is a 100ms timer, restarted by
+ * every resize that arrives inside it, so a dock that waited would still be
+ * the old size here.
+ */
+async function aMomentLater(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 20)))),
+  );
+}
+
+test.describe('the dock follows the window', () => {
+  test('taller, narrower and wider, the dock is the size of its element at once', async ({ page }) => {
+    /**
+     * Golden Layout follows its container by itself only when the container
+     * is <body>. This shell's is not, and the dock kept the size it was built
+     * at -- 1280 by 675 inside an element of 900 by 555, panels cut off at
+     * the edge -- however long anyone waited.
+     */
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/');
+    await dismissOnboardingModal(page);
+    const first = await dockSizes(page);
+    expect(first.root).toEqual(first.host);
+
+    for (const [width, height] of [[1280, 1000], [900, 600], [1440, 800]]) {
+      await page.setViewportSize({ width, height });
+      await aMomentLater(page);
+      const now = await dockSizes(page);
+      // The element moved with the window; the dock moved with the element.
+      expect(now.host).not.toEqual(first.host);
+      // Mutation: drop `resizeWithContainerAutomatically = true` from
+      // golden_layout_shell.ts and the root stays 1280x675; leave it and drop
+      // the two debounce lines, and it is still the previous size here.
+      expect(now.root, `at ${width}x${height}`).toEqual(now.host);
+    }
+  });
+});
+
 test.describe('a closed panel is taken down with its tab', () => {
   test('it stops drawing, though what it drew from goes on changing', async ({ page }) => {
     /**

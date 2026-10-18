@@ -68,6 +68,19 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
   /** Mount GL panels after the host element exists in the DOM. */
   function initGoldenLayout(hostElement: HTMLElement): void {
     glInstance = new GoldenLayout(hostElement);
+    // **THE DOCK FOLLOWS ITS ELEMENT, AND AT ONCE.** Golden Layout follows its
+    // container's size by itself only when the container is <body>, and this
+    // one is the shell's body element: the dock kept the size it was built
+    // at, so a taller window left a band of nothing under it and a narrower
+    // one cut the panels off at the edge. Followed, it waits 100ms after the
+    // last resize by default, and longer while resizes keep coming -- for
+    // that long every panel is where it was, and a press lands on whatever
+    // used to be under it. alfred's workspace found that in its browser suite
+    // and follows at once; so does this. The cost is a layout per frame while
+    // a window is dragged, which Golden Layout's sizing is cheap enough for.
+    glInstance.resizeWithContainerAutomatically = true;
+    glInstance.resizeDebounceInterval = 0;
+    glInstance.resizeDebounceExtendedWhenPossible = false;
     ctx.attachLayoutManager(glInstance);
 
     for (const def of PanelRegistry.all()) {
