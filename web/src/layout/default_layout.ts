@@ -1,22 +1,13 @@
 import type { LayoutConfig } from 'golden-layout';
 
 /**
- * Default Golden Layout configuration for Code Cartographer.
+ * Settings every layout loads with, the built-in one and a saved one alike.
  *
- * Panels:
- *   • file-tree   — left sidebar: repository / upload browser
- *   • graph       — main area: the streaming canvas
- *   • upload-panel    — bottom tab, active: local file dropzone and Load Demo
- *   • repo-panel      — bottom tab: GitHub URL fetch + recent/examples
- *   • graph-settings  — bottom tab: graph styling controls
- *   • plotbar         — bottom tab: plot/cancel/status
- *   • estate-panel    — bottom tab: which seams are up, before anything is drawn
- *
- * The other estate panels (Topology, Capabilities, Overview) are reached from
- * the "+" menu or from a live row in the Estate panel; they are not opened by
- * default because each asks its seam on open, and a fresh workstation has none.
+ * They are the application's, not the reader's arrangement, so a saved layout
+ * is loaded under these rather than the ones saved with it: a header saved
+ * while the dock still offered popouts would otherwise bring the control back.
  */
-export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
+export const LAYOUT_SETTINGS: Pick<LayoutConfig, 'settings' | 'header' | 'dimensions'> = {
   settings: {
     constrainDragToContainer: true,
     reorderEnabled: true,
@@ -45,6 +36,26 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
     defaultMinItemHeight: '60px',
     defaultMinItemWidth: '80px',
   },
+};
+
+/**
+ * Default Golden Layout configuration for Code Cartographer.
+ *
+ * Panels:
+ *   • file-tree   — left sidebar: repository / upload browser
+ *   • graph       — main area: the streaming canvas
+ *   • upload-panel    — bottom tab, active: local file dropzone and Load Demo
+ *   • repo-panel      — bottom tab: GitHub URL fetch + recent/examples
+ *   • graph-settings  — bottom tab: graph styling controls
+ *   • plotbar         — bottom tab: plot/cancel/status
+ *   • estate-panel    — bottom tab: which seams are up, before anything is drawn
+ *
+ * The other estate panels (Topology, Capabilities, Overview) are reached from
+ * the "+" menu or from a live row in the Estate panel; they are not opened by
+ * default because each asks its seam on open, and a fresh workstation has none.
+ */
+export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
+  ...LAYOUT_SETTINGS,
   root: {
     type: 'column',
     content: [

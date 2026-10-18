@@ -37,7 +37,12 @@ tab and re-adding it goes through the same path. Closing a tab takes its panel
 down with it: the panel's Mithril root is unmounted, so a closed panel draws
 nothing, and re-adding it builds it afresh. The menu's Layout section saves
 the current arrangement as the default (`localStorage['cc:gl-layout:default']`)
-and resets it.
+and resets it. A saved arrangement is checked before Golden Layout reads it
+(`saved_layout.ts`): one that is not JSON, names a panel this version does not
+register, shows a panel twice or not under its registry id, or has panels in
+windows of their own is forgotten, the built-in default opens instead, and a
+toast says why. One that passes loads under today's settings and header, and
+its tabs take the registry's titles.
 
 ### The estate panels share three pieces
 

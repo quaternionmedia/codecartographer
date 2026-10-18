@@ -11,8 +11,8 @@
  */
 
 import m from 'mithril';
-import { LayoutManager } from 'golden-layout';
-import type { LayoutConfig } from 'golden-layout';
+import { LayoutConfig, LayoutManager } from 'golden-layout';
+import type { ResolvedLayoutConfig } from 'golden-layout';
 
 import { ICell, ICellState } from '../state/cell_state';
 import { StateController } from '../state/state_controller';
@@ -29,7 +29,9 @@ import { PlotService } from '../services/plot_service';
 import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
 import { DockPanelId, PanelRegistry } from './panel_registry';
-import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
+import { DEFAULT_LAYOUT_CONFIG, LAYOUT_SETTINGS } from './default_layout';
+import { checkSavedLayout } from './saved_layout';
+import type { KnownPanel } from './saved_layout';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
 import { GraphSurface } from '../features/graph/services/graph_surface';
@@ -47,6 +49,41 @@ export type { DockPanelId } from './panel_registry';
 
 /** localStorage key for the user-saved default Golden Layout configuration. */
 const SAVED_LAYOUT_KEY = 'cc:gl-layout:default';
+
+// Every touch of storage is guarded: a browser can refuse it outright (private
+// browsing, a full quota, a policy), and the dock then opens as it does the
+// first time.
+
+/** The saved text, or null when there is none or storage is refused. */
+function savedLayoutText(): string | null {
+  try {
+    return localStorage.getItem(SAVED_LAYOUT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function forgetSavedLayout(): void {
+  try {
+    localStorage.removeItem(SAVED_LAYOUT_KEY);
+  } catch {
+    /* refused: there is nothing this page can do about it, and nothing lost */
+  }
+}
+
+/** The registry, as the saved-layout check reads it. */
+function knownPanels(): KnownPanel[] {
+  return PanelRegistry.all().map((def) => ({
+    id: def.id,
+    title: def.config.title ?? def.menuLabel,
+    label: def.menuLabel,
+    closable: def.config.isClosable !== false,
+  }));
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 // The menu's registry name, as the backend spells it. One rule in
 // `layout_names.ts`; this used to be a second private table that fell back to
@@ -238,14 +275,51 @@ export class LayoutContext {
 
   // ── Layout persistence ─────────────────────────────────────────────────────
 
-  /** The saved layout if one exists and parses cleanly, else the built-in default. */
+  /**
+   * The saved layout if it can be used, else the built-in default.
+   *
+   * **READ AS DATA AND CHECKED BEFORE GOLDEN LAYOUT SEES IT** (saved_layout.ts):
+   * Golden Layout throws on what it cannot build, and this is loaded while the
+   * shell starts, so an unchecked layout naming a panel this version lacks was
+   * a page with no panels on every visit. One that cannot be used is
+   * forgotten, and a toast says why the default is showing. The shell still
+   * loads the result inside a guard, for anything the check cannot see.
+   */
   public loadInitialLayoutConfig(): LayoutConfig {
+    const raw = savedLayoutText();
+    if (!raw) return DEFAULT_LAYOUT_CONFIG;
+    let saved: unknown;
     try {
-      const raw = localStorage.getItem(SAVED_LAYOUT_KEY);
-      if (raw) return JSON.parse(raw) as LayoutConfig;
+      saved = JSON.parse(raw);
     } catch {
-      /* corrupt/old-format entry — fall through to built-in default */
+      return this.dropSavedLayout('it is not JSON');
     }
+    // **WHAT THIS MENU SAVED BEFORE IT SAVED WHAT GOLDEN LAYOUT LOADS.** "Save
+    // current as default" stored `toConfig()`, Golden Layout's *resolved*
+    // form, whose sizes are numbers; `loadLayout` reads sizes as strings, and
+    // the next visit threw `value.trimStart is not a function` and opened
+    // with no panels. Golden Layout converts its own resolved form back, so
+    // an arrangement saved that way is still the reader's.
+    if (typeof saved === 'object' && saved !== null && LayoutConfig.isResolved(saved as LayoutConfig)) {
+      try {
+        saved = LayoutConfig.fromResolved(saved as ResolvedLayoutConfig);
+      } catch (error) {
+        return this.dropSavedLayout(`Golden Layout could not read it (${messageOf(error)})`);
+      }
+    }
+    const check = checkSavedLayout(saved, knownPanels());
+    if (!check.usable) return this.dropSavedLayout(check.why);
+    // Today's settings, header and sizes over whatever was saved with it.
+    return { ...LAYOUT_SETTINGS, root: check.root as unknown as LayoutConfig['root'] };
+  }
+
+  /**
+   * Forget the saved layout, tell the reader why the built-in default is
+   * showing, and return the default.
+   */
+  public dropSavedLayout(why: string): LayoutConfig {
+    forgetSavedLayout();
+    ToastManager.show(`The saved layout could not be used, so the built-in default is showing: ${why}.`, 8000);
     return DEFAULT_LAYOUT_CONFIG;
   }
 
@@ -253,7 +327,11 @@ export class LayoutContext {
   public saveLayoutAsDefault(): void {
     if (!this._layoutManager) return;
     try {
-      localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(this._layoutManager.toConfig()));
+      // Golden Layout's own conversion from the form it reports a layout in to
+      // the form it loads one from. `toConfig()` alone saved the first, which
+      // `loadLayout` cannot read.
+      const config = LayoutConfig.fromResolved(this._layoutManager.saveLayout());
+      localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(config));
       ToastManager.show('Layout saved as default');
     } catch {
       ToastManager.show('Could not save layout');
@@ -262,7 +340,7 @@ export class LayoutContext {
 
   /** Drop the saved default and reload the built-in layout. */
   public resetLayoutToBuiltinDefault(): void {
-    localStorage.removeItem(SAVED_LAYOUT_KEY);
+    forgetSavedLayout();
     this._layoutManager?.loadLayout(DEFAULT_LAYOUT_CONFIG);
     this.hiddenDockPanels = [];
     ToastManager.show('Layout reset to built-in default');

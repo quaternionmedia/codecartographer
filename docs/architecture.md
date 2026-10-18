@@ -99,7 +99,8 @@ web/src/
 │   ├── golden_layout_shell.ts   # GL bootstrap; "+" add-window; layout save/restore
 │   ├── layout_context.ts        # shared state hub for all GL panels
 │   ├── panel_registry.ts        # panel definitions (id/config/mount) — add panels here
-│   ├── default_layout.ts        # built-in panel arrangement
+│   ├── default_layout.ts        # built-in panel arrangement, and the settings every layout loads with
+│   ├── saved_layout.ts          # the check a saved arrangement passes before Golden Layout reads it (pure; tested under node)
 │   └── panels/
 │       ├── graph_panel.ts           # the one canvas
 │       ├── file_tree_panel.ts       # repo + upload file browser

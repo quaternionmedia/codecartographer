@@ -214,3 +214,234 @@ test.describe('a closed panel is taken down with its tab', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// ── The saved layout ────────────────────────────────────────────────────────
+
+const SAVED_LAYOUT_KEY = 'cc:gl-layout:default';
+
+/** The default dock's tabs, by title. */
+const DEFAULT_TABS = ['◈ Graph', '◉ Files', '↑ Upload', '⬇ Repository', 'Graph Settings', '▶ Actions', '⌂ Estate'];
+
+const panel = (id: string) => ({ type: 'component', componentType: id, id });
+
+/**
+ * What "Save current as default" stored before it converted what it saved:
+ * Golden Layout's `toConfig()`, its *resolved* form, with sizes as numbers and
+ * the header of the time, which offered popouts. Recorded from that menu with
+ * Estate, Repository, Graph Settings and Upload closed.
+ */
+const SAVED_BY_TO_CONFIG = {
+  root: {
+    type: 'column',
+    content: [
+      {
+        type: 'stack',
+        content: [{
+          type: 'component', content: [], size: 65, sizeUnit: '%', minSizeUnit: 'px', id: 'graph',
+          maximised: false, isClosable: true, reorderEnabled: true, title: '◈ Graph',
+          componentType: 'graph', componentState: {},
+        }],
+        size: 65, sizeUnit: '%', minSizeUnit: 'px', id: 'graph', isClosable: true, maximised: false,
+        activeItemIndex: 0,
+      },
+      {
+        type: 'row',
+        content: [
+          {
+            type: 'stack',
+            content: [{
+              type: 'component', content: [], size: 22, sizeUnit: '%', minSizeUnit: 'px', id: 'file-tree',
+              maximised: false, isClosable: true, reorderEnabled: true, title: '◉ Files',
+              componentType: 'file-tree', componentState: {},
+            }],
+            size: 22, sizeUnit: '%', minSizeUnit: 'px', id: 'file-tree', isClosable: true, maximised: false,
+            activeItemIndex: 0,
+          },
+          {
+            type: 'stack',
+            content: [{
+              type: 'component', content: [], size: 1, sizeUnit: 'fr', minSizeUnit: 'px', id: 'plotbar',
+              maximised: false, isClosable: true, reorderEnabled: true, title: '▶ Actions',
+              componentType: 'plotbar', componentState: {},
+            }],
+            size: 78, sizeUnit: '%', minSizeUnit: 'px', id: 'dock-tab-stack', isClosable: true,
+            maximised: false, activeItemIndex: 0,
+          },
+        ],
+        size: 35, sizeUnit: '%', minSizeUnit: 'px', id: '', isClosable: true,
+      },
+    ],
+    size: 1, sizeUnit: 'fr', minSizeUnit: 'px', id: '', isClosable: true,
+  },
+  openPopouts: [],
+  settings: {
+    constrainDragToContainer: true, reorderEnabled: true, popoutWholeStack: false,
+    blockedPopoutsThrowError: false, closePopoutsOnUnload: true, responsiveMode: 'none',
+    tabOverlapAllowance: 0, reorderOnTabMenuClick: true, tabControlOffset: 10, popInOnClose: true,
+  },
+  dimensions: {
+    borderWidth: 4, borderGrabWidth: 8, defaultMinItemHeight: 60, defaultMinItemHeightUnit: 'px',
+    defaultMinItemWidth: 80, defaultMinItemWidthUnit: 'px', headerHeight: 20, dragProxyWidth: 300,
+    dragProxyHeight: 200,
+  },
+  header: {
+    show: 'top', popout: 'Pop out', dock: 'Pop in', close: 'Close', maximise: 'Maximise',
+    minimise: 'Minimise', tabDropdown: 'More tabs',
+  },
+  resolved: true,
+};
+
+/** Put `text` under the saved-layout key before the page first loads -- once. */
+async function seedSavedLayout(page: Page, text: string): Promise<void> {
+  await page.addInitScript(
+    ({ key, value }) => {
+      // Once per test, not on every navigation: a check reads the key back
+      // after the page has had its chance to forget it.
+      if (sessionStorage.getItem('cc-test-seeded')) return;
+      sessionStorage.setItem('cc-test-seeded', '1');
+      localStorage.setItem(key, value);
+    },
+    { key: SAVED_LAYOUT_KEY, value: text },
+  );
+}
+
+const savedLayout = (page: Page) =>
+  page.evaluate((key) => localStorage.getItem(key), SAVED_LAYOUT_KEY);
+
+const refusalToast = (page: Page) =>
+  page.locator('.cc-toast__msg', { hasText: 'The saved layout could not be used' });
+
+test.describe('a saved layout', () => {
+  test('saved from the menu, it is what the next visit opens', async ({ page }) => {
+    /**
+     * The menu saved `toConfig()`, which reports sizes as numbers, and
+     * `loadLayout` reads them as strings: the next visit threw "value.trimStart
+     * is not a function" and opened with no panels at all.
+     */
+    await page.goto('/');
+    await dismissOnboardingModal(page);
+    await tab(page, '⌂ Estate').locator('.lm_close_tab').click();
+    await expect(tab(page, '⌂ Estate')).toHaveCount(0);
+    await page.locator('.gl-app-header__add-btn').click();
+    await page.locator('.gl-add-panel-menu__item', { hasText: 'Save current as default' }).click();
+    await expect(page.locator('.cc-toast__msg', { hasText: 'Layout saved as default' })).toBeVisible();
+
+    // What is kept is the form Golden Layout loads, not the resolved form it
+    // reports a layout in, which it marks `resolved` and cannot load as it
+    // stands. Reading converts that form too, for layouts saved before this,
+    // so the reload below would pass either way: this is what tells them
+    // apart. Mutation: save `toConfig()` again in layout_context.ts.
+    const stored = JSON.parse((await savedLayout(page)) ?? 'null');
+    expect(stored?.root?.type).toBe('column');
+    expect(stored).not.toHaveProperty('resolved');
+
+    const errors = collectErrors(page);
+    await page.reload();
+    await dismissOnboardingModal(page);
+
+    // Mutation: take the conversion away on both sides and the default comes
+    // back instead, with a toast saying Golden Layout refused the saved one;
+    // take the guard away as well and there are no tabs at all.
+    for (const title of DEFAULT_TABS.filter((t) => t !== '⌂ Estate')) {
+      await expect(tab(page, title), title).toHaveCount(1);
+    }
+    await expect(tab(page, '⌂ Estate')).toHaveCount(0);
+    await expect(refusalToast(page)).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('saved in the form the menu used to save, it is still the reader\'s, under today\'s header', async ({ page }) => {
+    /**
+     * Golden Layout converts its own resolved form back, so an arrangement
+     * saved before the menu did that itself is loaded as it was saved. Its
+     * header is the one of its day, which offered popouts; the layout loads
+     * under today's settings instead.
+     */
+    const errors = collectErrors(page);
+    await seedSavedLayout(page, JSON.stringify(SAVED_BY_TO_CONFIG));
+    await page.goto('/');
+
+    // Mutation: drop the `LayoutConfig.fromResolved` conversion on reading
+    // and the default loads instead, Golden Layout having refused this.
+    for (const title of ['◈ Graph', '◉ Files', '▶ Actions']) await expect(tab(page, title), title).toHaveCount(1);
+    for (const title of ['↑ Upload', '⬇ Repository', 'Graph Settings', '⌂ Estate']) {
+      await expect(tab(page, title), title).toHaveCount(0);
+    }
+    // Mutation: load the saved header instead of LAYOUT_SETTINGS' and this
+    // finds the popout control on every stack again.
+    await expect(page.locator('.lm_popout')).toHaveCount(0);
+    await expect(refusalToast(page)).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  const unusable: Array<[string, string, string]> = [
+    ['text that is not JSON', '{not json', 'it is not JSON'],
+    [
+      'a panel this version does not have',
+      // `source-panel` is a panel an earlier version of this shell had.
+      JSON.stringify({ root: { type: 'row', content: [panel('graph'), panel('source-panel')] } }),
+      'it names "source-panel", which this version does not have',
+    ],
+    [
+      'panels in windows of their own',
+      JSON.stringify({ root: panel('graph'), openPopouts: [{ root: panel('plotbar') }] }),
+      'it has panels in windows of their own',
+    ],
+  ];
+  for (const [name, text, why] of unusable) {
+    test(`holding ${name}, it gives way to the default, which says why`, async ({ page }) => {
+      /**
+       * Golden Layout throws on a panel nobody registered, and the shell loads
+       * the saved layout as it starts: a layout naming one was a page with no
+       * panels, on every visit. Each is caught before Golden Layout sees it
+       * (saved_layout.ts, whose unit tests cover every refusal); the default
+       * loads, the reader is told why, and the saved layout is forgotten.
+       */
+      const errors = collectErrors(page);
+      await seedSavedLayout(page, text);
+      await page.goto('/');
+
+      for (const title of DEFAULT_TABS) await expect(tab(page, title), title).toHaveCount(1);
+      await expect(refusalToast(page)).toContainText(why);
+      expect(errors).toEqual([]);
+      expect(await savedLayout(page)).toBeNull();
+    });
+  }
+
+  test('one Golden Layout refuses after the check, the default boots and nothing of it is left drawing', async ({ page }) => {
+    /**
+     * A stack whose `activeItemIndex` is past its last tab passes the check,
+     * and Golden Layout throws on it only after it has built the panels in
+     * it. The shell loads the default instead -- and takes down the panels
+     * the failed attempt mounted, which are in no layout and would never be
+     * released. Left up, its Graph panel drew the canvas vnode beside the
+     * real one, and the second plot logged NotFoundErrors as a closed and
+     * reopened Graph panel did.
+     */
+    const errors = collectErrors(page);
+    await seedSavedLayout(page, JSON.stringify({
+      root: {
+        type: 'row',
+        content: [
+          { type: 'stack', activeItemIndex: 4, content: [panel('graph'), panel('plotbar')] },
+          { type: 'stack', content: [panel('file-tree')] },
+        ],
+      },
+    }));
+    await page.goto('/');
+    await dismissOnboardingModal(page);
+
+    // Mutation: load the saved layout without the try/catch in
+    // golden_layout_shell.ts and there are no tabs, and a page error.
+    for (const title of DEFAULT_TABS) await expect(tab(page, title), title).toHaveCount(1);
+    await expect(refusalToast(page)).toContainText('Golden Layout refused it (ActiveItemIndex out of range');
+    expect(await savedLayout(page)).toBeNull();
+
+    // Mutation: keep the guard and drop the loop that unmounts what the
+    // failed attempt mounted -- the first plot is drawn twice, once into an
+    // element in no layout, and the second logs two NotFoundErrors.
+    await loadDemo(page);
+    await loadDemo(page);
+    expect(errors).toEqual([]);
+  });
+});

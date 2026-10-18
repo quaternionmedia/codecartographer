@@ -18,6 +18,7 @@ import type { ComponentContainer } from 'golden-layout';
 import type { ICell } from '../state/cell_state';
 import { LayoutContext } from './layout_context';
 import { PanelRegistry, DockPanelId } from './panel_registry';
+import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { AddPanelMenu } from './components/add_panel_menu';
 
 import { HelpModal, HelpModalComponent } from '../components/codecarto/help/help_modal';
@@ -42,6 +43,8 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
   let glInstance: GoldenLayout | null = null;
   let menuOpen = false;
   let menuPos = { x: 0, y: 0 };
+  /** Every element a panel's Mithril root is mounted in, until it is released. */
+  const mountedPanels = new Set<HTMLElement>();
 
   const closeMenu = (): void => { if (menuOpen) { menuOpen = false; m.redraw(); } };
 
@@ -60,6 +63,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       // `onremove`, so whatever a panel sets up it can take down with it.
       // alfred's workspace, which copied this shell, unmounts here too.
       m.mount(container.element, null);
+      mountedPanels.delete(container.element);
       ctx.hideDockPanel(panelId);
     });
     container.on('show', () => ctx.showDockPanel(panelId));
@@ -88,6 +92,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
         container.element.style.cssText = `width:100%;height:100%;overflow:${def.overflow};`;
         registerDockPanelLifecycle(container, def.id);
         def.mount(ctx, container.element);
+        mountedPanels.add(container.element);
       });
     }
 
@@ -95,7 +100,25 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
     // window, and Golden Layout does not run them again in a popout window,
     // which would open with nothing in it. So the dock offers no popout
     // control (`header.popout: false`, default_layout.ts).
-    glInstance.loadLayout(ctx.loadInitialLayoutConfig());
+    const config = ctx.loadInitialLayoutConfig();
+    try {
+      glInstance.loadLayout(config);
+    } catch (error) {
+      // **IT PASSED THE CHECK AND GOLDEN LAYOUT REFUSED IT ANYWAY** -- a
+      // stack's `activeItemIndex` past its last tab is one such layout. Boot
+      // the default rather than a page with no panels; the default itself
+      // failing is a bug, and throws. Golden Layout builds every panel before
+      // it checks the stacks that hold them, so the failed attempt mounted
+      // panels that are in no layout and will never be released: they are
+      // taken down here, or they would go on drawing as a closed panel did.
+      if (config === DEFAULT_LAYOUT_CONFIG) throw error;
+      for (const element of mountedPanels) m.mount(element, null);
+      mountedPanels.clear();
+      ctx.dropSavedLayout(
+        `Golden Layout refused it (${error instanceof Error ? error.message : String(error)})`,
+      );
+      glInstance.loadLayout(DEFAULT_LAYOUT_CONFIG);
+    }
   }
 
   return {
