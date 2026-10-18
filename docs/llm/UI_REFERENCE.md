@@ -31,7 +31,8 @@ Estate. Topology, Capabilities and Overview are opened from the **`+`** menu in
 the header — or from a live row in the Estate panel — because each asks its seam
 on open, and a fresh workstation has none up.
 
-**Adding, restoring, saving.** The `+` button (and right-click on the dock) opens
+**Adding, restoring, saving.** The `+` button (and Ctrl+right-click on the dock;
+a plain right-click is the graph's own) opens
 the add-window menu listing every registered panel not currently open; closing a
 tab and re-adding it goes through the same path. Closing a tab takes its panel
 down with it: the panel's Mithril root is unmounted, so a closed panel draws
