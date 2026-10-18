@@ -26,14 +26,14 @@
     "d3": "^7.9.0",
     "golden-layout": "^2.6.0",
     "meiosis-setup": "^6.2.3",
-    "mithril": "^2.2.2",
+    "mithril": "^2.3.8",
     "vis-data": "^8.0.3",
     "vis-network": "^10.0.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "@types/d3": "^7.4.3",
-    "@types/mithril": "^2.2.6",
+    "@types/mithril": "^2.2.9",
     "typescript": "^7.0.2",
     "vite": "^6.4.3"
   }
