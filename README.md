@@ -15,7 +15,7 @@ Codecarto parses source code and generates interactive graph visualizations, hel
 
 - Python 3.10+
 - [uv](https://github.com/astral-sh/uv) (recommended) or pip
-- Node.js 18+ (for frontend)
+- Node.js 20.19+ or 22.12+ (for frontend; Vite 8's minimum)
 
 ### Installation
 

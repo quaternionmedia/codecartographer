@@ -8,7 +8,7 @@
 
 - Python 3.10+
 - [UV](https://github.com/astral-sh/uv) package manager
-- Node.js 18+ (for frontend)
+- Node.js 20.19+ or 22.12+ (for frontend; Vite 8's minimum)
 - Docker (optional, for database)
 
 ### Initial Setup

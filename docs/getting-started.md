@@ -4,7 +4,7 @@
 
 - **Python 3.10+** - [Download](https://www.python.org/downloads/)
 - **UV** - [Install](https://github.com/astral-sh/uv) (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
-- **Node.js 18+** - [Download](https://nodejs.org/) (for frontend)
+- **Node.js 20.19+ or 22.12+** - [Download](https://nodejs.org/) (for frontend; Vite 8's minimum)
 - **Git** - [Download](https://git-scm.com/)
 
 ## Installation
