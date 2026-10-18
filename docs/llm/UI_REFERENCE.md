@@ -33,7 +33,9 @@ on open, and a fresh workstation has none up.
 
 **Adding, restoring, saving.** The `+` button (and right-click on the dock) opens
 the add-window menu listing every registered panel not currently open; closing a
-tab and re-adding it goes through the same path. The menu's Layout section saves
+tab and re-adding it goes through the same path. Closing a tab takes its panel
+down with it: the panel's Mithril root is unmounted, so a closed panel draws
+nothing, and re-adding it builds it afresh. The menu's Layout section saves
 the current arrangement as the default (`localStorage['cc:gl-layout:default']`)
 and resets it.
 

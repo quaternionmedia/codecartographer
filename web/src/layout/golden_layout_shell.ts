@@ -13,6 +13,7 @@
 
 import m from 'mithril';
 import { GoldenLayout } from 'golden-layout';
+import type { ComponentContainer } from 'golden-layout';
 
 import type { ICell } from '../state/cell_state';
 import { LayoutContext } from './layout_context';
@@ -44,10 +45,23 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
 
   const closeMenu = (): void => { if (menuOpen) { menuOpen = false; m.redraw(); } };
 
-  const registerDockPanelLifecycle = (container: any, panelId: DockPanelId): void => {
+  const registerDockPanelLifecycle = (container: ComponentContainer, panelId: DockPanelId): void => {
     // GL2 destroys the container on close — 'beforeComponentRelease' is the correct event.
     // 'close' is not emitted by ComponentContainer in GL 2.x.
-    container.on('beforeComponentRelease', () => ctx.hideDockPanel(panelId));
+    container.on('beforeComponentRelease', () => {
+      // **A CLOSED PANEL IS TAKEN DOWN, NOT ONLY TAKEN AWAY.** Golden Layout
+      // removes the container's element and forgets it, but the Mithril root
+      // mounted in that element is Mithril's to forget, and nothing told it.
+      // Every redraw went on drawing the closed panel into an element nobody
+      // could see -- a closed Actions panel kept up with each upload -- and a
+      // Graph panel closed and opened again left two roots drawing the one
+      // canvas vnode the state holds, which Mithril reported as a failed
+      // `removeChild` on the next plot. Unmounting also runs the panel's
+      // `onremove`, so whatever a panel sets up it can take down with it.
+      // alfred's workspace, which copied this shell, unmounts here too.
+      m.mount(container.element, null);
+      ctx.hideDockPanel(panelId);
+    });
     container.on('show', () => ctx.showDockPanel(panelId));
   };
 
