@@ -194,6 +194,9 @@ test.describe('a closed panel is taken down with its tab', () => {
      * Mithril logged a NotFoundError from `removeChild` for every change of
      * graph, for the rest of the session.
      */
+    // Two plots and a re-draw, about fifteen seconds here unloaded: half the
+    // default limit, and a loaded machine takes longer.
+    test.slow();
     await page.goto('/');
     await dismissOnboardingModal(page);
     const errors = collectErrors(page);
@@ -418,6 +421,8 @@ test.describe('a saved layout', () => {
      * real one, and the second plot logged NotFoundErrors as a closed and
      * reopened Graph panel did.
      */
+    // Two plots, about fifteen seconds here unloaded; as above.
+    test.slow();
     const errors = collectErrors(page);
     await seedSavedLayout(page, JSON.stringify({
       root: {
