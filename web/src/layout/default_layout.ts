@@ -28,8 +28,12 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   },
   header: {
     show: 'top',
-    popout: 'Pop out',
-    popin: 'Pop in',
+    // **NO PANEL POPS OUT, SO NONE OFFERS TO.** Every panel is a Mithril root
+    // that this window mounts, and Golden Layout does not run the component
+    // factories again in a popout window: the control opened a window with
+    // nothing in it and took the panel out of the dock. `false` draws no
+    // popout control in any stack's header.
+    popout: false,
     maximise: 'Maximise',
     close: 'Close',
     minimise: 'Minimise',

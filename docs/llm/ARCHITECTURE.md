@@ -662,13 +662,13 @@ The D3 renderer supports extensions for enhanced interactivity:
 
 ### GL Pop-out Windows
 
-Golden Layout 2.x supports popping panels into separate browser windows. With a Vite-bundled SPA the pop-out window loads the page URL and GL reconnects the chrome (hence the themed background is visible), but `registerComponentFactoryFunction` callbacks are bound to the **original window's Mithril instance** and are not replayed in the new window. The components therefore never mount — the pop-out shows only the GL frame with an empty content area.
+Golden Layout 2.x supports popping panels into separate browser windows. With a Vite-bundled SPA the pop-out window loads the page URL and GL reconnects the chrome (hence the themed background is visible), but `registerComponentFactoryFunction` callbacks are bound to the **original window's Mithril instance** and are not replayed in the new window. The components would never mount — a pop-out would show only the GL frame with an empty content area, and the panel would be gone from the dock.
+
+So no panel offers to pop out: `header.popout: false` in `default_layout.ts` draws no popout control in any stack's header.
 
 For why GL is the shell at all, see *Golden Layout as the primary application shell* ([governance/qm/adr/DRAFT-golden-layout-primary-shell.md](../../governance/qm/adr/DRAFT-golden-layout-primary-shell.md)). For the dock panel registry and the add-window menu, see *Generalize dock panels into a registry; add a window-add menu* ([governance/qm/adr/DRAFT-panel-registry-and-add-window-menu.md](../../governance/qm/adr/DRAFT-panel-registry-and-add-window-menu.md)).
 
-`popInOnClose: true` (set in `default_layout.ts`) auto-returns panels to the main window when the pop-out window is closed, so no content is permanently lost.
-
-Fixing this properly requires implementing GL's "virtual layout" or "binding context" API so factory callbacks are re-registered in the new window's context — out of scope for the current architecture.
+Offering pop-outs that work requires implementing GL's "virtual layout" or "binding context" API so factory callbacks are re-registered in the new window's context — out of scope for the current architecture.
 
 ---
 

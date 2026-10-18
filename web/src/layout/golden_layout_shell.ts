@@ -91,9 +91,10 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       });
     }
 
-    // Known limitation: GL 2.x pop-out opens a new window but Mithril component
-    // factories are bound to the original window — components never mount in pop-outs.
-    // popInOnClose: true (default_layout.ts) auto-returns panels on pop-out close.
+    // No panel pops out: the factories above mount Mithril roots in this
+    // window, and Golden Layout does not run them again in a popout window,
+    // which would open with nothing in it. So the dock offers no popout
+    // control (`header.popout: false`, default_layout.ts).
     glInstance.loadLayout(ctx.loadInitialLayoutConfig());
   }
 

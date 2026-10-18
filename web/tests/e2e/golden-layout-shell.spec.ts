@@ -102,6 +102,31 @@ test.describe('the dock follows the window', () => {
   });
 });
 
+test.describe('no panel offers to pop out', () => {
+  test('no stack header has a popout control, in the default dock or after adding a panel', async ({ page }) => {
+    /**
+     * Every panel is a Mithril root this window mounts, and Golden Layout
+     * does not run the component factories again in a popout window. Each of
+     * the default dock's three stacks offered the control anyway; pressing it
+     * opened a window with nothing in it and took the panel out of the dock.
+     */
+    await page.goto('/');
+    await dismissOnboardingModal(page);
+    // The headers are drawn, with the controls that do work: the count below
+    // is of a control that is absent, not of a dock that never loaded.
+    await expect(page.locator('.lm_header .lm_controls .lm_maximise')).toHaveCount(3);
+
+    // Mutation: put back `popout: 'Pop out'` in default_layout.ts and this
+    // finds one per stack.
+    await expect(page.locator('.lm_popout')).toHaveCount(0);
+
+    // A panel added from the menu lands in a stack under the same header.
+    await openFromMenu(page, 'Overview');
+    await expect(page.locator('.gl-panel--overview')).toBeVisible();
+    await expect(page.locator('.lm_popout')).toHaveCount(0);
+  });
+});
+
 test.describe('a closed panel is taken down with its tab', () => {
   test('it stops drawing, though what it drew from goes on changing', async ({ page }) => {
     /**
