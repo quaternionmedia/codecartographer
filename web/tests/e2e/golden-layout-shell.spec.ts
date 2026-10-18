@@ -46,6 +46,26 @@ async function openFromMenu(page: Page, label: string): Promise<void> {
   await page.locator('.gl-add-panel-menu__item', { hasText: new RegExp(`^${label}$`) }).click();
 }
 
+/**
+ * Load the demo, and wait for *its* canvas.
+ *
+ * A canvas already on screen has nodes too, so waiting for a node alone can
+ * finish before the new plot has even cleared the old one -- and before any
+ * error that clearing logs. So the canvas that was there is waited out first.
+ * The Graph tab is then brought forward: a Graph panel added from the menu
+ * joins whichever stack Golden Layout has focused, which can be Upload's.
+ */
+async function loadDemo(page: Page): Promise<void> {
+  const previous = await page.locator('.gl-panel--graph .graph_content').elementHandles();
+  await tab(page, '↑ Upload').click();
+  await page.getByRole('button', { name: /Load Demo/i }).first().click();
+  if (previous.length > 0) {
+    await page.waitForFunction((canvases) => canvases.every((canvas) => !canvas.isConnected), previous);
+  }
+  await tab(page, '◈ Graph').click();
+  await expect(page.locator('.gl-panel--graph .graph-node').first()).toBeVisible({ timeout: 20_000 });
+}
+
 /** The shell's dock element and Golden Layout's root in it, rounded. */
 async function dockSizes(page: Page): Promise<{ host: number[]; root: number[] }> {
   return page.evaluate(() => {
@@ -178,8 +198,7 @@ test.describe('a closed panel is taken down with its tab', () => {
     await dismissOnboardingModal(page);
     const errors = collectErrors(page);
 
-    await page.getByRole('button', { name: /Load Demo/i }).first().click();
-    await expect(page.locator('.graph-node').first()).toBeVisible({ timeout: 20_000 });
+    await loadDemo(page);
 
     await tab(page, '◈ Graph').locator('.lm_close_tab').click();
     await expect(page.locator('.gl-panel--graph')).toHaveCount(0);
@@ -187,9 +206,7 @@ test.describe('a closed panel is taken down with its tab', () => {
     // Opened again, it shows the graph that is drawn.
     await expect(page.locator('.gl-panel--graph .graph-node').first()).toBeVisible({ timeout: 20_000 });
 
-    await tab(page, '↑ Upload').click();
-    await page.getByRole('button', { name: /Load Demo/i }).first().click();
-    await expect(page.locator('.gl-panel--graph .graph-node').first()).toBeVisible({ timeout: 20_000 });
+    await loadDemo(page);
     await expect(page.locator('.gl-panel--graph')).toHaveCount(1);
 
     // Mutation: as above -- two NotFoundErrors, one for clearing the canvas
