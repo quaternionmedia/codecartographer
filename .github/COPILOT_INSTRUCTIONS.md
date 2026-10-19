@@ -1,12 +1,12 @@
 # Code Cartographer — AI Assistant Instructions
 
-> Technical orientation for AI assistants working on this codebase.
-> [`AGENTS.md`](../AGENTS.md) comes first: it is what
-> `.github/copilot-instructions.md` and `CLAUDE.md` point at, and it carries the
-> rules every change follows -- pull requests, contributorship, the decision
-> records. See `docs/llm/ARCHITECTURE.md` for deep architectural detail and
-> `docs/llm/EXTENDING.md` for extension patterns. Where this page and the tree
-> disagree, the tree is right and this page is repaired.
+> Technical orientation for AI assistants working on this codebase. Read
+> [`AGENTS.md`](../AGENTS.md) first: `.github/copilot-instructions.md` and
+> `CLAUDE.md` point at it, and it carries the rules every change follows --
+> pull requests, contributorship, decision records. `docs/llm/ARCHITECTURE.md`
+> has the architecture in depth and `docs/llm/EXTENDING.md` the extension
+> patterns. Where this page and the tree disagree, the tree is right: fix the
+> page.
 
 ---
 
@@ -44,8 +44,8 @@ cd web && npm run build           # typecheck, then the production build
 **The backend's port is `codecarto.cli.DEFAULT_PORT`, and it is not 8000.**
 `serve --help` prints it, `CODECARTO_PORT` or `--port` moves it, and `/docs` on
 that address lists every route the backend registered. Other servers run on
-this workstation: before believing an answer, ask `/openapi.json` what is
-answering -- this application calls itself `codecarto`.
+this workstation: before trusting an answer, check that `/openapi.json` names
+the application `codecarto`.
 
 ---
 
@@ -166,9 +166,9 @@ All parsers produce nodes in this format (read directly by renderers):
 
 ## API Endpoints
 
-`/docs` on the backend's own address is the authority; the README's table and
-`docs/api.md` are the maps, and `tests/test_docs_routes.py` holds both to the
-routes the application mounts.
+`/docs` on the backend's own address is the authority. The README's table and
+`docs/api.md` map it, and `tests/test_docs_routes.py` checks both against the
+mounted routes.
 
 | Prefix | Description |
 |--------|-------------|
@@ -213,20 +213,17 @@ routes the application mounts.
 
 ## UI Overview
 
-The UI is one **Golden Layout shell**: every panel is a dockable tab, listed
-once in `web/src/layout/panel_registry.ts`. The default dock has Graph (the one
-canvas) on top, and below it Files beside a stack of Upload (where Load Demo
-is), Repository, Graph Settings, Actions (plot, cancel, status) and Estate.
-Topology, Capabilities, Overview and Graphbase open from the **`+`** menu in
-the header (or Ctrl+right-click on the dock); a closed panel's header button
-or the `+` menu brings it back, and closing a panel unmounts it.
+The UI is one **Golden Layout shell**; `docs/llm/UI_REFERENCE.md` is its full
+reference, default dock included. Every panel is a dockable tab, listed once in
+`web/src/layout/panel_registry.ts`, and Graph is the one canvas.
 
-The `+` menu also saves the current arrangement as the default and resets it.
-A saved arrangement is checked before Golden Layout reads it, and one that
-cannot be used gives way to the built-in default with a toast saying why. No
-panel pops out: panels are Mithril roots bound to this window.
-
-See `docs/llm/UI_REFERENCE.md` for the full UI reference.
+- The **`+`** menu in the header (or Ctrl+right-click on the dock) opens any
+  panel not in the dock, and saves or resets the arrangement. A closed panel's
+  header button also brings it back.
+- Closing a panel unmounts it.
+- A saved arrangement is checked before Golden Layout reads it. One that cannot
+  be used gives way to the built-in default, with a toast saying why.
+- No panel pops out: panels are Mithril roots bound to this window.
 
 ---
 
@@ -270,8 +267,8 @@ ParserRegistry.register(MyLanguageParser())
 # others: importing it is what registers it.
 ```
 
-A language a pattern list can read is quicker still: a `_PATTERNS` list and one
-entry in `_LANGUAGES` in `regex_language_parser.py`.
+A language that patterns can read needs only a `_PATTERNS` list and one
+`_LANGUAGES` entry in `regex_language_parser.py`.
 
 ### Add a Custom Layout
 
@@ -287,10 +284,10 @@ self.add_layout("my_layout", my_layout, ["graph"])
 
 ### Add a Dock Panel
 
-One entry in `PANEL_DEFINITIONS` (`web/src/layout/panel_registry.ts`), whose
-Golden Layout config carries `id` equal to its registry id, and a row in the
-panel table of `docs/llm/UI_REFERENCE.md` (`tests/test_docs_routes.py` checks
-it). It appears in the `+` menu with nothing else changed.
+One entry in `PANEL_DEFINITIONS` (`web/src/layout/panel_registry.ts`), its
+Golden Layout config's `id` equal to the registry id, and a row in
+`docs/llm/UI_REFERENCE.md`'s panel table, which `tests/test_docs_routes.py`
+checks. `.github/CONTRIBUTING.md` has the steps.
 
 ### SSE Streaming (frontend)
 
@@ -340,8 +337,7 @@ cd web && npm run build           # typecheck, then vite build
 ```
 
 The browser suite needs Chromium once: `cd web && npx playwright install chromium`.
-A check is evidence only after it has been seen to fail: break what it names,
-and confirm it goes red.
+A check is evidence only once it has been seen to fail (AGENTS.md).
 
 ---
 

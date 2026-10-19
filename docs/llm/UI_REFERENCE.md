@@ -31,19 +31,21 @@ Estate. Topology, Capabilities and Overview are opened from the **`+`** menu in
 the header — or from a live row in the Estate panel — because each asks its seam
 on open, and a fresh workstation has none up.
 
-**Adding, restoring, saving.** The `+` button (and Ctrl+right-click on the dock;
-a plain right-click is the graph's own) opens
-the add-window menu listing every registered panel not currently open; closing a
-tab and re-adding it goes through the same path. Closing a tab takes its panel
-down with it: the panel's Mithril root is unmounted, so a closed panel draws
-nothing, and re-adding it builds it afresh. The menu's Layout section saves
-the current arrangement as the default (`localStorage['cc:gl-layout:default']`)
-and resets it. A saved arrangement is checked before Golden Layout reads it
-(`saved_layout.ts`): one that is not JSON, names a panel this version does not
-register, shows a panel twice or not under its registry id, or has panels in
-windows of their own is forgotten, the built-in default opens instead, and a
-toast says why. One that passes loads under today's settings and header, and
-its tabs take the registry's titles.
+**Adding, restoring, saving.**
+
+- **Add or re-open.** The `+` button, or Ctrl+right-click on the dock (a plain
+  right-click is the graph's), opens the add-window menu: every registered
+  panel not currently open. A closed tab comes back the same way.
+- **Close.** Closing a tab unmounts its panel's Mithril root, so a closed panel
+  draws nothing; re-adding it builds it afresh.
+- **Save and reset.** The menu's Layout section saves the current arrangement
+  as the default (`localStorage['cc:gl-layout:default']`) and resets it.
+- **Load.** `saved_layout.ts` checks a saved arrangement before Golden Layout
+  reads it. One that is not JSON, names a panel this version does not register,
+  shows a panel twice or not under its registry id, or has panels in windows of
+  their own is forgotten: the built-in default opens, and a toast says why. One
+  that passes loads under today's settings and header, and its tabs take the
+  registry's titles.
 
 ### The estate panels share three pieces
 
