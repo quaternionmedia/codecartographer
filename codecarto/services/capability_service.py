@@ -56,9 +56,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# Where the corpus is mounted in this project. The same submodule path
-# `governance/qm` every QM project uses.
-CORPUS = Path("governance/qm")
+from codecarto.services import corpus as corpus_root
+
+# Where the corpus is mounted in this project, unless `CODECARTO_CORPUS` names
+# another checkout. `corpus.root` is the one place that decides.
+CORPUS = corpus_root.SUBMODULE
 REGISTRY = Path("ci") / "capability-registry.yaml"
 
 RUNGS = ("design", "deployment", "execution", "monitoring")
@@ -105,7 +107,7 @@ def read(corpus: Path | str | None = None) -> Reading:
     """
     import yaml
 
-    root = Path(corpus) if corpus else CORPUS
+    root = Path(corpus) if corpus else corpus_root.root(CORPUS)
     path = root / REGISTRY
     if not path.is_file():
         return Reading(source=str(path), reason=(
