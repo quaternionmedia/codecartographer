@@ -61,3 +61,55 @@
   width: 22px;
   border-top-width: 2px;
 }
+
+/* Where the drawing is: the trail, a project's views, the key. */
+
+.show__now {
+  /* The rows set their family's hue; the header marks the current view in the accent. */
+  --show-hue: var(--c-secondary, #4fb3ad);
+  padding: 6px 0 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--c-border, rgba(127, 140, 141, 0.3));
+}
+
+.show__trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  font-size: 1.05em;
+}
+
+.show__crumb {
+  color: var(--c-font-muted, #9aa);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.show__crumb:hover,
+.show__crumb:focus-visible {
+  color: var(--c-font, #cfe);
+  text-decoration: underline;
+}
+
+.show__crumb.is-current {
+  color: var(--c-font, #cfe);
+  font-weight: 600;
+  cursor: default;
+}
+
+.show__sep {
+  color: var(--c-font-muted, #9aa);
+  opacity: 0.6;
+}
+
+.show__how {
+  margin: 4px 0 0;
+}
+
+.show__about > summary {
+  cursor: pointer;
+  font-size: 0.85em;
+  color: var(--c-font-muted, #9aa);
+  margin: 4px 0;
+}

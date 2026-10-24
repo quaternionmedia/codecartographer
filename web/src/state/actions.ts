@@ -589,11 +589,19 @@ export class PlotActions {
     this._draw(found, 'capabilitiesProblem');
   }
 
-  /** Every family and project the corpus names, for the Show panel. */
-  async loadShowSubjects(): Promise<void> {
-    const found = await ShowService.subjects(this.stateController.api.show);
-    this._settle(found, 'showSubjects', 'showProblem');
+  /**
+   * Every family and project the corpus names, for the Show panel. Asked for
+   * again while the first ask is out -- a second panel mounting at boot --
+   * it is the same ask.
+   */
+  loadShowSubjects(): Promise<void> {
+    this._subjectsAsked ??= ShowService.subjects(this.stateController.api.show)
+      .then((found) => this._settle(found, 'showSubjects', 'showProblem'))
+      .finally(() => { this._subjectsAsked = null; });
+    return this._subjectsAsked;
   }
+
+  private _subjectsAsked: Promise<void> | null = null;
 
   /** Which of a project's views can be drawn here. Draws nothing. */
   async loadShowViews(project: string): Promise<void> {

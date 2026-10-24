@@ -86,3 +86,54 @@ export function formatShow(address: ShowAddress): string {
 export function fromNode(show: unknown): ShowAddress | null {
   return typeof show === 'string' ? parseShow(`show=${show}`) : null;
 }
+
+/** Whether two addresses name the same drawing. */
+export function sameShow(a: ShowAddress | null | undefined, b: ShowAddress | null | undefined): boolean {
+  return !!a && !!b && a.kind === b.kind && a.name === b.name && a.view === b.view;
+}
+
+/** What a breadcrumb needs to know of the corpus: which family sits within which, and who claims a project. */
+export interface TrailSubjects {
+  families: readonly { name: string; within: string | null }[];
+  projects: readonly { name: string; families: readonly string[] }[];
+}
+
+/**
+ * The way from every family down to `address`, one level per step.
+ *
+ * Each level is the addresses a reader can step back to at that depth --
+ * usually one. A project two families claim ends its families' level with
+ * both, so the trail asserts no single home for it any more than the index
+ * does. The last level is `address` itself.
+ */
+export function trail(address: ShowAddress, subjects: TrailSubjects | null): ShowAddress[][] {
+  const index: ShowAddress = { kind: 'index', name: '', view: 'estate' };
+  if (address.kind === 'index') return [[index]];
+  const within = new Map((subjects?.families ?? []).map((f) => [f.name, f.within]));
+  const family = (name: string): ShowAddress => ({ kind: 'family', name, view: 'estate' });
+
+  /** `name`'s enclosing families, outermost first, `name` last. */
+  const chain = (name: string): string[] => {
+    const out = [name];
+    const seen = new Set(out);
+    for (let up = within.get(name); up && within.has(up) && !seen.has(up); up = within.get(up)) {
+      out.unshift(up);
+      seen.add(up);
+    }
+    return out;
+  };
+
+  if (address.kind === 'family') {
+    return [[index], ...chain(address.name).map((name) => [family(name)])];
+  }
+  const claims = subjects?.projects.find((p) => p.name === address.name)?.families ?? [];
+  if (!claims.length) return [[index], [address]];
+  const levels = chain(claims[0]).map((name) => [family(name)]);
+  levels[levels.length - 1].push(...claims.slice(1).map(family));
+  return [[index], ...levels, [address]];
+}
+
+/** How a step of the trail is named. */
+export function crumbLabel(address: ShowAddress): string {
+  return address.kind === 'index' ? 'every family' : address.name;
+}

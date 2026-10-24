@@ -11,7 +11,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { formatShow, fromNode, parseShow } from '../../dist-pure/features/show/show_address.js';
+import {
+  crumbLabel, formatShow, fromNode, parseShow, sameShow, trail,
+} from '../../dist-pure/features/show/show_address.js';
 
 test('each kind of address opens what it names', () => {
   assert.deepEqual(parseShow('?show=index'), { kind: 'index', name: '', view: 'estate' });
@@ -49,4 +51,55 @@ test('a node names its own address', () => {
   assert.deepEqual(fromNode('family:core'), { kind: 'family', name: 'core', view: 'estate' });
   assert.equal(fromNode(undefined), null);
   assert.equal(fromNode('nothing'), null);
+});
+
+// The corpus as the breadcrumb sees it: instruments sits within performing,
+// and stomp is claimed by instruments and by irl.
+const SUBJECTS = {
+  families: [
+    { name: 'performing', within: null },
+    { name: 'instruments', within: 'performing' },
+    { name: 'irl', within: null },
+    { name: 'loop-a', within: 'loop-b' },
+    { name: 'loop-b', within: 'loop-a' },
+  ],
+  projects: [
+    { name: 'stomp', families: ['instruments', 'irl'] },
+    { name: 'carlos', families: ['instruments'] },
+    { name: 'loner', families: [] },
+  ],
+};
+
+const names = (levels) => levels.map((level) => level.map(crumbLabel).join(' · ')).join(' › ');
+
+test('the trail steps down from every family to what is drawn', () => {
+  assert.equal(names(trail(parseShow('?show'), SUBJECTS)), 'every family');
+  assert.equal(names(trail(parseShow('?show=family:instruments'), SUBJECTS)),
+    'every family › performing › instruments');
+  assert.equal(names(trail(parseShow('?show=project:carlos&view=code'), SUBJECTS)),
+    'every family › performing › instruments › carlos');
+  // The last step is the address itself, view and all.
+  assert.deepEqual(trail(parseShow('?show=project:carlos&view=code'), SUBJECTS).at(-1),
+    [{ kind: 'project', name: 'carlos', view: 'code' }]);
+});
+
+test('a project two families claim is reached from both, as the index draws it', () => {
+  assert.equal(names(trail(parseShow('?show=project:stomp'), SUBJECTS)),
+    'every family › performing › instruments · irl › stomp');
+});
+
+test('a project no family claims, or a corpus not yet read, is one step from every family', () => {
+  assert.equal(names(trail(parseShow('?show=project:loner'), SUBJECTS)), 'every family › loner');
+  assert.equal(names(trail(parseShow('?show=project:carlos'), null)), 'every family › carlos');
+  assert.equal(names(trail(parseShow('?show=family:irl'), null)), 'every family › irl');
+});
+
+test('families that sit within each other end the trail rather than loop it', () => {
+  assert.equal(names(trail(parseShow('?show=family:loop-a'), SUBJECTS)), 'every family › loop-b › loop-a');
+});
+
+test('two addresses are the same drawing only when every part agrees', () => {
+  assert.ok(sameShow(parseShow('?show'), parseShow('?show=index')));
+  assert.ok(!sameShow(parseShow('?show=project:carlos'), parseShow('?show=project:carlos&view=code')));
+  assert.ok(!sameShow(parseShow('?show=family:irl'), null));
 });

@@ -19,6 +19,12 @@
  * so the location bar can be copied to reopen exactly what is drawn. Opened
  * onto an empty canvas, the panel draws every family at once: the default
  * showgraph is the whole estate, and a family or a project is a step into it.
+ *
+ * **WHERE YOU ARE COMES FIRST.** The panel opens on what is drawn: the trail
+ * from every family down to it, each step a link back, a project's three
+ * views beside it, and the key to the edges. What the drawing can and cannot
+ * say follows, folded, and the lists of everything else after that. The
+ * caveat once led, and the controls a reader came for sat below the fold.
  */
 
 import m from 'mithril';
@@ -28,7 +34,7 @@ import { ProblemView } from '../../features/estate/problem_view';
 import { Provenance } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import type { ShowAddress, ShowView } from '../../features/show/show_address';
-import { VIEWS } from '../../features/show/show_address';
+import { VIEWS, crumbLabel, formatShow, trail } from '../../features/show/show_address';
 import type { ShowFamilyRow, ShowProjectRow } from '../../features/show/show_service';
 import '../../features/estate/estate.css';
 import './show_panel.css';
@@ -43,6 +49,18 @@ function same(a: ShowAddress | null, kind: string, name: string): boolean {
   return !!a && a.kind === kind && a.name === name;
 }
 
+/** The folded caveat's one line: what the drawing could not settle, counted. */
+function aboutSummary(metadata: Record<string, unknown>): string {
+  const count = (key: string) => (Array.isArray(metadata[key]) ? (metadata[key] as unknown[]).length : 0);
+  const undeclared = count('undeclared');
+  const unread = count('unread');
+  const parts = [
+    undeclared ? `${undeclared} seam${undeclared === 1 ? '' : 's'} nobody has declared` : '',
+    unread ? `${unread} member${unread === 1 ? '' : 's'} not measured` : '',
+  ].filter(Boolean);
+  return parts.length ? `What this drawing can say — ${parts.join(', ')}` : 'What this drawing can say';
+}
+
 export function createShowPanel(ctx: LayoutContext): m.Component {
   let asked = false;
   let filter = '';
@@ -55,7 +73,7 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
       // leaves it, and **draw every family** is the first thing it offers.
       const state = ctx.appState.state;
       if (state.showSubjects && !state.showAddress && !state.graphData) {
-        void ctx.openShow({ kind: 'index', name: '', view: 'estate' });
+        void ctx.openShow({ kind: 'index', name: '', view: 'estate' }, 'replace');
       }
     }).catch(() => {
       asked = false;
@@ -68,7 +86,7 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
     m('div.estate__row.is-live.show__family', {
       'data-family': family.name,
       class: same(current, 'family', family.name) ? 'is-current' : '',
-      style: { '--show-hue': family.hue ?? 'var(--color-font-muted, #888)', '--show-indent': `${depth}` },
+      style: { '--show-hue': family.hue ?? 'var(--c-font-muted, #888)', '--show-indent': `${depth}` },
       onclick: () => open({ kind: 'family', name: family.name, view: 'estate' }),
       title: `draw the ${family.name} family`,
     }, [
@@ -83,11 +101,10 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
 
   const projectRow = (project: ShowProjectRow, current: ShowAddress | null, hueOf: (f: string) => string | null) => {
     const selected = same(current, 'project', project.name);
-    const views = selected ? ctx.appState.state.showViews : null;
     return m('div.estate__row.is-live.show__project', {
       'data-project': project.name,
       class: selected ? 'is-current' : '',
-      style: { '--show-hue': hueOf(project.families[0] ?? '') ?? 'var(--color-font-muted, #888)' },
+      style: { '--show-hue': hueOf(project.families[0] ?? '') ?? 'var(--c-font-muted, #888)' },
     }, [
       m('span.estate__dot.show__hue'),
       m('span.estate__name', {
@@ -101,24 +118,51 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
         project.phase ? ` — ${project.phase}` : '',
       ]),
       project.description ? m('p.estate__detail', project.description) : null,
-      selected
-        ? m('div.show__views', VIEWS.map((view) => {
-            const state = views ? views[view] : null;
-            const disabled = !state || !state.available;
-            return m('button.estate-view__draw.show__view', {
-              'data-view': view,
-              disabled,
-              class: current?.view === view ? 'is-current' : '',
-              title: disabled ? (state?.problem ?? 'asking which views can be drawn…') : `draw the ${VIEW_LABEL[view]}`,
-              onclick: () => open({ kind: 'project', name: project.name, view }),
-            }, VIEW_LABEL[view]);
-          }))
-        : null,
-      selected && views
+    ]);
+  };
+
+  /** A project's three views, each disabled with its reason when it cannot be drawn here. */
+  const viewSwitch = (current: ShowAddress) => {
+    const views = ctx.appState.state.showViews;
+    return [
+      m('div.show__views', VIEWS.map((view) => {
+        const state = views ? views[view] : null;
+        const disabled = !state || !state.available;
+        return m('button.estate-view__draw.show__view', {
+          'data-view': view,
+          disabled,
+          class: current.view === view ? 'is-current' : '',
+          title: disabled ? (state?.problem ?? 'asking which views can be drawn…') : `draw the ${VIEW_LABEL[view]}`,
+          onclick: () => open({ kind: 'project', name: current.name, view }),
+        }, VIEW_LABEL[view]);
+      })),
+      views
         ? VIEWS.filter((v) => !views[v].available && views[v].problem)
             .map((v) => m('p.estate__where', `${VIEW_LABEL[v]}: ${views[v].problem}`))
         : null,
-    ]);
+    ];
+  };
+
+  /** The way from every family to what is drawn, each step a link back to it. */
+  const trailView = (current: ShowAddress, subjects: Parameters<typeof trail>[1]) => {
+    const levels = trail(current, subjects);
+    return m('nav.show__trail', { 'aria-label': 'where this drawing is' }, levels.map((level, i) => [
+      i ? m('span.show__sep', '›') : null,
+      level.map((step, j) => [
+        j ? m('span.show__sep', '·') : null,
+        i === levels.length - 1
+          ? m('span.show__crumb.is-current', { 'aria-current': 'page' }, crumbLabel(step))
+          : m('a.show__crumb', {
+              href: formatShow(step),
+              onclick: (e: MouseEvent) => {
+                // A plain click opens it here; a modified one is the browser's.
+                if (e.button || e.ctrlKey || e.metaKey || e.shiftKey) return;
+                e.preventDefault();
+                open(step);
+              },
+            }, crumbLabel(step)),
+      ]),
+    ]));
   };
 
   return {
@@ -156,15 +200,30 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
             })
           : null,
 
-        m(Provenance, { metadata, prefix: 'show', kind: 'show' }),
-
-        bases
-          ? m('div.show__legend', Object.entries(bases).map(([basis, look]) =>
-              m('span.show__basis', { 'data-basis': basis }, [
-                m('span.show__stroke', { style: { borderTopColor: look.color, borderTopStyle: look.style } }),
-                basis,
-              ])))
+        current
+          ? m('div.show__now', { 'data-show': formatShow(current) }, [
+              trailView(current, subjects),
+              current.kind === 'project' ? viewSwitch(current) : null,
+              bases
+                ? m('div.show__legend', Object.entries(bases).map(([basis, look]) =>
+                    m('span.show__basis', { 'data-basis': basis }, [
+                      m('span.show__stroke', { style: { borderTopColor: look.color, borderTopStyle: look.style } }),
+                      basis,
+                    ])))
+                : null,
+              current.view === 'estate'
+                ? m('p.estate-view__hint.show__how',
+                    'Double-click a family or a project to open it; Back returns.')
+                : null,
+            ])
           : null,
+
+        metadata?.kind === 'show'
+          ? m('details.show__about', [
+              m('summary', aboutSummary(metadata as unknown as Record<string, unknown>)),
+              m(Provenance, { metadata, prefix: 'show', kind: 'show' }),
+            ])
+          : m(Provenance, { metadata, prefix: 'show', kind: 'show' }),
 
         subjects === null && !problem
           ? m('p.estate-view__pending', 'reading the corpus…')

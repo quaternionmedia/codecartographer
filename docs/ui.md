@@ -127,12 +127,42 @@ or by itself when the page is opened at a `?show=` address.
 Every family and project the corpus names. The default is every family at once:
 opened onto an empty canvas, or at a bare `?show`, the panel draws the index,
 and **draw every family** draws it again over anything else. A family row
-draws that family; a project's name draws its place in the
-estate and offers its three views -- **estate**, **code map** and **system** --
-with a view that cannot be drawn here disabled and its reason under it. The
-legend above the controls says which edges are claims, which are declared seams
-and which are measured. Each drawing rewrites the page's address, so
-`?show=family:performing` or `?show=project:moat&view=system` reopens it.
+draws that family, and a project's name draws its place in the estate.
+
+The panel opens on what is drawn. A trail runs from *every family* down to it
+-- `every family › performing › instruments › carlos` -- and each step is a
+link back. A project two families claim is reached from both
+(`instruments · irl`). For a project, its three views follow: **estate**,
+**code map** and **system**. A view that cannot be drawn here is disabled, with
+its reason under it. Then the legend: which edges are claims, which are
+declared seams and which are measured. *What this drawing can say* holds the
+caveat and the corpus it was read from, folded. Its line counts the seams
+nobody has declared and the members nothing measured.
+
+On the canvas a showgraph is a map. Every name is drawn, outward from the ring
+its group is packed on, and at least ten pixels high however far out the fit
+frames it. A name that would overlap another is hidden until a zoom gives it
+room, and a node's hover always holds it. Names are ranked: families first,
+then projects, then other repositories. Each outline takes its family's hue.
+**Double-click** a family to open it, and a project to open its estate view.
+
+Each drawing rewrites the page's address, so `?show=family:performing` or
+`?show=project:moat&view=system` reopens it. A drawing opened by a click adds
+an entry to the browser's history, so **Back** and **Forward** walk the
+drawings. The address the page opened with, and the default, do not add an
+entry.
+
+To serve showgraphs from a corpus checkout other than the pin, set
+`CODECARTO_CORPUS` before the server starts. Measured links and the system
+view read clones beside this checkout, or under `CODECARTO_REPO_ROOTS`:
+
+```sh
+cd web && npm run build && cd ..
+CODECARTO_CORPUS=../qm uv run codecarto serve --port 27190
+```
+
+Then open `http://localhost:27190/app?show`. The index is measured once per
+commit of each clone, so a second drawing asks git nothing.
 
 ### Cargo
 

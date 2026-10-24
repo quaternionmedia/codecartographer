@@ -26,7 +26,7 @@ import {
   CachedEntry,
 } from '../components/codecarto/control_panel';
 import { PlotService } from '../services/plot_service';
-import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
+import { SHOW_OPEN_EVENT, StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
 import { infoLine, sourceTarget } from '../features/graph/services/node_info';
 import type { BundledExample } from '../features/examples/examples';
@@ -44,7 +44,7 @@ import type { MenuContext } from '../features/graph/rad/core/types';
 import { DEEPEST_DEPTH } from '../features/graph/rad/host/resolve';
 import type { GraphNode, GraphEdge } from '../features/graph/services/graph_types';
 import { backendLayoutName } from '../features/graph/services/layout_names';
-import { formatShow, parseShow } from '../features/show/show_address';
+import { formatShow, fromNode, parseShow, sameShow } from '../features/show/show_address';
 import type { ShowAddress } from '../features/show/show_address';
 import { SystemDefinitionRegistry } from '../features/graph/services/system_core';
 import { DerivedSystemDefinition } from '../features/graph/services/derived_system';
@@ -140,6 +140,19 @@ export class LayoutContext {
       this._streamingRenderer = renderer;
       this._mountRad(renderer);
     });
+
+    // A showgraph is a place to move through: a node double-clicked on the
+    // canvas opens its own showgraph, and Back and Forward walk the drawings.
+    if (typeof window !== 'undefined') {
+      window.addEventListener(SHOW_OPEN_EVENT, (event) => {
+        const address = fromNode((event as CustomEvent).detail);
+        if (address) void this.openShow(address);
+      });
+      window.addEventListener('popstate', () => {
+        const address = parseShow(window.location.search);
+        if (address) void this.openShow(address, 'keep');
+      });
+    }
   }
 
   // ── Public helpers ─────────────────────────────────────────────────────────
@@ -516,11 +529,35 @@ export class LayoutContext {
    * server says cannot be drawn is a problem the panel shows, never a
    * different view drawn in its place.
    */
-  public async openShow(address: ShowAddress): Promise<void> {
+  /**
+   * Open a showgraph, and write its address.
+   *
+   * `history` says what the location bar does: `push` a new entry, so Back
+   * returns to the drawing before (a click in the panel or on the canvas);
+   * `replace` the entry (an address the page opened with, or the default);
+   * or `keep` it (Back and Forward, which have moved it already).
+   *
+   * **ONE REQUEST PER DRAWING.** At boot the page's address and the Show
+   * panel's default both asked for the index, and a corpus measured twice
+   * at once took more than twice as long. Asked again for the drawing it is
+   * already opening, this returns that one.
+   */
+  public openShow(address: ShowAddress, history: 'push' | 'replace' | 'keep' = 'push'): Promise<void> {
+    if (this._opening && sameShow(this._opening.address, address)) return this._opening.done;
+    const done = this._openShow(address, history).finally(() => {
+      if (this._opening?.done === done) this._opening = null;
+    });
+    this._opening = { address, done };
+    return done;
+  }
+
+  private _opening: { address: ShowAddress; done: Promise<void> } | null = null;
+
+  private async _openShow(address: ShowAddress, history: 'push' | 'replace' | 'keep'): Promise<void> {
     // Before the panel mounts: a Show panel opening onto nothing drawn draws
     // every family, and this address is what it is about to draw instead.
     this.appState.update({ showAddress: address, showProblem: null });
-    this._setShowAddress(address);
+    this._setShowAddress(address, history);
     this.openPanel('show-panel');
 
     if (address.kind === 'project') {
@@ -581,13 +618,20 @@ export class LayoutContext {
   /** Open whatever showgraph the page's own address names, if it names one. */
   public async openShowFromLocation(): Promise<void> {
     const address = parseShow(window.location.search);
-    if (address) await this.openShow(address);
+    if (address) await this.openShow(address, 'replace');
   }
 
   /** The location bar says which showgraph is drawn, without a new history entry. */
-  private _setShowAddress(address: ShowAddress): void {
+  private _setShowAddress(address: ShowAddress, how: 'push' | 'replace' | 'keep'): void {
+    if (how === 'keep') return;
+    const search = formatShow(address);
     try {
-      window.history.replaceState(null, '', `${window.location.pathname}${formatShow(address)}`);
+      // The same drawing asked for twice is one entry, not two.
+      if (how === 'push' && window.location.search !== search) {
+        window.history.pushState(null, '', `${window.location.pathname}${search}`);
+      } else {
+        window.history.replaceState(null, '', `${window.location.pathname}${search}`);
+      }
     } catch {
       // A page that cannot rewrite its address still draws.
     }

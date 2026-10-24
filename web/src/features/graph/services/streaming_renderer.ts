@@ -22,6 +22,21 @@ import { fitTransform } from './fit';
 import { placeOutlineLabels } from './outline_labels';
 import type { Circle } from './fit';
 
+/**
+ * The event a showgraph's node sends when it is double-clicked: its `show`
+ * attribute (`family:core`, `project:carlos`) as the detail. It bubbles from
+ * the canvas, so whatever opens showgraphs listens on the document, and the
+ * renderer needs no handle on it.
+ */
+export const SHOW_OPEN_EVENT = 'codecarto:show-open';
+
+/** The smallest a map's name is drawn on screen, in pixels, however far out it is framed. */
+const MAP_NAME_PX = 10;
+/** The same for a map's outline names, which name whole groups. */
+const MAP_OUTLINE_PX = 12;
+/** The longest a map's name is drawn, in characters. */
+const MAP_NAME_CHARS = 32;
+
 // Nodes rendered per animation frame. Scales with total so large repos
 // finish in ~2s while small repos show clearly progressive animation.
 function nodesPerFrame(total: number): number {
@@ -54,6 +69,21 @@ export class StreamingGraphRenderer {
    * saying out loud rather than leaving to be noticed.
    */
   private _ringPlaced = 0;
+  /**
+   * Drawn as a map: a showgraph, whose names are what it is for.
+   *
+   * **A CODE GRAPH HIDES ITS NAMES; A MAP CANNOT.** Labels are off by default
+   * because a parsed repository has thousands of them. A showgraph has a few
+   * dozen, and with its names hidden the index was nine circles of dots. So a
+   * map draws every name its node does not leave to an outline (`label_at`
+   * `none`), on the side `label_at` says, and keeps names and outline names
+   * at least `MAP_NAME_PX` and `MAP_OUTLINE_PX` on screen however far out the
+   * fit frames it. Its outlines take their group's hue.
+   */
+  private _map = false;
+  /** Whether a map's names are on: the Graph Settings toggle still turns them off. */
+  private _mapNames = true;
+  private _zoomK = 1;
   private styling: GraphStylingOptions;
   private width: number;
   private height: number;
@@ -128,7 +158,14 @@ export class StreamingGraphRenderer {
     this.zoom = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.05, 10])
-      .on('zoom', (event) => this.g.attr('transform', event.transform));
+      .on('zoom', (event) => {
+        this.g.attr('transform', event.transform);
+        this._zoomK = event.transform.k;
+        if (this._map) this._keepNamesReadable();
+      })
+      .on('end', () => {
+        if (this._map) this._declutterNames();
+      });
 
     this.svg.call(this.zoom);
 
@@ -225,18 +262,19 @@ export class StreamingGraphRenderer {
   /** Update styling options on a live renderer (e.g. toggling labels from Graph Settings). */
   updateStyling(options: Partial<GraphStylingOptions>): void {
     Object.assign(this.styling, options);
+    if (options.showNodeLabels !== undefined) this._mapNames = options.showNodeLabels;
     if (options.showNodeLabels !== undefined || options.showLabelsByDepth !== undefined) {
       this.labelGroup
         .selectAll<SVGTextElement, unknown>('text')
         .style('display', (_, i, els) => {
           const nodeId = els[i].getAttribute('data-node-id');
           const n = nodeId ? this.nodeById.get(nodeId) : undefined;
-          const depth = ((n?.depth as number) ?? 2);
-          return this._shouldShowLabel(depth) ? 'block' : 'none';
+          return n && this._labelShown(n) ? 'block' : 'none';
         });
     }
     if (options.labelSize !== undefined) {
       this.labelGroup.selectAll('text').attr('font-size', options.labelSize);
+      if (this._map) this._keepNamesReadable();
     }
     if (options.labelColor !== undefined) {
       this.labelGroup.selectAll('text').attr('fill', options.labelColor);
@@ -415,19 +453,20 @@ export class StreamingGraphRenderer {
       .attr('opacity', 1)
       .attr('transform', `translate(${x},${y}) scale(1)`);
 
+    // A map's name is at most `MAP_NAME_CHARS`: a record's title is a
+    // sentence, and the node's hover holds all of it.
+    const name = String(node.label || node.id);
     const textEl = this.labelGroup
       .append('text')
       .attr('data-node-id', node.id)
-      .attr('x', x)
-      .attr('y', y + size + 12)
-      .text(node.label || node.id)
-      .attr('font-size', this.styling.labelSize!)
-      .attr('text-anchor', 'middle')
+      .text(this._map && name.length > MAP_NAME_CHARS ? `${name.slice(0, MAP_NAME_CHARS - 1)}…` : name)
+      .attr('font-size', this._map ? this._nameSize(this.styling.labelSize!, MAP_NAME_PX) : this.styling.labelSize!)
       .attr('fill', this.styling.labelColor!)
-      .style('display', this._shouldShowLabel((node.depth as number) ?? 2) ? 'block' : 'none')
+      .style('display', this._labelShown(node) ? 'block' : 'none')
       .style('pointer-events', 'none');
+    this._placeLabel(textEl, node, x, y, size);
 
-    if (this._shouldShowLabel((node.depth as number) ?? 2)) {
+    if (this._labelShown(node)) {
       textEl.attr('opacity', 0).transition().delay(180).duration(200).attr('opacity', 1);
     } else {
       textEl.attr('opacity', 1);
@@ -444,8 +483,18 @@ export class StreamingGraphRenderer {
     // heard a right-click on any node, and the node ring could not be opened
     // by mouse at all. rad prevents the browser's menu itself, and offers the
     // source as View → Source.
+    //
+    // On a map, a node from no file is a family or a project, and its
+    // double-click opens that one's own showgraph instead: the index's way
+    // into a family, and a family's into a project.
     group.on('dblclick', (event: MouseEvent) => {
-      if (this.openSource(node.id, { x: event.clientX, y: event.clientY })) event.stopPropagation();
+      if (this.openSource(node.id, { x: event.clientX, y: event.clientY })) {
+        event.stopPropagation();
+      } else if (this._map && typeof node.show === 'string') {
+        event.stopPropagation();
+        this.getContainer().dispatchEvent(
+          new CustomEvent(SHOW_OPEN_EVENT, { bubbles: true, detail: node.show }));
+      }
     });
 
     // Drag support (no simulation — positions are pre-computed)
@@ -675,8 +724,11 @@ export class StreamingGraphRenderer {
     const labels: SVGTextElement[] = [];
     for (const b of bounds) {
       const isDir = b.depth === 0;
-      const fill   = isDir ? 'rgba(127,140,141,0.06)' : 'rgba(155,89,182,0.09)';
-      const stroke = isDir ? 'rgba(127,140,141,0.30)' : 'rgba(155,89,182,0.35)';
+      // A map's outline is its group's: a family drawn in the family's hue.
+      const hue = this._map ? d3.color(String(this.nodeById.get(b.nodeId)?.color ?? '')) : null;
+      const tint = (opacity: number) => hue!.copy({ opacity }).formatRgb();
+      const fill   = hue ? tint(isDir ? 0.07 : 0.10) : isDir ? 'rgba(127,140,141,0.06)' : 'rgba(155,89,182,0.09)';
+      const stroke = hue ? tint(isDir ? 0.45 : 0.55) : isDir ? 'rgba(127,140,141,0.30)' : 'rgba(155,89,182,0.35)';
       const dash   = isDir ? '8,4' : '4,2';
       const sw     = isDir ? 1.5 : 1.0;
       const grp = this._backgroundGroup.append('g').attr('class', `compound-group depth-${b.depth}`);
@@ -696,8 +748,9 @@ export class StreamingGraphRenderer {
       labels.push(grp.append('text')
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'central')
-        .attr('font-size', isDir ? 11 : 9)
-        .attr('fill', isDir ? 'rgba(127,140,141,0.70)' : 'rgba(155,89,182,0.70)')
+        .attr('data-base-size', isDir ? 11 : 9)
+        .attr('font-size', this._map ? this._nameSize(isDir ? 11 : 9, MAP_OUTLINE_PX) : isDir ? 11 : 9)
+        .attr('fill', hue ? tint(0.9) : isDir ? 'rgba(127,140,141,0.70)' : 'rgba(155,89,182,0.70)')
         .style('pointer-events', 'none')
         .style('opacity', 0)
         .text(b.label)
@@ -792,6 +845,88 @@ export class StreamingGraphRenderer {
     return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : { x: 0, y: 0 };
   }
 
+  /** Draw this graph as a map (see `_map`). Called before its nodes arrive. */
+  presentAsMap(): void {
+    this._map = true;
+  }
+
+  /** Whether a node's name is drawn: on a map, unless an outline already says it. */
+  private _labelShown(node: GraphNode): boolean {
+    if (this._map) return this._mapNames && node.label_at !== 'none';
+    return this._shouldShowLabel((node.depth as number) ?? 2);
+  }
+
+  /** A font size, in the graph's units, that is at least `floorPx` on screen at this zoom. */
+  private _nameSize(base: number, floorPx: number): number {
+    return Math.max(base, floorPx / (this._zoomK || 1));
+  }
+
+  /** On a map, every name at least its floor on screen, at the zoom just set. */
+  private _keepNamesReadable(): void {
+    this.labelGroup.selectAll<SVGTextElement, unknown>('text')
+      .attr('font-size', this._nameSize(this.styling.labelSize!, MAP_NAME_PX));
+    this._backgroundGroup.selectAll<SVGTextElement, unknown>('text[data-base-size]')
+      .attr('font-size', (_, i, els) =>
+        this._nameSize(Number(els[i].getAttribute('data-base-size')), MAP_OUTLINE_PX));
+  }
+
+  /**
+   * On a map, hide each name that would overlap one ranked above it, once a
+   * zoom has settled; zooming in gives them room and they come back.
+   *
+   * **A NAME KEPT READABLE TAKES MORE OF THE GRAPH THE FURTHER OUT IT IS.**
+   * At the index's fit a ten-pixel name is about twenty-five units of the
+   * graph high and a long one two hundred wide, so neighbours' names met
+   * however the server spaced them -- spacing is framed away by the fit.
+   * Outline names are never hidden, and hold their place first. Then
+   * families, then projects, then repositories, then anything else; a
+   * shorter name before a longer one. A hidden name stays in its node's
+   * hover.
+   */
+  private _declutterNames(): void {
+    if (!this._mapNames) return;
+    type Box = { x: number; y: number; width: number; height: number };
+    const meets = (a: Box, b: Box) =>
+      a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+    const taken: Box[] = this._backgroundGroup
+      .selectAll<SVGTextElement, unknown>('text').nodes().map((t) => t.getBBox());
+    const rank: Record<string, number> = { family: 0, project: 1, repository: 2 };
+    const texts = this.labelGroup.selectAll<SVGTextElement, unknown>('text').nodes()
+      .filter((t) => t.style.display !== 'none')
+      .map((t) => {
+        const node = this.nodeById.get(t.getAttribute('data-node-id') ?? '');
+        return { t, rank: rank[String(node?.kind)] ?? 3, length: (t.textContent ?? '').length };
+      })
+      .sort((a, b) => a.rank - b.rank || a.length - b.length);
+    for (const { t } of texts) {
+      const box = t.getBBox();
+      const hidden = taken.some((other) => meets(box, other));
+      t.setAttribute('visibility', hidden ? 'hidden' : 'visible');
+      if (!hidden) taken.push(box);
+    }
+  }
+
+  /**
+   * Where a node's name goes. Under it, centred, as every graph has it, or on
+   * a map on the side its `label_at` says: outward from the ring the server
+   * packed it on, so neighbours' names do not run into each other.
+   */
+  private _placeLabel(
+    text: d3.Selection<SVGTextElement, unknown, null, undefined>,
+    node: GraphNode, x: number, y: number, size: number,
+  ): void {
+    const side = this._map ? node.label_at : undefined;
+    const gap = size + 5;
+    const [dx, dy, anchor, baseline] =
+      side === 'right' ? [gap, 0, 'start', 'central']
+      : side === 'left' ? [-gap, 0, 'end', 'central']
+      : side === 'above' ? [0, -gap, 'middle', 'auto']
+      : side === 'below' ? [0, gap, 'middle', 'hanging']
+      : [0, size + 12, 'middle', 'auto'];
+    text.attr('x', x + dx).attr('y', y + dy)
+      .attr('text-anchor', anchor).attr('dominant-baseline', baseline);
+  }
+
   private _shouldShowLabel(depth: number): boolean {
     const byDepth = this.styling.showLabelsByDepth as Partial<Record<number, boolean>> | undefined;
     if (byDepth && depth in byDepth) return byDepth[depth]!;
@@ -865,9 +1000,12 @@ export class StreamingGraphRenderer {
   private _updateLabelForNode(nodeId: string, x: number, y: number, size: number): void {
     // Labels are rendered in document order matching nodeById insertion order
     // We track them by data attribute for simplicity
-    this.labelGroup
-      .selectAll<SVGTextElement, unknown>(`text[data-node-id="${nodeId}"]`)
-      .attr('x', x)
-      .attr('y', y + size + 12);
+    const node = this.nodeById.get(nodeId);
+    const text = this.labelGroup.selectAll<SVGTextElement, unknown>(`text[data-node-id="${nodeId}"]`);
+    if (node) {
+      text.each((_, i, els) => this._placeLabel(d3.select(els[i]), node, x, y, size));
+    } else {
+      text.attr('x', x).attr('y', y + size + 12);
+    }
   }
 }
