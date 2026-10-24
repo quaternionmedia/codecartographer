@@ -70,7 +70,7 @@ test('a badge too long for the canvas keeps the name and the end of the path', (
 
 test('a badge that fits is left whole, and Windows paths are cut at a backslash', () => {
   assert.equal(fitBadgeText('main.rs  /ws/src/main.rs', 40), 'main.rs  /ws/src/main.rs');
-  const win = fitBadgeText(String.raw`build.rs  C:\Users\peter\repos\qm\examples\rust-firmware\crates\blinky\build.rs`, 36);
+  const win = fitBadgeText(String.raw`build.rs  D:\ws\examples\rust-firmware\crates\blinky\build.rs`, 36);
   assert.ok(win.length <= 36, win);
   assert.match(win, /^build\.rs  …\\.*\\blinky\\build\.rs$/);
 });
