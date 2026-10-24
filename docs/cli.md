@@ -489,8 +489,8 @@ reads one this table does not name, or this table names one nothing reads.
 | `CODECARTO_WEB_HOST` | `web/vite.config.js` | The address the frontend dev server binds; `localhost` |
 | `CODECARTO_API` | `web/vite.config.js` | The backend the dev server proxies API paths to; `codecarto.cli.DEFAULT_PORT` on 127.0.0.1 |
 | `CODECARTO_FORGE` | `/topology` | The forge a topology box's repository link points at; `https://github.com` |
-| `CODECARTO_CORPUS` | `/capabilities`, `/estate` | The governance corpus checkout read in place of the pin; the `governance/qm` submodule |
-| `CODECARTO_REPO_ROOTS` | `/system` | Directories searched for a named repository, separated by the OS path separator; the checkout's parent and grandparent |
+| `CODECARTO_CORPUS` | `/capabilities`, `/show`, `/estate` | The governance corpus checkout read in place of the pin; the `governance/qm` submodule |
+| `CODECARTO_REPO_ROOTS` | `/system`, `/show` | Directories searched for a named repository, separated by the OS path separator; the checkout's parent and grandparent |
 | `CC_CACHE_TTL` | the caches | Seconds a cached repository tree, parsed graph or extracted C source stays fresh; 86400 |
 | `CC_GITHUB_TOKEN` | GitHub reads | A GitHub token, read first; the full order is in `docs/services.md`, *GitHub Token* |
 | `GITHUB_TOKEN` | GitHub reads | A GitHub token, read after `gh auth token` |

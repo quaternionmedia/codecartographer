@@ -27,6 +27,7 @@ import { createTopologyPanel } from './panels/topology_panel';
 import { createEstatePanel } from './panels/estate_panel';
 import { createCapabilitiesPanel } from './panels/capabilities_panel';
 import { createOverviewPanel } from './panels/overview_panel';
+import { createShowPanel } from './panels/show_panel';
 import { createCargoPanel } from './panels/cargo_panel';
 import { createChrestomathyPanel } from './panels/chrestomathy_panel';
 
@@ -34,6 +35,8 @@ export type DockPanelId =
   | 'graph' | 'open' | 'file-tree' | 'graphbase-panel' | 'graph-settings-panel'
   // The estate: what is up, and the three seams this window draws.
   | 'estate-panel' | 'topology-panel' | 'capabilities-panel' | 'overview-panel'
+  // Every family and project the corpus names, drawn: the triplet's graph leg.
+  | 'show-panel'
   // Code cartography past one parse: a Rust workspace, and one construct read
   // across every language.
   | 'cargo-panel' | 'chrestomathy-panel';
@@ -89,6 +92,13 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     config: { type: 'component', componentType: 'overview-panel', id: 'overview-panel', title: '▤ Overview', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createOverviewPanel(ctx)),
+  },
+  {
+    id: 'show-panel',
+    menuLabel: 'Show',
+    config: { type: 'component', componentType: 'show-panel', id: 'show-panel', title: '❖ Show', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createShowPanel(ctx)),
   },
   {
     id: 'cargo-panel',

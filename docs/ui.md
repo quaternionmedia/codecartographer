@@ -119,6 +119,21 @@ Id `overview-panel`. Opens from the `+` menu or the Estate panel's overview row.
 dossier's reading of the estate: its masthead figures, its sections, and when the
 reading was made. **draw the overview** draws it.
 
+### Show
+
+Id `show-panel`. Opens from the `+` menu, from the Estate panel's families row,
+or by itself when the page is opened at a `?show=` address.
+
+Every family and project the corpus names. The default is every family at once:
+opened onto an empty canvas, or at a bare `?show`, the panel draws the index,
+and **draw every family** draws it again over anything else. A family row
+draws that family; a project's name draws its place in the
+estate and offers its three views -- **estate**, **code map** and **system** --
+with a view that cannot be drawn here disabled and its reason under it. The
+legend above the controls says which edges are claims, which are declared seams
+and which are measured. Each drawing rewrites the page's address, so
+`?show=family:performing` or `?show=project:moat&view=system` reopens it.
+
 ### Cargo
 
 Id `cargo-panel`. Opens from the `+` menu, or comes forward with a bundled

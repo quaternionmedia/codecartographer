@@ -40,6 +40,7 @@
     "src/features/graph/services/outline_labels.ts",
     "src/features/examples/examples.ts",
     "src/features/cartography/chrestomathy_rows.ts",
-    "src/layout/saved_layout.ts"
+    "src/layout/saved_layout.ts",
+    "src/features/show/show_address.ts"
   ]
 }

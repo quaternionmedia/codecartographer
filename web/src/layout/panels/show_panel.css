@@ -1,0 +1,63 @@
+/* The Show panel: family hues, nesting, and the three edge bases.
+   Rows, headings and buttons are the estate panels' (estate.css). */
+
+.show__family,
+.show__project {
+  cursor: pointer;
+  border-left: 3px solid var(--show-hue);
+}
+
+.show__family {
+  margin-left: calc(var(--show-indent, 0) * 14px);
+}
+
+.show__hue {
+  background: var(--show-hue) !important;
+}
+
+.show__family.is-current,
+.show__project.is-current {
+  background: color-mix(in srgb, var(--show-hue) 14%, transparent);
+}
+
+.show__views {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.show__view.is-current {
+  outline: 1px solid var(--show-hue);
+}
+
+.show__view:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.show__filter {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0 8px;
+}
+
+.show__legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 6px 0 10px;
+  font-size: 0.85em;
+}
+
+.show__basis {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.show__stroke {
+  display: inline-block;
+  width: 22px;
+  border-top-width: 2px;
+}

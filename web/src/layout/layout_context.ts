@@ -44,6 +44,10 @@ import type { MenuContext } from '../features/graph/rad/core/types';
 import { DEEPEST_DEPTH } from '../features/graph/rad/host/resolve';
 import type { GraphNode, GraphEdge } from '../features/graph/services/graph_types';
 import { backendLayoutName } from '../features/graph/services/layout_names';
+import { formatShow, parseShow } from '../features/show/show_address';
+import type { ShowAddress } from '../features/show/show_address';
+import { SystemDefinitionRegistry } from '../features/graph/services/system_core';
+import { DerivedSystemDefinition } from '../features/graph/services/derived_system';
 
 export type { DockPanelId } from './panel_registry';
 
@@ -496,6 +500,121 @@ export class LayoutContext {
   }
 
   /** What examples this checkout bundles, for the project selector. */
+  // ── The showgraphs ────────────────────────────────────────────────────────
+
+  /**
+   * Open a showgraph: the index, a family, or one of a project's three views.
+   *
+   * **ONE WAY IN, FROM EVERYWHERE.** The Show panel's rows, a `?show=` address
+   * the page was opened at, and a node's own `show` attribute all call this, so
+   * the address in the location bar is always the graph on the canvas.
+   *
+   * The estate view is the show seam's graph. The code view is the parse of
+   * the project's default branch on the host at file depth -- the same stream
+   * the Open panel starts, so it draws, caches and cancels like any parse. The
+   * system view is the derived system monitor for that repository. A view the
+   * server says cannot be drawn is a problem the panel shows, never a
+   * different view drawn in its place.
+   */
+  public async openShow(address: ShowAddress): Promise<void> {
+    // Before the panel mounts: a Show panel opening onto nothing drawn draws
+    // every family, and this address is what it is about to draw instead.
+    this.appState.update({ showAddress: address, showProblem: null });
+    this._setShowAddress(address);
+    this.openPanel('show-panel');
+
+    if (address.kind === 'project') {
+      await this.actions.plot.loadShowViews(address.name);
+    } else {
+      this.appState.update({ showViews: null });
+    }
+
+    if (address.view === 'estate') {
+      this._leaveSystemRenderer();
+      this._compoundLayout();
+      await this.plotWith(() => this.actions.plot.drawShow(address));
+      this.focusDockPanel('graph');
+      return;
+    }
+
+    const views = this.appState.state.showViews;
+    const view = views ? views[address.view] : null;
+    if (!view || !view.available) {
+      this.appState.update({
+        showProblem: {
+          kind: 'unreadable',
+          problem: view?.problem ?? `the ${address.view} view of ${address.name} could not be asked for`,
+          remedy: view?.remedy ?? '',
+          where: `${this.appState.api.show}/project/${address.name}/views`,
+        },
+      });
+      m.redraw();
+      return;
+    }
+
+    if (address.view === 'code' && view.url) {
+      this._leaveSystemRenderer();
+      this._compoundLayout();
+      // The coarse map: files, not symbols. The depth is read when the stream
+      // starts, so the reader's own setting is put back straight after.
+      const depth = this.panelState.parseDepth;
+      this.panelState.parseDepth = view.depth ?? 1;
+      const url = view.url;
+      await this.plotWith(async () => this._startStreamFromUrl(url));
+      this.panelState.parseDepth = depth;
+    } else if (address.view === 'system') {
+      if (!SystemDefinitionRegistry.get(address.name)) {
+        SystemDefinitionRegistry.register(new DerivedSystemDefinition(address.name));
+      }
+      const styling = this.appState.state.graphStyling;
+      this.appState.update({
+        selectedRenderer: 'system',
+        graphStyling: { ...styling, systemId: address.name },
+      });
+      // The frame is replaced in state; nothing repaints it until asked.
+      this.actions.plot.createGraphVnode();
+      m.redraw();
+    }
+    this.focusDockPanel('graph');
+  }
+
+  /** Open whatever showgraph the page's own address names, if it names one. */
+  public async openShowFromLocation(): Promise<void> {
+    const address = parseShow(window.location.search);
+    if (address) await this.openShow(address);
+  }
+
+  /** The location bar says which showgraph is drawn, without a new history entry. */
+  private _setShowAddress(address: ShowAddress): void {
+    try {
+      window.history.replaceState(null, '', `${window.location.pathname}${formatShow(address)}`);
+    } catch {
+      // A page that cannot rewrite its address still draws.
+    }
+  }
+
+  /**
+   * A showgraph is containment all the way down -- a family holds its
+   * subfamilies, a subfamily its members, a folder its files -- so it opens in
+   * the compound layout, which gathers each group around what holds it. Under
+   * a layout that does not, two subfamilies whose members interleave draw two
+   * outlines over one another. The reader's next choice of layout still
+   * applies, as it does to any drawing.
+   */
+  private _compoundLayout(): void {
+    const styling = this.appState.state.graphStyling;
+    if (styling.layout !== 'compound_layout') {
+      this.appState.update({ graphStyling: { ...styling, layout: 'compound_layout' } });
+    }
+  }
+
+  /** A showgraph's estate and code views draw on the D3 canvas, not the system monitor. */
+  private _leaveSystemRenderer(): void {
+    if (this.appState.state.selectedRenderer === 'system') {
+      this.appState.update({ selectedRenderer: 'd3' });
+    }
+  }
+
   public async refreshExamples(): Promise<void> {
     try {
       const resp = await fetch(`${this.appState.api.repoReader}/examples`);

@@ -27,14 +27,30 @@ function families() {
   return JSON.parse(readFileSync(FAMILIES, 'utf8'));
 }
 
+// The schemas `codecarto/services/show_service.py` reads. Schema 2 lets a
+// family sit within another and a repository claim several families; a schema
+// this list does not name is one the window would misdraw, so it fails here.
+const KNOWN = [1, 2];
+
 test('the artifact is shaped the way this host reads it', (t) => {
   const doc = families();
   if (!doc) return t.skip(`the governance corpus is not beside this clone (${FAMILIES})`);
-  assert.equal(doc.schema, 1);
+  assert.ok(KNOWN.includes(doc.schema), `schema ${doc.schema} is not one of ${KNOWN}`);
+  const names = new Set(doc.families.map((f) => f.name));
   for (const f of doc.families) {
     assert.ok(f.name, 'a family has a name');
     assert.ok(Array.isArray(f.members), `${f.name} has members`);
     assert.ok(f.drives, `${f.name} says what it drives`);
+    if (doc.schema < 2) continue;
+    assert.ok(f.within === null || names.has(f.within), `${f.name} is within a declared family`);
+    assert.ok(Array.isArray(f.subfamilies), `${f.name} lists its subfamilies`);
+    for (const sub of f.subfamilies) {
+      assert.equal(doc.families.find((g) => g.name === sub)?.within, f.name,
+        `${sub} is listed under ${f.name} and says so itself`);
+    }
+    for (const m of f.members) {
+      assert.ok(f.all_members.includes(m), `${f.name}'s own member ${m} is in all_members`);
+    }
   }
 });
 

@@ -29,6 +29,7 @@ registered.
 | `/capabilities` | capabilities | The governance corpus's capability registry, as graph data |
 | `/overview` | overview | dossier's reading of the estate, as graph data |
 | `/estate` | estate | Every seam above and whether each is there |
+| `/show` | show | Every family and project the corpus names, as graph data |
 | `/auth` | auth | Which GitHub credential source is active |
 | `/db` | db | Graphbase, when `MONGODB_URI` is set |
 
@@ -816,6 +817,59 @@ with what `cargo metadata` says rather than only drawable.
 
 
 ---
+
+## Show Endpoints
+
+### GET `/show/subjects`
+
+What the show seam can draw, read from the corpus's `families.json`, roster,
+inventory, interop registry and palette: `families` (each with `name`,
+`drives`, `within`, `subfamilies`, `members`, `all_members` and its `hue`),
+`projects` (each public repository a family or the roster names, with its
+`families`, `governed` -- `null` when git could not say -- `phase`,
+`description` and `views`), `unstated` and `private` (counted, never named),
+`provenance` (the families document's path, the corpus `commit`, its `schema`,
+and whether `CODECARTO_CORPUS` replaced the pin) and `notes` for any input it
+could not read.
+
+### GET `/show/index/gjgf?layout=&palette_id=`
+
+Every family at once as `GraphData`: each family a node at its nesting depth,
+each member inside the one family that claims it, and a member two families
+claim drawn once, outside both outlines, with a `member_of` edge to each. Every
+edge carries `basis` -- `claim` (the families document), `declared` (the
+interop registry, labelled with the surface's protocol) or `measured` (a
+member's manifests at its default branch name another estate repository by its
+host URL; drawn dashed, and never used to place a member). `metadata.kind` is
+`"show"`; `metadata.undeclared` lists measured links no surface declares, and
+`metadata.unread` the members with no clone to measure.
+
+### GET `/show/family/{name}/gjgf?layout=&palette_id=`
+
+One family as `GraphData`: its subfamilies one level down, its members inside
+it, a member it shares marked `also_in` with a `member_of` edge to a marker for
+the other family, and every seam touching a member. A family the corpus does not
+declare answers `unreadable` with the ones it does.
+
+### GET `/show/project/{name}/gjgf?layout=&palette_id=`
+
+One repository's place in the estate: its families, its `phase` and `attention`
+claims beside its measured `recency`, its records on `project/<name>` with each
+one's status, its capabilities, and the surfaces it sits on. A private member,
+or a name no family or roster entry gives, answers `unreadable`.
+
+### GET `/show/project/{name}/views`
+
+Which of the project's three views can be drawn here: `estate` (the graph
+above), `code` (the parse of its default branch on the host, with the `url` and
+`depth` the Show panel streams through `/parse/stream-url`) and `system` (the
+derived system monitor, available when a clone beside this one declares
+components). A view that cannot be drawn carries `available: false`, a
+`problem` and a `remedy`.
+
+The corpus is read from `CODECARTO_CORPUS` when it is set, else the
+`governance/qm` submodule. A families document that is missing, or at a schema
+this window does not draw, answers `unreadable` rather than an empty estate.
 
 ## Estate Endpoints
 

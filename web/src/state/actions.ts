@@ -5,6 +5,9 @@ import { TopologyService } from '../services/topology_service';
 import type { TopologyChoices, TopologyProblem, TopologyRequest } from '../services/topology_service';
 import { EstateService } from '../features/estate/estate_service';
 import type { CapabilitiesDocument, DrawRequest, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
+import { ShowService } from '../features/show/show_service';
+import type { ShowSubjectsDocument, ShowViewsDocument } from '../features/show/show_service';
+import type { ShowAddress } from '../features/show/show_address';
 import { isProblem } from '../features/estate/seam_client';
 import { CartographyService } from '../features/cartography/cartography_service';
 import type {
@@ -586,6 +589,28 @@ export class PlotActions {
     this._draw(found, 'capabilitiesProblem');
   }
 
+  /** Every family and project the corpus names, for the Show panel. */
+  async loadShowSubjects(): Promise<void> {
+    const found = await ShowService.subjects(this.stateController.api.show);
+    this._settle(found, 'showSubjects', 'showProblem');
+  }
+
+  /** Which of a project's views can be drawn here. Draws nothing. */
+  async loadShowViews(project: string): Promise<void> {
+    this.stateController.update({ showViews: null });
+    const found = await ShowService.views(this.stateController.api.show, project);
+    this._settle(found, 'showViews', 'showProblem');
+  }
+
+  /** A showgraph's estate view -- the index, a family or a project -- on the canvas. */
+  async drawShow(address: ShowAddress, request: DrawRequest = {}): Promise<void> {
+    this.stateController.clear();
+    const found = await ShowService.graph(this.stateController.api.show, address,
+      { ...request, layout: request.layout ?? this._layout() });
+    this.stateController.update({ showAddress: address });
+    this._draw(found, 'showProblem');
+  }
+
   /** dossier's sections, for the panel's list. Draws nothing. */
   async loadOverviewReading(seam?: string): Promise<void> {
     const found = await EstateService.overviewData(this.stateController.api.overview, seam);
@@ -683,9 +708,11 @@ export class PlotActions {
   private _settle(
     found: SeamOutcome,
     readingField:
-      'capabilitiesReading' | 'overviewReading' | 'cargoReading' | 'chrestomathyReading' | 'chrestomathyCensus',
+      'capabilitiesReading' | 'overviewReading' | 'cargoReading' | 'chrestomathyReading' | 'chrestomathyCensus'
+      | 'showSubjects' | 'showViews',
     problemField:
-      'capabilitiesProblem' | 'overviewProblem' | 'cargoProblem' | 'chrestomathyProblem' | 'censusProblem',
+      'capabilitiesProblem' | 'overviewProblem' | 'cargoProblem' | 'chrestomathyProblem' | 'censusProblem'
+      | 'showProblem',
   ): void {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {
@@ -694,7 +721,8 @@ export class PlotActions {
       logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
     } else {
       patch[readingField] = found.document as unknown as
-        CapabilitiesDocument | OverviewDocument | CargoDocument | ChrestomathyDocument | CensusDocument;
+        CapabilitiesDocument | OverviewDocument | CargoDocument | ChrestomathyDocument | CensusDocument
+        | ShowSubjectsDocument | ShowViewsDocument;
       patch[problemField] = null;
     }
     this.stateController.update(patch);
@@ -711,7 +739,7 @@ export class PlotActions {
    */
   private _draw(
     found: SeamOutcome,
-    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'cargoProblem' | 'chrestomathyProblem',
+    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'cargoProblem' | 'chrestomathyProblem' | 'showProblem',
   ): void {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {

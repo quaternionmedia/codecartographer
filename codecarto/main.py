@@ -6,6 +6,7 @@ from codecarto.routers.topology_router import TopologyRouter
 from codecarto.routers.capability_router import CapabilityRouter
 from codecarto.routers.overview_router import OverviewRouter
 from codecarto.routers.estate_router import EstateRouter
+from codecarto.routers.show_router import ShowRouter
 from codecarto.routers.app_router import AppRouter, DIST, build_present
 from codecarto.routers.palette_router import PaletteRouter
 from codecarto.routers.plotter_router import PlotterRouter
@@ -91,6 +92,10 @@ app.include_router(OverviewRouter, prefix="/overview", tags=["overview"])
 # Every seam above, and whether each one is there: the liveness table a reader
 # opens before any panel, answered without drawing anything.
 app.include_router(EstateRouter, prefix="/estate", tags=["estate"])
+
+# Every family and project the corpus names, drawn from the claims its docs
+# site is generated from: the graph leg of the corpus's `plans/the-triplet.md`.
+app.include_router(ShowRouter, prefix="/show", tags=["show"])
 
 # The built web application, on the same origin as the API it talks to. Mounted
 # after the routers so a route always wins over a static file of the same name.

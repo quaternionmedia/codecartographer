@@ -73,6 +73,11 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       ctx.dropSavedLayout(`Golden Layout refused it (${err instanceof Error ? err.message : String(err)})`);
       glInstance.loadLayout(DEFAULT_LAYOUT_CONFIG);
     }
+
+    // A `?show=` address opens its showgraph, once the dock exists to open
+    // the Show panel in and the canvas has its size to fit the graph to.
+    // Not awaited: nothing else at boot waits on a family being measured.
+    requestAnimationFrame(() => { void ctx.openShowFromLocation(); });
   }
 
   return {
