@@ -417,12 +417,7 @@ def _manifests(clone: Path) -> dict[str, str]:
     is read again: the key is the commit the default branch is at, not the
     clone's path.
     """
-    commit = None
-    for ref in ("origin/HEAD", "HEAD"):
-        out = corpus_root.git(clone, "rev-parse", "--verify", "--quiet", ref)
-        if out and out.strip():
-            commit = out.strip()
-            break
+    commit = clones.default_commit(clone)
     if commit is None:
         return {}
     key = (str(clone), commit)
@@ -748,5 +743,14 @@ def as_gjgf(graph, options: Any = None) -> dict[str, Any]:
     from codecarto.models.plot_data import PlotOptions
     from codecarto.services.graph_serializer import GraphSerializer
 
+    from codecarto.services import show_layout
+    from codecarto.services.position_service import layout_key
+
     chosen = options or PlotOptions(layout="Kamada Kawai")
-    return GraphSerializer.serialize_to_gjgf(graph, chosen)
+    drawn = GraphSerializer.serialize_to_gjgf(graph, chosen)
+    # The compound layout is the one a showgraph opens in. It spaces groups
+    # for a code graph's symbols, so a showgraph's groups are re-placed as
+    # rings packed in rows; any other layout the reader picks is theirs.
+    if layout_key(chosen.layout) == "compound_layout":
+        show_layout.pack(drawn, str(graph.graph.get("subject") or ""))
+    return drawn

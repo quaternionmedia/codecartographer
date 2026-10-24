@@ -368,3 +368,119 @@ def test_the_seam_is_in_the_liveness_table(client):
     families = next(r for r in rows if r["name"] == "families")
     assert families["ok"] is True and families["schema"] == 2
     assert families["panel"] == "show-panel"
+
+
+# --- where the packed layout puts things ------------------------------------
+#
+# A showgraph opens in the compound layout, and `show_layout.pack` re-places
+# it. The outlines are drawn in the browser around what each group holds, so
+# here an outline is taken as the canvas takes it: the circle around a group's
+# node reaching its farthest member, plus that member's drawn radius and the
+# outline's padding.
+
+def _xy(node: dict) -> tuple[float, float]:
+    return node["x"], node["y"]
+
+
+def _outline(nodes: dict[str, dict], edges: list[dict], hub: str) -> tuple[float, float, float]:
+    """The circle a top-level group's outline is drawn as, around its hub."""
+    held, todo = set(), [hub]
+    while todo:
+        here = todo.pop()
+        for e in edges:
+            if e["source"] == here and e["kind"] == "contains" and e["target"] not in held:
+                held.add(e["target"])
+                todo.append(e["target"])
+    cx, cy = _xy(nodes[hub])
+    reach = max((((nodes[n]["x"] - cx) ** 2 + (nodes[n]["y"] - cy) ** 2) ** 0.5 for n in held),
+                default=0.0)
+    return cx, cy, reach + 12 + 40
+
+
+def _distance(a: tuple[float, float], b: tuple[float, float]) -> float:
+    return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+
+
+def test_packed_outlines_do_not_overlap(client):
+    results = _results(client, "/show/index/gjgf?layout=Compound")
+    nodes, edges = _nodes(results), _edges(results)
+    tops = [n for n, a in nodes.items() if a.get("depth") == 0]
+    circles = {n: _outline(nodes, edges, n) for n in tops}
+    for i, a in enumerate(tops):
+        for b in tops[i + 1:]:
+            ax, ay, ar = circles[a]
+            bx, by, br = circles[b]
+            assert _distance((ax, ay), (bx, by)) >= ar + br, \
+                f"{a}'s outline overlapped {b}'s"
+
+
+def test_a_shared_member_is_packed_outside_every_outline(client):
+    results = _results(client, "/show/index/gjgf?layout=Compound")
+    nodes, edges = _nodes(results), _edges(results)
+    delta = _xy(nodes["repo::delta"])
+    for top in (n for n, a in nodes.items() if a.get("depth") == 0):
+        cx, cy, r = _outline(nodes, edges, top)
+        assert _distance(delta, (cx, cy)) > r, \
+            f"a member two families claim was packed inside {top}'s outline"
+
+
+def test_every_name_on_a_ring_has_room(corpus, monkeypatch):
+    # Twelve members, so the ring is as wide as its names need rather than
+    # its smallest size.
+    crowd = [f"m{i:02d}" for i in range(12)]
+    document = json.loads(json.dumps(FAMILIES))
+    document["families"][0]["members"] += crowd
+    document["families"][0]["all_members"] += crowd
+    (corpus / "families.json").write_text(json.dumps(document), encoding="utf-8")
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(corpus.parent / "no-clones"))
+    nodes = _nodes(_results(TestClient(app), "/show/family/core/gjgf?layout=Compound"))
+    placed = [(n, _xy(a)) for n, a in nodes.items() if a.get("label_at") not in (None, "none")]
+    assert len(placed) >= 12
+    for i, (a, pa) in enumerate(placed):
+        for b, pb in placed[i + 1:]:
+            assert _distance(pa, pb) >= 60, f"{a} and {b} were packed too close to name"
+
+
+def test_a_name_goes_outward_and_an_outline_s_node_is_not_named_twice(client):
+    results = _results(client, "/show/family/performing/gjgf?layout=Compound")
+    nodes = _nodes(results)
+    assert nodes["family::performing"]["label_at"] == "none"
+    assert nodes["family::sound"]["label_at"] == "none"
+    sx, _ = _xy(nodes["family::sound"])
+    for member in ("repo::gamma", "repo::delta"):
+        side = nodes[member]["label_at"]
+        if side in ("left", "right"):
+            assert (side == "right") == (nodes[member]["x"] > sx), \
+                f"{member}'s name faced into its ring"
+
+
+def test_the_packed_index_is_smaller_than_the_code_layout_s(client, corpus):
+    from codecarto.models.plot_data import PlotOptions
+    from codecarto.services.graph_serializer import GraphSerializer
+
+    reading = show_service.read(corpus)
+    graph = show_service.index_graph(reading)
+    options = PlotOptions(layout="Compound", palette_id="0", type="d3")
+
+    def extent(drawn: dict) -> float:
+        xs = [n["metadata"]["x"] for n in drawn["nodes"].values()]
+        ys = [n["metadata"]["y"] for n in drawn["nodes"].values()]
+        return (max(xs) - min(xs)) * (max(ys) - min(ys))
+
+    unpacked = extent(GraphSerializer.serialize_to_gjgf(graph, options))
+    packed = extent(show_service.as_gjgf(graph, options))
+    assert packed < unpacked / 2, "packing did not make the estate smaller"
+
+
+def test_a_layout_the_reader_picks_is_left_as_it_draws(client):
+    results = _results(client, "/show/index/gjgf?layout=Spectral")
+    assert not any("label_at" in a for a in _nodes(results).values())
+
+
+def test_a_project_s_view_is_a_ring_around_the_project(client):
+    results = _results(client, "/show/project/alpha/gjgf?layout=Compound")
+    nodes = _nodes(results)
+    assert _xy(nodes["repo::alpha"]) == (0.0, 0.0)
+    others = [_distance(_xy(a), (0.0, 0.0)) for n, a in nodes.items() if n != "repo::alpha"]
+    assert min(others) > 30, "something was packed onto the project itself"

@@ -871,6 +871,17 @@ The corpus is read from `CODECARTO_CORPUS` when it is set, else the
 `governance/qm` submodule. A families document that is missing, or at a schema
 this window does not draw, answers `unreadable` rather than an empty estate.
 
+At `layout=Compound`, the layout the Show panel opens in, the three drawing
+routes re-place their nodes after the layout runs
+(`codecarto/services/show_layout.py`). Each group is a ring around its own
+node, spaced for its members' names. A subgroup is one item on its parent's
+ring. The top level is packed in rows wider than they are tall. A node no
+outline holds is placed between what it is joined to and pushed outside every
+outline. A project's view is a ring around the project. Each ring member
+carries `label_at` (`right`, `left`, `above` or `below`), the side its name goes
+on. A group's own node carries `none`, because its outline names it. Any other
+layout is left as it draws.
+
 ## Estate Endpoints
 
 These routes draw data other projects produce, and `/estate/seams` says
