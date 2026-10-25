@@ -32,7 +32,7 @@ const STEPS = [
   {
     icon: '⊞',
     title: 'Manage panels',
-    body: 'Drag tabs to rearrange. Click ✕ to close a panel — a Restore button appears in the top bar to bring it back. Resize panels by dragging the dividers.',
+    body: 'Drag tabs to rearrange, and drag the dividers to resize. Click ✕ to close a panel. The + button in the top bar adds a panel, closed ones included, and saves or resets the layout.',
   },
 ];
 

@@ -12,7 +12,7 @@
 
 import m from 'mithril';
 import { LayoutManager } from 'golden-layout';
-import type { LayoutConfig } from 'golden-layout';
+import type { ContentItem, LayoutConfig, Stack } from 'golden-layout';
 
 import { ICell, ICellState } from '../state/cell_state';
 import { StateController } from '../state/state_controller';
@@ -34,6 +34,7 @@ import { notesTail } from '../features/graph/services/parse_notes';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { readSavedLayout } from './saved_layout';
+import { stackForNewPanel, stackOfTabClicked } from './new_panel_stack';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
 import { GraphSurface } from '../features/graph/services/graph_surface';
@@ -106,9 +107,6 @@ export class LayoutContext {
   /** When true, every completed render appends an entry to the history collection. */
   public graphbaseTrackHistory = false;
 
-  /** Dock panels that have been closed and can be restored. */
-  public hiddenDockPanels: DockPanelId[] = [];
-
   // Streaming lifecycle refs
   private _cancelStream: (() => void) | null = null;
   private _streamingRenderer: StreamingGraphRenderer | null = null;
@@ -167,33 +165,17 @@ export class LayoutContext {
     m.redraw();
   }
 
-  /** Attach the live Golden Layout manager for add/restore operations. */
+  /** Attach the live Golden Layout manager that panels are opened in. */
   public attachLayoutManager(layoutManager: LayoutManager | null): void {
     this._layoutManager = layoutManager;
-  }
-
-  public hideDockPanel(panelId: DockPanelId): void {
-    if (!this.hiddenDockPanels.includes(panelId)) {
-      this.hiddenDockPanels = [...this.hiddenDockPanels, panelId];
-      m.redraw();
-    }
-  }
-
-  public showDockPanel(panelId: DockPanelId): void {
-    if (this.hiddenDockPanels.includes(panelId)) {
-      this.hiddenDockPanels = this.hiddenDockPanels.filter((id) => id !== panelId);
-      m.redraw();
-    }
   }
 
   /**
    * Bring a panel's tab to the front of its stack.
    *
-   * A panel opened from the "+" menu lands in the main stack beside the Graph
-   * panel, so after a reader presses "draw" the graph is drawn behind the
-   * controls they pressed it from -- which the browser tests measured as every
-   * node present and every node hidden. The drawing goes where the reader can
-   * see it; a panel that is not in a stack has nothing to focus and is left.
+   * A panel that draws calls this with 'graph' once it has drawn, so the
+   * drawing is in view even when the reader has stacked the panel with the
+   * canvas. A panel that is not in a stack has nothing to focus and is left.
    */
   public focusDockPanel(panelId: DockPanelId): void {
     const item = this._layoutManager?.findFirstComponentItemById(panelId);
@@ -207,22 +189,46 @@ export class LayoutContext {
     }
   }
 
-  /** Re-open a closed dock panel, or add it fresh if it isn't in the layout at all. */
-  public restoreDockPanel(panelId: DockPanelId): void {
-    if (!this._layoutManager) return;
+  /**
+   * Open a panel: bring it to the front when it is in the layout, add it when
+   * it is not. The one way a window opens: the "+" menu, an Estate row, View ▸
+   * Compare and a source that loads data for a panel all call this.
+   *
+   * An added panel joins the stack whose tab the reader last clicked, or else
+   * the stack holding the most panels, and not the Graph panel's own stack
+   * while another stack exists, so the canvas stays in view.
+   */
+  public openPanel(panelId: DockPanelId): void {
+    const layout = this._layoutManager;
+    if (!layout) return;
     const def = PanelRegistry.get(panelId);
     if (!def) return;
 
-    if (this._layoutManager.findFirstComponentItemById(panelId)) {
-      this.showDockPanel(panelId);
-      // Present but behind another tab is not "shown" to anybody.
+    if (layout.findFirstComponentItemById(panelId)) {
       this.focusDockPanel(panelId);
       return;
     }
 
-    this._layoutManager.newItemAtLocation(def.config, LayoutManager.defaultLocationSelectors);
-    this.showDockPanel(panelId);
-    this._layoutManager.updateRootSize(true);
+    // Where: `new_panel_stack.ts`, which says why it is not Golden Layout's
+    // focus. Null leaves it to Golden Layout's own placement.
+    const canvas = layout.findFirstComponentItemById('graph')?.parent ?? null;
+    const stack = stackForNewPanel<ContentItem>(layout.rootItem, canvas, this._tabStackClicked) as Stack | null;
+    if (stack) stack.newItem(def.config);
+    else layout.newItemAtLocation(def.config, LayoutManager.defaultLocationSelectors);
+    layout.updateRootSize(true);
+  }
+
+  /** The `.lm_stack` element of the tab the reader last clicked; see `noteClick`. */
+  private _tabStackClicked: unknown = null;
+
+  /**
+   * Hear a click in the dock, before Golden Layout does. A click on a tab
+   * records that tab's stack, which is where `openPanel` adds a window next;
+   * any other click records nothing.
+   */
+  public noteClick(target: EventTarget | null): void {
+    const clicked = stackOfTabClicked(target);
+    if (clicked) this._tabStackClicked = clicked;
   }
 
   /** Ids of every registered panel currently present in the live layout. */
@@ -233,7 +239,7 @@ export class LayoutContext {
       .filter((id) => !!this._layoutManager!.findFirstComponentItemById(id));
   }
 
-  /** Registered panels not currently in the layout — what the add-window menu offers. */
+  /** Registered panels not in the layout, closed ones included — what the "+" menu offers. */
   public addablePanels() {
     const open = new Set(this.openPanelIds());
     return PanelRegistry.all().filter((def) => !open.has(def.id));
@@ -286,7 +292,6 @@ export class LayoutContext {
   public resetLayoutToBuiltinDefault(): void {
     localStorage.removeItem(SAVED_LAYOUT_KEY);
     this._layoutManager?.loadLayout(DEFAULT_LAYOUT_CONFIG);
-    this.hiddenDockPanels = [];
     ToastManager.show('Layout reset to built-in default');
   }
 
@@ -772,7 +777,7 @@ export class LayoutContext {
         const node = renderer()?.getNodes().find((n) => n.id === id);
         if (typeof node?.construct !== 'string') return;
         void this.actions.plot.cartography.loadChrestomathy(node.construct);
-        this.restoreDockPanel('chrestomathy-panel');
+        this.openPanel('chrestomathy-panel');
       },
     };
   }
@@ -1094,9 +1099,13 @@ export class LayoutContext {
 
       onBundledExample: (example) => {
         this.panelCallbacks.onRepoSubmit(example.url);
-        // Its recorded cargo documents are part of it: the Cargo panel reads
-        // them now, so opening that panel shows the workspace already read.
-        if (example.cargo) void this.actions.plot.cartography.loadCargoReading(example.url);
+        // Its recorded cargo documents are part of it. A source that loads
+        // data for a panel brings that panel forward, as View ▸ Compare
+        // brings the Chrestomathy panel.
+        if (example.cargo) {
+          void this.actions.plot.cartography.loadCargoReading(example.url);
+          this.openPanel('cargo-panel');
+        }
       },
 
       onRepoSubmit: (url: string) => {

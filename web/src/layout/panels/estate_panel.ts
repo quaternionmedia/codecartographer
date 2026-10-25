@@ -47,7 +47,7 @@ export function createEstatePanel(ctx: LayoutContext): m.Component {
         m('button.estate__open', {
           disabled: !panel,
           title: panel ? `open the ${panel.menuLabel} panel` : 'nothing draws this seam yet',
-          onclick: () => panel && ctx.restoreDockPanel(panel.id),
+          onclick: () => panel && ctx.openPanel(panel.id),
         }, panel ? `open ${panel.menuLabel.toLowerCase()}` : 'no panel yet'),
       ]),
       m('p.estate__role', seam.role),
