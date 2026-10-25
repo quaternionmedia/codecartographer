@@ -706,6 +706,32 @@ List all saved bookmarks. Returns an array of `{name, url, layout, depth, extens
 #### DELETE `/db/bookmarks/{name}`
 Delete a named bookmark. Returns 404 if not found.
 
+### Graphs
+
+Named NetworkX graphs, in `nx.node_link_data` form (`graph` collection);
+`nx.node_link_graph(result)` rebuilds one.
+
+#### POST `/db/graph/insert?name=`
+Body: the graph's node-link data. Stores it under `name`.
+
+#### POST `/db/graph/{name}`
+An empty graph under `name`.
+
+#### GET `/db/graph/{name}`
+The graph's node-link data.
+
+#### GET `/db/graphs`
+Every stored graph's name.
+
+#### POST `/db/graph/{name}/node?node_id=` · DELETE `/db/graph/{name}/node?node_id=`
+Add or remove a node.
+
+#### POST `/db/graph/{name}/edge?source=&target=` · DELETE `/db/graph/{name}/edge?source=&target=`
+Add or remove an edge.
+
+#### DELETE `/db/graph/{name}`
+Removes the graph.
+
 ### Snapshots
 
 #### POST `/db/snapshots?name=`
@@ -1022,13 +1048,21 @@ message alone (`main.py`'s `http_exception_handler`):
 { "message": "Error description" }
 ```
 
+Two answers do not pass through that handler. A path no route serves is
+FastAPI's own 404, `{"detail": "Not Found"}`, and a request that fails
+validation -- a parameter or body field missing, or of the wrong type -- is a 422,
+`{"detail": [...]}`, one entry per field. A route that answers in the envelope can
+also carry a status inside a 200: `DELETE /parse/cache/{key}` for a key the cache
+does not hold answers HTTP 200 with `status: 404`.
+
 ### Error Codes
 
 | Code | Meaning |
 |------|---------|
 | 200 | Success |
 | 400 | Bad Request (invalid params) |
-| 404 | Not Found (missing file/dir) |
+| 404 | Not Found (missing file/dir, or a path no route serves) |
+| 422 | Unprocessable Entity (a parameter or body field missing or of the wrong type) |
 | 403 | Forbidden (GitHub rate limit) |
 | 500 | Internal Server Error |
 | 502 | Bad Gateway (GitHub download failed) |

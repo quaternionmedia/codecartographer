@@ -740,3 +740,22 @@ def test_every_default_layout_entry_carries_its_registry_id():
     assert entries, "no component entries found in default_layout.ts; the pattern is stale"
     wrong = [f"{kind} -> {ident or 'no id'}" for kind, _, ident in entries if ident != kind]
     assert not wrong, f"default layout entries whose id is missing or differs from the type: {wrong}"
+
+
+def test_the_api_reference_says_the_errors_the_envelope_does_not_carry():
+    """A path no route serves is FastAPI's own 404 and a request that fails
+    validation its 422; neither passes through `http_exception_handler`, so
+    neither answers `{message}`. Mutation: drop the 422 row, or the unknown
+    route's body, from `docs/api.md` -- this fails naming it."""
+    from fastapi.testclient import TestClient
+
+    from codecarto.main import app
+
+    client = TestClient(app)
+    unknown = client.get("/no/such/route")
+    invalid = client.post("/parse/unified", json={})
+    reference = (ROOT / "docs" / "api.md").read_text(encoding="utf-8")
+    assert unknown.status_code == 404 and unknown.json() == {"detail": "Not Found"}
+    assert invalid.status_code == 422 and isinstance(invalid.json().get("detail"), list)
+    assert '{"detail": "Not Found"}' in reference, "api.md does not show an unknown route's 404"
+    assert re.search(r"^\| 422 \|", reference, re.M), "api.md's error table has no 422 row"
