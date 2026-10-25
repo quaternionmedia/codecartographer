@@ -327,11 +327,19 @@ about 100 px in the browser (`GraphSerializer`'s `spread`).
 On the canvas, `CompoundLayoutManager` (`web/src/features/graph/services/compound_layout.ts`)
 draws a translucent circle behind each directory's and each file's group,
 assigning children by the same containment edges and by nearest position only
-for an orphan. `computeChildrenMap` covers all four tiers, so dragging a node
-moves its whole subtree. The circles are drawn only for `compound_layout`, in a
-`<g class="compound-backgrounds">` that is the transform group's first child,
-so they sit behind links and nodes. Where the layout and its outline toggle
-are chosen is in the [UI reference](ui.md).
+for an orphan. The circles are drawn whatever the layout, when a draw finishes,
+unless Group Outlines (`showCompoundGroups`) is off: `StreamingGraphRenderer`
+checks only that setting, and the toggle is offered with the D3 renderer for
+every layout. Each circle encloses its group where the chosen layout put it.
+They are in a `<g class="compound-backgrounds">` that is the transform group's
+first child, so they sit behind links and nodes. Where the layout and its
+outline toggle are chosen is in the [UI reference](ui.md).
+
+`computeChildrenMap` covers all four tiers, so dragging a node moves its whole
+subtree, and the circles are redrawn when the drag ends. The map is computed
+where the circles are drawn, so with Group Outlines off from the first draw a
+drag moves the one node; and the redraw after a drag does not read the setting,
+so a drag after the outlines are turned off draws them again.
 
 ## Calculated, stored, displayed
 
