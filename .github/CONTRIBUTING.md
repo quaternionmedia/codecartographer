@@ -1,274 +1,221 @@
 # Contributing to Code Cartographer
 
-> Development patterns, workflows, and best practices
+> Setting up, running, changing and testing this repository. The rules every
+> change follows -- pull requests, contributorship, decision records -- are in
+> [`AGENTS.md`](../AGENTS.md). Where this page and the tree disagree, the tree
+> is right: fix the page. `tests/test_docs_routes.py` checks its ports and
+> commands against the tree.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.10+
-- [UV](https://github.com/astral-sh/uv) package manager
-- Node.js 18+ (for frontend)
-- Docker (optional, for database)
+- Python 3.10+ (`requires-python` in `pyproject.toml`)
+- [uv](https://github.com/astral-sh/uv) -- `uv.lock` is the Python environment
+- Node.js 20.19+ or 22.12+ (the frontend; Vite 8's `engines` minimum)
+- Docker (optional, for the MongoDB behind `/db`)
 
 ### Initial Setup
 
 ```bash
-# Clone repository
 git clone https://github.com/quaternionmedia/codecartographer.git
 cd codecartographer
-git submodule init && git submodule update
+git submodule update --init governance/qm   # the decision records and the corpus
+git submodule update --init graphbase       # optional: private, and only /db uses it
 
-# Create virtual environment with uv
-uv venv
-
-# Activate virtual environment
-# Windows (Git Bash):
-source .venv/Scripts/activate
-# Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-# Linux/macOS:
-source .venv/bin/activate
-
-# Install dependencies
-uv pip install -e ".[dev]"
-
-# Install frontend dependencies
-cd web && npm install && cd ..
+uv sync --extra dev                         # the lockfile is the environment, in .venv
+cd web && npm ci                            # the frontend's lockfile, likewise
+npx playwright install chromium             # once, for the browser tests
+cd ..
 ```
+
+`uv run …` uses `.venv`; nothing needs activating. `npm ci` installs exactly
+what `web/package-lock.json` pins; `codecarto dev` and `codecarto web` run
+`npm install` themselves when `web/node_modules` is missing.
 
 ## CLI Commands
 
 ```bash
-# Show all available commands
-uv run codecarto --help
+uv run codecarto --help           # every command
 
-# Development (backend + frontend)
-uv run codecarto dev
+uv run codecarto dev              # backend and frontend together
+uv run codecarto serve            # backend only, reloading on change
+uv run codecarto web              # frontend only, http://localhost:1234
 
-# Backend only
-uv run codecarto serve
-
-# Frontend only
-uv run codecarto web
-
-# Local repo analysis
-uv run codecarto repo scan .
+uv run codecarto repo scan .      # a local repository's structure
 uv run codecarto repo graph . -t ast
+
+uv run codecarto lint             # ruff; --fix applies what it can
 ```
+
+**The backend's port is `codecarto.cli.DEFAULT_PORT`, and it is not 8000.**
+`serve --help` prints it, `CODECARTO_PORT` or `--port` moves it, and
+`codecarto dev` prints both addresses on startup. Before trusting an answer,
+check that `/openapi.json` names the application `codecarto`. AGENTS.md says
+why.
 
 ---
 
-## Architecture Overview
+## Where Things Are
 
-### Frontend Structure
-
-The frontend combines a feature-based module architecture
-(`web/src/features/`) with Golden Layout as the primary application
-shell (`web/src/layout/` — dock panel registry, layout persistence).
-See `docs/architecture.md` for the current, authoritative structure;
-the feature-module shape below still holds for the graph/repository/
-upload/settings features themselves, just wrapped by the GL shell now
-rather than the older fixed-tab control panel:
+`docs/architecture.md` maps the backend, the frontend and the data flow;
+`docs/llm/UI_REFERENCE.md` covers the shell and its panels. The frontend in
+outline:
 
 ```
-web/src/features/
-├── graph/                   # Graph visualization feature
-│   ├── components/
-│   │   └── Plot.ts          # Main visualization container
-│   ├── services/
-│   │   ├── streaming_renderer.ts   # the D3 canvas — every graph draws here
-│   │   └── graph_types.ts          # GraphNode / GraphEdge / GraphData
-│   ├── rad/                  # the radial menu
-│   ├── extensions/           # BaseExtension seam; the legend mounts here
-│   ├── state/
-│   │   ├── graph_state.ts   # State interface
-│   │   └── graph_actions.ts # Action creators
-│   └── index.ts             # Barrel export
-│
-├── repository/              # GitHub repository feature
-│   ├── components/
-│   │   ├── UrlInput.ts
-│   │   └── DirectoryNav.ts
-│   ├── services/
-│   │   └── repo_service.ts
-│   └── state/
-│
-├── upload/                  # File upload feature
-└── settings/                # Settings feature
+web/src/
+├── index.html, index.ts       # the page and its entry
+├── layout/                    # the Golden Layout shell
+│   ├── golden_layout_shell.ts # builds the dock, the "+" menu; loads the saved or built-in layout
+│   ├── panel_registry.ts      # every dock panel, once -- a new panel is an entry here
+│   ├── default_layout.ts      # the built-in arrangement, and the settings every layout loads with
+│   ├── saved_layout.ts        # the check a saved arrangement passes before Golden Layout reads it
+│   ├── layout_context.ts      # the state and actions every panel shares
+│   ├── components/            # add_panel_menu.ts
+│   └── panels/                # one Mithril component per panel
+├── features/
+│   ├── graph/                 # services/ (streaming_renderer.ts is the one canvas), rad/, extensions/, config/
+│   ├── estate/                # the seam client, problem view and provenance the estate panels share
+│   └── repository/services/
+├── components/codecarto/      # control_panel (the controls the Upload, Repository and
+│                              # Graph Settings panels render), help (modal, toasts), plot
+├── state/                     # the Meiosis cell: cell_state.ts, state_controller.ts, actions.ts, types.ts
+├── services/                  # plot_service.ts (the SSE stream), graphbase_service.ts, topology_service.ts
+├── core/                      # logger.ts, animations.ts
+└── styles/                    # index.css; root/root.css holds every theme's variables
 ```
 
-### State Management Pattern
+### State
 
-Each feature module exports a consistent interface:
-
-```typescript
-// State interface
-export interface GraphState {
-  content: m.Vnode[];
-  isRendering: boolean;
-  options: GraphOptions;
-  metadata: GraphMetadata | null;
-}
-
-// Action creators (functional pattern)
-export const graphActions = {
-  setContent: (content: m.Vnode[]) => (state: GraphState) => ({
-    ...state,
-    content,
-  }),
-  setOptions: (options: Partial<GraphOptions>) => (state: GraphState) => ({
-    ...state,
-    options: { ...state.options, ...options },
-  }),
-};
-```
+- Application state is one Meiosis cell (`state/cell_state.ts`), wrapped by
+  `StateController` (`state/state_controller.ts`).
+- `createActions` (`state/actions.ts`) builds the actions that change it.
+- `LayoutContext` hands every panel the controller, the actions and the panel
+  callbacks.
+- A panel reads `ctx.appState.state` in its `view` and calls an action;
+  Mithril redraws.
 
 ---
 
 ## Development Patterns
 
-### Adding a New Feature Module
+### Adding a Dock Panel
 
-1. **Create directory structure**:
-```
-features/new-feature/
-├── components/
-├── services/
-├── state/
-└── index.ts
-```
+1. Write the panel in `web/src/layout/panels/` as a factory taking the
+   `LayoutContext` and returning a Mithril component.
+2. Add one entry to `PANEL_DEFINITIONS` in `web/src/layout/panel_registry.ts`:
+   id, menu label, Golden Layout config, overflow and mount. The config's `id`
+   equals the registry id; the shell finds a panel to focus or re-open by it.
+   The panel then appears in the `+` menu.
+3. Add its row to the panel table in `docs/llm/UI_REFERENCE.md`;
+   `tests/test_docs_routes.py` fails until there is one.
 
-2. **Define state interface** (`state/new-feature_state.ts`):
-```typescript
-export interface NewFeatureState {
-  data: SomeData | null;
-  isLoading: boolean;
-}
+Closing a panel unmounts it: take down in `onremove` whatever `oncreate` sets
+up.
 
-export const DEFAULT_NEW_FEATURE_STATE: NewFeatureState = {
-  data: null,
-  isLoading: false,
-};
-```
+### Adding a Feature Module
 
-3. **Create action creators** (`state/new-feature_actions.ts`):
-```typescript
-export const newFeatureActions = {
-  setData: (data: SomeData) => (state: NewFeatureState) => ({
-    ...state,
-    data,
-    isLoading: false,
-  }),
-  setLoading: (isLoading: boolean) => (state: NewFeatureState) => ({
-    ...state,
-    isLoading,
-  }),
-};
-```
+A feature is a directory under `web/src/features/` holding what it needs (see
+`graph/` and `estate/`). Logic that decides what the UI *says*, not how it
+looks, goes in a DOM-free module listed in `web/tsconfig.pure.json`, tested
+under `web/tests/pure/`: that build compiles it without the DOM, and
+`node --test` asserts it directly. `tsconfig.pure.json` says why.
 
-4. **Create components** (`components/Component.ts`):
-```typescript
-interface ComponentAttrs {
-  state: NewFeatureState;
-  onAction: () => void;
-}
+No top-level directory under `web/src/` may share a name with an API prefix.
+The dev server proxies that prefix to the backend, so the directory's modules
+never load; `tests/test_docs_routes.py` fails when one does.
 
-export const Component: m.Component<ComponentAttrs> = {
-  view(vnode) {
-    const { state, onAction } = vnode.attrs;
-    return m('div.component', [
-      m('button', { onclick: onAction }, 'Action'),
-      state.isLoading && m('span', 'Loading...'),
-    ]);
-  }
-};
-```
-
-5. **Create barrel export** (`index.ts`):
-```typescript
-export { Component } from './components/Component';
-export { newFeatureActions } from './state/new-feature_actions';
-export type { NewFeatureState } from './state/new-feature_state';
-export { DEFAULT_NEW_FEATURE_STATE } from './state/new-feature_state';
-```
-
-### Adding Backend API Endpoints
+### Adding a Backend API Endpoint
 
 ```python
 from fastapi import APIRouter
+
 from codecarto.models.plot_data import PlotOptions
 from codecarto.services.graph_serializer import GraphSerializer
 from codecarto.util.utilities import generate_return
 
-Router = APIRouter(prefix="/my-feature", tags=["My Feature"])
+MyFeatureRouter = APIRouter()
 
-@Router.post("/endpoint")
+
+@MyFeatureRouter.post("/endpoint")
 async def my_endpoint(options: PlotOptions) -> dict:
-    """Process request and return graph data."""
-    # Parse/process
+    """Process the request and return graph data."""
     graph = await some_service_call()
-    
-    # Serialize to gJGF
-    gjgf = GraphSerializer.serialize_to_gjgf(graph, options.layout)
-    
-    # Return standardized response
+    gjgf = GraphSerializer.serialize_to_gjgf(graph, options)
     return generate_return(
         results={
             "graph": gjgf,
             "metadata": {
                 "nodeCount": graph.number_of_nodes(),
                 "edgeCount": graph.number_of_edges(),
-            }
+            },
         }
     )
 ```
+
+Register it in `codecarto/main.py`, which gives the prefix:
+`app.include_router(MyFeatureRouter, prefix="/my-feature", tags=["my-feature"])`.
+A new prefix needs three more lines, each checked by
+`tests/test_docs_routes.py`:
+
+- a row in the README's endpoint table;
+- a heading in `docs/api.md`;
+- an entry in `API_PATHS` in `web/vite.config.js`. Without it the dev server
+  answers the request itself, and cannot.
 
 ---
 
 ## Graph Styling System
 
-### GraphStylingOptions Interface
+`GraphStylingOptions` in `web/src/state/types.ts` is the authority. Its core:
 
 ```typescript
 export interface GraphStylingOptions {
-  // Layout Algorithm
-  layout: string;            // 'spring_layout', 'spectral_layout', etc.
+  layout: string;              // a registry name: 'spring_layout', 'compound_layout', ...
 
-  // Physics Simulation
-  enablePhysics: boolean;    // Enable D3 force simulation
-  chargeStrength: number;    // Node repulsion (-500 to -10)
-  linkDistance: number;      // Target edge length (10-300px)
+  enablePhysics: boolean;
+  chargeStrength: number;      // repulsion, in pixels
+  linkDistance: number;        // target edge length, in pixels
 
-  // Node Appearance
-  nodeSize: number;          // Radius in pixels (2-30px)
-  nodeOpacity: number;       // 0.0 to 1.0
-  nodeBorderWidth: number;   // Stroke width (0-8px)
+  nodeSize: number;            // radius, in pixels
+  nodeOpacity: number;         // 0.0 to 1.0
+  nodeBorderWidth: number;
+  colorBy?: string;            // 'auto' | 'layer' | 'type' | 'degree' | ...
 
-  // Edge Appearance
-  edgeWidth: number;         // Line width (0.5-10px)
-  edgeOpacity: number;       // 0.0 to 1.0
+  edgeWidth: number;
+  edgeOpacity: number;
 
-  // Label Appearance
   showNodeLabels: boolean;
   showEdgeLabels: boolean;
-  labelSize: number;         // Font size in pixels (6-24px)
-  labelColor: string;        // Hex color
+  labelSize: number;
+  labelColor: string;
+
+  interactionProfile: string;  // default, cad, gaming, touch
 }
 ```
 
-### Layout Algorithm Mapping
+### Layout Names
 
-| Frontend Value | Backend Value | NetworkX Function |
-|----------------|---------------|-------------------|
+The menu offers the backend's registry names. One rule
+(`web/src/features/graph/services/layout_names.ts`) turns each into the name
+the backend's `PlotOptions` takes: drop `_layout`, capitalise each part, join
+with `_`. There is no table and no fallback: an unknown name reaches the server
+as written, and the server says what is registered.
+
+| Menu value | Sent as | Laid out by |
+|---|---|---|
 | `spring_layout` | `Spring` | `nx.spring_layout()` |
+| `compound_layout` | `Compound` | `custom_layouts/compound_layout.py` |
 | `spectral_layout` | `Spectral` | `nx.spectral_layout()` |
 | `kamada_kawai_layout` | `Kamada_Kawai` | `nx.kamada_kawai_layout()` |
 | `circular_layout` | `Circular` | `nx.circular_layout()` |
 | `spiral_layout` | `Spiral` | `nx.spiral_layout()` |
 | `random_layout` | `Random` | `nx.random_layout()` |
 | `shell_layout` | `Shell` | `nx.shell_layout()` |
-| `sorted_square_layout` | `Sorted_Square` | Custom implementation |
+| `sorted_square_layout` | `Sorted_Square` | `custom_layouts/sorted_square_layout.py` |
+
+A new layout is a function in `codecarto/models/custom_layouts/`, registered in
+`PositionService.add_custom_layouts()` (`codecarto/services/position_service.py`).
 
 ---
 
@@ -279,7 +226,6 @@ export interface GraphStylingOptions {
 ```typescript
 import { logger } from '../core/logger';
 
-// Use appropriate log levels
 logger.debug('Detailed info', data);     // Development only
 logger.info('General information');       // Informational
 logger.warn('Warning message');           // Warnings
@@ -303,23 +249,35 @@ logger.error("Error occurred", exc_info=True)
 
 ## Testing
 
-### Backend Testing (pytest)
-
 ```bash
-# Run all tests
-pytest
+uv run pytest tests -q            # the Python suite: pure Python, no browser or Node
 
-# Run with coverage
-pytest --cov=codecarto --cov-report=html
-
-# Run specific test file
-pytest tests/services/test_graph_serializer.py
+cd web
+npm run typecheck                 # tsc --noEmit over src and tests
+npm run test:pure                 # DOM-free logic, under node --test
+npm run test:state                # the state layer, under node --test
+npm run test:rad                  # the radial menu: its core lint, build and conformance vectors
+npm run test:families             # the corpus's families.json, when it is beside this clone (skips otherwise)
+npm run test:e2e                  # Playwright, against servers it starts itself
+npm run build                     # typecheck, then vite build
 ```
 
-**Test Pattern**:
+- **Unset `MONGODB_URI` before running or timing the Python suite.** With it
+  set and no database listening, the suite waits on server selection and
+  reports minutes for work that takes under one.
+- **The browser tests start their own backend and dev server** on non-default
+  ports, and refuse to reuse a server they did not start;
+  `web/playwright.config.ts` says which ports and why.
+  `tests/e2e/_identity.spec.ts` asks the API what it is before any other spec
+  relies on it.
+- **A check is evidence only once it has been seen to fail.** Break what it
+  names, watch it go red, and name that mutation beside the assertion it
+  breaks, as the specs here do.
+
+**Test pattern:**
 ```python
 def test_serialize_to_gjgf():
-    """Test graph serialization to gJGF format."""
+    """The serializer turns a graph into gJGF with its nodes and edges."""
     graph = nx.DiGraph()
     graph.add_node('A', label='Function A')
     graph.add_edge('A', 'B')
@@ -332,55 +290,59 @@ def test_serialize_to_gjgf():
     assert len(gjgf['edges']) == 1
 ```
 
-No frontend E2E test tooling exists in this repo today — `web/
-package.json` has no test script and no Playwright (or similar)
-dependency. `npm run build` (`vite build`) is the frontend's only
-automated check; verify UI changes by actually running the app.
-
 ---
 
 ## Code Style Guidelines
 
 ### TypeScript
 
-- **Components**: Use Mithril component objects with typed attrs
+- **Components**: Mithril component objects with typed attrs
   ```typescript
   export const Component: m.Component<ComponentAttrs> = { view() {...} }
   ```
-- **Avoid `any`**: Use proper interfaces and type guards
-- **Functional state**: Use action creators that return state transforms
-- **Logger over console**: Use `logger` utility for all logging
+- **Avoid `any`**: use interfaces and type guards
+- **Logger over console**: use the `logger` utility for logging
+- **`import type` only for types**: it is erased, so a value imported that way
+  is gone at runtime. `vite build` compiles it silently; `npm run typecheck`,
+  which `npm run build` runs first, refuses it
 
 ### Python
 
-- **Async endpoints**: Use `async def` for FastAPI routes
-- **Pydantic models**: Use for request/response validation
-- **Type hints**: Required for all function signatures
-- **UV package manager**: Use `uv pip install` for dependencies
+- **Async endpoints**: `async def` for FastAPI routes
+- **Pydantic models**: for request and response validation
+- **Type hints**: on every function signature
+- **Dependencies through uv**: `uv add` changes `pyproject.toml` and `uv.lock`
+  together; `uv sync` installs what the lock says
 
 ### CSS
 
-- **Terminal theme**: Black background (#0a0a0a), green accents (#00ff00)
+- **Theme variables**: take colours from `var(--c-primary)` and its siblings in
+  `web/src/styles/root/root.css`. Each theme redefines them (`:root` is
+  Terminal, black and green; the application opens in Forest), so a colour
+  written into a stylesheet is right in one theme only.
 - **BEM naming**: `.block__element--modifier`
-- **CSS variables**: Use `var(--c-primary)` etc from root.css
 
 ---
 
 ## PR Checklist
 
-- [ ] TypeScript compiles without errors
-- [ ] Python type hints present
-- [ ] Logger used instead of console/print
-- [ ] Feature module pattern followed (if adding feature)
-- [ ] Tests added/updated
-- [ ] Documentation updated if needed
+- [ ] `uv run pytest tests -q` passes, with `MONGODB_URI` unset
+- [ ] `npm run typecheck`, the unit suites and `npm run build` pass in `web/`
+- [ ] `npm run test:e2e` passes, or each failure is named in the PR
+- [ ] Each new check has been seen to fail
+- [ ] `python governance/qm/project-seed/ci/run_workflows_locally.py` has run,
+      and the PR says what it does not reproduce
+- [ ] Documentation updated where behaviour changed
+- [ ] The PR follows AGENTS.md: assigned to whoever asked for the work, no
+      review requested, nothing merged by its author
 
 ---
 
 ## Resources
 
 - [Mithril.js Documentation](https://mithril.js.org)
+- [Golden Layout Documentation](https://golden-layout.github.io/golden-layout/)
 - [D3.js Documentation](https://d3js.org)
 - [FastAPI Documentation](https://fastapi.tiangolo.com)
 - [NetworkX Documentation](https://networkx.org)
-- [UV Package Manager](https://github.com/astral-sh/uv)
+- [uv Documentation](https://docs.astral.sh/uv/)

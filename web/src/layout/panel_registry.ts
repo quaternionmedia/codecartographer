@@ -41,6 +41,11 @@ export interface PanelDefinition {
   readonly menuLabel: string;
   readonly config: ComponentItemConfig;
   readonly overflow: 'hidden' | 'auto';
+  /**
+   * Mount the panel's Mithril root in `element`, the box Golden Layout gives
+   * it. An `m.mount` into that element and nothing else: the shell unmounts
+   * it with `m.mount(element, null)` when Golden Layout releases the box.
+   */
   readonly mount: (ctx: LayoutContext, element: HTMLElement) => void;
 }
 

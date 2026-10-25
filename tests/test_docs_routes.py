@@ -10,16 +10,22 @@ dashboard allocates. Nothing was red.
 
 So the application is the source here and the documents are read against it:
 every prefix `codecarto.main.app` mounts must appear in the README's table, in
-`docs/api.md` under a heading, and in `web/vite.config.js`'s `API_PATHS`; and
-no document may name the port this project no longer binds.
+`docs/api.md` under a heading, and in `web/vite.config.js`'s `API_PATHS`; no
+document may name the port this project no longer binds; and every `npm run`
+script and `uv run codecarto` command a document names must exist.
 
 **READ FROM THE TREE, NOT FROM A LIST HERE.** A list of prefixes in this file
 would be a fourth copy to go stale. The prefixes come from the app's own routes,
-the port from `codecarto.cli.DEFAULT_PORT`.
+the port from `codecarto.cli.DEFAULT_PORT`, the scripts from `web/package.json`
+and the commands from the CLI's own group.
 
 Seen red before trusted: run against the tree before the documents were
 repaired, this file failed on all three route checks and on the port check;
-each was then repaired and the check went green.
+each was then repaired and the check went green. The contributor's guide and
+the assistants' orientation in `.github/` were not read at all, and the second
+still sent readers to the retired port: with them added, the port check failed
+on it until it was repaired. The script and command checks were seen red
+against a document naming a script and a command that do not exist.
 
 WHAT THIS CANNOT SEE. Whether the documented *description* of a route is right.
 It checks presence, which is the failure that actually happened, and not
@@ -28,6 +34,7 @@ meaning.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -44,6 +51,8 @@ NOT_API = {"", "app", "assets", "docs", "redoc", "openapi.json"}
 DOCUMENTS = [
     ROOT / "README.md",
     ROOT / "AGENTS.md",
+    ROOT / ".github" / "CONTRIBUTING.md",
+    ROOT / ".github" / "COPILOT_INSTRUCTIONS.md",
     *sorted((ROOT / "docs").glob("*.md")),
     *sorted((ROOT / "docs" / "llm").glob("*.md")),
     *sorted((ROOT / "docs" / "llm" / "roadmap").glob("*.md")),
@@ -114,6 +123,44 @@ def test_no_document_names_the_port_this_project_no_longer_binds():
         f"these lines name :{retired}, which this project stopped binding; "
         f"the constant is codecarto.cli.DEFAULT_PORT and `serve --help` prints "
         f"it: {stale}")
+
+
+def test_every_npm_script_a_document_names_exists():
+    """`npm run <script>` in prose is a claim about `web/package.json`.
+
+    A script renamed or removed leaves every document that names it sending
+    readers to a command that fails, and nothing else here would notice.
+    """
+    package = json.loads((ROOT / "web" / "package.json").read_text(encoding="utf-8"))
+    scripts = set(package["scripts"])
+    missing = []
+    for path in DOCUMENTS:
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for script in re.findall(r"\bnpm run ([\w:.-]+)", line):
+                if script not in scripts:
+                    missing.append(f"{path.relative_to(ROOT).as_posix()}:{number}: npm run {script}")
+    assert not missing, f"documents name scripts web/package.json does not have: {missing}"
+
+
+def test_every_cli_command_a_document_names_exists():
+    """`uv run codecarto <command>` in prose is a claim about `codecarto.cli`.
+
+    The command and, under a group such as `repo`, the subcommand are checked;
+    options and paths after them are not.
+    """
+    from codecarto.cli import cli
+
+    missing = []
+    for path in DOCUMENTS:
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for name, sub in re.findall(r"\buv run codecarto ([a-z][\w-]*)(?: ([a-z][\w-]*))?", line):
+                command = cli.commands.get(name)
+                where = f"{path.relative_to(ROOT).as_posix()}:{number}"
+                if command is None:
+                    missing.append(f"{where}: codecarto {name}")
+                elif sub and hasattr(command, "commands") and sub not in command.commands:
+                    missing.append(f"{where}: codecarto {name} {sub}")
+    assert not missing, f"documents name commands the CLI does not have: {missing}"
 
 
 def test_documents_do_not_restate_the_test_count():

@@ -38,21 +38,31 @@ export default {
     base: '/codecartographer',
     outDir: '../dist',
     emptyOutDir: true,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          // vis-network/vis-data (~530 KB minified) are only ever loaded
-          // via the dynamic import() inside GravisGraphRenderer.render(),
-          // so isolating them here doesn't add to the eager bundle -- it
-          // gives that lazy chunk one stable, named file instead of an
-          // auto-hashed one, and it's never in index.html's
-          // modulepreload list (verified: only d3/golden-layout are).
-          'vis-network': ['vis-network', 'vis-data'],
-          // d3/golden-layout are both needed at startup either way; split
-          // out mainly so unrelated app-code deploys don't invalidate
-          // browser caches for these rarely-changing vendor chunks.
-          'golden-layout': ['golden-layout'],
-          'd3': ['d3'],
+        // Named vendor chunks. Vite 8 bundles with Rolldown, which takes
+        // these as code-splitting groups: Rollup's object-form manualChunks
+        // is gone. A group takes the modules its test matches and what they
+        // import, as the object form did. The tests match scripts only, so
+        // the golden-layout stylesheets golden_layout_shell.ts imports stay
+        // in the app's one stylesheet, in the order the app imports them,
+        // instead of moving to a stylesheet of the vendor's own ahead of it.
+        codeSplitting: {
+          groups: [
+            // vis-network/vis-data (~530 KB minified) are only ever loaded
+            // via the dynamic import() inside GravisGraphRenderer.render(),
+            // so isolating them here doesn't add to the eager bundle -- it
+            // gives that lazy chunk one stable, named file instead of an
+            // auto-hashed one, and it's never in index.html's
+            // modulepreload list (verified: only d3/golden-layout are, with
+            // the small runtime chunk Rolldown adds when groups are used).
+            { name: 'vis-network', test: /node_modules[\\/]vis-(network|data)[\\/].*\.m?js$/ },
+            // d3/golden-layout are both needed at startup either way; split
+            // out mainly so unrelated app-code deploys don't invalidate
+            // browser caches for these rarely-changing vendor chunks.
+            { name: 'golden-layout', test: /node_modules[\\/]golden-layout[\\/].*\.js$/ },
+            { name: 'd3', test: /node_modules[\\/]d3[\\/].*\.js$/ },
+          ],
         },
       },
     },

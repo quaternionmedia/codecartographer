@@ -13,10 +13,12 @@
 
 import m from 'mithril';
 import { GoldenLayout } from 'golden-layout';
+import type { ComponentContainer } from 'golden-layout';
 
 import type { ICell } from '../state/cell_state';
 import { LayoutContext } from './layout_context';
 import { PanelRegistry, DockPanelId } from './panel_registry';
+import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { AddPanelMenu } from './components/add_panel_menu';
 
 import { HelpModal, HelpModalComponent } from '../components/codecarto/help/help_modal';
@@ -41,19 +43,48 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
   let glInstance: GoldenLayout | null = null;
   let menuOpen = false;
   let menuPos = { x: 0, y: 0 };
+  /** Every element a panel's Mithril root is mounted in, until it is released. */
+  const mountedPanels = new Set<HTMLElement>();
 
   const closeMenu = (): void => { if (menuOpen) { menuOpen = false; m.redraw(); } };
 
-  const registerDockPanelLifecycle = (container: any, panelId: DockPanelId): void => {
+  const registerDockPanelLifecycle = (container: ComponentContainer, panelId: DockPanelId): void => {
     // GL2 destroys the container on close — 'beforeComponentRelease' is the correct event.
     // 'close' is not emitted by ComponentContainer in GL 2.x.
-    container.on('beforeComponentRelease', () => ctx.hideDockPanel(panelId));
+    container.on('beforeComponentRelease', () => {
+      // **A CLOSED PANEL IS TAKEN DOWN, NOT ONLY TAKEN AWAY.** Golden Layout
+      // removes the container's element and forgets it, but the Mithril root
+      // mounted in that element is Mithril's to forget, and nothing told it.
+      // Every redraw went on drawing the closed panel into an element nobody
+      // could see -- a closed Actions panel kept up with each upload -- and a
+      // Graph panel closed and opened again left two roots drawing the one
+      // canvas vnode the state holds, which Mithril reported as a failed
+      // `removeChild` on the next plot. Unmounting also runs the panel's
+      // `onremove`, so whatever a panel sets up it can take down with it.
+      // alfred's workspace, which copied this shell, unmounts here too.
+      m.mount(container.element, null);
+      mountedPanels.delete(container.element);
+      ctx.hideDockPanel(panelId);
+    });
     container.on('show', () => ctx.showDockPanel(panelId));
   };
 
   /** Mount GL panels after the host element exists in the DOM. */
   function initGoldenLayout(hostElement: HTMLElement): void {
     glInstance = new GoldenLayout(hostElement);
+    // **THE DOCK FOLLOWS ITS ELEMENT, AND AT ONCE.** Golden Layout follows its
+    // container's size by itself only when the container is <body>, and this
+    // one is the shell's body element: the dock kept the size it was built
+    // at, so a taller window left a band of nothing under it and a narrower
+    // one cut the panels off at the edge. Followed, it waits 100ms after the
+    // last resize by default, and longer while resizes keep coming -- for
+    // that long every panel is where it was, and a press lands on whatever
+    // used to be under it. alfred's workspace found that in its browser suite
+    // and follows at once; so does this. The cost is a layout per frame while
+    // a window is dragged, which Golden Layout's sizing is cheap enough for.
+    glInstance.resizeWithContainerAutomatically = true;
+    glInstance.resizeDebounceInterval = 0;
+    glInstance.resizeDebounceExtendedWhenPossible = false;
     ctx.attachLayoutManager(glInstance);
 
     for (const def of PanelRegistry.all()) {
@@ -61,13 +92,33 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
         container.element.style.cssText = `width:100%;height:100%;overflow:${def.overflow};`;
         registerDockPanelLifecycle(container, def.id);
         def.mount(ctx, container.element);
+        mountedPanels.add(container.element);
       });
     }
 
-    // Known limitation: GL 2.x pop-out opens a new window but Mithril component
-    // factories are bound to the original window — components never mount in pop-outs.
-    // popInOnClose: true (default_layout.ts) auto-returns panels on pop-out close.
-    glInstance.loadLayout(ctx.loadInitialLayoutConfig());
+    // No panel pops out: the factories above mount Mithril roots in this
+    // window, and Golden Layout does not run them again in a popout window,
+    // which would open with nothing in it. So the dock offers no popout
+    // control (`header.popout: false`, default_layout.ts).
+    const config = ctx.loadInitialLayoutConfig();
+    try {
+      glInstance.loadLayout(config);
+    } catch (error) {
+      // **IT PASSED THE CHECK AND GOLDEN LAYOUT REFUSED IT ANYWAY** -- a
+      // stack's `activeItemIndex` past its last tab is one such layout. Boot
+      // the default rather than a page with no panels; the default itself
+      // failing is a bug, and throws. Golden Layout builds every panel before
+      // it checks the stacks that hold them, so the failed attempt mounted
+      // panels that are in no layout and will never be released: they are
+      // taken down here, or they would go on drawing as a closed panel did.
+      if (config === DEFAULT_LAYOUT_CONFIG) throw error;
+      for (const element of mountedPanels) m.mount(element, null);
+      mountedPanels.clear();
+      ctx.dropSavedLayout(
+        `Golden Layout refused it (${error instanceof Error ? error.message : String(error)})`,
+      );
+      glInstance.loadLayout(DEFAULT_LAYOUT_CONFIG);
+    }
   }
 
   return {

@@ -101,7 +101,8 @@ The command prints the count and the time; neither is restated here. **Unset
 `MONGODB_URI` before timing anything** -- with it set and no database listening,
 the suite waits on server selection and reports several minutes for work that
 takes under one. `tests/test_docs_routes.py` reads the documents against the
-application and fails when a route, a proxy prefix or a port is stated wrongly.
+application and fails when a route, a proxy prefix, a port, an npm script or a
+`codecarto` command is stated wrongly.
 
 A passing test is not evidence until it has been seen to fail. After writing a
 check, break the thing it names and confirm the check goes red.
