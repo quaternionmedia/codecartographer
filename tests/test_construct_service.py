@@ -102,6 +102,63 @@ def test_a_parsers_own_look_wins():
     assert g.nodes["f"]["construct"] == "callable.function"
 
 
+def test_a_c_local_is_automatic_unless_static_and_carries_no_linkage():
+    """`static` at file scope is linkage; inside a function it is storage
+    duration, and a local without it lives for one call. Mutations: drop the
+    `automatic` refinement -- `total` is static storage again; drop the
+    no-linkage rule -- a static local claims internal linkage."""
+    g = graph_of(
+        ("total", {"language": "c", "kind": "variable",
+                   "meta": {"qualifiers": [], "automatic": True, "no_linkage": True}}),
+        ("calls", {"language": "c", "kind": "variable",
+                   "meta": {"qualifiers": ["static"], "no_linkage": True}}),
+        ("hidden", {"language": "c", "kind": "variable", "meta": {"qualifiers": ["static"]}}))
+    construct_service.annotate(g)
+    assert g.nodes["total"]["construct"] == "storage.automatic"
+    assert g.nodes["calls"]["construct"] == "storage.static"
+    assert "linkage.internal" not in g.nodes["calls"]["meta"].get("facets", [])
+    assert g.nodes["hidden"]["meta"]["facets"] == ["linkage.internal"]
+
+
+_HAS_LIBCLANG = __import__("importlib").util.find_spec("clang") is not None
+
+
+@pytest.mark.skipif(not _HAS_LIBCLANG,
+                    reason="libclang not installed — install with: uv sync --extra c-parsing")
+def test_the_c_parser_says_which_variables_are_locals():
+    """End to end through libclang: what the stamp above reads is what the C
+    parser states. Mutation: stop marking block-scope variables in
+    `c_parser` -- `total` and `i` are static storage again."""
+    from codecarto.models.source_data import Directory, File, Folder, RepoInfo
+    from codecarto.services.unified_parser_service import UnifiedParserService
+
+    src = ("int counter;\n"
+           "static int hidden;\n"
+           "extern int shared;\n"
+           "int sum(int n) {\n"
+           "    int total = 0;\n"
+           "    static int calls = 0;\n"
+           "    extern int elsewhere;\n"
+           "    for (int i = 0; i < n; i++) total += i;\n"
+           "    calls++;\n"
+           "    return total + counter + hidden + shared + elsewhere;\n"
+           "}\n")
+    d = Directory(info=RepoInfo(name="m"),
+                  root=Folder(name="m", files=[File(name="m.c", raw=src)]))
+    g = UnifiedParserService.build_graph(d, depth=3, extensions=None)
+    seen = {data["label"]: (data.get("construct"), data.get("meta", {}).get("facets") or [])
+            for _, data in g.nodes(data=True) if data.get("kind") == "variable"}
+    assert seen == {
+        "counter": ("storage.static", []),
+        "hidden": ("storage.static", ["linkage.internal"]),
+        "shared": ("storage.static", ["linkage.extern"]),
+        "total": ("storage.automatic", []),
+        "calls": ("storage.static", []),
+        "elsewhere": ("storage.static", ["linkage.extern"]),
+        "i": ("storage.automatic", []),
+    }
+
+
 def test_an_unlisted_language_is_left_exactly_as_it_arrived():
     g = graph_of(("j", {"language": "javascript", "kind": "function", "meta": {}}))
     assert construct_service.annotate(g) == 0

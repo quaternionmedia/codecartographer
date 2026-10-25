@@ -164,6 +164,15 @@ constructs:
       rust: {tokens: [static]}
       python: {note: "A module-level name."}
 
+  - id: storage.automatic
+    name: Automatic storage
+    gloss: A local that lives for one call of its function, on the stack or in a register.
+    look: {shape: circle, color: "#8a9ab4"}
+    spelled:
+      c: {tokens: [auto, register], note: "Any block-scope variable without static or extern; the keywords only say so."}
+      rust: {note: "A let binding; codecarto reads Rust at the item level and draws none."}
+      python: {note: "A name bound inside a function."}
+
   # ── Namespaces ─────────────────────────────────────────────────────────────
   - id: namespace.module
     name: Module
@@ -365,6 +374,9 @@ languages:
       variable: storage.static
       field: member.field
       enum_constant: member.variant
+    refine:
+      # A block-scope variable without static or extern lives for one call.
+      - {kind: variable, meta: automatic, construct: storage.automatic}
     qualifiers:
       volatile: memory.volatile
       static: linkage.internal

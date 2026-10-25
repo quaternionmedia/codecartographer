@@ -111,6 +111,10 @@ def _facets(mapping: LanguageMap, meta: dict, construct: str | None) -> list[str
         facet = mapping.macros.get(str(macro))
         if facet:
             found.append(facet)
+    # A name the parser says has no linkage -- a C local, `static` or not --
+    # claims none: there, `static` is storage duration, not linkage.
+    if meta.get("no_linkage"):
+        found = [f for f in found if not f.startswith("linkage.")]
     # A facet that repeats the construct says nothing the construct did not.
     return sorted({f for f in found if f != construct})
 

@@ -220,6 +220,8 @@ class CLangaugeParser:
             if "member_count" in n: meta["member_count"] = n["member_count"]
             if "param_count"  in n: meta["param_count"]  = n["param_count"]
             if "is_definition" in n: meta["is_definition"] = n["is_definition"]
+            for fact in ("automatic", "no_linkage"):
+                if n.get(fact): meta[fact] = True
 
             # For ngon shapes (struct/union), expose sides so the renderer can
             # draw the correct polygon without knowing it is a C struct.
