@@ -40,6 +40,7 @@
     "src/features/cartography/cartography_actions.ts",
     "src/features/cartography/followed_draft.ts",
     "src/features/repository/repo_tree.ts",
+    "src/features/repository/plot_target.ts",
     "src/components/qm_comp_lib/directory/stub_read.ts",
     "src/layout/new_panel_stack.ts",
     "src/layout/components/menu_dismissal.ts"

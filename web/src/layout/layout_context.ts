@@ -31,6 +31,7 @@ import { ToastManager } from '../components/codecarto/help/toast';
 import { infoLine, sourceTarget } from '../features/graph/services/node_info';
 import type { BundledExample } from '../features/examples/examples';
 import { notesTail } from '../features/graph/services/parse_notes';
+import { plotTarget } from '../features/repository/plot_target';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { readSavedLayout } from './saved_layout';
@@ -1169,24 +1170,26 @@ export class LayoutContext {
       },
 
       /**
-       * The Open panel's Plot: the loaded repository, by its URL when it has
-       * one; else every added file; else the URL in the field, fetched and
-       * drawn as → Fetch does.
+       * The Open panel's Plot: the loaded repository, by the URL its tree was
+       * read from when it has one; else every added file; else the URL in the
+       * field, fetched and drawn as → Fetch does (`plot_target.ts`). What was
+       * drawn is what a layout change or Relayout draws again.
        */
       onPlot: () => {
         const repo = this.appState.repo.content;
-        const url = this.panelState.repoUrl.trim();
-        if (repo && repo.size > 0) {
-          this._lastPlotAction = () => { this.panelCallbacks.onPlot(); };
-          if (url) this._startStreamFromUrl(url);
-          else this._startStream(repo, 'Streaming graph\u2026');
-          return;
-        }
-        if (this.uploadedFiles.length > 0) {
+        const target = plotTarget(repo, this.uploadedFiles.length, this.panelState.repoUrl);
+        if (target?.kind === 'repository') {
+          const { url } = target;
+          this._lastPlotAction = () => { this._startStreamFromUrl(url); };
+          this._startStreamFromUrl(url);
+        } else if (target?.kind === 'tree' && repo) {
+          this._lastPlotAction = () => { this._startStream(repo, 'Streaming graph\u2026'); };
+          this._startStream(repo, 'Streaming graph\u2026');
+        } else if (target?.kind === 'files') {
           void this._plotUploads([...this.uploadedFiles]);
-          return;
+        } else if (target?.kind === 'fetch') {
+          this.panelCallbacks.onRepoSubmit(target.url);
         }
-        if (url) this.panelCallbacks.onRepoSubmit(url);
       },
 
       onFileUpload: (files: FileList) => {
