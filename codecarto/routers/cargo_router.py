@@ -55,7 +55,11 @@ def _read(path: str):
     if not path.strip():
         return None, _unreadable("no path was given, so there is no workspace to read",
                                  "/cargo?path=")
-    reading = cargo_service.read(path.strip())
+    try:
+        reading = cargo_service.read(path.strip())
+    except Exception as error:  # a reader that raised is a sentence here, never a 500
+        return None, _unreadable(f"reading {path.strip()} stopped on something the reader "
+                                 f"did not expect: {error}", path)
     if not reading.ok:
         return None, _unreadable(reading.reason, path)
     return reading, None

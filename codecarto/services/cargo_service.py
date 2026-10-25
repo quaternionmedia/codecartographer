@@ -36,6 +36,7 @@ afterwards, and nothing here re-checks.
 
 from __future__ import annotations
 
+import glob
 import json
 import os
 import time
@@ -283,26 +284,67 @@ def _walk(root: Path, reading: Reading) -> tuple[list[Path], list[Path], float]:
 # ── From the manifests ────────────────────────────────────────────────────────
 
 
+def _strings(value: Any, key: str) -> list[str]:
+    """A manifest's list of strings, or the reason it is not one."""
+    if value is None:
+        return []
+    if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+        raise ValueError(f"`{key}` is {value!r}, not a list of strings")
+    return value
+
+
+def _table(value: Any, key: str) -> dict:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"`{key}` is {value!r}, not a table")
+    return value
+
+
+def _member_dirs(directory: Path, patterns: Any) -> set[Path]:
+    """The directories a `members` list names, expanded as cargo expands it:
+    each entry joined to the workspace's directory -- so `"."` is the workspace
+    itself and an absolute path is itself -- and globbed only when it holds a
+    pattern. A directory without a Cargo.toml is not a member."""
+    found = set()
+    for pattern in _strings(patterns, "workspace.members"):
+        if glob.has_magic(pattern):
+            matches = glob.glob(os.path.normpath(os.path.join(glob.escape(str(directory)), pattern)))
+        else:
+            matches = [os.path.normpath(os.path.join(directory, pattern))]
+        for match in matches:
+            if (Path(match) / "Cargo.toml").is_file():
+                found.add(Path(match).resolve())
+    return found
+
+
+def _features(data: dict) -> dict[str, list[str]]:
+    return {str(k): list(_strings(v, f"features.{k}"))
+            for k, v in _table(data.get("features"), "features").items()}
+
+
 def _from_manifests(reading: Reading, parsed: dict[Path, dict], root: Path, toml) -> None:
+    """Every package the manifests declare. A manifest that is TOML but not of
+    a manifest's shape -- a dependency that is `true`, a feature that is a
+    number -- is a note naming it, and the rest of the workspace is still read."""
     workspaces: dict[Path, dict] = {}
     for manifest, data in parsed.items():
         ws = data.get("workspace")
         if isinstance(ws, dict):
             directory = manifest.parent
-            members = set()
-            for pattern in ws.get("members", []) or []:
-                for match in sorted(directory.glob(str(pattern))):
-                    if (match / "Cargo.toml").is_file():
-                        members.add(match.resolve())
-            excluded = {(directory / e).resolve() for e in ws.get("exclude", []) or []}
+            try:
+                members = _member_dirs(directory, ws.get("members"))
+                excluded = {(directory / e).resolve() for e in _strings(ws.get("exclude"), "workspace.exclude")}
+                record = {"manifest": _rel(manifest, root),
+                          "dependencies": _table(ws.get("dependencies"), "workspace.dependencies"),
+                          "package": _table(ws.get("package"), "workspace.package")}
+            except Exception as error:
+                reading.notes.append(f"{_rel(manifest, root)}'s [workspace] has a shape this reader "
+                                     f"does not take ({error}), so it claims no members")
+                continue
             if isinstance(data.get("package"), dict):
                 members.add(directory.resolve())
-            workspaces[directory.resolve()] = {
-                "manifest": _rel(manifest, root),
-                "members": members - excluded,
-                "dependencies": ws.get("dependencies", {}) or {},
-                "package": ws.get("package", {}) or {},
-            }
+            workspaces[directory.resolve()] = {**record, "members": members - excluded}
             reading.workspaces.append({"manifest": _rel(manifest, root),
                                        "members": sorted(_rel(m, root) for m in members - excluded)})
 
@@ -332,15 +374,20 @@ def _from_manifests(reading: Reading, parsed: dict[Path, dict], root: Path, toml
                 value = inherited.get(key, "")
             return str(value or "")
 
-        package = Package(
-            name=str(pkg["name"]), version=field_of("version"), edition=field_of("edition"),
-            manifest=_rel(manifest, root), links=str(pkg.get("links", "") or ""),
-            member=bool(ws) or not workspaces,
-            features={k: list(v) for k, v in (data.get("features") or {}).items()},
-            workspace=ws["manifest"] if ws else "",
-        )
-        package.targets = _targets(data, pkg, directory, root)
-        package.dependencies = _dependencies(data, directory, ws, by_dir, root)
+        try:
+            package = Package(
+                name=str(pkg["name"]), version=field_of("version"), edition=field_of("edition"),
+                manifest=_rel(manifest, root), links=str(pkg.get("links", "") or ""),
+                member=bool(ws) or not workspaces,
+                features=_features(data),
+                workspace=ws["manifest"] if ws else "",
+            )
+            package.targets = _targets(data, pkg, directory, root)
+            package.dependencies = _dependencies(data, directory, ws, by_dir, root)
+        except Exception as error:
+            reading.notes.append(f"{_rel(manifest, root)} has a shape this reader does not take "
+                                 f"({error}), so its package is not drawn")
+            continue
         reading.packages.append(package)
 
     _apply_lock(reading, root)
@@ -385,6 +432,15 @@ def _targets(data: dict, pkg: dict, directory: Path, root: Path) -> list[Target]
     return found
 
 
+def _spec(alias: str, spec: Any) -> dict:
+    """A dependency as cargo writes it -- a version string or a table."""
+    if isinstance(spec, str):
+        return {"version": spec}
+    if isinstance(spec, dict):
+        return dict(spec)
+    raise ValueError(f"dependency `{alias}` is {spec!r}, neither a version nor a table")
+
+
 def _dependencies(data: dict, directory: Path, ws: dict | None, by_dir: dict[Path, str],
                   root: Path) -> list[Dependency]:
     tables: list[tuple[str, str, dict]] = []
@@ -400,11 +456,10 @@ def _dependencies(data: dict, directory: Path, ws: dict | None, by_dir: dict[Pat
     found = []
     for kind, platform, table in tables:
         for alias, spec in table.items():
-            spec = {"version": spec} if isinstance(spec, str) else dict(spec or {})
+            spec = _spec(alias, spec)
             base = directory
             if spec.get("workspace") and ws is not None:
-                inherited = ws["dependencies"].get(alias, {})
-                inherited = {"version": inherited} if isinstance(inherited, str) else dict(inherited)
+                inherited = _spec(alias, ws["dependencies"].get(alias, {}))
                 base = root / Path(ws["manifest"]).parent
                 spec = {**inherited, **{k: v for k, v in spec.items() if k != "workspace"}}
             name = str(spec.get("package", alias))
@@ -671,27 +726,36 @@ def _firmware(root: Path, reading: Reading, memory_maps: list[Path], toml) -> di
         except Exception as error:
             reading.notes.append(f"{_rel(path, root)} did not parse: {error}")
             break
-        facts["config"] = _rel(path, root)
-        build = data.get("build") or {}
-        targets = build.get("target") or []
-        facts["build_targets"] = [targets] if isinstance(targets, str) else list(targets)
-        flags = list(build.get("rustflags") or [])
-        for triple, table in (data.get("target") or {}).items():
-            if isinstance(table, dict):
-                if table.get("runner"):
-                    runner = table["runner"]
-                    facts["runners"][triple] = runner if isinstance(runner, str) else " ".join(runner)
-                flags += list(table.get("rustflags") or [])
-        scripts = []
-        for i, flag in enumerate(flags):
-            flag = str(flag)
-            for prefix in ("link-arg=-T", "-Clink-arg=-T"):
-                if prefix in flag:
-                    scripts.append(flag.split(prefix, 1)[1])
-            if flag == "-T" and i + 1 < len(flags):
-                scripts.append(str(flags[i + 1]))
-        facts["linker_scripts"] = sorted(set(scripts))
-        break
+        try:
+            return {**facts, **_config_facts(data), "config": _rel(path, root)}
+        except Exception as error:
+            reading.notes.append(f"{_rel(path, root)} has a shape this reader does not take "
+                                 f"({error}), so no device target is drawn from it")
+            break
+    return facts
+
+
+def _config_facts(data: dict) -> dict[str, Any]:
+    facts: dict[str, Any] = {"runners": {}}
+    build = data.get("build") or {}
+    targets = build.get("target") or []
+    facts["build_targets"] = [targets] if isinstance(targets, str) else list(targets)
+    flags = list(build.get("rustflags") or [])
+    for triple, table in (data.get("target") or {}).items():
+        if isinstance(table, dict):
+            if table.get("runner"):
+                runner = table["runner"]
+                facts["runners"][triple] = runner if isinstance(runner, str) else " ".join(runner)
+            flags += list(table.get("rustflags") or [])
+    scripts = []
+    for i, flag in enumerate(flags):
+        flag = str(flag)
+        for prefix in ("link-arg=-T", "-Clink-arg=-T"):
+            if prefix in flag:
+                scripts.append(flag.split(prefix, 1)[1])
+        if flag == "-T" and i + 1 < len(flags):
+            scripts.append(str(flags[i + 1]))
+    facts["linker_scripts"] = sorted(set(scripts))
     return facts
 
 

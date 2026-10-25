@@ -190,6 +190,66 @@ def test_a_manifest_that_does_not_parse_is_a_note(tmp_path):
     assert any("crates/hal/Cargo.toml did not parse" in n for n in reading.notes)
 
 
+def write(path: Path, text: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def fuzzed_crate(tmp_path: Path) -> Path:
+    """A crate with the `fuzz/` directory `cargo fuzz init` writes, whose
+    manifest makes it a workspace of one with `members = ["."]`."""
+    root = tmp_path / "app"
+    write(root / "Cargo.toml", '[package]\nname = "app"\nversion = "0.1.0"\n')
+    write(root / "src" / "lib.rs", "")
+    write(root / "fuzz" / "Cargo.toml",
+          '[package]\nname = "app-fuzz"\nversion = "0.0.0"\npublish = false\n\n'
+          '[package.metadata]\ncargo-fuzz = true\n\n'
+          '[dependencies]\napp = { path = ".." }\n\n'
+          '# Prevent this from interfering with workspaces\n[workspace]\nmembers = ["."]\n')
+    write(root / "fuzz" / "fuzz_targets" / "parse.rs", "")
+    return root
+
+
+def test_a_workspace_that_lists_itself_is_read(tmp_path):
+    """`Path.glob(".")` raises, and cargo-fuzz writes `members = ["."]`."""
+    reading = cargo_service.read(fuzzed_crate(tmp_path))
+    fuzz = package(reading, "app-fuzz")
+    assert fuzz.member and fuzz.workspace == "fuzz/Cargo.toml"
+    assert reading.package("app") is not None
+
+
+def test_an_absolute_member_path_is_a_member(tmp_path):
+    root = tmp_path / "ws"
+    write(root / "Cargo.toml", f'[workspace]\nmembers = ["{(root / "a").as_posix()}"]\n')
+    write(root / "a" / "Cargo.toml", '[package]\nname = "a"\nversion = "0.1.0"\n')
+    assert package(cargo_service.read(root), "a").workspace == "Cargo.toml"
+
+
+@pytest.mark.parametrize("manifest,named", [
+    ('[package]\nname = "hal"\nversion = "0.1.0"\n[dependencies]\nfoo = true\n', "foo"),
+    ('[package]\nname = "hal"\nversion = "0.1.0"\n[features]\ndefault = 1\n', "default"),
+], ids=["dependency-is-a-boolean", "feature-is-an-integer"])
+def test_a_manifest_of_a_shape_cargo_refuses_is_a_note(tmp_path, manifest, named):
+    """Valid TOML, but not a manifest: the package is not drawn, the reading
+    goes on, and a note says which manifest and what in it."""
+    root = copy_workspace(tmp_path, "absent")
+    write(root / "crates" / "hal" / "Cargo.toml", manifest)
+    reading = cargo_service.read(root)
+    assert reading.ok and reading.package("hal") is None
+    assert {p.name for p in reading.packages if p.member} == {"blinky", "host-tool"}
+    note = next(n for n in reading.notes if n.startswith("crates/hal/Cargo.toml"))
+    assert named in note
+
+
+def test_a_config_of_a_shape_cargo_refuses_is_a_note(tmp_path):
+    root = copy_workspace(tmp_path, "absent")
+    write(root / ".cargo" / "config.toml", 'build = "thumbv7em-none-eabihf"\n')
+    reading = cargo_service.read(root)
+    assert reading.ok and reading.firmware["build_targets"] == []
+    assert any(n.startswith(".cargo/config.toml has a shape") for n in reading.notes)
+
+
 # ── The graph ─────────────────────────────────────────────────────────────────
 
 
@@ -293,6 +353,28 @@ def test_route_answers_an_unknown_layout_with_a_sentence(tmp_path):
     assert found["results"]["unreadable"] is True
 
 
+def test_route_draws_a_crate_with_a_fuzz_directory(tmp_path):
+    """`test_estate_routers_never_raise_to_the_browser` reads the router's
+    source for `raise`; this drives the route with a manifest that made the
+    reader raise beneath it."""
+    found = TestClient(app, raise_server_exceptions=False).get(
+        "/cargo/gjgf", params={"path": str(fuzzed_crate(tmp_path))})
+    assert found.status_code == 200, found.text[:200]
+    assert {"crate::app", "crate::app-fuzz"} <= set(found.json()["results"]["graph"]["nodes"])
+
+
+def test_route_answers_a_reader_that_raised_with_a_sentence(tmp_path, monkeypatch):
+    """Mutation: drop the guard in `cargo_router._read` -- this fails."""
+    def broken(path):
+        raise TypeError("'bool' object is not iterable")
+
+    monkeypatch.setattr(cargo_service, "read", broken)
+    found = TestClient(app, raise_server_exceptions=False).get("/cargo/data", params={"path": str(tmp_path)})
+    assert found.status_code == 200, found.text[:200]
+    results = found.json()["results"]
+    assert results["unreadable"] is True and "not iterable" in results["problem"]
+
+
 def test_data_route_is_comparable_with_cargo(tmp_path):
     found = client.get("/cargo/data", params={"path": str(copy_workspace(tmp_path, "absent"))}).json()
     results = found["results"]
@@ -312,6 +394,12 @@ def test_read_command_runs_nothing_and_prints_the_reading(tmp_path, monkeypatch)
     assert result.exit_code == 0, result.output
     assert "read from cargo metadata" in result.output
     assert "libc 0.2.153  (normal, cfg(unix))" in result.output
+
+
+def test_read_command_reads_a_crate_with_a_fuzz_directory(tmp_path):
+    result = CliRunner().invoke(cli, ["cargo", "read", str(fuzzed_crate(tmp_path))])
+    assert result.exit_code == 0, repr(result.exception)
+    assert "app-fuzz 0.0.0" in result.output
 
 
 def test_record_without_cargo_says_so(tmp_path, monkeypatch):
