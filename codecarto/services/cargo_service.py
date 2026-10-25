@@ -218,8 +218,9 @@ def read(path: Path | str, documents: Path | str | None = None) -> Reading:
                           "tomli package, and this interpreter has neither")
         return reading
 
-    manifests, memory_maps, newest = _walk(root, reading)
-    reading.newest_source = newest
+    manifests: list[Path] = []
+    memory_maps: list[Path] = []
+    newest = _walk(root, reading, manifests, memory_maps)
     if not manifests:
         reading.reason = (f"no Cargo.toml under {root.as_posix()} -- this is not a "
                           f"Cargo project, or its manifests sit inside a skipped "
@@ -227,11 +228,14 @@ def read(path: Path | str, documents: Path | str | None = None) -> Reading:
         return reading
 
     parsed: dict[Path, dict] = {}
-    for manifest in manifests:
-        try:
-            parsed[manifest] = toml.loads(manifest.read_text(encoding="utf-8"))
-        except Exception as error:  # a manifest that does not parse is reported
-            reading.notes.append(f"{_rel(manifest, root)} did not parse: {error}")
+    _parse(manifests, parsed, reading, root, toml)
+    # A member a workspace names is read wherever it sits, even inside a
+    # directory the walk skips (`build/`, `dist/`).
+    for directory in _unwalked_members(parsed, manifests, root):
+        start = len(manifests)
+        newest = max(newest, _walk(root / _rel(directory, root), reading, manifests, memory_maps))
+        _parse(manifests[start:], parsed, reading, root, toml)
+    reading.newest_source = newest
 
     docs_dir = Path(documents) if documents else root / DOCUMENTS
     metadata_doc, metadata = _read_metadata(docs_dir, manifests, root)
@@ -253,13 +257,33 @@ def read(path: Path | str, documents: Path | str | None = None) -> Reading:
     return reading
 
 
-def _walk(root: Path, reading: Reading) -> tuple[list[Path], list[Path], float]:
-    """Every Cargo.toml and memory map under *root*, and the newest mtime of any
-    manifest or Rust source -- what makes a recorded document stale."""
-    manifests: list[Path] = []
-    memory_maps: list[Path] = []
+def _parse(manifests: list[Path], parsed: dict[Path, dict], reading: Reading, root: Path, toml) -> None:
+    for manifest in manifests:
+        try:
+            parsed[manifest] = toml.loads(manifest.read_text(encoding="utf-8"))
+        except Exception as error:  # a manifest that does not parse is reported
+            reading.notes.append(f"{_rel(manifest, root)} did not parse: {error}")
+
+
+def _unwalked_members(parsed: dict[Path, dict], manifests: list[Path], root: Path) -> list[Path]:
+    walked = {m.parent.resolve() for m in manifests}
+    found: set[Path] = set()
+    for manifest, data in parsed.items():
+        ws = data.get("workspace")
+        if isinstance(ws, dict):
+            try:
+                found |= _member_dirs(manifest.parent, ws.get("members"))
+            except Exception:
+                continue  # `_from_manifests` notes the shape
+    return sorted(d for d in found - walked if _under(d, root.resolve()))
+
+
+def _walk(top: Path, reading: Reading, manifests: list[Path], memory_maps: list[Path]) -> float:
+    """Every Cargo.toml and memory map under *top*, added to the lists, and the
+    newest mtime of any manifest or Rust source -- what makes a recorded
+    document stale."""
     newest = 0.0
-    for directory, dirs, files in os.walk(root):
+    for directory, dirs, files in os.walk(top):
         dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS and (not d.startswith(".") or d == ".cargo"))
         here = Path(directory)
         for name in files:
@@ -278,7 +302,7 @@ def _walk(root: Path, reading: Reading) -> tuple[list[Path], list[Path], float]:
                 manifests.append(here / name)
             elif name == "memory.x" or name.endswith((".ld", ".lds")):
                 memory_maps.append(here / name)
-    return manifests, memory_maps, newest
+    return newest
 
 
 # ── From the manifests ────────────────────────────────────────────────────────
@@ -318,6 +342,41 @@ def _member_dirs(directory: Path, patterns: Any) -> set[Path]:
     return found
 
 
+def _under(path: Path, directory: Path) -> bool:
+    return path == directory or directory in path.parents
+
+
+def _excluded(ws: dict, directory: Path) -> bool:
+    """cargo's rule: under an `exclude` entry, and not under an entry `members`
+    names without a pattern."""
+    return (any(_under(directory, e) for e in ws["exclude"])
+            and not any(_under(directory, m) for m in ws["explicit"]))
+
+
+def _with_path_members(members: set[Path], ws: dict, parsed: dict[Path, dict], root: Path) -> set[Path]:
+    """*members* and, as cargo adds them, every path dependency of a member
+    that lies inside the workspace's directory -- so a root `[workspace]` with
+    no `members` still has its path-dependency crates."""
+    by_dir = {m.parent.resolve(): (m, d) for m, d in parsed.items()}
+    queue = sorted(members)
+    while queue:
+        manifest, data = by_dir.get(queue.pop(), (None, None))
+        if data is None or not isinstance(data.get("package"), dict):
+            continue
+        try:
+            found = _dependencies(data, manifest.parent, ws, {}, root)
+        except Exception:
+            continue  # the package itself is noted when it is read
+        for dep in found:
+            target = (root / dep.path).resolve()
+            if (dep.source == "path" and target not in members and target in by_dir
+                    and _under(target, ws["directory"]) and not _excluded(ws, target)
+                    and not isinstance(by_dir[target][1].get("workspace"), dict)):
+                members.add(target)
+                queue.append(target)
+    return members
+
+
 def _features(data: dict) -> dict[str, list[str]]:
     return {str(k): list(_strings(v, f"features.{k}"))
             for k, v in _table(data.get("features"), "features").items()}
@@ -333,9 +392,14 @@ def _from_manifests(reading: Reading, parsed: dict[Path, dict], root: Path, toml
         if isinstance(ws, dict):
             directory = manifest.parent
             try:
-                members = _member_dirs(directory, ws.get("members"))
-                excluded = {(directory / e).resolve() for e in _strings(ws.get("exclude"), "workspace.exclude")}
+                patterns = _strings(ws.get("members"), "workspace.members")
+                members = _member_dirs(directory, patterns)
                 record = {"manifest": _rel(manifest, root),
+                          "directory": directory.resolve(),
+                          "exclude": [(directory / e).resolve()
+                                      for e in _strings(ws.get("exclude"), "workspace.exclude")],
+                          "explicit": [Path(os.path.normpath(os.path.join(directory, m))).resolve()
+                                       for m in patterns if not glob.has_magic(m)],
                           "dependencies": _table(ws.get("dependencies"), "workspace.dependencies"),
                           "package": _table(ws.get("package"), "workspace.package")}
             except Exception as error:
@@ -344,15 +408,24 @@ def _from_manifests(reading: Reading, parsed: dict[Path, dict], root: Path, toml
                 continue
             if isinstance(data.get("package"), dict):
                 members.add(directory.resolve())
-            workspaces[directory.resolve()] = {**record, "members": members - excluded}
+            record["members"] = _with_path_members(
+                {m for m in members if not _excluded(record, m)}, record, parsed, root)
+            workspaces[directory.resolve()] = record
             reading.workspaces.append({"manifest": _rel(manifest, root),
-                                       "members": sorted(_rel(m, root) for m in members - excluded)})
+                                       "members": sorted(_rel(m, root) for m in record["members"])})
 
     def workspace_of(directory: Path) -> dict | None:
         for ws_dir, ws in workspaces.items():
             if directory.resolve() in ws["members"]:
                 return ws
         return None
+
+    def its_own(directory: Path) -> bool:
+        """No workspace claims it as cargo looks upward for one: every
+        workspace whose directory holds it excludes it, so it is a workspace of
+        one -- a crate of this checkout, not something it depends on."""
+        return all(_excluded(ws, directory.resolve()) for ws_dir, ws in workspaces.items()
+                   if _under(directory.resolve(), ws_dir))
 
     by_dir: dict[Path, str] = {}
     for manifest, data in parsed.items():
@@ -378,7 +451,7 @@ def _from_manifests(reading: Reading, parsed: dict[Path, dict], root: Path, toml
             package = Package(
                 name=str(pkg["name"]), version=field_of("version"), edition=field_of("edition"),
                 manifest=_rel(manifest, root), links=str(pkg.get("links", "") or ""),
-                member=bool(ws) or not workspaces,
+                member=bool(ws) or its_own(directory),
                 features=_features(data),
                 workspace=ws["manifest"] if ws else "",
             )

@@ -226,6 +226,63 @@ def test_an_absolute_member_path_is_a_member(tmp_path):
     assert package(cargo_service.read(root), "a").workspace == "Cargo.toml"
 
 
+# ── Membership, as cargo decides it ───────────────────────────────────────────
+
+
+def crate(root: Path, where: str, name: str, extra: str = "") -> None:
+    write(root / where / "Cargo.toml", f'[package]\nname = "{name}"\nversion = "0.1.0"\n{extra}')
+    write(root / where / "src" / "lib.rs", "")
+
+
+def test_exclude_is_a_path_prefix(tmp_path):
+    """cargo excludes everything under an `exclude` entry, unless a `members`
+    entry names it explicitly."""
+    root = tmp_path / "ws"
+    write(root / "Cargo.toml", '[workspace]\nmembers = ["crates/*", "crates/legacy/*", "crates/legacy/kept"]\n'
+                               'exclude = ["crates/legacy"]\n')
+    for name in ("a", "legacy/old", "legacy/kept"):
+        crate(root, f"crates/{name}", name.rsplit("/", 1)[-1])
+    reading = cargo_service.read(root)
+    assert reading.workspaces[0]["members"] == ["crates/a", "crates/legacy/kept"]
+    assert package(reading, "old").workspace == ""
+
+
+def test_a_path_dependency_inside_the_workspace_is_a_member(tmp_path):
+    """A root `[workspace]` with no `members`: its package's path dependencies
+    inside the workspace's directory are members, and theirs in turn."""
+    root = tmp_path / "ws"
+    crate(root, ".", "app", '[workspace]\n[dependencies]\ncore-lib = { path = "crates/core-lib" }\n')
+    crate(root, "crates/core-lib", "core-lib", '[dependencies]\nleaf = { path = "../leaf" }\n')
+    crate(root, "crates/leaf", "leaf")
+    reading = cargo_service.read(root)
+    for name in ("core-lib", "leaf"):
+        found = package(reading, name)
+        assert found.member and found.workspace == "Cargo.toml", name
+        assert [t.kinds for t in found.targets] == [["lib"]]
+
+
+def test_a_package_no_workspace_claims_is_its_own(tmp_path):
+    """The crate beside `fuzz/` is no member of the fuzz workspace -- its path
+    dependency points outside that directory -- and is a workspace of its own,
+    as cargo treats it: a crate, not an external."""
+    reading = cargo_service.read(fuzzed_crate(tmp_path))
+    app = package(reading, "app")
+    assert app.member and app.workspace == ""
+    assert cargo_service.as_graph(reading).nodes["crate::app"]["kind"] == "crate"
+
+
+def test_a_member_under_a_skipped_directory_is_read(tmp_path):
+    """The walk skips `build/` and `dist/`; a member a workspace names there is
+    read anyway."""
+    root = tmp_path / "ws"
+    write(root / "Cargo.toml", '[workspace]\nmembers = ["app", "build/codegen"]\n')
+    crate(root, "app", "app")
+    crate(root, "build/codegen", "codegen")
+    reading = cargo_service.read(root)
+    assert package(reading, "codegen").workspace == "Cargo.toml"
+    assert reading.workspaces[0]["members"] == ["app", "build/codegen"]
+
+
 @pytest.mark.parametrize("manifest,named", [
     ('[package]\nname = "hal"\nversion = "0.1.0"\n[dependencies]\nfoo = true\n', "foo"),
     ('[package]\nname = "hal"\nversion = "0.1.0"\n[features]\ndefault = 1\n', "default"),
