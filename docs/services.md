@@ -276,7 +276,16 @@ with their sizes, and GNU ld's memory table) or a reason. `usage(map, regions)`
 measures each region's use at run time and as load images; `annotate(graph,
 map, ...)` puts the figures on a parsed code map's regions, sections, functions
 and statics; `demangle` and `symbol_key` turn a Rust symbol back into the path,
-type and function it was compiled from.
+type and function it was compiled from. A map is stale when something the link
+reads changed after it was written: `link_input(path)` says which files those
+are -- Rust, C, C++ and assembly sources (`.rs`, `.c`, `.h`, `.cc`, `.cpp`,
+`.hpp`, `.s`, `.S`), linker scripts (`.ld`, `.lds`, `.x`, so `memory.x`),
+`Cargo.toml`, `Cargo.lock` and `.cargo/config[.toml]`, and never a README or
+other docs -- and `newest_input(root)` is the newest of them under a repository,
+outside `target/`, `build/` and `dist/`. The code map and `cargo_service` both
+judge a map by `newest_input`, so they cannot disagree about one; a recorded
+`check.jsonl` or `metadata.json` is judged by `cargo_service`'s own walk, which a
+linker script does not move.
 
 ---
 

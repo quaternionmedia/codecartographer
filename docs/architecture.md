@@ -161,7 +161,11 @@ Each language adapter implements the `LanguageParser` protocol
 (`language`, `extensions`, `parse_files(files, depth)`) and registers itself
 with `ParserRegistry` when `codecarto/services/parsers/__init__.py` imports
 it. The registry
-maps an extension to its parser; `GET /parse/languages` lists every one.
+maps an extension to its parser; `GET /parse/languages` lists each language
+with its extensions. Python (`PythonLanguageParser`), C (`CLangaugeParser`,
+which needs the `c-parsing` extra), Rust (`RustLanguageParser`) and linker
+scripts (`LinkerScriptParser`) have readers of their own; `RegexLanguageParser`
+reads the rest.
 
 **`batch_whole_tree`.** By default the walk (`_walk_folder`) hands a parser one
 file at a time. A parser that sets `batch_whole_tree = True` (C, Rust, linker
@@ -200,6 +204,13 @@ StreamingGraphRenderer (frontend rAF loop)
 A local directory takes the same path through `POST /parse/stream`
 (`UnifiedParserService.stream_parse`). Either is replayed from `CacheService`
 when the same url, mode, layout and extensions were parsed before.
+
+### The demo
+
+The Demo button's `POST /plotter/demo` reads this repository's own `codecarto/`
+package, its `.py` files only, through `UnifiedParserService.parse`, as every
+other parse is read; its `parse_by` sets only the depth (`plotter_router.py`,
+`_DEMO_MODE_TO_DEPTH`), which [the API reference](api.md) tabulates.
 
 ### Expanding one node
 
@@ -390,7 +401,10 @@ statement.
 10. **The window runs nothing it reads.** Running cargo runs a workspace's build
     scripts, proc macros and configured `rustc`, so no route does: a person runs
     `codecarto cargo record`, and the window reads what it wrote with its age.
-    A recorded resolution older than a manifest is not used, and says so.
+    A recorded resolution older than a manifest is not used, and says so; nor
+    is a link map older than anything the link reads (a source, a linker
+    script, a manifest -- not a README), judged by one rule,
+    `link_map_service.link_input`, wherever the map is read.
 
 **What a reader should still not expect.** That a seam's *content* is right —
 the probes say a seam is there and is what this window expects, and each seam's

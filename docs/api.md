@@ -6,8 +6,10 @@ REST API documentation for Codecarto backend.
 the constant `uv run qm dashboard` in the corpus allocates to this project;
 `uv run codecarto serve --help` prints it, and `CODECARTO_PORT` or `--port`
 overrides it. The examples below write `$API` for that base.
-**Interactive Docs:** `$API/docs` — every route the running server registered,
-which is the authority; this page is the map.
+**Interactive Docs:** `$API/docs` — every route in the running server's OpenAPI
+schema, which is the authority for those; this page is the map. The schema has
+no WebSockets and leaves out `/app`, `/db/` and the `/pam/api/*` aliases; each
+is named in its section below.
 **Identity:** `$API/openapi.json` names the app `codecarto`. Ask before believing
 a port: several of this org's servers run on one workstation.
 
@@ -74,8 +76,11 @@ row. A check older than a source or manifest is not used: nothing is placed from
 it, and the row says `used: false`, `stale: true` and why. With a recorded
 `target/codecarto/<bin>.map` the linker script's regions and sections carry
 what the link measured (`meta.measured`) and functions and statics their size (`meta.bytes`). A map
-older than a source is not used: the regions it would measure say so
-(`meta.measured.used: false`) and nothing carries its figures.
+older than anything the link reads -- a Rust, C, C++ or assembly source, a linker
+script such as `memory.x`, a manifest, `Cargo.lock` or `.cargo/config.toml`, but
+not a README or other docs -- is not used: the regions it would measure say so
+(`meta.measured.used: false`) and nothing carries its figures. `/cargo` judges
+the same map by the same rule (`link_map_service.link_input`).
 
 ### POST `/parse/unified`
 
@@ -270,7 +275,15 @@ parsing; these two are demo/rendering utilities, not parse entry points.
 
 ### POST `/plotter/demo`
 
-Generate a demo graph from the codecarto source code itself.
+Generate a demo graph from the codecarto source code itself: the `.py` files of
+this repository's `codecarto/` package, read through
+`UnifiedParserService.parse` as every other parse is read. `parse_by` sets only
+the depth (`plotter_router.py`, `_DEMO_MODE_TO_DEPTH`):
+
+| `parse_by` | `depth` | output |
+|------------|---------|--------|
+| `directory` | 1 | directories and files |
+| anything else (`ast`, `dependencies`, the default `code`) | 2 | + symbols and file-to-file dependency edges |
 
 **Request Body:**
 ```json
@@ -585,6 +598,9 @@ an empty list.
 ### GET `/pam/ui`
 
 Serve the PAM auth log monitor HTML frontend (URL-patched for current server).
+The page calls `/pam/api/status`, `/pam/api/history`, `/pam/api/sessions` and
+`/pam/api/sessions/{session_id}`, which answer as the four routes below and
+are kept out of the schema.
 
 ### GET `/pam/status`
 
@@ -694,6 +710,32 @@ List all saved bookmarks. Returns an array of `{name, url, layout, depth, extens
 
 #### DELETE `/db/bookmarks/{name}`
 Delete a named bookmark. Returns 404 if not found.
+
+### Graphs
+
+Named NetworkX graphs, in `nx.node_link_data` form (`graph` collection);
+`nx.node_link_graph(result)` rebuilds one.
+
+#### POST `/db/graph/insert?name=`
+Body: the graph's node-link data. Stores it under `name`.
+
+#### POST `/db/graph/{name}`
+An empty graph under `name`.
+
+#### GET `/db/graph/{name}`
+The graph's node-link data.
+
+#### GET `/db/graphs`
+Every stored graph's name.
+
+#### POST `/db/graph/{name}/node?node_id=` · DELETE `/db/graph/{name}/node?node_id=`
+Add or remove a node.
+
+#### POST `/db/graph/{name}/edge?source=&target=` · DELETE `/db/graph/{name}/edge?source=&target=`
+Add or remove an edge.
+
+#### DELETE `/db/graph/{name}`
+Removes the graph.
 
 ### Snapshots
 
@@ -847,7 +889,9 @@ their condition. `features=true` adds features and what each enables;
 `meta.diagnostics`, from a `check.jsonl` newer than every source and manifest;
 an older one is not used -- no diagnostic, build-script fact or outcome is drawn
 from it -- and its row and the caveat say why. A binary with a recorded link map carries each region's fill in its label and
-`meta.memory`, while the map is newer than every source.
+`meta.memory`, while the map is newer than everything the link reads -- every
+source, linker script and manifest, by the rule the code map judges it by, and no
+README or other docs.
 
 `metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
 `metadata.json` is newer than every manifest, `manifests` otherwise -- a stale
@@ -974,6 +1018,16 @@ response to mistake for a successful lookup.
 
 ---
 
+## Web Application
+
+### GET `/app`
+
+The built web application from `web/dist`, with its API origin injected, or a
+page saying there is no build and how to make one. `/` redirects here when a
+build is present, and to `/docs` when it is not. Kept out of the schema.
+
+---
+
 ## Response Format
 
 Routes answer in `generate_return`'s envelope (`codecarto/util/utilities.py`):
@@ -999,13 +1053,21 @@ message alone (`main.py`'s `http_exception_handler`):
 { "message": "Error description" }
 ```
 
+Two answers do not pass through that handler. A path no route serves is
+FastAPI's own 404, `{"detail": "Not Found"}`, and a request that fails
+validation -- a parameter or body field missing, or of the wrong type -- is a 422,
+`{"detail": [...]}`, one entry per field. A route that answers in the envelope can
+also carry a status inside a 200: `DELETE /parse/cache/{key}` for a key the cache
+does not hold answers HTTP 200 with `status: 404`.
+
 ### Error Codes
 
 | Code | Meaning |
 |------|---------|
 | 200 | Success |
 | 400 | Bad Request (invalid params) |
-| 404 | Not Found (missing file/dir) |
+| 404 | Not Found (missing file/dir, or a path no route serves) |
+| 422 | Unprocessable Entity (a parameter or body field missing or of the wrong type) |
 | 403 | Forbidden (GitHub rate limit) |
 | 500 | Internal Server Error |
 | 502 | Bad Gateway (GitHub download failed) |
