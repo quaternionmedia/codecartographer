@@ -317,7 +317,7 @@ def as_graph(construct_id: str) -> nx.DiGraph | None:
             where = "; ".join(sorted({f"L{c['layer_ordinal']} {c['layer_name']} · {c['group']}"
                                       for c in contexts})) or "not in this language's lexicon"
             tok_id = f"token:{language}:{tok['token']}"
-            graph.add_node(tok_id, label=tok["token"], kind="token", depth=2,
+            graph.add_node(tok_id, label=tok["token"], kind="token", depth=2, language=language,
                            layer_ordinal=ordinal, layer_color=layer_color(ordinal),
                            shape="circle", color=layer_color(ordinal), size=14,
                            hover=f"{tok['token']} — {where}",

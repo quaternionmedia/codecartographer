@@ -25,7 +25,7 @@ this table is a reading of it.
 | Capabilities | `capabilities-panel` | The corpus's capability registry: each declaration and the rung it claims; draw them |
 | Overview | `overview-panel` | dossier's reading of the estate: masthead figures and sections; draw them |
 | Cargo | `cargo-panel` | A Rust workspace by path: which engine read it, its crates, the recorded documents and whether each is current, the device target; draw the crate graph, with features or locked dependencies if asked |
-| Chrestomathy | `chrestomathy-panel` | One construct set beside itself across C, Rust, Python, assembly and the linker script: each language's tokens with their abstraction layer, its parser kinds, and its note -- a language with no spelling is a row saying so; draw it |
+| Chrestomathy | `chrestomathy-panel` | One construct set beside itself in each of C, Rust, Python, assembly and the linker script whose entry in `constructs.yaml` spells or notes it, or whose parser realises it: each language's tokens with their abstraction layer, its parser kinds, and its note -- a language whose entry is a note and no spelling is a row saying so, and one the vocabulary says nothing about for the construct has no row; draw it |
 
 **Default layout** (`default_layout.ts`): Graph on top; below it Files on the
 left and a tab stack of Upload (active), Repository, Graph Settings, Actions and
