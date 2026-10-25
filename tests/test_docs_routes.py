@@ -134,6 +134,30 @@ def test_api_reference_has_a_heading_for_every_mounted_prefix(prefixes):
     assert not missing, f"docs/api.md has no heading naming: {missing}"
 
 
+# FastAPI's own pages, the root redirect and the build's static files: served,
+# and not routes a reader calls.
+FRAMEWORK = {"", "docs", "redoc", "openapi.json", "assets"}
+
+
+def test_api_reference_names_every_route_the_schema_leaves_out():
+    """`/docs` lists the OpenAPI schema, which has no WebSockets and none of
+    the routes kept out of it; `serve --help` sends a reader to `docs/api.md`
+    for those."""
+    from codecarto.main import app
+
+    schema = set(app.openapi()["paths"])
+    left_out = sorted({path.rstrip("/") for route in app.routes
+                       if (path := getattr(route, "path", "")) not in schema
+                       and path.strip("/").split("/")[0] not in FRAMEWORK})
+    assert left_out, "the schema has every route; serve --help's sentence is stale"
+    api = (ROOT / "docs" / "api.md").read_text(encoding="utf-8")
+    named = {p.rstrip("/") for p in re.findall(r"`(?:[A-Z]+ )?(/[^`\s?]*)", api)}
+    missing = [p for p in left_out if p not in named]
+    assert not missing, (
+        f"/docs does not list these and docs/api.md does not name them, so a "
+        f"reader of either cannot find them: {missing}")
+
+
 def test_dev_server_proxies_every_mounted_prefix(prefixes):
     """A prefix absent from `API_PATHS` is a request Vite answers itself."""
     config = (ROOT / "web" / "vite.config.js").read_text(encoding="utf-8")

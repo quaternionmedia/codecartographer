@@ -188,7 +188,9 @@ def serve(host: str, port: int, reload: bool):
     """
     Start the FastAPI backend server only.
 
-    The running server lists every route it mounts at /docs.
+    The running server's /docs lists the routes in its OpenAPI schema. The
+    WebSockets and the routes kept out of the schema -- /app, /db/ and the
+    PAM page's /pam/api/* -- are not there; docs/api.md names every one.
     """
     click.secho(f"🌐 Starting Codecarto API server...", fg="green", bold=True)
     click.echo(f"  → http://{host}:{port}")

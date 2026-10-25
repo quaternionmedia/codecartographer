@@ -6,8 +6,10 @@ REST API documentation for Codecarto backend.
 the constant `uv run qm dashboard` in the corpus allocates to this project;
 `uv run codecarto serve --help` prints it, and `CODECARTO_PORT` or `--port`
 overrides it. The examples below write `$API` for that base.
-**Interactive Docs:** `$API/docs` — every route the running server registered,
-which is the authority; this page is the map.
+**Interactive Docs:** `$API/docs` — every route in the running server's OpenAPI
+schema, which is the authority for those; this page is the map. The schema has
+no WebSockets and leaves out `/app`, `/db/` and the `/pam/api/*` aliases; each
+is named in its section below.
 **Identity:** `$API/openapi.json` names the app `codecarto`. Ask before believing
 a port: several of this org's servers run on one workstation.
 
@@ -583,6 +585,9 @@ an empty list.
 ### GET `/pam/ui`
 
 Serve the PAM auth log monitor HTML frontend (URL-patched for current server).
+The page calls `/pam/api/status`, `/pam/api/history`, `/pam/api/sessions` and
+`/pam/api/sessions/{session_id}`, which answer as the four routes below and
+are kept out of the schema.
 
 ### GET `/pam/status`
 
@@ -969,6 +974,16 @@ with `results.unavailable: true`, the `requested` id echoed back, and a
 `remedy` — the same convention `/topology/*` uses for a dependency that
 is not there. Branch on `unavailable`; there is no `Palette` in the
 response to mistake for a successful lookup.
+
+---
+
+## Web Application
+
+### GET `/app`
+
+The built web application from `web/dist`, with its API origin injected, or a
+page saying there is no build and how to make one. `/` redirects here when a
+build is present, and to `/docs` when it is not. Kept out of the schema.
 
 ---
 

@@ -85,9 +85,11 @@ uv run codecarto repo scan . -o json
 ## API Endpoints
 
 Once the server is running, `/docs` on the backend's own origin lists every
-route it actually registered — that is the authority, and this table is a map
-of the neighbourhoods rather than a copy of it. `codecarto dev` prints both
-addresses on startup; `serve --help` names the backend's default port.
+route in its OpenAPI schema — that is the authority for those, and this table is
+a map of the neighbourhoods rather than a copy of it. The WebSockets and the few
+routes kept out of the schema are named in [`docs/api.md`](docs/api.md).
+`codecarto dev` prints both addresses on startup; `serve --help` names the
+backend's default port.
 
 | Endpoint | Description |
 |----------|-------------|
