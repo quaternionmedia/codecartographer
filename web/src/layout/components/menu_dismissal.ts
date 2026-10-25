@@ -25,23 +25,29 @@ export interface Listens {
  * opened the menu and closed it with the same click. Either listener firing
  * removes both; so does the disarm.
  *
- * `defer` runs the arming after the click that opened the menu has passed
- * (`setTimeout(fn, 0)` in the browser); a menu disarmed before then arms
- * nothing.
+ * **ESCAPE IS HEARD FROM THE START.** `defer` holds back only the click
+ * listener, until the click that opened the menu has passed
+ * (`setTimeout(fn, 0)` in the browser). Escape was held back with it, and the
+ * menu takes the focus before that timer runs: page work kept one 29ms late
+ * while an Escape pressed into the focused menu came first, reached a
+ * document with nothing listening, and left the menu open. No key is the
+ * click that opened the menu, so the Escape listener is added at once.
+ *
+ * A menu disarmed before `defer` runs adds no click listener.
  */
 export function closeOnOutsideClickOrEscape(
   doc: Listens,
   onClose: () => void,
   defer: (fn: () => void) => void,
 ): () => void {
-  let armed = true;
-  let listening = false;
+  let open = true;
+  let clickArmed = false;
   const disarm = (): void => {
-    armed = false;
-    if (!listening) return;
-    listening = false;
-    doc.removeEventListener('click', onClick);
+    if (!open) return;
+    open = false;
     doc.removeEventListener('keydown', onKeydown);
+    if (clickArmed) doc.removeEventListener('click', onClick);
+    clickArmed = false;
   };
   const close = (): void => {
     disarm();
@@ -51,11 +57,11 @@ export function closeOnOutsideClickOrEscape(
   const onKeydown: Listener = (event) => {
     if ((event as { key?: unknown } | null)?.key === 'Escape') close();
   };
+  doc.addEventListener('keydown', onKeydown);
   defer(() => {
-    if (!armed) return;
-    listening = true;
+    if (!open) return;
+    clickArmed = true;
     doc.addEventListener('click', onClick);
-    doc.addEventListener('keydown', onKeydown);
   });
   return disarm;
 }
