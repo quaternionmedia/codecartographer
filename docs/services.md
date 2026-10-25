@@ -313,13 +313,23 @@ one read the same way.
   `meta.measured`, and functions and statics carry `meta.bytes`. A symbol is
   demangled (Rust's legacy mangling, and the half-demangled form LLD prints)
   and joined within the crate it was compiled in, by name and, for a method,
-  its impl's type, only where one item answers. A C name one file declares and
+  its impl's type, only where one item answers. A file's crate is the target
+  whose root reaches it through `mod` items, cargo's targets naming the roots,
+  so a package need not sit in a directory named after it; an unmangled name is
+  looked for in the map's own binary only. A C name one file declares and
   another defines is joined to the file the map's object names. GNU ld lists no
   `static`; built with `-fdata-sections` and `-ffunction-sections`, one is read
   from the section GCC named for it (`.bss.rx_buffer`). A symbol from outside
   the parse (`core`, a runtime, the C library) is counted, not drawn.
+- **Only placed sections count.** Both linkers print debug information, symbol
+  tables, `.comment` and build attributes at address 0, inside any region that
+  starts there (nRF52, SAMD, LPC, Kinetis); they are told by name, or by lying
+  on addresses a placed section already holds (an `(INFO)` section such as
+  defmt's).
 - **On the crate graph**, the binary's target says its fill per region, and
-  the map is a document row with its age, stale once a source changes after it.
+  the map is a document row with its age. Once a source changes after it the
+  map is not used -- as a stale `metadata.json` is not -- and the row, the
+  caveat and the code map's regions say why.
 
 What it cannot see: inlined code has no symbol, so its bytes are its caller's;
 and a map is only as current as the link that wrote it. Two of the test maps
@@ -337,7 +347,8 @@ lists each one `BUNDLED` names whose directory exists under `examples/`, with
 the absolute path it is read from and whether it is a Cargo workspace. Only what
 is named is offered, and an installed package, which has no `examples/`, offers
 none. `examples/rust-firmware` carries the records real cargo and rust-lld wrote
-for it, its absolute paths rewritten; its README says how to record it afresh.
+for it, its absolute paths rewritten; its README says how to record it afresh,
+with `scripts/record_example.py`, which records and rewrites them.
 
 ---
 
@@ -347,7 +358,9 @@ for it, its absolute paths rewritten; its README says how to record it afresh.
 
 Content-addressed cache for parsed graphs and fetched repo trees —
 filesystem-backed, with an optional MongoDB backend when `MONGODB_URI`
-is set. Key = `SHA256(url + mode + layout + extensions)[:16]`. Distinct
+is set. Key = `SHA256(schema version + url + mode + layout + extensions)[:16]`;
+`GRAPH_SCHEMA_VERSION` is bumped when a parse's nodes change what they carry, so
+a graph cached in an older shape is a miss rather than a reply. Distinct
 from `graphbase` (a separate, user-named durable store) — see
 `governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why they're kept
 separate.
