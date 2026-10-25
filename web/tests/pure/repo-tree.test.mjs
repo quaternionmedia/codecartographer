@@ -68,8 +68,8 @@ test('two folders read at once both reach the tree, whichever answers last', asy
    * tree read before the request -- this fails.
    */
   const h = harness(partial(A, unread('src'), unread('docs')));
-  const src = h.tree.expandPath(A, 'src');
-  const docs = h.tree.expandPath(A, 'docs');
+  const src = h.tree.expandPath('src');
+  const docs = h.tree.expandPath('docs');
   await h.answer('subtree', 0, read('src', 'main.py'));
   await h.answer('subtree', 1, read('docs', 'index.md'));
   assert.deepEqual(await Promise.all([src, docs]), [true, true]);
@@ -80,7 +80,7 @@ test('two folders read at once both reach the tree, whichever answers last', asy
 test('a folder read lands at its path, and the rest of the tree is kept', async () => {
   const lib = new RawFolder('lib', 0, [], [unread('deep')]);
   const h = harness(partial(A, new RawFolder('src', 0, [], [lib]), unread('docs')));
-  const done = h.tree.expandPath(A, 'src/lib/deep');
+  const done = h.tree.expandPath('src/lib/deep');
   await h.answer('subtree', 0, read('deep', 'x.c'));
   await done;
   const deep = folder(h.shown, 'src').folders[0].folders[0];
@@ -97,7 +97,7 @@ test('a folder read for a repository no longer shown is dropped', async () => {
    * the check that the tree shown is still A's -- this fails.
    */
   const h = harness(partial(A, unread('src')));
-  const late = h.tree.expandPath(A, 'src');
+  const late = h.tree.expandPath('src');
   const b = partial(B, unread('lib'));
   h.fetched(b);
   await h.answer('subtree', 0, read('src', 'main.py'));
@@ -108,7 +108,7 @@ test('a folder read for a repository no longer shown is dropped', async () => {
 test('a folder read for a repository fetched again lands in the tree fetched', async () => {
   /** The same repository is the same tree, whichever reading of it is shown. */
   const h = harness(partial(A, unread('src')));
-  const done = h.tree.expandPath(A, 'src');
+  const done = h.tree.expandPath('src');
   h.fetched(partial(A, unread('src'), unread('more')));
   await h.answer('subtree', 0, read('src', 'main.py'));
   assert.equal(await done, true);
@@ -119,10 +119,24 @@ test('a folder read for a repository fetched again lands in the tree fetched', a
 test('a whole tree expanded for a repository no longer shown is dropped', async () => {
   /** Expand All in A, then fetch B: A's expanded tree replaced B's. */
   const h = harness(partial(A, unread('src')));
-  const late = h.tree.expandAll(A, 3);
+  const late = h.tree.expandAll(3);
   const b = partial(B, unread('lib'));
   h.fetched(b);
   await h.answer('expandAll', 0, partial(A, read('src', 'main.py')));
   assert.equal(await late, false);
   assert.equal(h.shown, b);
+});
+
+test('a folder is read from the repository the tree shows, whatever the URL field holds', async () => {
+  /**
+   * The Files panel passed `panelState.repoUrl`, which follows every keystroke
+   * in the Repository panel's URL field: type B's URL without fetching it,
+   * open a folder of A's tree, and B was asked for A's folder. Mutation: read
+   * from a URL the caller passes -- this fails.
+   */
+  const h = harness(partial(A, unread('src')));
+  void h.tree.expandPath('src');
+  void h.tree.expandAll(3);
+  assert.deepEqual(h.asked.subtree, [[A, 'src']]);
+  assert.deepEqual(h.asked.expandAll, [[A, 3]]);
 });

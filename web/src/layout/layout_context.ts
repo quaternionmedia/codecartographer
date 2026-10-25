@@ -1255,7 +1255,9 @@ export class LayoutContext {
         if (!content?.is_partial) return;
         this.updatePanelState({ isLoading: true, statusMessage: `Loading ${path}...` });
         try {
-          await this.actions.repo.expandPath(this.panelState.repoUrl, path);
+          // The tree's own repository, not the URL field's: that follows every
+          // keystroke, and need not name the repository shown.
+          await this.actions.repo.expandPath(path);
           this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: `Error expanding ${path}` });
@@ -1267,7 +1269,7 @@ export class LayoutContext {
         if (!content?.is_partial) return;
         this.updatePanelState({ isLoading: true, statusMessage: 'Expanding all folders...' });
         try {
-          await this.actions.repo.expandAll(this.panelState.repoUrl);
+          await this.actions.repo.expandAll();
           this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: 'Error expanding tree' });

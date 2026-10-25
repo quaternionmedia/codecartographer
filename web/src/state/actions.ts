@@ -741,12 +741,13 @@ export class RepoActions {
 
   /**
    * Lazily expand a stub folder in the current repo tree: one level of the
-   * folder at `path`, merged into the tree shown when it answers. Resolves
-   * false when the tree it was asked from has gone.
+   * folder at `path` of the repository the tree is of, merged into the tree
+   * shown when it answers. Resolves false when the tree it was asked from has
+   * gone.
    */
-  async expandPath(repoUrl: string, path: string): Promise<boolean> {
+  async expandPath(path: string): Promise<boolean> {
     try {
-      return await this.tree.expandPath(repoUrl, path);
+      return await this.tree.expandPath(path);
     } catch (error) {
       console.error('Failed to expand path:', path, error);
       throw error;
@@ -758,9 +759,9 @@ export class RepoActions {
    * Replaces the entire directory with a fully-expanded version (no file
    * content), unless another repository is shown by the time it answers.
    */
-  async expandAll(repoUrl: string, maxDepth = 3): Promise<boolean> {
+  async expandAll(maxDepth = 3): Promise<boolean> {
     try {
-      return await this.tree.expandAll(repoUrl, maxDepth);
+      return await this.tree.expandAll(maxDepth);
     } catch (error) {
       console.error('Failed to expand all folders:', error);
       throw error;

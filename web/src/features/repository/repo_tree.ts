@@ -72,11 +72,17 @@ export class RepoTree {
   /**
    * Read the folder at `path` into the tree. Resolves true when its contents
    * were put in the tree, false when the tree it was asked from has gone.
+   *
+   * **READ FROM THE REPOSITORY THE TREE IS OF.** The URL is the shown tree's
+   * own (`info.url`), never one the caller holds: the Files panel passed the
+   * Repository panel's URL field, which follows every keystroke, so a folder
+   * of A's tree was asked of whatever had been typed since.
    */
-  async expandPath(repoUrl: string, path: string): Promise<boolean> {
-    const asked = repositoryOf(this.host.shown);
-    if (!asked) return false;
-    const folder = await this.reads.subtree(repoUrl, path);
+  async expandPath(path: string): Promise<boolean> {
+    const shown = this.host.shown;
+    const asked = repositoryOf(shown);
+    if (!shown || !asked) return false;
+    const folder = await this.reads.subtree(shown.info.url, path);
     const now = this.host.shown;
     if (!now || repositoryOf(now) !== asked) return false;
     const pathParts = path.split('/').filter((p) => p.length > 0);
@@ -92,10 +98,11 @@ export class RepoTree {
    * it was shown, false when there was nothing to show or the tree it was
    * asked from has gone.
    */
-  async expandAll(repoUrl: string, maxDepth = 3): Promise<boolean> {
-    const asked = repositoryOf(this.host.shown);
-    if (!asked) return false;
-    const result = await this.reads.expandAll(repoUrl, maxDepth);
+  async expandAll(maxDepth = 3): Promise<boolean> {
+    const shown = this.host.shown;
+    const asked = repositoryOf(shown);
+    if (!shown || !asked) return false;
+    const result = await this.reads.expandAll(shown.info.url, maxDepth);
     if (!result || repositoryOf(this.host.shown) !== asked) return false;
     this.host.show(result);
     return true;
