@@ -165,9 +165,9 @@ In a large repository a folder marked … has not been read; click it to read
 it. It shows ↻ while it is read. A read that fails ends the ↻, leaves the folder
 marked …, and says so in a toast; the next click reads it again. Several
 folders can be read at once, each answer put into the tree as it comes.
-**⊞ Expand All** reads every folder three levels down, and says in a toast that
-it has begun, and again if it fails; a folder below that, or one GitHub would
-not list, stays marked … and reads on a click. The tree it builds is shown,
+**⊞ Expand All** reads every folder down to a fixed depth, and says in a toast
+that it has begun, and again if it fails; a folder below that depth, or one
+GitHub would not list, stays marked … and reads on a click. The tree it builds is shown,
 though its root holds only folders. Every read is of the repository the tree
 shows, whatever the Open panel's URL field has been typed to since, and an
 answer that comes after another repository was fetched is dropped. A read
