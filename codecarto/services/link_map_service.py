@@ -572,7 +572,8 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
       `#[no_mangle]` handler) is looked for in the map's own binary only. A C
       name declared in one file and defined in another answers from both; the
       object the map says the symbol came from (`build/main.o`) names the file
-      that defined it. A symbol from a crate outside the parse (`core`, a
+      that defined it, and a C local that lives for one call (`meta.automatic`)
+      answers for nothing. A symbol from a crate outside the parse (`core`, a
       runtime, the C library) is counted, not drawn.
 
     A *stale* map -- linked before a source changed -- is not used: the
@@ -642,6 +643,10 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
     rust_crates = _rust_crates(graph, crate_roots or {})
     for node_id, d in graph.nodes(data=True):
         if d.get("kind") not in _CODE_KINDS.get(d.get("language", ""), ()):
+            continue
+        if (d.get("meta") or {}).get("automatic"):
+            # A C local that lives for one call has no storage a map lists;
+            # taken by its name, it was a second answer for a static's symbol.
             continue
         crates = (rust_crates.get(_path_key(str(d.get("file", ""))), ())
                   if d.get("language") == "rust" else (owner,))
