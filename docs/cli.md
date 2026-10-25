@@ -339,10 +339,14 @@ tests, examples and benches too (a `no_std` binary usually cannot build them);
 PATH it says so and exits 1; the window still draws the manifests.
 
 `--map BIN` (repeatable) links a binary and keeps its map: the linker writes it,
-so a build that finishes without one is a failure, not a document. `--map-flag`
-is how the linker is asked -- the default suits `rust-lld`; a GCC linker wants
-`'-C link-arg=-Wl,-Map={path}'`. `--profile` is the build measured, `release` by
-default because that is the one flashed.
+so a build that finishes without one is a failure, not a document. cargo links
+only a binary that is out of date, so recording a build already current writes
+nothing; the command says so, and how old the map left behind is, rather than
+claiming a write. `--map-flag` is how the linker is asked -- the default suits
+`rust-lld`; a GCC linker wants `'-C link-arg=-Wl,-Map={path}'` -- and is split
+into arguments before the path is put in, so a path with a space stays one.
+`--profile` is the build measured, `release` by default because that is the
+one flashed.
 
 ---
 

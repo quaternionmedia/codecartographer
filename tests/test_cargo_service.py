@@ -412,7 +412,71 @@ def test_record_links_a_binary_for_its_map(tmp_path, monkeypatch):
     assert (tmp_path / cargo_service.DOCUMENTS / "blinky.map").is_file()
 
     (tmp_path / cargo_service.DOCUMENTS / "blinky.map").unlink()
-    monkeypatch.setattr("subprocess.run", lambda command, **kwargs: Done())
+
+    class Linked(Done):
+        stderr = "   Compiling blinky v0.1.0 (/ws/crates/blinky)\n    Finished `release` profile\n"
+
+    monkeypatch.setattr("subprocess.run", lambda command, **kwargs: Linked())
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
     assert result.exit_code == 1
     assert "the linker wrote no blinky.map" in result.output
+
+
+class Ran:
+    """What a faked cargo run returns."""
+
+    def __init__(self, stdout="", stderr="", returncode=0):
+        self.stdout, self.stderr, self.returncode = stdout, stderr, returncode
+
+
+@pytest.mark.parametrize("flag, arg", [(None, "link-arg=-Map={path}"),
+                                       ("-C link-arg=-Wl,-Map={path}", "link-arg=-Wl,-Map={path}")])
+def test_record_passes_a_map_path_with_a_space_as_one_argument(tmp_path, monkeypatch, flag, arg):
+    """Mutation: fill the path in before splitting the flag -- `C:/Users/Jane
+    Doe/...` arrives as two arguments and this fails."""
+    root = tmp_path / "Jane Doe" / "ws"
+    root.mkdir(parents=True)
+    ran = []
+
+    def fake_run(command, **kwargs):
+        ran.append(command[1:])
+        if command[1] == "rustc":
+            target = Path(next(a for a in command if "-Map=" in a).split("-Map=", 1)[1])
+            if target.parent.is_dir():
+                target.write_text("     VMA      LMA     Size Align Out     In      Symbol\n")
+            return Ran(stderr="   Compiling blinky v0.1.0\n")
+        return Ran()
+
+    monkeypatch.setattr("shutil.which", lambda name: "cargo")
+    monkeypatch.setattr("subprocess.run", fake_run)
+    result = CliRunner().invoke(cli, ["cargo", "record", str(root), "--map", "blinky",
+                                      *(["--map-flag", flag] if flag else [])])
+    expected = (root / cargo_service.DOCUMENTS / "blinky.map").resolve().as_posix()
+    assert ran[-1][-2:] == ["-C", arg.format(path=expected)]
+    assert result.exit_code == 0, result.output
+
+
+def test_record_says_when_cargo_did_not_relink(tmp_path, monkeypatch):
+    """cargo links only when the binary is out of date, so a build already up
+    to date writes no map. Mutation: judge by the map's presence alone -- an
+    old map reads as written and, with none, the flag is blamed; this fails."""
+    docs = tmp_path / cargo_service.DOCUMENTS
+    docs.mkdir(parents=True)
+    old = docs / "blinky.map"
+    old.write_text("     VMA      LMA     Size Align Out     In      Symbol\n")
+    then = time.time() - 7200
+    os.utime(old, (then, then))
+    fresh = Ran(stderr="    Finished `release` profile [optimized] target(s) in 0.04s\n")
+    monkeypatch.setattr("shutil.which", lambda name: "cargo")
+    monkeypatch.setattr("subprocess.run", lambda command, **kwargs: fresh)
+
+    result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
+    assert result.exit_code == 1
+    assert "wrote target/codecarto/blinky.map" not in result.output
+    assert "did not relink" in result.output
+    assert f"still the link of {cargo_service._iso(then)}" in result.output
+
+    old.unlink()
+    result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
+    assert result.exit_code == 1
+    assert "did not relink" in result.output and "--map-flag" not in result.output

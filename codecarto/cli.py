@@ -678,10 +678,11 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
         check.jsonl     cargo check --workspace --message-format=json
         BIN.map         cargo rustc --profile release --bin BIN -- -C link-arg=-Map=...
     """
+    import re
     import shlex
     import shutil
 
-    from codecarto.services import cargo_service
+    from codecarto.services import cargo_service, link_map_service
 
     cargo_bin = shutil.which("cargo")
     if cargo_bin is None:
@@ -704,14 +705,17 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
     ]
     for binary in maps:
         # The linker writes the map itself; cargo's output is not the document.
+        # The flag is split before the path goes in, so a path with a space
+        # stays one argument.
         target = out / f"{binary}.map"
         steps.append((target.name,
                       [cargo_bin, "rustc", "--profile", profile, "--bin", binary, *offline, "--",
-                       *shlex.split(map_flag.format(path=target.as_posix()))], False))
+                       *(part.format(path=target.as_posix()) for part in shlex.split(map_flag))], False))
     failed = False
     for name, command, captured in steps:
         click.secho(f"→ cargo {' '.join(command[1:])}", fg="cyan")
         stderr = ""
+        before = (out / name).stat().st_mtime if (out / name).is_file() else None
         try:
             result = subprocess.run(command, cwd=root, capture_output=True, text=True,
                                     timeout=timeout, encoding="utf-8", errors="replace")
@@ -731,16 +735,34 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
         elif code != 0 and name != cargo_service.CHECK_DOCUMENT:
             failed = True
             click.secho(f"  ✗ exited {code}: {last}", fg="red")
-        elif not captured and not (out / name).is_file():
+        elif not captured and _unchanged(out / name, before):
+            # cargo links only a binary that is out of date, and says
+            # `Compiling` when it does; a build already current writes no map.
             failed = True
-            click.secho(f"  ✗ the build finished and the linker wrote no {name}; "
-                        f"try --map-flag for this linker", fg="red")
+            if not re.search(r"^\s*Compiling\s", stderr, re.MULTILINE):
+                recorded, seconds = link_map_service.age(out / name) if before is not None else ("", 0)
+                old = (f"{name} is still the link of {recorded}, {seconds / 3600:.1f} h ago"
+                       if before is not None else f"there is no {name}")
+                click.secho(f"  ✗ cargo found the build up to date and did not relink, so the "
+                            f"linker wrote nothing: {old}. It relinks once a source changes, or "
+                            f"after `cargo clean --profile {profile}`.", fg="red")
+            else:
+                click.secho(f"  ✗ the build linked and the linker wrote no {name}; "
+                            f"try --map-flag for this linker", fg="red")
         else:
             # A failing check still wrote its diagnostics, which is what it is for.
             click.secho(f"  ✓ wrote {(out / name).relative_to(root).as_posix()}"
                         + (f" (cargo exited {code})" if code else ""), fg="green")
     if failed:
         raise SystemExit(1)
+
+
+def _unchanged(path: Path, before: float | None) -> bool:
+    """Whether the file at *path* is as it was before a command ran: still
+    absent, or not written since."""
+    if not path.is_file():
+        return True
+    return before is not None and path.stat().st_mtime == before
 
 
 def _format_size(size_bytes: int) -> str:
