@@ -20,10 +20,12 @@ sources define.
 from __future__ import annotations
 
 import collections
+import importlib.util
 import json
 import os
 import re
 import shutil
+import subprocess
 import time
 from pathlib import Path
 
@@ -32,6 +34,7 @@ from fastapi.testclient import TestClient
 
 from codecarto.services import cargo_service, examples_service
 
+REPO = Path(__file__).resolve().parents[1]
 EXAMPLE = examples_service.ROOT / "rust-firmware"
 
 
@@ -207,6 +210,152 @@ def test_an_edit_the_records_were_not_made_from_is_named(tmp_path):
         "check.jsonl: crates/hal/src/uart.rs:11 reads '    errors: u16,'",
         "blinky.map places blinky::TICKS",
     ]
+
+
+def _recorder():
+    """scripts/record_example.py, which is a script rather than a package."""
+    spec = importlib.util.spec_from_file_location("record_example", REPO / "scripts" / "record_example.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_a_recording_on_windows_names_only_the_stand_ins():
+    """Mutation: keep a Windows path's separators after its root, or drop the
+    `/` a file URL puts before a drive letter -- `/ws\\target...` or
+    `path+file:///C:/...` is left, and this fails."""
+    rec = _recorder()
+    ws = "C:\\Users\\you\\repos\\codecartographer\\examples\\rust-firmware"
+    roots = rec.stand_ins(ws, environ={"CARGO_HOME": "C:\\Users\\you\\.cargo",
+                                       "RUSTUP_HOME": "C:\\Users\\you\\.rustup"})
+    registry = "index.crates.io-1949cf8c6b5b557f"
+    metadata = json.dumps({
+        "workspace_root": ws,
+        "target_directory": ws + "\\target",
+        "packages": [
+            {"id": "path+file:///C:/Users/you/repos/codecartographer/examples/rust-firmware/crates/hal#0.1.0",
+             "manifest_path": ws + "\\crates\\hal\\Cargo.toml"},
+            {"manifest_path": f"C:\\Users\\you\\.cargo\\registry\\src\\{registry}\\heapless-0.8.0\\Cargo.toml"},
+        ],
+    })
+    assert json.loads(rec.portable_document("metadata.json", metadata, roots)) == {
+        "workspace_root": "/ws",
+        "target_directory": "/ws/target",
+        "packages": [
+            {"id": "path+file:///ws/crates/hal#0.1.0", "manifest_path": "/ws/crates/hal/Cargo.toml"},
+            {"manifest_path": f"/cargo-home/registry/src/{registry}/heapless-0.8.0/Cargo.toml"},
+        ],
+    }
+    # A drive letter in either case; a span's own file, relative, as rustc wrote it.
+    check = json.dumps({"reason": "compiler-message", "message": {
+        "rendered": "  --> c:\\users\\you\\.rustup\\toolchains\\1.99\\lib\\rustlib\\src\\rust\\library\\core\\src\\lib.rs:3:1\n",
+        "spans": [{"file_name": "crates\\hal\\src\\uart.rs"}]}}) + "\n"
+    message = json.loads(rec.portable_document("check.jsonl", check, roots))["message"]
+    assert message == {
+        "rendered": "  --> /rustup-home/toolchains/1.99/lib/rustlib/src/rust/library/core/src/lib.rs:3:1\n",
+        "spans": [{"file_name": "crates\\hal\\src\\uart.rs"}]}
+    link_map = f" 8000004  8000004        4     4         {ws}\\target\\release\\deps\\blinky-9.o:(.vector_table)\n"
+    assert rec.portable_document("blinky.map", link_map, roots) == (
+        " 8000004  8000004        4     4         /ws/target/release/deps/blinky-9.o:(.vector_table)\n")
+
+
+def test_a_recording_on_linux_names_only_the_stand_ins():
+    """Mutation: let the first `/` of a root match more than one -- `file:///home/...`
+    becomes `file:/ws/...`, and this fails."""
+    rec = _recorder()
+    ws = "/home/alice/src/codecartographer/examples/rust-firmware"
+    roots = rec.stand_ins(ws, environ={}, home=Path("/home/alice"))
+    quote = "registry/src/index.crates.io-1949cf8c6b5b557f/quote-1.0.47/src/lib.rs"
+    check = json.dumps({
+        "package_id": f"path+file://{ws}/crates/blinky#0.1.0",
+        "filenames": [f"{ws}/target/debug/build/blinky-1/build-script-build"],
+        "target": {"src_path": f"/home/alice/.cargo/{quote}"},
+        "linked_paths": [f"native={ws}/target/thumbv7em-none-eabihf/debug/build/blinky-2/out"],
+        "out_dir": f"{ws}-old/target",  # a sibling that shares the workspace's prefix is not it
+    }) + "\n"
+    assert json.loads(rec.portable_document("check.jsonl", check, roots)) == {
+        "package_id": "path+file:///ws/crates/blinky#0.1.0",
+        "filenames": ["/ws/target/debug/build/blinky-1/build-script-build"],
+        "target": {"src_path": f"/cargo-home/{quote}"},
+        "linked_paths": ["native=/ws/target/thumbv7em-none-eabihf/debug/build/blinky-2/out"],
+        "out_dir": f"{ws}-old/target",
+    }
+
+
+def test_recording_fails_naming_what_it_could_not_rewrite(tmp_path, capsys):
+    """Mutation: return 0 whatever is left -- a target directory outside the
+    workspace is written into the records with no word, and this fails."""
+    rec = _recorder()
+    root = tmp_path / "rust-firmware"
+    docs = root / "target" / "codecarto"
+    docs.mkdir(parents=True)
+    ws = str(root)
+    (docs / "metadata.json").write_text(json.dumps({"workspace_root": ws, "target_directory": f"{ws}/target"}))
+    assert rec.main([ws, "--rewrite-only"]) == 0
+    assert (docs / "metadata.json").read_text() == '{"workspace_root": "/ws", "target_directory": "/ws/target"}'
+
+    (docs / "metadata.json").write_text(json.dumps({"workspace_root": ws, "target_directory": "/var/tmp/cargo-target"}))
+    assert rec.main([ws, "--rewrite-only"]) == 1
+    assert "metadata.json: /var/tmp/cargo-target" in capsys.readouterr().err
+
+
+def test_a_recording_that_stopped_is_rewritten_and_still_fails(tmp_path, monkeypatch, capsys):
+    """`cargo record` exits 1 after writing metadata.json when a later step
+    fails -- a map cargo found current and did not link, say. Mutation: let
+    that exit stop the script -- the tracked metadata.json is left naming the
+    machine, and this fails."""
+    from codecarto import cli as codecarto_cli
+
+    rec = _recorder()
+    root = tmp_path / "rust-firmware"
+    docs = root / "target" / "codecarto"
+
+    def record(args, standalone_mode):
+        assert args[:2] == ["cargo", "record"] and args[3:] == ["--map", "blinky"]
+        docs.mkdir(parents=True)
+        (docs / "metadata.json").write_text(json.dumps({"workspace_root": str(root)}))
+        raise SystemExit(1)
+
+    monkeypatch.setattr(codecarto_cli.cli, "main", record)
+    root.mkdir()
+    assert rec.main([str(root), "--map", "blinky"]) == 1
+    assert json.loads((docs / "metadata.json").read_text()) == {"workspace_root": "/ws"}
+    assert "not a whole recording" in capsys.readouterr().err
+
+
+def test_writing_the_committed_records_again_changes_nothing():
+    """The recorder writes the records in the form they are committed in, so
+    recording again changes only what cargo said differently."""
+    rec = _recorder()
+    roots = rec.stand_ins("/ws", environ={"CARGO_HOME": "/cargo-home", "RUSTUP_HOME": "/rustup-home"})
+    for doc in sorted((EXAMPLE / "target" / "codecarto").iterdir()):
+        text = doc.read_text(encoding="utf-8")
+        assert rec.portable_document(doc.name, text, roots) == text, doc.name
+
+
+@pytest.mark.parametrize("path, ignored", [
+    ("target/.rustc_info.json", True),
+    ("target/CACHEDIR.TAG", True),
+    ("target/thumbv7em-none-eabihf/release/deps/libhal-d84773414db7f54d.rlib", True),
+    ("target/thumbv7em-none-eabihf/release/blinky", True),
+    ("target/debug/deps/libquote-cfe6a9c528a5c624.rmeta", True),
+    ("target/release/build/blinky-093437938b8a410e/output", True),
+    ("target/codecarto/metadata.json", False),
+    ("target/codecarto/check.jsonl", False),
+    ("target/codecarto/blinky.map", False),
+])
+def test_a_build_of_the_example_leaves_only_its_records_to_commit(path, ignored):
+    """Mutation: drop the `examples/*/target/*` rule from .gitignore -- cargo's
+    build output beside the records shows as untracked, and the ignored cases
+    fail; drop the `!` rule after it, and the records are ignored."""
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("no git")
+    result = subprocess.run([git, "check-ignore", "-q", "--no-index", f"examples/rust-firmware/{path}"],
+                            cwd=REPO, capture_output=True)
+    if result.returncode not in (0, 1):
+        pytest.skip("not a git work tree")
+    assert (result.returncode == 0) is ignored
 
 
 def test_the_records_name_no_machine():

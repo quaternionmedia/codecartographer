@@ -286,7 +286,8 @@ lists each one `BUNDLED` names whose directory exists under `examples/`, with
 the absolute path it is read from and whether it is a Cargo workspace. Only what
 is named is offered, and an installed package, which has no `examples/`, offers
 none. `examples/rust-firmware` carries the records real cargo and rust-lld wrote
-for it, its absolute paths rewritten; its README says how to record it afresh.
+for it, its absolute paths rewritten; its README says how to record it afresh,
+with `scripts/record_example.py`, which records and rewrites them.
 
 ---
 
