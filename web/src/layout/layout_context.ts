@@ -155,9 +155,9 @@ export class LayoutContext {
    * the selection was kept and not applied until somebody pressed draw again,
    * which nobody guesses. Every panel that draws goes through this.
    */
-  public async plotWith(action: () => Promise<void>): Promise<void> {
-    this._lastPlotAction = action;
-    await action();
+  public async plotWith<T>(action: () => Promise<T>): Promise<T> {
+    this._lastPlotAction = async () => { await action(); };
+    return action();
   }
 
   public updatePanelState(updates: Partial<ControlPanelState>): void {
@@ -745,7 +745,7 @@ export class LayoutContext {
     // rather than during the stream, when the counts would be a snapshot
     // of a graph still arriving.
     this._legend?.destroy();
-    const legend = new LegendExtension();
+    const legend = new LegendExtension(() => this.appState.state.graphStyling.colorBy);
     legend.initialize(context);
     legend.apply();
     this._legend = legend;
@@ -1135,6 +1135,10 @@ export class LayoutContext {
         if (this._streamingRenderer) {
           this._streamingRenderer.updateStyling(options);
         }
+        // The renderer recolours in place; the key says what the colours now
+        // mean. A streamed plot is not redrawn below, so without this its key
+        // kept describing the colouring it was drawn with.
+        if (options.colorBy !== undefined) this._legend?.apply();
         if (options.layout && options.layout !== oldLayout && this._lastPlotAction) {
           this.updatePanelState({ isLoading: true, statusMessage: 'Applying new layout...' });
           try {

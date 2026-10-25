@@ -13,7 +13,7 @@ measures each region's use against its length.
 links anything. `codecarto cargo record --map <bin>` writes
 `target/codecarto/<bin>.map` for a Rust binary; a C build that passes
 `-Wl,-Map=target/codecarto/<name>.map` writes the same. The reading carries the
-file's time, and a source changed after it is stale.
+file's time, and a source changed after it makes it stale -- read, and not used.
 
 How each figure is found
 ------------------------
@@ -26,7 +26,11 @@ region use   the sum of the sizes of the output sections whose address falls in
              leaves without an image whether or not the script says NOLOAD, and
              for which GNU ld still prints a load address. Neither map prints a
              section's type, so a section named for zeroed memory (`.bss`,
-             `.uninit`, `.noinit`, `.stack`, `.heap`) has none either.
+             `.uninit`, `.noinit`, `.stack`, `.heap`) has none either. Only
+             placed sections count: debug information, symbol tables and the
+             like are printed at address 0, inside any region that starts
+             there, and are known by name or by lying on addresses a placed
+             section already holds.
 symbol size  the size LLD prints beside the symbol; where a map prints none
              (GNU ld), the input section's size when the section holds that
              symbol alone, which is how `-ffunction-sections` and Rust lay code
@@ -36,11 +40,15 @@ symbol size  the size LLD prints beside the symbol; where a map prints none
 statics      GNU ld lists only global symbols. A `static` function or object
              compiled with `-ffunction-sections -fdata-sections` still has a
              section GCC named after it (`.bss.rx_buffer`), and an input section
-             that lists no symbol is read as that one.
+             that lists no symbol is read as that one -- a clone GCC made of a
+             function (`.text.uart_rx.constprop.0`, `.part.0`, `.isra.0`) as
+             the function it was cloned from.
 names        Rust's legacy mangling (`_ZN...17h<hash>E`) is demangled and the
              hash dropped, so a symbol reads as the path it was compiled from;
              a v0-mangled symbol is read as the linker demangled it (LLD does),
-             with the suffix LTO adds (` (.0)`, `.llvm.<n>`) dropped.
+             with the suffix LTO adds (` (.0)`, `.llvm.<n>`) dropped. A generic
+             instance (`delay::<u32>`) is its item's bytes, and a closure
+             (`main::{closure#0}`) its enclosing function's.
 
 WHAT THIS CANNOT SEE. Whether the map belongs to the source beside it -- only
 when each was written -- or what an inlined function cost: inlined code has no
@@ -49,6 +57,7 @@ symbol of its own and is counted in its caller.
 
 from __future__ import annotations
 
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -59,6 +68,12 @@ _NO_LOAD = re.compile(r"^\.(?:t?s?bss|uninit|noinit|stack|heap)(?:\.|$)")
 # ARM and AArch64 mapping symbols: `$t` (Thumb code), `$a`, `$d` (data), `$x`,
 # optionally numbered. They mark what kind of bytes follow; they are not names.
 _MAPPING = re.compile(r"^\$[atdx](?:\.\w+)?$")
+# Sections a link keeps in the ELF file and never places in memory: debug
+# information, symbol and string tables, `.comment`, build attributes. Neither
+# map prints a section's flags, so they are known by the names `objdump -h`
+# shows them with; both linkers print them at address 0.
+_FILE_ONLY = re.compile(r"^\.(?:z?debug|stab|line$|comment$|symtab|strtab$|shstrtab$|gnu_debug"
+                        r"|GCC\.command\.line$|llvm_addrsig$|note\.GNU-stack$|[\w.]*attributes$)")
 
 
 @dataclass
@@ -166,12 +181,12 @@ def parse(text: str, path: str = "") -> LinkMap:
                    if all(word in line.split() for word in ("VMA", "LMA", "Size", "Out", "Symbol"))), None)
     if header is not None:
         found = _parse_lld(lines, header, path)
-    elif "Linker script and memory map" in text:
+    elif any(line.startswith(_GNU_MAP) for line in lines):
         found = _parse_gnu(lines, path)
     else:
         return LinkMap(path=path, reason=(f"{Path(path).name or 'this file'} is not a map GNU ld "
                                           "or LLD wrote: it has neither LLD's column header nor "
-                                          "GNU ld's 'Linker script and memory map'"))
+                                          f"a line starting GNU ld's '{_GNU_MAP}'"))
     for section in found.sections:
         for inp in section.inputs:
             _size_symbols(inp)
@@ -215,25 +230,33 @@ _GNU_SECTION = re.compile(rf"^(\S+)?\s+({_HEX})\s+({_HEX})(?:\s+load address\s+(
 _GNU_INPUT = re.compile(rf"^ (\S+)?\s+({_HEX})\s+({_HEX})\s+(\S.*)$")
 _GNU_SYMBOL = re.compile(rf"^\s+({_HEX})\s+([^=\s][^=]*?)\s*$")
 # The section GCC gives a function or object under -ffunction-sections and
-# -fdata-sections: `.text.uart_read`, `.bss.rx_buffer`, `.text.startup.main`.
+# -fdata-sections: `.text.uart_read`, `.bss.rx_buffer`, `.text.startup.main`,
+# and a clone GCC made of a function -- constant-propagated, split off, with
+# its arguments replaced (`.text.uart_rx.constprop.0`, `.part.0`, `.isra.0`) --
+# which is that function's bytes.
 _OWNED_SECTION = re.compile(r"^\.(?:text|rodata|data|bss|sdata|sbss|tdata|tbss)\."
                             r"(?:(?:startup|unlikely|hot|exit)\.)?"
-                            r"(?!(?:startup|unlikely|hot|exit)$)([A-Za-z_]\w*)$")
+                            r"(?!(?:startup|unlikely|hot|exit)$)([A-Za-z_]\w*)"
+                            r"(?:\.(?:constprop|isra|part|lto_priv|cold|localalias)(?:\.\d+)?)*$")
+# A script's data statement (`LONG(0x12345678)`): its bytes, not a symbol.
+_GNU_DATA = re.compile(rf"^\s+{_HEX}\s+{_HEX}\s+(?:BYTE|SHORT|LONG|QUAD|SQUAD)\s")
+# GNU ld starts each part of its map at column 0; the words anywhere else (a
+# path, an indented line) are not the part.
+_GNU_MAP = "Linker script and memory map"
+_GNU_MEMORY = "Memory Configuration"
 
 
 def _parse_gnu(lines: list[str], path: str) -> LinkMap:
     found = LinkMap(path=path, format="gnu-ld")
-    i = 0
-    if "Memory Configuration" in "\n".join(lines):
-        i = next(n for n, line in enumerate(lines) if line.startswith("Memory Configuration"))
-        for line in lines[i + 1:]:
-            if line.startswith("Linker script and memory map"):
-                break
-            m = _GNU_REGION.match(line)
-            if m and m.group(1) not in ("Name", "*default*"):
-                found.regions.append(Region(m.group(1), int(m.group(2), 16), int(m.group(3), 16),
-                                            m.group(4) or ""))
-    start = next(n for n, line in enumerate(lines) if line.startswith("Linker script and memory map"))
+    memory = next((n for n, line in enumerate(lines) if line.startswith(_GNU_MEMORY)), None)
+    for line in lines[memory + 1:] if memory is not None else ():
+        if line.startswith(_GNU_MAP):
+            break
+        m = _GNU_REGION.match(line)
+        if m and m.group(1) not in ("Name", "*default*"):
+            found.regions.append(Region(m.group(1), int(m.group(2), 16), int(m.group(3), 16),
+                                        m.group(4) or ""))
+    start = next(n for n, line in enumerate(lines) if line.startswith(_GNU_MAP))
     section: OutputSection | None = None
     inp: InputSection | None = None
     pending_section = pending_input = ""
@@ -278,6 +301,9 @@ def _parse_gnu(lines: list[str], path: str) -> LinkMap:
                 inp = InputSection(name, m.group(3).strip(), int(m.group(1), 16), int(m.group(2), 16))
                 section.inputs.append(inp)
                 continue
+        if _GNU_DATA.match(line):
+            inp = None  # the bytes after it are the statement's, in no input section
+            continue
         m = _GNU_SYMBOL.match(line)
         # `(size before relaxing)` is a second size for the input above it.
         if m and inp is not None and not m.group(2).startswith((".", "*", "(")):
@@ -307,12 +333,33 @@ def _size_symbols(inp: InputSection) -> None:
 # ── Measuring ─────────────────────────────────────────────────────────────────
 
 
+def placed(link_map: LinkMap) -> list[OutputSection]:
+    """The output sections the link put in memory, in the map's order.
+
+    A section kept only in the file is known by its name; one whose addresses
+    a section before it already holds -- an `(INFO)` section such as defmt's,
+    at address 1 -- was not placed either, because two placed sections cannot
+    share an address (both linkers refuse the link). An overlay shares its
+    addresses with a different load address, and `.tbss` takes none at run
+    time, so neither is held against what follows."""
+    held: list[tuple[int, int]] = []
+    found: list[OutputSection] = []
+    for section in link_map.sections:
+        if section.size == 0 or _FILE_ONLY.match(section.name):
+            continue
+        start, end = section.vma, section.vma + section.size
+        if section.lma == section.vma and any(start < e and s < end for s, e in held):
+            continue
+        found.append(section)
+        if not section.name.startswith(".tbss"):
+            held.append((start, end))
+    return found
+
+
 def usage(link_map: LinkMap, regions: list[Region]) -> list[RegionUse]:
     """Each region's use, from the sections the link placed in it."""
     uses = [RegionUse(r.name, r.origin, r.length) for r in regions]
-    for section in link_map.sections:
-        if section.size == 0:
-            continue
+    for section in placed(link_map):
         for use, region in zip(uses, regions):
             if region.holds(section.vma):
                 use.runtime_bytes += section.size
@@ -397,8 +444,15 @@ def symbol_key(symbol: str) -> tuple[str | None, str]:
 
     `<hal::gpio::pin::Pin as hal::gpio::OutputPin>::set_high` -> (`Pin`, `set_high`)
     `hal::gpio::pin::<impl hal::gpio::OutputPin for hal::gpio::pin::Pin>::set_high` -> (`Pin`, `set_high`)
-    `hal::gpio::pin::Pin::new` -> (`Pin`, `new`); `blinky::delay` -> (None, `delay`)"""
+    `hal::gpio::pin::Pin::new` -> (`Pin`, `new`); `blinky::delay` -> (None, `delay`)
+
+    What a name appends to the item it came from is dropped, since its bytes
+    are that item's: a generic instance's arguments (`blinky::delay::<u32>`)
+    and a closure or other compiler-made item inside it
+    (`blinky::main::{closure#0}`, `{{closure}}` in the legacy spelling)."""
     parts = _split_path(demangle(symbol))
+    while len(parts) > 1 and parts[-1].startswith(("<", "{")):
+        parts.pop()
     if not parts:
         return None, symbol
     name = parts[-1].removeprefix(_RUNTIME_PREFIX)
@@ -423,14 +477,54 @@ def _last(path: str) -> str:
 _CODE_KINDS = {"rust": {"function", "method", "static"}, "c": {"function", "variable"}}
 
 
-def _crate_of(path: str) -> str:
-    """`.../crates/hal-core/src/gpio.rs` -> `hal_core`: the directory above `src`."""
+def _path_key(path: str) -> str:
+    return os.path.normcase(os.path.normpath(path)) if path else ""
+
+
+def _root_crate(path: str) -> str:
+    """The crate a target's root file starts, by Cargo's conventions:
+    `hal-core/src/lib.rs` -> `hal_core`, `src/bin/flash-tool.rs` -> `flash_tool`,
+    `build.rs` -> `build_script_build`. Empty for a file that starts none."""
     parts = path.replace("\\", "/").split("/")
-    if "src" in parts:
-        at = len(parts) - 1 - parts[::-1].index("src")
-        if at >= 1:
-            return parts[at - 1].replace("-", "_")
+    if parts[-1] == "build.rs":
+        return "build_script_build"
+    if len(parts) >= 3 and parts[-2] == "src" and parts[-1] in ("lib.rs", "main.rs"):
+        return parts[-3].replace("-", "_")
+    targets = ("bin", "examples", "tests", "benches")
+    if len(parts) >= 2 and parts[-2] in targets and parts[-1].endswith(".rs"):
+        return parts[-1][:-3].replace("-", "_")
+    if len(parts) >= 3 and parts[-3] in targets and parts[-1] == "main.rs":
+        return parts[-2].replace("-", "_")
     return ""
+
+
+def _rust_crates(graph, roots: dict[str, str]) -> dict[str, set[str]]:
+    """Each Rust file's crates, by path key: walked from every crate root through
+    the files its `mod` items declare. *roots* names a root's crate (cargo's
+    targets, by path); a root it does not name is named by convention. A file
+    no root reaches is in no crate, and nothing is joined to it."""
+    declares: dict[str, list[str]] = {}
+    declared: set[str] = set()
+    for u, v, e in graph.edges(data=True):
+        if e.get("kind") == "declares" and graph.nodes[u].get("language") == "rust":
+            child = _path_key(str(graph.nodes[v].get("file", "")))
+            declares.setdefault(_path_key(str(graph.nodes[u].get("file", ""))), []).append(child)
+            declared.add(child)
+    named = {_path_key(path): name for path, name in roots.items()}
+    crates: dict[str, set[str]] = {}
+    for _, d in graph.nodes(data=True):
+        if d.get("kind") != "file" or d.get("language") != "rust":
+            continue
+        key = _path_key(str(d.get("file", "")))
+        crate = named.get(key) or ("" if key in declared else _root_crate(str(d.get("file", ""))))
+        stack = [key] if crate else []
+        while stack:
+            here = stack.pop()
+            if crate in crates.setdefault(here, set()):
+                continue
+            crates[here].add(crate)
+            stack.extend(declares.get(here, []))
+    return crates
 
 
 def _symbol_crate(symbol: str, owner: str) -> str:
@@ -456,23 +550,34 @@ def _kib(n: int) -> str:
     return f"{n} B" if n < 1024 else f"{n / 1024:.1f} KiB"
 
 
-def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: bool) -> dict:
+def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: bool,
+             crate_roots: dict[str, str] | None = None) -> dict:
     """Put what the link measured on a parsed code map. Returns what was joined.
 
     - **Regions** drawn from a linker script get `meta.measured` (bytes used at
       run time and as load images, the fill against their length) and a
       `hover` that says it. Against the map's own memory table when it has one
-      (GNU ld prints it), else the regions the script declares. When several
-      scripts declare regions, only the one under a directory named after the
-      map's binary (`owner`) is joined.
+      (GNU ld prints it), else the regions each script declares, measured
+      script by script. A script region whose origin or length disagrees with
+      the map's table was not that link's, and is left unmeasured. When several
+      directories hold scripts, only those under one named after the map's
+      binary (`owner`) are joined.
     - **Sections** drawn from a script get their measured size and address.
     - **Code items** get `meta.bytes` from the symbols that name them, matched
       within the crate the symbol was compiled in, by function name and, for a
-      method, its impl's type -- and only when exactly one item answers. A C
+      method, its impl's type -- and only when exactly one item answers. A
+      Rust file's crate is the target whose root reaches it through `mod`
+      items; *crate_roots* (root file -> crate, cargo's targets) names the
+      roots, else Cargo's conventions do. An unmangled name (`main`, a
+      `#[no_mangle]` handler) is looked for in the map's own binary only. A C
       name declared in one file and defined in another answers from both; the
       object the map says the symbol came from (`build/main.o`) names the file
       that defined it. A symbol from a crate outside the parse (`core`, a
-      runtime, the C library) is counted, not drawn."""
+      runtime, the C library) is counted, not drawn.
+
+    A *stale* map -- linked before a source changed -- is not used: the
+    regions it would measure say so in `meta.measured` (`used: False`) and
+    their `hover`, and no figure of it is stamped anywhere."""
     owner = owner.replace("-", "_")
     provenance = {"map": Path(link_map.path).name, "recorded_at": recorded_at, "stale": stale}
     linker = [(n, d) for n, d in graph.nodes(data=True) if d.get("language") == "linker"]
@@ -480,25 +585,50 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
     if len(files) > 1:
         dirs = {f"/{owner}/", f"/{owner.replace('_', '-')}/"}
         files = {f for f in files if any(d in f.replace("\\", "/") for d in dirs)}
-    regions = list(link_map.regions)
-    if not regions:
-        for _, d in linker:
-            meta = d.get("meta") or {}
-            if (d.get("kind") == "region" and d.get("file") in files
-                    and meta.get("origin_value") is not None and meta.get("length_bytes")):
-                regions.append(Region(d["label"], meta["origin_value"], meta["length_bytes"]))
-    uses = {u.name: u for u in usage(link_map, regions)}
+    # What each script declares, by (script, region): board variants beside
+    # one binary each declare a FLASH of their own.
+    declared: dict[tuple[str, str], Region | None] = {}
+    for _, d in linker:
+        meta = d.get("meta") or {}
+        if d.get("kind") == "region" and d.get("file") in files:
+            known = meta.get("origin_value") is not None and meta.get("length_bytes")
+            declared[(d["file"], d["label"])] = (Region(d["label"], meta["origin_value"], meta["length_bytes"])
+                                                 if known else None)
+    uses: dict[tuple[str, str], RegionUse] = {}
+    if link_map.regions:
+        # The link's own table. A script region that declares another origin
+        # or length is not the one this link used.
+        table = {u.name: u for u in usage(link_map, link_map.regions)}
+        for (file, name), region in declared.items():
+            use = table.get(name)
+            if use and (region is None or (region.origin, region.length) == (use.origin, use.length)):
+                uses[(file, name)] = use
+    else:
+        for file in {f for f, _ in declared}:
+            mine = [r for (f, _), r in declared.items() if f == file and r is not None]
+            uses.update(((file, u.name), u) for u in usage(link_map, mine))
     joined = {"regions": 0, "sections": 0, "symbols": 0, "outside": 0, "ambiguous": 0}
+    if stale:
+        # A recorded document is used only while it is current: a map linked
+        # before a source changed measured another build. Its regions say so,
+        # and nothing carries its figures.
+        for _, d in linker:
+            if d.get("kind") == "region" and (d.get("file"), d.get("label")) in uses:
+                d.setdefault("meta", {})["measured"] = {**provenance, "used": False}
+                d["hover"] = (f"{d['label']} — not measured: {provenance['map']} was linked at "
+                              f"{recorded_at}, before a source changed; record it again")
+                joined["regions"] += 1
+        return joined
+    provenance["used"] = True
     sections = {s.name: s for s in link_map.sections}
     for _, d in linker:
         if d.get("file") not in files:
             continue
-        if d.get("kind") == "region" and d.get("label") in uses:
-            use = uses[d["label"]]
+        if d.get("kind") == "region" and (d["file"], d.get("label")) in uses:
+            use = uses[(d["file"], d["label"])]
             d.setdefault("meta", {})["measured"] = {**use.as_dict(), **provenance}
             d["hover"] = (f"{use.name} — {_kib(use.used_bytes)} of {_kib(use.length)} used "
-                          f"({use.fill:.1%}), from {provenance['map']}"
-                          + (" (older than the source)" if stale else ""))
+                          f"({use.fill:.1%}), from {provenance['map']}")
             joined["regions"] += 1
         elif d.get("kind") == "section" and d.get("label") in sections:
             s = sections[d["label"]]
@@ -509,11 +639,14 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
 
     # Code items, by crate, then name, then (for a method) the impl's type.
     items: dict[tuple[str, str], list[tuple[str, dict]]] = {}
+    rust_crates = _rust_crates(graph, crate_roots or {})
     for node_id, d in graph.nodes(data=True):
         if d.get("kind") not in _CODE_KINDS.get(d.get("language", ""), ()):
             continue
-        crate = _crate_of(str(d.get("file", ""))) if d.get("language") == "rust" else owner
-        items.setdefault((crate, d.get("label", "")), []).append((node_id, d))
+        crates = (rust_crates.get(_path_key(str(d.get("file", ""))), ())
+                  if d.get("language") == "rust" else (owner,))
+        for crate in crates:
+            items.setdefault((crate, d.get("label", "")), []).append((node_id, d))
 
     def impl_type(node_id: str) -> str:
         for parent in graph.predecessors(node_id):
@@ -529,8 +662,6 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
                 type_name, name = symbol_key(sym.name)
                 crate = _symbol_crate(sym.name, owner)
                 found = items.get((crate, name), [])
-                if not found and crate == owner:
-                    found = [c for (cr, n), cs in items.items() if n == name and cr == "" for c in cs]
                 if type_name:
                     found = [(n, d) for n, d in found if impl_type(n) == type_name]
                 else:

@@ -79,13 +79,23 @@ the build that is flashed -- and keeps its map; a C build passing
   statics carry `meta.bytes`: a symbol is demangled (Rust's legacy mangling,
   and the half-demangled form LLD prints) and joined within the crate it was
   compiled in, by name and, for a method, its impl's type -- only where one
-  item answers. A C name one file declares and another defines is joined to
+  item answers. A file's crate is the target whose root reaches it through
+  `mod` items, cargo's targets naming the roots, so a package need not sit in a
+  directory named after it; an unmangled name is looked for in the map's own
+  binary only. A C name one file declares and another defines is joined to
   the file the map's object names. GNU ld lists no `static`; built with
   `-fdata-sections` and `-ffunction-sections`, one is read from the section
   GCC named for it (`.bss.rx_buffer`). A symbol from outside the parse (`core`,
   a runtime, the C library) is counted, not drawn.
+- **Only placed sections count.** Both linkers print debug information, symbol
+  tables, `.comment` and build attributes at address 0, inside any region that
+  starts there (nRF52, SAMD, LPC, Kinetis); they are told by name, or by lying
+  on addresses a placed section already holds (an `(INFO)` section such as
+  defmt's).
 - **On the crate graph**, the binary's target says its fill per region, and the
-  map is a document row with its age, stale once a source changes after it.
+  map is a document row with its age. Once a source changes after it the map
+  is not used -- as a stale `metadata.json` is not -- and the row, the caveat
+  and the code map's regions say why.
 
 What it cannot see: inlined code has no symbol, so its bytes are its caller's;
 and a map is only as current as the link that wrote it.
@@ -121,7 +131,12 @@ colour -- and the picture still draws, so each is a test
 language's lexicon; the Rust parser's `KINDS` and the vocabulary map each other
 exactly; every C kind is mapped; C's reference design (`c_language_parser`'s
 shapes and colours) agrees with the vocabulary's looks; every look is a shape
-the canvas draws. Each guard was broken once and seen red.
+the canvas draws, read from `KNOWN_SHAPES` in
+`web/src/features/graph/services/node_shapes.ts` rather than from a Python copy
+of it, which could drift and stay green. The Chrestomathy panel's test reads the
+server's own rows, from a fixture a test holds equal to what
+`construct_service.reading` sends. Each guard's docstring names the break that
+turns it red, and each was broken and seen red.
 
 ## Next, in order
 

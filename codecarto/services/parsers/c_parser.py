@@ -179,6 +179,26 @@ def _get_qualifiers(cursor, cindex) -> list:
     return quals
 
 
+def _block_scope_facts(cursor, cindex) -> dict:
+    """What a variable declared inside a function is, which its kind alone
+    does not say: without `static` or `extern` it lives for one call
+    (`automatic`), and with or without them it has no linkage of its own --
+    a block-scope `extern` names something else's, which keeps its own."""
+    try:
+        parent = cursor.semantic_parent
+        if parent is None or parent.kind != cindex.CursorKind.FUNCTION_DECL:
+            return {}
+        sc = cursor.storage_class
+    except Exception:
+        return {}
+    if sc == cindex.StorageClass.EXTERN:
+        return {}
+    facts = {'no_linkage': True}
+    if sc != cindex.StorageClass.STATIC:
+        facts['automatic'] = True
+    return facts
+
+
 def _make_in_target(target_stems):
     def in_target(cursor):
         if not cursor.location.file:
@@ -229,7 +249,7 @@ def _pass1_declarations(tu, in_target, nodes, edges, edge_set, cindex):
                     'type_str':   cursor.type.spelling if cursor.type else '',
                 }
 
-                if kind == 'struct':
+                if kind in ('struct', 'union'):
                     n['field_count'] = sum(
                         1 for c in cursor.get_children()
                         if c.kind == cindex.CursorKind.FIELD_DECL
@@ -245,6 +265,8 @@ def _pass1_declarations(tu, in_target, nodes, edges, edge_set, cindex):
                         if c.kind == cindex.CursorKind.PARM_DECL
                     )
                     n['is_definition'] = cursor.is_definition()
+                elif kind == 'variable':
+                    n.update(_block_scope_facts(cursor, cindex))
 
                 nodes[nid] = n
 

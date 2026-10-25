@@ -10,6 +10,14 @@ layers follow C's wherever the two languages answer the same question, so the
 chrestomathy can set a C layer beside a Rust one. The schema is
 language-agnostic; more languages are meant to follow as additional YAML files.
 
+**A layer's ordinal is a rank within its own lexicon**, the most machine-facing
+first, and not a scale the languages share. Rust's keyword layers line up with
+C's from 0 to 3 and its operator layers with C's from 0 to 4, so there the
+number -- and the colour the one ramp gives it -- is one layer in both; past
+those, and in Python's lexicon throughout, the same number is a different layer
+(compile-time reasoning is C's keyword layer 4 and Rust's 5; control flow is
+Python's 0 and C's 3). Read the layer's name beside its number.
+
 Lexicons are one half of the chrestomathy. The other is the construct
 vocabulary, `codecarto/data/constructs.yaml`, which names what each token
 spells (`struct` in C and Rust is a product type; `enum` in Rust is a sum type
