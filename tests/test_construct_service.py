@@ -229,6 +229,25 @@ def test_a_construct_read_across_languages_keeps_the_silent_ones():
     assert rows["rust"]["kinds"] == []
 
 
+def test_every_listed_language_is_a_row_of_every_construct():
+    """docs/api.md: a language with no spelling is a row, never a missing one.
+    Python has no untagged union and neither C nor Python an associated item,
+    and none of the three had a row. Mutation: draw rows only for languages
+    that spell or parse the construct -- this fails and names the pairs."""
+    missing = []
+    for construct in VOCABULARY.constructs:
+        rows = {r["language"] for r in construct_service.reading(construct.id)["languages"]}
+        missing += [(construct.id, language) for language in VOCABULARY.languages if language not in rows]
+    assert missing == []
+
+
+def test_a_language_the_vocabulary_records_nothing_for_says_so():
+    rows = {r["language"]: r for r in construct_service.reading("type.union")["languages"]}
+    python = rows["python"]
+    assert (python["tokens"], python["kinds"], python["carried_by"]) == ([], [], [])
+    assert "records no Python spelling" in python["note"]
+
+
 def test_tokens_carry_their_lexicon_layer():
     reading = construct_service.reading("type.product")
     rust = next(r for r in reading["languages"] if r["language"] == "rust")
@@ -255,7 +274,7 @@ def test_facets_say_what_carries_them():
 def test_the_graph_puts_the_construct_at_the_centre_and_colours_tokens_by_layer():
     graph = construct_service.as_graph("memory.volatile")
     root = "construct:memory.volatile"
-    assert set(graph.successors(root)) == {"language:c", "language:rust"}
+    assert set(graph.successors(root)) == {f"language:{lang}" for lang in VOCABULARY.languages}
     token = graph.nodes["token:c:volatile"]
     assert token["color"] == construct_service.layer_color(token["layer_ordinal"])
     # Rust spells it with no token: drawn, dashed, with its note.

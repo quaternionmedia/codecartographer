@@ -156,11 +156,20 @@ def annotate(graph: nx.Graph) -> int:
 # ── The chrestomathy ──────────────────────────────────────────────────────────
 
 
-def _display_name(language: str) -> str:
+@lru_cache(maxsize=None)
+def _lexicon(language: str):
+    """*language*'s shipped lexicon, or None. Cached, as the vocabulary is."""
     from codecarto.services.lexicon_service import LexiconService
 
-    if language in LexiconService.available():
-        return LexiconService.load(language).display_name or language
+    if language not in LexiconService.available():
+        return None
+    return LexiconService.load(language)
+
+
+def _display_name(language: str) -> str:
+    lexicon = _lexicon(language)
+    if lexicon is not None:
+        return lexicon.display_name or language
     return {"assembly": "Assembly", "linker": "Linker script"}.get(language, language)
 
 
@@ -171,6 +180,14 @@ def _languages(vocabulary: Vocabulary, construct: Construct) -> list[str]:
     named += [lang for lang in construct.spelled if lang not in named]
     return [lang for lang in named
             if lang in construct.spelled or _kinds_for(vocabulary, lang, construct.id)]
+
+
+def _rows_for(vocabulary: Vocabulary, construct: Construct) -> list[str]:
+    """The chrestomathy's rows: every language the vocabulary lists, whether or
+    not it says anything of *construct* -- the absence is the lesson -- then
+    any other language that spells it."""
+    listed = list(vocabulary.languages)
+    return listed + [lang for lang in construct.spelled if lang not in listed]
 
 
 def _kinds_for(vocabulary: Vocabulary, language: str, construct_id: str) -> list[str]:
@@ -195,27 +212,27 @@ def _facet_sources(vocabulary: Vocabulary, language: str, construct_id: str) -> 
 
 def reading(construct_id: str) -> dict[str, Any] | None:
     """One construct across every language, as rows. None when nobody named it."""
-    from codecarto.services.lexicon_service import LexiconService
-
     vocabulary = load()
     construct = vocabulary.get(construct_id)
     if construct is None:
         return None
-    available = set(LexiconService.available())
     rows = []
-    for language in _languages(vocabulary, construct):
+    for language in _rows_for(vocabulary, construct):
         spelling = construct.spelled.get(language)
-        index = LexiconService.load(language).index_by_token() if language in available else {}
+        lexicon = _lexicon(language)
+        index = lexicon.index_by_token() if lexicon is not None else {}
         tokens = [{"token": tok, "contexts": index.get(tok, [])}
                   for tok in (spelling.tokens if spelling else [])]
+        display = _display_name(language)
         rows.append({
             "language": language,
-            "display_name": _display_name(language),
-            "has_lexicon": language in available,
+            "display_name": display,
+            "has_lexicon": lexicon is not None,
             "tokens": tokens,
             "kinds": _kinds_for(vocabulary, language, construct.id),
             "carried_by": _facet_sources(vocabulary, language, construct.id),
-            "note": spelling.note if spelling else "",
+            "note": spelling.note if spelling else
+                    f"constructs.yaml records no {display} spelling of {construct.name.lower()}.",
         })
     return {
         "construct": {
