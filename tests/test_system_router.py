@@ -27,6 +27,8 @@ only when the thing refused would otherwise have succeeded.
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -119,3 +121,40 @@ def test_the_roots_override_replaces_rather_than_adds(tmp_path, monkeypatch):
 
     assert roots == [tmp_path], "the override must replace the convention"
     assert system_router.find_repo("only") is not None
+
+
+def test_the_replay_derives_its_events_off_the_event_loop(tmp_path, monkeypatch):
+    """`events()` starts a git process per commit and per branch. Run inside the
+    websocket handler, it froze every other route and socket until the
+    derivation finished. Mutation: call `system_composer.events` directly in
+    `replay` -- the loop ticks once while the derivation runs, and this fails."""
+    import time
+
+    def slow_events(clone, limit):
+        time.sleep(0.3)
+        return {"changes": [], "in_flight": []}
+
+    monkeypatch.setattr(system_router, "find_repo", lambda name: tmp_path)
+    monkeypatch.setattr(system_router.system_composer, "events", slow_events)
+
+    class Socket:
+        async def accept(self):
+            pass
+
+        async def send_json(self, data):
+            pass
+
+        async def close(self, code=1000, reason=None):
+            pass
+
+    async def ticks_while_replaying() -> int:
+        ticks = 0
+        replay = asyncio.ensure_future(system_router.replay(Socket(), repo="moat", limit=30))
+        while not replay.done():
+            ticks += 1
+            await asyncio.sleep(0.01)
+        await replay
+        return ticks
+
+    assert asyncio.run(ticks_while_replaying()) >= 10, \
+        "the event loop stalled while the replay derived its events"
