@@ -70,7 +70,7 @@ Python backend (FastAPI) plus a TypeScript frontend under `web/`, with
 ## Running it
 
 ```sh
-uv sync --extra dev --extra c-parsing   # the lockfile is the environment; libclang reads C
+uv sync --locked --extra dev --extra c-parsing   # the lockfile is the environment; libclang reads C
 
 uv run codecarto dev      # backend and frontend together
 uv run codecarto serve    # backend only; `serve --help` prints the port

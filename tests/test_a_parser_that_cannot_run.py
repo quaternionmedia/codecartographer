@@ -26,7 +26,7 @@ from codecarto.services.local_repo_service import get_local_repo
 from codecarto.services.unified_parser_service import UnifiedParserService
 
 MISSING = ("libclang is not installed, so C and C++ declarations cannot be read. "
-           "Install it with: uv sync --extra c-parsing")
+           "Install it with: uv sync --locked --extra dev --extra c-parsing")
 
 
 @pytest.fixture
