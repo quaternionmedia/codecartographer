@@ -64,11 +64,14 @@ export function componentTypesIn(config: unknown): string[] {
 }
 
 /**
- * Rename the windows in `renamed`. Where several land on one id, the first in
- * the layout stays and the rest go, and a stack, row or column they leave
- * empty goes too. A stack's active tab stays on the window it showed: the one
- * it merged into when that is in the same stack, else the one before it. Returns the old ids found. Mutates `config`, which the caller
- * has just parsed.
+ * Rename the windows in `renamed`, in every root `componentTypesIn` reads:
+ * the layout's and each open popout's, a popout's own popouts included, each
+ * where Golden Layout reads it (`rootOf`). Where several land on one id, the
+ * first in the layout stays and the rest go, and a stack, row or column they
+ * leave empty goes too. A stack's active tab stays on the window it showed:
+ * the one it merged into when that is in the same stack, else the one before
+ * it. Returns the old ids found. Mutates `config`, which the caller has just
+ * parsed.
  */
 export function renamePanels(config: Record<string, unknown>, renamed: Readonly<Record<string, string>>): string[] {
   const found = new Set<string>();
@@ -113,16 +116,22 @@ export function renamePanels(config: Record<string, unknown>, renamed: Readonly<
     return emptied ? null : it;
   };
 
-  config.root = visit(config.root) ?? undefined;
-  const popouts = config.openPopouts;
-  if (Array.isArray(popouts)) {
-    for (const popout of popouts) {
-      if (popout && typeof popout === 'object') {
-        const p = popout as { root?: unknown };
-        p.root = visit(p.root) ?? undefined;
-      }
+  // **THE ROOT GOLDEN LAYOUT READS, NOT `root` ALONE.** The registry check
+  // reads a legacy `content[0]` and a popout's popouts (`componentTypesIn`);
+  // renaming only `root` and one level of popouts left the old ids there, and
+  // the layout was dropped for the default rather than renamed.
+  const layout = (cfg: unknown): void => {
+    if (!cfg || typeof cfg !== 'object') return;
+    const c = cfg as { root?: unknown; content?: unknown; openPopouts?: unknown };
+    // Renamed in place; emptied in whichever form it was written when nothing
+    // in it stays.
+    if (visit(rootOf(c)) === null) {
+      if (c.root !== undefined) c.root = undefined;
+      else c.content = [];
     }
-  }
+    if (Array.isArray(c.openPopouts)) c.openPopouts.forEach(layout);
+  };
+  layout(config);
   return [...found];
 }
 

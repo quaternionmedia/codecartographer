@@ -151,3 +151,52 @@ test('`content` beside a `root` is not read, since Golden Layout does not read i
   assert.deepEqual(componentTypesIn(both), ['graph']);
   assert.equal(readSavedLayout(JSON.stringify(both), REGISTERED).kind, 'usable');
 });
+
+const OPEN_REGISTERED = ['graph', 'file-tree', 'open', 'estate-panel'];
+
+test('Upload and Repository in a legacy root, written as `content[0]`, become one Open window', () => {
+  /**
+   * The renames walked `root` alone, and the registry check reads the root
+   * where Golden Layout does, so a legacy layout naming the old windows was
+   * dropped for the default instead of renamed. Mutation: rename in `root`
+   * only -- this fails.
+   */
+  const legacy = { content: [{ type: 'row', content: [
+    { type: 'component', componentType: 'graph' },
+    { type: 'stack', content: [
+      { type: 'component', componentType: 'upload-panel', id: 'upload-panel' },
+      { type: 'component', componentType: 'repo-panel', id: 'repo-panel' },
+    ] },
+  ] }] };
+  const read = readSavedLayout(JSON.stringify(legacy), OPEN_REGISTERED);
+  assert.equal(read.kind, 'usable', read.why);
+  assert.deepEqual(read.renamed.sort(), ['repo-panel', 'upload-panel']);
+  assert.deepEqual(componentTypesIn(read.config), ['graph', 'open']);
+  assert.equal(read.config.root, undefined, 'the legacy root is renamed where it is written');
+});
+
+test("Actions in a popout's own popout, its root written either way, is renamed too", () => {
+  /** Mutation: rename in one level of `openPopouts` -- this fails. */
+  const config = {
+    root: { type: 'component', componentType: 'graph' },
+    openPopouts: [{
+      content: [{ type: 'component', componentType: 'file-tree' }],
+      openPopouts: [{ root: { type: 'stack', content: [{ type: 'component', componentType: 'plotbar' }] } }],
+    }],
+  };
+  const read = readSavedLayout(JSON.stringify(config), OPEN_REGISTERED);
+  assert.equal(read.kind, 'usable', read.why);
+  assert.deepEqual(read.renamed, ['plotbar']);
+  assert.deepEqual(componentTypesIn(read.config), ['graph', 'file-tree', 'open']);
+});
+
+test('a legacy popout root holding only a window merged into one kept already is emptied', () => {
+  const config = {
+    root: { type: 'component', componentType: 'upload-panel' },
+    openPopouts: [{ content: [{ type: 'stack', content: [{ type: 'component', componentType: 'repo-panel' }] }] }],
+  };
+  const read = readSavedLayout(JSON.stringify(config), OPEN_REGISTERED);
+  assert.equal(read.kind, 'usable', read.why);
+  assert.deepEqual(componentTypesIn(read.config), ['open']);
+  assert.deepEqual(read.config.openPopouts[0].content, []);
+});
