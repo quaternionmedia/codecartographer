@@ -189,6 +189,25 @@ def test_documents_do_not_restate_the_test_count():
     assert not offenders, f"a test count in durable text: {offenders}"
 
 
+def test_no_document_runs_node_test_on_a_directory():
+    """`node --test tests/rad/` runs the directory on Node 20; Node 22, which the
+    web workflow uses, reads it as a module path and fails with `Cannot find
+    module`. The suites run through `web/scripts/node-test.mjs`, which names the
+    files, so a document or a test's header giving the directory form gives a
+    command that fails where CI runs.
+    """
+    web = ROOT / "web"
+    offenders = []
+    for path in (*DOCUMENTS, *sorted((web / "tests").rglob("*.mjs"))):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for argument in re.findall(r"node --test\s+([\w./-]+)", line):
+                if argument.endswith("/") or (web / argument).is_dir():
+                    offenders.append(f"{path.relative_to(ROOT).as_posix()}:{number}: {argument}")
+    assert not offenders, (
+        f"these run `node --test` on a directory, which fails on Node 22; the "
+        f"suites run as `node scripts/node-test.mjs <dir>` from web/: {offenders}")
+
+
 # ── Links and paths ──────────────────────────────────────────────────────────
 
 LINK = re.compile(r"!?\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
