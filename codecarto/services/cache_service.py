@@ -20,7 +20,8 @@ repo cache already uses), or sha256(url)[:16] for anything else (local
 paths, non-GitHub hosts) so unrelated caches never collide.
 
 Graph cache key = "{repo_key}::{hash}" where
-hash = sha256(url :: mode :: layout :: sorted(extensions))[:16]. The
+hash = sha256(vGRAPH_SCHEMA_VERSION :: url :: mode :: layout :: sorted(extensions))[:16]
+-- the version so a graph cached in an older shape is never served. The
 repo_key prefix lets get()/evict() locate the right subfolder from the key
 alone, without needing the original url again.
 
@@ -65,9 +66,20 @@ def _repo_key_from_url(url: str) -> str:
     return hashlib.sha256(url.encode()).hexdigest()[:16]
 
 
+# What a parsed graph carries, as a number. It is part of every graph key, so a
+# graph cached before a parse began to carry something is a miss rather than a
+# reply in the old shape -- the cache cannot tell an old graph from a new one
+# by looking. Bump it whenever a parse's nodes or edges gain, lose or change
+# what they carry.
+#   2: nodes carry `construct` and `meta.facets` (data/constructs.yaml).
+#   3: Rust items come from the Rust reader and linker scripts are parsed;
+#      a Rust item carries a recorded check's `meta.diagnostics`.
+GRAPH_SCHEMA_VERSION = 3
+
+
 def _make_key(url: str, mode: str, layout: str, extensions: list[str]) -> str:
     repo_key = _repo_key_from_url(url)
-    payload = f"{url}::{mode}::{layout}::{sorted(extensions)}"
+    payload = f"v{GRAPH_SCHEMA_VERSION}::{url}::{mode}::{layout}::{sorted(extensions)}"
     h = hashlib.sha256(payload.encode()).hexdigest()[:16]
     return f"{repo_key}::{h}"
 

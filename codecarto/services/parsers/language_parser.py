@@ -26,6 +26,10 @@ Parsers are responsible for setting shape and color so that language-specific
 visual grammar lives in the parser, not in the renderer.  Renderers use these
 hints directly and only fall back to their own logic when the fields are absent.
 
+A parser whose language ``codecarto/data/constructs.yaml`` lists also declares
+``kinds``: every ``kind`` it can emit. The vocabulary is held to it in both
+directions (``tests/test_construct_service.py``).
+
 Edge kinds: 'contains' | 'calls' | 'imports' | 'inherits' |
             'type_of' | 'field_of' | 'aliases' | 'depends_on'
 
