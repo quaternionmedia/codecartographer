@@ -183,6 +183,84 @@ class TestStreamEndpointsShareCacheReplay:
         assert resp_a.text == resp_b.text
 
 
+class TestACacheFromBeforeConstructsIsNotReplayed:
+    """docs/api.md: every node whose kind the vocabulary maps carries
+    `construct`. A graph cached before the parse stamped it carries none, and
+    was replayed for its URL until it expired."""
+
+    def test_unified_parses_again_rather_than_serve_the_old_shape(self, monkeypatch, tmp_path):
+        """Mutation: drop the version from `cache_service._make_key` -- the
+        sentinel graph is served, with no `construct` on any node."""
+        import hashlib
+        import codecarto.services.cache_service as cache_svc
+
+        repos_dir = tmp_path / "cache" / "repos"
+        monkeypatch.setattr(cache_svc, "_CACHE_DIR", tmp_path / "cache")
+        monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos_dir)
+        monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos_dir / "index.json")
+
+        url = "https://github.com/test/before-constructs"
+        unversioned = hashlib.sha256(f"{url}::2::Spring::{sorted([])}".encode()).hexdigest()[:16]
+        old = {"graph": {"nodes": {"a.A": {"metadata": {"depth": 2, "kind": "class",
+                                                         "label": "CACHED_SENTINEL"}}},
+                         "edges": []}, "metadata": {}}
+        CacheService.set(f"test-before-constructs::{unversioned}", old, label="test/before-constructs",
+                         url=url, mode="2", layout="Spring")
+
+        body = {
+            "directory": {
+                "info": {"url": url, "owner": "test", "name": "before-constructs"},
+                "size": 0,
+                "root": {"name": "r", "size": 0, "folders": [],
+                         "files": [{"name": "a.py", "size": 19, "raw": "class A:\n    pass\n"}]},
+                "is_partial": False,
+            },
+            "depth": 2,
+            "layout": "Spring",
+        }
+        results = TestClient(app).post("/parse/unified", json=body).json()["results"]
+        assert not results.get("from_cache")
+        node = results["graph"]["nodes"]["a.A"]
+        assert node.get("metadata", node).get("construct") == "type.class"
+
+
+def test_a_graph_cached_before_cs_namespaces_is_parsed_again(monkeypatch, tmp_path):
+    """At 7 C tags, fields and locals are ided in C's own namespaces and
+    locals are held by their functions; a graph cached at 6 has the old ids
+    and shape, and a bookmark or edge naming the new ones finds nothing in it.
+    Mutation: leave GRAPH_SCHEMA_VERSION at 6 -- the graph cached at 6 is served."""
+    import hashlib
+    import codecarto.services.cache_service as cache_svc
+
+    repos_dir = tmp_path / "cache" / "repos"
+    monkeypatch.setattr(cache_svc, "_CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos_dir)
+    monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos_dir / "index.json")
+
+    url = "https://github.com/test/before-c-namespaces"
+    at_6 = hashlib.sha256(f"v6::{url}::2::Spring::{sorted([])}".encode()).hexdigest()[:16]
+    old = {"graph": {"nodes": {"unit::x": {"metadata": {"depth": 3, "kind": "field",
+                                                         "label": "CACHED_AT_6"}}},
+                     "edges": []}, "metadata": {}}
+    CacheService.set(f"test-before-c-namespaces::{at_6}", old, label="test/before-c-namespaces",
+                     url=url, mode="2", layout="Spring")
+
+    body = {
+        "directory": {
+            "info": {"url": url, "owner": "test", "name": "before-c-namespaces"},
+            "size": 0,
+            "root": {"name": "r", "size": 0, "folders": [],
+                     "files": [{"name": "a.py", "size": 19, "raw": "class A:\n    pass\n"}]},
+            "is_partial": False,
+        },
+        "depth": 2,
+        "layout": "Spring",
+    }
+    results = TestClient(app).post("/parse/unified", json=body).json()["results"]
+    assert not results.get("from_cache")
+    assert "unit::x" not in results["graph"]["nodes"]
+
+
 class TestStreamEndpointsAnnotateLexiconBypassesCache:
     """annotate_lexicon isn't part of the cache key (CacheService.cache_key
     is shared with every other caller) - both streaming endpoints must skip
