@@ -122,6 +122,15 @@ else:
               "set via PowerShell or the registry; use 'export MONGODB_URI=...' "
               "in the same shell that starts the server)")
 
+    # The front end asks `/db/` whether the store is on. Unmounted, the
+    # answer was a 404, which a browser logs as an error on every page of a
+    # server that is simply not using graphbase -- and an error that is
+    # always there is one nobody reads. Off is an answer, so it is given.
+    @app.get("/db/", include_in_schema=False)
+    async def graphbase_off() -> dict:
+        return {"available": False,
+                "reason": "graphbase is off: set MONGODB_URI to enable /db/*"}
+
 
 @app.get("/", include_in_schema=False)
 async def root():
