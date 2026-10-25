@@ -21,18 +21,25 @@ import { ProblemView } from '../../features/estate/problem_view';
 import { Provenance } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import { chrestomathyRows } from '../../features/cartography/chrestomathy_rows';
+import { vocabularyShown } from '../../features/cartography/cartography_actions';
+import type { Draw } from '../../features/cartography/cartography_actions';
 import '../../features/estate/estate.css';
 
 export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
+  const plot = ctx.actions.plot.cartography;
   let asked = false;
 
   const ask = () => {
     asked = true;
-    const plot = ctx.actions.plot;
     void Promise.all([
       plot.loadConstructIndex(),
       plot.loadChrestomathy(ctx.appState.state.constructChosen),
     ]).catch(() => { asked = false; });
+  };
+  // Remembered for a relayout as it was asked for; the canvas comes forward
+  // only when a graph reached it, never to show a cleared one over the problem.
+  const draw = (action: Draw) => {
+    void ctx.plotWith(action).then((drawn) => { if (drawn) ctx.focusDockPanel('graph'); });
   };
 
   return {
@@ -54,9 +61,13 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
           ? m(ProblemView, {
               problem,
               prefix: 'chrestomathy',
+              // Repeats what failed: the reading, or the draw as it was asked for.
               onRetry: () => {
+                const again = plot.chrestomathyRetry();
                 ctx.appState.update({ chrestomathyProblem: null });
-                ask();
+                if (again?.op === 'draw') draw(again.run);
+                else if (again) void again.run();
+                else ask();
               },
             })
           : null,
@@ -65,18 +76,25 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
 
         m('div.estate-view__section', [
           m('h4.estate-view__heading', 'Construct'),
-          index
+          vocabularyShown(state) === 'list' && index
             ? m('select.cartography__select', {
                 value: state.constructChosen,
                 onchange: (e: Event) =>
-                  void ctx.actions.plot.loadChrestomathy((e.target as HTMLSelectElement).value),
+                  void plot.loadChrestomathy((e.target as HTMLSelectElement).value),
               }, [
                 m('optgroup', { label: 'what a thing is' },
                   constructs.map((c) => m('option', { value: c.id }, `${c.name} — ${c.id}`))),
                 m('optgroup', { label: 'what a thing can also be' },
                   facets.map((c) => m('option', { value: c.id }, `${c.name} — ${c.id}`))),
               ])
-            : m('p.estate-view__pending', 'reading the vocabulary…'),
+            : vocabularyShown(state) === 'problem' && state.constructIndexProblem
+              ? m(ProblemView, {
+                  problem: state.constructIndexProblem,
+                  prefix: 'chrestomathy',
+                  note: 'No construct to choose until the vocabulary is read.',
+                  onRetry: () => void plot.loadConstructIndex(),
+                })
+              : m('p.estate-view__pending', 'reading the vocabulary…'),
           reading ? m('p.estate__detail', reading.construct.gloss) : null,
         ]),
 
@@ -97,9 +115,10 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
               ]),
               m('p.estate-view__hint', reading.caveat),
               m('button.estate-view__draw', {
-                onclick: () => void ctx
-                  .plotWith(() => ctx.actions.plot.drawChrestomathy())
-                  .then(() => ctx.focusDockPanel('graph')),
+                onclick: () => {
+                  const action = plot.chrestomathyDraw();
+                  if (action) draw(action);
+                },
               }, 'draw the construct'),
             ])
           : null,

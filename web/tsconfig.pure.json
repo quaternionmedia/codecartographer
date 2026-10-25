@@ -30,6 +30,7 @@
     "src/features/graph/services/vis_look.ts",
     "src/features/estate/seam_client.ts",
     "src/features/graph/services/layout_names.ts",
-    "src/features/cartography/chrestomathy_rows.ts"
+    "src/features/cartography/chrestomathy_rows.ts",
+    "src/features/cartography/cartography_actions.ts"
   ]
 }
