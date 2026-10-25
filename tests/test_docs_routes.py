@@ -14,7 +14,8 @@ it describes, and each check here fails on a document that disagrees with it:
 - every relative link resolves, and so does every repository path written in
   backticks in prose, unless `EXAMPLE_PATHS` names it, and every page under
   `docs/` that the code names; a link's `#anchor` is one a heading of its page
-  makes, as GitHub makes them;
+  makes, as GitHub makes them; a `module.name` a document writes is a module
+  in the tree that defines the name;
 - every `codecarto ...` command a document writes exists in the click tree,
   with its options, and a value from a fixed choice is one of the choices;
 - every JSON envelope in `docs/api.md` has `status`, `message` and `results`;
@@ -503,6 +504,50 @@ def test_every_page_the_code_names_exists():
     assert seen, "the reader found no page named in the code; its pattern is stale"
     assert not missing, (
         f"the code names these pages, and none is in the tree: {missing}")
+
+
+# `module.name` in backticks, the module snake_case with an underscore, as the
+# code's own modules are named; `meta.bytes` and `nx.node_link_data` are not
+# read. A file name (`layout_context.ts`) is not a module and its member.
+MODULE_MEMBER = re.compile(r"^([a-z][a-z0-9]*_[a-z0-9_]*)\.([A-Za-z_]\w*)")
+FILE_SUFFIXES = {"py", "ts", "js", "mjs", "md", "yaml", "yml", "json", "jsonl",
+                 "toml", "txt", "map", "ld", "lds", "x", "rs", "c", "h", "html", "lock"}
+
+
+def _modules() -> dict[str, list[Path]]:
+    found: dict[str, list[Path]] = {}
+    for path in [*(ROOT / "codecarto").rglob("*.py"), *(ROOT / "web" / "src").rglob("*.ts")]:
+        found.setdefault(path.stem, []).append(path)
+    return found
+
+
+def test_every_module_member_a_document_names_is_defined():
+    """A page that writes `cache_service._make_key` sends a reader to a module
+    and a name in it; when either is gone the sentence is about nothing.
+    Mutation: write `gravis_settings.GravisOptions`, a module deleted in
+    eeb2574, into a page -- this fails naming it."""
+    modules = _modules()
+    seen, wrong = 0, []
+    for path in DOCUMENTS:
+        for number, line, fenced in _prose_lines(path):
+            if fenced:
+                continue
+            for span in CODE_SPAN.findall(line):
+                found = MODULE_MEMBER.match(span.strip())
+                if not found or found.group(2) in FILE_SUFFIXES:
+                    continue
+                module, name = found.groups()
+                seen += 1
+                defines = re.compile(
+                    rf"^\s*(?:export\s+)?(?:async\s+)?(?:def|class|function|const|let|"
+                    rf"interface|type)\s+{re.escape(name)}\b|^\s*{re.escape(name)}\s*[:=(]",
+                    re.M)
+                if not any(defines.search(f.read_text(encoding="utf-8"))
+                           for f in modules.get(module, [])):
+                    where = "no such module" if module not in modules else f"{module} defines no {name}"
+                    wrong.append(f"{_rel(path)}:{number}: {span} ({where})")
+    assert seen, "the reader found no module member named in a document; its pattern is stale"
+    assert not wrong, f"these name a module member that is not in the tree: {wrong}"
 
 
 def test_example_paths_are_still_absent():
