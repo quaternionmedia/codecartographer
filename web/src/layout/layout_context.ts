@@ -1279,8 +1279,8 @@ export class LayoutContext {
       },
 
       // **NEITHER READ TOUCHES THE PANEL'S LOADING STATE.** `isLoading` and
-      // the status line are the stream's: the Actions panel shows Cancel and
-      // the progress bar while it is set. These set it and cleared it with
+      // the status line are the stream's: the Open panel's Plot bar shows
+      // Cancel and the progress bar while it is set. These set it and cleared it with
       // "Ready" when they ended, so a folder opened mid-parse took Cancel and
       // the progress bar from a stream still running. The folder's ↻ says it
       // is being read; a toast says Expand All has begun, and either failing.
