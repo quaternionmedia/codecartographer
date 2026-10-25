@@ -672,3 +672,24 @@ class TestNamesKeepTheirNamespaces:
         field_of = {(e["src"], e["dst"]) for e in result["edges"] if e["kind"] == "FIELD_OF"}
         assert field_of == {("unit::struct point", "unit::struct point::x"),
                             ("unit::struct point", "unit::struct point::y")}
+
+    @staticmethod
+    def drawn(tmp_path, source: str):
+        """One file's graph at depth 3, as the unified pipeline draws it."""
+        from codecarto.services.local_repo_service import get_local_repo
+        from codecarto.services.unified_parser_service import UnifiedParserService
+
+        (tmp_path / "unit.c").write_text(source)
+        return UnifiedParserService.build_graph(get_local_repo(str(tmp_path), extensions=[".c"]), 3, [".c"])
+
+    def test_a_member_of_an_anonymous_record_is_contained_by_the_record_its_id_names(self, tmp_path):
+        """A member of an anonymous union or struct is ided under the nearest
+        record with a name (`struct reg::raw`), but its FIELD_OF came from the
+        anonymous record it is written in, which is no node, so the edge was
+        dropped and `raw`, `lo` and `hi` had nothing holding them. Mutation:
+        draw FIELD_OF from the field's immediate parent again -- this fails."""
+        g = self.drawn(tmp_path,
+                       "struct reg { union { int raw; struct { int lo; int hi; }; }; int tail; };\n")
+        for field in ("raw", "lo", "hi", "tail"):
+            assert list(g.predecessors(f"unit::struct reg::{field}")) == ["unit::struct reg"], field
+            assert g.edges["unit::struct reg", f"unit::struct reg::{field}"]["kind"] == "field_of"

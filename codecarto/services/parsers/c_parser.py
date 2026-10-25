@@ -141,22 +141,31 @@ def _named(cursor) -> bool:
     return bool(cursor.spelling) and 'unnamed' not in cursor.spelling and 'anonymous' not in cursor.spelling
 
 
+def _record_of(cursor):
+    """The record a field's id is qualified by: its own, or for a member of an
+    anonymous union or struct, the nearest enclosing record with a name. None
+    when no record around it has one (`struct { int u; } v;`)."""
+    scope = cursor.semantic_parent
+    while scope is not None and scope.kind.name in _TAGS and not _named(scope):
+        scope = scope.semantic_parent
+    return scope if scope is not None and scope.kind.name in _TAGS else None
+
+
 def _node_id(cursor) -> str:
     """A declaration's id: its file's stem and its name, in the namespace and
     scope C gives the name. A tag is not an ordinary identifier (`struct config
     config;` declares two things), a field belongs to its record, and a local
     to its function -- so each is qualified by what C keeps it apart by, and a
-    file-scope name stays `stem::name`."""
+    file-scope name stays `stem::name`. The record a field's id is qualified
+    by is the node its FIELD_OF edge comes from."""
     stem = Path(cursor.location.file.name).stem if cursor.location.file else '__global'
     kind = cursor.kind.name
     if kind in _TAGS:
         return f"{stem}::{_TAGS[kind]} {cursor.spelling}"
+    record = _record_of(cursor) if kind == 'FIELD_DECL' else None
+    if record is not None:
+        return f"{_node_id(record)}::{cursor.spelling}"
     scope = cursor.semantic_parent
-    # A member of an anonymous record belongs to the nearest record with a name.
-    while kind == 'FIELD_DECL' and scope is not None and scope.kind.name in _TAGS and not _named(scope):
-        scope = scope.semantic_parent
-    if kind == 'FIELD_DECL' and scope is not None and scope.kind.name in _TAGS:
-        return f"{_node_id(scope)}::{cursor.spelling}"
     if kind == 'VAR_DECL' and scope is not None and scope.kind.name == 'FUNCTION_DECL':
         return f"{stem}::{scope.spelling}::{cursor.spelling}"
     return f"{stem}::{cursor.spelling}"
@@ -270,11 +279,13 @@ def _pass1_declarations(tu, in_target, nodes, edges, edge_set, cindex):
 
                 nodes[nid] = n
 
-            if kind == 'field' and parent is not None:
-                pk = CURSOR_MAP.get(parent.kind)
-                if pk and parent.spelling and 'unnamed' not in parent.spelling:
-                    pid = _node_id(parent)
-                    _add_edge(edges, edge_set, pid, nid, 'FIELD_OF')
+            # From the node the id is qualified by: for a member of an
+            # anonymous record, the named record around it, not the anonymous
+            # one it is written in, which is no node.
+            if kind == 'field':
+                record = _record_of(cursor)
+                if record is not None:
+                    _add_edge(edges, edge_set, _node_id(record), nid, 'FIELD_OF')
 
             if kind == 'enum_constant' and parent is not None:
                 if parent.kind == cindex.CursorKind.ENUM_DECL and parent.spelling:
