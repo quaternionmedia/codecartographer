@@ -21,10 +21,15 @@ one, so the run reported it as skipped among the passes on every pull request.
 A browser test that can skip is left out of the run by name, where the
 workflow says why, so the summary counts only tests that ran.
 
+**THE BROWSER SUITE DOES NOT BUILD THE APP.** It drives the Vite dev server,
+which compiles each module as the page asks for it; `vite build` bundles the
+whole app, and nothing on a pull request ran it. It runs before the suites.
+
 Seen red before trusted: against the filter this branch had, the path test
 failed naming `docs`, `examples`, `governance/qm` and `tests/fixtures/...`;
 with each entry since added dropped in turn, it fails naming that one. The
-skip test failed on the run step this branch had, which excluded nothing.
+skip test failed on the run step this branch had, which excluded nothing; the
+build test, on the suites job it had, which built nothing.
 
 WHAT THIS CANNOT SEE. A path a spec reaches some other way than these, such as
 a route that reads a file nothing here names; and a skip in a test the specs
@@ -33,6 +38,7 @@ spell some other way than `test.skip(` in its own body.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -182,3 +188,15 @@ def test_a_browser_test_that_can_skip_is_left_out_by_name_not_counted_as_a_skip(
     assert left_out == skipping, (
         f"the e2e run should leave out by name exactly the browser tests that "
         f"can skip, {skipping}, and leaves out {left_out}")
+
+
+def test_the_app_is_built_before_the_suites_run():
+    scripts = json.loads((ROOT / "web" / "package.json").read_text(encoding="utf-8"))["scripts"]
+    assert "vite build" in scripts["build"], scripts["build"]
+    runs = [str(step.get("run", "")) for step in _workflow()["jobs"]["suites"]["steps"]]
+    # `build`, not `build:pure` and its kin, which compile one suite's slice.
+    builds = [i for i, run in enumerate(runs) if re.search(r"\bnpm run build(?![\w:-])", run)]
+    suites = [i for i, run in enumerate(runs) if "npm run test:" in run]
+    assert suites, f"the suites job runs no suite: {runs}"
+    assert builds and builds[0] < suites[0], (
+        f"the suites job should run `npm run build` before its first suite: {runs}")

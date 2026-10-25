@@ -2,10 +2,11 @@ name: Web
 
 # The frontend's suites, on every pull request that can change what they test.
 #
-# `suites` needs only Node: the typecheck, and the pure, state, rad and system
-# suites, which run in node --test against code compiled from web/src. `e2e`
-# drives the real app in Chromium, so it also installs the backend; Playwright
-# starts both servers itself on 27182 and 12340 (web/playwright.config.ts).
+# `suites` needs only Node: the typecheck, the production build, and the pure,
+# state, rad and system suites, which run in node --test against code compiled
+# from web/src. `e2e` drives the real app in Chromium, so it also installs the
+# backend; Playwright starts both servers itself on 27182 and 12340
+# (web/playwright.config.ts).
 #
 # `test:families` is not run here: it reads families.json from a qm clone
 # beside this one (web/tests/families/reachable.test.mjs), which a runner does
@@ -69,6 +70,9 @@ jobs:
 
       - run: npm ci
       - run: npm run typecheck
+      # The browser suite drives the dev server, which compiles each module as
+      # the page asks for it; only this bundles the whole app.
+      - run: npm run build
       - run: npm run test:pure
       - run: npm run test:state
       - run: npm run test:rad
