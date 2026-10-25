@@ -38,8 +38,9 @@ a chosen subtree in parallel, with a `download_content` flag and a
 linux this is about 1 GB and minutes of parsing, which is what the next section
 is for.
 
-`CacheService` keys a graph by url, mode, layout and extensions, with a TTL.
-Keying it by the commit as well would re-parse only when the ref moves.
+`CacheService` keys a graph by the graph schema version, url, mode, layout and
+extensions, with a TTL. Keying it by the commit as well would re-parse only
+when the ref moves.
 
 ## Parse jobs
 
