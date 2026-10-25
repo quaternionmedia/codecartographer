@@ -16,6 +16,8 @@ interface Attrs {
   x: number;
   y: number;
   onClose: () => void;
+  /** The "+" button that opened the menu, which the focus goes back to. */
+  opener: HTMLElement | null;
 }
 
 interface MenuState {
@@ -31,12 +33,19 @@ export const AddPanelMenu: m.Component<Attrs, MenuState> = {
       vnode.attrs.onClose,
       (fn) => { setTimeout(fn, 0); },
     );
+    // **THE FOCUS GOES INTO THE MENU.** It stayed on "+", so a keyboard
+    // reader had to Tab through the header and the whole dock to reach the
+    // list, which is drawn last in the page.
+    (vnode.dom as HTMLElement).querySelector<HTMLElement>('button')?.focus();
   },
 
   // However the menu closed -- a click outside, Escape, one of its items, or
   // "+" again -- nothing it listened with outlives it.
   onremove: (vnode) => {
     vnode.state.disarm();
+    // Still in the DOM here. Focus inside the menu goes back to "+"; focus a
+    // click outside put elsewhere stays where the reader put it.
+    if ((vnode.dom as HTMLElement).contains(document.activeElement)) vnode.attrs.opener?.focus();
   },
 
   view: ({ attrs }) => {

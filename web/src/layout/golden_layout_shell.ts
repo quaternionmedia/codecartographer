@@ -41,6 +41,8 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
   let glInstance: GoldenLayout | null = null;
   let menuOpen = false;
   let menuPos = { x: 0, y: 0 };
+  /** The "+" button, which the focus returns to when the menu closes. */
+  let menuOpener: HTMLElement | null = null;
 
   const closeMenu = (): void => { if (menuOpen) { menuOpen = false; m.redraw(); } };
 
@@ -115,11 +117,13 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
         m('header.gl-app-header', [
           m('button.gl-app-header__add-btn', {
             onclick: (e: MouseEvent) => {
-              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              menuOpener = e.currentTarget as HTMLElement;
+              const rect = menuOpener.getBoundingClientRect();
               menuPos = { x: rect.left, y: rect.bottom };
               menuOpen = !menuOpen;
             },
             title: 'Add a window',
+            'aria-expanded': String(menuOpen),
           }, '+'),
           m('h1.gl-app-header__title', [
             m('span.gl-app-header__icon', '◈'),
@@ -166,6 +170,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
               x: menuPos.x,
               y: menuPos.y,
               onClose: closeMenu,
+              opener: menuOpener,
             })
           : null,
 

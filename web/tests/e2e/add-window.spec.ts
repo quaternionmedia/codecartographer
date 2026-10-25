@@ -97,3 +97,22 @@ test('the + menu closed with Escape opens again on the next click', async ({ pag
   await page.locator('.gl-app-header__add-btn').click();
   await expect(menu).toBeVisible();
 });
+
+test('the + menu takes the focus when it opens, and gives it back to + when it closes', async ({ page }) => {
+  // Not run with the change that added it: the browser suites bind fixed
+  // ports this workstation shares.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const add = page.locator('.gl-app-header__add-btn');
+
+  await add.focus();
+  await page.keyboard.press('Enter');
+  // Mutation: leave the focus on + -- a keyboard reader Tabs through the
+  // dock to reach the list, and this fails.
+  await expect(page.locator('.gl-add-panel-menu__item').first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.gl-add-panel-menu')).toHaveCount(0);
+  // Mutation: leave the focus where the menu was -- it falls to the page,
+  // and this fails.
+  await expect(add).toBeFocused();
+});
