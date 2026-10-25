@@ -44,7 +44,9 @@ statics      GNU ld lists only global symbols. A `static` function or object
 names        Rust's legacy mangling (`_ZN...17h<hash>E`) is demangled and the
              hash dropped, so a symbol reads as the path it was compiled from;
              a v0-mangled symbol is read as the linker demangled it (LLD does),
-             with the suffix LTO adds (` (.0)`, `.llvm.<n>`) dropped.
+             with the suffix LTO adds (` (.0)`, `.llvm.<n>`) dropped. A generic
+             instance (`delay::<u32>`) is its item's bytes, and a closure
+             (`main::{closure#0}`) its enclosing function's.
 
 WHAT THIS CANNOT SEE. Whether the map belongs to the source beside it -- only
 when each was written -- or what an inlined function cost: inlined code has no
@@ -436,8 +438,15 @@ def symbol_key(symbol: str) -> tuple[str | None, str]:
 
     `<hal::gpio::pin::Pin as hal::gpio::OutputPin>::set_high` -> (`Pin`, `set_high`)
     `hal::gpio::pin::<impl hal::gpio::OutputPin for hal::gpio::pin::Pin>::set_high` -> (`Pin`, `set_high`)
-    `hal::gpio::pin::Pin::new` -> (`Pin`, `new`); `blinky::delay` -> (None, `delay`)"""
+    `hal::gpio::pin::Pin::new` -> (`Pin`, `new`); `blinky::delay` -> (None, `delay`)
+
+    What a name appends to the item it came from is dropped, since its bytes
+    are that item's: a generic instance's arguments (`blinky::delay::<u32>`)
+    and a closure or other compiler-made item inside it
+    (`blinky::main::{closure#0}`, `{{closure}}` in the legacy spelling)."""
     parts = _split_path(demangle(symbol))
+    while len(parts) > 1 and parts[-1].startswith(("<", "{")):
+        parts.pop()
     if not parts:
         return None, symbol
     name = parts[-1].removeprefix(_RUNTIME_PREFIX)

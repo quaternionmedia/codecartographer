@@ -286,6 +286,15 @@ def test_mangled_impl_round_trips():
     ("hal::gpio::pin::Pin::new", ("Pin", "new")),
     ("blinky::delay", (None, "delay")),
     ("SysTick", (None, "SysTick")),
+    # v0 names, as LLD demangles them: a generic instance is its item, and a
+    # closure its enclosing function.
+    ("blinky::delay::<u32>", (None, "delay")),
+    ("<hal::gpio::pin::Pin<hal::Output>>::set_high", ("Pin", "set_high")),
+    ("<hal::uart::Uart>::write::<u8>", ("Uart", "write")),
+    ("blinky::main::{closure#0}", (None, "main")),
+    ("blinky::run::<u8>::{closure#0}::{closure#1}", (None, "run")),
+    ("<hal::uart::Uart>::poll::{closure#0}", ("Uart", "poll")),
+    ("blinky::main::{{closure}}", (None, "main")),  # the legacy spelling
 ])
 def test_symbol_key(symbol, key):
     assert L.symbol_key(symbol) == key
@@ -527,6 +536,36 @@ class TestRealLld:
         # LTO inlined `delay` into its caller: no symbol, so no bytes of its own.
         assert "bytes" not in node(graph, "function", "delay")["meta"]
         assert node(graph, "region", "FLASH")["meta"]["measured"]["used_bytes"] == 0x4b0
+
+
+V0_MAP = """\
+     VMA      LMA     Size Align Out     In      Symbol
+ 8000000  8000000       60     4 .text
+ 8000000  8000000       20     2         blinky.o:(.text._RINvCs1_6blinky5delaymEB2_)
+ 8000000  8000000       20     1                 blinky::delay::<u32>
+ 8000020  8000020       10     2         blinky.o:(.text._RINvCs1_6blinky5delayhEB2_)
+ 8000020  8000020       10     1                 blinky::delay::<u8>
+ 8000030  8000030       10     2         blinky.o:(.text._RNCNvCs1_6blinky4main0B3_)
+ 8000030  8000030       10     1                 blinky::main::{closure#0}
+ 8000040  8000040        8     2         blinky.o:(.text.main)
+ 8000040  8000040        8     1                 main
+ 8000048  8000048       18     2         hal.o:(.text._RNCNvMs_NtCs2_3hal4uartNtB4_4Uart4poll0B6_)
+ 8000048  8000048       18     1                 <hal::uart::Uart>::poll::{closure#0}
+"""
+
+
+def test_generic_instances_and_closures_are_their_items_bytes(tmp_path):
+    """Two instances of `delay`, a closure in `main` and one in `Uart::poll`.
+    Mutation: take a symbol's last segment as its name -- `<u32>`, `<u8>` and
+    `{closure#0}` name nothing, every one counts as outside, and this fails."""
+    root = copy_workspace(tmp_path, stale=False)
+    (root / "target" / "codecarto" / "blinky.map").write_text(V0_MAP)
+    graph = parse_rust(root)
+    assert node(graph, "function", "delay")["meta"]["bytes"] == 0x20 + 0x10
+    assert node(graph, "function", "main", "/blinky/src/")["meta"]["bytes"] == 0x10 + 8
+    assert node(graph, "method", "poll")["meta"]["bytes"] == 0x18
+    assert node(graph, "function", "delay")["meta"]["measured"]["symbols"] == [
+        "blinky::delay::<u32>", "blinky::delay::<u8>"]
 
 
 # ── A map GNU ld wrote ────────────────────────────────────────────────────────
