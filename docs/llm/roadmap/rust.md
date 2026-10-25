@@ -77,7 +77,12 @@ colour -- and the picture still draws, so each is a test
 language's lexicon; the Rust parser's `KINDS` and the vocabulary map each other
 exactly; every C kind is mapped; C's reference design (`c_language_parser`'s
 shapes and colours) agrees with the vocabulary's looks; every look is a shape
-the canvas draws. Each guard was broken once and seen red.
+the canvas draws, read from `KNOWN_SHAPES` in
+`web/src/features/graph/services/node_shapes.ts` rather than from a Python copy
+of it, which could drift and stay green. The Chrestomathy panel's test reads the
+server's own rows, from a fixture a test holds equal to what
+`construct_service.reading` sends. Each guard's docstring names the break that
+turns it red, and each was broken and seen red.
 
 ## Next, in order
 

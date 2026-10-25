@@ -76,11 +76,13 @@ def test_every_look_is_a_shape_the_canvas_draws():
 
 
 def test_rust_parser_kinds_and_the_vocabulary_agree_both_ways():
+    """Mutation: add a kind to `rust_language_parser.KINDS` -- this fails."""
     mapped = set(VOCABULARY.languages["rust"].kinds)
     assert set(rust_language_parser.KINDS) == mapped
 
 
 def test_c_adapter_kinds_are_all_mapped():
+    """Mutation: drop `macro` from the vocabulary's `c.kinds` -- this fails."""
     c_kinds = c_language_parser._DEPTH_2_KINDS | c_language_parser._DEPTH_3_KINDS
     assert c_kinds == set(VOCABULARY.languages["c"].kinds)
 
@@ -88,7 +90,8 @@ def test_c_adapter_kinds_are_all_mapped():
 def test_c_reference_design_and_the_vocabulary_agree():
     """C's adapter carries the c-visualizer design; the vocabulary carries the
     same looks for the same constructs, so a Rust struct is drawn as a C one.
-    When the two disagree, the vocabulary is the one to keep."""
+    When the two disagree, the vocabulary is the one to keep. Mutation: change
+    `_C_COLOR["struct"]` -- this fails."""
     disagree = []
     for kind, construct_id in VOCABULARY.languages["c"].kinds.items():
         look = VOCABULARY.get(construct_id).look
