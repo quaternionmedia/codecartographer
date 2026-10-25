@@ -417,6 +417,37 @@ def test_a_binary_this_parse_did_not_read_lends_its_bytes_to_nothing(tmp_path):
     assert "bytes" not in node(graph, "function", "main", "/build.rs")["meta"]
 
 
+F401 = "/* STM32F401CC */\nMEMORY\n{\n  FLASH : ORIGIN = 0x08000000, LENGTH = 256K\n  RAM : ORIGIN = 0x20000000, LENGTH = 64K\n}\n"
+
+
+def test_each_script_is_measured_against_what_it_declares(tmp_path):
+    """Two board variants beside one binary both declare FLASH. Mutation: key
+    the measured use by region name -- the last script's figures land on both
+    and this fails."""
+    root = copy_workspace(tmp_path, stale=False)
+    (root / "crates" / "blinky" / "memory-f401.x").write_text(F401)
+    os.utime(root / "crates" / "blinky" / "memory-f401.x", (time.time() - 3600,) * 2)
+    graph = parse_rust(root)
+    f411 = node(graph, "region", "FLASH", "/blinky/memory.x")
+    f401 = node(graph, "region", "FLASH", "/blinky/memory-f401.x")
+    assert (f411["meta"]["measured"]["length_bytes"], f401["meta"]["measured"]["length_bytes"]) == (
+        512 * 1024, 256 * 1024)
+    assert "of 512.0 KiB used" in f411["hover"] and "of 256.0 KiB used" in f401["hover"]
+
+
+def test_a_script_that_disagrees_with_the_maps_memory_table_is_not_the_one_linked(tmp_path):
+    """GNU ld prints the regions it linked with; a script declaring a FLASH of
+    another length was not that link's. Mutation: stamp the table's figures on
+    every region of the name -- the F401 script claims 512 KiB and this fails."""
+    root = copy_workspace(tmp_path, stale=False)
+    (root / "crates" / "blinky" / "memory-f401.x").write_text(F401)
+    os.utime(root / "crates" / "blinky" / "memory-f401.x", (time.time() - 3600,) * 2)
+    shutil.copy(GNU, root / "target" / "codecarto" / "blinky.map")
+    graph = parse_rust(root)
+    assert node(graph, "region", "FLASH", "/blinky/memory.x")["meta"]["measured"]["length_bytes"] == 0x80000
+    assert "measured" not in node(graph, "region", "FLASH", "/blinky/memory-f401.x")["meta"]
+
+
 def test_a_map_older_than_the_source_says_so(tmp_path):
     root = copy_workspace(tmp_path, stale=True)
     graph = UnifiedParserService.build_graph(get_local_repo(str(root), extensions=[".rs", ".x"]), 3, [".rs", ".x"])

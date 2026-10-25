@@ -493,9 +493,11 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
     - **Regions** drawn from a linker script get `meta.measured` (bytes used at
       run time and as load images, the fill against their length) and a
       `hover` that says it. Against the map's own memory table when it has one
-      (GNU ld prints it), else the regions the script declares. When several
-      scripts declare regions, only the one under a directory named after the
-      map's binary (`owner`) is joined.
+      (GNU ld prints it), else the regions each script declares, measured
+      script by script. A script region whose origin or length disagrees with
+      the map's table was not that link's, and is left unmeasured. When several
+      directories hold scripts, only those under one named after the map's
+      binary (`owner`) are joined.
     - **Sections** drawn from a script get their measured size and address.
     - **Code items** get `meta.bytes` from the symbols that name them, matched
       within the crate the symbol was compiled in, by function name and, for a
@@ -513,21 +515,35 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
     if len(files) > 1:
         dirs = {f"/{owner}/", f"/{owner.replace('_', '-')}/"}
         files = {f for f in files if any(d in f.replace("\\", "/") for d in dirs)}
-    regions = list(link_map.regions)
-    if not regions:
-        for _, d in linker:
-            meta = d.get("meta") or {}
-            if (d.get("kind") == "region" and d.get("file") in files
-                    and meta.get("origin_value") is not None and meta.get("length_bytes")):
-                regions.append(Region(d["label"], meta["origin_value"], meta["length_bytes"]))
-    uses = {u.name: u for u in usage(link_map, regions)}
+    # What each script declares, by (script, region): board variants beside
+    # one binary each declare a FLASH of their own.
+    declared: dict[tuple[str, str], Region | None] = {}
+    for _, d in linker:
+        meta = d.get("meta") or {}
+        if d.get("kind") == "region" and d.get("file") in files:
+            known = meta.get("origin_value") is not None and meta.get("length_bytes")
+            declared[(d["file"], d["label"])] = (Region(d["label"], meta["origin_value"], meta["length_bytes"])
+                                                 if known else None)
+    uses: dict[tuple[str, str], RegionUse] = {}
+    if link_map.regions:
+        # The link's own table. A script region that declares another origin
+        # or length is not the one this link used.
+        table = {u.name: u for u in usage(link_map, link_map.regions)}
+        for (file, name), region in declared.items():
+            use = table.get(name)
+            if use and (region is None or (region.origin, region.length) == (use.origin, use.length)):
+                uses[(file, name)] = use
+    else:
+        for file in {f for f, _ in declared}:
+            mine = [r for (f, _), r in declared.items() if f == file and r is not None]
+            uses.update(((file, u.name), u) for u in usage(link_map, mine))
     joined = {"regions": 0, "sections": 0, "symbols": 0, "outside": 0, "ambiguous": 0}
     sections = {s.name: s for s in link_map.sections}
     for _, d in linker:
         if d.get("file") not in files:
             continue
-        if d.get("kind") == "region" and d.get("label") in uses:
-            use = uses[d["label"]]
+        if d.get("kind") == "region" and (d["file"], d.get("label")) in uses:
+            use = uses[(d["file"], d["label"])]
             d.setdefault("meta", {})["measured"] = {**use.as_dict(), **provenance}
             d["hover"] = (f"{use.name} — {_kib(use.used_bytes)} of {_kib(use.length)} used "
                           f"({use.fill:.1%}), from {provenance['map']}"
