@@ -30,14 +30,16 @@ draws no diagnostics and says there was nothing to read, which is a different
 sentence from "the last check was clean".
 
 WHAT THIS CANNOT SEE. Whether the build would succeed now. A diagnostic is what
-`rustc` said when the document was written; `stale` says when a source changed
-afterwards, and nothing here re-checks.
+`rustc` said when the document was written; once a source or manifest changes
+afterwards the document is stale, is not used, and nothing here re-checks.
 """
 
 from __future__ import annotations
 
+import glob
 import json
 import os
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -55,6 +57,10 @@ MAX_DIAGNOSTICS = 2000
 SKIP_DIRS = {"target", ".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build"}
 
 DEP_KINDS = ("normal", "build", "dev")
+
+# The span-less lines rustc ends a crate with -- a summary of its run, not a
+# diagnostic of the code: counted, one error would read as two.
+RUN_SUMMARY = re.compile(r"(aborting due to |\d+ warnings? emitted\b)")
 
 # What each node is drawn as. This module decides the kinds; the looks are the
 # construct vocabulary's where one applies (a native library is the FFI
@@ -151,6 +157,8 @@ class Diagnostic:
     code: str = ""
     file: str = ""
     line: int = 0
+    kinds: list[str] = field(default_factory=list)
+    """The target's kinds: a package's lib and bin share its name."""
 
 
 @dataclass
@@ -166,6 +174,8 @@ class Reading:
     build_success: bool | None = None
     firmware: dict[str, Any] = field(default_factory=dict)
     lock: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    """Each package name's versions and what each depends on: the lockfile's,
+    or cargo's resolution's when metadata.json answered."""
     memory: dict[str, dict[str, Any]] = field(default_factory=dict)
     """Per recorded map, by binary: each region's measured use."""
     notes: list[str] = field(default_factory=list)
@@ -219,8 +229,9 @@ def read(path: Path | str, documents: Path | str | None = None) -> Reading:
                           "tomli package, and this interpreter has neither")
         return reading
 
-    manifests, memory_maps, newest = _walk(root, reading)
-    reading.newest_source = newest
+    manifests: list[Path] = []
+    memory_maps: list[Path] = []
+    newest, newest_manifest = _walk(root, reading, manifests, memory_maps)
     if not manifests:
         reading.reason = (f"no Cargo.toml under {root.as_posix()} -- this is not a "
                           f"Cargo project, or its manifests sit inside a skipped "
@@ -228,19 +239,36 @@ def read(path: Path | str, documents: Path | str | None = None) -> Reading:
         return reading
 
     parsed: dict[Path, dict] = {}
-    for manifest in manifests:
-        try:
-            parsed[manifest] = toml.loads(manifest.read_text(encoding="utf-8"))
-        except Exception as error:  # a manifest that does not parse is reported
-            reading.notes.append(f"{_rel(manifest, root)} did not parse: {error}")
+    _parse(manifests, parsed, reading, root, toml)
+    # A member is read wherever it sits, even inside a directory the walk
+    # skips (`build/`, `dist/`) -- and a member found there may name another.
+    tried: set[Path] = set()  # a walk the manifest bound stopped is not retried
+    while unwalked := [d for d in _unwalked_members(parsed, manifests, root) if d not in tried]:
+        tried.update(unwalked)
+        for directory in unwalked:
+            start = len(manifests)
+            sources, manifest_time = _walk(root / _rel(directory, root), reading, manifests, memory_maps)
+            newest, newest_manifest = max(newest, sources), max(newest_manifest, manifest_time)
+            _parse(manifests[start:], parsed, reading, root, toml)
+    reading.newest_source = newest
 
     docs_dir = Path(documents) if documents else root / DOCUMENTS
-    metadata_doc, metadata = _read_metadata(docs_dir, manifests, root)
+    metadata_doc, metadata = _read_metadata(docs_dir, newest_manifest, root)
     reading.documents.append(metadata_doc)
     if metadata is not None:
-        _from_metadata(reading, metadata, root)
-        reading.engine = "cargo metadata"
-    else:
+        try:
+            _from_metadata(reading, metadata, root)
+            reading.engine = "cargo metadata"
+        except Exception as error:
+            # cargo's identity with entries cargo never writes is not cargo's
+            # answer either: the same as a document of the wrong shape.
+            reading.packages, reading.workspaces, reading.lock = [], [], {}
+            metadata_doc.used = False
+            metadata_doc.problem = (f"{METADATA_DOCUMENT} has `version: 1` and a `packages` list, but "
+                                    f"entries of a shape cargo does not write ({type(error).__name__}: "
+                                    f"{error}), so the manifests were read instead")
+            metadata = None
+    if metadata is None:
         _from_manifests(reading, parsed, root, toml)
     for package in reading.packages:
         if package.member and package.manifest:
@@ -261,10 +289,17 @@ def _read_map(reading: Reading, map_path: Path, docs_dir: Path, root: Path) -> D
 
     The binary is the map's name (`blinky.map` is the `blinky` bin target);
     its regions are the map's own memory table when the linker printed one
-    (GNU ld), else the `memory.x` beside the package that owns the binary."""
+    (GNU ld), else the `memory.x` beside the package that owns the binary. A
+    map older than a source is not used, as a stale resolution is not: it
+    measured a build that is no longer the one in the tree."""
     from codecarto.services import link_map_service
 
     doc = _document(docs_dir, map_path.name, reading.newest_source, root)
+    if doc.stale:
+        doc.problem = (f"linked before a source last changed, so its figures are not used; "
+                       f"record again (`{RECORD_COMMAND} <path> --map {map_path.stem}`) to measure "
+                       f"the build in the tree")
+        return doc
     link_map = link_map_service.read(map_path)
     if not link_map.ok:
         doc.problem = link_map.reason
@@ -284,11 +319,8 @@ def _read_map(reading: Reading, map_path: Path, docs_dir: Path, root: Path) -> D
         "package": owner.name if owner else "",
         "regions": [u.as_dict() for u in link_map_service.usage(link_map, regions)],
         "recorded_at": doc.generated_at,
-        "stale": doc.stale,
     }
     doc.used = True
-    if doc.stale:
-        doc.problem = "a source changed after this link was recorded"
     return doc
 
 
@@ -312,21 +344,72 @@ def _regions_of(root: Path, paths: list[str]) -> list:
             and d["meta"].get("length_bytes")]
 
 
-def _walk(root: Path, reading: Reading) -> tuple[list[Path], list[Path], float]:
-    """Every Cargo.toml and memory map under *root*, and the newest mtime of any
-    manifest or Rust source -- what makes a recorded document stale."""
-    manifests: list[Path] = []
-    memory_maps: list[Path] = []
-    newest = 0.0
-    for directory, dirs, files in os.walk(root):
+def _parse(manifests: list[Path], parsed: dict[Path, dict], reading: Reading, root: Path, toml) -> None:
+    for manifest in manifests:
+        try:
+            parsed[manifest] = toml.loads(manifest.read_text(encoding="utf-8"))
+        except Exception as error:  # a manifest that does not parse is reported
+            reading.notes.append(f"{_rel(manifest, root)} did not parse: {error}")
+
+
+def _unwalked_members(parsed: dict[Path, dict], manifests: list[Path], root: Path) -> list[Path]:
+    """Members the walk did not reach: those a workspace names, and the path
+    dependencies inside a workspace's directory, which cargo makes members."""
+    walked = {m.parent.resolve() for m in manifests}
+    workspaces: list[Path] = []
+    found: set[Path] = set()
+    for manifest, data in parsed.items():
+        ws = data.get("workspace")
+        if isinstance(ws, dict):
+            workspaces.append(manifest.parent.resolve())
+            try:
+                found |= _member_dirs(manifest.parent, ws.get("members"))
+            except Exception:
+                pass  # `_from_manifests` notes the shape
+    for manifest, data in parsed.items():
+        for directory in _path_dependency_dirs(manifest, data):
+            if any(_under(directory, w) for w in workspaces) and (directory / "Cargo.toml").is_file():
+                found.add(directory)
+    return sorted(d for d in found - walked if _under(d, root.resolve()))
+
+
+def _path_dependency_dirs(manifest: Path, data: dict) -> list[Path]:
+    """Every `path` a manifest's dependency tables name -- its own and its
+    `[workspace.dependencies]` -- against its directory. One that inherits
+    with `workspace = true` is named by the workspace's table instead."""
+    try:
+        tables = [table for _, _, table in _dependency_tables(data)]
+        ws = data.get("workspace")
+        if isinstance(ws, dict) and isinstance(ws.get("dependencies"), dict):
+            tables.append(ws["dependencies"])
+        return [(manifest.parent / str(spec["path"])).resolve()
+                for table in tables for spec in table.values()
+                if isinstance(spec, dict) and spec.get("path") and not spec.get("workspace")]
+    except Exception:
+        return []  # `_from_manifests` notes the shape
+
+
+def _walk(top: Path, reading: Reading, manifests: list[Path],
+          memory_maps: list[Path]) -> tuple[float, float]:
+    """Every Cargo.toml and memory map under *top*, added to the lists; the
+    newest mtime of any manifest or Rust source, which makes `check.jsonl`
+    stale; and the newest of a manifest alone -- a Cargo.toml, a Cargo.lock or
+    a `.cargo/config.toml` -- which makes `metadata.json` stale."""
+    newest = newest_manifest = 0.0
+    for directory, dirs, files in os.walk(top):
         dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS and (not d.startswith(".") or d == ".cargo"))
         here = Path(directory)
         for name in files:
-            if name in ("Cargo.toml", "Cargo.lock") or name.endswith(".rs") or name == "build.rs":
+            manifest = (name in ("Cargo.toml", "Cargo.lock")
+                        or (here.name == ".cargo" and name in ("config.toml", "config")))
+            if manifest or name.endswith(".rs"):
                 try:
-                    newest = max(newest, (here / name).stat().st_mtime)
+                    mtime = (here / name).stat().st_mtime
                 except OSError:
-                    pass
+                    mtime = 0.0
+                newest = max(newest, mtime)
+                if manifest:
+                    newest_manifest = max(newest_manifest, mtime)
             if name == "Cargo.toml":
                 if len(manifests) >= MAX_MANIFESTS:
                     if not any("manifest bound" in n for n in reading.notes):
@@ -337,40 +420,130 @@ def _walk(root: Path, reading: Reading) -> tuple[list[Path], list[Path], float]:
                 manifests.append(here / name)
             elif name == "memory.x" or name.endswith((".ld", ".lds")):
                 memory_maps.append(here / name)
-    return manifests, memory_maps, newest
+    return newest, newest_manifest
 
 
 # ── From the manifests ────────────────────────────────────────────────────────
 
 
+def _strings(value: Any, key: str) -> list[str]:
+    """A manifest's list of strings, or the reason it is not one."""
+    if value is None:
+        return []
+    if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+        raise ValueError(f"`{key}` is {value!r}, not a list of strings")
+    return value
+
+
+def _table(value: Any, key: str) -> dict:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"`{key}` is {value!r}, not a table")
+    return value
+
+
+def _member_dirs(directory: Path, patterns: Any) -> set[Path]:
+    """The directories a `members` list names, expanded as cargo expands it:
+    each entry joined to the workspace's directory -- so `"."` is the workspace
+    itself and an absolute path is itself -- and globbed only when it holds a
+    pattern. A directory without a Cargo.toml is not a member."""
+    found = set()
+    for pattern in _strings(patterns, "workspace.members"):
+        if glob.has_magic(pattern):
+            matches = glob.glob(os.path.normpath(os.path.join(glob.escape(str(directory)), pattern)))
+        else:
+            matches = [os.path.normpath(os.path.join(directory, pattern))]
+        for match in matches:
+            if (Path(match) / "Cargo.toml").is_file():
+                found.add(Path(match).resolve())
+    return found
+
+
+def _under(path: Path, directory: Path) -> bool:
+    return path == directory or directory in path.parents
+
+
+def _excluded(ws: dict, directory: Path) -> bool:
+    """cargo's rule: under an `exclude` entry, and not under an entry `members`
+    names without a pattern."""
+    return (any(_under(directory, e) for e in ws["exclude"])
+            and not any(_under(directory, m) for m in ws["explicit"]))
+
+
+def _with_path_members(members: set[Path], ws: dict, parsed: dict[Path, dict], root: Path) -> set[Path]:
+    """*members* and, as cargo adds them, every path dependency of a member
+    that lies inside the workspace's directory -- so a root `[workspace]` with
+    no `members` still has its path-dependency crates."""
+    by_dir = {m.parent.resolve(): (m, d) for m, d in parsed.items()}
+    queue = sorted(members)
+    while queue:
+        manifest, data = by_dir.get(queue.pop(), (None, None))
+        if data is None or not isinstance(data.get("package"), dict):
+            continue
+        try:
+            found = _dependencies(data, manifest.parent, ws, {}, root)
+        except Exception:
+            continue  # the package itself is noted when it is read
+        for dep in found:
+            target = (root / dep.path).resolve()
+            if (dep.source == "path" and target not in members and target in by_dir
+                    and _under(target, ws["directory"]) and not _excluded(ws, target)
+                    and not isinstance(by_dir[target][1].get("workspace"), dict)):
+                members.add(target)
+                queue.append(target)
+    return members
+
+
+def _features(data: dict) -> dict[str, list[str]]:
+    return {str(k): list(_strings(v, f"features.{k}"))
+            for k, v in _table(data.get("features"), "features").items()}
+
+
 def _from_manifests(reading: Reading, parsed: dict[Path, dict], root: Path, toml) -> None:
+    """Every package the manifests declare. A manifest that is TOML but not of
+    a manifest's shape -- a dependency that is `true`, a feature that is a
+    number -- is a note naming it, and the rest of the workspace is still read."""
     workspaces: dict[Path, dict] = {}
     for manifest, data in parsed.items():
         ws = data.get("workspace")
         if isinstance(ws, dict):
             directory = manifest.parent
-            members = set()
-            for pattern in ws.get("members", []) or []:
-                for match in sorted(directory.glob(str(pattern))):
-                    if (match / "Cargo.toml").is_file():
-                        members.add(match.resolve())
-            excluded = {(directory / e).resolve() for e in ws.get("exclude", []) or []}
+            try:
+                patterns = _strings(ws.get("members"), "workspace.members")
+                members = _member_dirs(directory, patterns)
+                record = {"manifest": _rel(manifest, root),
+                          "directory": directory.resolve(),
+                          "exclude": [(directory / e).resolve()
+                                      for e in _strings(ws.get("exclude"), "workspace.exclude")],
+                          "explicit": [Path(os.path.normpath(os.path.join(directory, m))).resolve()
+                                       for m in patterns if not glob.has_magic(m)],
+                          "dependencies": _table(ws.get("dependencies"), "workspace.dependencies"),
+                          "package": _table(ws.get("package"), "workspace.package")}
+            except Exception as error:
+                reading.notes.append(f"{_rel(manifest, root)}'s [workspace] has a shape this reader "
+                                     f"does not take ({error}), so it claims no members")
+                continue
             if isinstance(data.get("package"), dict):
                 members.add(directory.resolve())
-            workspaces[directory.resolve()] = {
-                "manifest": _rel(manifest, root),
-                "members": members - excluded,
-                "dependencies": ws.get("dependencies", {}) or {},
-                "package": ws.get("package", {}) or {},
-            }
+            record["members"] = _with_path_members(
+                {m for m in members if not _excluded(record, m)}, record, parsed, root)
+            workspaces[directory.resolve()] = record
             reading.workspaces.append({"manifest": _rel(manifest, root),
-                                       "members": sorted(_rel(m, root) for m in members - excluded)})
+                                       "members": sorted(_rel(m, root) for m in record["members"])})
 
     def workspace_of(directory: Path) -> dict | None:
         for ws_dir, ws in workspaces.items():
             if directory.resolve() in ws["members"]:
                 return ws
         return None
+
+    def its_own(directory: Path) -> bool:
+        """No workspace claims it as cargo looks upward for one: every
+        workspace whose directory holds it excludes it, so it is a workspace of
+        one -- a crate of this checkout, not something it depends on."""
+        return all(_excluded(ws, directory.resolve()) for ws_dir, ws in workspaces.items()
+                   if _under(directory.resolve(), ws_dir))
 
     by_dir: dict[Path, str] = {}
     for manifest, data in parsed.items():
@@ -392,15 +565,20 @@ def _from_manifests(reading: Reading, parsed: dict[Path, dict], root: Path, toml
                 value = inherited.get(key, "")
             return str(value or "")
 
-        package = Package(
-            name=str(pkg["name"]), version=field_of("version"), edition=field_of("edition"),
-            manifest=_rel(manifest, root), links=str(pkg.get("links", "") or ""),
-            member=bool(ws) or not workspaces,
-            features={k: list(v) for k, v in (data.get("features") or {}).items()},
-            workspace=ws["manifest"] if ws else "",
-        )
-        package.targets = _targets(data, pkg, directory, root)
-        package.dependencies = _dependencies(data, directory, ws, by_dir, root)
+        try:
+            package = Package(
+                name=str(pkg["name"]), version=field_of("version"), edition=field_of("edition"),
+                manifest=_rel(manifest, root), links=str(pkg.get("links", "") or ""),
+                member=bool(ws) or its_own(directory),
+                features=_features(data),
+                workspace=ws["manifest"] if ws else "",
+            )
+            package.targets = _targets(data, pkg, directory, root)
+            package.dependencies = _dependencies(data, directory, ws, by_dir, root)
+        except Exception as error:
+            reading.notes.append(f"{_rel(manifest, root)} has a shape this reader does not take "
+                                 f"({error}), so its package is not drawn")
+            continue
         reading.packages.append(package)
 
     _apply_lock(reading, root)
@@ -445,8 +623,17 @@ def _targets(data: dict, pkg: dict, directory: Path, root: Path) -> list[Target]
     return found
 
 
-def _dependencies(data: dict, directory: Path, ws: dict | None, by_dir: dict[Path, str],
-                  root: Path) -> list[Dependency]:
+def _spec(alias: str, spec: Any) -> dict:
+    """A dependency as cargo writes it -- a version string or a table."""
+    if isinstance(spec, str):
+        return {"version": spec}
+    if isinstance(spec, dict):
+        return dict(spec)
+    raise ValueError(f"dependency `{alias}` is {spec!r}, neither a version nor a table")
+
+
+def _dependency_tables(data: dict) -> list[tuple[str, str, dict]]:
+    """Each dependency table a manifest holds, with its kind and platform."""
     tables: list[tuple[str, str, dict]] = []
     for kind, keys in (("normal", ("dependencies",)), ("dev", ("dev-dependencies", "dev_dependencies")),
                        ("build", ("build-dependencies", "build_dependencies"))):
@@ -457,14 +644,18 @@ def _dependencies(data: dict, directory: Path, ws: dict | None, by_dir: dict[Pat
             for key in keys:
                 if isinstance(table, dict) and isinstance(table.get(key), dict):
                     tables.append((kind, str(platform), table[key]))
+    return tables
+
+
+def _dependencies(data: dict, directory: Path, ws: dict | None, by_dir: dict[Path, str],
+                  root: Path) -> list[Dependency]:
     found = []
-    for kind, platform, table in tables:
+    for kind, platform, table in _dependency_tables(data):
         for alias, spec in table.items():
-            spec = {"version": spec} if isinstance(spec, str) else dict(spec or {})
+            spec = _spec(alias, spec)
             base = directory
             if spec.get("workspace") and ws is not None:
-                inherited = ws["dependencies"].get(alias, {})
-                inherited = {"version": inherited} if isinstance(inherited, str) else dict(inherited)
+                inherited = _spec(alias, ws["dependencies"].get(alias, {}))
                 base = root / Path(ws["manifest"]).parent
                 spec = {**inherited, **{k: v for k, v in spec.items() if k != "workspace"}}
             name = str(spec.get("package", alias))
@@ -533,8 +724,7 @@ def _document(docs_dir: Path, name: str, newest: float, root: Path) -> Document:
     return doc
 
 
-def _read_metadata(docs_dir: Path, manifests: list[Path], root: Path) -> tuple[Document, dict | None]:
-    newest_manifest = max((m.stat().st_mtime for m in manifests), default=0.0)
+def _read_metadata(docs_dir: Path, newest_manifest: float, root: Path) -> tuple[Document, dict | None]:
     doc = _document(docs_dir, METADATA_DOCUMENT, newest_manifest, root)
     if not doc.present:
         return doc, None
@@ -610,14 +800,25 @@ def _from_metadata(reading: Reading, data: dict, root: Path) -> None:
         if pid in members:
             package.targets = [Target(t["name"], list(t.get("kind", [])), local(t.get("src_path", "")))
                                for t in raw.get("targets", [])]
-            declared = {d["name"]: d for d in raw.get("dependencies", [])}
+            # One package may be declared several times -- `[dependencies]`
+            # and `[dev-dependencies]`, or per platform -- each with its own
+            # settings, so a declaration is found by kind and platform too.
+            declared: dict[tuple[str, str, str], dict] = {}
+            for d in raw.get("dependencies", []):
+                declared.setdefault((d["name"], d.get("kind") or "normal", d.get("target") or ""), d)
+
+            def declaration(name: str, kind: str, platform: str) -> dict:
+                return (declared.get((name, kind, platform))
+                        or next((d for (n, k, _), d in declared.items() if (n, k) == (name, kind)), None)
+                        or next((d for (n, _, _), d in declared.items() if n == name), {}))
+
             node = resolve.get(pid)
             if node is not None:
                 for dep in node.get("deps", []):
                     target_pkg = by_id.get(dep.get("pkg", ""), {})
                     name = target_pkg.get("name", dep.get("name", ""))
-                    spec = declared.get(name, {})
                     for dk in dep.get("dep_kinds") or [{"kind": None, "target": None}]:
+                        spec = declaration(name, dk.get("kind") or "normal", dk.get("target") or "")
                         package.dependencies.append(Dependency(
                             name=name, kind=dk.get("kind") or "normal", req=str(spec.get("req", "")),
                             alias=spec.get("rename") or "", optional=bool(spec.get("optional")),
@@ -631,11 +832,28 @@ def _from_metadata(reading: Reading, data: dict, root: Path) -> None:
                         optional=bool(spec.get("optional")), platform=spec.get("target") or ""))
         reading.packages.append(package)
 
+    # Dependencies of dependencies, as cargo resolved them: what `transitive`
+    # draws -- the lockfile is read only when the manifests answer.
+    for pid, node in resolve.items():
+        raw = by_id.get(pid, {})
+        reading.lock.setdefault(package_name(pid, names), []).append({
+            "version": str(raw.get("version", "")),
+            "source": str(raw.get("source") or ""),
+            "dependencies": [package_name(str(d.get("pkg", "")), names) for d in node.get("deps", [])],
+        })
+
 
 def _read_check(reading: Reading, docs_dir: Path, root: Path) -> Document:
-    """Diagnostics, artifacts and build-script facts from check.jsonl."""
+    """Diagnostics, artifacts and build-script facts from check.jsonl -- only
+    while it is current. A check recorded before a source or manifest last
+    changed is not used, as a stale metadata.json is not: what rustc said
+    then, drawn now, is a stale answer delivered as current."""
     doc = _document(docs_dir, CHECK_DOCUMENT, reading.newest_source, root)
     if not doc.present:
+        return doc
+    if doc.stale:
+        doc.problem = ("a source or manifest changed after this check was recorded, so nothing "
+                       f"in it is drawn; `{RECORD_COMMAND} <path>` records it again")
         return doc
     names: dict[str, str] = {}
     try:
@@ -660,13 +878,17 @@ def _read_check(reading: Reading, docs_dir: Path, root: Path) -> Document:
                 continue
             body = message.get("message") or {}
             spans = body.get("spans") or []
+            if not spans and (body.get("level") == "failure-note"
+                              or RUN_SUMMARY.match(str(body.get("message", "")))):
+                continue
             primary = next((s for s in spans if s.get("is_primary")), spans[0] if spans else {})
             reading.diagnostics.append(Diagnostic(
                 level=str(body.get("level", "")), message=str(body.get("message", "")),
                 package=package, target=target,
                 code=str((body.get("code") or {}).get("code", "") or ""),
                 file=str(primary.get("file_name", "")).replace("\\", "/"),
-                line=int(primary.get("line_start", 0) or 0)))
+                line=int(primary.get("line_start", 0) or 0),
+                kinds=list((message.get("target") or {}).get("kind", []))))
         elif reason == "compiler-artifact":
             reading.artifacts.append({
                 "package": package, "target": target,
@@ -689,8 +911,10 @@ def _read_check(reading: Reading, docs_dir: Path, root: Path) -> Document:
         reading.notes.append(f"stopped at the diagnostic bound ({MAX_DIAGNOSTICS}); later ones are not drawn")
     if unreadable:
         reading.notes.append(f"{unreadable} line(s) of {CHECK_DOCUMENT} were not JSON and were skipped")
-    if doc.stale:
-        doc.problem = "a source or manifest changed after this check was recorded"
+    if reading.build_success is None:
+        # cargo writes `build-finished` last; without it the check stopped
+        # first -- before compiling, or at a timeout.
+        doc.problem = "it holds no build-finished message, so cargo stopped before the check finished"
     return doc
 
 
@@ -698,15 +922,21 @@ def _read_check(reading: Reading, docs_dir: Path, root: Path) -> Document:
 
 
 def _no_std(root: Path, package: Package) -> str:
-    """`yes`, `conditional` (`cfg_attr(.., no_std)`), or empty."""
-    import re
+    """`yes`, `conditional` (`cfg_attr(.., no_std)`), or empty.
 
+    A manifest may name any path as a target's source -- `/dev/zero`, a FIFO,
+    another checkout's file -- and this runs in a route, so only a regular
+    file inside the package's directory is read, and only its head."""
+    directory = (root / package.manifest).parent.resolve()
     for target in package.targets:
         if not set(target.kinds) & {"lib", "bin", "rlib", "staticlib", "cdylib"}:
             continue
-        path = root / target.src
+        path = (root / target.src).resolve()
+        if not _under(path, directory) or not path.is_file():
+            continue
         try:
-            head = path.read_text(encoding="utf-8")[:65536]
+            with path.open("rb") as handle:
+                head = handle.read(65536).decode("utf-8", "replace")
         except OSError:
             continue
         if re.search(r"#!\[\s*no_std\s*\]", head):
@@ -731,27 +961,43 @@ def _firmware(root: Path, reading: Reading, memory_maps: list[Path], toml) -> di
         except Exception as error:
             reading.notes.append(f"{_rel(path, root)} did not parse: {error}")
             break
-        facts["config"] = _rel(path, root)
-        build = data.get("build") or {}
-        targets = build.get("target") or []
-        facts["build_targets"] = [targets] if isinstance(targets, str) else list(targets)
-        flags = list(build.get("rustflags") or [])
-        for triple, table in (data.get("target") or {}).items():
-            if isinstance(table, dict):
-                if table.get("runner"):
-                    runner = table["runner"]
-                    facts["runners"][triple] = runner if isinstance(runner, str) else " ".join(runner)
-                flags += list(table.get("rustflags") or [])
-        scripts = []
-        for i, flag in enumerate(flags):
-            flag = str(flag)
-            for prefix in ("link-arg=-T", "-Clink-arg=-T"):
-                if prefix in flag:
-                    scripts.append(flag.split(prefix, 1)[1])
-            if flag == "-T" and i + 1 < len(flags):
-                scripts.append(str(flags[i + 1]))
-        facts["linker_scripts"] = sorted(set(scripts))
-        break
+        try:
+            return {**facts, **_config_facts(data), "config": _rel(path, root)}
+        except Exception as error:
+            reading.notes.append(f"{_rel(path, root)} has a shape this reader does not take "
+                                 f"({error}), so no device target is drawn from it")
+            break
+    return facts
+
+
+def _flags(value: Any) -> list[str]:
+    """`rustflags` as cargo takes it: a list, or one space-separated string."""
+    if isinstance(value, str):
+        return value.split()
+    return [str(flag) for flag in value or []]
+
+
+def _config_facts(data: dict) -> dict[str, Any]:
+    facts: dict[str, Any] = {"runners": {}}
+    build = data.get("build") or {}
+    targets = build.get("target") or []
+    facts["build_targets"] = [targets] if isinstance(targets, str) else list(targets)
+    flags = _flags(build.get("rustflags"))
+    for triple, table in (data.get("target") or {}).items():
+        if isinstance(table, dict):
+            if table.get("runner"):
+                runner = table["runner"]
+                facts["runners"][triple] = runner if isinstance(runner, str) else " ".join(runner)
+            flags += _flags(table.get("rustflags"))
+    scripts = []
+    for i, flag in enumerate(flags):
+        flag = str(flag)
+        for prefix in ("link-arg=-T", "-Clink-arg=-T"):
+            if prefix in flag:
+                scripts.append(flag.split(prefix, 1)[1])
+        if flag == "-T" and i + 1 < len(flags):
+            scripts.append(str(flags[i + 1]))
+    facts["linker_scripts"] = sorted(set(scripts))
     return facts
 
 
@@ -847,7 +1093,8 @@ def _as_graph(reading: Reading, features: bool = False, transitive: bool = False
             kind0 = target.kinds[0] if target.kinds else "lib"
             shape, color = TARGET_LOOKS.get(kind0, ("square", "#4a9eff"))
             mine = [d for d in reading.diagnostics if d.package == package.name and
-                    (d.target == target.name or (not d.target and kind0 == "lib"))]
+                    ((d.target == target.name and (not d.kinds or set(d.kinds) & set(target.kinds)))
+                     or (not d.target and kind0 == "lib"))]
             counts = _diagnostic_counts(mine)
             label = "build.rs" if kind0 == "custom-build" else f"{kind0} {target.name}"
             memory = reading.memory.get(target.name) if kind0 == "bin" else None
@@ -937,6 +1184,8 @@ def _as_graph(reading: Reading, features: bool = False, transitive: bool = False
                                        label="enables")
 
     if transitive:
+        # Whose answer an edge is: cargo's resolution, or the lockfile's.
+        how = "resolved" if reading.engine == "cargo metadata" else "locked"
         for name, entries in reading.lock.items():
             source = member_ids.get(name)
             if source is None or len(entries) != 1:
@@ -949,9 +1198,9 @@ def _as_graph(reading: Reading, features: bool = False, transitive: bool = False
                     member_ids[dep] = target
                     graph.add_node(target, label=f"{dep} {versions[0]['version'] if len(versions) == 1 else ''}".strip(),
                                    kind="external_crate", depth=3, **_look("external_crate"),
-                                   hover=f"{dep}, locked")
+                                   hover=f"{dep}, {how}")
                 if not graph.has_edge(source, target):
-                    graph.add_edge(source, target, kind="depends_on", label="locked",
+                    graph.add_edge(source, target, kind="depends_on", label=how,
                                    color=EDGE_LOOKS["normal"]["color"], size=1)
     return graph
 
@@ -980,12 +1229,20 @@ def caveat(reading: Reading) -> str:
     if check is None or not check.present:
         parts.append("No check.jsonl was recorded, so no diagnostics are drawn -- which "
                      "is not the same as a clean build.")
+    elif not check.used:
+        parts.append(f"check.jsonl was not used ({check.problem}), so no diagnostics are drawn "
+                     f"from it -- which is not the same as a clean build.")
     else:
-        parts.append(f"Diagnostics are what rustc said at {check.generated_at}"
-                     + (", and a source has changed since." if check.stale else "."))
+        parts.append(f"Diagnostics are what rustc said at {check.generated_at}.")
+        if reading.build_success is None:
+            parts.append("That check never finished -- check.jsonl holds no build-finished "
+                         "message -- so a crate with no diagnostic in it is not a clean one.")
     for binary, memory in sorted(reading.memory.items()):
-        parts.append(f"{binary}'s memory use is its linker map, recorded at {memory['recorded_at']}"
-                     + (", and a source has changed since." if memory["stale"] else "."))
+        parts.append(f"{binary}'s memory use is its linker map, recorded at {memory['recorded_at']}.")
+    for doc in reading.documents:
+        if doc.name.endswith(".map") and doc.present and doc.stale:
+            parts.append(f"{doc.name} was linked before a source changed, at {doc.generated_at}, "
+                         "so no memory use is drawn from it.")
     if reading.notes:
         parts.append(" ".join(reading.notes))
     return " ".join(parts)
@@ -1042,14 +1299,20 @@ def as_data(reading: Reading) -> dict[str, Any]:
 
 
 def recorded_diagnostics(root: Path | str) -> Reading | None:
-    """Only what `check.jsonl` under *root* recorded, without walking the
-    workspace: what the parse pipeline needs to put diagnostics on the code
-    map. None when there is no such document."""
+    """Only what `check.jsonl` under *root* recorded, and whether a source has
+    changed since: what the parse pipeline needs to put diagnostics on the
+    code map. None when there is no such document.
+
+    Staleness is the full read's -- the same walk, without parsing a manifest
+    -- so the code map and `/cargo` never disagree about it, and a stale check
+    is not used here either: its lines would name whatever item sits there
+    now, and its complaints are rustc's then."""
     root = Path(root)
     docs_dir = root / DOCUMENTS
     if not (docs_dir / CHECK_DOCUMENT).is_file():
         return None
     reading = Reading(root=str(root))
+    reading.newest_source, _ = _walk(root, reading, [], [])
     reading.documents.append(_read_check(reading, docs_dir, root))
     return reading
 
@@ -1061,7 +1324,14 @@ def annotate_diagnostics(graph, reading: Reading) -> int:
     Joined by path suffix and line range: a diagnostic at `crates/hal/src/uart.rs:12`
     lands on the item in that file whose `line`..`line_end` holds line 12, the
     innermost when several do. A diagnostic no item holds is left unjoined --
-    `/cargo/data` still lists it."""
+    `/cargo/data` still lists it.
+
+    The check document's row -- present, used, stale, and why not -- is
+    `graph.graph["recorded_check"]`, so a code map with nothing on it says
+    whether that is a clean check or one that was not used."""
+    check = next((doc for doc in reading.documents if doc.name == CHECK_DOCUMENT), None)
+    if check is not None:
+        graph.graph["recorded_check"] = asdict(check)
     by_file: dict[str, list[Diagnostic]] = {}
     for d in reading.diagnostics:
         if d.file:
@@ -1089,8 +1359,7 @@ def annotate_diagnostics(graph, reading: Reading) -> int:
             diags[d.level] = diags.get(d.level, 0) + 1
             meta.setdefault("messages", []).append(f"{d.level}: {d.message} (line {d.line})")
             # Provenance travels with the figure: when rustc said it.
-            meta["diagnostics_recorded_at"] = next(
-                (doc.generated_at for doc in reading.documents if doc.name == CHECK_DOCUMENT), "")
+            meta["diagnostics_recorded_at"] = check.generated_at if check else ""
             if d.level == "error":
                 data["has_parse_warning"] = True
             touched += 1

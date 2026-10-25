@@ -74,6 +74,35 @@ def _write_stream_cache(
         pass  # cache write failure never breaks the stream
 
 
+# **A GRAPH A PARSER COULD NOT READ IS NEVER CACHED**, on any path that writes
+# one. A replay carries nodes and edges and nothing beside them, so a C
+# repository parsed without libclang came back empty and silent for the cache's
+# lifetime -- after libclang was installed too. A parse that has a note is
+# parsed again instead, and says it again. The three routes share one key, so
+# the rule is the same on each.
+
+def _is_note(chunk: str) -> bool:
+    return chunk.startswith("event: note\n")
+
+
+def _has_notes(result: dict) -> bool:
+    return bool((result.get("metadata") or {}).get("notes"))
+
+
+async def _relay_and_keep(chunks, keep):
+    """Relay a fresh parse's events and, once `done` has gone, hand what they
+    drew to *keep* -- unless a `note` went before it. *keep* None keeps nothing."""
+    acc_nodes: dict = {}
+    acc_edges: list = []
+    noted = False
+    async for chunk in chunks:
+        _accumulate(chunk, acc_nodes, acc_edges)
+        noted = noted or _is_note(chunk)
+        yield chunk
+        if chunk.startswith("event: done\n") and keep is not None and not noted:
+            keep(acc_nodes, acc_edges)
+
+
 async def _stream_cached_graph(cached: dict, layout: str):
     """Replay a cached graph as SSE events: meta → nodes (depth-sorted) → edges → done.
 
@@ -219,8 +248,9 @@ async def parse_unified(request: UnifiedParseRequest) -> dict:
         )
 
         # Persist to cache (see the read side above for why annotated
-        # requests skip the cache entirely)
-        if url and not request.annotate_lexicon:
+        # requests skip the cache entirely, and `_has_notes` for a parse that
+        # could not read something)
+        if url and not request.annotate_lexicon and not _has_notes(result):
             info = request.directory.info
             label = (
                 f"{info.owner}/{info.name}" if info and info.owner and info.name
@@ -290,21 +320,22 @@ async def stream_parse(request: UnifiedParseRequest):
                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
             )
 
+    def keep(nodes: dict, edges: list) -> None:
+        _write_stream_cache(key, label, url, mode_key, request.layout, nodes, edges)
+
     async def generate():
-        acc_nodes: dict = {}
-        acc_edges: list = []
         try:
-            async for chunk in UnifiedParserService.stream_parse(
-                directory=request.directory,
-                depth=effective_depth,
-                extensions=request.extensions,
-                layout=request.layout,
-                annotate_lexicon=request.annotate_lexicon,
+            async for chunk in _relay_and_keep(
+                UnifiedParserService.stream_parse(
+                    directory=request.directory,
+                    depth=effective_depth,
+                    extensions=request.extensions,
+                    layout=request.layout,
+                    annotate_lexicon=request.annotate_lexicon,
+                ),
+                keep if key else None,
             ):
-                _accumulate(chunk, acc_nodes, acc_edges)
                 yield chunk
-                if chunk.startswith("event: done\n") and key:
-                    _write_stream_cache(key, label, url, mode_key, request.layout, acc_nodes, acc_edges)
         except Exception as exc:
             yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
 
@@ -357,25 +388,22 @@ async def stream_from_url(request: StreamUrlRequest):
     if is_github_url(request.url):
         _label = request.url.rstrip("/").rsplit("github.com/", 1)[-1]
 
+        def keep(nodes: dict, edges: list) -> None:
+            _write_stream_cache(key, _label, request.url, mode_key, request.layout, nodes, edges)
+
         async def generate():
-            acc_nodes: dict = {}
-            acc_edges: list = []
-            # A graph a parser could not finish is not kept: replayed from the
-            # cache it would arrive without the note that says what is missing.
-            noted = False
             try:
-                async for chunk in UnifiedParserService.stream_parse_url(
-                    url=request.url,
-                    depth=effective_depth,
-                    extensions=request.extensions,
-                    layout=request.layout,
-                    annotate_lexicon=request.annotate_lexicon,
+                async for chunk in _relay_and_keep(
+                    UnifiedParserService.stream_parse_url(
+                        url=request.url,
+                        depth=effective_depth,
+                        extensions=request.extensions,
+                        layout=request.layout,
+                        annotate_lexicon=request.annotate_lexicon,
+                    ),
+                    keep if key else None,
                 ):
-                    _accumulate(chunk, acc_nodes, acc_edges)
-                    noted = noted or chunk.startswith("event: note\n")
                     yield chunk
-                    if chunk.startswith("event: done\n") and key and not noted:
-                        _write_stream_cache(key, _label, request.url, mode_key, request.layout, acc_nodes, acc_edges)
             except Exception as exc:
                 yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
 

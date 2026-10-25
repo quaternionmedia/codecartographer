@@ -1,14 +1,17 @@
 /**
- * Chrestomathy Panel — one construct, set beside itself in every language.
+ * Chrestomathy Panel — one construct, set beside itself across languages.
  *
  * A printed chrestomathy taught a language by placing passages side by side;
  * this one places a construct — a record, a sum type, an interrupt handler, a
- * volatile access — in C, Rust, Python, assembly and the linker script, with
- * the tokens each spells it with and the abstraction layer each token sits on.
+ * volatile access — in each language the server reads it in: C, Rust, Python,
+ * assembly and the linker script, every language `constructs.yaml` lists —
+ * with the tokens each spells it with, the parser kinds that realise it and
+ * the abstraction layer each token sits on.
  *
  * THE ROW WITH NOTHING IN IT IS THE LESSON. Rust has no `volatile`; C has no
- * method. A language with no spelling is a row saying so, never a missing row
- * — `chrestomathy_rows.ts` decides that, under test.
+ * method. A language with no spelling is sent as a row with its note, or with
+ * one saying the vocabulary records none, and stays one: `chrestomathy_rows.ts`
+ * drops no row it is sent, under test against the server's own rows.
  *
  * Controls, not a canvas: "draw" puts the construct on the one canvas with its
  * tokens coloured by layer, and the legend names the layers.
@@ -28,20 +31,27 @@ import { ProblemView } from '../../features/estate/problem_view';
 import { Provenance, caveatShown } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import { censusGaps, censusLines, chrestomathyRows } from '../../features/cartography/chrestomathy_rows';
+import { vocabularyShown } from '../../features/cartography/cartography_actions';
+import type { Draw } from '../../features/cartography/cartography_actions';
 import '../../features/estate/estate.css';
 
 export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
+  const plot = ctx.actions.plot.cartography;
   let asked = false;
   let readGraph: unknown;
   let shown = '';
 
   const ask = () => {
     asked = true;
-    const plot = ctx.actions.plot;
     void Promise.all([
       plot.loadConstructIndex(),
       plot.loadChrestomathy(ctx.appState.state.constructChosen),
     ]).catch(() => { asked = false; });
+  };
+  // Remembered for a relayout as it was asked for; the canvas comes forward
+  // only when a graph reached it, never to show a cleared one over the problem.
+  const draw = (action: Draw) => {
+    void ctx.plotWith(action).then((drawn) => { if (drawn) ctx.focusDockPanel('graph'); });
   };
 
   return {
@@ -76,9 +86,13 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
           ? m(ProblemView, {
               problem,
               prefix: 'chrestomathy',
+              // Repeats what failed: the reading, or the draw as it was asked for.
               onRetry: () => {
+                const again = plot.chrestomathyRetry();
                 ctx.appState.update({ chrestomathyProblem: null });
-                ask();
+                if (again?.op === 'draw') draw(again.run);
+                else if (again) void again.run();
+                else ask();
               },
             })
           : null,
@@ -100,7 +114,7 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
                         }, [
                           m('td', m('button.cartography__link', {
                             title: 'set it beside every language that writes it',
-                            onclick: () => void ctx.actions.plot.loadChrestomathy(line.id),
+                            onclick: () => void plot.loadChrestomathy(line.id),
                           }, line.name)),
                           m('td', line.spread),
                           m('td', String(line.count)),
@@ -127,18 +141,25 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
 
         m('div.estate-view__section', [
           m('h4.estate-view__heading', 'Construct'),
-          index
+          vocabularyShown(state) === 'list' && index
             ? m('select.cartography__select', {
                 value: state.constructChosen,
                 onchange: (e: Event) =>
-                  void ctx.actions.plot.loadChrestomathy((e.target as HTMLSelectElement).value),
+                  void plot.loadChrestomathy((e.target as HTMLSelectElement).value),
               }, [
                 m('optgroup', { label: 'what a thing is' },
                   constructs.map((c) => m('option', { value: c.id }, `${c.name} — ${c.id}`))),
                 m('optgroup', { label: 'what a thing can also be' },
                   facets.map((c) => m('option', { value: c.id }, `${c.name} — ${c.id}`))),
               ])
-            : m('p.estate-view__pending', 'reading the vocabulary…'),
+            : vocabularyShown(state) === 'problem' && state.constructIndexProblem
+              ? m(ProblemView, {
+                  problem: state.constructIndexProblem,
+                  prefix: 'chrestomathy',
+                  note: 'No construct to choose until the vocabulary is read.',
+                  onRetry: () => void plot.loadConstructIndex(),
+                })
+              : m('p.estate-view__pending', 'reading the vocabulary…'),
           reading ? m('p.estate__detail', reading.construct.gloss) : null,
         ]),
 
@@ -157,11 +178,12 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
                     m('td', row.note),
                   ]))),
               ]),
-              caveatShown(metadata, 'chrestomathy') ? null : m('p.estate-view__hint', reading.caveat),
+              caveatShown(metadata, 'chrestomathy', reading.caveat) ? null : m('p.estate-view__hint', reading.caveat),
               m('button.estate-view__draw', {
-                onclick: () => void ctx
-                  .plotWith(() => ctx.actions.plot.drawChrestomathy())
-                  .then(() => ctx.focusDockPanel('graph')),
+                onclick: () => {
+                  const action = plot.chrestomathyDraw();
+                  if (action) draw(action);
+                },
               }, 'draw the construct'),
             ])
           : null,

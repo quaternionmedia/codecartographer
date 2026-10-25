@@ -45,19 +45,26 @@ and produce gJGF output that any renderer can display.
 Folder and file ids are the path from the root (`file::ws/crates/hal/src/lib.rs`),
 so two files with one name are two nodes.
 
-Every node a language in `codecarto/data/constructs.yaml` produces also carries
-`construct` -- what it *is*, the same across languages (`type.product` for a C or
-Rust struct) -- and, where its qualifiers, attributes or body say so,
+Every node whose language and kind `codecarto/data/constructs.yaml` maps also
+carries `construct` -- what it *is*, the same across languages (`type.product`
+for a C or Rust struct) -- and, where its qualifiers, attributes or body say so,
 `meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`), and, for
 a construct with a look, `construct_color` and `construct_name` (what "Color By:
-Construct" draws and the key names). Every graph route stamps these as it
+Construct" draws and the key names). A kind the vocabulary lists under
+`not_constructs`, with its reason, carries none -- Python's calls, names and
+literals are what a body does, not what it declares -- and neither do the
+walk's own `directory` and `file` nodes. Every graph route stamps these as it
 serializes, and a cached graph is stamped again as it is replayed, so any graph
-on the canvas can be read by `POST /lexicon/chrestomathy/census`. A local
-Rust repository with a recorded `target/codecarto/check.jsonl` has rustc's
+on the canvas can be read by `POST /lexicon/chrestomathy/census`. A local Rust
+repository with a recorded `target/codecarto/check.jsonl` has rustc's
 diagnostics on the items they name (`meta.diagnostics`, `meta.messages`,
-`meta.diagnostics_recorded_at`), and with a recorded `target/codecarto/<bin>.map`
-the linker script's regions and sections carry what the link measured
-(`meta.measured`) and functions and statics their size (`meta.bytes`).
+`meta.diagnostics_recorded_at`), and `metadata.recorded_check` is that document's
+row. A check older than a source or manifest is not used: nothing is placed from
+it, and the row says `used: false`, `stale: true` and why. With a recorded
+`target/codecarto/<bin>.map` the linker script's regions and sections carry
+what the link measured (`meta.measured`) and functions and statics their size (`meta.bytes`). A map
+older than a source is not used: the regions it would measure say so
+(`meta.measured.used: false`) and nothing carries its figures.
 
 ### POST `/parse/unified`
 
@@ -105,7 +112,7 @@ bypass the response cache (the cache key doesn't vary on this field).
 | 0 | directories only |
 | 1 | directories + files |
 | 2 | + top-level symbols (class, function, struct, …) |
-| 3 | + sub-symbols (arguments, fields, enum constants) |
+| 3 | + sub-symbols (arguments, fields, enum constants, a C function's locals) |
 
 **Response:**
 ```json
@@ -136,6 +143,13 @@ bypass the response cache (the cache key doesn't vary on this field).
 }
 ```
 
+A parser that could not run over files the graph still draws -- C without
+libclang -- says so in `metadata.notes`, one sentence per batch
+(`"2 c file(s) drawn without their contents: libclang is not installed, …"`).
+A result with notes is not cached, on this route or either stream: a replay
+carries nodes and edges and nothing beside them, so it would arrive empty and
+silent. The next request parses again.
+
 ---
 
 ### POST `/parse/stream`
@@ -153,6 +167,7 @@ arrive instead of all at once at the end.
 | event | payload | when |
 |-------|---------|------|
 | `meta` | `{nodeCount, edgeCount, layout, from_cache?}` | first, once the graph size is known |
+| `note` | `{message}` | after `meta`, once per batch a parser could not read (`metadata.notes` above) |
 | `node` | flat node dict (`id` + unified schema fields) | once per node |
 | `edge` | `{source, target, label?, ...}` | once per edge, after all nodes |
 | `done` | `{elapsed_ms, from_cache?}` | last |
@@ -164,7 +179,8 @@ from the cache (`from_cache: true`) instead of re-parsing.
 After a fresh stream completes (the `done` event is emitted), the full
 accumulated graph is automatically written to cache — subsequent requests
 with the same URL, mode, layout, and extensions are served as instant
-replays without re-parsing.
+replays without re-parsing. A stream that carried a `note` is not written:
+its replay would arrive without it.
 
 ---
 
@@ -181,11 +197,11 @@ streams its parse — no separate `/repo/tree` round-trip first.
 **Response:** Same SSE event types as `/parse/stream`, plus a `fetching`
 event (`{message}`) emitted during phase 1 (repo tree fetch) before any
 `node`/`edge` events arrive. Phase 2 (symbol parsing) streams nodes as each
-file's content is fetched and parsed.
+file's content is fetched and parsed, and a `note` where a batch could not be.
 
 After streaming completes, the full accumulated graph is written to cache
-(GitHub URLs only) — the next request for the same repo and settings is an
-instant cache replay.
+(GitHub URLs only, and not when the stream carried a `note`) — the next
+request for the same repo and settings is an instant cache replay.
 
 ---
 
@@ -703,9 +719,11 @@ Full validated lexicon as JSON (layers, groups, tokens).
 gJGF graph (`{graph: {nodes, edges}, metadata}`) — the same shape and
 serialization pipeline (`GraphSerializer.serialize_to_gjgf`, real layout
 positions included) every parsed-code graph uses, so it renders through
-the existing D3 pipeline unchanged. Token nodes carry `layer_ordinal`
-and `kind` for coloring by abstraction level (see the `colorBy: 'layer'`
-styling option). **Not** `LexiconService.to_json()`'s plain node-link
+the existing D3 pipeline unchanged. Every node carries `language`,
+`layer_ordinal` and `kind`; every node on a layer (layer, group, token) also
+carries `layer_color`, which the `colorBy: 'layer'` styling option paints, and
+`meta.lexicon_layers`, from which the legend names the layer — what an
+annotated parsed node carries. **Not** `LexiconService.to_json()`'s plain node-link
 dump — that shape isn't recognized by the frontend renderer at all
 (verified directly; an earlier version of this doc claimed otherwise).
 
@@ -729,10 +747,12 @@ construct's `id`, `name`, `gloss`, whether it is a `facet` (something a node can
 One construct set beside itself across every language: per language, the
 `tokens` that spell it with their lexicon `contexts` (layer and group), the
 parser `kinds` that realise it, what `carried_by` a facet in source (`#[interrupt]`,
-`qualifier volatile`), and a `note`. **A language with no spelling is a row with
-its note, never a missing row** -- Rust has no `volatile`, C has no method. An
-unknown construct is a 200 with `unreadable`, `problem` and the known ids as
-`remedy`.
+`qualifier volatile`), and a `note`. **Every language the vocabulary lists under
+`languages:` is a row of every construct, never a missing one**: a language with
+no spelling has its note -- Rust has no `volatile`, C has no method -- and one the
+vocabulary records nothing for has a note saying so. C, Rust, Python, assembly and
+the linker script are listed, so each is a row of every construct. An unknown construct
+is a 200 with `unreadable`, `problem` and the known ids as `remedy`.
 
 ### POST `/lexicon/chrestomathy/census`
 
@@ -749,9 +769,16 @@ changed.
 ### GET `/lexicon/chrestomathy/{construct}/gjgf?layout=`
 
 The same reading as `GraphData`: the construct at the centre, each language
-around it (a silent one on a dashed edge, its note as the hover), tokens
-coloured by abstraction layer. `metadata.kind` is `chrestomathy`, with the
-`layers` ramp and the `caveat`.
+around it (a silent one on a dashed edge, its note as the hover), each token on
+the layer of the sense that spells this construct (Rust's `for` is iteration
+under a loop, behaviour under an implementation), coloured by that layer's
+`layer_ordinal` and naming it in `meta.lexicon_layers`. **An ordinal is a rank
+within one language's lexicon, not a scale the languages share**: Rust's keyword
+layers follow C's from 0 to 3 and its operator layers C's from 0 to 4, but
+compile-time reasoning is C's keyword layer 4 and Rust's 5, and control flow is
+Python's 0 and C's 3 -- one colour in two languages is one rank, and the layer's
+name says what it is. `metadata.kind` is `chrestomathy`, with the `layers` ramp
+and the `caveat`.
 
 ---
 
@@ -762,7 +789,7 @@ and device targets, and what the last recorded build said. **The window never
 runs cargo**: running it on a path runs that path's build scripts, proc macros
 and configured `rustc`. It reads manifests (`Cargo.toml`, `Cargo.lock`,
 `.cargo/config.toml`, memory maps) and the two documents
-`uv run codecarto cargo record <path>` writes under `<path>/target/codecarto/`:
+`uv run codecarto cargo record <path>` writes under the workspace's `target/codecarto/`:
 `metadata.json` (`cargo metadata --format-version 1`) and `check.jsonl`
 (`cargo check --message-format=json`). The same envelope and absence rules as the
 estate routes below: status 200, and a path that is not a workspace is
@@ -777,10 +804,13 @@ device targets from `.cargo/config.toml` (a `runner` is shown, never run) and
 memory maps. A dependency edge is labelled and coloured by its kind; a
 dev-dependency, an optional one and a platform-specific one are dashed and say
 their condition. `features=true` adds features and what each enables;
-`transitive=true` adds the lockfile's dependencies of dependencies. Targets
-carry the recorded diagnostics in their label and `meta.diagnostics`; a binary
-with a recorded link map carries each region's fill in its label and
-`meta.memory`.
+`transitive=true` adds dependencies of dependencies -- cargo's resolution's
+(edges labelled `resolved`) when `metadata.json` answered, the lockfile's
+(`locked`) otherwise. Targets carry the recorded diagnostics in their label and
+`meta.diagnostics`, from a `check.jsonl` newer than every source and manifest;
+an older one is not used -- no diagnostic, build-script fact or outcome is drawn
+from it -- and its row and the caveat say why. A binary with a recorded link map carries each region's fill in its label and
+`meta.memory`, while the map is newer than every source.
 
 `metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
 `metadata.json` is newer than every manifest, `manifests` otherwise -- a stale
