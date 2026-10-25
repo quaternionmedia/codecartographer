@@ -28,7 +28,7 @@ import {
 import { PlotService } from '../services/plot_service';
 import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
-import { infoLine, sourceTarget } from '../features/graph/services/node_info';
+import { infoLine } from '../features/graph/services/node_info';
 import type { BundledExample } from '../features/examples/examples';
 import { notesTail } from '../features/graph/services/parse_notes';
 import { DockPanelId, PanelRegistry } from './panel_registry';
@@ -572,7 +572,8 @@ export class LayoutContext {
       kind: node?.kind as string | undefined,
       hasRenderedChildren: id ? (r?.childIdsOf(id).length ?? 0) > 0 : false,
       pinned: !!(id && this._nodeViewState[id]?.pinned),
-      hasSource: !!node && sourceTarget(node) !== null,
+      // Asked of the renderer that opens it, so offering and opening read one graph.
+      hasSource: !!(id && r?.sourceTargetOf(id)),
       hasGroup: (node?.depth as number | undefined) !== undefined && (node!.depth as number) < 2,
       hasConstruct: typeof node?.construct === 'string',
       selectionCount: this._radSelection.size,
