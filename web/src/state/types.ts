@@ -58,7 +58,7 @@ export interface GraphStylingOptions {
   interactionProfile: string;  // Profile ID (default, cad, gaming, touch)
 
   // System renderer — selects which SystemDefinition to render
-  systemId?: string;           // e.g. 'pam' (default)
+  systemId?: string;           // SystemDefinition id; 'moat' is the default, 'pam' retained
 
   // Per-depth label visibility — overrides showNodeLabels per depth level when present.
   // depth 0 = dir, 1 = file, 2 = symbol, 3 = sub-symbol.

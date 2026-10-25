@@ -349,7 +349,7 @@ api.repoReader // /repo
 | `d3` | D3 Force Graph | yes | GraphData JSON (gJGF) |
 | `gravis` | Gravis vis-network | yes | GraphData JSON (gJGF) |
 | `notebook` | Notebook HTML | yes | `{ "text/html": "..." }` |
-| `system` | System Monitor (PAM) | no | WebSocket events |
+| `system` | System Monitor (definition-driven; moat derived default, PAM retained) | no | WebSocket events |
 
 > Renderers are **generic engines** — they draw whatever shape/color arrives on each node.
 > Language-specific visual grammar lives in the parser, not in the renderer.
