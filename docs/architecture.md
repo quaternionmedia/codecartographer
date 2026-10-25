@@ -340,7 +340,13 @@ A lexicon is a hand-authored ontology of one language's reserved words and
 operators, arranged on abstraction layers from machine-facing (ordinal 0) to
 abstract. Three exist, in `codecarto/data/lexicons/`: C, Python (the shorter
 template) and Rust, whose layers follow C's wherever the two languages answer
-the same question. `models/lexicon.py` is the schema, `lexicon_service.py`
+the same question. **A layer's ordinal is a rank within its own lexicon**, not
+a scale the languages share: Rust's keyword layers line up with C's from 0 to 3
+and its operator layers with C's from 0 to 4, so there the number -- and the
+colour the one ramp gives it -- is one layer in both; past those, and in
+Python's lexicon throughout, the same number is a different layer (compile-time
+reasoning is C's keyword layer 4 and Rust's 5; control flow is Python's 0 and
+C's 3). Read the layer's name beside its number. `models/lexicon.py` is the schema, `lexicon_service.py`
 loads and validates a YAML file and projects it to a graph, and
 `lexicon_router.py` serves `/lexicon/*`.
 
@@ -402,8 +408,9 @@ the command):
   one is not used: the manifests are read instead, and the reading says why.
 - `check.jsonl` puts rustc's diagnostics on the crate graph's targets and, in a
   local parse of the same repository, on the innermost Rust item whose lines
-  hold each one, with `diagnostics_recorded_at`. A source changed after the
-  check is reported `stale`; nothing re-checks.
+  hold each one, with `diagnostics_recorded_at`. A check older than a source
+  or manifest is not used: nothing is placed from it, and the reading says why;
+  nothing re-checks.
 - `<bin>.map` measures what the linker script only declares; see
   [Services](services.md#link_map_service).
 - With no document, the reading says "no diagnostics drawn, which is not the
@@ -422,7 +429,7 @@ what displays it. `tests/test_boundaries.py` checks the rules below.
 
 | | who calculates | who stores | who displays |
 |---|---|---|---|
-| **Code maps** (`/parse`, `/repo`) | this backend: parsers produce nodes and edges, `PositionService` lays them out, `GraphSerializer` sizes by degree | `CacheService` — content-addressed, keyed by url + mode + layout + extensions, filesystem or MongoDB; `graphbase` for named bookmarks (separate store, separate decision) | the one canvas, `StreamingGraphRenderer`; the legend counts what was drawn |
+| **Code maps** (`/parse`, `/repo`) | this backend: parsers produce nodes and edges, `PositionService` lays them out, `GraphSerializer` sizes by degree | `CacheService` — content-addressed, keyed by the graph schema version + url + mode + layout + extensions, filesystem or MongoDB; `graphbase` for named bookmarks (separate store, separate decision) | the one canvas, `StreamingGraphRenderer`; the legend counts what was drawn |
 | **Topologies** (`/topology`) | the harness declares shapes (boxes, arrows, no coordinates) and measures relation weights from its archive; this backend resolves the *encoding* — width from strength, dashed from unmeasured, colour from kind — and lays out | nothing here. Read live on every request; the harness stores its own archive and its own runs | the canvas draws exactly the channels `topology_service` resolved; the panel shows the harness's caveat verbatim |
 | **Capabilities** (`/capabilities`) | the corpus's registry states claims; this backend counts nothing but the rungs naming no evidence, and lays out | nothing here; the registry is the corpus's file at the governance pin | the canvas; the panel lists the claims as stated, with who stated them and when |
 | **Overview** (`/overview`) | dossier builds masthead figures and sections from its database and writes them as a seam; this backend draws the one relation the seam states (a section lists a subject) and lays out | dossier's seam file — a snapshot; this window reads it and never writes it | the canvas; the panel shows the masthead as written, with the producer's own `note` beside each figure, and when the reading was made |
@@ -466,8 +473,9 @@ what displays it. `tests/test_boundaries.py` checks the rules below.
    languages live, and a node keeps any look its parser gave it. The estate
    palette (rule 1) is a different vocabulary for a different kind of graph.
    **And every graph says what its nodes are**: `GraphSerializer` stamps each
-   node's construct for every route, a cached graph is stamped again as it is
-   replayed, and `construct_service.stamp` is the one place the decision is
+   node's construct for every gJGF route, the unified streams as they parse, a
+   cached graph is stamped again whenever it is served, and
+   `construct_service.stamp` is the one place the decision is
    made -- the census (`/lexicon/chrestomathy/census`) that reads a drawn graph
    as a chrestomathy calls it too, and the client never decides a construct.
 10. **The window runs nothing it reads.** Running cargo runs a workspace's build
