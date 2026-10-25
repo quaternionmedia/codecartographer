@@ -553,7 +553,10 @@ served directly from the cache without an additional GitHub API call.
 ### GET `/repo/expand-all`
 
 Expand all folders in a partial GitHub repo tree to `max_depth` (default 3),
-returning a full `Directory` with `is_partial: false`.
+returning a `Directory`. It is `is_partial: true` when any folder in it was
+left unlisted -- one below `max_depth`, or one GitHub refused to list -- and
+each such folder is an empty `Folder`, which the Files panel then draws with
+`…` to read on click. A refused root is an error, not an empty tree.
 
 **Query Parameters:** `url`, `max_depth` (optional, default 3)
 
