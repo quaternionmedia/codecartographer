@@ -165,6 +165,7 @@ export interface LayerMark {
 }
 
 export interface LayeredNode {
+  color?: unknown;
   language?: unknown;
   layer_ordinal?: unknown;
   layer_color?: unknown;
@@ -176,11 +177,14 @@ export interface LayeredNode {
  *
  * **WHAT "COLOR BY: ABSTRACTION LAYER" MEANS, IN THE KEY.** A colour that
  * carries a layer is a state, and no state rides on colour alone: the key names
- * each layer the canvas paints and counts its nodes. In any other colouring no
- * node is painted by layer and there are no rows. A node is counted when the
- * canvas paints it by layer -- the server placed it (`layer_ordinal`) and sent
- * the colour (`layer_color`); one placed and sent no colour keeps its own, and
- * is a node row, not a layer row in a colour nothing drew.
+ * each layer the canvas paints and counts its nodes. A node is counted when the
+ * canvas paints it in its layer's colour: the server placed it
+ * (`layer_ordinal`), sent the colour (`layer_color`), and `drawnFill` under the
+ * current colouring is that colour. Under "Color By: Abstraction Layer" that is
+ * every such node; under "Auto" only one whose own colour is its layer's, as
+ * the chrestomathy's tokens are -- a C struct on layer 2 drawn in its own blue
+ * is no layer row then. A node placed and sent no colour keeps its own, and is
+ * a node row, not a layer row in a colour nothing drew.
  *
  * **AN ORDINAL IS A RANK IN ONE LEXICON.** Each language numbers its keyword
  * layers and its operator layers from 0, so one ordinal -- and so one colour --
@@ -189,11 +193,11 @@ export interface LayeredNode {
  * one language each row says whose it is.
  */
 export function layerMarks(nodes: readonly LayeredNode[], colorBy: string | undefined): LayerMark[] {
-  if (colorBy !== 'layer') return [];
   const seen = new Map<string, LayerMark>();
   for (const node of nodes) {
     if (typeof node.layer_ordinal !== 'number' || node.layer_ordinal < 0) continue;
     if (typeof node.layer_color !== 'string' || !node.layer_color) continue;
+    if (drawnFill(node, colorBy) !== node.layer_color) continue;
     const ordinal = node.layer_ordinal;
     const language = typeof node.language === 'string' ? node.language : '';
     const name = layerName(node.meta, ordinal);

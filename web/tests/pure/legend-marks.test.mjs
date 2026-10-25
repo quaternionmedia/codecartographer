@@ -267,7 +267,7 @@ test('the layers key counts only nodes the canvas paints by layer, machine-facin
   ]);
 });
 
-test('the layers key appears only when the canvas is coloured by layer', () => {
+test('the layers key names a layer only where the canvas paints a node in its colour', () => {
   /**
    * In "Auto" the canvas draws each node's own colour, and the key listed layer
    * swatches nothing on screen was painted with. Mutation: ignore `colorBy` in
@@ -276,6 +276,19 @@ test('the layers key appears only when the canvas is coloured by layer', () => {
   const nodes = DRAWN.filter((n) => n.layer_color);
   assert.deepEqual(layerMarks(nodes, 'auto'), []);
   assert.equal(layerMarks(nodes, 'layer').length, 2);
+});
+
+test("a node whose own colour is its layer's is keyed by layer in any colouring", () => {
+  /**
+   * The chrestomathy's tokens are coloured by their layer by the server
+   * (`color` is `layer_color`), so "Auto" paints layers there and the key has to
+   * name them. Mutation: return no rows unless `colorBy` is `layer` -- this
+   * fails.
+   */
+  const token = { kind: 'token', language: 'c', color: '#ef4444', layer_ordinal: 0, layer_color: '#ef4444',
+    meta: { lexicon_layers: [C_STORAGE] } };
+  assert.deepEqual(layerMarks([token], 'auto').map((m) => m.label), ['L0 Storage & memory placement']);
+  assert.deepEqual(layerMarks([token], 'layer').map((m) => m.label), ['L0 Storage & memory placement']);
 });
 
 test('a node placed on a layer but sent no colour is not keyed as one', () => {
