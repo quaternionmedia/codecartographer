@@ -303,7 +303,7 @@ only on a workspace you would build.
 | Command | Description |
 |---------|-------------|
 | `read` | Print what the `/cargo` routes would draw for a path |
-| `record` | Run `cargo metadata` and `cargo check` in a path and write what they say to `target/codecarto/` |
+| `record` | Run `cargo metadata` and `cargo check` in a path and write what they say to the workspace's `target/codecarto/` |
 
 ### `cargo read`
 
@@ -327,14 +327,24 @@ uv run codecarto cargo record [PATH] [--all-targets] [--online] [--map BIN]... \
 Runs, in PATH:
 
 ```bash
-cargo metadata --format-version 1 --offline                 # -> target/codecarto/metadata.json
-cargo check --workspace --message-format=json --offline     # -> target/codecarto/check.jsonl
+cargo metadata --format-version 1 --locked --offline              # -> target/codecarto/metadata.json
+cargo check --workspace --message-format=json --locked --offline  # -> target/codecarto/check.jsonl
 # and, for each --map BIN, a link that keeps the linker's map:
-cargo rustc --profile release --package PKG --bin BIN --offline -- -C link-arg=-Map=<PATH>/target/codecarto/BIN.map
+cargo rustc --locked --profile release --package PKG --bin BIN --offline -- -C link-arg=-Map=<workspace>/target/codecarto/BIN.map
 ```
 
+The documents go to the `target/codecarto/` of the workspace root cargo names:
+PATH's own, or the workspace above it when PATH is a member crate, which is
+where reading the workspace looks. PATH must hold a `Cargo.toml`; without one
+nothing is run or written. `--locked` keeps cargo from rewriting `Cargo.lock`, so
+nothing outside `target/` changes; a workspace whose lockfile is missing or out
+of date needs `cargo generate-lockfile` or `cargo update` first, and says so.
+
 A check that finds errors still writes its document -- recording the
-diagnostics is the point -- and says cargo's exit status. `--all-targets` checks
+diagnostics is the point -- and says cargo's exit status. A check that stops
+before compiling (a dependency `--offline` cannot fetch) writes no diagnostics
+and exits 1 with cargo's error, and the reader says that document never
+finished rather than reading it as a clean build. `--all-targets` checks
 tests, examples and benches too (a `no_std` binary usually cannot build them);
 `--online` lets cargo reach the network; a command that outlives `--timeout`
 (600s by default) keeps what arrived and says it is partial. Without cargo on
@@ -342,13 +352,18 @@ PATH it says so and exits 1; the window still draws the manifests. How the
 window reads what this writes is in [Architecture](architecture.md#rust-cargo-and-the-firmware-languages).
 
 `--map BIN` (repeatable) links a binary and keeps its map: the linker writes it,
-so a build that finishes without one is a failure, not a document. `--map-flag`
-is how the linker is asked -- the default suits `rust-lld`; a GCC linker wants
-`'-C link-arg=-Wl,-Map={path}'`. `--profile` is the build measured, `release` by
-default because that is the one flashed. `PKG` is the workspace member with a
-binary named `BIN`, read from the `metadata.json` just recorded -- `cargo rustc`
-will not guess it in a workspace with no root package -- and a `BIN` no member
-has is said by name and fails the run.
+so a build that finishes without one is a failure, not a document. cargo links
+only a binary that is out of date, so recording a build already current writes
+nothing; the command says so, and how old the map left behind is, rather than
+claiming a write. `--map-flag` is how the linker is asked -- the default suits
+`rust-lld`; a GCC linker wants `'-C link-arg=-Wl,-Map={path}'` -- and is split
+into arguments before the path is put in, so a path with a space stays one.
+`--profile` is the build measured, `release` by default because that is the
+one flashed. `PKG` is the workspace member with a binary named `BIN`, read from
+the `metadata.json` just recorded -- `cargo rustc` will not guess it in a
+workspace with no root package -- and a `BIN` no member has is said by name
+and fails the run; when the metadata step itself failed or timed out, that is
+the reason given.
 
 ---
 

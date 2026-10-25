@@ -30,6 +30,7 @@ import { StreamingGraphRenderer } from '../features/graph/services/streaming_ren
 import { ToastManager } from '../components/codecarto/help/toast';
 import { infoLine, sourceLine } from '../features/graph/services/node_info';
 import type { BundledExample } from '../features/examples/examples';
+import { notesTail } from '../features/graph/services/parse_notes';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { readSavedLayout } from './saved_layout';
@@ -156,9 +157,9 @@ export class LayoutContext {
    * the selection was kept and not applied until somebody pressed draw again,
    * which nobody guesses. Every panel that draws goes through this.
    */
-  public async plotWith(action: () => Promise<void>): Promise<void> {
-    this._lastPlotAction = action;
-    await action();
+  public async plotWith<T>(action: () => Promise<T>): Promise<T> {
+    this._lastPlotAction = async () => { await action(); };
+    return action();
   }
 
   public updatePanelState(updates: Partial<ControlPanelState>): void {
@@ -610,15 +611,17 @@ export class LayoutContext {
   /**
    * Frame these nodes and make them the selection the radial menu's selection
    * ring acts on -- how the chrestomathy points back at the graph it read.
-   * Returns how many were on the canvas.
+   * Returns how many were on the canvas; with none, the selection is left as
+   * it was rather than emptied.
    */
   public showOnCanvas(ids: readonly string[]): number {
     const r = this._streamingRenderer;
     if (!r) return 0;
     const wanted = new Set(ids);
     const found = r.getNodes().filter((n) => wanted.has(n.id));
+    if (!found.length) return 0;
     this._replaceSelection(found);
-    if (found.length) r.fitTo(found.map((n) => n.id));
+    r.fitTo(found.map((n) => n.id));
     this.focusDockPanel('graph');
     return found.length;
   }
@@ -768,7 +771,7 @@ export class LayoutContext {
       compare: (id) => {
         const node = renderer()?.getNodes().find((n) => n.id === id);
         if (typeof node?.construct !== 'string') return;
-        void this.actions.plot.loadChrestomathy(node.construct);
+        void this.actions.plot.cartography.loadChrestomathy(node.construct);
         this.restoreDockPanel('chrestomathy-panel');
       },
     };
@@ -815,7 +818,7 @@ export class LayoutContext {
     // rather than during the stream, when the counts would be a snapshot
     // of a graph still arriving.
     this._legend?.destroy();
-    const legend = new LegendExtension();
+    const legend = new LegendExtension(() => this.appState.state.graphStyling.colorBy);
     legend.initialize(context);
     legend.apply();
     this._legend = legend;
@@ -832,15 +835,21 @@ export class LayoutContext {
    * in the place a reader is already looking, rather than as a graph that
    * merely looks oddly circular.
    */
-  /** What a parser said it could not read, kept in the status line after its toast is gone. */
-  private static _notesNote(notes: string[]): string {
-    return notes.length ? ` — ${notes.join('; ')}` : '';
-  }
-
   private _fallbackNote(renderer: StreamingGraphRenderer): string {
     const { placed, total } = renderer.layoutFallback();
     if (placed === 0) return '';
     return ` — ${placed} of ${total} placed without backend positions`;
+  }
+
+  /**
+   * Plot an uploaded file and say what its parse could not read, as a stream
+   * says its `note` events: each in a toast, and all of them returned for the
+   * caller's status line (`notesTail`).
+   */
+  private async _plotUpload(file: RawFile): Promise<string[]> {
+    const notes = await this.actions.plot.plotUploadedFile(file);
+    for (const note of notes) ToastManager.show(note, 15_000);
+    return notes;
   }
 
   private _mountAndStream(
@@ -929,14 +938,15 @@ export class LayoutContext {
             // Announced rather than mounted here, so this path and the
             // registry's converge on the one subscription in the constructor.
             GraphSurface.publish(renderer);
-            this.appState.update({
-              parseDirectory: directory,
-              graphData: this._buildGraphData(accNodes, accEdges, {
-                nodeCount,
-                edgeCount: accEdges.length,
-                layout,
-              }) as any,
-            });
+            this.appState.update({ parseDirectory: directory });
+            // Replaced, never merged: a plain patch is the union of this graph
+            // and every one drawn before it, which the census then read as
+            // the canvas -- a code map after the crate graph listed crates.
+            this.appState.replaceGraphData(this._buildGraphData(accNodes, accEdges, {
+              nodeCount,
+              edgeCount: accEdges.length,
+              layout,
+            }) as any);
             if (this.appState.state.selectedRenderer !== 'd3') {
               this.actions.plot.createGraphVnode();
             }
@@ -945,7 +955,7 @@ export class LayoutContext {
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
             this.updatePanelState({
               isLoading: false,
-              statusMessage: msg + this._fallbackNote(renderer) + LayoutContext._notesNote(notes),
+              statusMessage: msg + this._fallbackNote(renderer) + notesTail(notes),
               progress: null,
             });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
@@ -1019,13 +1029,12 @@ export class LayoutContext {
             // Announced rather than mounted here, so this path and the
             // registry's converge on the one subscription in the constructor.
             GraphSurface.publish(renderer);
-            this.appState.update({
-              graphData: this._buildGraphData(accNodes, accEdges, {
-                nodeCount,
-                edgeCount: accEdges.length,
-                layout,
-              }) as any,
-            });
+            // Replaced, never merged (see `_startStream`).
+            this.appState.replaceGraphData(this._buildGraphData(accNodes, accEdges, {
+              nodeCount,
+              edgeCount: accEdges.length,
+              layout,
+            }) as any);
             if (this.appState.state.selectedRenderer !== 'd3') {
               this.actions.plot.createGraphVnode();
             }
@@ -1034,7 +1043,7 @@ export class LayoutContext {
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
             this.updatePanelState({
               isLoading: false,
-              statusMessage: msg + this._fallbackNote(renderer) + LayoutContext._notesNote(notes),
+              statusMessage: msg + this._fallbackNote(renderer) + notesTail(notes),
               progress: null,
             });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
@@ -1087,7 +1096,7 @@ export class LayoutContext {
         this.panelCallbacks.onRepoSubmit(example.url);
         // Its recorded cargo documents are part of it: the Cargo panel reads
         // them now, so opening that panel shows the workspace already read.
-        if (example.cargo) void this.actions.plot.loadCargoReading(example.url);
+        if (example.cargo) void this.actions.plot.cartography.loadCargoReading(example.url);
       },
 
       onRepoSubmit: (url: string) => {
@@ -1174,10 +1183,11 @@ export class LayoutContext {
 
       onUploadedFileClick: async (file: RawFile) => {
         this.updatePanelState({ isLoading: true, statusMessage: 'Plotting file...' });
-        this._lastPlotAction = async () => { await this.actions.plot.plotUploadedFile(file); };
+        let notes: string[] = [];
+        this._lastPlotAction = async () => { notes = await this._plotUpload(file); };
         try {
           await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: 'Error plotting file' });
         }
@@ -1186,13 +1196,14 @@ export class LayoutContext {
       onPlotAllUploads: async () => {
         if (this.uploadedFiles.length > 0) {
           this.updatePanelState({ isLoading: true, statusMessage: 'Plotting all files...' });
+          let notes: string[] = [];
           this._lastPlotAction = async () => {
             if (this.uploadedFiles.length > 0)
-              await this.actions.plot.plotUploadedFile(this.uploadedFiles[0]);
+              notes = await this._plotUpload(this.uploadedFiles[0]);
           };
           try {
             await this._lastPlotAction();
-            this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+            this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
           } catch {
             this.updatePanelState({ isLoading: false, statusMessage: 'Error plotting files' });
           }
@@ -1212,6 +1223,10 @@ export class LayoutContext {
         if (this._streamingRenderer) {
           this._streamingRenderer.updateStyling(options);
         }
+        // The renderer recolours in place; the key says what the colours now
+        // mean. A streamed plot is not redrawn below, so without this its key
+        // kept describing the colouring it was drawn with.
+        if (options.colorBy !== undefined) this._legend?.apply();
         if (options.layout && options.layout !== oldLayout && this._lastPlotAction) {
           this.updatePanelState({ isLoading: true, statusMessage: 'Applying new layout...' });
           try {
