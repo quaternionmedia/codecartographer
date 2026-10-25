@@ -88,6 +88,14 @@ class TestTokenize:
         assert ("punct", '"') in [(t.kind, t.text) for t in toks]
         assert tokenize("/* open forever fn f() {}") == []
 
+    def test_a_shebang_is_not_an_inner_attribute_or_an_item(self):
+        """`#!/usr/bin/env ..` is not `#![..]`. Read as an unknown item, it
+        skipped to the next block and took the first function with it.
+        Mutation: drop the shebang skip -- `main` is lost."""
+        items, inner = read_items("#!/usr/bin/env rust-script\nfn main() {}\n")
+        assert [(i.name, i.line) for i in items] == [("main", 2)] and inner == []
+        assert read_items("#! [no_std]\nfn main() {}")[1] == ["no_std"]
+
 
 # ── Items ─────────────────────────────────────────────────────────────────────
 
@@ -135,6 +143,33 @@ class TestItems:
         assert (items[0].trait, items[0].self_type) == ("From", "Wrapper")
         assert items[0].label == "impl From for Wrapper"
 
+    def test_a_const_generic_block_is_not_the_body(self):
+        """`Buf<{ N }>` holds a brace inside angle brackets, and the search for
+        the body took it for the body: the impl's methods and the function's
+        calls were lost. Mutation: search for the body with angles off."""
+        graph = parse("fn helper() {}\n"
+                      "fn make() -> Buf<{ 4 }> { helper(); }\n"
+                      "impl<const N: usize> Buf<{ N }> { fn len(&self) -> usize { N } }")
+        assert ("make", "helper") in edges(graph, "calls")
+        assert ("impl Buf", "len") in edges(graph, "contains")
+
+    def test_an_angle_that_never_closes_costs_only_its_item(self):
+        """Searching for the body angle-aware, a `<` that never closes carries
+        the search to the end of the file. Mutation: drop the fallback to the
+        first `{` -- `after` is swallowed."""
+        assert items_by_kind("fn broken() -> Foo< { }\nfn after() {}")["function"] == ["broken", "after"]
+
+    def test_two_items_alike_on_one_line_are_two_nodes(self):
+        """An id carries the line, so two `impl S` on one line shared one, and
+        the second overwrote the first, method and all. Mutation: drop the
+        `#n` suffix -- one impl and one method remain."""
+        graph = parse("struct S;\nimpl S { fn a() {} } impl S { fn a() {} }")
+        impls = [n for n, d in graph.nodes(data=True) if d.get("kind") == "impl"]
+        assert len(impls) == 2
+        for impl in impls:
+            assert [graph.nodes[v]["label"] for v in graph.successors(impl)
+                    if graph.nodes[v]["kind"] == "method"] == ["a"]
+
     def test_union_is_a_keyword_only_before_a_name(self):
         assert "union" not in items_by_kind("fn union() {}\nstatic union: u8 = 0;")
         assert items_by_kind("union U { a: u8 }")["union"] == ["U"]
@@ -143,6 +178,14 @@ class TestItems:
         graph = parse("pub enum Mode { In = 0, Out = 1 }\npub enum Event { Rx(u8), Frame { b: u8 } }")
         assert node(graph, "enum", "Mode")["construct"] == "type.enumeration"
         assert node(graph, "enum", "Event")["construct"] == "type.sum"
+
+    def test_a_shift_in_a_discriminant_is_not_an_angle_bracket(self):
+        """A discriminant is an expression, where `<<` is a shift. Counted as
+        two angles that never closed, it held every later comma, and the enum
+        read as one variant. Mutation: split variants angle-aware."""
+        graph = parse("pub enum Irq { Rx = 1 << 0, Tx = 1 << 1, Err = 1 << 2 }")
+        assert node(graph, "enum", "Irq")["meta"]["variant_count"] == 3
+        assert node(graph, "variant", "Tx")["meta"]["type_str"] == "= 1 << 1"
 
     def test_qualifiers_attributes_and_receiver(self):
         graph = parse('''
