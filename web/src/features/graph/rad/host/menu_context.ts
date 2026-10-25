@@ -6,9 +6,12 @@
  * pointer anywhere else opens the canvas ring, whatever is selected, and the
  * canvas ring offers Deselect.
  *
- * A key has no pointer. It opens the selection's ring when anything is
- * selected, a single node included, and the canvas ring when nothing is. Both
- * offer Deselect, so a selection can be cleared without a pointer.
+ * A key (`m`, the context-menu key, Shift+F10) has no pointer, and the nodes
+ * take no focus, so it opens on the selection: the canvas ring when nothing is
+ * selected, the selected node's own ring when one is -- the only way a key
+ * reaches Pin, Collapse and View -- and the selection's ring when several are.
+ * The node's ring has no Deselect, so Escape on the canvas clears a selection
+ * (`canvasKeyVerb`), and every item stays reachable without a pointer.
  *
  * No application imports and no DOM, so this compiles into the conformance
  * build and is asserted under `node --test`.
@@ -30,8 +33,20 @@ export function menuContextFor(input: MenuInput): MenuContext {
   const { pointer, underPointer, selected, position } = input;
   const selection: MenuContext = { type: 'selection', targetIds: [...selected], position };
   const canvas: MenuContext = { type: 'canvas', targetIds: [], position };
-  if (!pointer) return selected.length ? selection : canvas;
+  if (!pointer) {
+    if (selected.length === 1) return { type: 'node', targetIds: [selected[0]], position };
+    return selected.length ? selection : canvas;
+  }
   if (!underPointer) return canvas;
   if (selected.length > 1) return selection;
   return { type: 'node', targetIds: [underPointer], position };
+}
+
+/**
+ * The verb a key commits on the canvas when no ring is open, or null. Escape
+ * clears a selection, of one node or several; with nothing selected it is left
+ * to whatever else hears it.
+ */
+export function canvasKeyVerb(key: string, selected: readonly string[]): string | null {
+  return key === 'Escape' && selected.length > 0 ? 'clear-selection' : null;
 }

@@ -3,7 +3,7 @@
 Loads ``codecarto/data/lexicons/<language>.yaml`` into a :class:`Lexicon`, and
 projects it to a networkx graph in the same node-link shape codecarto already
 produces for ASTs — so the existing ``/plotter`` pipeline and frontend render
-it for free (Option A).
+it for free, as the lexicon's own graph (Option A).
 
 The graph hierarchy is::
 
