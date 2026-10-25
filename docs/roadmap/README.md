@@ -64,8 +64,6 @@ nothing else, stores nothing, and shows a producer's caveat verbatim --
   layers and as dotted bases, and neither reads the other.
 - **`plotter_router.render_graph_to_html` reads gJGF by hand**, about a
   hundred lines, where `GraphSerializer` and the models already describe it.
-- **`gravis_settings.GravisOptions` is unused**: figures are built with keyword
-  arguments at each call site. It is wired in or deleted.
 - **`Positions._layouts` is read from outside** by `topology_router.py` and
   `estate_service.py`; a public `names()` would end that.
 - **`StateController.update` does not repaint.** A caller reached from a DOM

@@ -17,7 +17,7 @@ import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
-import { sourceTarget } from './node_info';
+import { sourceTarget, type SourceTarget } from './node_info';
 
 // Nodes rendered per animation frame. Scales with total so large repos
 // finish in ~2s while small repos show clearly progressive animation.
@@ -428,7 +428,9 @@ export class StreamingGraphRenderer {
 
     // ── Source navigation ──────────────────────────────────────────────────
     // Double-click opens the node's source through `openSource`, the opener
-    // View → Source uses. On a node from no file it opens nothing, and the
+    // View → Source uses, on every node that names a file -- a Python symbol,
+    // whose parser records no line, included: it opens its file at the top, as
+    // a file node does. On a node from no file it opens nothing, and the
     // double-click goes on to the zoom.
     //
     // **RIGHT-CLICK IS THE RADIAL MENU'S.** A handler here once opened the
@@ -700,14 +702,24 @@ export class StreamingGraphRenderer {
   }
 
   /**
-   * Open a node's source: its forge page in a new tab, or for a file read from
-   * disk a badge naming the file and line beside `at` (the node's own place on
-   * screen when not given). View → Source and a double-click both call this.
-   * False for a node from no file, which opens nothing.
+   * Where a node's source is, read against the graph drawn here: a symbol that
+   * names only its file's stem or module is found through the file node it is
+   * drawn inside. Null for a node from no file.
+   */
+  sourceTargetOf(id: string): SourceTarget | null {
+    const node = this.nodeById.get(id);
+    return node ? sourceTarget(node, { nodes: this.nodeById, edges: this._allEdges }) : null;
+  }
+
+  /**
+   * Open a node's source: its forge page in a new tab, or for a file with no
+   * page (read from disk, or uploaded) a badge naming the file and line beside
+   * `at` (the node's own place on screen when not given). View → Source and a
+   * double-click both call this. False for a node from no file, which opens
+   * nothing.
    */
   openSource(id: string, at?: { x: number; y: number }): boolean {
-    const node = this.nodeById.get(id);
-    const target = node ? sourceTarget(node) : null;
+    const target = this.sourceTargetOf(id);
     if (!target) return false;
     if (target.kind === 'forge') {
       window.open(target.href, '_blank', 'noopener');

@@ -17,7 +17,21 @@ export type SavedLayout =
   | { kind: 'usable'; config: Record<string, unknown> }
   | { kind: 'unusable'; why: string };
 
-/** Every `componentType` a layout names, in its root and in any open popout. */
+/**
+ * The root Golden Layout 2.6 loads from a layout or a popout: `root`, or when
+ * that is absent the legacy `content[0]` (`LayoutConfig.resolve` and
+ * `PopoutLayoutConfig.resolve` both read it so). `content` beside a `root` is
+ * not read.
+ */
+function rootOf(config: { root?: unknown; content?: unknown }): unknown {
+  if (config.root !== undefined) return config.root;
+  return Array.isArray(config.content) && config.content.length > 0 ? config.content[0] : undefined;
+}
+
+/**
+ * Every `componentType` a layout names, in its root and in any open popout,
+ * a popout's own popouts included, wherever Golden Layout reads a root.
+ */
 export function componentTypesIn(config: unknown): string[] {
   const found: string[] = [];
   const walk = (item: unknown): void => {
@@ -26,11 +40,13 @@ export function componentTypesIn(config: unknown): string[] {
     if (typeof componentType === 'string') found.push(componentType);
     if (Array.isArray(content)) content.forEach(walk);
   };
-  const { root, openPopouts } = (config ?? {}) as { root?: unknown; openPopouts?: unknown };
-  walk(root);
-  if (Array.isArray(openPopouts)) {
-    for (const popout of openPopouts) walk((popout as { root?: unknown } | null)?.root);
-  }
+  const layout = (config: unknown): void => {
+    if (!config || typeof config !== 'object') return;
+    const { openPopouts } = config as { openPopouts?: unknown };
+    walk(rootOf(config as { root?: unknown; content?: unknown }));
+    if (Array.isArray(openPopouts)) openPopouts.forEach(layout);
+  };
+  layout(config);
   return found;
 }
 

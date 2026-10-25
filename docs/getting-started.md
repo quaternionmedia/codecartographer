@@ -1,7 +1,9 @@
 # Getting Started
 
 This page installs Codecarto, runs it, and draws a first graph. It is the one
-setup page; the other documents link here rather than repeat it.
+setup page: the other documents link here, and the few that give the install
+command give this page's sync, which `tests/test_docs_routes.py` holds every
+document and the code to.
 
 ## Prerequisites
 
@@ -20,9 +22,11 @@ git submodule update --init governance/qm
 uv sync --locked --extra dev --extra c-parsing
 ```
 
-`uv sync --locked` installs exactly what `uv.lock` pins. The `c-parsing` extra
-is libclang: without it C and C++ files draw empty, and a `uv sync` that leaves
-it out removes it. The `dev` extra carries the test and lint tools.
+The sync installs exactly what `uv.lock` pins; `--locked` stops it, rather than
+rewriting the lockfile, when `pyproject.toml` has moved past it. The `c-parsing`
+extra is libclang: without it C and C++ files draw empty, and a sync that
+leaves it out removes it. The `dev` extra carries the test and lint tools, and
+a sync without it removes those.
 
 `governance/qm` holds the project's decision records. The other submodule,
 `graphbase`, is the optional MongoDB store and needs access to its private
@@ -62,8 +66,9 @@ uv run codecarto repo graph . -o json    # the graph itself
 curl "$API/repo/tree?url=/path/to/project"   # a local directory's tree; a GitHub URL works too
 ```
 
-The [API reference](api.md) describes each route; the running server lists
-them at `$API/docs`.
+The [API reference](api.md) describes each route. The running server lists
+those in its OpenAPI schema at `$API/docs`; the WebSockets and the few routes
+kept out of the schema are only in the reference.
 
 ## GitHub token
 
