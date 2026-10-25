@@ -25,6 +25,7 @@ a port: several of this org's servers run on one workstation.
 | `/system` | system | Derived system diagrams, read from a local clone |
 | `/palette` | palette | Color palette management |
 | `/lexicon` | lexicon | Hand-authored language lexicons, the construct vocabulary and the chrestomathy |
+| `/cargo` | cargo | A Cargo workspace and its last recorded build, as graph data -- read, never run |
 | `/topology` | topology | The harness's flows, as graph data |
 | `/capabilities` | capabilities | What each named thing this estate can do has reached |
 | `/overview` | overview | dossier's reading of the estate, as graph data |
@@ -51,6 +52,12 @@ for a C or Rust struct) -- and, where its qualifiers, attributes or body say so,
 the vocabulary lists under `not_constructs`, with its reason, carries none --
 Python's calls, names and literals are what a body does, not what it declares --
 and neither do the walk's own `directory` and `file` nodes.
+A local Rust
+repository with a recorded `target/codecarto/check.jsonl` has rustc's
+diagnostics on the items they name (`meta.diagnostics`, `meta.messages`,
+`meta.diagnostics_recorded_at`), and `metadata.recorded_check` is that document's
+row. A check older than a source or manifest is not used: nothing is placed from
+it, and the row says `used: false`, `stale: true` and why.
 
 ### POST `/parse/unified`
 
@@ -740,6 +747,50 @@ compile-time reasoning is C's keyword layer 4 and Rust's 5, and control flow is
 Python's 0 and C's 3 -- one colour in two languages is one rank, and the layer's
 name says what it is. `metadata.kind` is `chrestomathy`, with the `layers` ramp
 and the `caveat`.
+
+---
+
+## Cargo Endpoints (`/cargo`)
+
+A Cargo workspace's crates, targets, dependencies, features, native libraries
+and device targets, and what the last recorded build said. **The window never
+runs cargo**: running it on a path runs that path's build scripts, proc macros
+and configured `rustc`. It reads manifests (`Cargo.toml`, `Cargo.lock`,
+`.cargo/config.toml`, memory maps) and the two documents
+`uv run codecarto cargo record <path>` writes under the workspace's `target/codecarto/`:
+`metadata.json` (`cargo metadata --format-version 1`) and `check.jsonl`
+(`cargo check --message-format=json`). The same envelope and absence rules as the
+estate routes below: status 200, and a path that is not a workspace is
+`unreadable` with a `problem`, a `remedy` and `where`.
+
+### GET `/cargo/gjgf?path=&layout=&palette_id=&features=&transitive=`
+
+The workspace as `GraphData`. Nodes: the workspace, each member crate with its
+targets (lib, bin, build script, proc macro, tests), external crates, native
+libraries (`links`, and `cargo:rustc-link-lib` from a recorded build script),
+device targets from `.cargo/config.toml` (a `runner` is shown, never run) and
+memory maps. A dependency edge is labelled and coloured by its kind; a
+dev-dependency, an optional one and a platform-specific one are dashed and say
+their condition. `features=true` adds features and what each enables;
+`transitive=true` adds dependencies of dependencies -- cargo's resolution's
+(edges labelled `resolved`) when `metadata.json` answered, the lockfile's
+(`locked`) otherwise. Targets carry the recorded diagnostics in their label and
+`meta.diagnostics`, from a `check.jsonl` newer than every source and manifest;
+an older one is not used -- no diagnostic, build-script fact or outcome is drawn
+from it -- and its row and the caveat say why.
+
+`metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
+`metadata.json` is newer than every manifest, `manifests` otherwise -- a stale
+document is not used, and says so), `generated_at`, every `documents` row with
+`present`, `used`, `stale` and `problem`, the recorded `diagnostics` counts,
+`build_success`, `firmware`, and the `caveat`.
+
+### GET `/cargo/data?path=`
+
+The reading without a layout: `packages` (with `dependencies`, `targets`,
+`features`, `resolved_features`, `no_std`, `links`, `memory_maps`), `documents`,
+`diagnostics`, `artifacts`, `scripts`, `build_success`, `firmware`, `notes` and
+`caveat` -- comparable with what `cargo metadata` says rather than only drawable.
 
 
 ---

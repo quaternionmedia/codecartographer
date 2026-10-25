@@ -289,6 +289,64 @@ uv run codecarto repo graph . -t ast -o json
 
 ---
 
+## Rust Workspace Commands
+
+### `cargo`
+
+Group command for Cargo workspaces. **`read` runs nothing; `record` is the one
+place this project runs cargo**, because running cargo runs the workspace's
+build scripts and proc macros -- a person's act on a workspace they would build,
+never a route's.
+
+| Command | Description |
+|---------|-------------|
+| `read` | Print what the `/cargo` routes would draw for a path |
+| `record` | Run `cargo metadata` and `cargo check` in a path and write what they say to the workspace's `target/codecarto/` |
+
+### `cargo read`
+
+```bash
+uv run codecarto cargo read [PATH] [--json]
+```
+
+Prints which engine answered (`cargo metadata` when a recorded `metadata.json`
+is newer than every manifest, `manifests` otherwise), each member crate and its
+dependencies with their kind and condition, which recorded documents were found
+and used, the diagnostics counts, and the caveat. `--json` prints the reading
+`/cargo/data` serves. Exits 1, with the reason, when PATH holds no `Cargo.toml`.
+
+### `cargo record`
+
+```bash
+uv run codecarto cargo record [PATH] [--all-targets] [--online] [--timeout SECONDS]
+```
+
+Runs, in PATH:
+
+```bash
+cargo metadata --format-version 1 --locked --offline              # -> target/codecarto/metadata.json
+cargo check --workspace --message-format=json --locked --offline  # -> target/codecarto/check.jsonl
+```
+
+The documents go to the `target/codecarto/` of the workspace root cargo names:
+PATH's own, or the workspace above it when PATH is a member crate, which is
+where reading the workspace looks. PATH must hold a `Cargo.toml`; without one
+nothing is run or written. `--locked` keeps cargo from rewriting `Cargo.lock`, so
+nothing outside `target/` changes; a workspace whose lockfile is missing or out
+of date needs `cargo generate-lockfile` or `cargo update` first, and says so.
+
+A check that finds errors still writes its document -- recording the
+diagnostics is the point -- and says cargo's exit status. A check that stops
+before compiling (a dependency `--offline` cannot fetch) writes no diagnostics
+and exits 1 with cargo's error, and the reader says that document never
+finished rather than reading it as a clean build. `--all-targets` checks
+tests, examples and benches too (a `no_std` binary usually cannot build them);
+`--online` lets cargo reach the network; a command that outlives `--timeout`
+(600s by default) keeps what arrived and says it is partial. Without cargo on
+PATH it says so and exits 1; the window still draws the manifests.
+
+---
+
 ## Utility Commands
 
 ### `parse`

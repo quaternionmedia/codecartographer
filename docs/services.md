@@ -17,6 +17,7 @@ services/
 ├── c_parser_service.py        # C-specific parse orchestration (libclang)
 ├── lexicon_service.py         # Hand-authored language lexicons -> graph
 ├── construct_service.py       # What a node is across languages; the chrestomathy
+├── cargo_service.py           # A Cargo workspace from manifests and recorded cargo documents
 ├── graph_serializer.py        # Graph JSON serialization
 ├── position_service.py        # Node positioning
 └── parsers/
@@ -243,6 +244,20 @@ look of its own its construct's; the unified pipeline runs it on every parse.
 `reading(id)`, `table()` and `as_graph(id)` are the chrestomathy behind
 `/lexicon/constructs` and `/lexicon/chrestomathy/*`. `layer_color(ordinal)` is
 the one abstraction-layer ramp.
+
+---
+
+## cargo_service
+
+**File:** `cargo_service.py`
+
+A Cargo workspace read without running cargo: `read(path)` returns a `Reading`
+(packages, dependencies, targets, features, firmware facts, the recorded
+documents and their staleness, diagnostics, build-script facts) or a reason.
+`as_graph`, `as_gjgf`, `metadata` and `as_data` serve `/cargo/*`;
+`recorded_diagnostics(root)` and `annotate_diagnostics(graph, reading)` put
+rustc's diagnostics on a parsed code map. The CLI's `cargo record` is the only
+code that runs cargo.
 
 ---
 

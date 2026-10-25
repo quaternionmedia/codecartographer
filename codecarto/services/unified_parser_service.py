@@ -84,6 +84,9 @@ class UnifiedParserService:
         options = PlotOptions(layout=layout, type="d3")
         gjgf = GraphSerializer.serialize_to_gjgf(graph, options)
         meta = GraphSerializer.create_metadata(graph, options)
+        if "recorded_check" in graph.graph:
+            # Whether rustc's diagnostics are on this map, or why not.
+            meta["recorded_check"] = graph.graph["recorded_check"]
         return {"graph": gjgf, "metadata": meta}
 
     @staticmethod
@@ -620,6 +623,9 @@ class UnifiedParserService:
         # runs on every parse rather than behind a flag nobody sets.
         construct_service.annotate(graph)
 
+        if depth >= 2:
+            _annotate_recorded_diagnostics(graph, directory)
+
         if annotate_lexicon:
             # A single graph can span multiple languages (a repo isn't
             # mono-language) - annotate each one present that also has a
@@ -990,6 +996,27 @@ def _merge_batch_subgraph(
         file_id = by_key.get(origin) or file_id_by_stem.get(origin)
         if file_id and not graph.has_edge(file_id, node_id):
             graph.add_edge(file_id, node_id, **make_edge("contains"))
+
+
+def _annotate_recorded_diagnostics(graph: nx.DiGraph, directory: Directory) -> None:
+    """Put what `rustc` last said on the Rust items it said it about.
+
+    Only for a local repository with a recorded `target/codecarto/check.jsonl`
+    at its root -- `codecarto cargo record` writes one. Reads that document and
+    runs nothing; an item carries the time the check was recorded beside its
+    counts. A check older than a source or manifest is not used, so nothing is
+    placed from it, and `graph.graph["recorded_check"]` says so.
+    """
+    if not any(d.get("language") == "rust" for _, d in graph.nodes(data=True)):
+        return
+    root = directory.info.url
+    if not root or "://" in root or not Path(root).is_dir():
+        return
+    from codecarto.services import cargo_service
+
+    reading = cargo_service.recorded_diagnostics(root)
+    if reading is not None:
+        cargo_service.annotate_diagnostics(graph, reading)
 
 
 def _file_key(file: File) -> str:
