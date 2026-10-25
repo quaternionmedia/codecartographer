@@ -66,8 +66,8 @@ then the examples:
 - **A GitHub URL or a local path**, then `→ Fetch` or Enter: draws it and loads
   its tree into the Files panel. Once loaded, a line names the repository and
   its size, and its ✕ clears the repository and any added files.
-- **Local files**: drop them on the box or click it to browse. They are listed
-  in the Files panel.
+- **Local files**: drop them on the box, or click it or press Enter or Space
+  on it to browse. They are listed in the Files panel.
 - **Demo and lexicons**: ⚡ Load Demo draws a sample graph, CodeCartographer's
   own source, from one `POST /plotter/demo` answer rather than a stream; each
   language with a lexicon has a 📖 button that draws it.

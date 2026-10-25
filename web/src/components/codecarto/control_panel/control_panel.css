@@ -123,6 +123,7 @@
   transition: all var(--t-transition-fast);
 }
 .panel-upload__dropzone:hover,
+.panel-upload__dropzone:focus-visible,
 .panel-upload__dropzone--active {
   border-color: var(--c-secondary);
   background-color: rgba(0, 255, 65, 0.05);
