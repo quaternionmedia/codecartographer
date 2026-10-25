@@ -12,7 +12,8 @@ it describes, and each check here fails on a document that disagrees with it:
 - the README is an onramp: at most `README_LINES` lines;
 - no document names the port this project no longer binds, or a test count;
 - every relative link resolves, and so does every repository path written in
-  backticks in prose, unless `EXAMPLE_PATHS` names it;
+  backticks in prose, unless `EXAMPLE_PATHS` names it, and every page under
+  `docs/` that the code names;
 - every `codecarto ...` command a document writes exists in the click tree,
   with its options, and a value from a fixed choice is one of the choices;
 - every JSON envelope in `docs/api.md` has `status`, `message` and `results`;
@@ -351,6 +352,7 @@ REPO_PATH = re.compile(
 # Paths a document names that are not in the tree, each for a stated reason.
 EXAMPLE_PATHS = {
     "web/dist": "the build's output, written by `npm run build` and not tracked",
+    "docs/wiring.md": "a file test_link_map_service.py hands link_input, not a page",
     "codecarto/routers/parse_job_router.py": "planned in the large-repository roadmap",
     "codecarto/services/parse_job_service.py": "planned in the large-repository roadmap",
 }
@@ -424,6 +426,30 @@ def test_paths_into_the_submodules_resolve():
         pytest.skip(f"{deferred} references into submodules that are not "
                     f"checked out here (CI checks out none)")
     assert not missing, f"these paths name nothing in their submodule: {missing}"
+
+
+DOC_PATH = re.compile(r"\bdocs/[\w./-]*?\.md\b")
+
+
+def test_every_page_the_code_names_exists():
+    """A comment, a docstring or a tooltip naming a page that is gone sends its
+    reader nowhere, and the link check reads only documents. Mutation: point
+    the Color By tooltip in `control_panel.ts` back under `docs/llm/` -- this
+    fails naming it."""
+    seen, missing = 0, []
+    for path in _code_files():
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            for written in DOC_PATH.findall(line):
+                seen += 1
+                if written not in EXAMPLE_PATHS and not (ROOT / written).is_file():
+                    missing.append(f"{_rel(path)}:{number} -> {written}")
+    assert seen, "the reader found no page named in the code; its pattern is stale"
+    assert not missing, (
+        f"the code names these pages, and none is in the tree: {missing}")
 
 
 def test_example_paths_are_still_absent():
