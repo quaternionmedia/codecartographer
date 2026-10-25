@@ -158,12 +158,12 @@ def parse(text: str, path: str = "") -> LinkMap:
                    if all(word in line.split() for word in ("VMA", "LMA", "Size", "Out", "Symbol"))), None)
     if header is not None:
         found = _parse_lld(lines, header, path)
-    elif "Linker script and memory map" in text:
+    elif any(line.startswith(_GNU_MAP) for line in lines):
         found = _parse_gnu(lines, path)
     else:
         return LinkMap(path=path, reason=(f"{Path(path).name or 'this file'} is not a map GNU ld "
                                           "or LLD wrote: it has neither LLD's column header nor "
-                                          "GNU ld's 'Linker script and memory map'"))
+                                          f"a line starting GNU ld's '{_GNU_MAP}'"))
     for section in found.sections:
         for inp in section.inputs:
             _size_symbols(inp)
@@ -205,21 +205,25 @@ _GNU_REGION = re.compile(rf"^(\S+)\s+({_HEX})\s+({_HEX})(?:\s+(\S+))?\s*$")
 _GNU_SECTION = re.compile(rf"^(\S+)?\s+({_HEX})\s+({_HEX})(?:\s+load address\s+({_HEX}))?\s*$")
 _GNU_INPUT = re.compile(rf"^ (\S+)?\s+({_HEX})\s+({_HEX})\s+(\S.*)$")
 _GNU_SYMBOL = re.compile(rf"^\s+({_HEX})\s+([^=\s][^=]*?)\s*$")
+# A script's data statement (`LONG(0x12345678)`): its bytes, not a symbol.
+_GNU_DATA = re.compile(rf"^\s+{_HEX}\s+{_HEX}\s+(?:BYTE|SHORT|LONG|QUAD|SQUAD)\s")
+# GNU ld starts each part of its map at column 0; the words anywhere else (a
+# path, an indented line) are not the part.
+_GNU_MAP = "Linker script and memory map"
+_GNU_MEMORY = "Memory Configuration"
 
 
 def _parse_gnu(lines: list[str], path: str) -> LinkMap:
     found = LinkMap(path=path, format="gnu-ld")
-    i = 0
-    if "Memory Configuration" in "\n".join(lines):
-        i = next(n for n, line in enumerate(lines) if line.startswith("Memory Configuration"))
-        for line in lines[i + 1:]:
-            if line.startswith("Linker script and memory map"):
-                break
-            m = _GNU_REGION.match(line)
-            if m and m.group(1) not in ("Name", "*default*"):
-                found.regions.append(Region(m.group(1), int(m.group(2), 16), int(m.group(3), 16),
-                                            m.group(4) or ""))
-    start = next(n for n, line in enumerate(lines) if line.startswith("Linker script and memory map"))
+    memory = next((n for n, line in enumerate(lines) if line.startswith(_GNU_MEMORY)), None)
+    for line in lines[memory + 1:] if memory is not None else ():
+        if line.startswith(_GNU_MAP):
+            break
+        m = _GNU_REGION.match(line)
+        if m and m.group(1) not in ("Name", "*default*"):
+            found.regions.append(Region(m.group(1), int(m.group(2), 16), int(m.group(3), 16),
+                                        m.group(4) or ""))
+    start = next(n for n, line in enumerate(lines) if line.startswith(_GNU_MAP))
     section: OutputSection | None = None
     inp: InputSection | None = None
     pending_section = pending_input = ""
@@ -264,6 +268,9 @@ def _parse_gnu(lines: list[str], path: str) -> LinkMap:
                 inp = InputSection(name, m.group(3).strip(), int(m.group(1), 16), int(m.group(2), 16))
                 section.inputs.append(inp)
                 continue
+        if _GNU_DATA.match(line):
+            inp = None  # the bytes after it are the statement's, in no input section
+            continue
         m = _GNU_SYMBOL.match(line)
         if m and inp is not None and not m.group(2).startswith((".", "*")):
             inp.symbols.append(Symbol(m.group(2), int(m.group(1), 16)))

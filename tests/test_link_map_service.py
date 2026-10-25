@@ -69,6 +69,61 @@ class TestGnu:
         assert ".ARM.attributes" not in flash.sections + ram.sections
 
 
+GNU_HEAD = """\
+Memory Configuration
+
+Name             Origin             Length             Attributes
+FLASH            0x08000000         0x00080000         xr
+
+Linker script and memory map
+
+"""
+
+
+@pytest.mark.parametrize("statement, size", [("BYTE 0x1", 1), ("SHORT 0x1234", 2),
+                                             ("LONG 0x12345678", 4), ("QUAD 0x1", 8)])
+@pytest.mark.parametrize("fill", [False, True])
+def test_a_data_statement_is_bytes_not_a_symbol(statement, size, fill):
+    """`LONG 0x12345678` in a script prints as `<address> <size> LONG <value>`,
+    which reads like a symbol with a long name. Mutation: let it through --
+    a symbol named `0x4 LONG 0x12345678` appears with a negative size, and
+    after a fill the symbol before it grows past its section, and this fails."""
+    at = 0x08000020 + (4 if fill else 0)
+    text = (GNU_HEAD
+            + f".text           0x08000000       {0x24 + (4 if fill else 0) + size:#x}\n"
+            " .text.foo      0x08000000       0x20 build/a.o\n"
+            "                0x08000000                foo\n"
+            + (" *fill*         0x08000020        0x4 \n" if fill else "")
+            + f"                {at:#010x}       {size:#x} {statement}\n"
+            f" .text.bar      {at + size:#010x}        0xc build/a.o\n"
+            f"                {at + size:#010x}                bar\n")
+    assert [(s.name, s.size) for s in L.parse(text, "a.map").symbols()] == [("foo", 0x20), ("bar", 0xc)]
+
+
+@pytest.mark.parametrize("text", [
+    "  Linker script and memory map\n.text 0x0 0x0\n",
+    "Linker script and memory map\nLOAD /src/Memory Configuration/x.o\n",
+    "LOAD /src/Linker script and memory map/x.o\nMemory Configuration\n",
+])
+def test_a_header_that_is_not_at_the_start_of_a_line_is_a_reason_not_an_exception(text):
+    """GNU ld starts each part of its map at column 0; the same words elsewhere
+    (in a path, indented) are not a header. Mutation: look the header up with a
+    bare `next()` -- StopIteration escapes and this fails."""
+    found = L.parse(text, "odd.map")
+    assert found.ok == text.startswith("Linker script")
+    if not found.ok:
+        assert "Linker script and memory map" in found.reason
+
+
+def test_an_odd_map_aborts_neither_the_code_map_nor_the_cargo_reading(tmp_path):
+    root = copy_workspace(tmp_path, stale=False)
+    (root / "target" / "codecarto" / "odd.map").write_text("  Linker script and memory map\n")
+    graph = parse_rust(root)
+    assert node(graph, "region", "FLASH")["meta"]["measured"]["map"] == "blinky.map"
+    doc = next(d for d in cargo_service.read(root).documents if d.name == "odd.map")
+    assert not doc.used and "Linker script and memory map" in doc.problem
+
+
 # ── LLD ───────────────────────────────────────────────────────────────────────
 
 
