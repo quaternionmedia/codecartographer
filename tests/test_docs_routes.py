@@ -39,8 +39,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # the built web application and its assets, and the root redirect.
 NOT_API = {"", "app", "assets", "docs", "redoc", "openapi.json"}
 
-# Documents a reader is sent to. History and the legacy archive are stamped
-# records of what was, and are not read against the tree.
+# Documents a reader is sent to.
 DOCUMENTS = [
     ROOT / "README.md",
     ROOT / "AGENTS.md",

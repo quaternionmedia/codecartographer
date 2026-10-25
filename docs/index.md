@@ -11,7 +11,7 @@
 | [API Reference](api.md) | REST API endpoints, including the estate seams |
 | [Architecture](architecture.md) | High-level system design |
 | [Services](services.md) | The service layer, module by module |
-| [Contributing](contributing.md) | Development guidelines |
+| [Contributing](../.github/CONTRIBUTING.md) | Development guidelines |
 
 The plan this window is built to -- the estate frame, the topology designer, and
 the chrestomathy of code -- is `plans/the-web-window.md` in the governance corpus
@@ -26,13 +26,6 @@ the chrestomathy of code -- is `plans/the-web-window.md` in the governance corpu
 | [UI_REFERENCE.md](llm/UI_REFERENCE.md) | Control panel, Golden Layout shell, radial menu, streaming renderer |
 | [RENDERER_GUIDE.md](llm/RENDERER_GUIDE.md) | Renderer plugin system — D3, Gravis, Notebook, System |
 | [LARGE_REPOS.md](llm/LARGE_REPOS.md) | Scaling roadmap (phases 1–6) |
-
-## Development History
-
-| Document | Description |
-|----------|-------------|
-| [history/FRONTEND_MODERNIZATION.md](history/FRONTEND_MODERNIZATION.md) | Frontend modernization phases (Mithril, Meiosis, Golden Layout) |
-| [history/MIGRATION_HISTORY.md](history/MIGRATION_HISTORY.md) | Jupyter → FastAPI API migration |
 
 ## Roadmap
 
@@ -77,17 +70,11 @@ docs/
 ├── api.md
 ├── architecture.md
 ├── services.md
-├── contributing.md       ← brief intro; links to .github/CONTRIBUTING.md
-├── history/              ← development history (moved from .github/development/)
-│   ├── FRONTEND_MODERNIZATION.md
-│   └── MIGRATION_HISTORY.md
-├── .diagrams/            ← PlantUML source + rendered images
 └── llm/                  ← LLM-optimized context docs
     ├── ARCHITECTURE.md
     ├── EXTENDING.md
     ├── RENDERER_GUIDE.md
     ├── UI_REFERENCE.md
     ├── LARGE_REPOS.md
-    ├── roadmap/          ← upcoming features
-    └── archive/legacy/   ← superseded historical docs
+    └── roadmap/          ← upcoming features
 ```
