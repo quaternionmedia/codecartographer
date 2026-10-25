@@ -195,12 +195,12 @@ UnifiedParserService.expand_node(directory, nodeId, depth)
 -> Returns sub-graph of node + all descendants
 ```
 
-### Legacy parse path (Python-only, still active)
+### Demo path
 
 ```
-POST /plotter/whole_repo  { parse_by: 'ast'|'directory'|'dependencies' }
--> ParserService -> PythonCustomAST | DirectoryParser | DependencyParser
--> GraphSerializer -> gJGF
+POST /plotter/demo  { options: { parse_by, layout } }
+-> get_local_repo(codecarto/, extensions=['.py'])
+-> UnifiedParserService.parse(directory, depth=1 if parse_by == 'directory' else 2)
 ```
 
 ### C semantic stream path (libclang, direct API path)
@@ -392,27 +392,23 @@ interface GraphNode {
 | 2 | + top-level symbols (class, function, struct, …) |
 | 3 | + sub-symbols (arguments, fields, enum constants, a C function's locals) |
 
-**Registered languages** (auto-detected by extension):
+**Registered languages** (auto-detected by extension): `GET /parse/languages`
+lists each with its extensions. Python (`PythonLanguageParser`), C
+(`CLangaugeParser`, which needs the `c-parsing` extra), Rust
+(`RustLanguageParser`) and linker scripts (`LinkerScriptParser`) have readers of
+their own; `RegexLanguageParser` reads the rest.
 
-| extension | language | adapter |
-|-----------|----------|---------|
-| `.py` | python | `PythonLanguageParser` |
-| `.c`, `.h` | c | `CLangaugeParser` (requires `[c-parsing]` optional dep) |
+### The demo's `parse_by` (`POST /plotter/demo`)
 
-### Legacy Python modes (`POST /plotter/demo` only)
+`/plotter/demo` (the Demo button) reads this repository's own `codecarto/`
+package through `UnifiedParserService`, as every other parse is read;
+`parse_by` sets only the depth (`plotter_router.py`, `_DEMO_MODE_TO_DEPTH`).
+`/plotter/demo` and `/plotter/render/html` are the plotter's only routes.
 
-`ParserService`/`PythonCustomAST`/`DirectoryParser`/`DependencyParser`
-predate the unified pipeline. The only route that still exercises them is
-`/plotter/demo` (the Demo button) — every other `/plotter/*` `parse_by`
-entry point (`whole_repo`, `whole_repo_deps`, `folder`, `file`, `url`,
-`local_directory`) was dead code (zero frontend callers) and was removed
-in the parser/cache unification pass.
-
-| `parse_by` | parser | output |
-|------------|--------|--------|
-| `ast` | PythonCustomAST | code structure |
-| `directory` | DirectoryParser | file/folder hierarchy |
-| `dependencies` | DependencyParser | import relationships |
+| `parse_by` | `depth` | output |
+|------------|---------|--------|
+| `directory` | 1 | directories and files |
+| anything else (`ast`, `dependencies`, the default `code`) | 2 | + symbols and file-to-file dependency edges |
 
 ---
 

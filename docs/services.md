@@ -21,6 +21,7 @@ services/
 ├── link_map_service.py        # A linker's map file: sections, symbols, each region's measured use
 ├── examples_service.py        # The examples bundled under examples/, for the project selector
 ├── graph_serializer.py        # Graph JSON serialization
+├── palette_service.py         # A node's base -> the palette's style; the estate vocabulary
 ├── position_service.py        # Node positioning
 └── parsers/
     ├── language_parser.py     # LanguageParser Protocol + ParserRegistry
@@ -33,9 +34,9 @@ services/
         └── python_custom_ast.py
 ```
 
-`palette_router.py` reads palettes directly (`DefaultPalette` from
-`models/plot_data.py`, or `DatabaseContext.fetch_palette_by_id` for
-custom ones) — there's no dedicated `PaletteService`.
+`palette_router.py` serves `DefaultPalette` from `models/plot_data.py`. There
+is no palette store, so `/palette/custom` answers `unavailable` (`docs/api.md`).
+`palette_service.py` is where a palette is applied; see *palette_service* below.
 
 ---
 
@@ -69,7 +70,7 @@ directory = get_local_repo(
 | `extensions` | List[str] | `[".py"]` | Extensions to include |
 | `exclude_dirs` | List[str] | See below | Directories to skip |
 
-**Default exclusions:** `.git`, `.venv`, `venv`, `__pycache__`, `node_modules`, `.pytest_cache`, `.mypy_cache`, `dist`, `build`, `.eggs`, `*.egg-info`
+**Default exclusions:** `.git`, `.venv`, `venv`, `__pycache__`, `node_modules`, `.pytest_cache`, `.mypy_cache`, `dist`, `build`, `.eggs`, `*.egg-info`, `.vs`, `.idea`, `.vscode`, `bin`, `obj`, `target`
 
 **Returns:** `Directory` model with `info`, `size`, and `root` (Folder)
 
@@ -398,6 +399,18 @@ metadata = GraphSerializer.create_metadata(graph, options)
 | `Spectral` | Eigenvector-based |
 
 **Client-side Rendering:** The gJGF format is consumed by the frontend D3.js renderer for interactive visualization.
+
+---
+
+## palette_service
+
+**File:** `palette_service.py`
+
+Resolves a node's dotted `base` (`control.cond.if`) into the style a `Palette`
+gives it, walking the dots leftwards to `unknown`: `style_for(base)`,
+`style_for_type(node_type)`, and `apply_to(graph)`, which puts the shape, colour
+and size on every node. `vocabulary(node_type)` is the one place an estate kind
+becomes a shape, colour and size.
 
 ---
 

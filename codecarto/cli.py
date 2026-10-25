@@ -64,6 +64,12 @@ def get_repo_root() -> Path:
     return REPO_ROOT
 
 
+def _fail(message: str) -> None:
+    """Say what failed, on stderr, and exit 1."""
+    click.secho(f"✗ {message}", fg="red", err=True)
+    raise SystemExit(1)
+
+
 def _ensure_npm_dependencies() -> bool:
     """Ensure npm dependencies are installed. Returns True if successful."""
     node_modules = WEB_DIR / "node_modules"
@@ -78,11 +84,11 @@ def _ensure_npm_dependencies() -> bool:
                 text=True
             )
             if result.returncode != 0:
-                click.secho(f"  ✗ npm install failed: {result.stderr}", fg="red")
+                click.secho(f"  ✗ npm install failed: {result.stderr}", fg="red", err=True)
                 return False
             click.secho("  ✓ Dependencies installed", fg="green")
         except FileNotFoundError:
-            click.secho("  ✗ npm not found in PATH", fg="red")
+            click.secho("  ✗ npm not found in PATH", fg="red", err=True)
             return False
     return True
 
@@ -138,15 +144,14 @@ def dev(host: str, port: int, no_frontend: bool):
     if not no_frontend:
         # Start frontend
         if not WEB_DIR.is_dir():
-            click.secho(f"  ✗ Web directory not found at {WEB_DIR}", fg="red")
             backend_proc.terminate()
-            return
-        
+            _fail(f"Web directory not found at {WEB_DIR}")
+
         # Check if node_modules exists, if not run npm install
         if not _ensure_npm_dependencies():
             backend_proc.terminate()
-            return
-        
+            raise SystemExit(1)
+
         click.echo("  → Frontend: http://localhost:1234")
         try:
             frontend_proc = subprocess.Popen(
@@ -155,10 +160,9 @@ def dev(host: str, port: int, no_frontend: bool):
                 shell=True
             )
         except FileNotFoundError:
-            click.secho("  ✗ npm not found in PATH", fg="red")
             backend_proc.terminate()
-            return
-    
+            _fail("npm not found in PATH")
+
     click.echo()
     click.secho("Press Ctrl+C to stop", fg="yellow")
     
@@ -184,13 +188,9 @@ def serve(host: str, port: int, reload: bool):
     """
     Start the FastAPI backend server only.
 
-    \b
-    API endpoints:
-    - /palette   - Color palette management
-    - /parser    - Source code parsing
-    - /plotter   - Graph plotting
-    - /polygraph - Graph operations
-    - /repo      - GitHub repository reading
+    The running server's /docs lists the routes in its OpenAPI schema. The
+    WebSockets and the routes kept out of the schema -- /app, /db/ and the
+    PAM page's /pam/api/* -- are not there; docs/api.md names every one.
     """
     click.secho(f"🌐 Starting Codecarto API server...", fg="green", bold=True)
     click.echo(f"  → http://{host}:{port}")
@@ -221,15 +221,14 @@ def web():
     Frontend will be available at http://localhost:1234
     """
     if not WEB_DIR.is_dir():
-        click.secho(f"✗ Web directory not found at {WEB_DIR}", fg="red")
-        return
-    
+        _fail(f"Web directory not found at {WEB_DIR}")
+
     click.secho("🌍 Starting frontend dev server...", fg="green", bold=True)
-    
+
     # Check if node_modules exists, if not run npm install
     if not _ensure_npm_dependencies():
-        return
-    
+        raise SystemExit(1)
+
     click.echo("  → http://localhost:1234")
     click.echo()
     
@@ -238,7 +237,7 @@ def web():
     except KeyboardInterrupt:
         click.secho("✓ Frontend stopped", fg="green")
     except FileNotFoundError:
-        click.secho("✗ npm not found in PATH", fg="red")
+        _fail("npm not found in PATH")
 
 
 @cli.command()
@@ -257,8 +256,9 @@ def parse(filepath: str, output: str):
     from codecarto.models.source_data import Folder, File
     import json
     
-    click.secho(f"📄 Parsing: {filepath}", fg="green")
-    
+    # With -o json, stdout carries the JSON and nothing else.
+    click.secho(f"📄 Parsing: {filepath}", fg="green", err=output == "json")
+
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             source = f.read()
@@ -298,7 +298,7 @@ def parse(filepath: str, output: str):
                 for ntype, count in sorted(node_types.items()):
                     click.echo(f"    - {ntype}: {count}")
     except Exception as e:
-        click.secho(f"✗ Parse error: {e}", fg="red")
+        _fail(f"Parse error: {e}")
 
 
 @cli.command()
@@ -306,7 +306,8 @@ def info():
     """
     Show project info and environment details.
 
-    Displays Python version, package info, and configuration.
+    Displays Python version, package info, and configuration. Exits 1 when one
+    of the package's dependencies it lists cannot be imported.
     """
     import platform
     
@@ -328,36 +329,45 @@ def info():
     # Check for key dependencies
     click.echo()
     click.echo("  Dependencies:")
+    # Each is in [project] dependencies, so one missing is a broken install.
     deps = ["fastapi", "networkx", "click", "gravis", "uvicorn"]
+    missing = []
     for dep in deps:
         try:
             mod = __import__(dep)
             version = getattr(mod, "__version__", "installed")
             click.echo(f"    ✓ {dep}: {version}")
         except ImportError:
+            missing.append(dep)
             click.secho(f"    ✗ {dep}: not found", fg="red")
+    if missing:
+        _fail(f"{', '.join(missing)} not installed; "
+              "`uv sync --locked --extra dev --extra c-parsing` installs the environment")
 
 
 @cli.command()
 @click.option("--fix", is_flag=True, help="Auto-fix issues with ruff")
 def lint(fix: bool):
     """
-    Run linting on the codebase.
+    Run ruff over the codecarto package.
 
-    Uses ruff for fast Python linting.
+    ruff is in the dev extra. Exits 1 when ruff finds issues or is missing.
     """
+    import shutil
+
     click.secho("🔍 Running linter...", fg="green", bold=True)
-    
-    cmd = ["ruff", "check", str(REPO_ROOT / "codecarto")]
+
+    ruff = shutil.which("ruff")
+    if ruff is None:
+        _fail("ruff not found. `uv sync --locked --extra dev --extra c-parsing` installs it")
+    cmd = [ruff, "check", str(REPO_ROOT / "codecarto")]
     if fix:
         cmd.append("--fix")
-    
-    try:
-        result = subprocess.run(cmd)
-        if result.returncode == 0:
-            click.secho("✓ No issues found", fg="green")
-    except FileNotFoundError:
-        click.secho("✗ ruff not found. Install with: uv pip install ruff", fg="red")
+
+    result = subprocess.run(cmd)
+    if result.returncode != 0:
+        _fail(f"ruff exited {result.returncode}")
+    click.secho("✓ No issues found", fg="green")
 
 
 @cli.command()
@@ -387,9 +397,9 @@ def docker():
         
         click.secho("✓ Containers started", fg="green")
     except subprocess.CalledProcessError as e:
-        click.secho(f"✗ Docker error: {e}", fg="red")
+        _fail(f"Docker error: {e}")
     except FileNotFoundError:
-        click.secho("✗ docker-compose not found in PATH", fg="red")
+        _fail("docker-compose not found in PATH")
 
 
 @cli.command("docker-down")
@@ -411,9 +421,9 @@ def docker_down():
         )
         click.secho("✓ Containers stopped", fg="green")
     except subprocess.CalledProcessError as e:
-        click.secho(f"✗ Docker error: {e}", fg="red")
+        _fail(f"Docker error: {e}")
     except FileNotFoundError:
-        click.secho("✗ docker-compose not found in PATH", fg="red")
+        _fail("docker-compose not found in PATH")
 
 
 # ============================================================================
@@ -454,10 +464,12 @@ def repo_scan(path: str, ext: tuple, output: str):
     
     extensions = list(ext) if ext else [".py"]
     
-    click.secho(f"📂 Scanning: {Path(path).resolve()}", fg="green")
-    click.echo(f"  Extensions: {', '.join(extensions)}")
-    click.echo()
-    
+    # With -o json, stdout carries the JSON and nothing else.
+    status = output == "json"
+    click.secho(f"📂 Scanning: {Path(path).resolve()}", fg="green", err=status)
+    click.echo(f"  Extensions: {', '.join(extensions)}", err=status)
+    click.echo(err=status)
+
     try:
         directory = get_local_repo(path, extensions=extensions)
         stats = get_file_stats(directory)
@@ -479,7 +491,7 @@ def repo_scan(path: str, ext: tuple, output: str):
             click.echo(f"    Folders: {stats['folders']}")
             click.echo(f"    Total size: {_format_size(stats['total_size'])}")
     except Exception as e:
-        click.secho(f"✗ Scan error: {e}", fg="red")
+        _fail(f"Scan error: {e}")
 
 
 @repo.command("tree")
@@ -507,7 +519,7 @@ def repo_tree(path: str, ext: tuple, depth: int):
         directory = get_local_repo(path, extensions=extensions)
         _print_tree(directory.root, depth=depth)
     except Exception as e:
-        click.secho(f"✗ Error: {e}", fg="red")
+        _fail(f"Error: {e}")
 
 
 @repo.command("graph")
@@ -543,8 +555,11 @@ def repo_graph(path: str, ext: tuple, output: str, graph_type: str):
 
     extensions = list(ext) if ext else [".py"]
 
-    click.secho(f"📊 Generating {graph_type} graph: {Path(path).resolve()}", fg="green")
-    click.echo()
+    # With -o json, stdout carries the JSON and nothing else.
+    status = output == "json"
+    click.secho(f"📊 Generating {graph_type} graph: {Path(path).resolve()}", fg="green",
+                err=status)
+    click.echo(err=status)
 
     try:
         directory = get_local_repo(path, extensions=extensions)
@@ -589,10 +604,10 @@ def repo_graph(path: str, ext: tuple, output: str, graph_type: str):
                 if len(node_types) > 10:
                     click.echo(f"    ... and {len(node_types) - 10} more types")
     except Exception as e:
-        click.secho(f"✗ Graph error: {e}", fg="red")
         import traceback
         if os.environ.get("DEBUG"):
             traceback.print_exc()
+        _fail(f"Graph error: {e}")
 
 
 @cli.group()

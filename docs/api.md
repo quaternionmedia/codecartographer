@@ -6,8 +6,10 @@ REST API documentation for Codecarto backend.
 the constant `uv run qm dashboard` in the corpus allocates to this project;
 `uv run codecarto serve --help` prints it, and `CODECARTO_PORT` or `--port`
 overrides it. The examples below write `$API` for that base.
-**Interactive Docs:** `$API/docs` — every route the running server registered,
-which is the authority; this page is the map.
+**Interactive Docs:** `$API/docs` — every route in the running server's OpenAPI
+schema, which is the authority for those; this page is the map. The schema has
+no WebSockets and leaves out `/app`, `/db/` and the `/pam/api/*` aliases; each
+is named in its section below.
 **Identity:** `$API/openapi.json` names the app `codecarto`. Ask before believing
 a port: several of this org's servers run on one workstation.
 
@@ -101,7 +103,8 @@ Parse a directory tree to the requested depth and return a gJGF graph.
 
 **`annotate_lexicon`** (default `false`): stamp Lexicon abstraction-layer
 data (`layer_ordinal`, `meta.lexicon_layers`) onto nodes whose language
-has one (currently `c`, `python` — see `docs/llm/roadmap/lexicon.md`).
+has one (`c`, `python` and `rust`; `GET /lexicon/` lists them — see
+`docs/llm/roadmap/lexicon.md`).
 Opt-in: existing callers see no change. Requests with this set to `true`
 bypass the response cache (the cache key doesn't vary on this field).
 
@@ -126,9 +129,9 @@ bypass the response cache (the cache key doesn't vary on this field).
 **Response:**
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "parse/unified - Success",
-  "data": {
+  "results": {
     "graph": {
       "nodes": {
         "dir::myrepo": { "metadata": { "depth": 0, "kind": "directory", "label": "myrepo", "language": "unknown" }},
@@ -235,17 +238,21 @@ rooted at `node_id` and its descendants.
 
 ### GET `/parse/languages`
 
-List all registered language parsers and their file extensions.
+List all registered language parsers and their file extensions: one key per
+language, each with the extensions it reads.
 
-**Response:**
+**Response** (the first four of the languages):
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "parse/languages - Success",
-  "data": {
+  "results": {
     "languages": {
       "python": [".py"],
-      "c": [".c", ".h"]
+      "c": [".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hxx"],
+      "rust": [".rs"],
+      "linker": [".ld", ".lds", ".x"],
+      ...
     }
   }
 }
@@ -289,8 +296,9 @@ Convert GraphData JSON to pre-rendered HTML for the Notebook renderer.
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": { "text/html": "<html>...</html>" }
+  "status": 200,
+  "message": "Success",
+  "results": { "text/html": "<html>...</html>" }
 }
 ```
 
@@ -313,8 +321,9 @@ Parse a single C/H source file.
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": {
+  "status": 200,
+  "message": "c-parser/file - Success",
+  "results": {
     "graph": {
       "nodes": [...],
       "edges": [...],
@@ -452,8 +461,9 @@ caches" for why these aren't merged into one.
 **Response:**
 ```json
 {
-  "code": 200,
-  "data": {
+  "status": 200,
+  "message": "c-parser/cache - Success",
+  "results": {
     "entries": [
       { "key": "git-git", "owner": "git", "repo": "git", "url": "...", "ts": 1234567890.0, "age_seconds": 120, "size_bytes": 45000000 }
     ]
@@ -512,9 +522,9 @@ curl "$API/repo/tree?url=/path/to/local/project"
 **Response:**
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "read_github_url - Success",
-  "data": {
+  "results": {
     "info": { "owner": "fastapi", "name": "fastapi", "url": "..." },
     "size": 1234567,
     "root": { "name": "fastapi", "files": [...], "folders": [...] },
@@ -524,8 +534,10 @@ curl "$API/repo/tree?url=/path/to/local/project"
 ```
 
 **Notes:**
-- GitHub: repos > 1 GB are rejected; requires a token for private repos
-  (place in `/run/secrets/github_token` or `token.txt`)
+- GitHub: no repository is refused for its size; one of 50 MB or more gets the
+  shallow listing above. A private repository needs a token, resolved in the
+  order `docs/services.md` gives under *GitHub Token* (`gh auth login` is
+  enough on a workstation)
 - Local: default extension filter is every extension `ParserRegistry`
   knows about (not just `.py`); default excludes `.git`, `.venv`,
   `node_modules`, `.vs`, `.idea`, `bin`, `obj`, etc. (see
@@ -576,6 +588,9 @@ an empty list.
 ### GET `/pam/ui`
 
 Serve the PAM auth log monitor HTML frontend (URL-patched for current server).
+The page calls `/pam/api/status`, `/pam/api/history`, `/pam/api/sessions` and
+`/pam/api/sessions/{session_id}`, which answer as the four routes below and
+are kept out of the schema.
 
 ### GET `/pam/status`
 
@@ -648,7 +663,7 @@ issue described in *GitHub token resolution order* (`governance/qm/adr/`).
 {
   "source": "gh CLI keyring",
   "authenticated": true,
-  "token_prefix": "gho_Ccw0…"
+  "token_prefix": "gho_XXXX…"
 }
 ```
 
@@ -729,7 +744,7 @@ the parsers use. See `docs/llm/roadmap/lexicon.md` for the full design.
 
 ### GET `/lexicon/`
 
-List available language ids (e.g. `{"languages": ["c", "python"]}`).
+List available language ids (`results.languages`, e.g. `["c", "python", "rust"]`).
 
 ### GET `/lexicon/{language}`
 
@@ -967,25 +982,39 @@ response to mistake for a successful lookup.
 
 ---
 
+## Web Application
+
+### GET `/app`
+
+The built web application from `web/dist`, with its API origin injected, or a
+page saying there is no build and how to make one. `/` redirects here when a
+build is present, and to `/docs` when it is not. Kept out of the schema.
+
+---
+
 ## Response Format
 
-All endpoints use a consistent envelope:
+Routes answer in `generate_return`'s envelope (`codecarto/util/utilities.py`):
 
 ```json
 {
-  "code": 200,
+  "status": 200,
   "message": "route/action - Success",
-  "data": { ... }
+  "results": { ... }
 }
 ```
 
+The estate routes put an absence inside a 200 (`results.unreadable` or
+`results.unreachable`, with `problem`, `remedy` and `where`), because the route
+worked and the thing it reads was not there.
+
 ### Error Response
+
+A route that fails raises, and the server answers with the HTTP status and the
+message alone (`main.py`'s `http_exception_handler`):
+
 ```json
-{
-  "code": 404,
-  "message": "Error description",
-  "data": { "source": "function_name", "params": { ... } }
-}
+{ "message": "Error description" }
 ```
 
 ### Error Codes
@@ -1006,7 +1035,6 @@ All endpoints use a consistent envelope:
 Allowed origins (configurable in `main.py`):
 - `http://localhost:1234` (Vite dev / parcel)
 - `http://localhost:1235` (Vite alt)
-- `http://localhost:5000` (development tools)
 
 ---
 
@@ -1032,7 +1060,7 @@ curl -X POST "$API/parse/unified" \
 
 ```bash
 curl "$API/parse/languages"
-# -> { "languages": { "python": [".py"], "c": [".c", ".h"] } }
+# -> results.languages: { "python": [".py"], "c": [".c", ".h", ".cpp", ...], "rust": [".rs"], ... }
 ```
 
 ### Parse a local C directory (dedicated C-parser pipeline)

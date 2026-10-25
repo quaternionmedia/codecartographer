@@ -7,8 +7,8 @@ dependencies beyond the standard library.
 Each ``RegexLanguageParser`` instance is configured for a single language and
 registered with ``ParserRegistry`` at import time.  Patterns match stripped
 lines anchored at ``^`` to minimise false positives.  Only depth-2 nodes
-(top-level symbol definitions) are emitted; depth-3 sub-symbol extraction is
-deferred to the tree-sitter phase (Phase 2).
+(top-level symbol definitions) are emitted; these parsers produce no depth-3
+sub-symbols.
 
 Supported languages
 -------------------
