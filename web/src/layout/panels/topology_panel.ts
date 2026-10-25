@@ -69,8 +69,9 @@ export function createTopologyPanel(ctx: LayoutContext): m.Component {
         void ctx
           .plotWith(() => ctx.actions.plot.loadTopology(request))
           // The drawing goes where the reader can see it: this panel usually
-          // sits in the same stack as the canvas, in front of it.
-          .then(() => ctx.focusDockPanel('graph'))
+          // sits in the same stack as the canvas, in front of it. A problem
+          // stays in front, in this panel's problem view.
+          .then((drawn) => { if (drawn) ctx.focusDockPanel('graph'); })
           .catch(() => undefined);
       };
 
