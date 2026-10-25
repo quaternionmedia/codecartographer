@@ -465,7 +465,8 @@ def _get_clang():
         import clang.cindex as cindex
     except ImportError as exc:
         raise ImportError(
-            "Install with: uv pip install 'codecarto[c-parsing]'"
+            "libclang is not installed, so C and C++ declarations cannot be read. "
+            "Install it with: uv sync --locked --extra dev --extra c-parsing"
         ) from exc
     ...
 ```
@@ -520,22 +521,8 @@ async def pam_ui(request: Request):
 
 ## Testing Changes
 
-```bash
-# Run all tests
-uv run pytest
-
-# Run specific test file
-uv run pytest tests/test_unified_parser_service.py -v
-
-# Build frontend
-cd web && node_modules/.bin/vite build
-
-# Run backend
-uv run codecarto serve
-
-# Run frontend dev server
-cd web && node_modules/.bin/vite
-```
+The test commands are in [`AGENTS.md`](../../AGENTS.md), *Tests*; running the
+application is in [Getting Started](../getting-started.md).
 
 ---
 

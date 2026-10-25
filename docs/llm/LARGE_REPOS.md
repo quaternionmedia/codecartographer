@@ -42,7 +42,8 @@ All extensions below produce unified gJGF nodes with schema
 | Scala | `.scala` | def, class/case class/object, trait, type alias |
 | Shell | `.sh .bash` | function (both `name()` and `function name` styles) |
 
-C/C++ requires the optional `[c-parsing]` extra (`uv pip install -e ".[c-parsing]"`).
+C/C++ requires the optional `c-parsing` extra, which the install in
+[Getting Started](../getting-started.md) includes.
 All other parsers use zero extra dependencies (regex only).
 
 ### Interactive expansion (Phase 1 UX)

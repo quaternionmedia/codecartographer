@@ -3,11 +3,13 @@
 Every tracked Markdown file outside the two submodules is read against the tree
 it describes, and each check here fails on a document that disagrees with it:
 
-- every prefix `codecarto.main.app` mounts appears in the README's table, under
-  a heading in `docs/api.md`, and in `web/vite.config.js`'s `API_PATHS`;
+- every prefix `codecarto.main.app` mounts appears in `docs/api.md`'s overview
+  table and under one of its headings, and in `web/vite.config.js`'s
+  `API_PATHS`;
 - every route a document names is mounted, unless `UNSERVED_ROUTES` names it
   as planned, and every route the OpenAPI schema (`/docs`) leaves out is named
   in `docs/api.md`;
+- the README is an onramp: at most `README_LINES` lines;
 - no document names the port this project no longer binds, or a test count;
 - every relative link resolves, and so does every repository path written in
   backticks in prose, unless `EXAMPLE_PATHS` names it;
@@ -126,10 +128,22 @@ def prefixes() -> set[str]:
     return found
 
 
-def test_readme_table_names_every_mounted_prefix(prefixes):
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    missing = sorted(p for p in prefixes if f"| `{p}` |" not in readme)
-    assert not missing, f"README.md's API table lacks a row for: {missing}"
+def test_api_overview_table_names_every_mounted_prefix(prefixes):
+    api = (ROOT / "docs" / "api.md").read_text(encoding="utf-8")
+    overview = re.search(r"^## Overview\n(.*?)(?=^## )", api, re.M | re.S)
+    assert overview, "docs/api.md has no '## Overview' section"
+    missing = sorted(p for p in prefixes if f"| `{p}` |" not in overview.group(1))
+    assert not missing, f"docs/api.md's overview table lacks a row for: {missing}"
+
+
+README_LINES = 60
+
+
+def test_the_readme_is_an_onramp():
+    """What the README would add past this belongs on a page under `docs/`."""
+    lines = (ROOT / "README.md").read_text(encoding="utf-8").splitlines()
+    assert len(lines) <= README_LINES, (
+        f"README.md is {len(lines)} lines; move the depth to docs/ and link it")
 
 
 def test_api_reference_has_a_heading_for_every_mounted_prefix(prefixes):
@@ -726,3 +740,22 @@ def test_every_default_layout_entry_carries_its_registry_id():
     assert entries, "no component entries found in default_layout.ts; the pattern is stale"
     wrong = [f"{kind} -> {ident or 'no id'}" for kind, _, ident in entries if ident != kind]
     assert not wrong, f"default layout entries whose id is missing or differs from the type: {wrong}"
+
+
+def test_the_api_reference_says_the_errors_the_envelope_does_not_carry():
+    """A path no route serves is FastAPI's own 404 and a request that fails
+    validation its 422; neither passes through `http_exception_handler`, so
+    neither answers `{message}`. Mutation: drop the 422 row, or the unknown
+    route's body, from `docs/api.md` -- this fails naming it."""
+    from fastapi.testclient import TestClient
+
+    from codecarto.main import app
+
+    client = TestClient(app)
+    unknown = client.get("/no/such/route")
+    invalid = client.post("/parse/unified", json={})
+    reference = (ROOT / "docs" / "api.md").read_text(encoding="utf-8")
+    assert unknown.status_code == 404 and unknown.json() == {"detail": "Not Found"}
+    assert invalid.status_code == 422 and isinstance(invalid.json().get("detail"), list)
+    assert '{"detail": "Not Found"}' in reference, "api.md does not show an unknown route's 404"
+    assert re.search(r"^\| 422 \|", reference, re.M), "api.md's error table has no 422 row"
