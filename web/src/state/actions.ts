@@ -1,5 +1,7 @@
 import m from 'mithril';
+import type { Patch } from 'meiosis-setup/types';
 import { StateController } from '../state/state_controller';
+import type { ICellState } from './cell_state';
 import { PlotService } from '../services/plot_service';
 import { TopologyService } from '../services/topology_service';
 import type { TopologyChoices, TopologyProblem, TopologyRequest } from '../services/topology_service';
@@ -10,9 +12,7 @@ import type { ShowSubjectsDocument, ShowViewsDocument } from '../features/show/s
 import type { ShowAddress } from '../features/show/show_address';
 import { isProblem } from '../features/estate/seam_client';
 import { CartographyService } from '../features/cartography/cartography_service';
-import type {
-  CargoDocument, CensusDocument, ChrestomathyDocument, ConstructIndex,
-} from '../features/cartography/cartography_service';
+import { CartographyActions, settlePatch } from '../features/cartography/cartography_actions';
 import type { SeamOutcome, SeamProblem } from '../features/estate/seam_client';
 import { RepoService } from '../features/repository';
 import { GraphData } from '../features/graph';
@@ -21,6 +21,7 @@ import { GraphRendererRegistry } from '../features/graph/services/renderers';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
 import { logger } from '../core/logger';
 import { backendLayoutName } from '../features/graph/services/layout_names';
+import { parseNotes } from '../features/graph/services/parse_notes';
 
 // The menu's registry name, as the backend spells it. One rule in
 // `layout_names.ts`; this used to be a private table here that fell back to
@@ -32,7 +33,31 @@ const convertLayoutToBackend = backendLayoutName;
  * Extracts business logic from components into a dedicated module
  */
 export class PlotActions {
-  constructor(private stateController: StateController) {}
+  /** The Cargo and Chrestomathy panels' reads and draws. */
+  public readonly cartography: CartographyActions;
+
+  constructor(private stateController: StateController) {
+    const controller = stateController;
+    this.cartography = new CartographyActions(
+      {
+        get state() { return controller.state; },
+        update: (patch) => controller.update(patch as Patch<ICellState>),
+        redraw: () => controller.redraw(),
+        clear: () => controller.clear(),
+        plot: (document) => this.handlePlotData(document),
+        layout: () => this._layout(),
+      },
+      {
+        cargoData: (path) => CartographyService.cargoData(controller.api.cargo, path),
+        cargoGraph: (request) => CartographyService.cargoGraph(controller.api.cargo, request),
+        constructs: () => CartographyService.constructs(controller.api.lexicon),
+        chrestomathy: (construct) => CartographyService.chrestomathy(controller.api.lexicon, construct),
+        chrestomathyGraph: (construct, layout) =>
+          CartographyService.chrestomathyGraph(controller.api.lexicon, construct, layout),
+        census: (nodes) => CartographyService.census(controller.api.lexicon, nodes),
+      },
+    );
+  }
 
   /**
    * Process plot data from backend and update state
@@ -638,102 +663,22 @@ export class PlotActions {
   // --- code cartography: a Cargo workspace, and the chrestomathy ------------
   //
   // The same four outcomes and the same two fields per reading as the estate
-  // above: a document or the sentence saying why there is none.
-
-  /** What the server reads at a workspace path. Draws nothing; runs nothing. */
-  async loadCargoReading(path: string): Promise<void> {
-    this.stateController.update({ cargoPath: path });
-    const found = await CartographyService.cargoData(this.stateController.api.cargo, path);
-    this._settle(found, 'cargoReading', 'cargoProblem');
-  }
-
-  /** The workspace as a graph, on the canvas. */
-  async drawCargo(options: { features?: boolean; transitive?: boolean } = {}): Promise<void> {
-    this.stateController.clear();
-    const found = await CartographyService.cargoGraph(this.stateController.api.cargo, {
-      path: this.stateController.state.cargoPath,
-      layout: this._layout(),
-      ...options,
-    });
-    this._draw(found, 'cargoProblem');
-  }
-
-  /** Every construct, for the panel's choice. */
-  async loadConstructIndex(): Promise<void> {
-    const found = await CartographyService.constructs(this.stateController.api.lexicon);
-    if (isProblem(found)) {
-      this.stateController.update({ constructIndex: null, chrestomathyProblem: found.problem });
-    } else {
-      this.stateController.update({ constructIndex: found.document as unknown as ConstructIndex });
-    }
-    this.stateController.redraw();
-  }
-
-  /** One construct across every language, for the panel's table. */
-  async loadChrestomathy(construct: string): Promise<void> {
-    this.stateController.update({ constructChosen: construct });
-    const found = await CartographyService.chrestomathy(this.stateController.api.lexicon, construct);
-    this._settle(found, 'chrestomathyReading', 'chrestomathyProblem');
-  }
-
-  /**
-   * The chrestomathy of the graph on the canvas: which constructs its nodes
-   * are, in which languages. A stamped node is sent with its stamp; one that
-   * arrived without one is sent with its whole `meta`, so the server's one
-   * rule can place it -- the client never decides a construct.
-   */
-  async loadCensus(nodes: ReadonlyArray<Record<string, unknown>>): Promise<void> {
-    const sent = nodes.map((n) => {
-      const meta = n.meta && typeof n.meta === 'object' ? (n.meta as Record<string, unknown>) : {};
-      return {
-        id: n.id,
-        language: n.language,
-        kind: n.kind,
-        construct: n.construct,
-        meta: typeof n.construct === 'string' ? { facets: meta.facets } : meta,
-      };
-    });
-    const found = await CartographyService.census(this.stateController.api.lexicon, sent);
-    this._settle(found, 'chrestomathyCensus', 'censusProblem');
-  }
-
-  /** The chosen construct as a graph, tokens coloured by abstraction layer. */
-  async drawChrestomathy(): Promise<void> {
-    this.stateController.clear();
-    const found = await CartographyService.chrestomathyGraph(
-      this.stateController.api.lexicon,
-      this.stateController.state.constructChosen,
-      this._layout(),
-    );
-    this._draw(found, 'chrestomathyProblem');
-  }
+  // above, sequenced in `cartography_actions.ts` -- pure, and tested under
+  // `node --test` -- through `this.cartography`, which the constructor hands
+  // the state, the canvas and the routes -- the census of the canvas too.
 
   private _layout(): string {
     return convertLayoutToBackend(this.stateController.state.graphStyling.layout);
   }
 
-  /** Put a document in one field and clear the other, or the reverse. */
+  /** Put a document in one field and clear the other, or the reverse (`settlePatch`). */
   private _settle(
     found: SeamOutcome,
-    readingField:
-      'capabilitiesReading' | 'overviewReading' | 'cargoReading' | 'chrestomathyReading' | 'chrestomathyCensus'
-      | 'showSubjects' | 'showViews',
-    problemField:
-      'capabilitiesProblem' | 'overviewProblem' | 'cargoProblem' | 'chrestomathyProblem' | 'censusProblem'
-      | 'showProblem',
+    readingField: 'capabilitiesReading' | 'overviewReading' | 'showSubjects' | 'showViews',
+    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem',
   ): void {
-    const patch: Record<string, unknown> = {};
-    if (isProblem(found)) {
-      patch[readingField] = null;
-      patch[problemField] = found.problem;
-      logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
-    } else {
-      patch[readingField] = found.document as unknown as
-        CapabilitiesDocument | OverviewDocument | CargoDocument | ChrestomathyDocument | CensusDocument
-        | ShowSubjectsDocument | ShowViewsDocument;
-      patch[problemField] = null;
-    }
-    this.stateController.update(patch);
+    if (isProblem(found)) logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
+    this.stateController.update(settlePatch(found, readingField, problemField) as Patch<ICellState>);
     this.stateController.redraw();
   }
 
@@ -745,10 +690,7 @@ export class PlotActions {
    * claim, and a false one. **AND REDRAW**: `update` changes state without
    * repainting, and this resolves outside any DOM handler.
    */
-  private _draw(
-    found: SeamOutcome,
-    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'cargoProblem' | 'chrestomathyProblem' | 'showProblem',
-  ): void {
+  private _draw(found: SeamOutcome, problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem'): void {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {
       patch[problemField] = found.problem as SeamProblem;
@@ -764,10 +706,11 @@ export class PlotActions {
   }
 
   /**
-   * Plot a single uploaded file via /parse/unified
+   * Plot added files as one directory, every file given, at `depth`, via
+   * /parse/unified. Resolves to what the parse said it could not read
+   * (`parse_notes.ts`), for the caller to say.
    */
-  /** Plot added files as one directory, every file given, at `depth`. */
-  async plotUploads(files: RawFile[], depth: number): Promise<void> {
+  async plotUploads(files: RawFile[], depth: number): Promise<string[]> {
     this.stateController.clear();
     try {
       const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
@@ -781,6 +724,7 @@ export class PlotActions {
       if (!data) throw new Error('No data returned from parse/unified');
       this.stateController.update({ parseDirectory: dir });
       this.handlePlotData(data);
+      return parseNotes(data);
     } catch (error) {
       console.error('Failed to plot uploaded files:', error);
       throw error;

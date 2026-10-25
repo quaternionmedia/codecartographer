@@ -32,6 +32,7 @@ import asyncio
 from pathlib import Path
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
 from codecarto.services import clones, system_composer
@@ -104,7 +105,9 @@ async def replay(ws: WebSocket, repo: str = Query(...),
     if clone is None:
         await ws.close(code=4404, reason=f"no clone named {repo!r}")
         return
-    payload = system_composer.events(clone, limit=limit)
+    # A git process per commit and per branch: off the loop, or every other
+    # route and socket waits for the derivation.
+    payload = await run_in_threadpool(system_composer.events, clone, limit=limit)
     try:
         for change in payload["changes"]:
             await ws.send_json({

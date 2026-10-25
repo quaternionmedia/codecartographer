@@ -181,13 +181,17 @@ dependencies of dependencies* widen **draw the workspace**.
 Id `chrestomathy-panel`. Opens from the `+` menu, or from View ▸ Compare.
 
 *On the canvas* reads whatever graph is drawn as the constructs its nodes are,
-in which languages, and names what the vocabulary could not place; it is read
-again whenever a new graph is drawn. A construct's name sets it in the table
+in which languages, and names what the vocabulary could not place, each as what
+it is (a file the walk drew, a kind that is no construct and why); it is read
+again whenever a new graph is drawn, and never kept for one that has gone -- a
+construct drawn from the vocabulary is not code and has no census. A construct's name sets it in the table
 below; **show** frames its nodes and selects them for the
 [selection ring](#selection-ring). *Construct* picks one construct and sets it
 beside itself in every language: how each spells it, with the abstraction layer
-of each token, what its parser calls it, and a note. A language with no
-spelling is a row saying so. **draw the construct** draws it.
+of each token, what its parser calls it, and a note. Every language
+`constructs.yaml` lists -- C, Rust, Python, assembly and the linker script -- is
+a row: one with no spelling has its note, or one saying the vocabulary records
+none. **draw the construct** draws it.
 
 ### Files
 
@@ -255,7 +259,19 @@ Id `graph-settings-panel`. In the default arrangement.
   group outline, inside a margin, centred on what is drawn.
 - **The legend** sits at the bottom left. Its header gives the totals; click it
   to list the node and edge kinds actually drawn, each with its swatch and
-  count.
+  count. It keys the colours on screen. Under *Color By: Abstraction Layer* a
+  row's swatch takes the colour the canvas paints its nodes, and an *Abstraction
+  layers* section names each layer painted and counts its nodes -- by language
+  where the graph holds more than one, since a layer's number is a rank within
+  one language's lexicon. Under *Auto* a layer is named only where a node's own
+  colour is its layer's, as the chrestomathy's tokens are. *Color By: Construct*
+  paints each node the vocabulary placed in its construct's colour, alike across
+  languages, and a *Constructs* section names each construct painted; under the
+  other colourings a construct is named only where a node's own colour is its
+  construct's, so the crate graph under *Auto* has no *Package* row. The canvas,
+  the vis-network renderer and the key take the fill from one function,
+  `paintedColor`. A record (`ngon`) is a row per side count, and says it:
+  *Struct · 4 sides*.
 - **Right-click** opens the [radial menu](#the-radial-menu).
 
 ## The radial menu
