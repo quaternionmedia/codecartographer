@@ -680,7 +680,8 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
     \b
         metadata.json   cargo metadata --format-version 1 --locked
         check.jsonl     cargo check --workspace --message-format=json --locked
-        BIN.map         cargo rustc --locked --profile release --bin BIN -- -C link-arg=-Map=...
+        BIN.map         cargo rustc --locked --profile release --package PKG --bin BIN
+                            -- -C link-arg=-Map=...   (PKG: the member with that bin)
 
     \b
     They go under the workspace root cargo names -- PATH's own, or the one
@@ -718,15 +719,47 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
           *(["--all-targets"] if all_targets else [])], True),
         *((f"{binary}.map", None, False) for binary in maps),
     ]
+
+    def package_of(binary: str) -> str | None:
+        """The workspace package that owns a binary, from the metadata just
+        recorded: `cargo rustc` in a workspace with no root package will not
+        guess it."""
+        import json
+
+        try:
+            data = json.loads((out / cargo_service.METADATA_DOCUMENT).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        members = set(data.get("workspace_members") or [])
+        for package in data.get("packages") or []:
+            if package.get("id") in members and any(
+                    t.get("name") == binary and "bin" in (t.get("kind") or [])
+                    for t in package.get("targets") or []):
+                return package.get("name")
+        return None
+
     failed = False
+    metadata_failed = ""  # how the metadata step failed, when it did
     for name, command, captured in steps:
         if command is None:
+            binary = name[: -len(".map")]
+            package = package_of(binary)
+            if package is None:
+                failed = True
+                if metadata_failed:
+                    # The package is read from that step's document: say why it is not known.
+                    click.secho(f"✗ cannot link {binary}: the metadata step {metadata_failed}, so "
+                                f"which workspace member has that binary is not known", fg="red")
+                else:
+                    click.secho(f"✗ no workspace package has a binary named {binary}, "
+                                f"by the {cargo_service.METADATA_DOCUMENT} just recorded", fg="red")
+                continue
             # The linker writes the map itself; cargo's output is not the
             # document. The flag is split before the path goes in, so a path
             # with a space stays one argument.
-            binary = name[: -len(".map")]
-            command = [cargo_bin, "rustc", "--locked", "--profile", profile, "--bin", binary, *offline,
-                       "--", *(part.format(path=(out / name).as_posix()) for part in shlex.split(map_flag))]
+            command = [cargo_bin, "rustc", "--locked", "--profile", profile, "--package", package,
+                       "--bin", binary, *offline, "--",
+                       *(part.format(path=(out / name).as_posix()) for part in shlex.split(map_flag))]
         click.secho(f"→ cargo {' '.join(command[1:])}", fg="cyan")
         before = (out / name).stat().st_mtime if (out / name).is_file() else None
         try:
@@ -739,6 +772,8 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
                 if isinstance(expired.stdout, bytes) else (expired.stdout or "")
             stderr, code = "", None
         if name == cargo_service.METADATA_DOCUMENT:
+            if code != 0:
+                metadata_failed = f"did not finish in {timeout}s" if code is None else f"exited {code}"
             out = _workspace_documents(stdout, root, cargo_service.DOCUMENTS)
             if out.parent.parent != root:
                 click.echo(f"  cargo answered for the workspace at {out.parent.parent}; "

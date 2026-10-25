@@ -328,7 +328,7 @@ Runs, in PATH:
 cargo metadata --format-version 1 --locked --offline              # -> target/codecarto/metadata.json
 cargo check --workspace --message-format=json --locked --offline  # -> target/codecarto/check.jsonl
 # and, for each --map BIN, a link that keeps the linker's map:
-cargo rustc --locked --profile release --bin BIN --offline -- -C link-arg=-Map=<workspace>/target/codecarto/BIN.map
+cargo rustc --locked --profile release --package PKG --bin BIN --offline -- -C link-arg=-Map=<workspace>/target/codecarto/BIN.map
 ```
 
 The documents go to the `target/codecarto/` of the workspace root cargo names:
@@ -356,7 +356,11 @@ claiming a write. `--map-flag` is how the linker is asked -- the default suits
 `rust-lld`; a GCC linker wants `'-C link-arg=-Wl,-Map={path}'` -- and is split
 into arguments before the path is put in, so a path with a space stays one.
 `--profile` is the build measured, `release` by default because that is the
-one flashed.
+one flashed. `PKG` is the workspace member with a binary named `BIN`, read from
+the `metadata.json` just recorded -- `cargo rustc` will not guess it in a
+workspace with no root package -- and a `BIN` no member has is said by name
+and fails the run; when the metadata step itself failed or timed out, that is
+the reason given.
 
 ---
 

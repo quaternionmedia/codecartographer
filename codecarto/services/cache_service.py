@@ -78,7 +78,10 @@ def _repo_key_from_url(url: str) -> str:
 #      union's fields, and is absent where nothing was counted.
 #   5: with a recorded link map, linker regions and sections carry
 #      `meta.measured` and functions and statics `meta.bytes`.
-GRAPH_SCHEMA_VERSION = 5
+#   6: `meta.bytes` and `meta.measured` read the maps LLD and GNU ld write
+#      as they write them, and reach a Rust generic's or closure's item and
+#      a C function GCC cloned (`.constprop`, `.part`, `.isra`).
+GRAPH_SCHEMA_VERSION = 6
 
 
 def _make_key(url: str, mode: str, layout: str, extensions: list[str]) -> str:

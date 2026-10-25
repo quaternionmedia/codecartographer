@@ -20,17 +20,35 @@ How each figure is found
 region use   the sum of the sizes of the output sections whose address falls in
              the region, at run time; plus, for a section whose load address
              differs (`.data`), its size against the region it is loaded from.
-             A zero-initialised section (`.bss`, `.uninit`, `.noinit`, a stack
-             or heap) has no load image -- named by convention, because LLD's
-             map does not print a section's type. Only placed sections count:
-             debug information, symbol tables and the like are printed at
-             address 0, inside any region that starts there, and are known by
-             name or by lying on addresses a placed section already holds.
-symbol size  a symbol's input section's size when the section holds that symbol
-             alone, which is how `-ffunction-sections` and Rust lay code out;
-             otherwise the distance to the next symbol in the section.
+             A section has no load image when it holds nothing with contents:
+             only zero-initialised input (`.bss.*`, `COMMON`), or no input at
+             all -- a stack or heap reserved with `. = . + size`, which ld
+             leaves without an image whether or not the script says NOLOAD, and
+             for which GNU ld still prints a load address. Neither map prints a
+             section's type, so a section named for zeroed memory (`.bss`,
+             `.uninit`, `.noinit`, `.stack`, `.heap`) has none either. Only
+             placed sections count: debug information, symbol tables and the
+             like are printed at address 0, inside any region that starts
+             there, and are known by name or by lying on addresses a placed
+             section already holds.
+symbol size  the size LLD prints beside the symbol; where a map prints none
+             (GNU ld), the input section's size when the section holds that
+             symbol alone, which is how `-ffunction-sections` and Rust lay code
+             out, otherwise the distance to the next symbol in the section.
+             ARM's mapping symbols (`$t`, `$d`), which mark code and data inside
+             a section and name nothing, are skipped.
+statics      GNU ld lists only global symbols. A `static` function or object
+             compiled with `-ffunction-sections -fdata-sections` still has a
+             section GCC named after it (`.bss.rx_buffer`), and an input section
+             that lists no symbol is read as that one -- a clone GCC made of a
+             function (`.text.uart_rx.constprop.0`, `.part.0`, `.isra.0`) as
+             the function it was cloned from.
 names        Rust's legacy mangling (`_ZN...17h<hash>E`) is demangled and the
-             hash dropped, so a symbol reads as the path it was compiled from.
+             hash dropped, so a symbol reads as the path it was compiled from;
+             a v0-mangled symbol is read as the linker demangled it (LLD does),
+             with the suffix LTO adds (` (.0)`, `.llvm.<n>`) dropped. A generic
+             instance (`delay::<u32>`) is its item's bytes, and a closure
+             (`main::{closure#0}`) its enclosing function's.
 
 WHAT THIS CANNOT SEE. Whether the map belongs to the source beside it -- only
 when each was written -- or what an inlined function cost: inlined code has no
@@ -47,6 +65,9 @@ from pathlib import Path
 from typing import Iterable
 
 _NO_LOAD = re.compile(r"^\.(?:t?s?bss|uninit|noinit|stack|heap)(?:\.|$)")
+# ARM and AArch64 mapping symbols: `$t` (Thumb code), `$a`, `$d` (data), `$x`,
+# optionally numbered. They mark what kind of bytes follow; they are not names.
+_MAPPING = re.compile(r"^\$[atdx](?:\.\w+)?$")
 # Sections a link keeps in the ELF file and never places in memory: debug
 # information, symbol and string tables, `.comment`, build attributes. Neither
 # map prints a section's flags, so they are known by the names `objdump -h`
@@ -82,7 +103,9 @@ class OutputSection:
     @property
     def loads(self) -> bool:
         """Whether the section has an image to load from somewhere else."""
-        return not _NO_LOAD.match(self.name) and self.lma != self.vma
+        if self.lma == self.vma or _NO_LOAD.match(self.name):
+            return False
+        return any(not _NO_LOAD.match(i.name) and i.name != "COMMON" for i in self.inputs)
 
 
 @dataclass
@@ -185,8 +208,8 @@ def _parse_lld(lines: list[str], header: int, path: str) -> LinkMap:
         text = m.group(5)
         # Out, In and Symbol are columns eight apart: the depth is the indent.
         depth = round((len(text) - len(text.lstrip(" "))) / 8)
-        if " = " in text or text.rstrip().endswith("="):
-            continue  # a script assignment, not a section or a symbol
+        if not text.strip() or " = " in text or text.rstrip().endswith("="):
+            continue  # a script assignment, or a row LLD printed with no text
         if depth <= 0:
             section = OutputSection(text.strip(), vma, lma, size)
             found.sections.append(section)
@@ -195,8 +218,9 @@ def _parse_lld(lines: list[str], header: int, path: str) -> LinkMap:
             file, _, name = text.strip().rpartition(":(")
             inp = InputSection(name.rstrip(")") or text.strip(), file, vma, size)
             section.inputs.append(inp)
-        elif inp is not None:
-            inp.symbols.append(Symbol(text.strip(), vma))
+        elif inp is not None and not _MAPPING.match(text.strip()):
+            # LLD prints a symbol's own size; zero means it did not know one.
+            inp.symbols.append(Symbol(text.strip(), vma, size or None))
     return found
 
 
@@ -205,6 +229,15 @@ _GNU_REGION = re.compile(rf"^(\S+)\s+({_HEX})\s+({_HEX})(?:\s+(\S+))?\s*$")
 _GNU_SECTION = re.compile(rf"^(\S+)?\s+({_HEX})\s+({_HEX})(?:\s+load address\s+({_HEX}))?\s*$")
 _GNU_INPUT = re.compile(rf"^ (\S+)?\s+({_HEX})\s+({_HEX})\s+(\S.*)$")
 _GNU_SYMBOL = re.compile(rf"^\s+({_HEX})\s+([^=\s][^=]*?)\s*$")
+# The section GCC gives a function or object under -ffunction-sections and
+# -fdata-sections: `.text.uart_read`, `.bss.rx_buffer`, `.text.startup.main`,
+# and a clone GCC made of a function -- constant-propagated, split off, with
+# its arguments replaced (`.text.uart_rx.constprop.0`, `.part.0`, `.isra.0`) --
+# which is that function's bytes.
+_OWNED_SECTION = re.compile(r"^\.(?:text|rodata|data|bss|sdata|sbss|tdata|tbss)\."
+                            r"(?:(?:startup|unlikely|hot|exit)\.)?"
+                            r"(?!(?:startup|unlikely|hot|exit)$)([A-Za-z_]\w*)"
+                            r"(?:\.(?:constprop|isra|part|lto_priv|cold|localalias)(?:\.\d+)?)*$")
 # A script's data statement (`LONG(0x12345678)`): its bytes, not a symbol.
 _GNU_DATA = re.compile(rf"^\s+{_HEX}\s+{_HEX}\s+(?:BYTE|SHORT|LONG|QUAD|SQUAD)\s")
 # GNU ld starts each part of its map at column 0; the words anywhere else (a
@@ -272,19 +305,29 @@ def _parse_gnu(lines: list[str], path: str) -> LinkMap:
             inp = None  # the bytes after it are the statement's, in no input section
             continue
         m = _GNU_SYMBOL.match(line)
-        if m and inp is not None and not m.group(2).startswith((".", "*")):
+        # `(size before relaxing)` is a second size for the input above it.
+        if m and inp is not None and not m.group(2).startswith((".", "*", "(")):
             inp.symbols.append(Symbol(m.group(2), int(m.group(1), 16)))
+    for section in found.sections:
+        for inp in section.inputs:
+            m = _OWNED_SECTION.match(inp.name)
+            if m and not inp.symbols and inp.size:
+                inp.symbols.append(Symbol(m.group(1), inp.address, inp.size))
     return found
 
 
 def _size_symbols(inp: InputSection) -> None:
+    """Sizes for the symbols the map printed none for; a printed one stands."""
+    if all(sym.size is not None for sym in inp.symbols):
+        return
     ordered = sorted(inp.symbols, key=lambda s: s.address)
     if len(ordered) == 1 and ordered[0].address == inp.address:
         ordered[0].size = inp.size
         return
     end = inp.address + inp.size
     for here, after in zip(ordered, ordered[1:] + [None]):
-        here.size = (after.address if after else end) - here.address
+        if here.size is None:
+            here.size = (after.address if after else end) - here.address
 
 
 # ── Measuring ─────────────────────────────────────────────────────────────────
@@ -333,6 +376,13 @@ _ESCAPES = {"$LT$": "<", "$GT$": ">", "$u20$": " ", "$C$": ",", "$RF$": "&", "$B
             "$SP$": "@", "$LP$": "(", "$RP$": ")", "$u27$": "'", "$u5b$": "[", "$u5d$": "]",
             "$u7b$": "{", "$u7d$": "}", "$u3b$": ";", "$u2b$": "+", "$u22$": '"', "$u7e$": "~"}
 _HASH = re.compile(r"::h[0-9a-f]{16}$")
+# What LTO and the demangler append to a name: `blinky::TICKS (.0)`,
+# `foo.llvm.123456`, and the bare `.0` on a raw name.
+_SUFFIX = re.compile(r"(?: \((?:\.[\w.]+)\)|\.llvm\.\d+|\.\d+)$")
+# cortex-m-rt renames the function an `#[entry]`, `#[exception]` or
+# `#[interrupt]` attribute marks, and calls it from a trampoline under the
+# original name; both are that function's bytes.
+_RUNTIME_PREFIX = "__cortex_m_rt_"
 
 
 def _unescape(part: str) -> str:
@@ -351,6 +401,7 @@ def demangle(name: str) -> str:
     Itanium demangler prints for it, which joins the segments with `::` and
     leaves Rust's own escapes (`_$LT$`, `..`, `$u20$`) in place -- what LLD
     writes in a map. Anything else is returned with only its hash dropped."""
+    name = _SUFFIX.sub("", name)
     m = re.fullmatch(r"_?_ZN(.+)E", name)
     if m is None:
         if "$" in name or ".." in name:
@@ -393,11 +444,18 @@ def symbol_key(symbol: str) -> tuple[str | None, str]:
 
     `<hal::gpio::pin::Pin as hal::gpio::OutputPin>::set_high` -> (`Pin`, `set_high`)
     `hal::gpio::pin::<impl hal::gpio::OutputPin for hal::gpio::pin::Pin>::set_high` -> (`Pin`, `set_high`)
-    `hal::gpio::pin::Pin::new` -> (`Pin`, `new`); `blinky::delay` -> (None, `delay`)"""
+    `hal::gpio::pin::Pin::new` -> (`Pin`, `new`); `blinky::delay` -> (None, `delay`)
+
+    What a name appends to the item it came from is dropped, since its bytes
+    are that item's: a generic instance's arguments (`blinky::delay::<u32>`)
+    and a closure or other compiler-made item inside it
+    (`blinky::main::{closure#0}`, `{{closure}}` in the legacy spelling)."""
     parts = _split_path(demangle(symbol))
+    while len(parts) > 1 and parts[-1].startswith(("<", "{")):
+        parts.pop()
     if not parts:
         return None, symbol
-    name = parts[-1]
+    name = parts[-1].removeprefix(_RUNTIME_PREFIX)
     owner = parts[-2] if len(parts) >= 2 else ""
     if owner.startswith("<") and owner.endswith(">"):
         inner = owner[1:-1]
@@ -482,6 +540,12 @@ def _symbol_crate(symbol: str, owner: str) -> str:
     return first
 
 
+def _object_stem(path: str) -> str:
+    """`build/main.o` and CMake's `.../main.c.obj` -> `main`, the C parser's file
+    name for what that object was compiled from."""
+    return path.replace("\\", "/").rsplit("/", 1)[-1].split(".", 1)[0]
+
+
 def _kib(n: int) -> str:
     return f"{n} B" if n < 1024 else f"{n / 1024:.1f} KiB"
 
@@ -505,9 +569,11 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
       Rust file's crate is the target whose root reaches it through `mod`
       items; *crate_roots* (root file -> crate, cargo's targets) names the
       roots, else Cargo's conventions do. An unmangled name (`main`, a
-      `#[no_mangle]` handler) is looked for in the map's own binary only. A
-      symbol from a crate outside the parse (`core`, a runtime) is counted, not
-      drawn.
+      `#[no_mangle]` handler) is looked for in the map's own binary only. A C
+      name declared in one file and defined in another answers from both; the
+      object the map says the symbol came from (`build/main.o`) names the file
+      that defined it. A symbol from a crate outside the parse (`core`, a
+      runtime, the C library) is counted, not drawn.
 
     A *stale* map -- linked before a source changed -- is not used: the
     regions it would measure say so in `meta.measured` (`used: False`) and
@@ -600,6 +666,9 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
                     found = [(n, d) for n, d in found if impl_type(n) == type_name]
                 else:
                     found = [(n, d) for n, d in found if d.get("kind") != "method"]
+                if len(found) > 1:
+                    obj = _object_stem(inp.file)
+                    found = [(n, d) for n, d in found if d.get("file") == obj] or found
                 if not found:
                     joined["outside"] += 1
                     continue

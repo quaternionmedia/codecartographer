@@ -856,6 +856,19 @@ class Ran:
         self.stdout, self.stderr, self.returncode = stdout, stderr, returncode
 
 
+# What `cargo metadata` says of a workspace whose member `blinky` has a `blinky` bin.
+BLINKY_METADATA = json.dumps({
+    "version": 1, "workspace_members": ["path+file:///ws/crates/blinky#0.1.0"],
+    "packages": [{"id": "path+file:///ws/crates/blinky#0.1.0", "name": "blinky",
+                  "targets": [{"name": "blinky", "kind": ["bin"]}]}]})
+
+
+def blinky_cargo(link: Ran):
+    """cargo answering blinky's metadata, a check that finished, and *link* for the rest."""
+    return lambda command, **kwargs: (Ran(BLINKY_METADATA) if command[1] == "metadata"
+                                      else FINISHED if command[1] == "check" else link)
+
+
 def test_record_links_a_binary_for_its_map(tmp_path, monkeypatch):
     """The map is the linker's own output: the command asks for it, and a
     build that wrote none is a failure, not a document."""
@@ -867,21 +880,21 @@ def test_record_links_a_binary_for_its_map(tmp_path, monkeypatch):
         if command[1] == "rustc":
             target = command[-1].split("-Map=", 1)[1]
             Path(target).write_text("     VMA      LMA     Size Align Out     In      Symbol\n")
-        return FINISHED if command[1] == "check" else Ran()
+        return blinky_cargo(Ran())(command)
 
     monkeypatch.setattr("shutil.which", lambda name: "cargo")
     monkeypatch.setattr("subprocess.run", fake_run)
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
     assert result.exit_code == 0, result.output
     expected = (tmp_path / cargo_service.DOCUMENTS / "blinky.map").resolve().as_posix()
-    assert ran[-1] == ["rustc", "--locked", "--profile", "release", "--bin", "blinky", "--offline", "--",
-                       "-C", f"link-arg=-Map={expected}"]
+    # A workspace with no root package: cargo will not guess whose binary it is.
+    assert ran[-1] == ["rustc", "--locked", "--profile", "release", "--package", "blinky", "--bin", "blinky",
+                       "--offline", "--", "-C", f"link-arg=-Map={expected}"]
     assert (tmp_path / cargo_service.DOCUMENTS / "blinky.map").is_file()
 
     (tmp_path / cargo_service.DOCUMENTS / "blinky.map").unlink()
     linked = Ran(stderr="   Compiling blinky v0.1.0 (/ws/crates/blinky)\n    Finished `release` profile\n")
-    monkeypatch.setattr("subprocess.run",
-                        lambda command, **kwargs: FINISHED if command[1] == "check" else linked)
+    monkeypatch.setattr("subprocess.run", blinky_cargo(linked))
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
     assert result.exit_code == 1
     assert "the linker wrote no blinky.map" in result.output
@@ -903,7 +916,7 @@ def test_record_passes_a_map_path_with_a_space_as_one_argument(tmp_path, monkeyp
             if target.parent.is_dir():
                 target.write_text("     VMA      LMA     Size Align Out     In      Symbol\n")
             return Ran(stderr="   Compiling blinky v0.1.0\n")
-        return FINISHED if command[1] == "check" else Ran()
+        return blinky_cargo(Ran())(command)
 
     monkeypatch.setattr("shutil.which", lambda name: "cargo")
     monkeypatch.setattr("subprocess.run", fake_run)
@@ -912,6 +925,32 @@ def test_record_passes_a_map_path_with_a_space_as_one_argument(tmp_path, monkeyp
     expected = (root / cargo_service.DOCUMENTS / "blinky.map").resolve().as_posix()
     assert ran[-1][-2:] == ["-C", arg.format(path=expected)]
     assert result.exit_code == 0, result.output
+
+
+@pytest.mark.parametrize("how, said", [("exit", "the metadata step exited 101"),
+                                       ("timeout", "the metadata step did not finish in 1s")])
+def test_record_says_the_metadata_step_failed_rather_than_that_no_package_has_the_bin(
+        tmp_path, monkeypatch, how, said):
+    """Which member owns a binary is read from the metadata just recorded.
+    Mutation: say no member has the binary whatever that step did -- a broken
+    manifest or a slow registry reads as a misspelt binary, and this fails."""
+    import subprocess
+
+    write(tmp_path / "Cargo.toml", '[package]\nname = "blinky"\nversion = "0.1.0"\n')
+
+    def fake_run(command, **kwargs):
+        if command[1] == "metadata":
+            if how == "timeout":
+                raise subprocess.TimeoutExpired(command, 1, output='{"version": 1')
+            return Ran(stderr="error: failed to parse manifest at `/ws/Cargo.toml`\n", returncode=101)
+        return FINISHED if command[1] == "check" else Ran()
+
+    monkeypatch.setattr("shutil.which", lambda name: "cargo")
+    monkeypatch.setattr("subprocess.run", fake_run)
+    result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky", "--timeout", "1"])
+    assert result.exit_code == 1
+    assert "no workspace package has a binary named" not in result.output
+    assert f"cannot link blinky: {said}" in result.output
 
 
 def test_record_says_when_cargo_did_not_relink(tmp_path, monkeypatch):
@@ -927,8 +966,7 @@ def test_record_says_when_cargo_did_not_relink(tmp_path, monkeypatch):
     os.utime(old, (then, then))
     fresh = Ran(stderr="    Finished `release` profile [optimized] target(s) in 0.04s\n")
     monkeypatch.setattr("shutil.which", lambda name: "cargo")
-    monkeypatch.setattr("subprocess.run",
-                        lambda command, **kwargs: FINISHED if command[1] == "check" else fresh)
+    monkeypatch.setattr("subprocess.run", blinky_cargo(fresh))
 
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
     assert result.exit_code == 1
@@ -951,7 +989,7 @@ def test_record_from_a_member_crate_links_its_map_where_the_workspace_is_read(tm
     root = tmp_path / "ws"
     write(root / "Cargo.toml", '[workspace]\nmembers = ["crates/*"]\n')
     crate(root, "crates/blinky", "blinky")
-    metadata = Ran(json.dumps({"version": 1, "packages": [], "workspace_root": str(root)}))
+    metadata = Ran(json.dumps({**json.loads(BLINKY_METADATA), "workspace_root": str(root)}))
     linked_to = []
 
     def fake_run(command, **kwargs):

@@ -3,12 +3,15 @@
 `tests/fixtures/linkmaps/firmware-gnu.map` is in the shape GNU ld prints for a
 small C firmware; the fixture workspace's `target/codecarto/blinky.map` is in
 the shape rust-lld prints for its `blinky` binary. Both were written by hand in
-those shapes, not produced by the linkers.
+those shapes. `blinky-rust-lld.map` and `sensor-c-gnu.map` were written by the
+linkers themselves; their sections below say how.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import os
+import re
 import shutil
 import time
 from pathlib import Path
@@ -283,6 +286,15 @@ def test_mangled_impl_round_trips():
     ("hal::gpio::pin::Pin::new", ("Pin", "new")),
     ("blinky::delay", (None, "delay")),
     ("SysTick", (None, "SysTick")),
+    # v0 names, as LLD demangles them: a generic instance is its item, and a
+    # closure its enclosing function.
+    ("blinky::delay::<u32>", (None, "delay")),
+    ("<hal::gpio::pin::Pin<hal::Output>>::set_high", ("Pin", "set_high")),
+    ("<hal::uart::Uart>::write::<u8>", ("Uart", "write")),
+    ("blinky::main::{closure#0}", (None, "main")),
+    ("blinky::run::<u8>::{closure#0}::{closure#1}", (None, "run")),
+    ("<hal::uart::Uart>::poll::{closure#0}", ("Uart", "poll")),
+    ("blinky::main::{{closure}}", (None, "main")),  # the legacy spelling
 ])
 def test_symbol_key(symbol, key):
     assert L.symbol_key(symbol) == key
@@ -461,3 +473,217 @@ def test_a_map_older_than_the_source_is_not_used_and_says_so(tmp_path):
     assert "not measured" in flash["hover"] and "before a source changed" in flash["hover"]
     assert "bytes" not in node(graph, "function", "main", "/blinky/src/")["meta"]
     assert "bytes" not in node(graph, "static", "TICKS")["meta"]
+
+
+# ── A map rust-lld wrote ──────────────────────────────────────────────────────
+# `blinky-rust-lld.map` is the map rust-lld 1.99 wrote for this workspace's
+# `blinky`, linked with `--profile release` (LTO, opt-level "s") by
+# `codecarto cargo record --map blinky`; only its object paths are rewritten.
+# What it has that a map written from the documentation did not: rows LLD prints
+# with no text, ARM mapping symbols, each symbol's own size, v0 names with the
+# suffix LTO adds, and the trampoline cortex-m-rt puts in front of `#[entry]`.
+
+REAL = FIXTURES / "linkmaps" / "blinky-rust-lld.map"
+
+
+class TestRealLld:
+    @pytest.fixture(scope="class")
+    def link_map(self):
+        return L.read(REAL)
+
+    def test_sections_and_no_empty_rows(self, link_map):
+        assert all(s.name for s in link_map.sections)
+        alloc = [(s.name, s.vma, s.size) for s in link_map.sections if s.size and s.vma]
+        assert alloc == [(".vector_table", 0x08000000, 0x400), (".text", 0x08000400, 0xb0),
+                         (".bss", 0x20000000, 4)]
+
+    def test_symbols_carry_the_size_lld_printed_and_mapping_symbols_are_skipped(self, link_map):
+        """Mutation: size symbols by distance even when LLD printed a size --
+        `Reset` comes out 63 (its Thumb address is odd) and this fails. Mutation:
+        keep `$t` and `$d` -- they appear as symbols and this fails."""
+        sizes = {L.demangle(s.name): s.size for s in link_map.symbols()}
+        assert not any(name.startswith("$") for name in sizes)
+        assert (sizes["Reset"], sizes["SysTick"], sizes["main"]) == (0x3e, 0x14, 8)
+        assert sizes["blinky::__cortex_m_rt_main"] == 0x2a
+        assert sizes["blinky::TICKS"] == 4  # `blinky::TICKS (.0)` as LLD printed it
+
+    def test_usage(self, link_map):
+        uses = by_name(L.usage(link_map, BLINKY_REGIONS))
+        assert (uses["FLASH"].used_bytes, uses["RAM"].used_bytes) == (0x4b0, 4)
+
+    def test_a_region_at_zero_holds_none_of_its_debug_information(self, link_map):
+        """The same link with flash moved to 0, as an nRF52 lays it out: every
+        flash address 0x08000000 lower, the columns kept. Mutation: decide a
+        section's region by its address alone -- the 9,482 B of `.debug_*`,
+        `.symtab`, `.strtab` and `.comment` count as flash and this fails."""
+        assert by_name(L.usage(link_map, NRF_REGIONS))["FLASH"].used_bytes == 0  # nothing placed below 1 MiB
+        moved = re.sub(r"(?m)^( *)8000([0-9a-f]{3})( +)8000([0-9a-f]{3}) ", r"\1    \2\3    \4 ", REAL.read_text())
+        uses = by_name(L.usage(L.parse(moved, "nrf.map"), NRF_REGIONS))
+        assert by_name(L.parse(moved, "nrf.map").sections)[".vector_table"].vma == 0
+        assert (uses["FLASH"].used_bytes, uses["RAM"].used_bytes) == (0x4b0, 4)
+
+    def test_on_the_code_map_the_entry_function_owns_its_trampoline(self, tmp_path):
+        """cortex-m-rt renames `#[entry] fn main` to `__cortex_m_rt_main` and
+        calls it from a `main` trampoline; both are `main`'s bytes. Mutation:
+        drop the runtime prefix -- `main` gets only the trampoline's 8."""
+        root = copy_workspace(tmp_path, stale=False)
+        shutil.copy(REAL, root / "target" / "codecarto" / "blinky.map")
+        graph = UnifiedParserService.build_graph(get_local_repo(str(root), extensions=[".rs", ".x"]),
+                                                 3, [".rs", ".x"])
+        assert node(graph, "function", "main", "/blinky/src/")["meta"]["bytes"] == 0x2a + 8
+        assert node(graph, "function", "SysTick")["meta"]["bytes"] == 0x14
+        assert node(graph, "static", "TICKS")["meta"]["bytes"] == 4
+        # LTO inlined `delay` into its caller: no symbol, so no bytes of its own.
+        assert "bytes" not in node(graph, "function", "delay")["meta"]
+        assert node(graph, "region", "FLASH")["meta"]["measured"]["used_bytes"] == 0x4b0
+
+
+V0_MAP = """\
+     VMA      LMA     Size Align Out     In      Symbol
+ 8000000  8000000       60     4 .text
+ 8000000  8000000       20     2         blinky.o:(.text._RINvCs1_6blinky5delaymEB2_)
+ 8000000  8000000       20     1                 blinky::delay::<u32>
+ 8000020  8000020       10     2         blinky.o:(.text._RINvCs1_6blinky5delayhEB2_)
+ 8000020  8000020       10     1                 blinky::delay::<u8>
+ 8000030  8000030       10     2         blinky.o:(.text._RNCNvCs1_6blinky4main0B3_)
+ 8000030  8000030       10     1                 blinky::main::{closure#0}
+ 8000040  8000040        8     2         blinky.o:(.text.main)
+ 8000040  8000040        8     1                 main
+ 8000048  8000048       18     2         hal.o:(.text._RNCNvMs_NtCs2_3hal4uartNtB4_4Uart4poll0B6_)
+ 8000048  8000048       18     1                 <hal::uart::Uart>::poll::{closure#0}
+"""
+
+
+def test_generic_instances_and_closures_are_their_items_bytes(tmp_path):
+    """Two instances of `delay`, a closure in `main` and one in `Uart::poll`.
+    Mutation: take a symbol's last segment as its name -- `<u32>`, `<u8>` and
+    `{closure#0}` name nothing, every one counts as outside, and this fails."""
+    root = copy_workspace(tmp_path, stale=False)
+    (root / "target" / "codecarto" / "blinky.map").write_text(V0_MAP)
+    graph = parse_rust(root)
+    assert node(graph, "function", "delay")["meta"]["bytes"] == 0x20 + 0x10
+    assert node(graph, "function", "main", "/blinky/src/")["meta"]["bytes"] == 0x10 + 8
+    assert node(graph, "method", "poll")["meta"]["bytes"] == 0x18
+    assert node(graph, "function", "delay")["meta"]["measured"]["symbols"] == [
+        "blinky::delay::<u32>", "blinky::delay::<u8>"]
+
+
+# ── A map GNU ld wrote ────────────────────────────────────────────────────────
+# `sensor-c-gnu.map` is the map arm-none-eabi-ld 2.44 (Arm GNU Toolchain
+# 14.3.Rel1) wrote linking `linkmaps/sensor-c/` for a Cortex-M4 with `-Os
+# -ffunction-sections -fdata-sections -Wl,--gc-sections` and newlib-nano; only
+# the toolchain's install path is rewritten and its line endings made LF. What it
+# has that the map written by hand did not: a stack the script reserves, for
+# which ld prints a load address and writes no image; statics, which ld does not
+# list; the second size ld prints for a relaxed input; and names one file
+# declares and another defines.
+
+REAL_GNU = FIXTURES / "linkmaps" / "sensor-c-gnu.map"
+SENSOR = FIXTURES / "linkmaps" / "sensor-c"
+requires_libclang = pytest.mark.skipif(importlib.util.find_spec("clang") is None,
+                                       reason="libclang not installed — install with: uv sync --extra c-parsing")
+
+
+class TestRealGnu:
+    @pytest.fixture(scope="class")
+    def link_map(self):
+        return L.read(REAL_GNU)
+
+    def test_usage_is_what_arm_none_eabi_size_reports(self, link_map):
+        """`arm-none-eabi-size` on the same link: text 696, data 12, bss 3348.
+        Mutation: give a section an image whenever its load address differs --
+        the reserved stack's 2052 bytes count against FLASH and this fails."""
+        uses = by_name(L.usage(link_map, link_map.regions))
+        assert (uses["FLASH"].runtime_bytes, uses["FLASH"].load_bytes) == (696, 12)
+        assert uses["RAM"].used_bytes == 12 + 3348
+        stack = by_name(link_map.sections)["._user_stack"]
+        assert stack.lma != stack.vma and not stack.loads
+
+    def test_size_still_agrees_when_flash_starts_at_zero(self, link_map):
+        """The same link with flash moved to 0 -- its memory table, sections and
+        load addresses 0x08000000 lower. Mutation: decide a section's region by
+        its address alone -- `.ARM.attributes`, `.comment` and the 7,879 B of
+        `.debug_*` count as flash and this fails."""
+        assert by_name(L.usage(link_map, NRF_REGIONS))["FLASH"].used_bytes == 0  # nothing placed below 1 MiB
+        moved = L.parse(re.sub(r"0x08([0-9a-f]{6})\b", r"0x00\1", REAL_GNU.read_text()), "nrf.map")
+        assert by_name(moved.regions)["FLASH"].origin == 0
+        uses = by_name(L.usage(moved, moved.regions))
+        assert (uses["FLASH"].runtime_bytes, uses["FLASH"].load_bytes) == (696, 12)
+        assert uses["RAM"].used_bytes == 12 + 3348
+
+    def test_statics_are_named_by_the_section_gcc_gave_them(self, link_map):
+        """Mutation: read no name from an input section's own -- `rx_buffer`,
+        `table` and `ticks` are missing and this fails."""
+        sizes = {s.name: s.size for s in link_map.symbols()}
+        assert (sizes["rx_buffer"], sizes["table"], sizes["ticks"], sizes["banner"]) == (0x100, 0x400, 4, 0x11)
+        assert sizes["main"] == 0x58  # in `.text.startup.main`, and listed by ld
+
+    def test_a_size_before_relaxing_is_not_a_symbol(self, link_map):
+        """Mutation: read `(size before relaxing)` as a name -- it appears twice,
+        once 1 byte short of nothing, and this fails."""
+        assert not any(s.name.startswith("(") for s in link_map.symbols())
+        assert all(s.size and s.size > 0 for s in link_map.symbols())
+
+    @requires_libclang
+    def test_on_the_code_map_each_name_goes_to_the_file_that_defined_it(self, tmp_path):
+        """`startup.c` declares `main`, `SysTick_Handler` and `USART2_IRQHandler`;
+        `main.c` and `uart.c` define them. Mutation: do not narrow by the object
+        the map names -- each answers from two files and gets no bytes."""
+        root = tmp_path / "sensor-c"
+        shutil.copytree(SENSOR, root)
+        (root / "target" / "codecarto").mkdir(parents=True)
+        shutil.copy(REAL_GNU, root / "target" / "codecarto" / "sensor-c.map")
+        extensions = [".c", ".h", ".ld"]
+        graph = UnifiedParserService.build_graph(get_local_repo(str(root), extensions=extensions),
+                                                 3, extensions)
+        assert node(graph, "function", "main", "main")["meta"]["bytes"] == 0x58
+        assert "bytes" not in node(graph, "function", "main", "startup")["meta"]
+        assert node(graph, "function", "USART2_IRQHandler", "uart")["meta"]["bytes"] == 0x2c
+        assert node(graph, "variable", "rx_buffer")["meta"]["bytes"] == 0x100
+        # -Os inlined `delay_ms` into `main`: no symbol, so no bytes of its own.
+        assert "bytes" not in node(graph, "function", "delay_ms")["meta"]
+        assert node(graph, "region", "FLASH")["meta"]["measured"]["used_bytes"] == 696 + 12
+
+
+def test_a_name_two_files_answer_goes_to_the_one_the_object_names():
+    """The guard the libclang test above holds, on a graph built by hand as the
+    C parser draws one -- `file` is the source's stem -- so it runs without
+    libclang. `startup.c` declares `main` and `USART2_IRQHandler`; `main.c` and
+    `uart.c` define them. Mutation: do not narrow by the object the map names
+    -- each name answers from two files, gets no bytes, and this fails."""
+    import networkx as nx
+
+    graph = nx.DiGraph()
+    for stem, kind, label in [("startup", "function", "main"), ("main", "function", "main"),
+                              ("startup", "function", "USART2_IRQHandler"),
+                              ("uart", "function", "USART2_IRQHandler"), ("uart", "variable", "rx_buffer")]:
+        graph.add_node(f"c::{stem}::{label}", language="c", kind=kind, label=label, file=stem, meta={})
+    joined = L.annotate(graph, L.read(REAL_GNU), owner="sensor-c", recorded_at="", stale=False)
+    bytes_of = {n: d["meta"].get("bytes") for n, d in graph.nodes(data=True)}
+    assert bytes_of == {"c::startup::main": None, "c::main::main": 0x58,
+                        "c::startup::USART2_IRQHandler": None, "c::uart::USART2_IRQHandler": 0x2c,
+                        "c::uart::rx_buffer": 0x100}
+    assert joined["ambiguous"] == 0
+
+
+@pytest.mark.parametrize("section, named", [
+    (".bss.rx_buffer", "rx_buffer"), (".text.startup.main", "main"), (".text.unlikely.fault", "fault"),
+    # The clones GCC makes under -Os and -O2 -- constant-propagated, split,
+    # with scalar-replaced arguments -- are the function they were cloned from.
+    (".text.uart_rx.constprop.0", "uart_rx"), (".text.crc_step.part.0", "crc_step"),
+    (".text.filter.isra.0", "filter"), (".text.parse.isra.0.constprop.0", "parse"),
+    (".text.unlikely.fault.part.0", "fault"), (".text.tick.lto_priv.0", "tick"),
+    (".rodata.str1.1", None), (".text.unlikely", None), (".text", None), (".text.foo.bar", None)])
+def test_which_input_sections_name_a_static(section, named):
+    """A merged-string section and GCC's own subsections name no object.
+    Mutation: let the name run on past a dot -- `str1.1` is read as one.
+    Mutation: allow no clone suffix -- `.text.uart_rx.constprop.0` names
+    nothing, a cloned static gets no bytes, and this fails."""
+    text = ("Memory Configuration\n\nName             Origin             Length             Attributes\n"
+            "FLASH            0x08000000         0x00080000         xr\n\n"
+            "Linker script and memory map\n\n"
+            ".text           0x08000000       0x10\n"
+            f" {section}\n"
+            "                0x08000000       0x10 build/a.o\n")
+    link_map = L.parse(text, "a.map")
+    assert [s.name for s in link_map.symbols()] == ([named] if named else [])
