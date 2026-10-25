@@ -695,9 +695,11 @@ Full validated lexicon as JSON (layers, groups, tokens).
 gJGF graph (`{graph: {nodes, edges}, metadata}`) — the same shape and
 serialization pipeline (`GraphSerializer.serialize_to_gjgf`, real layout
 positions included) every parsed-code graph uses, so it renders through
-the existing D3 pipeline unchanged. Token nodes carry `layer_ordinal`
-and `kind` for coloring by abstraction level (see the `colorBy: 'layer'`
-styling option). **Not** `LexiconService.to_json()`'s plain node-link
+the existing D3 pipeline unchanged. Every node carries `language`,
+`layer_ordinal` and `kind`; every node on a layer (layer, group, token) also
+carries `layer_color`, which the `colorBy: 'layer'` styling option paints, and
+`meta.lexicon_layers`, from which the legend names the layer — what an
+annotated parsed node carries. **Not** `LexiconService.to_json()`'s plain node-link
 dump — that shape isn't recognized by the frontend renderer at all
 (verified directly; an earlier version of this doc claimed otherwise).
 

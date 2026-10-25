@@ -47,8 +47,26 @@ VOCABULARY = Path(__file__).resolve().parent.parent / "data" / "constructs.yaml"
 # canvas draws what it is sent and the ramp has one home.
 LAYER_RAMP = ("#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899")
 
-# Shapes the canvas draws distinctly (web/src/features/graph/services/node_shapes.ts).
-CANVAS_SHAPES = {"circle", "square", "rectangle", "triangle", "diamond", "hexagon", "ngon"}
+# The shapes the canvas draws are `KNOWN_SHAPES` in
+# web/src/features/graph/services/node_shapes.ts, and only there: the test that
+# holds every look to them reads that file rather than a copy kept here.
+
+# How many sides a record's polygon (`shape: ngon`, `meta.sides`) may have:
+# three is where a polygon starts, and past ten one reads as a circle. The one
+# statement of the range -- every parser that derives `sides` clamps with
+# `ngon_sides`, and the canvas draws the count it is sent.
+NGON_SIDES = (3, 10)
+
+
+def ngon_sides(count: int | None) -> int | None:
+    """A record's side count from how many parts it has, within `NGON_SIDES`;
+    None when the parser counted nothing, so the canvas draws its default
+    rather than a number invented here. Zero is a count -- a unit struct --
+    and draws with the fewest sides."""
+    if count is None:
+        return None
+    low, high = NGON_SIDES
+    return min(max(int(count), low), high)
 
 
 def layer_color(ordinal: int) -> str:
@@ -144,8 +162,13 @@ def annotate(graph: nx.Graph) -> int:
         data.setdefault("shape", construct.look.shape)
         data.setdefault("color", construct.look.color)
         if data.get("shape") == "ngon" and "sides" not in meta:
-            count = meta.get("field_count") or meta.get("variant_count") or meta.get("member_count") or 4
-            data.setdefault("meta", {})["sides"] = min(max(int(count), 3), 10)
+            # The first count the parser gave, zero included: `or` read a unit
+            # struct's zero fields as no count and drew it with four sides.
+            count = next((meta[k] for k in ("field_count", "variant_count", "member_count")
+                          if meta.get(k) is not None), None)
+            sides = ngon_sides(count)
+            if sides is not None:
+                data.setdefault("meta", {})["sides"] = sides
     return recognised
 
 

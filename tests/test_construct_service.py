@@ -9,6 +9,9 @@ draws.
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import networkx as nx
 import pytest
 
@@ -52,9 +55,23 @@ def test_every_spelled_token_is_in_that_languages_lexicon(language):
     assert not missing
 
 
+CANVAS = Path(__file__).resolve().parent.parent / "web/src/features/graph/services/node_shapes.ts"
+
+
+def canvas_shapes() -> set[str]:
+    """`KNOWN_SHAPES`, read from the file the canvas and its key draw with --
+    not a Python copy of it, which is a second definition free to drift."""
+    source = CANVAS.read_text(encoding="utf-8")
+    found = re.search(r"export const KNOWN_SHAPES = \[(.*?)\] as const", source, re.S)
+    assert found, "node_shapes.ts no longer exports KNOWN_SHAPES in the form read here"
+    return set(re.findall(r"'([a-z]+)'", found.group(1)))
+
+
 def test_every_look_is_a_shape_the_canvas_draws():
+    """Mutation: drop `'ngon'` from `KNOWN_SHAPES` in node_shapes.ts -- this
+    fails naming it, where a Python list of the canvas's shapes stayed green."""
     shapes = {c.look.shape for c in VOCABULARY.constructs if c.look}
-    assert shapes <= construct_service.CANVAS_SHAPES
+    assert shapes <= canvas_shapes(), shapes - canvas_shapes()
 
 
 def test_rust_parser_kinds_and_the_vocabulary_agree_both_ways():
@@ -106,6 +123,36 @@ def test_annotate_stamps_construct_and_facets_and_a_default_look():
     assert data["construct"] == "type.product"
     assert data["meta"]["facets"] == ["layout.repr"]
     assert (data["shape"], data["color"], data["meta"]["sides"]) == ("ngon", "#4a9eff", 7)
+
+
+@pytest.mark.parametrize("kind, meta, sides", [
+    ("struct", {"field_count": 0}, 3),     # a unit struct: no fields is a count
+    ("union", {"field_count": 2}, 3),
+    ("struct", {"field_count": 7}, 7),
+    ("struct", {"field_count": 40}, construct_service.NGON_SIDES[1]),
+    ("struct", {}, None),                   # no count: the canvas's default, not an invented one
+])
+def test_a_records_sides_are_its_own_count_within_one_range(kind, meta, sides):
+    """`0 or ... or 4` read a unit struct's zero fields as "no count" and gave
+    it four sides. Mutation: put the `or` chain back -- the zero-field case
+    fails with 4."""
+    g = graph_of(("s", {"language": "rust", "kind": kind, "meta": dict(meta)}))
+    construct_service.annotate(g)
+    assert g.nodes["s"]["shape"] == "ngon"
+    assert g.nodes["s"]["meta"].get("sides") == sides
+
+
+def test_the_c_adapter_and_the_vocabulary_clamp_sides_alike():
+    """One range, stated once (`NGON_SIDES`). Mutation: clamp to 12 in the C
+    adapter -- the forty-field struct fails."""
+    raw = {"nodes": [{"id": "f::Big", "kind": "struct", "name": "Big", "file": "f", "line": 1,
+                      "qualifiers": [], "type_str": "", "field_count": 40},
+                     {"id": "f::U", "kind": "union", "name": "U", "file": "f", "line": 2,
+                      "qualifiers": [], "type_str": "", "field_count": 0}],
+           "edges": [], "meta": {}}
+    g = c_language_parser.CLangaugeParser()._convert(raw, max_depth=3)
+    assert g.nodes["f::Big"]["meta"]["sides"] == construct_service.NGON_SIDES[1]
+    assert g.nodes["f::U"]["meta"]["sides"] == construct_service.NGON_SIDES[0]
 
 
 def test_a_parsers_own_look_wins():
