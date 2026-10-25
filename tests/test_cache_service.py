@@ -77,6 +77,37 @@ class TestGraphCache:
         assert CacheService.evict("nope-repo::deadbeef") is False
 
 
+class TestGraphSchemaVersion:
+    """A cached graph is a parse in the shape of the day it was made. The key
+    carries the shape's version, so a graph cached before a parse began to
+    carry something (`construct`, say) is a miss, never a reply."""
+
+    URL = "https://github.com/a/b"
+
+    def test_a_graph_cached_under_the_unversioned_key_is_not_served(self, monkeypatch, tmp_path):
+        """The key every graph was cached under before the version was part of
+        it. Mutation: drop the version from `_make_key` -- this graph, which
+        carries no `construct`, is served again."""
+        import hashlib
+
+        _isolate_cache(monkeypatch, tmp_path)
+        unversioned = hashlib.sha256(f"{self.URL}::2::Spring::{sorted([])}".encode()).hexdigest()[:16]
+        CacheService.set(f"a-b::{unversioned}", {"graph": {"nodes": {"old": {}}, "edges": []}},
+                         label="a/b", url=self.URL, mode="2", layout="Spring")
+
+        assert CacheService.get(CacheService.cache_key(self.URL, "2", "Spring", [])) is None
+
+    def test_a_new_version_is_a_new_key(self, monkeypatch, tmp_path):
+        _isolate_cache(monkeypatch, tmp_path)
+        before = CacheService.cache_key(self.URL, "2", "Spring", [])
+        CacheService.set(before, {"graph": {}}, label="a/b", url=self.URL, mode="2", layout="Spring")
+        monkeypatch.setattr(svc, "GRAPH_SCHEMA_VERSION", svc.GRAPH_SCHEMA_VERSION + 1)
+
+        after = CacheService.cache_key(self.URL, "2", "Spring", [])
+        assert after != before and after.split("::")[0] == "a-b"
+        assert CacheService.get(after) is None
+
+
 class TestTreeCache:
     def test_set_then_get_round_trips(self, monkeypatch, tmp_path):
         _isolate_cache(monkeypatch, tmp_path)

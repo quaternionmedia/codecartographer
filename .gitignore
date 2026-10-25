@@ -87,6 +87,12 @@ output/
 playground/
 sandbox/
 
+# A bundled cargo example's build output. Its records under target/codecarto/
+# are committed: they are what the example is offered for. The contents of
+# target/ rather than the directory, so the negation can re-include one.
+examples/*/target/*
+!examples/*/target/codecarto/
+
 # Jupyter
 .ipynb_checkpoints/
 
