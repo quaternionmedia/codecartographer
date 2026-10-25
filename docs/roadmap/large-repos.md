@@ -14,7 +14,7 @@ torvalds/linux  depth=0  →  ~300 directory nodes
 ```
 
 Expanding a node is shipped: `POST /parse/expand`, and rad's Expand verb on the
-canvas ([UI reference](../ui.md)). What follows is open.
+canvas ([node ring](../ui.md#node-ring)). What follows is open.
 
 ## Content for a whole subtree
 

@@ -228,7 +228,7 @@ other parse is read; its `parse_by` sets only the depth (`plotter_router.py`,
 `POST /parse/expand` (`UnifiedParserService.expand_node`) returns a file
 node's sub-graph to the requested depth; `LayoutContext` merges it into the
 graph on the canvas, using the directory the last parse read. The
-[UI reference](ui.md) says where Expand is.
+[UI reference](ui.md#node-ring) says where Expand is.
 
 ### C: two pipelines
 
@@ -321,7 +321,7 @@ Its collections:
 | `history` | per-URL render snapshots, appended when tracking is on | `(url_hash, captured_at)` | automatic, 20 per URL |
 
 `web/src/services/graphbase_service.ts` is the client; the Graphbase panel is
-in the [UI reference](ui.md). The routes are in [the API reference](api.md).
+in the [UI reference](ui.md#graphbase). The routes are in [the API reference](api.md).
 
 ## Compound layout
 
@@ -354,7 +354,7 @@ checks only that setting, and the toggle is offered with the D3 renderer for
 every layout. Each circle encloses its group where the chosen layout put it.
 They are in a `<g class="compound-backgrounds">` that is the transform group's
 first child, so they sit behind links and nodes. Where the layout and its
-outline toggle are chosen is in the [UI reference](ui.md).
+outline toggle are chosen is in the [UI reference](ui.md#graph-settings).
 
 `computeChildrenMap` covers all four tiers, so dragging a node moves its whole
 subtree, and the circles are redrawn when the drag ends. The map is computed

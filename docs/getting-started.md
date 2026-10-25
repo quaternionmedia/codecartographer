@@ -48,10 +48,8 @@ both.
 
 ## A first graph
 
-**In the browser.** Open http://localhost:1234, pick an example from the project
-selector or give it a GitHub URL or a local path, and the graph streams onto the
-canvas as each file is parsed. The [UI reference](ui.md) names
-each panel and control.
+**In the browser.** Open http://localhost:1234; a graph starts from the
+[Open panel](ui.md#open).
 
 **From the command line.**
 

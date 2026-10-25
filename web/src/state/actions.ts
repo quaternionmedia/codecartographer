@@ -503,9 +503,10 @@ export class PlotActions {
    * graph data; the only thing that makes it unusual is that some of its edges
    * were never measured, and that travels in the graph metadata. Giving it its
    * own render path would have meant a second renderer, second styling and a
-   * second set of extensions to keep in step.
+   * second set of extensions to keep in step. Resolves true when it drew,
+   * false when the harness answered a problem, which the panel shows.
    */
-  async loadTopology(request: TopologyRequest = {}): Promise<void> {
+  async loadTopology(request: TopologyRequest = {}): Promise<boolean> {
     this.stateController.clear();
     try {
       const layout = convertLayoutToBackend(
@@ -528,12 +529,13 @@ export class PlotActions {
         // "asking the harness..." after the answer had already arrived.
         this.stateController.redraw();
         logger.warn('PlotActions.loadTopology - ' + (found as TopologyProblem).problem);
-        return;
+        return false;
       }
 
       this.stateController.update({ topologyProblem: null });
       this.handlePlotData(found);
       this.stateController.redraw();
+      return true;
     } catch (error) {
       logger.error('Failed to load topology:', error);
       throw error;
@@ -608,14 +610,14 @@ export class PlotActions {
     this._settle(found, 'capabilitiesReading', 'capabilitiesProblem');
   }
 
-  /** The registry as a graph, on the canvas. */
-  async drawCapabilities(request: DrawRequest = {}): Promise<void> {
+  /** The registry as a graph, on the canvas. Resolves whether it drew (`_draw`). */
+  async drawCapabilities(request: DrawRequest = {}): Promise<boolean> {
     this.stateController.clear();
     const found = await EstateService.capabilitiesGraph(
       this.stateController.api.capabilities,
       { ...request, layout: request.layout ?? this._layout() },
     );
-    this._draw(found, 'capabilitiesProblem');
+    return this._draw(found, 'capabilitiesProblem');
   }
 
   /** dossier's sections, for the panel's list. Draws nothing. */
@@ -624,14 +626,14 @@ export class PlotActions {
     this._settle(found, 'overviewReading', 'overviewProblem');
   }
 
-  /** dossier's reading as a graph, on the canvas. */
-  async drawOverview(request: DrawRequest = {}): Promise<void> {
+  /** dossier's reading as a graph, on the canvas. Resolves whether it drew (`_draw`). */
+  async drawOverview(request: DrawRequest = {}): Promise<boolean> {
     this.stateController.clear();
     const found = await EstateService.overviewGraph(
       this.stateController.api.overview,
       { ...request, layout: request.layout ?? this._layout() },
     );
-    this._draw(found, 'overviewProblem');
+    return this._draw(found, 'overviewProblem');
   }
 
   // --- code cartography: a Cargo workspace, and the chrestomathy ------------
@@ -663,20 +665,24 @@ export class PlotActions {
    * empty canvas would state that the estate holds nothing -- a different
    * claim, and a false one. **AND REDRAW**: `update` changes state without
    * repainting, and this resolves outside any DOM handler.
+   *
+   * True when it drew, false when it holds the problem: the panel brings the
+   * canvas forward only on a draw, or the canvas covers the problem view.
    */
-  private _draw(found: SeamOutcome, problemField: 'capabilitiesProblem' | 'overviewProblem'): void {
+  private _draw(found: SeamOutcome, problemField: 'capabilitiesProblem' | 'overviewProblem'): boolean {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {
       patch[problemField] = found.problem as SeamProblem;
       this.stateController.update(patch);
       this.stateController.redraw();
       logger.warn(`PlotActions.${problemField} - ${found.problem.problem}`);
-      return;
+      return false;
     }
     patch[problemField] = null;
     this.stateController.update(patch);
     this.handlePlotData(found.document);
     this.stateController.redraw();
+    return true;
   }
 
   /**

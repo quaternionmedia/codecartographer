@@ -1,338 +1,371 @@
-# UI Reference Guide
+# UI reference
 
-Reference for CodeCartographer's shell, panels, canvas and menus. Where this page and the tree disagree, the tree is right and this page is repaired.
+This page says where everything in the browser window is and how to reach it:
+the panels, the canvas, the radial menu and the header. Where it and the code
+disagree, the code is right and this page is repaired; `tests/test_docs_routes.py`
+reads the panel ids, the ring items and the menu keys against the code.
 
----
+## The window
 
-## Application Shell — Golden Layout
+A header runs across the top, and under it a dock of panels
+([Golden Layout](https://golden-layout.github.io/golden-layout/)). Each panel is
+a tab: drag a tab to move it or stack it with others, drag a divider to resize,
+and click a tab's ✕ to close it.
 
-The app uses **Golden Layout 2.x** as its primary shell. Every panel is a
-dockable tab that can be resized, rearranged, closed and re-opened. The list of
-panels is `web/src/layout/panel_registry.ts`, and that file is the authority;
-this table is a reading of it.
+**The default arrangement** (`web/src/layout/default_layout.ts`) is the Graph
+panel across the top and, below it, Files on the left beside a stack of Open (in
+front), Graph Settings and Estate.
 
-| Panel (menu label) | Registry id | What it is |
+**The header's `+` button is the one way to add a window.** Its menu lists every
+panel that is not in the layout, closed ones included, and under *Layout*
+offers *Save current as default* and *Reset to built-in default*. A panel it
+adds joins the stack whose tab was last clicked, or else the stack holding the
+most panels, and never the Graph panel's own stack while another stack exists,
+so the canvas stays in view. The menu takes the focus when it opens, so a
+keyboard reader is on its first item; closed with the focus inside it --
+Escape, or one of its items -- it gives the focus back to `+`, and a click
+outside it leaves the focus where that click put it.
+
+A panel also comes forward when something loads data for it:
+
+- a live row in the Estate panel opens the panel that draws its seam;
+- View ▸ Compare in the [node ring](#node-ring) opens Chrestomathy;
+- a bundled Cargo example in the [Open panel](#open) opens Cargo;
+- the Topology, Capabilities, Overview, Cargo and Chrestomathy panels bring the
+  Graph panel to the front when they have drawn.
+
+**A saved layout** is kept in the browser (`localStorage`, key
+`cc:gl-layout:default`). Its windows are read wherever Golden Layout reads
+them: the layout's root, or a legacy layout's `content[0]`, and every open
+popout's, a popout's own popouts included. One that names a window this version
+does not have is dropped, a toast says which, and the default loads. A layout
+saved with the Upload, Repository and Actions windows loads with the Open window
+in their place; it is saved back so, and a toast says once which windows became
+Open.
+
+## Panels
+
+`web/src/layout/panel_registry.ts` is the list of panels; each section below is
+one of its entries, in the order the `+` menu lists them.
+
+### Graph
+
+Id `graph`. In the default arrangement.
+
+The one canvas: every graph draws here, whichever panel asked for it. What it
+does is under [The canvas](#the-canvas). With nothing drawn, it points at the
+Open panel.
+
+### Open
+
+Id `open`. In the default arrangement, in front.
+
+Where a graph starts. From top to bottom on the left:
+
+- **A GitHub URL or a local path**, then `→ Fetch` or Enter: draws it and loads
+  its tree into the Files panel. Once loaded, a line names the repository and
+  its size, and its ✕ clears the repository and any added files.
+- **The examples**, by language, Rust first. A bundled example leads its group
+  as a filled chip: it is read from this checkout with the documents its build
+  recorded, so it needs no network, and a Cargo workspace's records go to the
+  Cargo panel, which comes forward. A GitHub example draws the code map only;
+  its tooltip says how much of the repository is drawn.
+- **Local files**: drop them on the box or click it to browse. They are listed
+  in the Files panel.
+- **Demo and lexicons**: ⚡ Load Demo draws a sample graph, CodeCartographer's
+  own source, from one `POST /plotter/demo` answer rather than a stream; each
+  language with a lexicon has a 📖 button that draws it.
+
+On the right:
+
+- **Recent**: the graphs the server's cache holds, newest first. Click one to
+  replay it without parsing; ☆ saves it in Graphbase when Graphbase is
+  connected, and ★ marks one already saved; ✕ removes it from the cache.
+- **Parse options**, folded to one line that says what they are; click it to
+  open them. *Extensions* (a chip per language, or a comma-separated list;
+  empty means every language), *Parse Depth* (Files, Symbols, Deep) and
+  *Annotate Lexicon*. Every parse of a repository or of files uses them.
+
+Across the foot, the plot bar: **▶ Plot** draws the loaded repository; with
+none, every added file; with neither, the URL in the field, as `→ Fetch` does.
+**⏹ Cancel** stops a stream in flight. Beside them, the status line and the
+progress of a stream.
+
+### Estate
+
+Id `estate-panel`. In the default arrangement.
+
+Every seam this window reads, one row each: identified, with what it said about
+itself, or down, with the sentence and the command that would change that. A
+live row's **open …** button opens the panel that draws that seam, and a seam
+nothing draws yet says *no panel yet*. **ask again** asks every seam again.
+
+### Topology
+
+Id `topology-panel`. Opens from the `+` menu or the Estate panel's topology row.
+
+*Flows* lists the harness's topologies; click one to draw it. *What the archive
+says about* takes a project name and draws what the harness's archive says about
+it. The harness's caveat sits above the controls; a relation nobody measured is
+drawn dashed.
+
+### Capabilities
+
+Id `capabilities-panel`. Opens from the `+` menu or the Estate panel's
+capabilities row.
+
+The corpus's capability registry: each declaration, the rung it claims and who
+claimed it. **draw the registry** draws it.
+
+### Overview
+
+Id `overview-panel`. Opens from the `+` menu or the Estate panel's overview row.
+
+dossier's reading of the estate: its masthead figures, its sections, and when the
+reading was made. **draw the overview** draws it.
+
+### Cargo
+
+Id `cargo-panel`. Opens from the `+` menu, or comes forward with a bundled
+Cargo example.
+
+Name a workspace (a directory holding `Cargo.toml`) and **read** it -- the
+field follows the workspace shown, so a bundled example's click fills it: which
+engine read it, its crates and targets, the documents a recorded build left and
+whether each is current, and the device target. Running
+`codecarto cargo record <path>` in the workspace first adds cargo's own
+resolution and the last check's diagnostics. *features* and *locked
+dependencies of dependencies* widen **draw the workspace**.
+
+### Chrestomathy
+
+Id `chrestomathy-panel`. Opens from the `+` menu, or from View ▸ Compare.
+
+*On the canvas* reads whatever graph is drawn as the constructs its nodes are,
+in which languages, and names what the vocabulary could not place, each as what
+it is (a file the walk drew, a kind that is no construct and why); it is read
+again whenever a new graph is drawn, and never kept for one that has gone -- a
+construct drawn from the vocabulary is not code and has no census. A construct's name sets it in the table
+below; **show** frames its nodes and selects them for the
+[selection ring](#selection-ring). *Construct* picks one construct and sets it
+beside itself in every language: how each spells it, with the abstraction layer
+of each token, what its parser calls it, and a note. Every language
+`constructs.yaml` lists -- C, Rust, Python, assembly and the linker script -- is
+a row: one with no spelling has its note, or one saying the vocabulary records
+none. **draw the construct** draws it.
+
+### Files
+
+Id `file-tree`. In the default arrangement.
+
+The loaded repository's tree, and the added files. Click a file to draw that
+file alone. With nothing loaded, it points at the Open panel.
+
+In a large repository a folder marked … has not been read; click it to read
+it. It shows ↻ while it is read. A read that fails ends the ↻, leaves the folder
+marked …, and says so in a toast; the next click reads it again. Several
+folders can be read at once, each answer put into the tree as it comes.
+**⊞ Expand All** reads every folder down to a fixed depth, and says in a toast
+that it has begun, and again if it fails; a folder below that depth, or one
+GitHub would not list, stays marked … and reads on a click. The tree it builds is shown,
+though its root holds only folders. Every read is of the repository the tree
+shows, whatever the Open panel's URL field has been typed to since, and an
+answer that comes after another repository was fetched is dropped. A read
+leaves the plot bar's ⏹ Cancel and progress to the stream they belong to.
+
+### Graphbase
+
+Id `graphbase-panel`. Opens from the `+` menu.
+
+Graphs kept in MongoDB; it needs `MONGODB_URI`, and its header says whether it
+is connected.
+
+- **Snapshots**: name the drawn graph and 📸 keeps all of it; ▶ replays it
+  without parsing.
+- **Saved**: name the loaded URL and ☆ bookmarks it with its parse settings; ▶
+  streams it again.
+- **History**: the renders of the loaded URL; tick *Track* to record each one; ▶
+  replays one.
+
+✕ deletes an entry. Recent graphs are listed in the [Open panel](#open).
+
+### Graph Settings
+
+Id `graph-settings-panel`. In the default arrangement.
+
+- **Renderer**: *D3.js (server layout)*, the canvas this page describes and the
+  default; *Gravis (vis-network)*; *Notebook (Static HTML)*; *System Monitor*,
+  which adds a *System* choice when there is more than one and a *Demo* or
+  *Live* mode.
+- **Layout**, open by default. *Algorithm* (D3 only) re-draws whatever is on the
+  canvas with the chosen layout; *Compound* nests symbols around their files and
+  files around their directories. *Physics*, *Repulsion* and *Link Distance*
+  drive vis-network's simulation and are offered on Gravis only, the one
+  renderer that runs one; *Repulsion* and *Link Distance* show while *Physics*
+  is on. `renderer_controls.rendererControls` says which controls each renderer
+  takes. *Group Outlines* (D3 only) circles each group in a translucent dashed
+  outline: grey around a directory's, purple around a file's.
+- **Visual**, folded: *Node Labels* (and per depth: Dir, File, Sym, Sub), *Node
+  Size*, *Color By* (depth and kind, abstraction layer, or construct across
+  languages), *Node Opacity*, *Border Width*, *Edge Labels*, *Edge Width*, *Edge
+  Opacity*, *Label Size* and *Label Color*. Notebook and System Monitor take
+  *Label Color* only.
+- **Theme**, folded: Terminal, Light, Cyberpunk, Ocean, Sunset, Forest, Noir and
+  Candy, which recolour the window and the canvas.
+
+## The canvas
+
+- **Zoom** with the scroll wheel; **pan** by dragging the background.
+- **Drag a node** to move it; what is drawn inside it (a directory's files, a
+  file's symbols) moves with it.
+- **Hover** a node for its tooltip.
+- **Double-click a node** that names a file to open its source, as
+  [A node's source](#a-nodes-source) says. A double-click anywhere else zooms
+  in.
+- When a stream finishes, the view fits the whole graph.
+- **The legend** sits at the bottom left. Its header gives the totals; click it
+  to list the node and edge kinds actually drawn, each with its swatch and
+  count: a kind absent from the picture has no row, and every node is in exactly
+  one. What each row means is decided in
+  `web/src/features/graph/extensions/legend_marks.ts`, which is pure and covered
+  by `npm run test:pure`. It keys the colours on screen. Under *Color By:
+  Abstraction Layer* a row's swatch takes the colour the canvas paints its
+  nodes, and an *Abstraction layers* section names each layer painted and counts
+  its nodes -- by language where the graph holds more than one, since a layer's
+  number is a rank within one language's lexicon. Under *Auto* a layer is named
+  only where a node's own colour is its layer's, as the chrestomathy's tokens
+  are. *Color By: Construct* paints each node the vocabulary placed in its
+  construct's colour, alike across languages, and a *Constructs* section names
+  each construct painted; under the other colourings a construct is named only
+  where a node's own colour is its construct's, so the crate graph under *Auto*
+  has no *Package* row. The canvas, the vis-network renderer and the key take
+  the fill from one function, `paintedColor`. A record (`ngon`) is a row per
+  side count, and says it: *Struct · 4 sides*.
+- **Right-click** opens the [radial menu](#the-radial-menu).
+
+### A node's source
+
+A double-click on a node and View ▸ Source in the [node ring](#node-ring) open
+the same place, by one rule: `node_info.sourceTarget` decides where, and
+`streaming_renderer.openSource` opens it for both.
+
+| The node | What opens |
+|---|---|
+| A file or a symbol from a GitHub repository | The file's page on GitHub in a new tab, at the node's line. A file, and a Python symbol, whose parser records no line, open at the top |
+| A file or a symbol from a local checkout or an upload, which the browser cannot open | A badge beside the node for a few seconds, naming the node, the file's path and the line. It is kept wholly inside the window; a path wider than the window wraps |
+| A node that names no file, such as a directory | Nothing: Source is greyed, and a double-click zooms in, as it does off the nodes |
+
+A C symbol names its file only by the file's stem, and a Python symbol by
+`module.py`; both open where the file node they are drawn inside says the file
+is.
+
+## The radial menu
+
+A ring of choices around the pointer, for the node, the selection or the
+canvas under it. It is rad (`web/src/features/graph/rad/`), mounted against the
+canvas rather than inside a renderer, so every graph gets it, whatever drew it;
+[rad's host-integration standard](https://github.com/quaternionmedia/rad/blob/main/adr/DRAFT-rad-host-integration-standard.md)
+is the contract it conforms to. Hide, Pin and Color are kept as state, so they
+survive Relayout.
+
+### Opening a ring
+
+- **Right-click** opens a ring at the pointer that stays open. Click an item to
+  choose it, click the centre to step out of a submenu or close the ring, and
+  click outside it to close it.
+- **Press and hold for 350 ms** with a finger or a pen opens a ring that follows
+  the press. Slide to an item and lift to choose it; lift in the centre or
+  outside the ring to cancel; slide out past an item with a ▸ to open its
+  submenu.
+- **`m`** on the focused canvas opens a ring at its centre. The context-menu key
+  and Shift+F10 open the same ring as `m` does.
+
+A greyed item is offered but not available here; choosing it closes the ring.
+
+### Which ring opens
+
+| Opened | Nothing selected | One node selected | Several nodes selected |
+|---|---|---|---|
+| On a node | node ring, that node | node ring, the node under the pointer | selection ring |
+| Off the nodes: the background, an edge | canvas ring | canvas ring | canvas ring |
+| With a key | canvas ring | node ring, the selected node | selection ring |
+
+`web/src/features/graph/rad/host/menu_context.ts` decides this. A key has no
+pointer and the nodes take no focus, so a key opens on the selection; with one
+node selected it is the only way a key reaches Pin, Collapse and View. The node
+ring has no Deselect, so `Escape` on the canvas with no ring open clears the
+selection, as Deselect does, and every item is reachable without a pointer.
+
+### Node ring
+
+| | Item | Does |
 |---|---|---|
-| Graph | `graph` | The one canvas. Every graph in the application draws here — code maps, lexicons, the estate views — through `StreamingGraphRenderer` |
-| Files | `file-tree` | Repository and upload file browser |
-| Open | `open` | Where a graph starts: GitHub URL or local path fetch, the project selector, the local file dropzone, Load Demo and the lexicons, and the recent graphs; the parse options; and Plot, cancel, status. The project selector offers examples by language, Rust first. A bundled example (`examples/`, from `GET /repo/examples`) leads its group with a filled chip: it is read from this checkout with its recorded documents, so it needs no network, and a Cargo workspace's records are loaded into the Cargo panel, which comes forward. The GitHub examples draw the code map only -- a fetched repository brings no records of a build |
-| Graphbase | `graphbase-panel` | Durable named bookmarks (needs `MONGODB_URI`) |
-| Graph Settings | `graph-settings-panel` | Layout, physics, styling controls |
-| Estate | `estate-panel` | Every seam this window reads, live or not, with the way to the panel that draws it. In the default dock |
-| Topology | `topology-panel` | Choose one of the harness's flows, or ask what the archive says about a project; the drawing goes to the canvas |
-| Capabilities | `capabilities-panel` | The corpus's capability registry: each declaration and the rung it claims; draw them |
-| Overview | `overview-panel` | dossier's reading of the estate: masthead figures and sections; draw them |
-| Cargo | `cargo-panel` | A Rust workspace by path (the field follows the workspace shown, so a bundled example's click fills it): which engine read it, its crates, the recorded documents and whether each is current, the device target; draw the crate graph, with features or locked dependencies if asked |
-| Chrestomathy | `chrestomathy-panel` | **On the canvas:** whatever graph is drawn -- a code map, a crate graph, a linker script -- read as the constructs its nodes are, in which languages, with what the vocabulary could not place, each said as what it is (a file the walk drew, a kind that is no construct and why); a row opens that construct below, and *show* frames and selects its nodes. Read again whenever a new graph is drawn, and never kept for one that has gone: a construct drawn from the vocabulary is not code and has no census. **Construct:** one construct set beside itself in each of C, Rust, Python, assembly and the linker script, every language `constructs.yaml` lists: each language's tokens with their abstraction layer, its parser kinds, and its note -- a language with no spelling is a row with its note, or one saying the vocabulary records none; draw it |
+| 1 | **Expand** | Asks the server for what lies under the node, using the directory the last parse read, and adds it. Greyed on a sub-symbol, which has nothing under it |
+| 2 | **Collapse** | Removes what is drawn under the node. Greyed when nothing is |
+| 3 | **Neighbours** | Selects the node and every node one edge away |
+| 4 | **Pin** / **Unpin** | Marks the node with a gold outline |
+| 5 | **Color** ▸ | The [Color submenu](#color-submenu) |
+| 6 | **View** ▸ | **Source** opens the node's source, as a double-click does (see [A node's source](#a-nodes-source)); greyed on a node that names no file. **Info** shows the node's name, what its parser called it, its construct and where it is. **Compare** opens the Chrestomathy panel at the node's construct; greyed when the vocabulary did not place it. **Focus** frames the node and everything inside it; greyed below files |
+| 7 | **Hide** | Hides the node |
+| 8 | **Delete** | Removes the node from the canvas; the source is untouched |
 
-**Default layout** (`default_layout.ts`): Graph on top; below it Files on the
-left and a tab stack of Upload (active), Repository, Graph Settings, Actions and
-Estate. Topology, Capabilities, Overview, Cargo and Chrestomathy are opened
-from the **`+`** menu in the header — or from a live row in the Estate panel — because each asks its seam
-on open, and a fresh workstation has none up.
+### Selection ring
 
-**Adding, restoring, saving.** The `+` button in the header opens the
-add-window menu, listing every registered panel not currently open, closed ones
-included; closing a tab and re-adding it goes through the same path. The dock
-has no menu of its own: a right-click on the canvas opens the radial menu, and
-elsewhere it is the browser's. A window added -- from the menu, an Estate row,
-View ▸ Compare or a bundled example -- joins the stack whose tab was clicked
-last, else the stack holding the most windows, and never the Graph panel's own
-stack while another exists, so the canvas stays in view. The menu takes the
-focus when it opens and gives it back to `+` when it closes. Its Layout section
-saves the current arrangement as the default
-(`localStorage['cc:gl-layout:default']`) and resets it.
+| | Item | Does |
+|---|---|---|
+| 1 | **Expand** | Expands every selected node |
+| 2 | **Neighbours** | Adds every node one edge away |
+| 3 | **Spread** | Greyed: positions come from the server's layout |
+| 4 | **Cluster** | Greyed, as Spread |
+| 5 | **Color** ▸ | The [Color submenu](#color-submenu) |
+| 6 | **Hide** | Hides the selected nodes |
+| 7 | **Deselect** | Clears the selection |
+| 8 | **Delete** *n* | Removes the selected nodes from the canvas |
 
-### The estate panels share three pieces
+### Canvas ring
 
-`web/src/features/estate/`: **`seam_client.ts`** tells the four things a seam can answer
-apart — this window's own API down, the seam unreachable, the seam present and
-unreadable, a document — and is pure, tested under `npm run test:pure`;
-**`problem_view.ts`** is the one way any panel says "nothing was drawn" (what,
-remedy, where it tried, try again); **`provenance.ts`** renders the caveat and
-source a seam put in its graph's metadata, above the controls, and only when the
-canvas holds *that* seam's graph. A panel's problem view wears the panel's class
-prefix (`.topology__problem`, `.capabilities__problem`, …) so its stylesheet and
-its browser tests apply.
+| | Item | Does |
+|---|---|---|
+| 1 | **Fit** | Fits the view to the whole graph |
+| 2 | **Relayout** | Draws the last graph again with the layout chosen in Graph Settings |
+| 3 | **Spread** | Greyed: positions come from the server's layout |
+| 4 | **Cluster** | Greyed, as Spread |
+| 5 | **Physics** | Greyed: the D3 canvas runs no simulation |
+| 6 | **Unhide** | Shows every hidden node. Greyed when none is hidden |
+| 7 | **Deselect** | Clears the selection. Greyed when nothing is selected |
 
----
+Spread, Cluster and Physics keep their places while greyed, so the items after
+them do not move. The ring acts on the canvas and the selection, never on one
+node, so it has no Color; Color is on the node and selection rings.
 
-## Control Panel
+### Color submenu
 
-The source and settings controls (`components/codecarto/control_panel/`) are
-the bodies of three panels, one mode each (`ControlPanelMode`):
+**Sky**, **Calm**, **Royal**, **Gold** and **Signal**: named palette colours for
+the chosen nodes.
 
-| Panel | Mode | Purpose |
-|-------|------|---------|
-| Upload | `upload` | Add local files; the parser options; Quick Start (Load Demo, a lexicon) |
-| Repository | `repo` | Fetch a repository, recent graphs, the project selector; the same parser options and Quick Start |
-| Graph Settings | `graph` | Renderer, layout, physics (Gravis only), styling, theme |
+### Keys in a ring
 
----
-
-## Upload and Repository Panels
-
-### Demo
-- **Load Demo** (Quick Start, in either panel) — draws CodeCartographer's own source as a sample graph, from one `POST /plotter/demo` answer rather than a stream.
-
-### Repository
-1. Paste a GitHub URL and press Enter or click **→ Fetch**.
-2. The Files panel shows the tree. Click folders to expand, files to plot a single file.
-3. **Plot** in the Actions panel, or **◈ Plot All** in the Files panel — streams the whole repo graph.
-4. **✕** beside the repository's name — clears it, back to the URL field.
-
-### Recent Graphs
-Shown in the Repository panel when no repo is loaded. Lists previously parsed graphs from the filesystem cache (`~/.codecarto/cache/`). Clicking an entry replays it instantly (cache hit — no re-parse). The ✕ button evicts a single entry.
-
----
-
-## Graph Settings Panel
-
-### Layout Algorithm
-
-Applies to whatever graph is on the canvas — a code map or an estate graph
-(topology, capabilities, overview). Changing it re-draws the last thing drawn
-with the new layout; the menu's names are the backend registry's, translated by
-one rule in `web/src/features/graph/services/layout_names.ts`.
-
-| Value | Description |
-|-------|-------------|
-| `spring_layout` | Force-directed (default) |
-| `compound_layout` | **Hierarchical**: dirs → files → symbols in nested orbits |
-| `circular_layout` | Nodes on a circle |
-| `kamada_kawai_layout` | Energy-minimization spring |
-| `spectral_layout` | Graph Laplacian eigenvectors |
-
-### Physics Controls
-
-Offered only when the renderer is **Gravis (vis-network)**, the one renderer
-that runs a force simulation. The D3 canvas draws nodes where the server's
-layout placed them, and Notebook and System Monitor run no simulation, so on
-those the three are not shown. `renderer_controls.rendererControls` says which
-controls each renderer takes.
-
-- **Physics** — turn Gravis's force simulation on or off
-- **Repulsion** — how strongly nodes repel (`chargeStrength`, negative values); shown while Physics is on
-- **Link Distance** — target edge length in px; shown while Physics is on
-
-### Node Appearance
-| Option | Description |
-|--------|-------------|
-| Node Size | Base radius in px |
-| Node Opacity | 0.0–1.0 fill transparency |
-| Border Width | Stroke width in px |
-
-### Edge Appearance
-| Option | Description |
-|--------|-------------|
-| Edge Width | Line thickness in px |
-| Edge Opacity | 0.0–1.0 |
-
-### Label Appearance
-| Option | Description |
-|--------|-------------|
-| Show Node Labels | Toggle label visibility |
-| Label Size | Font size in px |
-| Label Color | Hex color |
-
-### Group Outlines (Compound Layout)
-**Group Outlines** toggle — shows translucent SVG bounding circles per directory/file group (most meaningful with `compound_layout`):
-- **Grey dashed** circles = directory clusters (depth 0)
-- **Purple dashed** circles = file clusters (depth 1)
-
----
-
-## Streaming Graph Renderer
-
-The default renderer is `StreamingGraphRenderer` — nodes and edges arrive progressively over an SSE stream and are added to the canvas in real time.
-
-- **Loading overlay** — shown until the first `meta` event arrives.
-- **Progress bar + status** — "Streaming N/M nodes" with a cancel ✕ button.
-- **Pop-in animation** — each node fades/scales in as it arrives (rAF drain loop).
-- **Batch pacing** — `setTotal(n)` tunes how many nodes render per frame (small repos: 1/frame; large repos: up to `ceil(N/100)` per frame).
-- **Fit view** — after the stream completes, the viewport auto-fits to contain all nodes.
-- **Drag** — nodes can be dragged to reposition; edges follow in real time.
-
----
-
-## Radial Context Menu
-
-**There is one, and every graph gets it.** rad is mounted against the canvas
-rather than inside a renderer, so it reaches whatever drew the graph — Load
-Demo, plot repo, plot file, cache recall, bookmark replay, a lexicon. Source is
-`web/src/features/graph/rad/`; see
-[rad's host-integration standard](https://github.com/quaternionmedia/rad/blob/main/adr/DRAFT-rad-host-integration-standard.md) for the contract it
-conforms to.
-
-Right-click, press-and-hold with a finger or pen, or press `m`, the
-context-menu key or Shift+F10 on the focused canvas. Flick toward a wedge to
-commit; release in the dead zone to cancel. In an open ring the arrow keys move
-between the wedges, Enter commits and Escape closes it.
-
-Which ring opens is decided in `web/src/features/graph/rad/host/menu_context.ts`:
-
-- **A press on a node** opens that node's ring -- or, while more than one node
-  is selected, the selection's ring.
-- **A press anywhere off the nodes** -- the background, an edge -- opens the
-  canvas ring, whatever is selected.
-- **A key** has no pointer, and the nodes take no focus, so it opens on the
-  selection: the canvas ring with nothing selected, the selected node's ring
-  with one, and the selection's ring with several.
-- **Escape** on the canvas, with no ring open, clears the selection, as
-  Deselect does; the node's ring has no Deselect.
-
-So every item is reachable by keyboard. The chord words in `vocabulary.ts` are
-not mounted: no typed word commits a verb.
-
-| Ring | Items |
+| Key | Does |
 |---|---|
-| **Node** | Expand · Collapse · Neighbours · Pin · Color ▸ · View ▸ · Hide · Delete |
-| **Canvas** | Fit · Relayout · Spread\* · Cluster\* · Physics\* · Unhide · Deselect |
-| **Selection** | Expand · Neighbours · Spread\* · Cluster\* · Color ▸ · Hide · Deselect · Delete *n* |
+| `ArrowRight`, `ArrowDown` | Highlights the next item; from none, the first |
+| `ArrowLeft`, `ArrowUp` | Highlights the previous item; from none, the last |
+| `Enter` | Chooses the highlighted item, or opens its submenu |
+| `Escape` | Steps out of a submenu, or closes the ring |
 
-No ring acts on an edge. The canvas ring offers nothing that needs a node to
-act on, so Color is on the node and selection rings only.
+## The header
 
-**View ▸** holds Source · Info · Compare · Focus. *Compare* opens the
-Chrestomathy panel at what the node *is* -- its construct, set beside every
-language that writes it -- and is offered disabled on a node the vocabulary did
-not place. *Info* says the node's name, its parser's kind, its construct and
-facets, and where it is, every time it is used.
+- **`+`**: the add-window menu, under [The window](#the-window).
+- **GH**: whether the server reaches GitHub with a token. Green when it does,
+  *GH?* when it does not, with a tooltip naming the token's source or how to
+  give it one.
+- **`?`**: the walkthrough. It opens by itself on a first visit; Escape, ×, or
+  a click outside it closes it, and that is remembered in the browser
+  (`localStorage`, key `cc:help-dismissed`).
 
-*Source* and a double-click on a node open the same place, on the same rule:
+## What the window does not have
 
-| The node | View ▸ Source and a double-click |
-|---|---|
-| A file or symbol from a GitHub repository | The file's page on GitHub in a new tab, at the symbol's line; a file, and a Python symbol, whose parser records no line, open at the top |
-| A file or symbol from a local checkout or an upload | A badge beside the node, for a few seconds, naming the file's path and the line |
-| A node that names no file, such as a directory | Source is offered disabled; a double-click zooms the canvas in, as it does off the nodes |
-
-A C symbol names its file only by the file's stem and a Python symbol by
-`module.py`; both are opened where the file node they are drawn inside says
-the file is. `node_info.sourceTarget` decides where, `npm run test:pure` holds
-it, and `streaming_renderer.openSource` opens it for both routes.
-
-\* Shown but **disabled**: the radial menu is on the D3 canvas, whose node
-positions come from the backend layout, and there is no force simulation to
-toggle. They keep their wedges so the other
-items do not shift position between states. **A capability the host lacks is
-offered disabled, never substituted** — three verbs once shared one `fitView()`
-call while every test stayed green, which is the rule's whole origin.
-
-`Expand` holds the 12 o'clock wedge — the one a straight-up flick reaches —
-and calls `POST /parse/expand`, merging the returned subgraph into the live
-scene. Hide, Pin and Color are held as application state, so they survive a
-re-render, a relayout and a cache replay.
-
----
-
-## Graph Legend
-
-A key in the bottom-left of the canvas, collapsed by default. Its header states
-the totals; opening it lists the node kinds and edge kinds actually present,
-with a swatch drawn by the same function the canvas draws nodes with, and a
-count per row.
-
-**It reads the graph rather than describing it.** There are no fixed rows: a
-kind absent from the picture has no row, and every node is accounted for by
-exactly one row. What each row means is decided in
-`web/src/features/graph/extensions/legend_marks.ts`, which is pure and covered
-by `npm run test:pure`.
-
-**It keys the colours on screen.** Under "Color By: Abstraction Layer" a row's
-swatch takes the colour the canvas paints its nodes, and an *Abstraction layers*
-section names each layer painted and counts its nodes — by language where the
-graph holds more than one, since a layer's number is a rank within one
-language's lexicon and the same number in two languages is two layers. Under
-"Auto" a layer is named only where a node's own colour is its layer's, as the
-chrestomathy's tokens are; a parsed node drawn in its own colour is no layer
-row. "Color By: Construct" paints each node the vocabulary placed in its
-construct's colour (`construct_color`), alike across languages, and a
-*Constructs* section names each construct painted; under the other colourings
-a construct is named only where a node's own colour is its construct's, so the
-crate graph under "Auto" has no *Package* row in a colour nothing wears. The
-canvas, the vis-network renderer and the key take the fill from one function,
-`paintedColor`. A record (`ngon`) is a row per side count, and says it:
-*Struct · 4 sides*.
-
-Like rad, it is a `BaseExtension` mounted against the canvas, so it appears on
-every path that draws a graph.
-
----
-
-## Help Modal
-
-- Click the **`?`** button (header) to open a 4-step walkthrough.
-- Auto-shows on first visit (dismissed state stored in `localStorage: cc:help-dismissed`).
-- `HelpModal.open()` / `HelpModal.close()` API.
-
----
-
-## Themes
-
-Available themes (top-right dropdown):
-- Terminal · Forest · Cyberpunk · Ocean · Sunset · Light · Noir · Candy
-
-Themes drive CSS custom properties (`--c-primary`, `--c-secondary`, `--c-accent`, etc.) consumed by both the UI and the graph renderer's default color palette.
-
----
-
-## Keyboard Shortcuts
-
-| Key / Action | Effect |
-|-------------|--------|
-| Scroll | Zoom in/out on graph canvas |
-| Drag background | Pan |
-| Drag node | Reposition node; edges follow |
-| Right-click | Open radial menu |
-| Press-and-hold | Open radial menu (same, pointer-agnostic) |
-| Menu key / Shift+F10 | Open radial menu at canvas centre — no pointer required |
-| Arrow keys, Enter | Move the radial selection, commit it |
-| Escape | Cancel the radial menu without committing |
-| Enter (URL field) | Submit GitHub URL |
-
----
-
-## State Flow
-
-```
-User action (click, input, toggle)
-    ↓
-Control Panel callback (onDemo, onGraphStylingChange, onPlotWholeRepo, …)
-    ↓
-cell_state.update() — Meiosis patch
-    ↓
-m.redraw() — Mithril re-renders control panel
-    ↓
-PlotActions / StreamingGraphRenderer — graph updates
-```
-
----
-
-## Common Workflows
-
-### View Demo
-1. Upload or Repository panel → Quick Start → **Load Demo**.
-2. Graph streams in progressively.
-3. Adjust settings in the Graph Settings panel.
-
-### Parse a GitHub Repo
-1. Repository panel → paste GitHub URL → **→ Fetch**.
-2. The Files panel shows the tree. Expand folders, click a file to plot it, or **Plot** for the whole repo.
-3. Graph streams in. Graph Settings → Layout → **Compound** for a hierarchical view.
-
-### Use Compound Layout
-1. Graph Settings panel → Layout → **Compound**.
-2. Plot (or re-plot). Dirs appear as large clusters, files orbit dirs, symbols orbit files.
-3. Toggle **Group Outlines** to show/hide bounding circles.
-4. Right-click a dir/file node → **View ▸ Focus** to zoom to that cluster.
-
-### Re-open a Closed Panel
-1. Close any dock tab (×).
-2. Click **`+`** in the header and choose the panel from the list.
-
-### See What Is Up
-1. Click the **Estate** tab in the bottom dock.
-2. Each seam is a row: identified (with what it said about itself) or down (with
-   the command that would change that). **ask again** re-probes.
-3. A live row's **open …** button opens the panel that draws that seam.
+There are no deep links or URL parameters, no menu on a right-click in the dock,
+and no ring for an edge: a press on an edge opens the canvas ring. There are no
+chords: the ring's chord words are defined in
+`web/src/features/graph/rad/host/vocabulary.ts` and nothing listens for them,
+so no typed word commits a verb.

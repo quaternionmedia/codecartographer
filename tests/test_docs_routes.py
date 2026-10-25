@@ -23,9 +23,13 @@ it describes, and each check here fails on a document that disagrees with it:
   every one a document names is read by the code;
 - every sync a document or the code tells a reader to run is `ONE_SYNC`;
 - `docs/index.md` links every page under `docs/`;
-- the UI reference names every registered panel, its radial-menu table lists
-  each ring's items as `resolve.ts` builds them, and the default layout and
-  the source tree agree with the registry and the dev proxy;
+- the UI reference names every registered panel, and every key the window
+  keeps in `localStorage`; under each radial ring, every item that ring builds,
+  in the order it builds them, and no other, and no section for a ring
+  `resolveGraphMenu` never returns; and the keys and the hold that
+  open and move a ring, as the code binds them;
+- the default layout and the source tree agree with the registry and the dev
+  proxy;
 - every statement of the graph cache key names the schema version
   `cache_service._make_key` hashes with the url, mode, layout and extensions;
 - the caches section says what evicting a GitHub repository from either cache
@@ -845,80 +849,188 @@ def test_ui_reference_names_every_registered_panel():
     assert not missing, f"docs/ui.md's panel table lacks: {missing}"
 
 
-def _rings_built(source: str) -> list[str]:
-    """The rings `resolveGraphMenu` in `resolve.ts` can return, by name: `node`
-    for a case that returns `nodeRing(...)`'s items."""
-    body = re.search(r"export function resolveGraphMenu\(.*?\n\}", source, re.S)
-    assert body, "resolveGraphMenu() was not found in resolve.ts; the pattern is stale"
-    rings = re.findall(r"items: (\w+)Ring\(", body[0])
-    assert rings, "resolveGraphMenu() returns no ring the pattern recognises; it is stale"
-    return rings
+def test_ui_reference_names_every_key_the_window_keeps_in_the_browser():
+    """Each `cc:` key a module under `web/src` keeps in `localStorage` is named
+    in backticks in the UI reference, which says what the window remembers and
+    where. The page was rewritten without `cc:help-dismissed`, the key that
+    keeps the walkthrough from opening again. Mutation: drop that key from
+    `docs/ui.md` -- this fails naming it."""
+    kept = set()
+    for path in (ROOT / "web" / "src").rglob("*.ts"):
+        text = path.read_text(encoding="utf-8")
+        if "localStorage." in text:
+            kept |= set(re.findall(r"'(cc:[a-z:-]+)'", text))
+    assert kept, "no cc: key found beside localStorage under web/src; the pattern is stale"
+    reference = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
+    missing = sorted(key for key in kept if f"`{key}`" not in reference)
+    assert not missing, f"docs/ui.md does not name the browser keys {missing}"
 
 
-def _ring_items(source: str, ring: str) -> list[str]:
-    """The items `<ring>Ring()` in `resolve.ts` returns, as the table writes them.
+RAD = ROOT / "web" / "src" / "features" / "graph" / "rad"
+BOLD = re.compile(r"\*\*([^*\n]+)\*\*")
 
-    A label is its string; a ternary's last string, which is the label at rest
-    (`Pin`, not `Unpin`); a template's text with each `${...}` as `*n*`. An item
-    with `children` is written with ` ▸`.
-    """
-    body = re.search(
-        rf"function {ring}Ring\([^)]*\): MenuItem\[\] \{{.*?return \[\n(.*?)\n  \];\n\}}",
-        source, re.S)
-    assert body, f"{ring}Ring() was not found in resolve.ts; the pattern is stale"
+
+def _ui_sections() -> dict[str, str]:
+    """{heading text: body} for every heading in `docs/ui.md`; a body runs to
+    the next heading of any level."""
+    text = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
+    parts = re.split(r"^#{1,6} +(.+?)\s*$", text, flags=re.M)
+    return dict(zip(parts[1::2], parts[2::2]))
+
+
+def _labels(body: str) -> set[str]:
+    """Every item label written in a stretch of `resolve.ts`: a quoted label,
+    both branches of a conditional one, and the fixed words of a template."""
+    found = set()
+    for value in re.findall(r"\blabel:\s*([^,\n]+)", body):
+        quoted = re.findall(r"'([^']+)'", value)
+        if quoted:
+            found.update(quoted)
+            continue
+        template = re.match(r"`([^`$]*)", value.strip())
+        if template and template.group(1).strip():
+            found.add(template.group(1).strip())
+    return found
+
+
+RING_FUNCTION = re.compile(r"^(?:export )?function (\w+)Ring\([^)]*\)[^{]*\{(.*?)^\}", re.M | re.S)
+
+
+def _items(array: str) -> list[str]:
+    """The top-level `{...}` items of an array's text, in order, each with the
+    submenus inside it."""
     items, depth, start = [], 0, 0
-    for i, ch in enumerate(body[1]):
+    for i, ch in enumerate(array):
         if ch in "{[":
             if depth == 0:
                 start = i
             depth += 1
         elif ch in "}]":
             depth -= 1
-            if depth == 0:
-                items.append(body[1][start:i + 1])
-    written = []
-    for item in items:
-        own = re.sub(r"\[.*\]", "[]", item, flags=re.S)  # not the children's labels
-        label = re.search(r"label:\s*(.+?),\s*\w+:", own, re.S)
-        assert label, f"an item of {ring}Ring() has no label: {item}"
-        expression = label[1].strip()
-        if expression.startswith("`"):
-            text = re.sub(r"\$\{[^}]*\}", "*n*", expression.strip("`"))
-        else:
-            text = re.findall(r"'([^']*)'", expression)[-1]
-        written.append(text + (" ▸" if "children:" in own else ""))
-    return written
+            if depth == 0 and array[start] == "{":
+                items.append(array[start:i + 1])
+    return items
 
 
-def test_ui_reference_ring_table_is_the_rings_the_menu_builds():
-    """The radial menu's table in the UI reference lists each ring as `resolve.ts` builds it.
+def _shown_at_rest(item: str) -> str:
+    """The label an item is shown with at rest: a quoted label, a conditional
+    one's last branch (`Pin`, not `Unpin`), a template's fixed words (`Delete`).
+    A submenu's own labels are not its item's."""
+    own = re.sub(r"\[.*\]", "[]", item, flags=re.S)
+    value = re.search(r"\blabel:\s*([^,\n]+)", own)
+    if not value:
+        return "(no label)"
+    quoted = re.findall(r"'([^']+)'", value[1])
+    if quoted:
+        return quoted[-1]
+    template = re.match(r"`([^`$]*)", value[1].strip())
+    return template[1].strip() if template else value[1].strip()
 
-    The table said "Colour ▸" in three rings after the menu's label became
-    "Color", as Graph Settings writes it, and went on listing an Edge ring and
-    the canvas ring's Color after both were removed. The rings are the ones
-    `resolveGraphMenu` returns, and the table has a row for each and for no
-    other. An item marked `\\*` is one the table says is shown disabled; the
-    mark is not compared.
+
+def _rings_built() -> dict[str, dict]:
+    """{'<Name> ring': {'order': labels in order, 'labels': every label}} for
+    every ring function in `resolve.ts`, exported or not, and the same for
+    `COLOUR_RING` as 'Color submenu'. A submenu written inside a ring's
+    function (View) is that ring's, in its labels and not its order."""
+    source = (RAD / "host" / "resolve.ts").read_text(encoding="utf-8")
+    rings = {}
+    for name, body in RING_FUNCTION.findall(source):
+        returned = re.search(r"\breturn \[(.*)\];", body, re.S)
+        order = [_shown_at_rest(item) for item in _items(returned[1])] if returned else []
+        rings[f"{name.capitalize()} ring"] = {"order": order, "labels": _labels(body)}
+    colour = re.search(r"^const COLOUR_RING\b[^=]*=\s*\[(.*?)^\];", source, re.M | re.S)
+    if colour:
+        rings["Color submenu"] = {
+            "order": [_shown_at_rest(item) for item in _items(colour[1])],
+            "labels": _labels(colour[1]),
+        }
+    return rings
+
+
+def _rings_returned() -> set[str]:
+    """{'<Name> ring'} for every ring `resolveGraphMenu` in `resolve.ts` can
+    return: 'Node ring' for a case that returns `nodeRing(...)`'s items. A ring
+    function no case returns is one no press or key opens."""
+    source = (RAD / "host" / "resolve.ts").read_text(encoding="utf-8")
+    body = re.search(r"export function resolveGraphMenu\(.*?\n\}", source, re.S)
+    assert body, "resolveGraphMenu() was not found in resolve.ts; the pattern is stale"
+    rings = {f"{name.capitalize()} ring" for name in re.findall(r"items: (\w+)Ring\(", body[0])}
+    assert rings, "resolveGraphMenu() returns no ring the pattern recognises; it is stale"
+    return rings
+
+
+def _listed(section: str) -> list[str]:
+    """The items a ring's section lists, in order: the first bold word of each
+    numbered row of its table, or with no table each bold word in turn."""
+    rows = re.findall(r"^\|\s*\d+\s*\|([^|\n]*)\|", section, re.M)
+    if rows:
+        return [(BOLD.findall(cell) or [cell.strip()])[0] for cell in rows]
+    return BOLD.findall(section)
+
+
+def test_ui_reference_names_every_ring_item_in_order_and_no_other():
+    """Each ring `resolve.ts` builds, exported or not, has a `### <Name> ring`
+    section in the UI reference, which lists the ring's items in the order the
+    ring builds them, and whose bold words are the labels it offers: all of
+    them, and nothing the code does not build. A section for a ring the code
+    does not build is a ring the reader cannot open, and so is a section for a
+    ring function `resolveGraphMenu` never returns: the reference went on
+    listing an Edge ring after nothing opened one.
+
+    The order is the ring's: an item's place is where a flick finds it, and
+    Expand holds the 12 o'clock wedge. Labels are compared as the code writes
+    them: the reference said "Colour" after the menu's label became "Color".
+    Mutations: move Expand from first to last in `nodeRing`, add an
+    `export function edgeRing`, or have the selection case return
+    `canvasRing(...)` -- this fails.
     """
-    source = (ROOT / "web" / "src" / "features" / "graph" / "rad" / "host" / "resolve.ts").read_text(
-        encoding="utf-8")
-    reference = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
-    table = re.search(r"^\| Ring \| Items \|\n\|---\|---\|\n((?:\|.*\|\n)+)", reference, re.M)
-    assert table, "docs/ui.md has no radial menu table headed | Ring | Items |"
-    rows = dict(re.findall(r"^\| \*\*(\w+)\*\* \| (.+?) \|$", table[1], re.M))
-    built_rings = _rings_built(source)
-    wrong = [f"docs/ui.md has a **{title}** row; resolve.ts builds no such ring"
-             for title in rows if title.lower() not in built_rings]
-    for ring in built_rings:
-        title = ring.capitalize()
-        if title not in rows:
-            wrong.append(f"docs/ui.md has no **{title}** row in the radial menu's table")
-            continue
-        documented = [item.replace("\\*", "").strip() for item in rows[title].split(" · ")]
-        built = _ring_items(source, ring)
-        if documented != built:
-            wrong.append(f"{title}: docs/ui.md {documented}, resolve.ts {built}")
-    assert not wrong, "the radial menu's table disagrees with resolve.ts:\n" + "\n".join(wrong)
+    rings = _rings_built()
+    assert rings and all(r["order"] and r["labels"] for r in rings.values()), (
+        f"read {rings} from resolve.ts; the ring or label pattern is stale")
+    sections = {name: body for name, body in _ui_sections().items()
+                if re.fullmatch(r"\w+ ring|\w+ submenu", name)}
+    wrong = [f"no section '### {name}'" for name in sorted(set(rings) - set(sections))]
+    wrong += [f"'### {name}' names a ring resolve.ts does not build"
+              for name in sorted(set(sections) - set(rings))]
+    returned = _rings_returned()
+    wrong += [f"'### {name}' names a ring resolveGraphMenu never returns, so no press or key opens it"
+              for name in sorted(set(sections) & set(rings))
+              if name.endswith(" ring") and name not in returned]
+    for name in sorted(set(rings) & set(sections)):
+        built = rings[name]
+        named = set(BOLD.findall(sections[name]))
+        if built["labels"] - named:
+            wrong.append(f"{name} lacks {sorted(built['labels'] - named)}")
+        if named - built["labels"]:
+            wrong.append(f"{name} names {sorted(named - built['labels'])}, which it does not build")
+        listed = _listed(sections[name])
+        if listed != built["order"]:
+            wrong.append(f"{name} lists {listed}; resolve.ts builds {built['order']}")
+    assert not wrong, f"docs/ui.md and resolve.ts disagree about the radial menu: {wrong}"
+
+
+def test_ui_reference_names_the_keys_and_the_hold_that_work_a_ring():
+    """The keys `attach.ts` binds -- the one that opens a ring and the ones
+    that move inside it -- are the keys in backticks under `### Opening a ring`
+    and `### Keys in a ring`, and the hold that opens one is the time
+    `geometry.ts` sets."""
+    attach = (RAD / "dom" / "attach.ts").read_text(encoding="utf-8")
+    inside = re.search(r"\[([^\]]*)\]\.includes\(ev\.key\)", attach)
+    opening = re.findall(r"ev\.key === '([^']+)'", attach)
+    hold = re.search(r"\blongPressMs:\s*(\d+)",
+                     (RAD / "core" / "geometry.ts").read_text(encoding="utf-8"))
+    assert inside and opening and hold, (
+        "attach.ts or geometry.ts no longer reads as expected; the key or hold pattern is stale")
+    bound = set(re.findall(r"'([^']+)'", inside.group(1))) | set(opening)
+
+    sections = _ui_sections()
+    assert {"Opening a ring", "Keys in a ring"} <= set(sections), (
+        "docs/ui.md has no '### Opening a ring' or '### Keys in a ring'")
+    named = set(CODE_SPAN.findall(sections["Opening a ring"] + sections["Keys in a ring"]))
+    assert named == bound, (
+        f"docs/ui.md names keys {sorted(named)}; attach.ts binds {sorted(bound)}")
+    assert f"{hold.group(1)} ms" in sections["Opening a ring"], (
+        f"geometry.ts holds for {hold.group(1)} ms; '### Opening a ring' does not say so")
 
 
 def test_no_source_directory_is_shadowed_by_the_dev_proxy(prefixes):

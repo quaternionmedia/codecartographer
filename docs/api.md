@@ -54,8 +54,8 @@ Every node whose language and kind `codecarto/data/constructs.yaml` maps also
 carries `construct` -- what it *is*, the same across languages (`type.product`
 for a C or Rust struct) -- and, where its qualifiers, attributes or body say so,
 `meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`), and, for
-a construct with a look, `construct_color` and `construct_name` (what "Color By:
-Construct" draws and the key names). A kind the vocabulary lists under
+a construct with a look, `construct_color` and `construct_name` (what
+[Color By](ui.md#graph-settings) draws for a construct, and the key names). A kind the vocabulary lists under
 `not_constructs`, with its reason, carries none -- Python's calls, names and
 literals are what a body does, not what it declares -- and neither do the
 walk's own `directory` and `file` nodes. Every route that serializes a graph to
@@ -800,8 +800,8 @@ the node-link shape.
 Token-spelling → contexts lookup (which layers/groups a token appears
 in) — the join `unified_parser_service.py`'s `annotate_lexicon` flag
 uses to enrich real parsed graphs (see `POST /parse/unified` above).
-Annotated nodes also carry `layer_color`, which "Color By: Abstraction
-Layer" draws and the legend names.
+Annotated nodes also carry `layer_color`, which
+[Color By](ui.md#graph-settings) draws for an abstraction layer, and the legend names.
 
 ### GET `/lexicon/constructs`
 
