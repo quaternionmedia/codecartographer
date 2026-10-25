@@ -67,6 +67,68 @@ async def test_a_cached_graph_is_stamped_as_it_is_replayed():
     assert nodes[0]["construct"] == "callable.function"
 
 
+def _cache_in(monkeypatch, tmp_path):
+    import codecarto.services.cache_service as cache_svc
+
+    repos_dir = tmp_path / "cache" / "repos"
+    monkeypatch.setattr(cache_svc, "_CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos_dir)
+    monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos_dir / "index.json")
+
+
+def _unified_body(url: str) -> dict:
+    return {"directory": {"info": {"url": url, "owner": "test", "name": url.rsplit("/", 1)[-1]},
+                          "size": 0, "is_partial": False,
+                          "root": {"name": "r", "size": 0, "folders": [],
+                                   "files": [{"name": "a.py", "size": 19, "raw": "class A:\n    pass\n"}]}},
+            "depth": 2, "layout": "Spring"}
+
+
+def test_a_graph_cached_before_nodes_carried_their_constructs_colour_is_parsed_again(monkeypatch, tmp_path):
+    """At 8 a placed node carries `construct_color` and `construct_name`; a
+    graph cached at 7 carries neither, and Color By: Construct had nothing
+    to paint it with. Mutation: leave GRAPH_SCHEMA_VERSION at 7 -- the graph
+    cached at 7 is served."""
+    import hashlib
+
+    from codecarto.main import app
+    from codecarto.services.cache_service import CacheService
+
+    _cache_in(monkeypatch, tmp_path)
+    url = "https://github.com/test/before-construct-colours"
+    at_7 = hashlib.sha256(f"v7::{url}::2::Spring::{sorted([])}".encode()).hexdigest()[:16]
+    old = {"graph": {"nodes": {"CACHED_AT_7": {"metadata": {"depth": 2, "kind": "class"}}}, "edges": []},
+           "metadata": {}}
+    CacheService.set(f"test-before-construct-colours::{at_7}", old, label="test/before-construct-colours",
+                     url=url, mode="2", layout="Spring")
+    results = TestClient(app).post("/parse/unified", json=_unified_body(url)).json()["results"]
+    assert not results.get("from_cache")
+    assert "CACHED_AT_7" not in results["graph"]["nodes"]
+    assert results["graph"]["nodes"]["a.A"]["metadata"]["construct_color"]
+
+
+def test_a_cached_graph_is_stamped_as_unified_serves_it(monkeypatch, tmp_path):
+    """docs/api.md: a cached graph is stamped again -- which the stream's
+    replay did and `/parse/unified`'s cache hit did not, returning the
+    cached nodes as they were stored. Mutation: return the hit without
+    `_stamp_cached` -- the node has no construct."""
+    from codecarto.main import app
+    from codecarto.services.cache_service import CacheService
+
+    _cache_in(monkeypatch, tmp_path)
+    url = "https://github.com/test/stamped-on-a-hit"
+    key = CacheService.cache_key(url=url, mode="2", layout="Spring", extensions=[])
+    cached = {"graph": {"nodes": {"fn": {"label": "delay",
+                                         "metadata": {"depth": 2, "language": "rust", "kind": "function"}}},
+                        "edges": []}, "metadata": {}}
+    CacheService.set(key, cached, label="test/stamped-on-a-hit", url=url, mode="2", layout="Spring")
+    results = TestClient(app).post("/parse/unified", json=_unified_body(url)).json()["results"]
+    assert results["from_cache"] is True
+    node = results["graph"]["nodes"]["fn"]["metadata"]
+    assert (node.get("construct"), node.get("construct_name")) == ("callable.function", "Function")
+    assert node["construct_color"] == VOCABULARY.get("callable.function").look.color
+
+
 def test_the_crate_graph_says_a_crate_is_a_package():
     """The Cargo panel's graph is read as `cargo`, and a crate there is the
     construct a C library and a Python distribution are."""

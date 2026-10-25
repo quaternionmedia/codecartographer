@@ -53,9 +53,15 @@ a construct with a look, `construct_color` and `construct_name` (what "Color By:
 Construct" draws and the key names). A kind the vocabulary lists under
 `not_constructs`, with its reason, carries none -- Python's calls, names and
 literals are what a body does, not what it declares -- and neither do the
-walk's own `directory` and `file` nodes. Every graph route stamps these as it
-serializes, and a cached graph is stamped again as it is replayed, so any graph
-on the canvas can be read by `POST /lexicon/chrestomathy/census`. A local Rust
+walk's own `directory` and `file` nodes. Every route that serializes a graph to
+gJGF stamps these, the unified streams stamp each file's nodes as they parse,
+and a cached graph is stamped again whenever `/parse/unified` or a stream serves
+it, so any graph on the canvas can be read by `POST /lexicon/chrestomathy/census`.
+A re-stamp applies the vocabulary as it is now to what the cache kept: a mapping
+added since is applied, but a fact the parser had not recorded when the graph
+was cached (C's `meta.automatic` on a local) is not recovered, and a construct
+the vocabulary no longer gives is not taken back -- a change to what a parse
+records bumps `GRAPH_SCHEMA_VERSION`, so the old graph is a miss. A local Rust
 repository with a recorded `target/codecarto/check.jsonl` has rustc's
 diagnostics on the items they name (`meta.diagnostics`, `meta.messages`,
 `meta.diagnostics_recorded_at`), and `metadata.recorded_check` is that document's
