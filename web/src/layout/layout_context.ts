@@ -1078,7 +1078,7 @@ export class LayoutContext {
         this.panelCallbacks.onRepoSubmit(example.url);
         // Its recorded cargo documents are part of it: the Cargo panel reads
         // them now, so opening that panel shows the workspace already read.
-        if (example.cargo) void this.actions.plot.loadCargoReading(example.url);
+        if (example.cargo) void this.actions.plot.cartography.loadCargoReading(example.url);
       },
 
       onRepoSubmit: (url: string) => {
