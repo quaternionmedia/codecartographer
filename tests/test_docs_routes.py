@@ -23,9 +23,10 @@ it describes, and each check here fails on a document that disagrees with it:
   every one a document names is read by the code;
 - every sync a document or the code tells a reader to run is `ONE_SYNC`;
 - `docs/index.md` links every page under `docs/`;
-- the UI reference names every registered panel; under each radial ring, every
-  item that ring builds, in the order it builds them, and no other; and the
-  keys and the hold that open and move a ring, as the code binds them;
+- the UI reference names every registered panel, and every key the window
+  keeps in `localStorage`; under each radial ring, every item that ring builds,
+  in the order it builds them, and no other; and the keys and the hold that
+  open and move a ring, as the code binds them;
 - the default layout and the source tree agree with the registry and the dev
   proxy;
 - every statement of the graph cache key names the schema version
@@ -845,6 +846,23 @@ def test_ui_reference_names_every_registered_panel():
     reference = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
     missing = sorted(i for i in ids if f"`{i}`" not in reference)
     assert not missing, f"docs/ui.md's panel table lacks: {missing}"
+
+
+def test_ui_reference_names_every_key_the_window_keeps_in_the_browser():
+    """Each `cc:` key a module under `web/src` keeps in `localStorage` is named
+    in backticks in the UI reference, which says what the window remembers and
+    where. The page was rewritten without `cc:help-dismissed`, the key that
+    keeps the walkthrough from opening again. Mutation: drop that key from
+    `docs/ui.md` -- this fails naming it."""
+    kept = set()
+    for path in (ROOT / "web" / "src").rglob("*.ts"):
+        text = path.read_text(encoding="utf-8")
+        if "localStorage." in text:
+            kept |= set(re.findall(r"'(cc:[a-z:-]+)'", text))
+    assert kept, "no cc: key found beside localStorage under web/src; the pattern is stale"
+    reference = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
+    missing = sorted(key for key in kept if f"`{key}`" not in reference)
+    assert not missing, f"docs/ui.md does not name the browser keys {missing}"
 
 
 RAD = ROOT / "web" / "src" / "features" / "graph" / "rad"

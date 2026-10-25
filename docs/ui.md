@@ -201,7 +201,8 @@ Id `graph-settings-panel`. In the default arrangement.
   canvas with the chosen layout; *Compound* nests symbols around their files and
   files around their directories. *Physics*, *Repulsion* and *Link Distance*
   (Gravis only) drive vis-network's simulation. *Group Outlines* (D3 only)
-  circles each directory and file group.
+  circles each group in a translucent dashed outline: grey around a
+  directory's, purple around a file's.
 - **Visual**, folded: *Node Labels* (and per depth: Dir, File, Sym, Sub), *Node
   Size*, *Color By* (depth and kind, abstraction layer, or construct across
   languages), *Node Opacity*, *Border Width*, *Edge Labels*, *Edge Width*, *Edge
@@ -223,26 +224,32 @@ Id `graph-settings-panel`. In the default arrangement.
 - When a stream finishes, the view fits the whole graph.
 - **The legend** sits at the bottom left. Its header gives the totals; click it
   to list the node and edge kinds actually drawn, each with its swatch and
-  count. It keys the colours on screen. Under *Color By: Abstraction Layer* a
-  row's swatch takes the colour the canvas paints its nodes, and an *Abstraction
-  layers* section names each layer painted and counts its nodes -- by language
-  where the graph holds more than one, since a layer's number is a rank within
-  one language's lexicon. Under *Auto* a layer is named only where a node's own
-  colour is its layer's, as the chrestomathy's tokens are. *Color By: Construct*
-  paints each node the vocabulary placed in its construct's colour, alike across
-  languages, and a *Constructs* section names each construct painted; under the
-  other colourings a construct is named only where a node's own colour is its
-  construct's, so the crate graph under *Auto* has no *Package* row. The canvas,
-  the vis-network renderer and the key take the fill from one function,
-  `paintedColor`. A record (`ngon`) is a row per side count, and says it:
-  *Struct · 4 sides*.
+  count: a kind absent from the picture has no row, and every node is in exactly
+  one. What each row means is decided in
+  `web/src/features/graph/extensions/legend_marks.ts`, which is pure and covered
+  by `npm run test:pure`. It keys the colours on screen. Under *Color By:
+  Abstraction Layer* a row's swatch takes the colour the canvas paints its
+  nodes, and an *Abstraction layers* section names each layer painted and counts
+  its nodes -- by language where the graph holds more than one, since a layer's
+  number is a rank within one language's lexicon. Under *Auto* a layer is named
+  only where a node's own colour is its layer's, as the chrestomathy's tokens
+  are. *Color By: Construct* paints each node the vocabulary placed in its
+  construct's colour, alike across languages, and a *Constructs* section names
+  each construct painted; under the other colourings a construct is named only
+  where a node's own colour is its construct's, so the crate graph under *Auto*
+  has no *Package* row. The canvas, the vis-network renderer and the key take
+  the fill from one function, `paintedColor`. A record (`ngon`) is a row per
+  side count, and says it: *Struct · 4 sides*.
 - **Right-click** opens the [radial menu](#the-radial-menu).
 
 ## The radial menu
 
 A ring of choices around the pointer, for the node, the selection or the
-canvas under it. Hide, Pin and Color are kept as state, so they survive
-Relayout.
+canvas under it. It is rad (`web/src/features/graph/rad/`), mounted against the
+canvas rather than inside a renderer, so every graph gets it, whatever drew it;
+[rad's host-integration standard](https://github.com/quaternionmedia/rad/blob/main/adr/DRAFT-rad-host-integration-standard.md)
+is the contract it conforms to. Hide, Pin and Color are kept as state, so they
+survive Relayout.
 
 ### Opening a ring
 
@@ -327,7 +334,8 @@ the chosen nodes.
   *GH?* when it does not, with a tooltip naming the token's source or how to
   give it one.
 - **`?`**: the walkthrough. It opens by itself on a first visit; Escape, ×, or
-  a click outside it closes it, and that is remembered in the browser.
+  a click outside it closes it, and that is remembered in the browser
+  (`localStorage`, key `cc:help-dismissed`).
 
 ## What the window does not have
 
