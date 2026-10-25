@@ -1,4 +1,52 @@
-import { Page } from '@playwright/test';
+import { expect } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+
+/**
+ * A point of the node that a pointer there reaches, as the browser hit-tests
+ * it, once the node has stopped moving.
+ *
+ * **A NODE'S CENTRE IS OFTEN UNDER SOMETHING ELSE.** A file node's is often
+ * under one of its symbols or its label, and the canvas lets two nodes
+ * overlap: the demo has drawn `dir::codecarto/routers` 7.5 units from
+ * `dir::codecarto`, two diamonds 12 units from centre to corner, with routers
+ * on top. Playwright's own click aims at the centre and waits for nothing to
+ * be over it, which on a settled layout is never, so the test waited out its
+ * timeout. A real press, hit-tested where the pointer is, is also what a
+ * synthetic event dispatched to the node is not: that reaches it whatever is
+ * drawn over it.
+ *
+ * Settled is the node's box unchanged over three animation frames running:
+ * a point read while the canvas still zooms to fit is not where the node is
+ * when the press arrives.
+ */
+export async function pointOn(node: Locator): Promise<{ x: number; y: number }> {
+  const found = await node.evaluate(async (el) => {
+    const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    let last = '';
+    let unchanged = 0;
+    for (let i = 0; i < 600 && unchanged < 3; i++) {
+      await frame();
+      const r = el.getBoundingClientRect();
+      const box = `${r.left},${r.top},${r.width},${r.height}`;
+      unchanged = box === last ? unchanged + 1 : 0;
+      last = box;
+    }
+    if (unchanged < 3) return 'the node did not stop moving';
+    const r = el.getBoundingClientRect();
+    const steps = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
+    for (const fy of steps) {
+      for (const fx of steps) {
+        const x = r.left + r.width * fx;
+        const y = r.top + r.height * fy;
+        const hit = document.elementFromPoint(x, y);
+        if (hit && el.contains(hit)) return { x, y };
+      }
+    }
+    return 'no point of the node is reached by a pointer';
+  });
+  expect(typeof found === 'string' ? found : null).toBeNull();
+  return found as { x: number; y: number };
+}
 
 /**
  * Dismiss the onboarding modal if it is covering the app.

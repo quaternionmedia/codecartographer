@@ -5,6 +5,7 @@ import { animations } from '../../../core/animations';
 import { Directory, RawFile } from '../../models/source';
 import { DirectoryContent } from '../../qm_comp_lib/directory/directory';
 import { SystemDefinitionRegistry } from '../../../features/graph/services/system_renderer';
+import { rendererControls } from '../../../features/graph/services/renderer_controls';
 import { GraphStylingOptions, ParserOptions, GraphRendererType } from '../../../state/types';
 import './control_panel.css';
 
@@ -441,9 +442,11 @@ export function ControlPanel(
     const styling = content.graphStyling;
     const selectedRenderer = content.selectedRenderer;
     const isSystem = selectedRenderer === 'system';
-    const supportsLayout  = selectedRenderer === 'd3';
-    const supportsPhysics = !['notebook', 'system'].includes(selectedRenderer);
-    const supportsVisual  = !['notebook', 'system'].includes(selectedRenderer);
+    const {
+      layout: supportsLayout,
+      physics: supportsPhysics,
+      visual: supportsVisual,
+    } = rendererControls(selectedRenderer);
     const sections = state.graphSections;
 
     const renderSectionHeader = (label: string, key: keyof typeof sections) =>
@@ -478,7 +481,7 @@ export function ControlPanel(
             callbacks.onRendererChange(renderer);
           },
         }, [
-          m('option', { value: 'd3' }, 'D3.js (Force-directed)'),
+          m('option', { value: 'd3' }, 'D3.js (server layout)'),
           m('option', { value: 'gravis' }, 'Gravis (vis-network)'),
           m('option', { value: 'notebook' }, 'Notebook (Static HTML)'),
           m('option', { value: 'system' }, 'System Monitor'),

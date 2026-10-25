@@ -27,7 +27,7 @@ const STEPS = [
   {
     icon: '⚙',
     title: 'Tune the visualization',
-    body: 'Open the Graph Settings tab to change the layout algorithm, toggle physics, adjust node size, labels, and pick a color theme.',
+    body: 'Open the Graph Settings tab to choose the renderer and the layout algorithm, adjust node size, labels and color, and pick a theme.',
   },
   {
     icon: '⊞',

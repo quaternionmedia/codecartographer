@@ -845,7 +845,14 @@ def test_ui_reference_names_every_registered_panel():
     assert not missing, f"docs/ui.md's panel table lacks: {missing}"
 
 
-RINGS = {"node": "Node", "canvas": "Canvas", "selection": "Selection", "edge": "Edge"}
+def _rings_built(source: str) -> list[str]:
+    """The rings `resolveGraphMenu` in `resolve.ts` can return, by name: `node`
+    for a case that returns `nodeRing(...)`'s items."""
+    body = re.search(r"export function resolveGraphMenu\(.*?\n\}", source, re.S)
+    assert body, "resolveGraphMenu() was not found in resolve.ts; the pattern is stale"
+    rings = re.findall(r"items: (\w+)Ring\(", body[0])
+    assert rings, "resolveGraphMenu() returns no ring the pattern recognises; it is stale"
+    return rings
 
 
 def _ring_items(source: str, ring: str) -> list[str]:
@@ -887,17 +894,27 @@ def test_ui_reference_ring_table_is_the_rings_the_menu_builds():
     """The radial menu's table in the UI reference lists each ring as `resolve.ts` builds it.
 
     The table said "Colour ▸" in three rings after the menu's label became
-    "Color", as Graph Settings writes it. An item marked `\\*` is one the table
-    says is shown disabled; the mark is not compared.
+    "Color", as Graph Settings writes it, and went on listing an Edge ring and
+    the canvas ring's Color after both were removed. The rings are the ones
+    `resolveGraphMenu` returns, and the table has a row for each and for no
+    other. An item marked `\\*` is one the table says is shown disabled; the
+    mark is not compared.
     """
     source = (ROOT / "web" / "src" / "features" / "graph" / "rad" / "host" / "resolve.ts").read_text(
         encoding="utf-8")
     reference = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
-    wrong = []
-    for ring, title in RINGS.items():
-        row = re.search(rf"^\| \*\*{title}\*\* \| (.+?) \|$", reference, re.M)
-        assert row, f"docs/ui.md has no **{title}** row in the radial menu's table"
-        documented = [item.replace("\\*", "").strip() for item in row[1].split(" · ")]
+    table = re.search(r"^\| Ring \| Items \|\n\|---\|---\|\n((?:\|.*\|\n)+)", reference, re.M)
+    assert table, "docs/ui.md has no radial menu table headed | Ring | Items |"
+    rows = dict(re.findall(r"^\| \*\*(\w+)\*\* \| (.+?) \|$", table[1], re.M))
+    built_rings = _rings_built(source)
+    wrong = [f"docs/ui.md has a **{title}** row; resolve.ts builds no such ring"
+             for title in rows if title.lower() not in built_rings]
+    for ring in built_rings:
+        title = ring.capitalize()
+        if title not in rows:
+            wrong.append(f"docs/ui.md has no **{title}** row in the radial menu's table")
+            continue
+        documented = [item.replace("\\*", "").strip() for item in rows[title].split(" · ")]
         built = _ring_items(source, ring)
         if documented != built:
             wrong.append(f"{title}: docs/ui.md {documented}, resolve.ts {built}")

@@ -32,6 +32,7 @@
     "src/features/estate/provenance_shown.ts",
     "src/features/graph/services/layout_names.ts",
     "src/features/graph/services/node_info.ts",
+    "src/features/graph/services/renderer_controls.ts",
     "src/features/graph/services/source_badge.ts",
     "src/features/examples/examples.ts",
     "src/features/cartography/chrestomathy_rows.ts",

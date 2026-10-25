@@ -65,7 +65,7 @@ test('every ring, in every state, respects the 8-item ceiling', () => {
     { depth: 0, hasRenderedChildren: true, hasSource: true, hasGroup: true, physicsAvailable: true, anyHidden: true, selectionCount: 3 },
     { depth: 2, pinned: true },
   ];
-  for (const type of ['node', 'edge', 'canvas', 'selection']) {
+  for (const type of ['node', 'canvas', 'selection']) {
     for (const facts of factSets) {
       const spec = resolveGraphMenu({ type, targetIds: ['a'], position: { x: 0, y: 0 } }, facts);
       assert.ok(
@@ -143,7 +143,7 @@ test('a capability the host lacks is disabled, not silently substituted', () => 
                   'toggle-physics': 'physicsAvailable' };
 
   let found = 0;
-  for (const type of ['node', 'edge', 'canvas', 'selection']) {
+  for (const type of ['node', 'canvas', 'selection']) {
     const spec = resolveGraphMenu({ type, targetIds: ['x'], position: { x: 0, y: 0 } }, facts);
     for (const item of spec.items) {
       if (!(item.action in gated)) continue;
@@ -162,4 +162,18 @@ test('the same verbs come back enabled on a host that does have them', () => {
   assert.notEqual(byId.spread.enabled, false);
   assert.notEqual(byId.cluster.enabled, false);
   assert.equal(byId.physics.enabled, true);
+});
+
+test('the canvas ring offers no verb that needs a target', () => {
+  /* Mutation: put Color back on the canvas ring -- it commits with no target
+     ids and colours nothing, and this fails. */
+  const canvas = resolveGraphMenu({ type: 'canvas', targetIds: [], position: { x: 0, y: 0 } }, {});
+  const needsTarget = canvas.items.filter((i) => i.children || /^color:/.test(i.action ?? ''));
+  assert.deepEqual(needsTarget.map((i) => i.id), []);
+});
+
+test('there is no edge ring: nothing opens an edge context', () => {
+  /* Mutation: restore the edge ring -- this fails. */
+  const spec = resolveGraphMenu({ type: 'edge', targetIds: ['e'], position: { x: 0, y: 0 } }, {});
+  assert.equal(spec.title, 'canvas');
 });

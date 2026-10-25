@@ -68,7 +68,7 @@ the bodies of three panels, one mode each (`ControlPanelMode`):
 |-------|------|---------|
 | Upload | `upload` | Add local files; the parser options; Quick Start (Load Demo, a lexicon) |
 | Repository | `repo` | Fetch a repository, recent graphs, the project selector; the same parser options and Quick Start |
-| Graph Settings | `graph` | Layout, physics, styling, theme |
+| Graph Settings | `graph` | Renderer, layout, physics (Gravis only), styling, theme |
 
 ---
 
@@ -106,9 +106,16 @@ one rule in `web/src/features/graph/services/layout_names.ts`.
 | `spectral_layout` | Graph Laplacian eigenvectors |
 
 ### Physics Controls
-- **Enable Physics** — toggle force simulation (spring_layout only)
-- **Repulsion Force** — how strongly nodes repel (chargeStrength, negative values)
-- **Link Distance** — target edge length in px
+
+Offered only when the renderer is **Gravis (vis-network)**, the one renderer
+that runs a force simulation. The D3 canvas draws nodes where the server's
+layout placed them, and Notebook and System Monitor run no simulation, so on
+those the three are not shown. `renderer_controls.rendererControls` says which
+controls each renderer takes.
+
+- **Physics** — turn Gravis's force simulation on or off
+- **Repulsion** — how strongly nodes repel (`chargeStrength`, negative values); shown while Physics is on
+- **Link Distance** — target edge length in px; shown while Physics is on
 
 ### Node Appearance
 | Option | Description |
@@ -159,16 +166,34 @@ Demo, plot repo, plot file, cache recall, bookmark replay, a lexicon. Source is
 [rad's host-integration standard](https://github.com/quaternionmedia/rad/blob/main/adr/DRAFT-rad-host-integration-standard.md) for the contract it
 conforms to.
 
-Press-and-hold, right-click, or press the menu key on a focused canvas. Flick
-toward a wedge to commit; release in the dead zone to cancel. Every item is
-reachable by keyboard — arrow keys and Enter — and every verb also has a chord.
+Right-click, press-and-hold with a finger or pen, or press `m`, the
+context-menu key or Shift+F10 on the focused canvas. Flick toward a wedge to
+commit; release in the dead zone to cancel. In an open ring the arrow keys move
+between the wedges, Enter commits and Escape closes it.
+
+Which ring opens is decided in `web/src/features/graph/rad/host/menu_context.ts`:
+
+- **A press on a node** opens that node's ring -- or, while more than one node
+  is selected, the selection's ring.
+- **A press anywhere off the nodes** -- the background, an edge -- opens the
+  canvas ring, whatever is selected.
+- **A key** has no pointer, and the nodes take no focus, so it opens on the
+  selection: the canvas ring with nothing selected, the selected node's ring
+  with one, and the selection's ring with several.
+- **Escape** on the canvas, with no ring open, clears the selection, as
+  Deselect does; the node's ring has no Deselect.
+
+So every item is reachable by keyboard. The chord words in `vocabulary.ts` are
+not mounted: no typed word commits a verb.
 
 | Ring | Items |
 |---|---|
 | **Node** | Expand · Collapse · Neighbours · Pin · Color ▸ · View ▸ · Hide · Delete |
-| **Canvas** | Fit · Relayout · Spread\* · Cluster\* · Physics\* · Unhide · Deselect · Color ▸ |
+| **Canvas** | Fit · Relayout · Spread\* · Cluster\* · Physics\* · Unhide · Deselect |
 | **Selection** | Expand · Neighbours · Spread\* · Cluster\* · Color ▸ · Hide · Deselect · Delete *n* |
-| **Edge** | Endpoints · Hide · Info |
+
+No ring acts on an edge. The canvas ring offers nothing that needs a node to
+act on, so Color is on the node and selection rings only.
 
 **View ▸** holds Source · Info · Compare · Focus. *Compare* opens the
 Chrestomathy panel at what the node *is* -- its construct, set beside every
@@ -189,8 +214,9 @@ A C symbol names its file only by the file's stem and a Python symbol by
 the file is. `node_info.sourceTarget` decides where, `npm run test:pure` holds
 it, and `streaming_renderer.openSource` opens it for both routes.
 
-\* Shown but **disabled**: node positions come from the backend layout and
-there is no force simulation to toggle. They keep their wedges so the other
+\* Shown but **disabled**: the radial menu is on the D3 canvas, whose node
+positions come from the backend layout, and there is no force simulation to
+toggle. They keep their wedges so the other
 items do not shift position between states. **A capability the host lacks is
 offered disabled, never substituted** — three verbs once shared one `fitView()`
 call while every test stayed green, which is the rule's whole origin.

@@ -102,6 +102,11 @@ function nodeRing(f: MenuFacts): MenuItem[] {
   ];
 }
 
+/**
+ * The canvas ring acts on the canvas and the selection, never on a node: a
+ * verb that needs target ids is not offered here, since the canvas context
+ * carries none.
+ */
 function canvasRing(f: MenuFacts): MenuItem[] {
   return [
     { id: 'fit', label: 'Fit', action: 'fit' },
@@ -121,7 +126,6 @@ function canvasRing(f: MenuFacts): MenuItem[] {
       action: 'clear-selection',
       enabled: (f.selectionCount ?? 0) > 0,
     },
-    { id: 'colour', label: 'Color', children: COLOUR_RING },
   ];
 }
 
@@ -144,24 +148,14 @@ function selectionRing(f: MenuFacts): MenuItem[] {
 }
 
 /**
- * Edges here are derived facts about source, not authored objects, so the
- * standard `reverse` and `edit-label` verbs have no honest meaning. The ring
- * offers only what is true of a derived edge.
+ * One ring per context `menu_context.ts` can open: node, selection, canvas.
+ * Nothing opens an edge context, so there is no edge ring; an unknown type
+ * gets the canvas ring.
  */
-function edgeRing(): MenuItem[] {
-  return [
-    { id: 'neighbors', label: 'Endpoints', action: 'select-neighbors' },
-    { id: 'hide', label: 'Hide', action: 'hide' },
-    { id: 'info', label: 'Info', action: HOST_VERBS.NODE_INFO },
-  ];
-}
-
 export function resolveGraphMenu(context: MenuContext, facts: MenuFacts = {}): MenuSpec {
   switch (context.type) {
     case 'node':
       return { title: 'node', items: nodeRing(facts) };
-    case 'edge':
-      return { title: 'edge', items: edgeRing() };
     case 'selection':
       return { title: `${facts.selectionCount ?? context.targetIds.length} selected`, items: selectionRing(facts) };
     case 'canvas':
@@ -189,7 +183,7 @@ export function allMenuVerbs(): string[] {
       if (i.children) walk(i.children);
     }
   };
-  for (const type of ['node', 'edge', 'canvas', 'selection'] as const) {
+  for (const type of ['node', 'canvas', 'selection'] as const) {
     walk(resolveGraphMenu({ type, targetIds: ['x'], position: { x: 0, y: 0 } }, facts).items);
   }
   return [...seen].sort();
