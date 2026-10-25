@@ -67,6 +67,9 @@ async def _cheap_while(slow_path: str) -> tuple[float, int]:
     ("/topology/available", qmcp_client, "topologies", _slow_reach),
     ("/topology/gjgf", qmcp_client, "shape", _slow_reach),
     ("/topology/data", qmcp_client, "shape", _slow_reach),
+    # A subject asks the harness for its relations rather than a shape: the
+    # other branch of `topology_router._fetch`.
+    ("/topology/gjgf?subject=codecarto", qmcp_client, "relations", _slow_reach),
 ])
 def test_a_slow_seam_does_not_hold_up_a_cheap_route(monkeypatch, slow_path, target, name, stand_in):
     monkeypatch.setattr(target, name, stand_in)
