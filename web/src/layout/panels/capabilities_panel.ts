@@ -87,7 +87,7 @@ export function createCapabilitiesPanel(ctx: LayoutContext): m.Component {
                 reading.capabilities.length === 0
                   ? m('p.estate-view__hint', 'the registry declares no capabilities')
                   : null,
-                caveatShown(metadata, 'capabilities') ? null : m('p.estate-view__hint', reading.caveat),
+                caveatShown(metadata, 'capabilities', reading.caveat) ? null : m('p.estate-view__hint', reading.caveat),
               ]
             : null,
           reading
