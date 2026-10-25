@@ -74,7 +74,9 @@ def _repo_key_from_url(url: str) -> str:
 #   2: nodes carry `construct` and `meta.facets` (data/constructs.yaml).
 #   3: Rust items come from the Rust reader and linker scripts are parsed;
 #      a Rust item carries a recorded check's `meta.diagnostics`.
-GRAPH_SCHEMA_VERSION = 3
+#   4: a record's `meta.sides` counts a unit struct's zero fields and a C
+#      union's fields, and is absent where nothing was counted.
+GRAPH_SCHEMA_VERSION = 4
 
 
 def _make_key(url: str, mode: str, layout: str, extensions: list[str]) -> str:
