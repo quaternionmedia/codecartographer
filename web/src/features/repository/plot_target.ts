@@ -11,7 +11,7 @@
 
 // `.js`, so the build `node --test` reads resolves it as the bundler does.
 import type { Directory } from '../../components/models/source.js';
-import { repositoryOf } from './repo_tree.js';
+import { hasTree, repositoryOf } from './repo_tree.js';
 
 export type PlotTarget =
   /** The loaded repository, streamed by its URL. */
@@ -25,10 +25,11 @@ export type PlotTarget =
 
 /**
  * What Plot draws: the loaded repository, else every added file, else the URL
- * in the field; null when there is none of them.
+ * in the field; null when there is none of them. A repository is loaded when
+ * the Files panel shows its tree (`hasTree`), whatever the tree's size says.
  */
 export function plotTarget(shown: Directory | null | undefined, added: number, field: string): PlotTarget | null {
-  if (shown && shown.size > 0) {
+  if (hasTree(shown)) {
     const url = repositoryOf(shown);
     return url ? { kind: 'repository', url } : { kind: 'tree' };
   }

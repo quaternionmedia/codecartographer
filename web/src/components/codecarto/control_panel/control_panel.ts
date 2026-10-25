@@ -5,6 +5,8 @@ import { animations } from '../../../core/animations';
 import { Directory, RawFile } from '../../models/source';
 import { SystemDefinitionRegistry } from '../../../features/graph/services/system_renderer';
 import { rendererControls } from '../../../features/graph/services/renderer_controls';
+import { hasTree } from '../../../features/repository/repo_tree';
+import { plotTarget } from '../../../features/repository/plot_target';
 import { GraphStylingOptions, ParserOptions, GraphRendererType } from '../../../state/types';
 import './control_panel.css';
 
@@ -200,7 +202,9 @@ export function ControlPanel(
 
   /** A GitHub URL or a local path, and what is loaded from one. */
   const renderUrlSection = () => {
-    const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
+    // Loaded when the Files panel shows the tree, as it asks: an Expand All
+    // tree's size is its root's own file count, 0 with only folders there.
+    const hasRepo = hasTree(content.repoDirectory);
     const repoInfo = content.repoDirectory?.info;
 
     return m('div.panel-source__repo', [
@@ -453,13 +457,12 @@ export function ControlPanel(
    * stream in flight.
    */
   const renderPlotBar = () => {
-    const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
-    const files = content.uploadedFiles.length;
-    const url = state.repoUrl.trim();
-    const target = hasRepo ? 'the loaded repository'
-      : files > 0 ? `the ${files} added file(s)`
-      : url ? url
-      : null;
+    // What Plot draws, decided where `onPlot` decides it.
+    const plotted = plotTarget(content.repoDirectory, content.uploadedFiles.length, state.repoUrl);
+    const target = !plotted ? null
+      : plotted.kind === 'files' ? `the ${plotted.count} added file(s)`
+      : plotted.kind === 'fetch' ? plotted.url
+      : 'the loaded repository';
     const progress = state.progress;
     const pct = progress && progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
 

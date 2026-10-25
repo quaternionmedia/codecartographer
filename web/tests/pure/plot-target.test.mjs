@@ -34,6 +34,20 @@ test('a tree read with a trailing slash is drawn as the one repository it is', (
   assert.deepEqual(plotTarget(tree(`${A}/`), 0, ''), { kind: 'repository', url: A });
 });
 
+test('a tree Expand All built, its root holding only folders, is the repository Plot draws', () => {
+  /**
+   * Expand All's tree carries its root folder's own file count as its size,
+   * 0 for a root with only folders (`hasTree`). Mutation: judge it loaded by
+   * `size > 0` -- Plot falls through to fetching the field's URL, and this fails.
+   */
+  const expanded = new Directory(
+    new RepoInfo('example', 'a', `${A}/`),
+    0,
+    new RawFolder('example/a', 0, [], [new RawFolder('src', 1, [new RawFile('main.py', 1, '', `${A}/src/main.py`)], [])]),
+  );
+  assert.deepEqual(plotTarget(expanded, 0, B), { kind: 'repository', url: A });
+});
+
 test('a loaded tree that names no repository is drawn as it is', () => {
   assert.deepEqual(plotTarget(tree(''), 0, B), { kind: 'tree' });
 });
