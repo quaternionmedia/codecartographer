@@ -75,7 +75,7 @@ the bodies of three panels, one mode each (`ControlPanelMode`):
 ## Upload and Repository Panels
 
 ### Demo
-- **Load Demo** (Quick Start, in either panel) — streams CodeCartographer's own source as a sample graph via `/parse/stream`.
+- **Load Demo** (Quick Start, in either panel) — draws CodeCartographer's own source as a sample graph, from one `POST /plotter/demo` answer rather than a stream.
 
 ### Repository
 1. Paste a GitHub URL and press Enter or click **→ Fetch**.

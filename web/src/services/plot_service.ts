@@ -98,7 +98,7 @@ export class PlotService {
    * Load a language's standalone Lexicon graph (Option A) - the same
    * node-link shape /parse/unified produces, so it renders through the
    * existing pipeline with no renderer changes. See
-   * docs/roadmap/lexicon.md.
+   * docs/architecture.md, Lexicons and the construct vocabulary.
    */
   public static async plotLexicon(
     lexiconUrl: string,

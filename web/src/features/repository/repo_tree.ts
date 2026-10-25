@@ -30,6 +30,16 @@ export interface RepoTreeReads {
   expandAll(url: string, maxDepth: number): Promise<Directory | null>;
 }
 
+/**
+ * Whether there is a tree to show. A `Directory`'s `size` is the repository's
+ * size where GitHub's tree gave one, and the root folder's own file count where
+ * Expand All built it -- 0 for a repository with only folders at its root -- so
+ * the tree is shown when it holds anything, whatever its size says.
+ */
+export function hasTree(dir: Directory | null | undefined): boolean {
+  return !!dir && (dir.size > 0 || dir.root.files.length > 0 || dir.root.folders.length > 0);
+}
+
 /** The tree with `expanded` in place of the folder at `pathParts`. */
 export function mergeFolderAtPath(root: RawFolder, pathParts: string[], expanded: RawFolder): RawFolder {
   if (pathParts.length === 0) return expanded;

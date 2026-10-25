@@ -2,14 +2,17 @@ name: Web
 
 # The frontend's suites, on every pull request that can change what they test.
 #
-# `suites` needs only Node: the typecheck, and the pure, state, rad and system
-# suites, which run in node --test against code compiled from web/src. `e2e`
-# drives the real app in Chromium, so it also installs the backend; Playwright
-# starts both servers itself on 27182 and 12340 (web/playwright.config.ts).
+# `suites` needs only Node: the typecheck, the production build, and the pure,
+# state, rad and system suites, which run in node --test against code compiled
+# from web/src. `e2e` drives the real app in Chromium, so it also installs the
+# backend; Playwright starts both servers itself on 27182 and 12340
+# (web/playwright.config.ts).
 #
 # `test:families` is not run here: it reads families.json from a qm clone
 # beside this one (web/tests/families/reachable.test.mjs), which a runner does
-# not have, so every case would skip and the check would enforce nothing.
+# not have, so every case would skip and the check would enforce nothing. The
+# browser suite's moat replay is left out of `e2e` by name for the same reason;
+# tests/test_web_workflow.py fails on a browser test that can skip and is not.
 #
 # Not a seed file. This is the project's own workflow and is free to change.
 
@@ -17,12 +20,25 @@ on:
   push:
     branches: [main]
   pull_request:
+    # Every path the suites, or the backend the browser suite starts, read.
+    # tests/test_web_workflow.py derives that set from the specs and the
+    # backend and fails on a path this leaves out.
     paths:
       - 'web/**'
       - 'codecarto/**'
       - 'pyproject.toml'
       - 'uv.lock'
       - '.github/workflows/web.yml'
+      # The Cargo specs read tests/fixtures/cargo/workspace; the project
+      # selector opens the bundled examples/rust-firmware.
+      - 'tests/fixtures/**'
+      - 'examples/**'
+      # The Cargo panel's not-a-workspace case reads docs/ and expects no
+      # Cargo.toml there.
+      - 'docs/**'
+      # The estate panels read the corpus: its pin, and where it is fetched from.
+      - 'governance/qm'
+      - '.gitmodules'
 
 permissions:
   contents: read
@@ -54,6 +70,9 @@ jobs:
 
       - run: npm ci
       - run: npm run typecheck
+      # The browser suite drives the dev server, which compiles each module as
+      # the page asks for it; only this bundles the whole app.
+      - run: npm run build
       - run: npm run test:pure
       - run: npm run test:state
       - run: npm run test:rad
@@ -91,9 +110,13 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
-      - name: Run the browser suite
+      # Less the moat replay, by name: it replays the history of a moat clone
+      # beside the backend (web/tests/e2e/system-monitor.spec.ts), a runner has
+      # none, and it would skip -- one more line in the summary that nothing
+      # here can turn red. It runs where a moat clone sits beside this one.
+      - name: Run the browser suite, less the moat replay
         working-directory: web
-        run: npm run test:e2e
+        run: npm run test:e2e -- --grep-invert "moat is derived from its clone"
 
       - name: Keep the report of a failed run
         if: failure()
