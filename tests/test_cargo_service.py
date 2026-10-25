@@ -48,6 +48,17 @@ def copy_workspace(tmp_path: Path, documents: str = "current") -> Path:
     return root
 
 
+def edit_metadata(root: Path, data: dict | None = None) -> dict:
+    """The copy's metadata.json, or, given *data*, that written back as current."""
+    path = root / cargo_service.DOCUMENTS / cargo_service.METADATA_DOCUMENT
+    if data is None:
+        return json.loads(path.read_text(encoding="utf-8"))
+    path.write_text(json.dumps(data), encoding="utf-8")
+    now = time.time()
+    os.utime(path, (now, now))
+    return data
+
+
 def package(reading, name):
     found = reading.package(name)
     assert found is not None, name
@@ -166,6 +177,39 @@ class TestRecordedDocuments:
         metadata_doc = reading.documents[0]
         assert metadata_doc.present and metadata_doc.stale and not metadata_doc.used
         assert "manifests were read instead" in metadata_doc.problem
+
+    def test_a_package_declared_twice_keeps_each_declarations_settings(self, tmp_path):
+        """host-tool declares proptest as an optional dependency and as a
+        dev-dependency: each edge carries its own declaration's settings."""
+        root = copy_workspace(tmp_path, "current")
+        data = edit_metadata(root)
+        host = next(p for p in data["packages"] if p["name"] == "host-tool")
+        dev = next(d for d in host["dependencies"] if d["name"] == "proptest")
+        host["dependencies"].insert(0, {**dev, "kind": None, "req": "^1.4", "optional": True})
+        node = next(n for n in data["resolve"]["nodes"] if n["id"] == host["id"])
+        next(d for d in node["deps"] if d["name"] == "proptest")["dep_kinds"] = [
+            {"kind": None, "target": None}, {"kind": "dev", "target": None}]
+        edit_metadata(root, data)
+        found = {(d.kind, d.optional, d.req) for d in package(cargo_service.read(root), "host-tool").dependencies
+                 if d.name == "proptest"}
+        assert found == {("normal", True, "^1.4"), ("dev", False, "^1")}
+
+    def test_transitive_draws_cargos_resolution_when_it_answered(self, tmp_path):
+        """With metadata.json in use the lockfile is not read, so `transitive`
+        draws the resolution's dependencies of dependencies instead."""
+        root = copy_workspace(tmp_path, "current")
+        data = edit_metadata(root)
+        hash32 = "registry+https://github.com/rust-lang/crates.io-index#hash32@0.3.1"
+        heapless = next(p for p in data["packages"] if p["name"] == "heapless")
+        data["packages"].append({**heapless, "name": "hash32", "version": "0.3.1", "id": hash32})
+        data["resolve"]["nodes"].append({"id": hash32, "deps": [], "dependencies": [], "features": []})
+        next(n for n in data["resolve"]["nodes"] if n["id"] == heapless["id"])["deps"] = [
+            {"name": "hash32", "pkg": hash32, "dep_kinds": [{"kind": None, "target": None}]}]
+        edit_metadata(root, data)
+        reading = cargo_service.read(root)
+        assert reading.engine == "cargo metadata"
+        edge = cargo_service.as_graph(reading, transitive=True).get_edge_data("crate::heapless", "crate::hash32")
+        assert edge is not None and edge[0]["label"] == "resolved"
 
     def test_metadata_older_than_the_lockfile_is_not_used(self, tmp_path):
         """`cargo update -p heapless` rewrites only Cargo.lock, which is a

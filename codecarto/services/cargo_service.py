@@ -174,6 +174,8 @@ class Reading:
     build_success: bool | None = None
     firmware: dict[str, Any] = field(default_factory=dict)
     lock: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    """Each package name's versions and what each depends on: the lockfile's,
+    or cargo's resolution's when metadata.json answered."""
     notes: list[str] = field(default_factory=list)
     reason: str = ""
     newest_source: float = 0.0
@@ -692,14 +694,25 @@ def _from_metadata(reading: Reading, data: dict, root: Path) -> None:
         if pid in members:
             package.targets = [Target(t["name"], list(t.get("kind", [])), local(t.get("src_path", "")))
                                for t in raw.get("targets", [])]
-            declared = {d["name"]: d for d in raw.get("dependencies", [])}
+            # One package may be declared several times -- `[dependencies]`
+            # and `[dev-dependencies]`, or per platform -- each with its own
+            # settings, so a declaration is found by kind and platform too.
+            declared: dict[tuple[str, str, str], dict] = {}
+            for d in raw.get("dependencies", []):
+                declared.setdefault((d["name"], d.get("kind") or "normal", d.get("target") or ""), d)
+
+            def declaration(name: str, kind: str, platform: str) -> dict:
+                return (declared.get((name, kind, platform))
+                        or next((d for (n, k, _), d in declared.items() if (n, k) == (name, kind)), None)
+                        or next((d for (n, _, _), d in declared.items() if n == name), {}))
+
             node = resolve.get(pid)
             if node is not None:
                 for dep in node.get("deps", []):
                     target_pkg = by_id.get(dep.get("pkg", ""), {})
                     name = target_pkg.get("name", dep.get("name", ""))
-                    spec = declared.get(name, {})
                     for dk in dep.get("dep_kinds") or [{"kind": None, "target": None}]:
+                        spec = declaration(name, dk.get("kind") or "normal", dk.get("target") or "")
                         package.dependencies.append(Dependency(
                             name=name, kind=dk.get("kind") or "normal", req=str(spec.get("req", "")),
                             alias=spec.get("rename") or "", optional=bool(spec.get("optional")),
@@ -712,6 +725,16 @@ def _from_metadata(reading: Reading, data: dict, root: Path) -> None:
                         name=spec["name"], kind=spec.get("kind") or "normal", req=str(spec.get("req", "")),
                         optional=bool(spec.get("optional")), platform=spec.get("target") or ""))
         reading.packages.append(package)
+
+    # Dependencies of dependencies, as cargo resolved them: what `transitive`
+    # draws -- the lockfile is read only when the manifests answer.
+    for pid, node in resolve.items():
+        raw = by_id.get(pid, {})
+        reading.lock.setdefault(package_name(pid, names), []).append({
+            "version": str(raw.get("version", "")),
+            "source": str(raw.get("source") or ""),
+            "dependencies": [package_name(str(d.get("pkg", "")), names) for d in node.get("deps", [])],
+        })
 
 
 def _read_check(reading: Reading, docs_dir: Path, root: Path) -> Document:
@@ -1033,6 +1056,8 @@ def as_graph(reading: Reading, features: bool = False, transitive: bool = False)
                                        label="enables")
 
     if transitive:
+        # Whose answer an edge is: cargo's resolution, or the lockfile's.
+        how = "resolved" if reading.engine == "cargo metadata" else "locked"
         for name, entries in reading.lock.items():
             source = member_ids.get(name)
             if source is None or len(entries) != 1:
@@ -1045,9 +1070,9 @@ def as_graph(reading: Reading, features: bool = False, transitive: bool = False)
                     member_ids[dep] = target
                     graph.add_node(target, label=f"{dep} {versions[0]['version'] if len(versions) == 1 else ''}".strip(),
                                    kind="external_crate", depth=3, **_look("external_crate"),
-                                   hover=f"{dep}, locked")
+                                   hover=f"{dep}, {how}")
                 if not graph.has_edge(source, target):
-                    graph.add_edge(source, target, kind="depends_on", label="locked",
+                    graph.add_edge(source, target, kind="depends_on", label=how,
                                    color=EDGE_LOOKS["normal"]["color"], size=1)
     return graph
 

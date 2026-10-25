@@ -757,8 +757,10 @@ device targets from `.cargo/config.toml` (a `runner` is shown, never run) and
 memory maps. A dependency edge is labelled and coloured by its kind; a
 dev-dependency, an optional one and a platform-specific one are dashed and say
 their condition. `features=true` adds features and what each enables;
-`transitive=true` adds the lockfile's dependencies of dependencies. Targets
-carry the recorded diagnostics in their label and `meta.diagnostics`.
+`transitive=true` adds dependencies of dependencies -- cargo's resolution's
+(edges labelled `resolved`) when `metadata.json` answered, the lockfile's
+(`locked`) otherwise. Targets carry the recorded diagnostics in their label and
+`meta.diagnostics`.
 
 `metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
 `metadata.json` is newer than every manifest, `manifests` otherwise -- a stale

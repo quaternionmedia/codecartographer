@@ -9,8 +9,9 @@ radial menu as a code map.
 
 - `/cargo/gjgf?path=` -- crates, their targets, dependencies, native libraries
   and device targets, as `GraphData`. `features=true` adds each crate's
-  features and what they enable; `transitive=true` adds the lockfile's
-  dependencies of dependencies.
+  features and what they enable; `transitive=true` adds dependencies of
+  dependencies -- cargo's resolution's when `metadata.json` answered, the
+  lockfile's otherwise, and each edge says which.
 - `/cargo/data?path=` -- the reading itself, without a layout: packages,
   dependencies with their kind and condition, the recorded diagnostics,
   build-script facts and which documents were read, so this window's answer
