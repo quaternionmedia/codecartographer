@@ -457,8 +457,9 @@ export class PlotActions {
 
   /**
    * Load and display a language's standalone Lexicon graph (Option A —
-   * see docs/roadmap/lexicon.md). Switchable: grows automatically as
-   * more languages get a lexicon YAML, no frontend change needed.
+   * see docs/architecture.md, Lexicons and the construct vocabulary).
+   * Switchable: grows automatically as more languages get a lexicon YAML,
+   * no frontend change needed.
    */
   async loadLexicon(language: string): Promise<void> {
     this.stateController.clear();
