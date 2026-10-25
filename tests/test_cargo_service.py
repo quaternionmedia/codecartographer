@@ -105,6 +105,41 @@ class TestManifests:
         assert firmware["runners"]["thumbv7em-none-eabihf"].startswith("probe-rs run")
         assert firmware["linker_scripts"] == ["link.x"]
 
+    @pytest.mark.parametrize("config", [
+        '[build]\ntarget = "thumbv7em-none-eabihf"\nrustflags = "-C link-arg=-Tlink.x"\n',
+        '[target.thumbv7em-none-eabihf]\nrustflags = "-C link-arg=-Tlink.x"\n',
+    ], ids=["build", "target"])
+    def test_rustflags_given_as_one_string_are_read(self, tmp_path, config):
+        """cargo takes `rustflags` as a list or as one space-separated string."""
+        root = copy_workspace(tmp_path, "absent")
+        write(root / ".cargo" / "config.toml", config)
+        assert cargo_service.read(root).firmware["linker_scripts"] == ["link.x"]
+
+    def test_a_target_path_outside_its_package_is_not_read(self, tmp_path):
+        """A manifest may name any path as a target's source -- `/dev/zero`,
+        another checkout's file -- and this runs in a route."""
+        root = tmp_path / "ws"
+        crate(root, "probe", "probe", '[lib]\npath = "../outside/lib.rs"\n')
+        write(root / "outside" / "lib.rs", "#![no_std]\n")
+        assert package(cargo_service.read(root), "probe").no_std == ""
+
+    @pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="a FIFO needs os.mkfifo")
+    def test_a_target_path_that_is_not_a_regular_file_is_not_read(self, tmp_path):
+        """A FIFO named as the lib's path would block the route on open."""
+        import threading
+
+        root = tmp_path / "fifo"
+        crate(root, ".", "fifo", '[lib]\npath = "src/pipe.rs"\n')
+        pipe = root / "src" / "pipe.rs"
+        os.mkfifo(pipe)
+        reader = threading.Thread(target=cargo_service.read, args=(root,), daemon=True)
+        reader.start()
+        reader.join(10)
+        blocked = reader.is_alive()
+        if blocked:  # let the blocked open return, so the thread can end
+            os.close(os.open(pipe, os.O_WRONLY | os.O_NONBLOCK))
+        assert not blocked, "reading the lib's path blocked on a FIFO"
+
     def test_absent_documents_are_sentences(self, reading):
         assert [d.present for d in reading.documents] == [False, False]
         assert all(cargo_service.RECORD_COMMAND in d.problem for d in reading.documents)

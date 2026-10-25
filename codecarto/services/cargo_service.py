@@ -784,15 +784,21 @@ def _read_check(reading: Reading, docs_dir: Path, root: Path) -> Document:
 
 
 def _no_std(root: Path, package: Package) -> str:
-    """`yes`, `conditional` (`cfg_attr(.., no_std)`), or empty."""
-    import re
+    """`yes`, `conditional` (`cfg_attr(.., no_std)`), or empty.
 
+    A manifest may name any path as a target's source -- `/dev/zero`, a FIFO,
+    another checkout's file -- and this runs in a route, so only a regular
+    file inside the package's directory is read, and only its head."""
+    directory = (root / package.manifest).parent.resolve()
     for target in package.targets:
         if not set(target.kinds) & {"lib", "bin", "rlib", "staticlib", "cdylib"}:
             continue
-        path = root / target.src
+        path = (root / target.src).resolve()
+        if not _under(path, directory) or not path.is_file():
+            continue
         try:
-            head = path.read_text(encoding="utf-8")[:65536]
+            with path.open("rb") as handle:
+                head = handle.read(65536).decode("utf-8", "replace")
         except OSError:
             continue
         if re.search(r"#!\[\s*no_std\s*\]", head):
@@ -826,18 +832,25 @@ def _firmware(root: Path, reading: Reading, memory_maps: list[Path], toml) -> di
     return facts
 
 
+def _flags(value: Any) -> list[str]:
+    """`rustflags` as cargo takes it: a list, or one space-separated string."""
+    if isinstance(value, str):
+        return value.split()
+    return [str(flag) for flag in value or []]
+
+
 def _config_facts(data: dict) -> dict[str, Any]:
     facts: dict[str, Any] = {"runners": {}}
     build = data.get("build") or {}
     targets = build.get("target") or []
     facts["build_targets"] = [targets] if isinstance(targets, str) else list(targets)
-    flags = list(build.get("rustflags") or [])
+    flags = _flags(build.get("rustflags"))
     for triple, table in (data.get("target") or {}).items():
         if isinstance(table, dict):
             if table.get("runner"):
                 runner = table["runner"]
                 facts["runners"][triple] = runner if isinstance(runner, str) else " ".join(runner)
-            flags += list(table.get("rustflags") or [])
+            flags += _flags(table.get("rustflags"))
     scripts = []
     for i, flag in enumerate(flags):
         flag = str(flag)
