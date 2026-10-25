@@ -350,3 +350,48 @@ test('a census replaces the one before it, and is sent each node with what place
   await again;
   assert.deepEqual(h.state.chrestomathyCensus.outside, [], "one graph's gaps are not carried into the next");
 });
+
+const codeMap = { graph: { nodes: {} }, metadata: { nodeCount: 1 } };
+const construct = { graph: { nodes: {} }, metadata: { kind: 'chrestomathy', construct: 'type.product' } };
+
+async function counted(h, graph, name, id) {
+  const read = h.actions.readCanvas(graph, () => [{ id: `${name}:n`, language: 'rust', kind: 'function' }]);
+  await h.answer('census', h.asked.census.length - 1, ok(census(name, id)));
+  await read;
+}
+
+test("drawing the construct leaves no census of the graph drawn before it", async () => {
+  /**
+   * "draw the construct" puts the vocabulary's drawing on the canvas, and the
+   * code map's census stayed, its *show* framing 0 nodes and emptying the
+   * selection. Mutation: keep the census when the canvas shows a construct --
+   * this fails with the code map's census still shown.
+   */
+  const h = harness();
+  await counted(h, codeMap, 'code map', 'callable.function');
+  assert.equal(h.state.chrestomathyCensus.graph, 'code map');
+  await h.actions.readCanvas(construct, () => { throw new Error('the vocabulary drawing is not read'); });
+  assert.equal(h.state.chrestomathyCensus, null);
+  assert.equal(h.asked.census.length, 1, 'no census is asked for the drawing of the vocabulary');
+});
+
+test('a census on its way for a graph that has gone is dropped when it answers', async () => {
+  /** Mutation: forget the census without taking a ticket -- this fails. */
+  const h = harness();
+  const read = h.actions.readCanvas(codeMap, () => [{ id: 'f', language: 'rust', kind: 'function' }]);
+  await h.actions.readCanvas(null, () => []);
+  await h.answer('census', 0, ok(census('code map', 'callable.function')));
+  await read;
+  assert.equal(h.state.chrestomathyCensus, null);
+});
+
+test("while a new graph's census is read, the old graph's is not shown", async () => {
+  /** Mutation: drop the at-once clearing from `loadCensus` -- this fails. */
+  const h = harness();
+  await counted(h, codeMap, 'crate graph', 'namespace.package');
+  const read = h.actions.readCanvas({ ...codeMap }, () => []);
+  assert.equal(h.state.chrestomathyCensus, null, 'pending: no census, not the one before');
+  await h.answer('census', 1, ok(census('code map', 'callable.function')));
+  await read;
+  assert.equal(h.state.chrestomathyCensus.graph, 'code map');
+});

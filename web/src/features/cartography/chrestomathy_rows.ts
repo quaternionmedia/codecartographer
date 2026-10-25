@@ -99,6 +99,17 @@ export function censusLines(census: CensusLike): CensusLine[] {
 }
 
 /**
+ * What *show* did, as the panel says it. `found` is how many of the row's
+ * nodes were on the canvas to frame; none is said as none, and the selection
+ * was left as it was rather than emptied.
+ */
+export function shownSentence(found: number, line: Pick<CensusLine, 'name' | 'count'>): string {
+  return found
+    ? `${found} ${line.name} node(s) framed and selected`
+    : `none of the ${line.count} ${line.name} node(s) is on the canvas now; the selection is as it was`;
+}
+
+/**
  * What the census could not place, each as a sentence saying what it is. A
  * graph read as only its placed nodes would claim the vocabulary covers what
  * it does not, so the rest is said, never dropped -- and said truly: a file

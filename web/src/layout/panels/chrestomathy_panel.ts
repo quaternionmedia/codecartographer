@@ -30,7 +30,7 @@ import type { LayoutContext } from '../layout_context';
 import { ProblemView } from '../../features/estate/problem_view';
 import { Provenance, caveatShown } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
-import { censusGaps, censusLines, chrestomathyRows } from '../../features/cartography/chrestomathy_rows';
+import { censusGaps, censusLines, chrestomathyRows, shownSentence } from '../../features/cartography/chrestomathy_rows';
 import { vocabularyShown } from '../../features/cartography/cartography_actions';
 import type { Draw } from '../../features/cartography/cartography_actions';
 import '../../features/estate/estate.css';
@@ -68,18 +68,17 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
       const constructs = index?.constructs.filter((c) => !c.facet) ?? [];
       const facets = index?.constructs.filter((c) => c.facet) ?? [];
 
-      // A new graph on the canvas is read again. The construct's own drawing
-      // is a reading of the vocabulary rather than of code, so the census of
-      // what was drawn before it stays.
+      // A new graph on the canvas is read again; the construct's own drawing
+      // is the vocabulary, not code, and is not read -- and either way the
+      // census of the graph before it is gone (`readCanvas`).
       if (state.graphData !== readGraph) {
         readGraph = state.graphData;
         shown = '';
-        if (state.graphData && metadata?.kind !== 'chrestomathy') {
-          void plot.loadCensus(ctx.canvasNodes());
-        }
+        void plot.readCanvas(state.graphData, () => ctx.canvasNodes());
       }
-      const census = state.chrestomathyCensus;
+      const census = ctx.appState.state.chrestomathyCensus;
       const lines = census ? censusLines(census) : [];
+      const drawingTheVocabulary = metadata?.kind === 'chrestomathy';
 
       return m('div.gl-panel.gl-panel--controls.gl-panel--chrestomathy', [
         problem
@@ -121,8 +120,7 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
                           m('td', m('button.cartography__show', {
                             title: 'frame these nodes, and select them for the radial menu',
                             onclick: () => {
-                              const found = ctx.showOnCanvas(line.ids);
-                              shown = `${found} ${line.name} node(s) framed and selected`;
+                              shown = shownSentence(ctx.showOnCanvas(line.ids), line);
                             },
                           }, 'show')),
                         ]))),
@@ -134,9 +132,12 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
               ]
             : state.censusProblem
               ? m('p.estate-view__hint', `${state.censusProblem.problem} — ${state.censusProblem.remedy}`)
-              : m('p.estate-view__pending', state.graphData
-                  ? 'reading the canvas…'
-                  : 'draw a code map, a crate graph or a linker script, and it is read here as the constructs it holds'),
+              : drawingTheVocabulary
+                ? m('p.estate-view__hint', 'the canvas shows a construct drawn from the vocabulary, not code; '
+                    + 'draw a code map, a crate graph or a linker script, and it is read here')
+                : m('p.estate-view__pending', state.graphData
+                    ? 'reading the canvas…'
+                    : 'draw a code map, a crate graph or a linker script, and it is read here as the constructs it holds'),
         ]),
 
         m('div.estate-view__section', [

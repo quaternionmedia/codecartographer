@@ -576,15 +576,17 @@ export class LayoutContext {
   /**
    * Frame these nodes and make them the selection the radial menu's selection
    * ring acts on -- how the chrestomathy points back at the graph it read.
-   * Returns how many were on the canvas.
+   * Returns how many were on the canvas; with none, the selection is left as
+   * it was rather than emptied.
    */
   public showOnCanvas(ids: readonly string[]): number {
     const r = this._streamingRenderer;
     if (!r) return 0;
     const wanted = new Set(ids);
     const found = r.getNodes().filter((n) => wanted.has(n.id));
+    if (!found.length) return 0;
     this._replaceSelection(found);
-    if (found.length) r.fitTo(found.map((n) => n.id));
+    r.fitTo(found.map((n) => n.id));
     this.focusDockPanel('graph');
     return found.length;
   }

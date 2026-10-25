@@ -72,6 +72,11 @@ export function censusNodes(nodes: ReadonlyArray<Record<string, unknown>>): Arra
   });
 }
 
+/** The graph on the canvas, as far as `readCanvas` reads it: what drew it. */
+export interface CanvasGraph {
+  metadata?: { [key: string]: unknown } | null;
+}
+
 export interface CargoDraw {
   path: string;
   features?: boolean;
@@ -252,9 +257,28 @@ export class CartographyActions {
    */
   async loadCensus(nodes: ReadonlyArray<Record<string, unknown>>): Promise<void> {
     const latest = this.censusReads.take();
+    // At once: the census shown is of the graph before this one.
+    this.host.update(replacing({ chrestomathyCensus: null, censusProblem: null }));
     const found = await this.reads.census(censusNodes(nodes));
     if (!latest()) return;
     this.settle(settlePatch(found, 'chrestomathyCensus', 'censusProblem'));
+  }
+
+  /**
+   * Read the graph now on the canvas, or forget the census of the one before.
+   *
+   * **A CENSUS IS NEVER OF A PICTURE THAT HAS GONE.** "draw the construct"
+   * puts the vocabulary's own drawing on the canvas -- tokens and parser kinds,
+   * not code -- and the census of the code map drawn before it stayed, its
+   * *show* framing 0 nodes and clearing the selection. With nothing drawn, or
+   * that drawing, there is no census, and one on its way is of a graph that
+   * has gone, so it is dropped when it answers.
+   */
+  readCanvas(graph: CanvasGraph | null | undefined, nodes: () => ReadonlyArray<Record<string, unknown>>): Promise<void> {
+    if (graph && graph.metadata?.kind !== 'chrestomathy') return this.loadCensus(nodes());
+    this.censusReads.take();
+    this.settle(replacing({ chrestomathyCensus: null, censusProblem: null }));
+    return Promise.resolve();
   }
 
   // --- shared ------------------------------------------------------------------

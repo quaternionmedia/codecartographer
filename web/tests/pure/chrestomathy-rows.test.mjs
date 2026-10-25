@@ -117,3 +117,13 @@ test('what the census could not place is said, every kind of it', async () => {
     ...census, walk: [], not_constructs: [], unplaced: [], outside: [], unknown: [], unlabelled: 0,
   }), []);
 });
+
+test('show says how many it framed, and none as none', async () => {
+  /* *show* on nodes no longer on the canvas said "0 Function node(s) framed
+     and selected" and emptied the selection. Mutation: say the count whatever
+     it is -- this fails. */
+  const { shownSentence } = await import('../../dist-pure/features/cartography/chrestomathy_rows.js');
+  assert.equal(shownSentence(3, { name: 'Function', count: 3 }), '3 Function node(s) framed and selected');
+  assert.equal(shownSentence(0, { name: 'Function', count: 3 }),
+    'none of the 3 Function node(s) is on the canvas now; the selection is as it was');
+});
