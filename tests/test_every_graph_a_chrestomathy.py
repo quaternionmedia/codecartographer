@@ -27,7 +27,7 @@ from codecarto.services.graph_serializer import GraphSerializer
 VOCABULARY = construct_service.load()
 WORKSPACE = Path(__file__).parent / "fixtures" / "cargo" / "workspace"
 requires_libclang = pytest.mark.skipif(importlib.util.find_spec("clang") is None,
-                                       reason="libclang not installed — install with: uv sync --extra c-parsing")
+                                       reason="libclang not installed — install with: uv sync --locked --extra dev --extra c-parsing")
 
 
 def nodes_of(gjgf: dict) -> dict[str, dict]:

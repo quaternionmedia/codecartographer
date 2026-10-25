@@ -40,7 +40,7 @@ export type DockPanelId =
 
 export interface PanelDefinition {
   readonly id: DockPanelId;
-  /** Short label for menus (add-window list, restore buttons). */
+  /** Short label: the "+" menu's list, and an Estate row's "open" button. */
   readonly menuLabel: string;
   readonly config: ComponentItemConfig;
   readonly overflow: 'hidden' | 'auto';

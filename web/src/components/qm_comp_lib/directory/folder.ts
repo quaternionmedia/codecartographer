@@ -2,6 +2,15 @@ import m from 'mithril';
 import { RawFile, RawFolder } from '../../models/source';
 import { FileList } from './files';
 import { animations } from '../../../core/animations';
+import { readStub } from './stub_read';
+import type { StubState } from './stub_read';
+
+/**
+ * Called when a stub folder (no children) is opened, to read it. Resolves true
+ * when it put the folder's contents in the tree; false, or a rejection, leaves
+ * the folder unread for the next click.
+ */
+export type FolderExpand = (path: string) => Promise<boolean>;
 
 interface FolderAttrs {
   folderName: string;
@@ -10,32 +19,16 @@ interface FolderAttrs {
   folders: RawFolder[];
   files: RawFile[];
   onUrlFileClicked: (url: string) => void;
-  /** Called when a stub folder (no children) is opened — triggers lazy load */
-  onFolderExpand?: (path: string) => void;
+  onFolderExpand?: FolderExpand;
   allowedExtensions?: string[] | null;
 }
 
-interface FolderState {
-  isOpen: boolean;
-  isLoading: boolean;
-}
+type FolderState = StubState;
 
 export const Folder: m.Component<FolderAttrs> = {
   oninit(vnode) {
     (vnode.state as FolderState).isOpen = false;
     (vnode.state as FolderState).isLoading = false;
-  },
-
-  onupdate(vnode) {
-    const state = vnode.state as FolderState;
-    if (state.isLoading) {
-      const { folders, files } = vnode.attrs;
-      // Reset spinner once the expansion has delivered content
-      if (folders.length > 0 || files.length > 0) {
-        state.isLoading = false;
-        m.redraw();
-      }
-    }
   },
 
   view(vnode) {
@@ -77,13 +70,14 @@ export const Folder: m.Component<FolderAttrs> = {
               } else {
                 close();
               }
+            } else if (isStub && onFolderExpand && !state.isLoading) {
+              // Opening an unread folder reads it; the spinner ends when the
+              // read does, and a read that failed leaves it unread to click
+              // again (`stub_read.ts`).
+              void readStub(state, () => onFolderExpand(folderPath), () => m.redraw());
             } else {
               // Opening: set state so Mithril renders the content (oncreate animates it in)
               state.isOpen = true;
-              if (isStub && onFolderExpand && !state.isLoading) {
-                state.isLoading = true;
-                onFolderExpand(folderPath);
-              }
               m.redraw();
             }
           },
@@ -111,7 +105,7 @@ export const Folder: m.Component<FolderAttrs> = {
 export function foldersParse(
   folders: RawFolder[],
   onUrlFileClicked: (url: string) => void,
-  onFolderExpand?: (path: string) => void,
+  onFolderExpand?: FolderExpand,
   parentPath: string = '',
   allowedExtensions?: string[] | null
 ): m.Children {
