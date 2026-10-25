@@ -26,7 +26,7 @@ cd codecartographer
 git submodule init && git submodule update
 
 # The lockfile is the environment; c-parsing is libclang, which reads C
-uv sync --extra dev --extra c-parsing
+uv sync --locked --extra dev --extra c-parsing
 ```
 
 ### Start Development
@@ -145,7 +145,7 @@ tries is in [`docs/services.md`](docs/services.md#github-token).
 
 ```bash
 # Install dev dependencies (a sync without c-parsing removes libclang)
-uv sync --extra dev --extra c-parsing
+uv sync --locked --extra dev --extra c-parsing
 
 # Run linter
 uv run codecarto lint

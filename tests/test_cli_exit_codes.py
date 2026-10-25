@@ -78,7 +78,7 @@ def test_lint_without_ruff_exits_1_and_says_how_to_get_it(runner, monkeypatch):
     monkeypatch.setattr("shutil.which", lambda name: None)
     result = runner.invoke(cli, ["lint"])
     assert result.exit_code == 1, result.output
-    assert "uv sync --extra dev" in result.stderr
+    assert "uv sync --locked --extra dev --extra c-parsing" in result.stderr
 
 
 def test_lint_that_finds_issues_exits_1(runner, monkeypatch):

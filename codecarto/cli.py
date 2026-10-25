@@ -350,7 +350,7 @@ def lint(fix: bool):
 
     ruff = shutil.which("ruff")
     if ruff is None:
-        _fail("ruff not found. `uv sync --extra dev` installs it")
+        _fail("ruff not found. `uv sync --locked --extra dev --extra c-parsing` installs it")
     cmd = [ruff, "check", str(REPO_ROOT / "codecarto")]
     if fix:
         cmd.append("--fix")

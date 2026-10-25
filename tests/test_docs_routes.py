@@ -467,6 +467,63 @@ def test_every_variable_a_document_names_is_read_by_the_code():
     assert not stale, f"documents name variables nothing reads: {stale}"
 
 
+# ── The environment ──────────────────────────────────────────────────────────
+
+# The environment is uv.lock with both extras. A sync without `--locked` may
+# rewrite the lockfile; one without `dev` uninstalls pytest and ruff; one
+# without `c-parsing` uninstalls libclang, after which C files draw empty.
+ONE_SYNC = "uv sync --locked --extra dev --extra c-parsing"
+SYNC = re.compile(r"\buv\s+sync\b([^`\"'#|;)\n]*)")
+CODE = ("codecarto", "scripts", "tests", "web")
+
+
+def _code_files() -> list[Path]:
+    """Every tracked file under `CODE`; outside a git checkout, every file
+    there that is not a dependency, a build or a cache."""
+    try:
+        listing = subprocess.run(
+            ["git", "ls-files", "--", *CODE], cwd=ROOT,
+            capture_output=True, text=True, check=True).stdout
+        return sorted(ROOT / name for name in listing.splitlines())
+    except (OSError, subprocess.CalledProcessError):
+        skip = {"node_modules", "dist", "dist-pure", "__pycache__"}
+        return sorted(p for d in CODE for p in (ROOT / d).rglob("*")
+                      if p.is_file() and not skip & set(p.relative_to(ROOT).parts))
+
+
+def _sync_hints():
+    """(file, line, what follows the command) for every sync a document or
+    the code tells a reader to run, fenced or not."""
+    for path in [*DOCUMENTS, *_code_files()]:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            for written in SYNC.findall(line):
+                yield path, number, written
+
+
+def _missing_from_the_one_sync(written: str) -> list[str]:
+    tokens = written.split()
+    extras = {tokens[i + 1] for i, t in enumerate(tokens[:-1]) if t == "--extra"}
+    extras |= {t.split("=", 1)[1] for t in tokens if t.startswith("--extra=")}
+    missing = [] if "--locked" in tokens else ["--locked"]
+    return missing + [f"--extra {e}" for e in ("dev", "c-parsing") if e not in extras]
+
+
+def test_every_sync_a_reader_is_told_to_run_is_the_one_sync():
+    hints = list(_sync_hints())
+    assert {"codecarto/cli.py", "docs/cli.md"} <= {_rel(p) for p, _, _ in hints}, (
+        "the reader found no sync in the lint hint or its document; its pattern is stale")
+    wrong = [f"{_rel(path)}:{number}: lacks {', '.join(missing)}"
+             for path, number, written in hints
+             if (missing := _missing_from_the_one_sync(written))]
+    assert not wrong, (
+        f"a reader who runs these leaves the environment short of the lockfile; "
+        f"each is to be `{ONE_SYNC}`: {wrong}")
+
+
 # ── The index ────────────────────────────────────────────────────────────────
 
 

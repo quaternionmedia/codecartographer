@@ -433,9 +433,9 @@ uv run codecarto info
 
 ### `lint`
 
-Run `ruff check` over the `codecarto` package. ruff is in the `dev` extra
-(`uv sync --extra dev`); without it the command says so and exits 1, and it
-exits 1 when ruff finds issues.
+Run `ruff check` over the `codecarto` package. ruff is in the `dev` extra,
+which `uv sync --locked --extra dev --extra c-parsing` installs; without it the
+command says so and exits 1, and it exits 1 when ruff finds issues.
 
 ```bash
 uv run codecarto lint [OPTIONS]

@@ -13,7 +13,7 @@ Three tiers exist, from lightest to most capable:
 | Tier | File | When to use |
 |------|------|-------------|
 | **Regex** | `regex_language_parser.py` | Any language where top-level symbols (functions, classes, structs, headings, SQL tables, …) can be identified by a line-anchored regex. Zero new dependencies. Add a `_PATTERNS` list + one entry in `_LANGUAGES`. |
-| **Dedicated libclang** | `c_language_parser.py` | C/C++ only. Cross-file `CALLS` resolution, `#include` tracking via `unsaved_files`. Requires `uv sync --extra c-parsing`. |
+| **Dedicated libclang** | `c_language_parser.py` | C/C++ only. Cross-file `CALLS` resolution, `#include` tracking via `unsaved_files`. Requires the `c-parsing` extra: `uv sync --locked --extra dev --extra c-parsing`. |
 | **Structural reader** | `rust_language_parser.py`, `linker_script_parser.py` | A tokenizer and brace matcher, stdlib only, for a language whose items are delimited by keywords and brackets: nesting, attributes, the module tree, relations each labelled with how they were resolved. Stops where name resolution begins; that is the compiler's. |
 
 **Currently registered parsers and extensions:**
