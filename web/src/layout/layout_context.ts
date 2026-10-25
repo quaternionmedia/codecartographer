@@ -1250,19 +1250,22 @@ export class LayoutContext {
         this.appState.update({ parserOptions: { ...current.parserOptions, ...options } });
       },
 
+      // **NEITHER READ TOUCHES THE PANEL'S LOADING STATE.** `isLoading` and
+      // the status line are the stream's: the Actions panel shows Cancel and
+      // the progress bar while it is set. These set it and cleared it with
+      // "Ready" when they ended, so a folder opened mid-parse took Cancel and
+      // the progress bar from a stream still running. The folder's ↻ says it
+      // is being read; a toast says Expand All has begun, and either failing.
       onFolderExpand: async (path: string) => {
         const content = this.appState.repo.content;
         if (!content?.is_partial) return false;
-        this.updatePanelState({ isLoading: true, statusMessage: `Loading ${path}...` });
         try {
           // The tree's own repository, not the URL field's: that follows every
           // keystroke, and need not name the repository shown.
-          const read = await this.actions.repo.expandPath(path);
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
-          return read;
+          return await this.actions.repo.expandPath(path);
         } catch {
           // The folder is left unread, so a click reads it again.
-          this.updatePanelState({ isLoading: false, statusMessage: `Error expanding ${path}` });
+          ToastManager.show(`Could not read ${path}; click it to try again`);
           return false;
         }
       },
@@ -1270,12 +1273,11 @@ export class LayoutContext {
       onExpandAll: async () => {
         const content = this.appState.repo.content;
         if (!content?.is_partial) return;
-        this.updatePanelState({ isLoading: true, statusMessage: 'Expanding all folders...' });
+        ToastManager.show('Expanding all folders…');
         try {
           await this.actions.repo.expandAll();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
-          this.updatePanelState({ isLoading: false, statusMessage: 'Error expanding tree' });
+          ToastManager.show('Could not expand the tree');
         }
       },
 
