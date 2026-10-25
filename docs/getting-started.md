@@ -66,8 +66,9 @@ uv run codecarto repo graph . -o json    # the graph itself
 curl "$API/repo/tree?url=/path/to/project"   # a local directory's tree; a GitHub URL works too
 ```
 
-The [API reference](api.md) describes each route; the running server lists
-them at `$API/docs`.
+The [API reference](api.md) describes each route. The running server lists
+those in its OpenAPI schema at `$API/docs`; the WebSockets and the few routes
+kept out of the schema are only in the reference.
 
 ## GitHub token
 

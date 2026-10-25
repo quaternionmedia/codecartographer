@@ -27,8 +27,9 @@ submodules and a first graph.
 
 - [Getting Started](docs/getting-started.md): install, run, and draw a first graph
 - [CLI](docs/cli.md): every `codecarto` command, option and environment variable
-- [API](docs/api.md): the backend's routes. The running server lists every route
-  at `/docs`. `docs/api.md` describes each one.
+- [API](docs/api.md): the backend's routes, each one described. The running
+  server's `/docs` lists those in its OpenAPI schema, which leaves out the
+  WebSockets and a few others `docs/api.md` names.
 - [Architecture](docs/architecture.md): how the pieces fit
 - [Extending](docs/llm/EXTENDING.md): adding a parser, renderer, panel or route
 - [UI reference](docs/llm/UI_REFERENCE.md): the panels, the canvas and the menus
