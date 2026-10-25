@@ -378,6 +378,18 @@ def test_a_recorded_map_measures_its_binary(tmp_path):
     assert "blinky's memory use is its linker map" in cargo_service.caveat(reading)
 
 
+def test_a_map_older_than_a_source_is_not_used_and_says_why(tmp_path):
+    """Mutation: use a stale map's figures, marked stale -- the binary's
+    label says its fill and this fails."""
+    reading = cargo_service.read(copy_workspace(tmp_path, "stale"))
+    doc = next(d for d in reading.documents if d.name == "blinky.map")
+    assert doc.present and doc.stale and not doc.used
+    assert "blinky" not in reading.memory and "record again" in doc.problem
+    label = cargo_service.as_graph(reading).nodes["target::blinky::bin::blinky"]["label"]
+    assert "FLASH" not in label
+    assert "blinky.map was linked before a source changed" in cargo_service.caveat(reading)
+
+
 def test_a_map_with_nothing_to_measure_against_says_so(tmp_path):
     root = copy_workspace(tmp_path, "current")
     (root / "crates" / "blinky" / "memory.x").unlink()

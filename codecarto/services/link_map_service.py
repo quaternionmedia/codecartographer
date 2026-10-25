@@ -13,7 +13,7 @@ measures each region's use against its length.
 links anything. `codecarto cargo record --map <bin>` writes
 `target/codecarto/<bin>.map` for a Rust binary; a C build that passes
 `-Wl,-Map=target/codecarto/<name>.map` writes the same. The reading carries the
-file's time, and a source changed after it is stale.
+file's time, and a source changed after it makes it stale -- read, and not used.
 
 How each figure is found
 ------------------------
@@ -507,7 +507,11 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
       roots, else Cargo's conventions do. An unmangled name (`main`, a
       `#[no_mangle]` handler) is looked for in the map's own binary only. A
       symbol from a crate outside the parse (`core`, a runtime) is counted, not
-      drawn."""
+      drawn.
+
+    A *stale* map -- linked before a source changed -- is not used: the
+    regions it would measure say so in `meta.measured` (`used: False`) and
+    their `hover`, and no figure of it is stamped anywhere."""
     owner = owner.replace("-", "_")
     provenance = {"map": Path(link_map.path).name, "recorded_at": recorded_at, "stale": stale}
     linker = [(n, d) for n, d in graph.nodes(data=True) if d.get("language") == "linker"]
@@ -538,6 +542,18 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
             mine = [r for (f, _), r in declared.items() if f == file and r is not None]
             uses.update(((file, u.name), u) for u in usage(link_map, mine))
     joined = {"regions": 0, "sections": 0, "symbols": 0, "outside": 0, "ambiguous": 0}
+    if stale:
+        # A recorded document is used only while it is current: a map linked
+        # before a source changed measured another build. Its regions say so,
+        # and nothing carries its figures.
+        for _, d in linker:
+            if d.get("kind") == "region" and (d.get("file"), d.get("label")) in uses:
+                d.setdefault("meta", {})["measured"] = {**provenance, "used": False}
+                d["hover"] = (f"{d['label']} — not measured: {provenance['map']} was linked at "
+                              f"{recorded_at}, before a source changed; record it again")
+                joined["regions"] += 1
+        return joined
+    provenance["used"] = True
     sections = {s.name: s for s in link_map.sections}
     for _, d in linker:
         if d.get("file") not in files:
@@ -546,8 +562,7 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
             use = uses[(d["file"], d["label"])]
             d.setdefault("meta", {})["measured"] = {**use.as_dict(), **provenance}
             d["hover"] = (f"{use.name} — {_kib(use.used_bytes)} of {_kib(use.length)} used "
-                          f"({use.fill:.1%}), from {provenance['map']}"
-                          + (" (older than the source)" if stale else ""))
+                          f"({use.fill:.1%}), from {provenance['map']}")
             joined["regions"] += 1
         elif d.get("kind") == "section" and d.get("label") in sections:
             s = sections[d["label"]]

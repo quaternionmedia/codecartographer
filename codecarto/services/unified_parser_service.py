@@ -1025,7 +1025,7 @@ def _annotate_recorded_memory(graph: nx.DiGraph, directory: Directory) -> None:
     `target/codecarto/` -- `codecarto cargo record --map <bin>` writes one per
     binary, and a C build passing `-Wl,-Map=target/codecarto/<name>.map` writes
     the same. Reads them and runs nothing; a map older than the newest source
-    file in the parse is marked stale on everything it stamps.
+    file in the parse is not used, and its regions say so.
     """
     root = directory.info.url
     if not root or "://" in root or not Path(root).is_dir():

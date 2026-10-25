@@ -448,9 +448,16 @@ def test_a_script_that_disagrees_with_the_maps_memory_table_is_not_the_one_linke
     assert "measured" not in node(graph, "region", "FLASH", "/blinky/memory-f401.x")["meta"]
 
 
-def test_a_map_older_than_the_source_says_so(tmp_path):
+def test_a_map_older_than_the_source_is_not_used_and_says_so(tmp_path):
+    """A recorded document is used only while it is current (the window reads
+    what cargo wrote, section 3 and 5). Mutation: stamp the stale figures,
+    marked stale -- the region and `main` carry them and this fails."""
     root = copy_workspace(tmp_path, stale=True)
-    graph = UnifiedParserService.build_graph(get_local_repo(str(root), extensions=[".rs", ".x"]), 3, [".rs", ".x"])
+    graph = parse_rust(root)
     flash = node(graph, "region", "FLASH")
-    assert flash["meta"]["measured"]["stale"] is True
-    assert "(older than the source)" in flash["hover"]
+    measured = flash["meta"]["measured"]
+    assert (measured["map"], measured["stale"], measured["used"]) == ("blinky.map", True, False)
+    assert "used_bytes" not in measured
+    assert "not measured" in flash["hover"] and "before a source changed" in flash["hover"]
+    assert "bytes" not in node(graph, "function", "main", "/blinky/src/")["meta"]
+    assert "bytes" not in node(graph, "static", "TICKS")["meta"]
