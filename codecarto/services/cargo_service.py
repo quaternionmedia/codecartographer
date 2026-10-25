@@ -39,6 +39,7 @@ from __future__ import annotations
 import glob
 import json
 import os
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -56,6 +57,10 @@ MAX_DIAGNOSTICS = 2000
 SKIP_DIRS = {"target", ".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build"}
 
 DEP_KINDS = ("normal", "build", "dev")
+
+# The span-less lines rustc ends a crate with -- a summary of its run, not a
+# diagnostic of the code: counted, one error would read as two.
+RUN_SUMMARY = re.compile(r"(aborting due to |\d+ warnings? emitted\b)")
 
 # What each node is drawn as. This module decides the kinds; the looks are the
 # construct vocabulary's where one applies (a native library is the FFI
@@ -152,6 +157,8 @@ class Diagnostic:
     code: str = ""
     file: str = ""
     line: int = 0
+    kinds: list[str] = field(default_factory=list)
+    """The target's kinds: a package's lib and bin share its name."""
 
 
 @dataclass
@@ -735,13 +742,17 @@ def _read_check(reading: Reading, docs_dir: Path, root: Path) -> Document:
                 continue
             body = message.get("message") or {}
             spans = body.get("spans") or []
+            if not spans and (body.get("level") == "failure-note"
+                              or RUN_SUMMARY.match(str(body.get("message", "")))):
+                continue
             primary = next((s for s in spans if s.get("is_primary")), spans[0] if spans else {})
             reading.diagnostics.append(Diagnostic(
                 level=str(body.get("level", "")), message=str(body.get("message", "")),
                 package=package, target=target,
                 code=str((body.get("code") or {}).get("code", "") or ""),
                 file=str(primary.get("file_name", "")).replace("\\", "/"),
-                line=int(primary.get("line_start", 0) or 0)))
+                line=int(primary.get("line_start", 0) or 0),
+                kinds=list((message.get("target") or {}).get("kind", []))))
         elif reason == "compiler-artifact":
             reading.artifacts.append({
                 "package": package, "target": target,
@@ -922,7 +933,8 @@ def as_graph(reading: Reading, features: bool = False, transitive: bool = False)
             kind0 = target.kinds[0] if target.kinds else "lib"
             shape, color = TARGET_LOOKS.get(kind0, ("square", "#4a9eff"))
             mine = [d for d in reading.diagnostics if d.package == package.name and
-                    (d.target == target.name or (not d.target and kind0 == "lib"))]
+                    ((d.target == target.name and (not d.kinds or set(d.kinds) & set(target.kinds)))
+                     or (not d.target and kind0 == "lib"))]
             counts = _diagnostic_counts(mine)
             label = "build.rs" if kind0 == "custom-build" else f"{kind0} {target.name}"
             graph.add_node(target_id, label=label + _count_label(counts), kind="target", depth=2,

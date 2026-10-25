@@ -170,6 +170,16 @@ class TestRecordedDocuments:
         check = reading.documents[1]
         assert check.used and not check.stale
 
+    def test_rustcs_summary_of_its_run_is_not_a_diagnostic(self, tmp_path):
+        """The fixture carries the span-less lines rustc ends each crate with --
+        `1 warning emitted`, `aborting due to 1 previous error`, the failure
+        note -- and one error is one error."""
+        reading = cargo_service.read(copy_workspace(tmp_path, "current"))
+        assert cargo_service.metadata(reading)["diagnostics"] == {"warning": 2, "error": 1}
+        graph = cargo_service.as_graph(reading)
+        assert graph.nodes["crate::host-tool"]["label"] == "host-tool 0.1.0 · 1 error"
+        assert graph.nodes["crate::hal"]["label"] == "hal 0.1.0 · 1 warning"
+
     def test_a_check_older_than_a_source_says_so(self, tmp_path):
         reading = cargo_service.read(copy_workspace(tmp_path, "stale"))
         check = reading.documents[1]
@@ -364,6 +374,21 @@ class TestGraph:
         target = graph.nodes["target::host-tool::bin::host-tool"]
         assert target["label"] == "bin host-tool · 1 error"
         assert target["meta"]["diagnostics"] == {"error": 1}
+
+    def test_a_diagnostic_belongs_to_the_target_of_its_kind(self, tmp_path):
+        """A package's lib and bin share its name; a warning about the lib is
+        not the bin's."""
+        root = tmp_path / "tool"
+        crate(root, ".", "tool")
+        write(root / "src" / "main.rs", "fn main() {}\n")
+        message = {"reason": "compiler-message", "package_id": "path+file:///x/tool#0.1.0",
+                   "target": {"kind": ["lib"], "name": "tool"},
+                   "message": {"message": "unused import", "level": "warning",
+                               "spans": [{"file_name": "src/lib.rs", "line_start": 1, "is_primary": True}]}}
+        write(root / cargo_service.DOCUMENTS / cargo_service.CHECK_DOCUMENT, json.dumps(message) + "\n")
+        graph = cargo_service.as_graph(cargo_service.read(root))
+        assert graph.nodes["target::tool::lib::tool"]["label"] == "lib tool · 1 warning"
+        assert graph.nodes["target::tool::bin::tool"]["label"] == "bin tool"
 
     def test_features_and_what_they_enable(self, graph):
         assert graph.has_edge("feature::hal::default", "feature::hal::stm32f4")
