@@ -424,6 +424,51 @@ def test_a_member_under_a_skipped_directory_is_read(tmp_path):
     assert reading.workspaces[0]["members"] == ["app", "build/codegen"]
 
 
+def test_a_path_dependency_member_under_a_skipped_directory_is_read(tmp_path):
+    """A path dependency inside the workspace is a member wherever it sits:
+    one the package names, one it inherits from `[workspace.dependencies]`,
+    and one that a member found there names in turn."""
+    root = tmp_path / "ws"
+    crate(root, ".", "app", '[workspace]\n[workspace.dependencies]\nshared = { path = "dist/shared" }\n'
+                            '[dependencies]\ngen = { path = "build/gen" }\nshared = { workspace = true }\n')
+    crate(root, "build/gen", "gen", '[dependencies]\nleaf = { path = "../../dist/leaf" }\n')
+    crate(root, "dist/shared", "shared")
+    crate(root, "dist/leaf", "leaf")
+    reading = cargo_service.read(root)
+    for name in ("gen", "shared", "leaf"):
+        assert package(reading, name).workspace == "Cargo.toml", name
+    assert reading.workspaces[0]["members"] == [".", "build/gen", "dist/leaf", "dist/shared"]
+
+
+def test_a_path_dependency_under_a_skipped_directory_and_no_workspace_is_not_a_member(tmp_path):
+    """Without a `[workspace]`, cargo makes no path dependency a member, so
+    one in `build/` stays what the walk left it: a path dependency."""
+    root = tmp_path / "app"
+    crate(root, ".", "app", '[dependencies]\ngen = { path = "build/gen" }\n')
+    crate(root, "build/gen", "gen")
+    reading = cargo_service.read(root)
+    assert reading.package("gen") is None
+    assert [(d.name, d.source) for d in package(reading, "app").dependencies] == [("gen", "path")]
+
+
+def test_a_bound_that_stops_a_member_walk_ends_the_read(tmp_path, monkeypatch):
+    """At the manifest bound a skipped member's manifest is never recorded;
+    the read still ends, and says the bound fired."""
+    import threading
+
+    monkeypatch.setattr(cargo_service, "MAX_MANIFESTS", 2)
+    root = tmp_path / "ws"
+    write(root / "Cargo.toml", '[workspace]\nmembers = ["app", "build/codegen"]\n')
+    crate(root, "app", "app")
+    crate(root, "build/codegen", "codegen")
+    found = []
+    reader = threading.Thread(target=lambda: found.append(cargo_service.read(root)), daemon=True)
+    reader.start()
+    reader.join(20)
+    assert found, "the read did not end"
+    assert any("manifest bound (2)" in note for note in found[0].notes)
+
+
 @pytest.mark.parametrize("manifest,named", [
     ('[package]\nname = "hal"\nversion = "0.1.0"\n[dependencies]\nfoo = true\n', "foo"),
     ('[package]\nname = "hal"\nversion = "0.1.0"\n[features]\ndefault = 1\n', "default"),

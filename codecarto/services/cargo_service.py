@@ -238,13 +238,16 @@ def read(path: Path | str, documents: Path | str | None = None) -> Reading:
 
     parsed: dict[Path, dict] = {}
     _parse(manifests, parsed, reading, root, toml)
-    # A member a workspace names is read wherever it sits, even inside a
-    # directory the walk skips (`build/`, `dist/`).
-    for directory in _unwalked_members(parsed, manifests, root):
-        start = len(manifests)
-        sources, manifest_time = _walk(root / _rel(directory, root), reading, manifests, memory_maps)
-        newest, newest_manifest = max(newest, sources), max(newest_manifest, manifest_time)
-        _parse(manifests[start:], parsed, reading, root, toml)
+    # A member is read wherever it sits, even inside a directory the walk
+    # skips (`build/`, `dist/`) -- and a member found there may name another.
+    tried: set[Path] = set()  # a walk the manifest bound stopped is not retried
+    while unwalked := [d for d in _unwalked_members(parsed, manifests, root) if d not in tried]:
+        tried.update(unwalked)
+        for directory in unwalked:
+            start = len(manifests)
+            sources, manifest_time = _walk(root / _rel(directory, root), reading, manifests, memory_maps)
+            newest, newest_manifest = max(newest, sources), max(newest_manifest, manifest_time)
+            _parse(manifests[start:], parsed, reading, root, toml)
     reading.newest_source = newest
 
     docs_dir = Path(documents) if documents else root / DOCUMENTS
@@ -286,16 +289,40 @@ def _parse(manifests: list[Path], parsed: dict[Path, dict], reading: Reading, ro
 
 
 def _unwalked_members(parsed: dict[Path, dict], manifests: list[Path], root: Path) -> list[Path]:
+    """Members the walk did not reach: those a workspace names, and the path
+    dependencies inside a workspace's directory, which cargo makes members."""
     walked = {m.parent.resolve() for m in manifests}
+    workspaces: list[Path] = []
     found: set[Path] = set()
     for manifest, data in parsed.items():
         ws = data.get("workspace")
         if isinstance(ws, dict):
+            workspaces.append(manifest.parent.resolve())
             try:
                 found |= _member_dirs(manifest.parent, ws.get("members"))
             except Exception:
-                continue  # `_from_manifests` notes the shape
+                pass  # `_from_manifests` notes the shape
+    for manifest, data in parsed.items():
+        for directory in _path_dependency_dirs(manifest, data):
+            if any(_under(directory, w) for w in workspaces) and (directory / "Cargo.toml").is_file():
+                found.add(directory)
     return sorted(d for d in found - walked if _under(d, root.resolve()))
+
+
+def _path_dependency_dirs(manifest: Path, data: dict) -> list[Path]:
+    """Every `path` a manifest's dependency tables name -- its own and its
+    `[workspace.dependencies]` -- against its directory. One that inherits
+    with `workspace = true` is named by the workspace's table instead."""
+    try:
+        tables = [table for _, _, table in _dependency_tables(data)]
+        ws = data.get("workspace")
+        if isinstance(ws, dict) and isinstance(ws.get("dependencies"), dict):
+            tables.append(ws["dependencies"])
+        return [(manifest.parent / str(spec["path"])).resolve()
+                for table in tables for spec in table.values()
+                if isinstance(spec, dict) and spec.get("path") and not spec.get("workspace")]
+    except Exception:
+        return []  # `_from_manifests` notes the shape
 
 
 def _walk(top: Path, reading: Reading, manifests: list[Path],
@@ -541,8 +568,8 @@ def _spec(alias: str, spec: Any) -> dict:
     raise ValueError(f"dependency `{alias}` is {spec!r}, neither a version nor a table")
 
 
-def _dependencies(data: dict, directory: Path, ws: dict | None, by_dir: dict[Path, str],
-                  root: Path) -> list[Dependency]:
+def _dependency_tables(data: dict) -> list[tuple[str, str, dict]]:
+    """Each dependency table a manifest holds, with its kind and platform."""
     tables: list[tuple[str, str, dict]] = []
     for kind, keys in (("normal", ("dependencies",)), ("dev", ("dev-dependencies", "dev_dependencies")),
                        ("build", ("build-dependencies", "build_dependencies"))):
@@ -553,8 +580,13 @@ def _dependencies(data: dict, directory: Path, ws: dict | None, by_dir: dict[Pat
             for key in keys:
                 if isinstance(table, dict) and isinstance(table.get(key), dict):
                     tables.append((kind, str(platform), table[key]))
+    return tables
+
+
+def _dependencies(data: dict, directory: Path, ws: dict | None, by_dir: dict[Path, str],
+                  root: Path) -> list[Dependency]:
     found = []
-    for kind, platform, table in tables:
+    for kind, platform, table in _dependency_tables(data):
         for alias, spec in table.items():
             spec = _spec(alias, spec)
             base = directory
