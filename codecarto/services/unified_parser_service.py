@@ -818,12 +818,11 @@ def _resolve_python_dependencies(
     pass, the unified-pipeline counterpart to the old standalone
     DependencyParser.
 
-    Resolution is stem-based (filename without extension), matching this
-    module's existing id scheme (file_id = "file::{parent_dir}/{name}", not
-    a full repo-relative path) — two files sharing a stem (e.g. two
+    Resolution is stem-based (filename without extension). A file id is
+    the path from the root (file_id = "file::{path}/{name}"), but an import
+    names a module, not a path, so two files sharing a stem (e.g. two
     packages each with their own __init__.py) can't be disambiguated; the
-    last one registered in *file_id_by_stem* wins. Pre-existing limitation
-    of this id scheme, not introduced here.
+    last one registered in *file_id_by_stem* wins.
 
     Returns
     -------

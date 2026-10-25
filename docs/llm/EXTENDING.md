@@ -136,8 +136,11 @@ another file, an import reaching one, a file-level attribute -- sets
 `graph.graph["file_relations"]` (`[(source, target, attrs)]`, each end a node
 id or a file key, `attrs["kind"]` the edge kind) and `graph.graph["file_meta"]`
 (`{file_key: {...}}`, merged into that file node's `meta`). The parser does not
-create file nodes -- the walk does -- so the pipeline resolves the keys to them,
-in the in-memory and the streaming paths alike.
+create file nodes -- the walk does -- so the pipeline resolves the keys to them.
+Relations are resolved on the in-memory and the GitHub streaming paths alike.
+`file_meta` reaches the file node on the in-memory path only: the GitHub stream
+has already sent its file nodes when the parser runs, so their `meta` is not
+updated there.
 
 ### Joining the construct vocabulary
 
@@ -146,9 +149,11 @@ A parser's `kind` says what its language calls a thing. To have its nodes carry
 shared looks and read by the chrestomathy, add the language under `languages:`
 in `codecarto/data/constructs.yaml`:
 
-- `kinds`: each kind the parser emits, to a construct. A parser that exports
-  its kinds is held to the map in both directions by
-  `tests/test_construct_service.py`.
+- `kinds`: each kind the parser emits, to a construct; `not_constructs`: each
+  kind it emits that is not one, with the reason. The parser declares `kinds`,
+  every kind it can emit, and `tests/test_construct_service.py` holds the two
+  lists to it in both directions: nothing emitted goes unnamed, and nothing is
+  named that no parser emits -- the chrestomathy draws a kind as "(parsed)".
 - `qualifiers`, `attributes`, `macros`, `meta`: what in a node's `meta` makes it
   *also* a facet (`unsafe` -> `memory.unsafe`, `#[interrupt]` ->
   `firmware.interrupt`).
@@ -156,8 +161,9 @@ in `codecarto/data/constructs.yaml`:
   Rust `enum` with `c_like` is an enumeration, not a sum type).
 
 Add the language's spellings under each construct's `spelled:` -- every token
-there must be in that language's lexicon, and a language with no spelling gets
-a `note` saying how it does without. A parser may call
+there must be in that language's lexicon, a token the lexicon files in more
+than one group names the one that spells this construct under `groups:`, and a
+language with no spelling gets a `note` saying how it does without. A parser may call
 `construct_service.annotate(graph)` itself; the pipeline calls it on every parse
 regardless, and a look the parser set is never overwritten.
 

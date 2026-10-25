@@ -14,7 +14,8 @@ import pytest
 
 from codecarto.services import construct_service
 from codecarto.services.lexicon_service import LexiconService
-from codecarto.services.parsers import c_language_parser, linker_script_parser, rust_language_parser
+from codecarto.services.parsers import c_language_parser, linker_script_parser
+from codecarto.services.parsers.language_parser import ParserRegistry
 
 VOCABULARY = construct_service.load()
 IDS = {c.id for c in VOCABULARY.constructs}
@@ -52,14 +53,62 @@ def test_every_spelled_token_is_in_that_languages_lexicon(language):
     assert not missing
 
 
+@pytest.mark.parametrize("language", sorted(set(LexiconService.available())))
+def test_a_token_with_several_senses_names_the_one_that_spells_the_construct(language):
+    """Rust's `for` is iteration in a loop and behaviour in `impl Trait for
+    Type`; nothing but the vocabulary can say which a construct means, and
+    without it the chrestomathy took the lowest layer of the two. Mutation:
+    drop `groups: {for: iteration}` from control.loop -- this fails and names
+    it; misspell the group -- it fails as a sense the lexicon does not have."""
+    index = LexiconService.load(language).index_by_token()
+    unnamed, unknown = [], []
+    for c in VOCABULARY.constructs:
+        spelling = c.spelled.get(language)
+        if spelling is None:
+            continue
+        for tok in spelling.tokens:
+            groups = {ctx["group"] for ctx in index.get(tok, [])}
+            if tok in spelling.groups and spelling.groups[tok] not in groups:
+                unknown.append((c.id, tok, spelling.groups[tok]))
+            elif tok not in spelling.groups and len(index.get(tok, [])) > 1:
+                unnamed.append((c.id, tok))
+        unknown += [(c.id, tok, g) for tok, g in spelling.groups.items() if tok not in spelling.tokens]
+    assert unnamed == [] and unknown == []
+
+
 def test_every_look_is_a_shape_the_canvas_draws():
     shapes = {c.look.shape for c in VOCABULARY.constructs if c.look}
     assert shapes <= construct_service.CANVAS_SHAPES
 
 
-def test_rust_parser_kinds_and_the_vocabulary_agree_both_ways():
-    mapped = set(VOCABULARY.languages["rust"].kinds)
-    assert set(rust_language_parser.KINDS) == mapped
+def _parsers_of(language: str) -> list:
+    return [p for p in ParserRegistry.all_parsers() if p.language == language]
+
+
+@pytest.mark.parametrize("language", sorted(VOCABULARY.languages))
+def test_parser_kinds_and_the_vocabulary_agree_both_ways(language):
+    """Every kind a parser on this branch can emit is mapped to a construct or
+    listed under `not_constructs` with its reason, and the vocabulary names no
+    kind that no parser emits -- so the chrestomathy's "(parsed)" is a
+    parser's word, not the vocabulary's. Mutations: drop `call` from Python's
+    `not_constructs` -- the first half fails; map Python `module` again (the
+    adapter skips the AST's Module root) -- the second does."""
+    parsers = _parsers_of(language)
+    assert parsers, f"constructs.yaml lists {language}, and no parser on this branch reads it"
+    undeclared = [type(p).__name__ for p in parsers if not getattr(p, "kinds", None)]
+    assert not undeclared, f"{language}: {undeclared} declare no `kinds`"
+    emitted = {kind for p in parsers for kind in p.kinds}
+    mapping = VOCABULARY.languages[language]
+    named = set(mapping.kinds) | set(mapping.not_constructs)
+    assert sorted(emitted - named) == [], "emitted, and the vocabulary says nothing of them"
+    refined = {r.kind for r in mapping.refine}
+    assert sorted((named | refined) - emitted) == [], "named, and no parser emits them"
+
+
+def test_a_kind_that_is_not_a_construct_says_why():
+    for language, mapping in VOCABULARY.languages.items():
+        assert not set(mapping.kinds) & set(mapping.not_constructs), language
+        assert all(reason.strip() for reason in mapping.not_constructs.values()), language
 
 
 def test_c_adapter_kinds_are_all_mapped():
@@ -115,6 +164,63 @@ def test_a_parsers_own_look_wins():
     assert g.nodes["f"]["construct"] == "callable.function"
 
 
+def test_a_c_local_is_automatic_unless_static_and_carries_no_linkage():
+    """`static` at file scope is linkage; inside a function it is storage
+    duration, and a local without it lives for one call. Mutations: drop the
+    `automatic` refinement -- `total` is static storage again; drop the
+    no-linkage rule -- a static local claims internal linkage."""
+    g = graph_of(
+        ("total", {"language": "c", "kind": "variable",
+                   "meta": {"qualifiers": [], "automatic": True, "no_linkage": True}}),
+        ("calls", {"language": "c", "kind": "variable",
+                   "meta": {"qualifiers": ["static"], "no_linkage": True}}),
+        ("hidden", {"language": "c", "kind": "variable", "meta": {"qualifiers": ["static"]}}))
+    construct_service.annotate(g)
+    assert g.nodes["total"]["construct"] == "storage.automatic"
+    assert g.nodes["calls"]["construct"] == "storage.static"
+    assert "linkage.internal" not in g.nodes["calls"]["meta"].get("facets", [])
+    assert g.nodes["hidden"]["meta"]["facets"] == ["linkage.internal"]
+
+
+_HAS_LIBCLANG = __import__("importlib").util.find_spec("clang") is not None
+
+
+@pytest.mark.skipif(not _HAS_LIBCLANG,
+                    reason="libclang not installed — install with: uv sync --extra c-parsing")
+def test_the_c_parser_says_which_variables_are_locals():
+    """End to end through libclang: what the stamp above reads is what the C
+    parser states. Mutation: stop marking block-scope variables in
+    `c_parser` -- `total` and `i` are static storage again."""
+    from codecarto.models.source_data import Directory, File, Folder, RepoInfo
+    from codecarto.services.unified_parser_service import UnifiedParserService
+
+    src = ("int counter;\n"
+           "static int hidden;\n"
+           "extern int shared;\n"
+           "int sum(int n) {\n"
+           "    int total = 0;\n"
+           "    static int calls = 0;\n"
+           "    extern int elsewhere;\n"
+           "    for (int i = 0; i < n; i++) total += i;\n"
+           "    calls++;\n"
+           "    return total + counter + hidden + shared + elsewhere;\n"
+           "}\n")
+    d = Directory(info=RepoInfo(name="m"),
+                  root=Folder(name="m", files=[File(name="m.c", raw=src)]))
+    g = UnifiedParserService.build_graph(d, depth=3, extensions=None)
+    seen = {data["label"]: (data.get("construct"), data.get("meta", {}).get("facets") or [])
+            for _, data in g.nodes(data=True) if data.get("kind") == "variable"}
+    assert seen == {
+        "counter": ("storage.static", []),
+        "hidden": ("storage.static", ["linkage.internal"]),
+        "shared": ("storage.static", ["linkage.extern"]),
+        "total": ("storage.automatic", []),
+        "calls": ("storage.static", []),
+        "elsewhere": ("storage.static", ["linkage.extern"]),
+        "i": ("storage.automatic", []),
+    }
+
+
 def test_an_unlisted_language_is_left_exactly_as_it_arrived():
     g = graph_of(("j", {"language": "javascript", "kind": "function", "meta": {}}))
     assert construct_service.annotate(g) == 0
@@ -149,7 +255,27 @@ def test_a_construct_read_across_languages_keeps_the_silent_ones():
     assert set(rows) >= {"c", "rust", "python"}
     assert rows["c"]["tokens"] == [] and rows["c"]["note"]
     assert [t["token"] for t in rows["rust"]["tokens"]] == ["fn", "impl"]
+    # The Rust reader tells a fn in an impl from one outside it.
     assert rows["rust"]["kinds"] == ["method"]
+
+
+def test_every_listed_language_is_a_row_of_every_construct():
+    """docs/api.md: a language with no spelling is a row, never a missing one.
+    Python has no untagged union and neither C nor Python an associated item,
+    and none of the three had a row. Mutation: draw rows only for languages
+    that spell or parse the construct -- this fails and names the pairs."""
+    missing = []
+    for construct in VOCABULARY.constructs:
+        rows = {r["language"] for r in construct_service.reading(construct.id)["languages"]}
+        missing += [(construct.id, language) for language in VOCABULARY.languages if language not in rows]
+    assert missing == []
+
+
+def test_a_language_the_vocabulary_records_nothing_for_says_so():
+    rows = {r["language"]: r for r in construct_service.reading("type.union")["languages"]}
+    python = rows["python"]
+    assert (python["tokens"], python["kinds"], python["carried_by"]) == ([], [], [])
+    assert "records no Python spelling" in python["note"]
 
 
 def test_tokens_carry_their_lexicon_layer():
@@ -178,13 +304,61 @@ def test_facets_say_what_carries_them():
 def test_the_graph_puts_the_construct_at_the_centre_and_colours_tokens_by_layer():
     graph = construct_service.as_graph("memory.volatile")
     root = "construct:memory.volatile"
-    assert set(graph.successors(root)) == {"language:c", "language:rust"}
+    assert set(graph.successors(root)) == {f"language:{lang}" for lang in VOCABULARY.languages}
     token = graph.nodes["token:c:volatile"]
     assert token["color"] == construct_service.layer_color(token["layer_ordinal"])
     # Rust spells it with no token: drawn, dashed, with its note.
     rust_edge = graph.edges[root, "language:rust"]
     assert rust_edge["style"] == "dashed"
     assert "read_volatile" in graph.nodes["language:rust"]["hover"]
+
+
+def test_a_token_is_drawn_on_the_layer_of_the_sense_that_spells_the_construct():
+    """A token's colour was the lowest layer of all its senses, so a Rust loop's
+    `for` drew as Rust's layer 2, the `for` of `impl Trait for Type`. Mutation:
+    read every sense of a token again, ignoring `Spelling.groups` -- the
+    loop's `for` is 2."""
+    loop = construct_service.as_graph("control.loop").nodes["token:rust:for"]
+    implementation = construct_service.as_graph("type.implementation").nodes["token:rust:for"]
+    assert (loop["layer_ordinal"], loop["color"]) == (3, construct_service.layer_color(3))
+    assert (implementation["layer_ordinal"], implementation["color"]) == (2, construct_service.layer_color(2))
+    assert "behaviour" not in loop["hover"] and "iteration" not in implementation["hover"]
+
+
+def test_a_layer_number_is_a_rank_in_its_own_lexicon_and_the_token_names_its_layer():
+    """The number -- and so the colour -- ranks a layer within one language's
+    lexicon, not on a scale the languages share: control flow is C's keyword
+    layer 3 and Python's 0; compile-time reasoning is C's 4 and Rust's 5. So a
+    token node names its layer beside the number, in the `meta.lexicon_layers`
+    a lexicon-annotated parse node carries. Mutation: drop that meta from the
+    token nodes -- this fails."""
+    def layer(graph, node_id):
+        (context,) = graph.nodes[node_id]["meta"]["lexicon_layers"]
+        assert context["layer_ordinal"] == graph.nodes[node_id]["layer_ordinal"]
+        return context["layer_ordinal"], context["layer_name"]
+
+    loop = construct_service.as_graph("control.loop")
+    assert layer(loop, "token:c:for") == (3, "Control flow")
+    assert layer(loop, "token:python:for") == (0, "Control flow")
+    constant = construct_service.as_graph("storage.constant")
+    assert layer(constant, "token:c:const") == (4, "Compile-time reasoning & contracts")
+    assert layer(constant, "token:rust:const") == (5, "Compile-time reasoning & contracts")
+
+
+def test_a_kind_drawn_as_parsed_is_one_a_parser_on_this_branch_emits():
+    """`region (parsed)` was drawn for the linker with no linker parser here,
+    and `module (parsed)` for Python, whose adapter skips the Module root.
+    Mutation: put either mapping back in constructs.yaml -- this fails and
+    names the node."""
+    drawn = []
+    for construct in VOCABULARY.constructs:
+        graph = construct_service.as_graph(construct.id)
+        for node_id, data in graph.nodes(data=True):
+            if data["kind"] == "parser_kind":
+                _, language, kind = node_id.split(":", 2)
+                if kind not in {k for p in _parsers_of(language) for k in p.kinds}:
+                    drawn.append(node_id)
+    assert drawn == []
 
 
 def test_an_unknown_construct_is_none():
