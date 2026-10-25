@@ -33,11 +33,17 @@ Estate. Topology, Capabilities, Overview, Cargo and Chrestomathy are opened
 from the **`+`** menu in the header — or from a live row in the Estate panel — because each asks its seam
 on open, and a fresh workstation has none up.
 
-**Adding, restoring, saving.** The `+` button (and Ctrl+right-click on the dock) opens
-the add-window menu listing every registered panel not currently open; closing a
-tab and re-adding it goes through the same path. The menu's Layout section saves
-the current arrangement as the default (`localStorage['cc:gl-layout:default']`)
-and resets it.
+**Adding, restoring, saving.** The `+` button in the header opens the
+add-window menu, listing every registered panel not currently open, closed ones
+included; closing a tab and re-adding it goes through the same path. The dock
+has no menu of its own: a right-click on the canvas opens the radial menu, and
+elsewhere it is the browser's. A window added -- from the menu, an Estate row,
+View ▸ Compare or a bundled example -- joins the stack whose tab was clicked
+last, else the stack holding the most windows, and never the Graph panel's own
+stack while another exists, so the canvas stays in view. The menu takes the
+focus when it opens and gives it back to `+` when it closes. Its Layout section
+saves the current arrangement as the default
+(`localStorage['cc:gl-layout:default']`) and resets it.
 
 ### The estate panels share three pieces
 
