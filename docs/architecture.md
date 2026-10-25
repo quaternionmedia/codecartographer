@@ -378,11 +378,14 @@ C's 3). Read the layer's name beside its number. `models/lexicon.py` is the sche
 loads and validates a YAML file and projects it to a graph, and
 `lexicon_router.py` serves `/lexicon/*`.
 
-**Its own graph.** `GET /lexicon/{language}/graph` projects the lexicon through
-`LexiconService.to_graph()` and `GraphSerializer`, the pipeline every parsed
-graph uses, so it lays out and draws like one.
+A lexicon is used two ways, which the code's comments call Option A and
+Option B.
 
-**Joined to parsed code.** With `annotate_lexicon: true` on a parse,
+**Its own graph (Option A).** `GET /lexicon/{language}/graph` projects the
+lexicon through `LexiconService.to_graph()` and `GraphSerializer`, the pipeline
+every parsed graph uses, so it lays out and draws like one.
+
+**Joined to parsed code (Option B).** With `annotate_lexicon: true` on a parse,
 `lexicon_bridge.annotate_graph_with_lexicon()` looks up each node's `kind`
 through a per-language map to the keyword it spells (`_KIND_TOKEN_MAP`) and,
 where a parser exposes them, its tokenized qualifiers (`_QUALIFIER_META_KEY`),

@@ -8,8 +8,9 @@ tokenized qualifier lists — a node's ``label`` (a declared identifier like
 ``main``) is essentially never a lexicon token, so no automatic string match
 is attempted there.
 
-Adding a language here (beyond Option A, which needs nothing but a new YAML
-file — see ``LexiconService``) means adding its entry below:
+Adding a language here (beyond Option A, the lexicon's own graph, which needs
+nothing but a new YAML file — see ``LexiconService``) means adding its entry
+below:
 
 - ``_KIND_TOKEN_MAP[language]``: maps a unified node's ``kind`` string to the
   exact keyword spelling it represents, where that mapping is not a trivial
