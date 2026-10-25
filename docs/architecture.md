@@ -203,7 +203,8 @@ StreamingGraphRenderer (frontend rAF loop)
 
 A local directory takes the same path through `POST /parse/stream`
 (`UnifiedParserService.stream_parse`). Either is replayed from `CacheService`
-when the same url, mode, layout and extensions were parsed before.
+when the same url, mode, layout and extensions were parsed before under the
+current `GRAPH_SCHEMA_VERSION`.
 
 ### The demo
 
@@ -272,7 +273,7 @@ in each skips different work:
 |---|---|---|
 | Caches | repository trees and parsed graphs | extracted source trees (the unzipped GitHub archive) |
 | Location | `{repo_key}/tree.json` and `{repo_key}/graphs/{hash}.json`; `index.json` lists the graphs | `{owner}-{repo}/src/` and `metadata.json` |
-| Key | `repo_key` is `{owner}-{repo}` for GitHub, `sha256(url)[:16]` otherwise; a graph is `{repo_key}::{sha256(url, mode, layout, extensions)[:16]}` | `{owner}-{repo}` |
+| Key | `repo_key` is `{owner}-{repo}` for GitHub, `sha256(url)[:16]` otherwise; a graph is `{repo_key}::{sha256(v{GRAPH_SCHEMA_VERSION}, url, mode, layout, extensions)[:16]}` | `{owner}-{repo}` |
 | Freshness | `CC_CACHE_TTL` seconds (24 h by default) | the same variable |
 | A hit skips | fetching (a tree) or parsing (a graph) | the download and extract; the parse still runs |
 | List / evict | `GET /parse/cache`, `DELETE /parse/cache/{key}`; `CacheService.evict_repo` drops a repository's tree and graphs | `GET /c-parser/cache`, `DELETE /c-parser/cache/{key}` |

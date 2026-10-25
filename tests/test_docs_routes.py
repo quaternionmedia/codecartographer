@@ -21,7 +21,9 @@ it describes, and each check here fails on a document that disagrees with it:
 - every sync a document or the code tells a reader to run is `ONE_SYNC`;
 - `docs/index.md` links every page under `docs/`;
 - the UI reference names every registered panel, and the default layout and
-  the source tree agree with the registry and the dev proxy.
+  the source tree agree with the registry and the dev proxy;
+- every statement of the graph cache key names the schema version
+  `cache_service._make_key` hashes with the url, mode, layout and extensions.
 
 The application, the click tree and the code are the sources; nothing here
 keeps a list of routes, commands or variables of its own.
@@ -759,3 +761,69 @@ def test_the_api_reference_says_the_errors_the_envelope_does_not_carry():
     assert invalid.status_code == 422 and isinstance(invalid.json().get("detail"), list)
     assert '{"detail": "Not Found"}' in reference, "api.md does not show an unknown route's 404"
     assert re.search(r"^\| 422 \|", reference, re.M), "api.md's error table has no 422 row"
+
+
+# ── Statements the code can hold ─────────────────────────────────────────────
+
+
+def _paragraphs(path: Path):
+    """(first line, text) for each prose paragraph of a document, its lines
+    joined. A heading, a table row and a list item each start one; a table
+    row and a heading are one line. Fenced blocks are not prose."""
+    para, start = [], 0
+    for number, line, fenced in _prose_lines(path):
+        text = line.strip()
+        opens = text.startswith(("|", "#")) or re.match(r"(?:[-*+]|\d+\.)\s", text)
+        if (fenced or not text or opens) and para:
+            yield start, " ".join(para)
+            para = []
+        if fenced or not text:
+            continue
+        if text.startswith(("|", "#")):
+            yield number, text
+            continue
+        if not para:
+            start = number
+        para.append(text)
+    if para:
+        yield start, " ".join(para)
+
+
+GRAPH_KEY_PARTS = re.compile(r"\burl\W+mode\W+layout\W+(?:and\W+)?extensions\b", re.I)
+SCHEMA_VERSION = re.compile(r"schema version|GRAPH_SCHEMA_VERSION", re.I)
+
+
+def test_every_statement_of_the_graph_cache_key_names_the_schema_version(monkeypatch):
+    """`cache_service._make_key` hashes `v{GRAPH_SCHEMA_VERSION}` with the url,
+    mode, layout and extensions, so a graph cached in an older shape is a
+    miss. A sentence giving the key as those four alone tells a reader that an
+    old graph is replayed. Mutation: drop the version from a statement, or from
+    `_make_key`'s payload -- this fails naming it."""
+    from codecarto.services import cache_service
+
+    parts = ["https://github.com/o/r", "full", "Spring", [".py"]]
+    key = cache_service._make_key(*parts)
+    for i, other in enumerate(["https://github.com/o/s", "c", "Circular", [".c"]]):
+        changed = [*parts[:i], other, *parts[i + 1:]]
+        assert cache_service._make_key(*changed) != key, (
+            f"_make_key no longer varies on its {['url', 'mode', 'layout', 'extensions'][i]}")
+    monkeypatch.setattr(cache_service, "GRAPH_SCHEMA_VERSION",
+                        cache_service.GRAPH_SCHEMA_VERSION + 1)
+    assert cache_service._make_key(*parts) != key, (
+        "the graph key no longer carries GRAPH_SCHEMA_VERSION; the statements "
+        "this reads are stale, and so is this check")
+
+    seen, wrong = 0, []
+    for path in DOCUMENTS:
+        for number, text in _paragraphs(path):
+            for match in GRAPH_KEY_PARTS.finditer(text):
+                if re.search(r"\b(?:cache_key|_make_key)\($", text[:match.start()]):
+                    continue  # the function's signature: the version is not an argument
+                seen += 1
+                window = text[max(0, match.start() - 120):match.end() + 120]
+                if not SCHEMA_VERSION.search(window):
+                    wrong.append(f"{_rel(path)}:{number}: {match.group(0)}")
+    assert seen, "no document states the graph cache key; the reader is stale"
+    assert not wrong, (
+        f"these give the graph cache key without the schema version "
+        f"(`v{{GRAPH_SCHEMA_VERSION}}`, cache_service._make_key): {wrong}")

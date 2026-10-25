@@ -195,9 +195,9 @@ from the cache (`from_cache: true`) instead of re-parsing.
 
 After a fresh stream completes (the `done` event is emitted), the full
 accumulated graph is automatically written to cache — subsequent requests
-with the same URL, mode, layout, and extensions are served as instant
-replays without re-parsing. A stream that carried a `note` is not written:
-its replay would arrive without it.
+with the same URL, mode, layout, and extensions, under the same graph schema
+version, are served as instant replays without re-parsing. A stream that
+carried a `note` is not written: its replay would arrive without it.
 
 ---
 
