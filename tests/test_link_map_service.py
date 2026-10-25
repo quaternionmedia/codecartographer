@@ -98,6 +98,105 @@ class TestLld:
         assert round(uses["FLASH"].fill, 4) == round((0x1130 + 0xe) / (512 * 1024), 4)
 
 
+# ── A region that starts at address 0 ─────────────────────────────────────────
+# nRF52, SAMD, LPC and Kinetis parts put flash at 0, and both linkers print the
+# sections kept only in the ELF file -- debug information, symbol tables,
+# `.comment`, build attributes -- at address 0 too.
+
+NRF_REGIONS = [L.Region("FLASH", 0x0, 1024 * 1024), L.Region("RAM", 0x20000000, 256 * 1024)]
+NRF_LLD = """\
+     VMA      LMA     Size Align Out     In      Symbol
+       0        0      400     4 .vector_table
+       0        0      400     4         a.o:(.vector_table.interrupts)
+     400      400       30     4 .text
+     400      400       30     2         a.o:(.text.main)
+     400      400       30     1                 main
+20000000 20000000        8     4 .bss
+20000000 20000000        8     4         a.o:(.bss.TICKS)
+       1        1       40     1 .defmt
+       1        1       40     1         a.o:(.defmt.{"package":"blinky"})
+       0        0    c0000     1 .debug_info
+       0        0    c0000     1         a.o:(.debug_info)
+       0        0    20000     1 .debug_str
+       0        0    20000     1         <internal>:(.debug_str)
+       0        0       99     1 .comment
+       0        0       99     1         <internal>:(.comment)
+       0        0       3c     1 .ARM.attributes
+       0        0       3c     1         a.o:(.ARM.attributes)
+       0        0      340     4 .symtab
+       0        0      340     4         <internal>:(.symtab)
+       0        0       d6     1 .shstrtab
+       0        0       d6     1         <internal>:(.shstrtab)
+       0        0      237     1 .strtab
+       0        0      237     1         <internal>:(.strtab)
+"""
+NRF_GNU = """\
+Memory Configuration
+
+Name             Origin             Length             Attributes
+FLASH            0x00000000         0x00100000         xr
+RAM              0x20000000         0x00040000         xrw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+.isr_vector     0x00000000      0x200
+ .isr_vector    0x00000000      0x200 build/startup.o
+                0x00000000                g_pfnVectors
+
+.text           0x00000200       0x40
+ .text.main     0x00000200       0x40 build/main.o
+                0x00000200                main
+
+.ARM.attributes
+                0x00000000       0x34
+ .ARM.attributes
+                0x00000000       0x34 build/main.o
+OUTPUT(build/firmware.elf elf32-littlearm)
+
+.debug_info     0x00000000      0x867
+ .debug_info    0x00000000      0x867 build/main.o
+
+.comment        0x00000000       0x46
+ .comment       0x00000000       0x46 build/main.o
+
+.debug_frame    0x00000000      0x128
+ .debug_frame   0x00000000      0x128 build/main.o
+"""
+
+
+def test_sections_kept_only_in_the_file_do_not_fill_a_region_at_zero():
+    """Mutation: decide a section's region by its address alone -- 896 KiB of
+    debug information reads as flash and this fails."""
+    uses = by_name(L.usage(L.parse(NRF_LLD, "blinky.map"), NRF_REGIONS))
+    assert uses["FLASH"].runtime_bytes == 0x400 + 0x30
+    assert uses["FLASH"].sections == [".vector_table", ".text"]
+    assert uses["RAM"].runtime_bytes == 8
+
+
+def test_an_info_section_on_addresses_already_placed_is_not_placed():
+    """`.defmt` is an `(INFO)` section at address 1: no name says so, but it
+    lies on the vector table, and two sections the link placed cannot share an
+    address. Mutation: drop the overlap rule -- `.defmt` counts and this fails."""
+    uses = by_name(L.usage(L.parse(NRF_LLD, "blinky.map"), NRF_REGIONS))
+    assert ".defmt" not in uses["FLASH"].sections
+
+
+def test_a_gnu_map_at_zero_counts_what_it_placed():
+    link_map = L.parse(NRF_GNU, "firmware.map")
+    uses = by_name(L.usage(link_map, link_map.regions))
+    assert (uses["FLASH"].runtime_bytes, uses["FLASH"].sections) == (0x240, [".isr_vector", ".text"])
+
+
+def test_a_region_at_zero_the_link_put_nothing_in_holds_no_debug_data():
+    """An STM32 aliases its flash at 0; a script may declare that alias. Nothing
+    placed lies there, so only the name says `.ARM.attributes` is not placed.
+    Mutation: drop the name rule -- the alias reads 46 B used and this fails."""
+    link_map = L.read(GNU)
+    uses = by_name(L.usage(link_map, [*link_map.regions, L.Region("ALIAS", 0x0, 0x80000)]))
+    assert (uses["ALIAS"].used_bytes, uses["ALIAS"].sections) == (0, [])
+
+
 # ── Names ─────────────────────────────────────────────────────────────────────
 
 

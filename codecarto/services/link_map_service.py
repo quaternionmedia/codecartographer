@@ -22,7 +22,10 @@ region use   the sum of the sizes of the output sections whose address falls in
              differs (`.data`), its size against the region it is loaded from.
              A zero-initialised section (`.bss`, `.uninit`, `.noinit`, a stack
              or heap) has no load image -- named by convention, because LLD's
-             map does not print a section's type.
+             map does not print a section's type. Only placed sections count:
+             debug information, symbol tables and the like are printed at
+             address 0, inside any region that starts there, and are known by
+             name or by lying on addresses a placed section already holds.
 symbol size  a symbol's input section's size when the section holds that symbol
              alone, which is how `-ffunction-sections` and Rust lay code out;
              otherwise the distance to the next symbol in the section.
@@ -43,6 +46,12 @@ from pathlib import Path
 from typing import Iterable
 
 _NO_LOAD = re.compile(r"^\.(?:t?s?bss|uninit|noinit|stack|heap)(?:\.|$)")
+# Sections a link keeps in the ELF file and never places in memory: debug
+# information, symbol and string tables, `.comment`, build attributes. Neither
+# map prints a section's flags, so they are known by the names `objdump -h`
+# shows them with; both linkers print them at address 0.
+_FILE_ONLY = re.compile(r"^\.(?:z?debug|stab|line$|comment$|symtab|strtab$|shstrtab$|gnu_debug"
+                        r"|GCC\.command\.line$|llvm_addrsig$|note\.GNU-stack$|[\w.]*attributes$)")
 
 
 @dataclass
@@ -273,12 +282,33 @@ def _size_symbols(inp: InputSection) -> None:
 # ── Measuring ─────────────────────────────────────────────────────────────────
 
 
+def placed(link_map: LinkMap) -> list[OutputSection]:
+    """The output sections the link put in memory, in the map's order.
+
+    A section kept only in the file is known by its name; one whose addresses
+    a section before it already holds -- an `(INFO)` section such as defmt's,
+    at address 1 -- was not placed either, because two placed sections cannot
+    share an address (both linkers refuse the link). An overlay shares its
+    addresses with a different load address, and `.tbss` takes none at run
+    time, so neither is held against what follows."""
+    held: list[tuple[int, int]] = []
+    found: list[OutputSection] = []
+    for section in link_map.sections:
+        if section.size == 0 or _FILE_ONLY.match(section.name):
+            continue
+        start, end = section.vma, section.vma + section.size
+        if section.lma == section.vma and any(start < e and s < end for s, e in held):
+            continue
+        found.append(section)
+        if not section.name.startswith(".tbss"):
+            held.append((start, end))
+    return found
+
+
 def usage(link_map: LinkMap, regions: list[Region]) -> list[RegionUse]:
     """Each region's use, from the sections the link placed in it."""
     uses = [RegionUse(r.name, r.origin, r.length) for r in regions]
-    for section in link_map.sections:
-        if section.size == 0:
-            continue
+    for section in placed(link_map):
         for use, region in zip(uses, regions):
             if region.holds(section.vma):
                 use.runtime_bytes += section.size
