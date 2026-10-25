@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import shutil
 import time
 from pathlib import Path
@@ -501,6 +502,17 @@ class TestRealLld:
         uses = by_name(L.usage(link_map, BLINKY_REGIONS))
         assert (uses["FLASH"].used_bytes, uses["RAM"].used_bytes) == (0x4b0, 4)
 
+    def test_a_region_at_zero_holds_none_of_its_debug_information(self, link_map):
+        """The same link with flash moved to 0, as an nRF52 lays it out: every
+        flash address 0x08000000 lower, the columns kept. Mutation: decide a
+        section's region by its address alone -- the 9,482 B of `.debug_*`,
+        `.symtab`, `.strtab` and `.comment` count as flash and this fails."""
+        assert by_name(L.usage(link_map, NRF_REGIONS))["FLASH"].used_bytes == 0  # nothing placed below 1 MiB
+        moved = re.sub(r"(?m)^( *)8000([0-9a-f]{3})( +)8000([0-9a-f]{3}) ", r"\1    \2\3    \4 ", REAL.read_text())
+        uses = by_name(L.usage(L.parse(moved, "nrf.map"), NRF_REGIONS))
+        assert by_name(L.parse(moved, "nrf.map").sections)[".vector_table"].vma == 0
+        assert (uses["FLASH"].used_bytes, uses["RAM"].used_bytes) == (0x4b0, 4)
+
     def test_on_the_code_map_the_entry_function_owns_its_trampoline(self, tmp_path):
         """cortex-m-rt renames `#[entry] fn main` to `__cortex_m_rt_main` and
         calls it from a `main` trampoline; both are `main`'s bytes. Mutation:
@@ -547,6 +559,18 @@ class TestRealGnu:
         assert uses["RAM"].used_bytes == 12 + 3348
         stack = by_name(link_map.sections)["._user_stack"]
         assert stack.lma != stack.vma and not stack.loads
+
+    def test_size_still_agrees_when_flash_starts_at_zero(self, link_map):
+        """The same link with flash moved to 0 -- its memory table, sections and
+        load addresses 0x08000000 lower. Mutation: decide a section's region by
+        its address alone -- `.ARM.attributes`, `.comment` and the 7,879 B of
+        `.debug_*` count as flash and this fails."""
+        assert by_name(L.usage(link_map, NRF_REGIONS))["FLASH"].used_bytes == 0  # nothing placed below 1 MiB
+        moved = L.parse(re.sub(r"0x08([0-9a-f]{6})\b", r"0x00\1", REAL_GNU.read_text()), "nrf.map")
+        assert by_name(moved.regions)["FLASH"].origin == 0
+        uses = by_name(L.usage(moved, moved.regions))
+        assert (uses["FLASH"].runtime_bytes, uses["FLASH"].load_bytes) == (696, 12)
+        assert uses["RAM"].used_bytes == 12 + 3348
 
     def test_statics_are_named_by_the_section_gcc_gave_them(self, link_map):
         """Mutation: read no name from an input section's own -- `rx_buffer`,
