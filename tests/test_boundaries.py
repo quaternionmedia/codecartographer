@@ -81,6 +81,7 @@ ESTATE_PANELS = (
     "web/src/layout/panels/chrestomathy_panel.ts",
     "web/src/features/cartography/cartography_service.ts",
     "web/src/features/cartography/chrestomathy_rows.ts",
+    "web/src/features/cartography/cartography_actions.ts",
 )
 
 

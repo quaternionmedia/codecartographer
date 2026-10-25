@@ -135,8 +135,11 @@ another file, an import reaching one, a file-level attribute -- sets
 `graph.graph["file_relations"]` (`[(source, target, attrs)]`, each end a node
 id or a file key, `attrs["kind"]` the edge kind) and `graph.graph["file_meta"]`
 (`{file_key: {...}}`, merged into that file node's `meta`). The parser does not
-create file nodes -- the walk does -- so the pipeline resolves the keys to them,
-in the in-memory and the streaming paths alike.
+create file nodes -- the walk does -- so the pipeline resolves the keys to them.
+Relations are resolved on the in-memory and the GitHub streaming paths alike.
+`file_meta` reaches the file node on the in-memory path only: the GitHub stream
+has already sent its file nodes when the parser runs, so their `meta` is not
+updated there.
 
 ### Joining the construct vocabulary
 
@@ -145,9 +148,11 @@ A parser's `kind` says what its language calls a thing. To have its nodes carry
 shared looks and read by the chrestomathy, add the language under `languages:`
 in `codecarto/data/constructs.yaml`:
 
-- `kinds`: each kind the parser emits, to a construct. A parser that exports
-  its kinds is held to the map in both directions by
-  `tests/test_construct_service.py`.
+- `kinds`: each kind the parser emits, to a construct; `not_constructs`: each
+  kind it emits that is not one, with the reason. The parser declares `kinds`,
+  every kind it can emit, and `tests/test_construct_service.py` holds the two
+  lists to it in both directions: nothing emitted goes unnamed, and nothing is
+  named that no parser emits -- the chrestomathy draws a kind as "(parsed)".
 - `qualifiers`, `attributes`, `macros`, `meta`: what in a node's `meta` makes it
   *also* a facet (`unsafe` -> `memory.unsafe`, `#[interrupt]` ->
   `firmware.interrupt`).
@@ -155,10 +160,17 @@ in `codecarto/data/constructs.yaml`:
   Rust `enum` with `c_like` is an enumeration, not a sum type).
 
 Add the language's spellings under each construct's `spelled:` -- every token
-there must be in that language's lexicon, and a language with no spelling gets
-a `note` saying how it does without. A parser may call
+there must be in that language's lexicon, a token the lexicon files in more
+than one group names the one that spells this construct under `groups:`, and a
+language with no spelling gets a `note` saying how it does without. A parser may call
 `construct_service.annotate(graph)` itself; the pipeline calls it on every parse
 regardless, and a look the parser set is never overwritten.
+
+A graph a service draws that is no language's parse -- the crate graph -- maps
+its kinds under `graphs:` instead, in the same shape. Its nodes are stamped
+and the census places them, but it is no row of the chrestomathy: nothing is
+written in it, and under `languages:` every construct would carry a row saying
+it records no spelling there.
 
 ### Unified node schema helpers
 
@@ -187,9 +199,12 @@ edge_attrs = make_edge("contains", weight=1.0)
 > It only falls back to its own heuristics for nodes that have neither field set (e.g. raw
 > directory/file nodes emitted by the directory walker).
 >
-> The `'ngon'` shape draws an N-sided polygon. Set `meta["sides"]` to control the
-> polygon order (clamped 3–12 by the renderer). Used by the C parser for `struct`/`union`
-> nodes where `sides = min(max(field_count, 3), 10)`.
+> The `'ngon'` shape draws an N-sided polygon, turned a quarter of a side so that
+> no count draws as `diamond`, `square` or `hexagon`. Set `meta["sides"]` with
+> `construct_service.ngon_sides(count)`, which clamps to `NGON_SIDES` — the one
+> statement of the range; the renderer draws the count it is sent, and a pentagon
+> when there is none. Used by the C parser for `struct`/`union` nodes from their
+> field count, and by the construct vocabulary for every record.
 
 ---
 

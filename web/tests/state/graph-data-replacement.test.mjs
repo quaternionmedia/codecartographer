@@ -83,3 +83,28 @@ test('StateController replaces rather than patching graph data', async () => {
     'replaceGraphData does not use a function patch',
   );
 });
+
+test('no source file sets graph data with a plain patch', async () => {
+  // The guard above read `actions.ts` alone, and the streams set `graphData`
+  // in `layout_context.ts` with `update({ ..., graphData: built })` -- a
+  // merge. Draw the crate graph from the Cargo panel, then stream a code map,
+  // and `graphData` held both: the Chrestomathy panel's census, which reads
+  // it as the canvas, listed Package rows under the code map, and *show*
+  // framed nothing. Every `.ts` under `src/` is read, so a new caller cannot
+  // slip past. `graphData: null` (clearing) and `graphData: () => ...` (the
+  // function patch `replaceGraphData` uses) replace; anything else merges.
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const files = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (entry.name.endsWith('.ts')) files.push(path);
+    }
+  };
+  walk('src');
+  const plain = /update\(\{[^}]*?\bgraphData\s*:(?!\s*(?:null\b|\(\)\s*=>))/;
+  const merging = files.filter((path) => plain.test(readFileSync(path, 'utf8')));
+  assert.deepEqual(merging, [], 'graph data is set with a plain patch, which merges');
+});

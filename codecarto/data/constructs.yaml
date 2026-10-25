@@ -9,16 +9,18 @@
 # is the same. Three things read it:
 #
 #   - `construct_service.annotate` stamps `construct` (and `meta.facets`) on
-#     every node of a language listed under `languages:`, and gives a node
-#     that carries no look of its own the construct's `look`.
+#     every node of a language listed under `languages:` or a graph listed
+#     under `graphs:`, and gives a node that carries no look of its own the
+#     construct's `look`.
 #   - The chrestomathy (`/lexicon/chrestomathy/...`) sets one construct beside
-#     itself across every language that spells it, from `spelled:`; and its
-#     census (`/lexicon/chrestomathy/census`) reads any graph on the canvas as
-#     the constructs its nodes are, in the languages they are written in.
+#     itself in every language listed under `languages:`, from `spelled:`; and
+#     its census (`/lexicon/chrestomathy/census`) reads any graph on the canvas
+#     as the constructs its nodes are, in the languages they are written in.
 #   - Tests hold it to the lexicons (every token named here is in that
-#     language's lexicon), to the parsers (every kind a parser can emit maps
-#     here) and to the C reference design (C's own shapes and colours agree
-#     with the looks below).
+#     language's lexicon), to the parsers (every kind a parser on the branch
+#     can emit is under `kinds` or, with the reason, under `not_constructs`,
+#     and no kind is named that no parser emits) and to the C reference design
+#     (C's own shapes and colours agree with the looks below).
 #
 # A construct with a `look` can be what a node is. One without is a *facet*:
 # something a node can also be — unsafe, volatile, placed in a section, an
@@ -26,6 +28,17 @@
 #
 # `look.shape` is one of the canvas's shapes: circle, square, rectangle,
 # triangle, diamond, hexagon, or ngon (a polygon of `meta.sides` sides).
+#
+# A spelling's `groups:` names, for a token its lexicon files in more than one
+# place, the lexicon group of the sense that spells this construct; the
+# chrestomathy draws the token on that group's layer.
+#
+# `graphs:` maps the kinds of a graph a service draws that is no language's
+# parse -- the crate graph -- exactly as `languages:` maps a parser's, so its
+# nodes are stamped and the census places them. It is no row of the
+# chrestomathy: nothing is written in it, so it has no spelling of any
+# construct to set beside the languages', and listing it under `languages:`
+# made every construct carry a row saying it records none.
 
 version: 1
 
@@ -109,7 +122,7 @@ constructs:
     gloss: A block attaching behaviour to a type, separately from the type's definition.
     look: {shape: rectangle, color: "#2dd4bf"}
     spelled:
-      rust: {tokens: [impl, for], note: "impl Type { .. } adds methods; impl Trait for Type { .. } provides an interface."}
+      rust: {tokens: [impl, for], groups: {for: behaviour}, note: "impl Type { .. } adds methods; impl Trait for Type { .. } provides an interface."}
       c: {note: "None: functions are free, and belong to a type only by naming convention."}
       python: {tokens: [class], note: "Behaviour is written inside the class body, with the data."}
 
@@ -166,14 +179,14 @@ constructs:
       rust: {tokens: [static]}
       python: {note: "A module-level name."}
 
-  - id: storage.local
-    name: Local variable
-    gloss: A name bound for one call of a function, gone when the call returns.
-    look: {shape: circle, color: "#9aa5b8"}
+  - id: storage.automatic
+    name: Automatic storage
+    gloss: A local that lives for one call of its function, on the stack or in a register.
+    look: {shape: circle, color: "#8a9ab4"}
     spelled:
-      c: {note: "A declaration inside a body. Its storage class, auto, is the default and is never written."}
-      rust: {tokens: [let]}
-      python: {note: "An assignment inside a def binds a local; global and nonlocal say it does not."}
+      c: {tokens: [auto, register], note: "Any block-scope variable without static or extern; the keywords only say so."}
+      rust: {note: "A let binding; codecarto reads Rust at the item level and draws none."}
+      python: {note: "A name bound inside a function."}
 
   # ── Namespaces ─────────────────────────────────────────────────────────────
   - id: namespace.module
@@ -284,7 +297,7 @@ constructs:
     look: {shape: circle, color: "#94a3b8"}
     spelled:
       c: {tokens: [for, while, do]}
-      rust: {tokens: [loop, while, for]}
+      rust: {tokens: [loop, while, for], groups: {for: iteration}}
       python: {tokens: [for, while]}
 
   # ── Facets: what a node can also be ────────────────────────────────────────
@@ -386,8 +399,8 @@ languages:
       field: member.field
       enum_constant: member.variant
     refine:
-      # A variable declared in a body without static or extern lives for one call.
-      - {kind: variable, meta: automatic, construct: storage.local}
+      # A block-scope variable without static or extern lives for one call.
+      - {kind: variable, meta: automatic, construct: storage.automatic}
     qualifiers:
       volatile: memory.volatile
       static: linkage.internal
@@ -446,22 +459,24 @@ languages:
 
   python:
     kinds:
-      module: namespace.module
       class: type.class
       function: callable.function
       import: namespace.import
       loop: control.loop
+    not_constructs:
+      # The adapter draws a body's expressions too. They say what code does,
+      # not what it declares, and no other language here parses them.
+      call: "A call expression: a use of a callable, not one."
+      argument: "A parameter, drawn inside its function; part of a callable, not a thing of its own."
+      name: "A name read inside an expression (ast.Name): a reference to something declared elsewhere."
+      constant: "A literal value (ast.Constant), not a named constant."
+      string: "An f-string or one of its parts (ast.JoinedStr, ast.FormattedValue): an expression."
+      symbol: "An AST node of a type the adapter does not name, so nothing is known of what it is."
 
   assembly:
     kinds:
       label: code.label
       section: layout.section
-
-  cargo:
-    # The crate graph `cargo_service` draws from what cargo resolved.
-    kinds:
-      crate: namespace.package
-      external_crate: namespace.package
 
   linker:
     kinds:
@@ -469,3 +484,10 @@ languages:
       section: layout.section
       entry: firmware.entry
       symbol: linkage.symbol
+
+graphs:
+  cargo:
+    # The crate graph `cargo_service` draws from what cargo resolved.
+    kinds:
+      crate: namespace.package
+      external_crate: namespace.package
