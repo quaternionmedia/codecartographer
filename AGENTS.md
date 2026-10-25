@@ -34,8 +34,8 @@ other briefing, read this file fully before your first commit or edit.
    pinned by a test you have seen fail, then fixed on its branch -- not
    deferred as a follow-up. Merge at the head you tested (`gh pr merge <n>
    --merge --match-head-commit <sha>`), and put that head and what each
-   command reported in the PR body. **A PR into `project/codecartographer` is the
-   human's click**: no session merges its own records. Never push `main`
+   command reported in the PR body. **A PR into `project/codecartographer`
+   is the human's click**: no session merges its own records. Never push `main`
    directly, and never close a PR by pushing its commits onto its base --
    pushing first *merges* it. `governance/qm/AGENTS.md` item 3 and
    `governance/qm/handbook/async-contract.md` §1-3 are the rules; this
