@@ -28,7 +28,7 @@ import {
 import { PlotService } from '../services/plot_service';
 import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
-import { infoLine, sourceLine } from '../features/graph/services/node_info';
+import { infoLine } from '../features/graph/services/node_info';
 import type { BundledExample } from '../features/examples/examples';
 import { notesTail } from '../features/graph/services/parse_notes';
 import { DockPanelId, PanelRegistry } from './panel_registry';
@@ -572,7 +572,8 @@ export class LayoutContext {
       kind: node?.kind as string | undefined,
       hasRenderedChildren: id ? (r?.childIdsOf(id).length ?? 0) > 0 : false,
       pinned: !!(id && this._nodeViewState[id]?.pinned),
-      hasSource: !!node?.file,
+      // Asked of the renderer that opens it, so offering and opening read one graph.
+      hasSource: !!(id && r?.sourceTargetOf(id)),
       hasGroup: (node?.depth as number | undefined) !== undefined && (node!.depth as number) < 2,
       hasConstruct: typeof node?.construct === 'string',
       selectionCount: this._radSelection.size,
@@ -760,13 +761,10 @@ export class LayoutContext {
         r.fitTo(subtree);
       },
 
-      // `show`, not `hint`: a hint speaks once a session, and these are
-      // verbs a person uses again (node_info.ts says why that matters).
-      viewSource: (id) => {
-        const node = renderer()?.getNodes().find((n) => n.id === id);
-        const source = node ? sourceLine(node) : null;
-        if (source) ToastManager.show(source, 8_000);
-      },
+      // The opener a double-click on the node uses, so the two cannot differ.
+      viewSource: (id) => { renderer()?.openSource(id); },
+      // `show`, not `hint`: a hint speaks once a session, and Info is a verb
+      // a person uses again (node_info.ts says why that matters).
       showInfo: (id) => {
         const node = renderer()?.getNodes().find((n) => n.id === id);
         if (node) ToastManager.show(infoLine(node), 8_000);

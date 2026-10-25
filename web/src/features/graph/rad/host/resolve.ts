@@ -30,7 +30,11 @@ export interface MenuFacts {
   hasRenderedChildren?: boolean;
   /** True when the node is currently pinned. */
   pinned?: boolean;
-  /** True when a forge URL and line number are resolvable for this node. */
+  /**
+   * True when the node names the file it came from: View → Source opens it, at
+   * its line when known, through the file node it is drawn inside when it
+   * names only a stem or module.
+   */
   hasSource?: boolean;
   /** True when this node belongs to a compound cluster with bounds. */
   hasGroup?: boolean;

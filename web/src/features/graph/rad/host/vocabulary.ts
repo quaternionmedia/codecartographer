@@ -23,7 +23,12 @@
 
 /** Verbs this host extends the standard vocabulary with. */
 export const HOST_VERBS = {
-  /** Open the node's source at its line, on the origin forge. */
+  /**
+   * Open the node's file on its forge, at its line when known. A symbol that
+   * names only its file's stem or module (C, Python) is opened where the file
+   * node it is drawn inside says the file is; a file with no page -- read from
+   * disk, or uploaded -- is named beside the node.
+   */
   VIEW_SOURCE: 'view-source',
   /** Show the node's parsed metadata. */
   NODE_INFO: 'node-info',
