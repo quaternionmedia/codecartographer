@@ -97,6 +97,36 @@ def test_lint_that_finds_nothing_exits_0(runner, monkeypatch):
     assert result.exit_code == 0, result.output
 
 
+def _without(monkeypatch, missing: str):
+    """`import <missing>` fails, as it does where the package is not installed."""
+    import builtins
+
+    real = builtins.__import__
+
+    def importer(name, *args, **kwargs):
+        if name == missing:
+            raise ImportError(f"No module named {name!r}")
+        return real(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", importer)
+
+
+def test_info_with_a_dependency_missing_exits_1(runner, monkeypatch):
+    """Every package `info` lists is one of the project's own dependencies,
+    so one it cannot import is a broken install, and its ✗ a failure."""
+    _without(monkeypatch, "gravis")
+    result = runner.invoke(cli, ["info"])
+    assert result.exit_code == 1, result.output
+    assert "✗ gravis: not found" in result.stdout
+    assert "gravis" in result.stderr
+
+
+def test_info_with_every_dependency_exits_0(runner):
+    result = runner.invoke(cli, ["info"])
+    assert result.exit_code == 0, result.output
+    assert "✗" not in result.output
+
+
 @pytest.mark.parametrize("command", ["docker", "docker-down"])
 def test_docker_without_compose_exits_1(runner, monkeypatch, command):
     def missing(cmd, **kw):

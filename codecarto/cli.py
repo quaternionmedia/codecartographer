@@ -304,7 +304,8 @@ def info():
     """
     Show project info and environment details.
 
-    Displays Python version, package info, and configuration.
+    Displays Python version, package info, and configuration. Exits 1 when one
+    of the package's dependencies it lists cannot be imported.
     """
     import platform
     
@@ -326,14 +327,20 @@ def info():
     # Check for key dependencies
     click.echo()
     click.echo("  Dependencies:")
+    # Each is in [project] dependencies, so one missing is a broken install.
     deps = ["fastapi", "networkx", "click", "gravis", "uvicorn"]
+    missing = []
     for dep in deps:
         try:
             mod = __import__(dep)
             version = getattr(mod, "__version__", "installed")
             click.echo(f"    ✓ {dep}: {version}")
         except ImportError:
+            missing.append(dep)
             click.secho(f"    ✗ {dep}: not found", fg="red")
+    if missing:
+        _fail(f"{', '.join(missing)} not installed; "
+              "`uv sync --locked --extra dev --extra c-parsing` installs the environment")
 
 
 @cli.command()

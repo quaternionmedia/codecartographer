@@ -405,7 +405,9 @@ uv run codecarto parse myfile.py -o json
 
 ### `info`
 
-Show project and environment information.
+Show project and environment information. Each package it lists is one of the
+project's own dependencies; one it cannot import is marked `✗`, and the command
+exits 1.
 
 ```bash
 uv run codecarto info
