@@ -18,6 +18,7 @@ import { CompoundLayoutManager } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
 import { sourceTarget, type SourceTarget } from './node_info';
+import { BADGE_MARGIN, badgePlace } from './source_badge';
 
 // Nodes rendered per animation frame. Scales with total so large repos
 // finish in ~2s while small repos show clearly progressive animation.
@@ -714,9 +715,9 @@ export class StreamingGraphRenderer {
   /**
    * Open a node's source: its forge page in a new tab, or for a file with no
    * page (read from disk, or uploaded) a badge naming the file and line beside
-   * `at` (the node's own place on screen when not given). View → Source and a
-   * double-click both call this. False for a node from no file, which opens
-   * nothing.
+   * `at` (the node's own place on screen when not given), wholly inside the
+   * window. View → Source and a double-click both call this. False for a node
+   * from no file, which opens nothing.
    */
   openSource(id: string, at?: { x: number; y: number }): boolean {
     const target = this.sourceTargetOf(id);
@@ -728,12 +729,21 @@ export class StreamingGraphRenderer {
 
     const point = at ?? this._screenCentreOf(id);
     document.querySelectorAll('.source-badge').forEach((old) => old.remove());
+    const view = {
+      width: document.documentElement.clientWidth || window.innerWidth,
+      height: document.documentElement.clientHeight || window.innerHeight,
+    };
     const badge = document.createElement('div');
     badge.className = 'source-badge';
+    // Measured at the window's top left, where its whole width is free, then
+    // placed by `badgePlace` so that none of it is outside the window; a path
+    // longer than the window is wide wraps rather than running off it.
     badge.style.cssText = [
       'position:fixed',
-      `left:${point.x + 8}px`,
-      `top:${point.y - 28}px`,
+      'left:0',
+      'top:0',
+      'box-sizing:border-box',
+      `max-width:${Math.max(0, view.width - 2 * BADGE_MARGIN)}px`,
       'z-index:9999',
       'background:#1a1a1a',
       'border:1px solid #00ff4140',
@@ -743,10 +753,15 @@ export class StreamingGraphRenderer {
       'font-family:monospace',
       'border-radius:4px',
       'pointer-events:none',
-      'white-space:nowrap',
+      'white-space:pre-wrap',
+      'overflow-wrap:anywhere',
     ].join(';');
     badge.textContent = target.text;
     document.body.appendChild(badge);
+    const drawn = badge.getBoundingClientRect();
+    const place = badgePlace(point, { width: drawn.width, height: drawn.height }, view);
+    badge.style.left = `${place.left}px`;
+    badge.style.top = `${place.top}px`;
     setTimeout(() => badge.remove(), 3500);
     return true;
   }
