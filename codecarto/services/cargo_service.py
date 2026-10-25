@@ -251,9 +251,19 @@ def read(path: Path | str, documents: Path | str | None = None) -> Reading:
     metadata_doc, metadata = _read_metadata(docs_dir, newest_manifest, root)
     reading.documents.append(metadata_doc)
     if metadata is not None:
-        _from_metadata(reading, metadata, root)
-        reading.engine = "cargo metadata"
-    else:
+        try:
+            _from_metadata(reading, metadata, root)
+            reading.engine = "cargo metadata"
+        except Exception as error:
+            # cargo's identity with entries cargo never writes is not cargo's
+            # answer either: the same as a document of the wrong shape.
+            reading.packages, reading.workspaces, reading.lock = [], [], {}
+            metadata_doc.used = False
+            metadata_doc.problem = (f"{METADATA_DOCUMENT} has `version: 1` and a `packages` list, but "
+                                    f"entries of a shape cargo does not write ({type(error).__name__}: "
+                                    f"{error}), so the manifests were read instead")
+            metadata = None
+    if metadata is None:
         _from_manifests(reading, parsed, root, toml)
     for package in reading.packages:
         if package.member and package.manifest:

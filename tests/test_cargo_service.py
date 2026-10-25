@@ -178,6 +178,26 @@ class TestRecordedDocuments:
         assert metadata_doc.present and metadata_doc.stale and not metadata_doc.used
         assert "manifests were read instead" in metadata_doc.problem
 
+    @pytest.mark.parametrize("damage", ["member-without-a-name", "node-without-an-id"])
+    def test_metadata_of_cargos_version_but_not_its_shape_is_not_used(self, tmp_path, damage):
+        """`version: 1` and a `packages` list, but entries cargo never writes:
+        read as a document that is not cargo's, the manifests answer instead
+        and the document's row says why."""
+        root = copy_workspace(tmp_path, "current")
+        data = edit_metadata(root)
+        if damage == "member-without-a-name":
+            del next(p for p in data["packages"] if p["name"] == "hal")["name"]
+        else:
+            del data["resolve"]["nodes"][0]["id"]
+        edit_metadata(root, data)
+        reading = cargo_service.read(root)
+        assert reading.engine == "manifests"
+        assert sorted(p.name for p in reading.packages) == ["blinky", "hal", "host-tool"]
+        assert [w["manifest"] for w in reading.workspaces] == ["Cargo.toml"]
+        doc = reading.documents[0]
+        assert doc.present and not doc.used
+        assert "KeyError" in doc.problem and "manifests were read instead" in doc.problem
+
     def test_a_package_declared_twice_keeps_each_declarations_settings(self, tmp_path):
         """host-tool declares proptest as an optional dependency and as a
         dev-dependency: each edge carries its own declaration's settings."""
@@ -609,6 +629,28 @@ def test_read_command_runs_nothing_and_prints_the_reading(tmp_path, monkeypatch)
     assert result.exit_code == 0, result.output
     assert "read from cargo metadata" in result.output
     assert "libc 0.2.153  (normal, cfg(unix))" in result.output
+
+
+def test_read_command_reads_past_a_metadata_document_of_the_wrong_shape(tmp_path):
+    root = copy_workspace(tmp_path, "current")
+    data = edit_metadata(root)
+    del data["resolve"]["nodes"][0]["id"]
+    edit_metadata(root, data)
+    result = CliRunner().invoke(cli, ["cargo", "read", str(root)])
+    assert result.exit_code == 0, repr(result.exception)
+    assert "read from manifests" in result.output
+    assert "metadata.json: not used" in result.output and "KeyError" in result.output
+
+
+def test_read_command_answers_a_reader_that_raised_with_a_sentence(tmp_path, monkeypatch):
+    """Mutation: drop the guard in `cargo_read` -- this fails."""
+    def broken(path):
+        raise TypeError("'bool' object is not iterable")
+
+    monkeypatch.setattr(cargo_service, "read", broken)
+    result = CliRunner().invoke(cli, ["cargo", "read", str(tmp_path)])
+    assert isinstance(result.exception, SystemExit) and result.exit_code == 1, repr(result.exception)
+    assert "not iterable" in result.output
 
 
 def test_read_command_reads_a_crate_with_a_fuzz_directory(tmp_path):

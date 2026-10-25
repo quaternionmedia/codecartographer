@@ -618,7 +618,11 @@ def cargo_read(path: str, as_json: bool):
 
     from codecarto.services import cargo_service
 
-    reading = cargo_service.read(path)
+    try:
+        reading = cargo_service.read(path)
+    except Exception as error:  # a reader that raised is a sentence here, never a traceback
+        click.secho(f"✗ reading {path} stopped on something the reader did not expect: {error}", fg="red")
+        raise SystemExit(1)
     if not reading.ok:
         click.secho(f"✗ {reading.reason}", fg="red")
         raise SystemExit(1)
