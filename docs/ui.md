@@ -33,7 +33,7 @@ Estate. Topology, Capabilities, Overview, Cargo and Chrestomathy are opened
 from the **`+`** menu in the header — or from a live row in the Estate panel — because each asks its seam
 on open, and a fresh workstation has none up.
 
-**Adding, restoring, saving.** The `+` button (and right-click on the dock) opens
+**Adding, restoring, saving.** The `+` button (and Ctrl+right-click on the dock) opens
 the add-window menu listing every registered panel not currently open; closing a
 tab and re-adding it goes through the same path. The menu's Layout section saves
 the current arrangement as the default (`localStorage['cc:gl-layout:default']`)
@@ -55,33 +55,34 @@ its browser tests apply.
 
 ## Control Panel
 
-The source and settings controls (`components/codecarto/control_panel/`) render
-inside the Upload and Repository panels. Two tabs:
+The source and settings controls (`components/codecarto/control_panel/`) are
+the bodies of three panels, one mode each (`ControlPanelMode`):
 
-| Tab | Purpose |
-|-----|---------|
-| Source | Load data — demo, GitHub repo, cached graphs, a lexicon |
-| Graph | Graph settings — layout, physics, styling, compound groups |
+| Panel | Mode | Purpose |
+|-------|------|---------|
+| Upload | `upload` | Add local files; the parser options; Quick Start (Load Demo, a lexicon) |
+| Repository | `repo` | Fetch a repository, recent graphs, the project selector; the same parser options and Quick Start |
+| Graph Settings | `graph` | Layout, physics, styling, theme |
 
 ---
 
-## Source Tab
+## Upload and Repository Panels
 
 ### Demo
-- **Load Demo** — streams CodeCartographer's own source as a sample graph via `/parse/stream`.
+- **Load Demo** (Quick Start, in either panel) — draws CodeCartographer's own source as a sample graph, from one `POST /plotter/demo` answer rather than a stream.
 
-### Repository Mode
-1. Paste a GitHub URL and press Enter or click **Fetch**.
-2. The file tree populates. Click folders to expand, files to plot a single file.
-3. **Plot** — streams the whole repo graph.
-4. **Clear** — resets back to the URL input screen.
+### Repository
+1. Paste a GitHub URL and press Enter or click **→ Fetch**.
+2. The Files panel shows the tree. Click folders to expand, files to plot a single file.
+3. **Plot** in the Actions panel, or **◈ Plot All** in the Files panel — streams the whole repo graph.
+4. **✕** beside the repository's name — clears it, back to the URL field.
 
-### Recent Graphs (cache panel)
-Shown when no repo is loaded. Lists previously parsed graphs from the filesystem cache (`~/.codecarto/cache/`). Clicking an entry replays it instantly (cache hit — no re-parse). The ✕ button evicts a single entry.
+### Recent Graphs
+Shown in the Repository panel when no repo is loaded. Lists previously parsed graphs from the filesystem cache (`~/.codecarto/cache/`). Clicking an entry replays it instantly (cache hit — no re-parse). The ✕ button evicts a single entry.
 
 ---
 
-## Graph Tab
+## Graph Settings Panel
 
 ### Layout Algorithm
 
@@ -158,9 +159,9 @@ reachable by keyboard — arrow keys and Enter — and every verb also has a cho
 
 | Ring | Items |
 |---|---|
-| **Node** | Expand · Collapse · Neighbours · Pin · Colour ▸ · View ▸ · Hide · Delete |
-| **Canvas** | Fit · Relayout · Spread\* · Cluster\* · Physics\* · Unhide · Deselect · Colour ▸ |
-| **Selection** | Expand · Neighbours · Spread\* · Cluster\* · Colour ▸ · Hide · Deselect · Delete *n* |
+| **Node** | Expand · Collapse · Neighbours · Pin · Color ▸ · View ▸ · Hide · Delete |
+| **Canvas** | Fit · Relayout · Spread\* · Cluster\* · Physics\* · Unhide · Deselect · Color ▸ |
+| **Selection** | Expand · Neighbours · Spread\* · Cluster\* · Color ▸ · Hide · Deselect · Delete *n* |
 | **Edge** | Endpoints · Hide · Info |
 
 **View ▸** holds Source · Info · Compare · Focus. *Compare* opens the
@@ -177,7 +178,7 @@ call while every test stayed green, which is the rule's whole origin.
 
 `Expand` holds the 12 o'clock wedge — the one a straight-up flick reaches —
 and calls `POST /parse/expand`, merging the returned subgraph into the live
-scene. Hide, Pin and Colour are held as application state, so they survive a
+scene. Hide, Pin and Color are held as application state, so they survive a
 re-render, a relayout and a cache replay.
 
 ---
@@ -218,7 +219,7 @@ every path that draws a graph.
 
 ## Help Modal
 
-- Click the **`?`** button (header) to open a 3-step walkthrough.
+- Click the **`?`** button (header) to open a 4-step walkthrough.
 - Auto-shows on first visit (dismissed state stored in `localStorage: cc:help-dismissed`).
 - `HelpModal.open()` / `HelpModal.close()` API.
 
@@ -268,20 +269,20 @@ PlotActions / StreamingGraphRenderer — graph updates
 ## Common Workflows
 
 ### View Demo
-1. Open control panel → Source tab → **Load Demo**.
+1. Upload or Repository panel → Quick Start → **Load Demo**.
 2. Graph streams in progressively.
-3. Adjust settings in the Graph tab.
+3. Adjust settings in the Graph Settings panel.
 
 ### Parse a GitHub Repo
-1. Source tab → paste GitHub URL → **Fetch**.
-2. File tree loads. Expand folders, click a file to plot it, or **Plot** for the whole repo.
-3. Graph streams in. Use radial menu → Layout → Compound for hierarchical view.
+1. Repository panel → paste GitHub URL → **→ Fetch**.
+2. The Files panel shows the tree. Expand folders, click a file to plot it, or **Plot** for the whole repo.
+3. Graph streams in. Graph Settings → Layout → **Compound** for a hierarchical view.
 
 ### Use Compound Layout
-1. Graph tab → Layout → **Compound**.
+1. Graph Settings panel → Layout → **Compound**.
 2. Plot (or re-plot). Dirs appear as large clusters, files orbit dirs, symbols orbit files.
 3. Toggle **Group Outlines** to show/hide bounding circles.
-4. Right-click a dir/file node → **Focus Group** to zoom to that cluster.
+4. Right-click a dir/file node → **View ▸ Focus** to zoom to that cluster.
 
 ### Re-open a Closed Panel
 1. Close any dock tab (×).

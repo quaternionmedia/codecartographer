@@ -84,14 +84,18 @@ test('every ring, in every state, respects the 8-item ceiling', () => {
   }
 });
 
-test('a symbol cannot be expanded, and a childless node cannot be collapsed', () => {
-  const spec = resolveGraphMenu(
-    { type: 'node', targetIds: ['a'], position: { x: 0, y: 0 } },
-    { depth: 2, hasRenderedChildren: false },
-  );
-  const byId = Object.fromEntries(spec.items.map((i) => [i.id, i]));
-  assert.equal(byId.expand.enabled, false, 'depth-2 symbols have nothing to expand into');
-  assert.equal(byId.collapse.enabled, false);
+test('a sub-symbol cannot be expanded, a symbol can, and a childless node cannot be collapsed', () => {
+  const ring = (facts) => Object.fromEntries(resolveGraphMenu(
+    { type: 'node', targetIds: ['a'], position: { x: 0, y: 0 } }, facts,
+  ).items.map((i) => [i.id, i]));
+  /* Mutation: gate expand at depth 2 -- a struct's fields and an impl's
+     methods, which every parser here emits at depth 3, cannot be reached from
+     a graph parsed at the default depth, and this fails. */
+  assert.equal(ring({ depth: 2, hasRenderedChildren: false }).expand.enabled, true,
+    'a depth-2 symbol holds depth-3 sub-symbols');
+  assert.equal(ring({ depth: 3, hasRenderedChildren: false }).expand.enabled, false,
+    'depth 3 is the deepest tier a parser emits');
+  assert.equal(ring({ depth: 2, hasRenderedChildren: false }).collapse.enabled, false);
 });
 
 test('View → Compare is offered disabled on a node the vocabulary did not place', () => {

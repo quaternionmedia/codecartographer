@@ -82,6 +82,8 @@ export const GITHUB_EXAMPLES: readonly ExampleGroup[] = [
         title: 'SQLite — most deployed DB in C (~580 MB), shallow root' },
       { label: 'Redis', url: 'https://github.com/redis/redis', sizeKb: 219085,
         title: 'Redis — systems C data structures (~219 MB), shallow root' },
+      { label: 'Linux', url: 'https://github.com/torvalds/linux', sizeKb: 6447116,
+        title: 'Linux — the kernel (~6.4 GB), shallow root' },
     ],
   },
   {
@@ -91,12 +93,15 @@ export const GITHUB_EXAMPLES: readonly ExampleGroup[] = [
         title: 'requests — HTTP for Python, a small library with a long history (~14 MB), structure only' },
       { label: 'Flask', url: 'https://github.com/pallets/flask', sizeKb: 12216,
         title: 'Flask — a web microframework (~12 MB), structure only' },
-      { label: 'React', url: 'https://github.com/facebook/react', sizeKb: 1127731,
-        title: 'React — a large JavaScript repository (~1.1 GB), shallow root' },
       { label: 'CPython', url: 'https://github.com/python/cpython', sizeKb: 899710,
         title: 'CPython — the reference interpreter (~900 MB), shallow root' },
-      { label: 'Linux', url: 'https://github.com/torvalds/linux', sizeKb: 6447116,
-        title: 'Linux — the kernel (~6.4 GB), shallow root' },
+    ],
+  },
+  {
+    language: 'JavaScript',
+    examples: [
+      { label: 'React', url: 'https://github.com/facebook/react', sizeKb: 1127731,
+        title: 'React — a large JavaScript repository (~1.1 GB), shallow root' },
     ],
   },
 ];

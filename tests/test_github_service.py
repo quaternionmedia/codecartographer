@@ -283,3 +283,89 @@ class TestGetRawFromRepo:
         directory = await svc.get_raw_from_repo(url)
 
         assert directory.is_partial is True
+
+
+class TestExpandAllSaysWhatItLeftUnlisted:
+    """Expand All's tree is partial wherever a folder in it was not listed.
+
+    A folder below `max_depth`, or one GitHub refused, came back as an empty
+    folder in a tree marked `is_partial=False`, and the Files panel draws an
+    empty folder in a complete tree as empty, with no `…` and no click: the
+    reader could not tell it from an empty folder, or open it. The route says
+    the tree is partial, so the panel offers each such folder its read.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _isolate(self, monkeypatch, tmp_path):
+        _isolate_cache(monkeypatch, tmp_path)
+
+    URL = "https://github.com/octocat/hello"
+
+    @staticmethod
+    def _listing(*entries):
+        return [
+            {"type": kind, "name": path.split("/")[-1], "path": path,
+             "download_url": f"https://raw.githubusercontent.com/octocat/hello/main/{path}" if kind == "file" else None,
+             "size": 1}
+            for kind, path in entries
+        ]
+
+    def _serve(self, monkeypatch, listings: dict, refused: set = frozenset()):
+        """Answer the contents API from `listings` by path; 403 for `refused`."""
+        import json
+
+        base = "https://api.github.com/repos/octocat/hello/contents/"
+
+        async def fake_api_get(client, url, headers):
+            path = url[len(base):]
+            if path in refused:
+                return _response(403, '{"message": "API rate limit exceeded"}')
+            return _response(200, json.dumps(listings[path]))
+
+        monkeypatch.setattr(svc, "_api_get", fake_api_get)
+
+    def _tree(self):
+        return {
+            "": self._listing(("file", "README.md"), ("dir", "src"), ("dir", "vendor")),
+            "src": self._listing(("file", "src/main.py"), ("dir", "src/lib")),
+            "src/lib": self._listing(("file", "src/lib/util.py")),
+            "vendor": self._listing(("file", "vendor/x.c")),
+        }
+
+    async def _expand(self, max_depth):
+        from codecarto.routers import repo_router
+
+        answer = await repo_router.expand_all_repo(self.URL, max_depth)
+        assert answer["status"] == 200, answer
+        return answer["results"]
+
+    async def test_every_folder_listed_is_a_complete_tree(self, monkeypatch):
+        self._serve(monkeypatch, self._tree())
+        tree = await self._expand(3)
+        assert tree["is_partial"] is False
+        src = next(f for f in tree["root"]["folders"] if f["name"] == "src")
+        assert [f["name"] for f in src["folders"][0]["files"]] == ["util.py"]
+
+    async def test_a_folder_below_the_depth_is_unlisted_and_the_tree_says_so(self, monkeypatch):
+        """Mutation: build the Directory with `is_partial=False` again -- this fails."""
+        self._serve(monkeypatch, self._tree())
+        tree = await self._expand(2)
+        src = next(f for f in tree["root"]["folders"] if f["name"] == "src")
+        assert src["folders"][0] == {"name": "lib", "size": 0, "files": [], "folders": []}
+        assert tree["is_partial"] is True
+
+    async def test_a_folder_github_refused_is_unlisted_and_the_tree_says_so(self, monkeypatch):
+        self._serve(monkeypatch, self._tree(), refused={"vendor"})
+        tree = await self._expand(3)
+        vendor = next(f for f in tree["root"]["folders"] if f["name"] == "vendor")
+        assert vendor["files"] == [] and vendor["folders"] == []
+        assert tree["is_partial"] is True
+
+    async def test_a_refused_root_is_an_error_and_not_an_empty_tree(self, monkeypatch):
+        """An empty tree would replace the one the reader has, and the panel hides an empty tree."""
+        from fastapi import HTTPException
+
+        self._serve(monkeypatch, self._tree(), refused={""})
+        with pytest.raises(HTTPException) as refused:
+            await self._expand(3)
+        assert refused.value.status_code == 429

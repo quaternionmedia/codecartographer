@@ -2,13 +2,14 @@ import m from 'mithril';
 import { RawFile, RawFolder } from '../../models/source';
 import { FileList } from './files';
 import { foldersParse } from './folder';
+import type { FolderExpand } from './folder';
 
 interface DirectoryAttrs {
   folderName: string;
   folders: RawFolder[];
   files: RawFile[];
   onUrlFileClicked: (url: string) => void;
-  onFolderExpand?: (path: string) => void;
+  onFolderExpand?: FolderExpand;
   allowedExtensions?: string[] | null;
 }
 

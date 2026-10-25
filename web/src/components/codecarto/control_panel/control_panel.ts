@@ -10,15 +10,7 @@ import './control_panel.css';
 
 export type { GraphStylingOptions, ParserOptions, GraphRendererType };
 
-export type TabId = 'source' | 'graph';
 export type CodeSourceMode = 'upload' | 'repo';
-
-export interface Tab {
-  id: TabId;
-  label: string;
-  icon?: string;
-  helpText?: string;
-}
 
 export interface LoadingProgress {
   loaded: number;
@@ -27,15 +19,12 @@ export interface LoadingProgress {
 }
 
 export interface ControlPanelState {
-  isOpen: boolean;
-  activeTab: TabId;
   codeSourceMode: CodeSourceMode;
   repoUrl: string;
   currentTheme: string;
   isLoading: boolean;
   statusMessage: string;
   progress: LoadingProgress | null;
-  panelHeight: number;
   graphSections: { layout: boolean; visual: boolean; theme: boolean };
   parseDepth: number;  // 1 = files only, 2 = symbols, 3 = sub-symbols
 }
@@ -53,7 +42,8 @@ export interface ControlPanelCallbacks {
   onGraphStylingChange: (options: Partial<GraphStylingOptions>) => void;
   onParserOptionsChange: (options: Partial<ParserOptions>) => void;
   onRendererChange: (renderer: GraphRendererType) => void;
-  onFolderExpand: (path: string) => void;
+  /** Read an unread folder; true when its contents reached the tree. */
+  onFolderExpand: (path: string) => Promise<boolean>;
   onExpandAll?: () => Promise<void>;
   onCancel?: () => void;
   onLoadFromCache?: (key: string) => void;
@@ -88,16 +78,12 @@ export interface ControlPanelContent {
   bundledExamples: BundledExample[];
 }
 
-export type ControlPanelMode = 'full' | 'source' | 'upload' | 'repo' | 'graph';
+/** Which docked panel this renders: Upload, Repository or Graph Settings. */
+export type ControlPanelMode = 'upload' | 'repo' | 'graph';
 
 export interface ControlPanelRenderOptions {
-  mode?: ControlPanelMode;
+  mode: ControlPanelMode;
 }
-
-const TABS: Tab[] = [
-  { id: 'source', label: 'Source', icon: '📁', helpText: 'Load code and configure parsing' },
-  { id: 'graph',  label: 'Graph',  icon: '◈',  helpText: 'Renderer, layout, visual style and theme' },
-];
 
 const LAYOUT_OPTIONS = [
   { value: 'spring_layout', label: 'Spring' },
@@ -122,78 +108,18 @@ const THEMES = [
   { id: 'candy',     label: 'Candy',     preview: '#ff69eb' },
 ];
 
-/** Creates the slide-up control panel */
+/**
+ * The body of a docked control panel: Upload, Repository or Graph Settings,
+ * by `options.mode`. Each panel in `layout/panels/` mounts one mode.
+ */
 export function ControlPanel(
   state: ControlPanelState,
   callbacks: ControlPanelCallbacks,
   onStateChange: (updates: Partial<ControlPanelState>) => void,
   content: ControlPanelContent,
-  options: ControlPanelRenderOptions = {}
+  options: ControlPanelRenderOptions,
 ): m.Vnode {
-  const mode = options.mode ?? 'full';
-  const isEmbedded = mode !== 'full';
-
-  // Resize drag state
-  let isDragging = false;
-  let startY = 0;
-  let startHeight = 0;
-
-  const updatePanelHeightVar = (element?: HTMLElement) => {
-    if (isEmbedded) return;
-    if (!element) return;
-    const totalHeight = Math.ceil(element.getBoundingClientRect().height);
-    let effectiveHeight = totalHeight;
-    if (!state.isOpen) {
-      // When the panel is closed the body may still be mid-transition (CSS
-      // `height 0.3s ease-out`). Measuring total − body gives the persistent
-      // chrome (handle + tab bar + status bar) regardless of transition state,
-      // because both values are read in the same synchronous layout flush.
-      const bodyEl = element.querySelector('.control-panel__body') as HTMLElement | null;
-      if (bodyEl) {
-        effectiveHeight = Math.max(0, totalHeight - Math.ceil(bodyEl.getBoundingClientRect().height));
-      }
-    }
-    document.documentElement.style.setProperty('--control-panel-height', `${effectiveHeight}px`);
-  };
-
-  const handleResizeStart = (e: MouseEvent) => {
-    if (!state.isOpen) return;
-    isDragging = true;
-    startY = e.clientY;
-    startHeight = state.panelHeight;
-    document.body.style.cursor = 'ns-resize';
-    document.body.style.userSelect = 'none';
-
-    const handleMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      const delta = startY - e.clientY;
-      const newHeight = Math.max(150, startHeight + delta);
-      onStateChange({ panelHeight: newHeight });
-    };
-
-    const handleEnd = () => {
-      isDragging = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      document.removeEventListener('mousemove', handleMove);
-      document.removeEventListener('mouseup', handleEnd);
-    };
-
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', handleEnd);
-  };
-
-  const togglePanel = () => {
-    onStateChange({ isOpen: !state.isOpen });
-  };
-
-  const setActiveTab = (tabId: TabId) => {
-    if (state.activeTab === tabId) {
-      onStateChange({ isOpen: !state.isOpen });
-    } else {
-      onStateChange({ activeTab: tabId, isOpen: true });
-    }
-  };
+  const { mode } = options;
 
   const handleRepoUrlChange = (e: Event) => {
     const input = e.target as HTMLInputElement;
@@ -491,21 +417,8 @@ export function ControlPanel(
     ]);
   };
 
-  const renderSourceTab = (forceVisible = false) => {
-    return m('div.panel-section.panel-source', {
-      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
-    }, [
-      m('div.panel-source__2col', [
-        m('div.panel-source__left', [renderUploadSection(), renderRepoSection()]),
-        renderSourceRight(),
-      ]),
-    ]);
-  };
-
-  const renderUploadTab = (forceVisible = false) => {
-    return m('div.panel-section.panel-source', {
-      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
-    }, [
+  const renderUploadTab = () => {
+    return m('div.panel-section.panel-source.panel-section--active', [
       m('div.panel-source__2col', [
         renderUploadSection(),
         renderSourceRight(),
@@ -513,10 +426,8 @@ export function ControlPanel(
     ]);
   };
 
-  const renderRepoTab = (forceVisible = false) => {
-    return m('div.panel-section.panel-source', {
-      class: forceVisible || state.activeTab === 'source' ? 'panel-section--active' : '',
-    }, [
+  const renderRepoTab = () => {
+    return m('div.panel-section.panel-source.panel-section--active', [
       m('div.panel-source__2col', [
         renderRepoSection(),
         renderSourceRight(),
@@ -524,9 +435,9 @@ export function ControlPanel(
     ]);
   };
 
-  // ─── Graph Tab (accordion) ─────────────────────────────────────────────────
+  // ─── Graph Settings (accordion) ────────────────────────────────────────────
 
-  const renderGraphTab = (forceVisible = false) => {
+  const renderGraphTab = () => {
     const styling = content.graphStyling;
     const selectedRenderer = content.selectedRenderer;
     const isSystem = selectedRenderer === 'system';
@@ -556,9 +467,7 @@ export function ControlPanel(
       }),
     ]);
 
-    return m('div.panel-section.panel-graph', {
-      class: forceVisible || state.activeTab === 'graph' ? 'panel-section--active' : '',
-    }, [
+    return m('div.panel-section.panel-graph.panel-section--active', [
       // Renderer selector — always visible at top
       m('div.panel-settings__group', [
         m('span.panel-settings__label-compact', 'Renderer'),
@@ -857,108 +766,15 @@ export function ControlPanel(
 
   // ─── Main render ───────────────────────────────────────────────────────────
 
-  if (isEmbedded) {
-    const embeddedContent = mode === 'source' ? renderSourceTab(true)
-      : mode === 'upload' ? renderUploadTab(true)
-      : mode === 'repo' ? renderRepoTab(true)
-      : renderGraphTab(true);
+  const body = mode === 'upload' ? renderUploadTab()
+    : mode === 'repo' ? renderRepoTab()
+    : renderGraphTab();
 
-    return m('div.control-panel.control-panel--embedded', {
-      oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
-      onupdate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
+  return m('div.control-panel.control-panel--embedded', [
+    m('div.control-panel__body.control-panel__body--open', {
+      style: { height: '100%' },
     }, [
-      m('div.control-panel__body.control-panel__body--open', {
-        style: { height: '100%' },
-      }, [
-        m('div.control-panel__content', [
-          embeddedContent,
-        ]),
-      ]),
-    ]);
-  }
-
-  return m('div.control-panel', {
-    oncreate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
-    onupdate: (vnode: m.VnodeDOM) => updatePanelHeightVar(vnode.dom as HTMLElement),
-  }, [
-    // Resize handle at top (only when open)
-    state.isOpen ? m('div.control-panel__resize', {
-      onmousedown: handleResizeStart,
-    }) : null,
-
-    // Handle bar — icon only
-    m('div.control-panel__handle', {
-      onclick: togglePanel,
-      title: state.isOpen ? 'Close panel' : 'Open panel',
-    }, [
-      m('span.control-panel__handle-icon', {
-        class: state.isOpen ? 'control-panel__handle-icon--open' : '',
-      }, '▲'),
-    ]),
-
-    // Tab bar
-    m('div.control-panel__tabs',
-      TABS.map(tab =>
-        m('button.control-panel__tab', {
-          class: state.activeTab === tab.id ? 'control-panel__tab--active' : '',
-          onclick: () => setActiveTab(tab.id),
-          title: tab.helpText,
-        }, [
-          tab.icon ? m('span', tab.icon + ' ') : null,
-          tab.label,
-        ])
-      )
-    ),
-
-    // Body (collapsible)
-    m('div.control-panel__body', {
-      class: state.isOpen ? 'control-panel__body--open' : '',
-      style: state.isOpen ? { height: `${state.panelHeight}px` } : { height: '0px' },
-    }, [
-      m('div.control-panel__content', [
-        renderSourceTab(),
-        renderGraphTab(),
-      ]),
-    ]),
-
-    // Status bar
-    m('div.control-panel__status', [
-      // Progress bar (thin line at top, visible during loading)
-      state.isLoading && state.progress
-        ? m('div.control-panel__progress-bar', {
-            style: {
-              width: state.progress.total > 0
-                ? `${Math.round((state.progress.loaded / state.progress.total) * 100)}%`
-                : '0%',
-            },
-          })
-        : state.isLoading
-          ? m('div.control-panel__progress-bar.control-panel__progress-bar--indeterminate')
-          : null,
-
-      m('span.control-panel__status-item', [
-        m('span.control-panel__status-dot', {
-          class: state.isLoading ? 'control-panel__status-dot--warning' : '',
-        }),
-        state.isLoading && state.progress && state.progress.phase === 'streaming'
-          ? `Streaming ${state.progress.loaded}/${state.progress.total} nodes`
-          : state.isLoading && state.progress
-            ? `${state.progress.phase.charAt(0).toUpperCase() + state.progress.phase.slice(1)}…`
-            : state.isLoading
-              ? state.statusMessage
-              : state.statusMessage || 'Ready',
-      ]),
-
-      state.isLoading && callbacks.onCancel
-        ? m('button.control-panel__cancel-btn', {
-            onclick: callbacks.onCancel,
-            title: 'Cancel',
-          }, '✕')
-        : null,
-
-      m('span.control-panel__status-context',
-        `${content.selectedRenderer} · ${state.currentTheme}`
-      ),
+      m('div.control-panel__content', [body]),
     ]),
   ]);
 }

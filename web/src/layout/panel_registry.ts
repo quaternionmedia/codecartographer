@@ -10,7 +10,8 @@
  * by ParserRegistry (backend) and the D3/Gravis/Notebook renderer registry
  * (frontend) elsewhere in this codebase.
  *
- * See ADR 0005 (governance/qm/adr/) for why this generalization exists.
+ * See governance/qm/adr/DRAFT-panel-registry-and-add-window-menu.md for why
+ * this generalization exists.
  */
 
 import m from 'mithril';
@@ -123,7 +124,7 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'graphbase-panel',
     menuLabel: 'Graphbase',
-    config: { type: 'component', componentType: 'graphbase-panel', id: 'graphbase-panel', title: '◈ Graphbase', isClosable: true },
+    config: { type: 'component', componentType: 'graphbase-panel', id: 'graphbase-panel', title: '▦ Graphbase', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createGraphbasePanel(ctx)),
   },

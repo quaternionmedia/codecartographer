@@ -33,6 +33,7 @@ import type { BundledExample } from '../features/examples/examples';
 import { notesTail } from '../features/graph/services/parse_notes';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
+import { readSavedLayout } from './saved_layout';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
 import { GraphSurface } from '../features/graph/services/graph_surface';
@@ -41,6 +42,7 @@ import { viewActions, EMPTY_VIEW_STATE, anyHidden } from '../features/graph/rad/
 import type { NodeViewState } from '../features/graph/rad/host/view_state';
 import type { GraphOps } from '../features/graph/rad/host/graph_intents';
 import type { MenuContext } from '../features/graph/rad/core/types';
+import { DEEPEST_DEPTH } from '../features/graph/rad/host/resolve';
 import type { GraphNode, GraphEdge } from '../features/graph/services/graph_types';
 import { backendLayoutName } from '../features/graph/services/layout_names';
 
@@ -76,15 +78,12 @@ export class LayoutContext {
 
   // Reactive UI-only state shared by the docked panels.
   public panelState: ControlPanelState = {
-    isOpen: true,
-    activeTab: 'source',
     codeSourceMode: 'upload',
     repoUrl: '',
     currentTheme: 'forest',
     isLoading: false,
     statusMessage: 'Ready',
     progress: null,
-    panelHeight: 380,
     graphSections: { layout: true, visual: false, theme: false },
     parseDepth: 2,
   };
@@ -242,15 +241,34 @@ export class LayoutContext {
 
   // ── Layout persistence ─────────────────────────────────────────────────────
 
-  /** The saved layout if one exists and parses cleanly, else the built-in default. */
+  /**
+   * The saved layout if it can be loaded, else the built-in default.
+   *
+   * A saved layout that names a window this version does not register is
+   * dropped here, before Golden Layout reads it: Golden Layout throws on an
+   * unregistered component type, and the page would boot with no windows.
+   */
   public loadInitialLayoutConfig(): LayoutConfig {
+    let raw: string | null = null;
     try {
-      const raw = localStorage.getItem(SAVED_LAYOUT_KEY);
-      if (raw) return JSON.parse(raw) as LayoutConfig;
+      raw = localStorage.getItem(SAVED_LAYOUT_KEY);
     } catch {
-      /* corrupt/old-format entry — fall through to built-in default */
+      /* storage blocked: nothing saved to read */
     }
+    const saved = readSavedLayout(raw, PanelRegistry.all().map((def) => def.id));
+    if (saved.kind === 'usable') return saved.config as LayoutConfig;
+    if (saved.kind === 'unusable') this.dropSavedLayout(saved.why);
     return DEFAULT_LAYOUT_CONFIG;
+  }
+
+  /** Forget the saved layout, and say why the default is showing instead. */
+  public dropSavedLayout(why: string): void {
+    try {
+      localStorage.removeItem(SAVED_LAYOUT_KEY);
+    } catch {
+      /* storage blocked: there is nothing to remove */
+    }
+    ToastManager.show(`The saved layout was not loaded: ${why}. Showing the default.`, 8_000);
   }
 
   /** Persist the live layout (panel arrangement + sizes) as the local default. */
@@ -645,7 +663,7 @@ export class LayoutContext {
         let added = 0;
         try {
           for (const id of ids) {
-            const payload = await PlotService.expandNode(this.appState.api.parse, directory, id, 3);
+            const payload = await PlotService.expandNode(this.appState.api.parse, directory, id, DEEPEST_DEPTH);
             const { nodes, edges } = this._normaliseGraph(payload);
             // The subgraph includes the node that was expanded; mergeGraph
             // skips ids already on the canvas, so this is idempotent.
@@ -1089,7 +1107,7 @@ export class LayoutContext {
           .then(() => {
             const dir = this.appState.repo.content;
             if (dir?.is_partial)
-              ToastManager.hint('stub-folders', 'Large repo: click a folder ▶ to expand it, or use "Expand All"');
+              ToastManager.hint('stub-folders', 'Large repo: a folder marked … is unread; click it to read it, or use "Expand All" in the Files panel');
             m.redraw();
           })
           .catch(() => { /* sidebar still works */ });
@@ -1232,27 +1250,34 @@ export class LayoutContext {
         this.appState.update({ parserOptions: { ...current.parserOptions, ...options } });
       },
 
+      // **NEITHER READ TOUCHES THE PANEL'S LOADING STATE.** `isLoading` and
+      // the status line are the stream's: the Actions panel shows Cancel and
+      // the progress bar while it is set. These set it and cleared it with
+      // "Ready" when they ended, so a folder opened mid-parse took Cancel and
+      // the progress bar from a stream still running. The folder's ↻ says it
+      // is being read; a toast says Expand All has begun, and either failing.
       onFolderExpand: async (path: string) => {
         const content = this.appState.repo.content;
-        if (!content?.is_partial) return;
-        this.updatePanelState({ isLoading: true, statusMessage: `Loading ${path}...` });
+        if (!content?.is_partial) return false;
         try {
-          await this.actions.repo.expandPath(this.panelState.repoUrl, path);
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          // The tree's own repository, not the URL field's: that follows every
+          // keystroke, and need not name the repository shown.
+          return await this.actions.repo.expandPath(path);
         } catch {
-          this.updatePanelState({ isLoading: false, statusMessage: `Error expanding ${path}` });
+          // The folder is left unread, so a click reads it again.
+          ToastManager.show(`Could not read ${path}; click it to try again`);
+          return false;
         }
       },
 
       onExpandAll: async () => {
         const content = this.appState.repo.content;
         if (!content?.is_partial) return;
-        this.updatePanelState({ isLoading: true, statusMessage: 'Expanding all folders...' });
+        ToastManager.show('Expanding all folders…');
         try {
-          await this.actions.repo.expandAll(this.panelState.repoUrl);
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          await this.actions.repo.expandAll();
         } catch {
-          this.updatePanelState({ isLoading: false, statusMessage: 'Error expanding tree' });
+          ToastManager.show('Could not expand the tree');
         }
       },
 

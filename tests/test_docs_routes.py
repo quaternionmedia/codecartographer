@@ -23,7 +23,8 @@ it describes, and each check here fails on a document that disagrees with it:
   every one a document names is read by the code;
 - every sync a document or the code tells a reader to run is `ONE_SYNC`;
 - `docs/index.md` links every page under `docs/`;
-- the UI reference names every registered panel, and the default layout and
+- the UI reference names every registered panel, its radial-menu table lists
+  each ring's items as `resolve.ts` builds them, and the default layout and
   the source tree agree with the registry and the dev proxy;
 - every statement of the graph cache key names the schema version
   `cache_service._make_key` hashes with the url, mode, layout and extensions;
@@ -842,6 +843,65 @@ def test_ui_reference_names_every_registered_panel():
     reference = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
     missing = sorted(i for i in ids if f"`{i}`" not in reference)
     assert not missing, f"docs/ui.md's panel table lacks: {missing}"
+
+
+RINGS = {"node": "Node", "canvas": "Canvas", "selection": "Selection", "edge": "Edge"}
+
+
+def _ring_items(source: str, ring: str) -> list[str]:
+    """The items `<ring>Ring()` in `resolve.ts` returns, as the table writes them.
+
+    A label is its string; a ternary's last string, which is the label at rest
+    (`Pin`, not `Unpin`); a template's text with each `${...}` as `*n*`. An item
+    with `children` is written with ` ▸`.
+    """
+    body = re.search(
+        rf"function {ring}Ring\([^)]*\): MenuItem\[\] \{{.*?return \[\n(.*?)\n  \];\n\}}",
+        source, re.S)
+    assert body, f"{ring}Ring() was not found in resolve.ts; the pattern is stale"
+    items, depth, start = [], 0, 0
+    for i, ch in enumerate(body[1]):
+        if ch in "{[":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch in "}]":
+            depth -= 1
+            if depth == 0:
+                items.append(body[1][start:i + 1])
+    written = []
+    for item in items:
+        own = re.sub(r"\[.*\]", "[]", item, flags=re.S)  # not the children's labels
+        label = re.search(r"label:\s*(.+?),\s*\w+:", own, re.S)
+        assert label, f"an item of {ring}Ring() has no label: {item}"
+        expression = label[1].strip()
+        if expression.startswith("`"):
+            text = re.sub(r"\$\{[^}]*\}", "*n*", expression.strip("`"))
+        else:
+            text = re.findall(r"'([^']*)'", expression)[-1]
+        written.append(text + (" ▸" if "children:" in own else ""))
+    return written
+
+
+def test_ui_reference_ring_table_is_the_rings_the_menu_builds():
+    """The radial menu's table in the UI reference lists each ring as `resolve.ts` builds it.
+
+    The table said "Colour ▸" in three rings after the menu's label became
+    "Color", as Graph Settings writes it. An item marked `\\*` is one the table
+    says is shown disabled; the mark is not compared.
+    """
+    source = (ROOT / "web" / "src" / "features" / "graph" / "rad" / "host" / "resolve.ts").read_text(
+        encoding="utf-8")
+    reference = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
+    wrong = []
+    for ring, title in RINGS.items():
+        row = re.search(rf"^\| \*\*{title}\*\* \| (.+?) \|$", reference, re.M)
+        assert row, f"docs/ui.md has no **{title}** row in the radial menu's table"
+        documented = [item.replace("\\*", "").strip() for item in row[1].split(" · ")]
+        built = _ring_items(source, ring)
+        if documented != built:
+            wrong.append(f"{title}: docs/ui.md {documented}, resolve.ts {built}")
+    assert not wrong, "the radial menu's table disagrees with resolve.ts:\n" + "\n".join(wrong)
 
 
 def test_no_source_directory_is_shadowed_by_the_dev_proxy(prefixes):
