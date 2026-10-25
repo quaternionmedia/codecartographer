@@ -489,6 +489,30 @@ def test_record_passes_a_map_path_with_a_space_as_one_argument(tmp_path, monkeyp
     assert result.exit_code == 0, result.output
 
 
+@pytest.mark.parametrize("how, said", [("exit", "the metadata step exited 101"),
+                                       ("timeout", "the metadata step did not finish in 1s")])
+def test_record_says_the_metadata_step_failed_rather_than_that_no_package_has_the_bin(
+        tmp_path, monkeypatch, how, said):
+    """Which member owns a binary is read from the metadata just recorded.
+    Mutation: say no member has the binary whatever that step did -- a broken
+    manifest or a slow registry reads as a misspelt binary, and this fails."""
+    import subprocess
+
+    def fake_run(command, **kwargs):
+        if command[1] == "metadata":
+            if how == "timeout":
+                raise subprocess.TimeoutExpired(command, 1, output='{"version": 1')
+            return Ran(stderr="error: failed to parse manifest at `/ws/Cargo.toml`\n", returncode=101)
+        return Ran()
+
+    monkeypatch.setattr("shutil.which", lambda name: "cargo")
+    monkeypatch.setattr("subprocess.run", fake_run)
+    result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky", "--timeout", "1"])
+    assert result.exit_code == 1
+    assert "no workspace package has a binary named" not in result.output
+    assert f"cannot link blinky: {said}" in result.output
+
+
 def test_record_says_when_cargo_did_not_relink(tmp_path, monkeypatch):
     """cargo links only when the binary is out of date, so a build already up
     to date writes no map. Mutation: judge by the map's presence alone -- an

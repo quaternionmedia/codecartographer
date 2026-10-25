@@ -735,13 +735,19 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
                     *offline, "--", *(part.format(path=target.as_posix()) for part in shlex.split(map_flag))]
         steps.append((f"{binary}.map", link, False))
     failed = False
+    metadata_failed = ""  # how the metadata step failed, when it did
     for name, command, captured in steps:
         if callable(command):
             command = command()
             if command is None:
                 failed = True
-                click.secho(f"✗ no workspace package has a binary named {name[:-4]}, "
-                            f"by the {cargo_service.METADATA_DOCUMENT} just recorded", fg="red")
+                if metadata_failed:
+                    # The package is read from that step's document: say why it is not known.
+                    click.secho(f"✗ cannot link {name[:-4]}: the metadata step {metadata_failed}, so "
+                                f"which workspace member has that binary is not known", fg="red")
+                else:
+                    click.secho(f"✗ no workspace package has a binary named {name[:-4]}, "
+                                f"by the {cargo_service.METADATA_DOCUMENT} just recorded", fg="red")
                 continue
         click.secho(f"→ cargo {' '.join(command[1:])}", fg="cyan")
         stderr = ""
@@ -758,6 +764,8 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
         if captured:
             (out / name).write_text(stdout, encoding="utf-8")
         last = stderr.strip().splitlines()[-1] if stderr.strip() else ""
+        if name == cargo_service.METADATA_DOCUMENT and code != 0:
+            metadata_failed = f"did not finish in {timeout}s" if code is None else f"exited {code}"
         if code is None:
             failed = True
             click.secho(f"  ✗ did not finish in {timeout}s"

@@ -349,7 +349,8 @@ into arguments before the path is put in, so a path with a space stays one.
 one flashed. `PKG` is the workspace member with a binary named `BIN`, read from
 the `metadata.json` just recorded -- `cargo rustc` will not guess it in a
 workspace with no root package -- and a `BIN` no member has is said by name
-and fails the run.
+and fails the run; when the metadata step itself failed or timed out, that is
+the reason given.
 
 ---
 
