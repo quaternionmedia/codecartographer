@@ -25,7 +25,7 @@ this table is a reading of it.
 | Capabilities | `capabilities-panel` | The corpus's capability registry: each declaration and the rung it claims; draw them |
 | Overview | `overview-panel` | dossier's reading of the estate: masthead figures and sections; draw them |
 | Cargo | `cargo-panel` | A Rust workspace by path: which engine read it, its crates, the recorded documents and whether each is current, the device target; draw the crate graph, with features or locked dependencies if asked |
-| Chrestomathy | `chrestomathy-panel` | **On the canvas:** whatever graph is drawn -- a code map, a crate graph, a linker script -- read as the constructs its nodes are, in which languages, with what the vocabulary could not place; a row opens that construct below, and *show* frames and selects its nodes. Read again whenever a new graph is drawn. **Construct:** one construct set beside itself across C, Rust, Python, assembly, the linker script and Cargo: each language's tokens with their abstraction layer, its parser kinds, and its note -- a language with no spelling is a row saying so; draw it |
+| Chrestomathy | `chrestomathy-panel` | **On the canvas:** whatever graph is drawn -- a code map, a crate graph, a linker script -- read as the constructs its nodes are, in which languages, with what the vocabulary could not place, each said as what it is (a file the walk drew, a kind that is no construct and why); a row opens that construct below, and *show* frames and selects its nodes. Read again whenever a new graph is drawn, and never kept for one that has gone: a construct drawn from the vocabulary is not code and has no census. **Construct:** one construct set beside itself in each of C, Rust, Python, assembly and the linker script, every language `constructs.yaml` lists: each language's tokens with their abstraction layer, its parser kinds, and its note -- a language with no spelling is a row with its note, or one saying the vocabulary records none; draw it |
 
 **Default layout** (`default_layout.ts`): Graph on top; below it Files on the
 left and a tab stack of Upload (active), Repository, Graph Settings, Actions and
@@ -194,6 +194,22 @@ kind absent from the picture has no row, and every node is accounted for by
 exactly one row. What each row means is decided in
 `web/src/features/graph/extensions/legend_marks.ts`, which is pure and covered
 by `npm run test:pure`.
+
+**It keys the colours on screen.** Under "Color By: Abstraction Layer" a row's
+swatch takes the colour the canvas paints its nodes, and an *Abstraction layers*
+section names each layer painted and counts its nodes — by language where the
+graph holds more than one, since a layer's number is a rank within one
+language's lexicon and the same number in two languages is two layers. Under
+"Auto" a layer is named only where a node's own colour is its layer's, as the
+chrestomathy's tokens are; a parsed node drawn in its own colour is no layer
+row. "Color By: Construct" paints each node the vocabulary placed in its
+construct's colour (`construct_color`), alike across languages, and a
+*Constructs* section names each construct painted; under the other colourings
+a construct is named only where a node's own colour is its construct's, so the
+crate graph under "Auto" has no *Package* row in a colour nothing wears. The
+canvas, the vis-network renderer and the key take the fill from one function,
+`paintedColor`. A record (`ngon`) is a row per side count, and says it:
+*Struct · 4 sides*.
 
 Like rad, it is a `BaseExtension` mounted against the canvas, so it appears on
 every path that draws a graph.
