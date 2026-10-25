@@ -23,7 +23,11 @@ it describes, and each check here fails on a document that disagrees with it:
 - the UI reference names every registered panel, and the default layout and
   the source tree agree with the registry and the dev proxy;
 - every statement of the graph cache key names the schema version
-  `cache_service._make_key` hashes with the url, mode, layout and extensions.
+  `cache_service._make_key` hashes with the url, mode, layout and extensions;
+- the caches section says what evicting a GitHub repository from either cache
+  removes, as the two evictions do;
+- a C edge kind is named in upper case only about `/c-parser/*`, and in lower
+  case only as `c_language_parser._EDGE_KIND_MAP` gives it.
 
 The application, the click tree and the code are the sources; nothing here
 keeps a list of routes, commands or variables of its own.
@@ -890,3 +894,34 @@ def test_the_caches_section_says_evicting_one_cache_empties_the_other(monkeypatc
         "docs/architecture.md, *The two caches*, does not say that evicting a "
         "GitHub repository from one cache removes the other's directory too, "
         "and leaves index.json naming graphs that are gone")
+
+
+def test_c_edge_kinds_are_named_as_the_graph_that_carries_them():
+    """`CParser` writes its edge kinds in upper case (`CALLS`, `FIELD_OF`);
+    `/c-parser/*` answers them so, and `c_language_parser._EDGE_KIND_MAP`
+    turns them into what a `/parse/*` graph carries (`calls`, `field_of`, and
+    `contains` for `LOCAL_OF`). A paragraph naming an upper-case kind is about
+    `/c-parser/*`, and a lower-case spelling of one is a kind the map gives.
+    Mutation: write `CALLS` into a paragraph about `/parse/*`, or `local_of`
+    anywhere -- this fails naming it."""
+    from codecarto.services.parsers.c_language_parser import _EDGE_KIND_MAP
+
+    assert all(k.isupper() for k in _EDGE_KIND_MAP), _EDGE_KIND_MAP
+    assert all(v.islower() for v in _EDGE_KIND_MAP.values()), _EDGE_KIND_MAP
+    upper = set(_EDGE_KIND_MAP)
+    spelled = {k.lower() for k in upper}
+    given = set(_EDGE_KIND_MAP.values())
+    wrong = []
+    for path in DOCUMENTS:
+        for number, text in _paragraphs(path):
+            spans = {s.strip() for s in CODE_SPAN.findall(text)}
+            if spans & upper and "/c-parser" not in text:
+                wrong.append(f"{_rel(path)}:{number}: {sorted(spans & upper)} "
+                             f"outside /c-parser/*")
+            if (spans & spelled) - given:
+                wrong.append(f"{_rel(path)}:{number}: {sorted((spans & spelled) - given)} "
+                             f"is no kind _EDGE_KIND_MAP gives")
+    assert not wrong, (
+        f"a /parse/* graph's C edges are {sorted(given)} "
+        f"(c_language_parser._EDGE_KIND_MAP); the upper-case kinds are "
+        f"/c-parser/*'s: {wrong}")

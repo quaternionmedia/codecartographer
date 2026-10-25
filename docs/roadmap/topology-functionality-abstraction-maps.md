@@ -16,7 +16,7 @@ parsing:
   produces call graphs, import/dependency edges (`depends_on`,
   `external_module` nodes), and directory hierarchy, across every
   language `ParserRegistry` knows (Python via `PythonCustomAST`, C via
-  libclang with cross-file `calls`/`FIELD_OF`/`POINTS_TO` resolution,
+  libclang with cross-file `calls`/`field_of`/`type_of` resolution,
   and every other language `regex_language_parser.py` lists).
 - Known gap, already scoped, not started: naive per-file directory
   walking misses real build context for C (generated headers,

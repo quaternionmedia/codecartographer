@@ -226,7 +226,7 @@ C and C++ are read by libclang (`c_parser.py`'s `CParser`, the `c-parsing`
 extra) through two routes that share that engine.
 
 **Through `/parse/*`, like every other language.** `CLangaugeParser`
-(`c_language_parser.py`) is a `batch_whole_tree` adapter, so cross-file `CALLS`
+(`c_language_parser.py`) is a `batch_whole_tree` adapter, so cross-file `calls`
 resolve. Content with no file on disk -- a GitHub file, which exists only as
 `File.raw` -- is passed to libclang as `unsaved_files` under a virtual path.
 Every virtual file in a batch shares one root (`_VIRTUAL_ROOT`), so a sibling

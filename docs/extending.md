@@ -13,7 +13,7 @@ Three tiers exist, from lightest to most capable:
 | Tier | File | When to use |
 |------|------|-------------|
 | **Regex** | `regex_language_parser.py` | Any language where top-level symbols (functions, classes, structs, headings, SQL tables, …) can be identified by a line-anchored regex. Zero new dependencies. Add a `_PATTERNS` list + one entry in `_LANGUAGES`. |
-| **Dedicated libclang** | `c_language_parser.py` | C/C++ only. Cross-file `CALLS` resolution, `#include` tracking via `unsaved_files`. Requires the `c-parsing` extra: `uv sync --locked --extra dev --extra c-parsing`. |
+| **Dedicated libclang** | `c_language_parser.py` | C/C++ only. Cross-file `calls` resolution, `#include` tracking via `unsaved_files`. Requires the `c-parsing` extra: `uv sync --locked --extra dev --extra c-parsing`. |
 | **Structural reader** | `rust_language_parser.py`, `linker_script_parser.py` | A tokenizer and brace matcher, stdlib only, for a language whose items are delimited by keywords and brackets: nesting, attributes, the module tree, relations each labelled with how they were resolved. Stops where name resolution begins; that is the compiler's. |
 
 **Currently registered parsers and extensions:**
@@ -107,7 +107,7 @@ By default `_walk_folder` dispatches one file at a time:
 are self-contained — true for Python (and for most languages, including the
 JavaScript example above). If your parser needs to resolve references
 *across* files in one call (the way `CLangaugeParser` resolves cross-file
-`CALLS` edges — see [Architecture](architecture.md#the-unified-graph)),
+`calls` edges — see [Architecture](architecture.md#the-unified-graph)),
 set:
 
 ```python
@@ -210,7 +210,11 @@ The pipeline adds the rest: `construct`, `meta.facets`, `construct_color` and
 `layer_color` when the lexicon is joined; and `has_parse_warning`, at the top
 level, when the node's file produced parser errors. An edge's `kind` is
 `contains` for nesting, `depends_on` between files, and the parser's own
-otherwise (`CALLS`, `FIELD_OF`, ...).
+otherwise, in lower case. C's are `calls`, `field_of`, `type_of` and
+`aliases`, and a function's locals hang from it by `contains`
+(`c_language_parser.py`'s `_EDGE_KIND_MAP`); the upper-case `CALLS`,
+`FIELD_OF`, `POINTS_TO`, ... are `CParser`'s own, which only `/c-parser/*`
+answers.
 
 ### Visual grammar
 
