@@ -94,9 +94,10 @@ the build that is flashed -- and keeps its map; a C build passing
   on addresses a placed section already holds (an `(INFO)` section such as
   defmt's).
 - **On the crate graph**, the binary's target says its fill per region, and the
-  map is a document row with its age. Once a source changes after it the map
-  is not used -- as a stale `metadata.json` is not -- and the row, the caveat
-  and the code map's regions say why.
+  map is a document row with its age. Once anything the link reads changes
+  after it -- a source, a linker script, a manifest; not a README -- the map is
+  not used, as a stale `metadata.json` is not, and the row, the caveat and the
+  code map's regions say why. Both judge it by `link_map_service.link_input`.
 
 What it cannot see: inlined code has no symbol, so its bytes are its caller's;
 and a map is only as current as the link that wrote it.
