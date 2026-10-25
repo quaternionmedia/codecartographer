@@ -868,6 +868,9 @@ export class LayoutContext {
       this._cancelStream();
       this._cancelStream = null;
     }
+    // The stream is the latest plot: added files, the demo or a lexicon still
+    // waiting for an answer are not drawn over it.
+    this.actions.plot.supersedePlots();
     this._streamingRenderer = null;
 
     const styling = this.appState.state.graphStyling;
@@ -1077,21 +1080,22 @@ export class LayoutContext {
   /**
    * Plot added files, every one given, at the parse depth the Open panel
    * shows; one file clicked in the Files panel and Plot over all of them both
-   * come here.
+   * come here. A plot asked for before these answered owns the status line,
+   * and their answer is dropped (`latest_plot.ts`).
    */
   private async _plotUploads(files: RawFile[]): Promise<void> {
     const many = files.length === 1 ? files[0].name : `${files.length} files`;
     this.updatePanelState({ isLoading: true, statusMessage: `Plotting ${many}\u2026` });
     // What the parse could not read is said as a stream says its `note`
     // events: each in a toast, and all of them after "Ready" (`notesTail`).
-    let notes: string[] = [];
+    let notes: string[] | null = [];
     this._lastPlotAction = async () => {
       notes = await this.actions.plot.plotUploads(files, this.panelState.parseDepth);
-      for (const note of notes) ToastManager.show(note, 15_000);
+      for (const note of notes ?? []) ToastManager.show(note, 15_000);
     };
     try {
       await this._lastPlotAction();
-      this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
+      if (notes) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
     } catch {
       this.updatePanelState({ isLoading: false, statusMessage: `Error plotting ${many}` });
     }
@@ -1103,10 +1107,12 @@ export class LayoutContext {
     return {
       onDemo: async () => {
         this.updatePanelState({ isLoading: true, statusMessage: 'Loading demo...' });
-        this._lastPlotAction = async () => { await this.actions.plot.loadDemo(); };
+        let drawn = true;
+        this._lastPlotAction = async () => { drawn = await this.actions.plot.loadDemo(); };
         try {
           await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          // Not drawn: a plot asked for since owns the status line.
+          if (drawn) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: 'Error loading demo' });
         }
@@ -1114,10 +1120,11 @@ export class LayoutContext {
 
       onLoadLexicon: async (language: string) => {
         this.updatePanelState({ isLoading: true, statusMessage: `Loading ${language} lexicon...` });
-        this._lastPlotAction = async () => { await this.actions.plot.loadLexicon(language); };
+        let drawn = true;
+        this._lastPlotAction = async () => { drawn = await this.actions.plot.loadLexicon(language); };
         try {
           await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          if (drawn) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: `Error loading ${language} lexicon` });
         }
