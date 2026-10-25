@@ -43,10 +43,13 @@ can display.
 Folder and file ids are the path from the root (`file::ws/crates/hal/src/lib.rs`),
 so two files with one name are two nodes.
 
-Every node a language in `codecarto/data/constructs.yaml` produces also carries
-`construct` -- what it *is*, the same across languages (`type.product` for a C or
-Rust struct) -- and, where its qualifiers, attributes or body say so,
-`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`).
+Every node whose language and kind `codecarto/data/constructs.yaml` maps also
+carries `construct` -- what it *is*, the same across languages (`type.product`
+for a C or Rust struct) -- and, where its qualifiers, attributes or body say so,
+`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`). A kind
+the vocabulary lists under `not_constructs`, with its reason, carries none --
+Python's calls, names and literals are what a body does, not what it declares --
+and neither do the walk's own `directory` and `file` nodes.
 
 ### POST `/parse/unified`
 

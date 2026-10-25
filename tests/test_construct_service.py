@@ -15,6 +15,7 @@ import pytest
 from codecarto.services import construct_service
 from codecarto.services.lexicon_service import LexiconService
 from codecarto.services.parsers import c_language_parser
+from codecarto.services.parsers.language_parser import ParserRegistry
 
 VOCABULARY = construct_service.load()
 IDS = {c.id for c in VOCABULARY.constructs}
@@ -55,6 +56,36 @@ def test_every_spelled_token_is_in_that_languages_lexicon(language):
 def test_every_look_is_a_shape_the_canvas_draws():
     shapes = {c.look.shape for c in VOCABULARY.constructs if c.look}
     assert shapes <= construct_service.CANVAS_SHAPES
+
+
+def _parsers_of(language: str) -> list:
+    return [p for p in ParserRegistry.all_parsers() if p.language == language]
+
+
+@pytest.mark.parametrize("language", sorted(VOCABULARY.languages))
+def test_parser_kinds_and_the_vocabulary_agree_both_ways(language):
+    """Every kind a parser on this branch can emit is mapped to a construct or
+    listed under `not_constructs` with its reason, and the vocabulary names no
+    kind that no parser emits -- so the chrestomathy's "(parsed)" is a
+    parser's word, not the vocabulary's. Mutations: drop `call` from Python's
+    `not_constructs` -- the first half fails; map Python `module` again (the
+    adapter skips the AST's Module root) -- the second does."""
+    parsers = _parsers_of(language)
+    assert parsers, f"constructs.yaml lists {language}, and no parser on this branch reads it"
+    undeclared = [type(p).__name__ for p in parsers if not getattr(p, "kinds", None)]
+    assert not undeclared, f"{language}: {undeclared} declare no `kinds`"
+    emitted = {kind for p in parsers for kind in p.kinds}
+    mapping = VOCABULARY.languages[language]
+    named = set(mapping.kinds) | set(mapping.not_constructs)
+    assert sorted(emitted - named) == [], "emitted, and the vocabulary says nothing of them"
+    refined = {r.kind for r in mapping.refine}
+    assert sorted((named | refined) - emitted) == [], "named, and no parser emits them"
+
+
+def test_a_kind_that_is_not_a_construct_says_why():
+    for language, mapping in VOCABULARY.languages.items():
+        assert not set(mapping.kinds) & set(mapping.not_constructs), language
+        assert all(reason.strip() for reason in mapping.not_constructs.values()), language
 
 
 def test_c_adapter_kinds_are_all_mapped():
@@ -193,7 +224,9 @@ def test_a_construct_read_across_languages_keeps_the_silent_ones():
     assert set(rows) >= {"c", "rust", "python"}
     assert rows["c"]["tokens"] == [] and rows["c"]["note"]
     assert [t["token"] for t in rows["rust"]["tokens"]] == ["fn", "impl"]
-    assert rows["rust"]["kinds"] == ["method"]
+    # The line parser reads Rust's fn the same in an impl as out of one, so no
+    # parser here emits a method; "(parsed)" says only what a parser does.
+    assert rows["rust"]["kinds"] == []
 
 
 def test_tokens_carry_their_lexicon_layer():
@@ -229,6 +262,22 @@ def test_the_graph_puts_the_construct_at_the_centre_and_colours_tokens_by_layer(
     rust_edge = graph.edges[root, "language:rust"]
     assert rust_edge["style"] == "dashed"
     assert "read_volatile" in graph.nodes["language:rust"]["hover"]
+
+
+def test_a_kind_drawn_as_parsed_is_one_a_parser_on_this_branch_emits():
+    """`region (parsed)` was drawn for the linker with no linker parser here,
+    and `module (parsed)` for Python, whose adapter skips the Module root.
+    Mutation: put either mapping back in constructs.yaml -- this fails and
+    names the node."""
+    drawn = []
+    for construct in VOCABULARY.constructs:
+        graph = construct_service.as_graph(construct.id)
+        for node_id, data in graph.nodes(data=True):
+            if data["kind"] == "parser_kind":
+                _, language, kind = node_id.split(":", 2)
+                if kind not in {k for p in _parsers_of(language) for k in p.kinds}:
+                    drawn.append(node_id)
+    assert drawn == []
 
 
 def test_an_unknown_construct_is_none():

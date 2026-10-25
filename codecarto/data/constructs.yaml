@@ -14,9 +14,10 @@
 #   - The chrestomathy (`/lexicon/chrestomathy/...`) sets one construct beside
 #     itself across every language that spells it, from `spelled:`.
 #   - Tests hold it to the lexicons (every token named here is in that
-#     language's lexicon), to the parsers (every kind a parser can emit maps
-#     here) and to the C reference design (C's own shapes and colours agree
-#     with the looks below).
+#     language's lexicon), to the parsers (every kind a parser on the branch
+#     can emit is under `kinds` or, with the reason, under `not_constructs`,
+#     and no kind is named that no parser emits) and to the C reference design
+#     (C's own shapes and colours agree with the looks below).
 #
 # A construct with a `look` can be what a node is. One without is a *facet*:
 # something a node can also be — unsafe, volatile, placed in a section, an
@@ -385,25 +386,13 @@ languages:
   rust:
     kinds:
       function: callable.function
-      method: callable.method
       struct: type.product
       enum: type.sum
-      union: type.union
       trait: type.interface
       impl: type.implementation
       module: namespace.module
       type: type.alias
-      const: storage.constant
-      static: storage.static
-      use: namespace.import
-      extern_crate: namespace.import
-      extern_block: linkage.foreign-block
       macro: meta.macro
-      macro_invocation: meta.macro-call
-      field: member.field
-      variant: member.variant
-      assoc_type: member.associated
-      assoc_const: member.associated
     refine:
       # A Rust enum whose variants carry no data is an enumeration, not a sum type.
       - {kind: enum, meta: c_like, construct: type.enumeration}
@@ -435,20 +424,21 @@ languages:
 
   python:
     kinds:
-      module: namespace.module
       class: type.class
       function: callable.function
       import: namespace.import
       loop: control.loop
+    not_constructs:
+      # The adapter draws a body's expressions too. They say what code does,
+      # not what it declares, and no other language here parses them.
+      call: "A call expression: a use of a callable, not one."
+      argument: "A parameter, drawn inside its function; part of a callable, not a thing of its own."
+      name: "A name read inside an expression (ast.Name): a reference to something declared elsewhere."
+      constant: "A literal value (ast.Constant), not a named constant."
+      string: "An f-string or one of its parts (ast.JoinedStr, ast.FormattedValue): an expression."
+      symbol: "An AST node of a type the adapter does not name, so nothing is known of what it is."
 
   assembly:
     kinds:
       label: code.label
       section: layout.section
-
-  linker:
-    kinds:
-      region: layout.region
-      section: layout.section
-      entry: firmware.entry
-      symbol: linkage.symbol

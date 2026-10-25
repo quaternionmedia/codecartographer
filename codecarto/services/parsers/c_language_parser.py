@@ -45,6 +45,11 @@ _DEPTH_3_KINDS = {
     "field", "enum_constant",
 }
 
+# Every `kind` this adapter can emit: c_parser's cursor map names these and no
+# others. `constructs.yaml` maps each one, and a test holds the two to each
+# other in both directions.
+KINDS = tuple(sorted(_DEPTH_2_KINDS | _DEPTH_3_KINDS))
+
 # ── C visual grammar ──────────────────────────────────────────────────────────
 # Shape and colour per C kind, matching the c-visualizer reference design.
 # The renderer reads these directly — no language logic belongs in the renderer.
@@ -91,6 +96,7 @@ class CLangaugeParser:
 
     language: ClassVar[str] = "c"
     extensions: ClassVar[list[str]] = [".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hxx"]
+    kinds: ClassVar[tuple[str, ...]] = KINDS
 
     # Tells the unified pipeline (unified_parser_service.py's build_graph)
     # to collect every C/H file across the WHOLE directory tree and pass

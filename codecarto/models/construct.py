@@ -61,7 +61,17 @@ class Refinement(BaseModel):
 
 
 class LanguageMap(BaseModel):
+    """One language's parser kinds and facet sources, against the constructs.
+
+    ``kinds`` and ``not_constructs`` together name every kind the language's
+    parsers can emit, and nothing else: a kind is a construct, or it is listed
+    with the reason it is not one (an expression inside a body, say, is what
+    code does rather than a thing it declares). A node of a kind listed there
+    carries no ``construct``.
+    """
+
     kinds: Dict[str, str] = {}
+    not_constructs: Dict[str, str] = {}
     refine: List[Refinement] = []
     qualifiers: Dict[str, str] = {}
     attributes: Dict[str, str] = {}
