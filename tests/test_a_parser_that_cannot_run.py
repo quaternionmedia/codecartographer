@@ -8,29 +8,36 @@ the reason now travels beside the graph -- a `note` event in each stream, a
 `notes` list in the one-shot parse -- and a stream that carried one is not
 cached, since a replay would arrive without it.
 
-The C adapter is made to fail the way it does without libclang, rather than
-uninstalling anything, so these run wherever the suite does.
+libclang's import is made to fail as it does where it is not installed,
+rather than uninstalling anything, so these run wherever the suite does -- and
+everything between that import and the graph is the code that runs there, so
+a failure swallowed anywhere on the way, the C adapter included, is seen.
 """
 
 from __future__ import annotations
 
 import json
+import sys
 
 import pytest
 from fastapi.testclient import TestClient
 
 from codecarto.services.local_repo_service import get_local_repo
-from codecarto.services.parsers.c_language_parser import CLangaugeParser
 from codecarto.services.unified_parser_service import UnifiedParserService
 
-MISSING = "libclang is not installed, so C and C++ declarations cannot be read."
+MISSING = ("libclang is not installed, so C and C++ declarations cannot be read. "
+           "Install it with: uv sync --extra c-parsing")
 
 
 @pytest.fixture
 def without_libclang(monkeypatch):
-    def refuse(self, files, depth=2):
-        raise ImportError(MISSING)
-    monkeypatch.setattr(CLangaugeParser, "parse_files", refuse)
+    """`import clang.cindex` fails, and no index is left from an earlier parse."""
+    from codecarto.services.parsers import c_parser
+
+    monkeypatch.setitem(sys.modules, "clang", None)
+    monkeypatch.setitem(sys.modules, "clang.cindex", None)
+    monkeypatch.setattr(c_parser, "_clang", None)
+    monkeypatch.setattr(c_parser, "_clang_idx", None)
 
 
 @pytest.fixture
@@ -51,11 +58,23 @@ def events(chunks: list[str]) -> list[tuple[str, dict]]:
 
 
 def test_the_graph_says_which_files_it_could_not_read(repo, without_libclang):
-    """Mutation: swallow the batch's exception again -- no note, and this fails."""
+    """Mutation: swallow the batch's exception again, or catch the ImportError
+    in the C adapter and return an empty graph -- no note, and this fails."""
     graph = UnifiedParserService.build_graph(get_local_repo(str(repo)), 2, None)
     assert graph.graph["notes"] == [f"2 c file(s) drawn without their contents: {MISSING}"]
     labels = {d.get("label") for _, d in graph.nodes(data=True)}
     assert {"main.c", "util.c", "tool.py"} <= labels  # the files are still drawn
+
+
+def test_a_c_backend_that_cannot_be_loaded_is_said_too(repo, monkeypatch):
+    """The adapter imported its backend inside `except ImportError: return
+    nx.DiGraph()`, so a backend that could not be loaded drew every C file
+    empty and said nothing. Mutation: put that `except` back -- no note."""
+    monkeypatch.setitem(sys.modules, "codecarto.services.parsers.c_parser", None)
+    graph = UnifiedParserService.build_graph(get_local_repo(str(repo)), 2, None)
+    notes = graph.graph.get("notes", [])
+    assert len(notes) == 1 and notes[0].startswith("2 c file(s) drawn without their contents: ")
+    assert "codecarto.services.parsers.c_parser" in notes[0]
 
 
 @pytest.mark.asyncio

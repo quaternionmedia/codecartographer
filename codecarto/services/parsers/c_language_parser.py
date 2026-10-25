@@ -138,13 +138,12 @@ class CLangaugeParser:
         -------
         nx.DiGraph with unified node schema.
         """
-        try:
-            from codecarto.services.parsers.c_parser import (
-                CParser, default_parse_args, is_platform_specific_path,
-            )
-        except ImportError:
-            # libclang not available; return empty graph
-            return nx.DiGraph()
+        # No `except` here or around the parse below: a backend that cannot be
+        # loaded, or a libclang that is not installed, raises, and the pipeline
+        # says so beside the files it still draws. An empty graph said nothing.
+        from codecarto.services.parsers.c_parser import (
+            CParser, default_parse_args, is_platform_specific_path,
+        )
 
         paths: list[Path] = []
         real_paths: list[Path] = []   # real on-disk paths only (not virtual)
