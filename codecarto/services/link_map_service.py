@@ -40,7 +40,9 @@ symbol size  the size LLD prints beside the symbol; where a map prints none
 statics      GNU ld lists only global symbols. A `static` function or object
              compiled with `-ffunction-sections -fdata-sections` still has a
              section GCC named after it (`.bss.rx_buffer`), and an input section
-             that lists no symbol is read as that one.
+             that lists no symbol is read as that one -- a clone GCC made of a
+             function (`.text.uart_rx.constprop.0`, `.part.0`, `.isra.0`) as
+             the function it was cloned from.
 names        Rust's legacy mangling (`_ZN...17h<hash>E`) is demangled and the
              hash dropped, so a symbol reads as the path it was compiled from;
              a v0-mangled symbol is read as the linker demangled it (LLD does),
@@ -228,10 +230,14 @@ _GNU_SECTION = re.compile(rf"^(\S+)?\s+({_HEX})\s+({_HEX})(?:\s+load address\s+(
 _GNU_INPUT = re.compile(rf"^ (\S+)?\s+({_HEX})\s+({_HEX})\s+(\S.*)$")
 _GNU_SYMBOL = re.compile(rf"^\s+({_HEX})\s+([^=\s][^=]*?)\s*$")
 # The section GCC gives a function or object under -ffunction-sections and
-# -fdata-sections: `.text.uart_read`, `.bss.rx_buffer`, `.text.startup.main`.
+# -fdata-sections: `.text.uart_read`, `.bss.rx_buffer`, `.text.startup.main`,
+# and a clone GCC made of a function -- constant-propagated, split off, with
+# its arguments replaced (`.text.uart_rx.constprop.0`, `.part.0`, `.isra.0`) --
+# which is that function's bytes.
 _OWNED_SECTION = re.compile(r"^\.(?:text|rodata|data|bss|sdata|sbss|tdata|tbss)\."
                             r"(?:(?:startup|unlikely|hot|exit)\.)?"
-                            r"(?!(?:startup|unlikely|hot|exit)$)([A-Za-z_]\w*)$")
+                            r"(?!(?:startup|unlikely|hot|exit)$)([A-Za-z_]\w*)"
+                            r"(?:\.(?:constprop|isra|part|lto_priv|cold|localalias)(?:\.\d+)?)*$")
 # A script's data statement (`LONG(0x12345678)`): its bytes, not a symbol.
 _GNU_DATA = re.compile(rf"^\s+{_HEX}\s+{_HEX}\s+(?:BYTE|SHORT|LONG|QUAD|SQUAD)\s")
 # GNU ld starts each part of its map at column 0; the words anywhere else (a

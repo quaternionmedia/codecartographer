@@ -647,10 +647,17 @@ class TestRealGnu:
 
 @pytest.mark.parametrize("section, named", [
     (".bss.rx_buffer", "rx_buffer"), (".text.startup.main", "main"), (".text.unlikely.fault", "fault"),
-    (".rodata.str1.1", None), (".text.unlikely", None), (".text", None)])
+    # The clones GCC makes under -Os and -O2 -- constant-propagated, split,
+    # with scalar-replaced arguments -- are the function they were cloned from.
+    (".text.uart_rx.constprop.0", "uart_rx"), (".text.crc_step.part.0", "crc_step"),
+    (".text.filter.isra.0", "filter"), (".text.parse.isra.0.constprop.0", "parse"),
+    (".text.unlikely.fault.part.0", "fault"), (".text.tick.lto_priv.0", "tick"),
+    (".rodata.str1.1", None), (".text.unlikely", None), (".text", None), (".text.foo.bar", None)])
 def test_which_input_sections_name_a_static(section, named):
     """A merged-string section and GCC's own subsections name no object.
-    Mutation: let the name run on past a dot -- `str1.1` is read as one."""
+    Mutation: let the name run on past a dot -- `str1.1` is read as one.
+    Mutation: allow no clone suffix -- `.text.uart_rx.constprop.0` names
+    nothing, a cloned static gets no bytes, and this fails."""
     text = ("Memory Configuration\n\nName             Origin             Length             Attributes\n"
             "FLASH            0x08000000         0x00080000         xr\n\n"
             "Linker script and memory map\n\n"
