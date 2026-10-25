@@ -7,6 +7,7 @@ workspace with a HAL crate, a `no_std` binary and a host tool that builds C.
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -88,6 +89,14 @@ class TestTokenize:
         assert ("punct", '"') in [(t.kind, t.text) for t in toks]
         assert tokenize("/* open forever fn f() {}") == []
 
+    def test_a_shebang_is_not_an_inner_attribute_or_an_item(self):
+        """`#!/usr/bin/env ..` is not `#![..]`. Read as an unknown item, it
+        skipped to the next block and took the first function with it.
+        Mutation: drop the shebang skip -- `main` is lost."""
+        items, inner = read_items("#!/usr/bin/env rust-script\nfn main() {}\n")
+        assert [(i.name, i.line) for i in items] == [("main", 2)] and inner == []
+        assert read_items("#! [no_std]\nfn main() {}")[1] == ["no_std"]
+
 
 # ── Items ─────────────────────────────────────────────────────────────────────
 
@@ -135,6 +144,33 @@ class TestItems:
         assert (items[0].trait, items[0].self_type) == ("From", "Wrapper")
         assert items[0].label == "impl From for Wrapper"
 
+    def test_a_const_generic_block_is_not_the_body(self):
+        """`Buf<{ N }>` holds a brace inside angle brackets, and the search for
+        the body took it for the body: the impl's methods and the function's
+        calls were lost. Mutation: search for the body with angles off."""
+        graph = parse("fn helper() {}\n"
+                      "fn make() -> Buf<{ 4 }> { helper(); }\n"
+                      "impl<const N: usize> Buf<{ N }> { fn len(&self) -> usize { N } }")
+        assert ("make", "helper") in edges(graph, "calls")
+        assert ("impl Buf", "len") in edges(graph, "contains")
+
+    def test_an_angle_that_never_closes_costs_only_its_item(self):
+        """Searching for the body angle-aware, a `<` that never closes carries
+        the search to the end of the file. Mutation: drop the fallback to the
+        first `{` -- `after` is swallowed."""
+        assert items_by_kind("fn broken() -> Foo< { }\nfn after() {}")["function"] == ["broken", "after"]
+
+    def test_two_items_alike_on_one_line_are_two_nodes(self):
+        """An id carries the line, so two `impl S` on one line shared one, and
+        the second overwrote the first, method and all. Mutation: drop the
+        `#n` suffix -- one impl and one method remain."""
+        graph = parse("struct S;\nimpl S { fn a() {} } impl S { fn a() {} }")
+        impls = [n for n, d in graph.nodes(data=True) if d.get("kind") == "impl"]
+        assert len(impls) == 2
+        for impl in impls:
+            assert [graph.nodes[v]["label"] for v in graph.successors(impl)
+                    if graph.nodes[v]["kind"] == "method"] == ["a"]
+
     def test_union_is_a_keyword_only_before_a_name(self):
         assert "union" not in items_by_kind("fn union() {}\nstatic union: u8 = 0;")
         assert items_by_kind("union U { a: u8 }")["union"] == ["U"]
@@ -143,6 +179,14 @@ class TestItems:
         graph = parse("pub enum Mode { In = 0, Out = 1 }\npub enum Event { Rx(u8), Frame { b: u8 } }")
         assert node(graph, "enum", "Mode")["construct"] == "type.enumeration"
         assert node(graph, "enum", "Event")["construct"] == "type.sum"
+
+    def test_a_shift_in_a_discriminant_is_not_an_angle_bracket(self):
+        """A discriminant is an expression, where `<<` is a shift. Counted as
+        two angles that never closed, it held every later comma, and the enum
+        read as one variant. Mutation: split variants angle-aware."""
+        graph = parse("pub enum Irq { Rx = 1 << 0, Tx = 1 << 1, Err = 1 << 2 }")
+        assert node(graph, "enum", "Irq")["meta"]["variant_count"] == 3
+        assert node(graph, "variant", "Tx")["meta"]["type_str"] == "= 1 << 1"
 
     def test_qualifiers_attributes_and_receiver(self):
         graph = parse('''
@@ -234,6 +278,57 @@ class TestRelations:
         graph = parse(self.SRC)
         assert "memory.volatile" in node(graph, "method", "write")["meta"]["facets"]
 
+    def test_self_in_a_trait_default_method_is_the_trait(self):
+        """A trait has no self type, and `Self::init()` in its default method
+        looked up an empty name and was counted unresolved. Mutation: resolve
+        `Self` by the owner's self type alone."""
+        graph = parse("pub trait Driver { fn init(); fn reset() { Self::init(); } }")
+        assert ("reset", "init") in edges(graph, "calls")
+        assert node(graph, "method", "reset")["meta"]["calls_unresolved"] == 0
+
+
+# ── Across files ──────────────────────────────────────────────────────────────
+
+
+def parse_tree(sources: dict[str, str]):
+    files = [File(name=Path(path).name, url=path, raw=src) for path, src in sources.items()]
+    return RustLanguageParser().parse_files(files, depth=3)
+
+
+def file_relations(graph, kind: str) -> dict[tuple[str, str], str | None]:
+    return {(src, dst): attrs.get("resolution")
+            for src, dst, attrs in graph.graph["file_relations"] if attrs["kind"] == kind}
+
+
+class TestAcrossFiles:
+    def test_a_use_inside_an_inline_module_is_read_from_that_module(self):
+        """`mod tests { use super::*; }` in `src/a.rs` names `a`, not the crate
+        root. Read from the file's module, every file with the test idiom
+        depended on its parent. Mutation: walk every `use` from the file's
+        module -- `a.rs -> lib.rs` comes back."""
+        graph = parse_tree({
+            "src/lib.rs": "mod a;\nmod b;\n",
+            "src/a.rs": "pub fn f() {}\n#[cfg(test)]\nmod tests { use super::*; use crate::b::Thing; }\n",
+            "src/b.rs": "pub struct Thing;\n",
+        })
+        assert file_relations(graph, "depends_on") == {("src/a.rs", "src/b.rs"): "module-tree"}
+
+    def test_a_declaration_says_how_it_was_resolved(self):
+        graph = parse_tree({"src/lib.rs": "mod a;\n", "src/a.rs": "pub fn f() {}\n"})
+        ((_, target), resolution), = file_relations(graph, "declares").items()
+        assert (target, resolution) == ("src/a.rs", "module-tree")
+
+    def test_two_crates_with_one_directory_name_draw_nothing(self):
+        """A crate is named by its directory, and two `hal` directories made the
+        name ambiguous: the last one read won it. Mutation: keep a crate per
+        name, last wins -- `main.rs -> vendor-b/hal` is drawn."""
+        graph = parse_tree({
+            "vendor-a/hal/src/lib.rs": "pub mod gpio { pub fn set() {} }\n",
+            "vendor-b/hal/src/lib.rs": "pub mod gpio { pub fn set() {} }\n",
+            "app/src/main.rs": "use hal::gpio;\nfn main() {}\n",
+        })
+        assert [r for r in graph.graph["file_relations"] if r[0] == "app/src/main.rs"] == []
+
 
 # ── Across the workspace fixture ──────────────────────────────────────────────
 
@@ -254,8 +349,28 @@ class TestWorkspace:
     def test_registered_for_rs(self):
         assert isinstance(ParserRegistry.get(".rs"), RustLanguageParser)
 
-    def test_target_directory_is_not_walked(self, workspace_graph):
-        assert not any("/target/" in n for n in workspace_graph)
+    def test_target_directory_is_not_walked(self, tmp_path):
+        """Cargo's build output sits beside the sources, and code generated
+        into it is not the workspace's. The fixture holds no `target/`, so a
+        copy of it is given one. Mutation: drop `target` from the walker's
+        exclusions -- `generated` and the directory appear."""
+        root = tmp_path / "workspace"
+        shutil.copytree(WORKSPACE, root)
+        generated = root / "target" / "debug" / "build" / "hal-1" / "out" / "bindings.rs"
+        generated.parent.mkdir(parents=True)
+        generated.write_text("pub fn generated() {}\n", newline="\n")
+        directory = get_local_repo(str(root), extensions=[".rs", ".x"])
+        graph = UnifiedParserService.build_graph(directory, depth=3, extensions=[".rs", ".x"])
+        assert file_id(graph, "crates/hal/src/lib.rs")  # the walk did run
+        assert not [n for n in graph if "/target/" in n or n.endswith("/target")]
+        assert not [n for n, d in graph.nodes(data=True) if d.get("label") == "generated"]
+
+    def test_every_relation_says_how_it_was_resolved(self, workspace_graph):
+        """The record's rule, over all both readers draw here: an edge that
+        is not nesting carries a `resolution`."""
+        unlabelled = {d["kind"] for _, _, d in workspace_graph.edges(data=True)
+                      if d["kind"] != "contains" and "resolution" not in d}
+        assert unlabelled == set()
 
     def test_each_crate_keeps_its_own_files(self, workspace_graph):
         """`src/main.rs` exists in two crates; they are two nodes."""

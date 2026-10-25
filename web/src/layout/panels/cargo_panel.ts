@@ -18,16 +18,26 @@ import type { LayoutContext } from '../layout_context';
 import { ProblemView } from '../../features/estate/problem_view';
 import { Provenance, caveatShown } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
+import type { Draw } from '../../features/cartography/cartography_actions';
+import { FollowedDraft } from '../../features/cartography/followed_draft';
 import '../../features/estate/estate.css';
 
 export function createCargoPanel(ctx: LayoutContext): m.Component {
-  let draft = ctx.appState.state.cargoPath;
+  const plot = ctx.actions.plot.cartography;
+  // Follows `cargoPath`, which a bundled example's click sets from outside.
+  const draft = new FollowedDraft(ctx.appState.state.cargoPath);
   let features = false;
   let transitive = false;
 
   const read = () => {
-    if (!draft.trim()) return;
-    void ctx.actions.plot.loadCargoReading(draft.trim());
+    const path = draft.shown(ctx.appState.state.cargoPath).trim();
+    if (!path) return;
+    void plot.loadCargoReading(path);
+  };
+  // Remembered for a relayout as it was asked for; the canvas comes forward
+  // only when a graph reached it, never to show a cleared one over the problem.
+  const draw = (action: Draw) => {
+    void ctx.plotWith(action).then((drawn) => { if (drawn) ctx.focusDockPanel('graph'); });
   };
 
   return {
@@ -43,8 +53,8 @@ export function createCargoPanel(ctx: LayoutContext): m.Component {
           m('h4.estate-view__heading', 'Workspace'),
           m('input.cartography__input[type=text]', {
             placeholder: 'a directory holding Cargo.toml',
-            value: draft,
-            oninput: (e: Event) => { draft = (e.target as HTMLInputElement).value; },
+            value: draft.shown(state.cargoPath),
+            oninput: (e: Event) => { draft.edit((e.target as HTMLInputElement).value); },
             onkeydown: (e: KeyboardEvent) => { if (e.key === 'Enter') read(); },
           }),
           m('button.estate-view__draw', { onclick: read }, 'read'),
@@ -54,9 +64,13 @@ export function createCargoPanel(ctx: LayoutContext): m.Component {
           ? m(ProblemView, {
               problem,
               prefix: 'cargo',
+              // Repeats what failed: the read, or the draw as it was asked for.
               onRetry: () => {
+                const again = plot.cargoRetry();
                 ctx.appState.update({ cargoProblem: null });
-                read();
+                if (again?.op === 'draw') draw(again.run);
+                else if (again) void again.run();
+                else read();
               },
             })
           : null,
@@ -94,7 +108,7 @@ export function createCargoPanel(ctx: LayoutContext): m.Component {
                   ])
                 : null,
               reading.notes.map((note) => m('p.estate-view__hint', note)),
-              caveatShown(metadata, 'cargo') ? null : m('p.estate-view__hint', reading.caveat),
+              caveatShown(metadata, 'cargo', reading.caveat) ? null : m('p.estate-view__hint', reading.caveat),
               m('label.cartography__options', [
                 m('input[type=checkbox]', {
                   checked: features,
@@ -108,9 +122,7 @@ export function createCargoPanel(ctx: LayoutContext): m.Component {
                 'locked dependencies of dependencies',
               ]),
               m('button.estate-view__draw', {
-                onclick: () => void ctx
-                  .plotWith(() => ctx.actions.plot.drawCargo({ features, transitive }))
-                  .then(() => ctx.focusDockPanel('graph')),
+                onclick: () => draw(plot.cargoDraw({ features, transitive })),
               }, 'draw the workspace'),
             ])
           : !problem
