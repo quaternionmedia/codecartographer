@@ -25,11 +25,17 @@ class Spelling(BaseModel):
     """How one language writes a construct.
 
     ``tokens`` are lexicon spellings -- a test holds every one to that
-    language's lexicon, when it has one. ``note`` says what the tokens cannot,
-    including that a language has no spelling at all.
+    language's lexicon, when it has one. ``groups`` names, for a token the
+    lexicon files in more than one place, the group of the sense that spells
+    *this* construct (Rust's ``for`` is ``iteration`` in a loop and
+    ``behaviour`` in ``impl Trait for Type``); the token is drawn on that
+    group's layer, and a test requires the choice wherever there is one.
+    ``note`` says what the tokens cannot, including that a language has no
+    spelling at all.
     """
 
     tokens: List[str] = []
+    groups: Dict[str, str] = {}
     note: str = ""
 
 

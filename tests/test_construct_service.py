@@ -53,6 +53,29 @@ def test_every_spelled_token_is_in_that_languages_lexicon(language):
     assert not missing
 
 
+@pytest.mark.parametrize("language", sorted(set(LexiconService.available())))
+def test_a_token_with_several_senses_names_the_one_that_spells_the_construct(language):
+    """Rust's `for` is iteration in a loop and behaviour in `impl Trait for
+    Type`; nothing but the vocabulary can say which a construct means, and
+    without it the chrestomathy took the lowest layer of the two. Mutation:
+    drop `groups: {for: iteration}` from control.loop -- this fails and names
+    it; misspell the group -- it fails as a sense the lexicon does not have."""
+    index = LexiconService.load(language).index_by_token()
+    unnamed, unknown = [], []
+    for c in VOCABULARY.constructs:
+        spelling = c.spelled.get(language)
+        if spelling is None:
+            continue
+        for tok in spelling.tokens:
+            groups = {ctx["group"] for ctx in index.get(tok, [])}
+            if tok in spelling.groups and spelling.groups[tok] not in groups:
+                unknown.append((c.id, tok, spelling.groups[tok]))
+            elif tok not in spelling.groups and len(index.get(tok, [])) > 1:
+                unnamed.append((c.id, tok))
+        unknown += [(c.id, tok, g) for tok, g in spelling.groups.items() if tok not in spelling.tokens]
+    assert unnamed == [] and unknown == []
+
+
 def test_every_look_is_a_shape_the_canvas_draws():
     shapes = {c.look.shape for c in VOCABULARY.constructs if c.look}
     assert shapes <= construct_service.CANVAS_SHAPES
@@ -281,6 +304,38 @@ def test_the_graph_puts_the_construct_at_the_centre_and_colours_tokens_by_layer(
     rust_edge = graph.edges[root, "language:rust"]
     assert rust_edge["style"] == "dashed"
     assert "read_volatile" in graph.nodes["language:rust"]["hover"]
+
+
+def test_a_token_is_drawn_on_the_layer_of_the_sense_that_spells_the_construct():
+    """A token's colour was the lowest layer of all its senses, so a Rust loop's
+    `for` drew as Rust's layer 2, the `for` of `impl Trait for Type`. Mutation:
+    read every sense of a token again, ignoring `Spelling.groups` -- the
+    loop's `for` is 2."""
+    loop = construct_service.as_graph("control.loop").nodes["token:rust:for"]
+    implementation = construct_service.as_graph("type.implementation").nodes["token:rust:for"]
+    assert (loop["layer_ordinal"], loop["color"]) == (3, construct_service.layer_color(3))
+    assert (implementation["layer_ordinal"], implementation["color"]) == (2, construct_service.layer_color(2))
+    assert "behaviour" not in loop["hover"] and "iteration" not in implementation["hover"]
+
+
+def test_a_layer_number_is_a_rank_in_its_own_lexicon_and_the_token_names_its_layer():
+    """The number -- and so the colour -- ranks a layer within one language's
+    lexicon, not on a scale the languages share: control flow is C's keyword
+    layer 3 and Python's 0; compile-time reasoning is C's 4 and Rust's 5. So a
+    token node names its layer beside the number, in the `meta.lexicon_layers`
+    a lexicon-annotated parse node carries. Mutation: drop that meta from the
+    token nodes -- this fails."""
+    def layer(graph, node_id):
+        (context,) = graph.nodes[node_id]["meta"]["lexicon_layers"]
+        assert context["layer_ordinal"] == graph.nodes[node_id]["layer_ordinal"]
+        return context["layer_ordinal"], context["layer_name"]
+
+    loop = construct_service.as_graph("control.loop")
+    assert layer(loop, "token:c:for") == (3, "Control flow")
+    assert layer(loop, "token:python:for") == (0, "Control flow")
+    constant = construct_service.as_graph("storage.constant")
+    assert layer(constant, "token:c:const") == (4, "Compile-time reasoning & contracts")
+    assert layer(constant, "token:rust:const") == (5, "Compile-time reasoning & contracts")
 
 
 def test_a_kind_drawn_as_parsed_is_one_a_parser_on_this_branch_emits():

@@ -729,9 +729,16 @@ is a 200 with `unreadable`, `problem` and the known ids as `remedy`.
 ### GET `/lexicon/chrestomathy/{construct}/gjgf?layout=`
 
 The same reading as `GraphData`: the construct at the centre, each language
-around it (a silent one on a dashed edge, its note as the hover), tokens
-coloured by abstraction layer. `metadata.kind` is `chrestomathy`, with the
-`layers` ramp and the `caveat`.
+around it (a silent one on a dashed edge, its note as the hover), each token on
+the layer of the sense that spells this construct (Rust's `for` is iteration
+under a loop, behaviour under an implementation), coloured by that layer's
+`layer_ordinal` and naming it in `meta.lexicon_layers`. **An ordinal is a rank
+within one language's lexicon, not a scale the languages share**: Rust's keyword
+layers follow C's from 0 to 3 and its operator layers C's from 0 to 4, but
+compile-time reasoning is C's keyword layer 4 and Rust's 5, and control flow is
+Python's 0 and C's 3 -- one colour in two languages is one rank, and the layer's
+name says what it is. `metadata.kind` is `chrestomathy`, with the `layers` ramp
+and the `caveat`.
 
 
 ---

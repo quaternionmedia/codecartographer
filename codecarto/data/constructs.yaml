@@ -25,6 +25,10 @@
 #
 # `look.shape` is one of the canvas's shapes: circle, square, rectangle,
 # triangle, diamond, hexagon, or ngon (a polygon of `meta.sides` sides).
+#
+# A spelling's `groups:` names, for a token its lexicon files in more than one
+# place, the lexicon group of the sense that spells this construct; the
+# chrestomathy draws the token on that group's layer.
 
 version: 1
 
@@ -108,7 +112,7 @@ constructs:
     gloss: A block attaching behaviour to a type, separately from the type's definition.
     look: {shape: rectangle, color: "#2dd4bf"}
     spelled:
-      rust: {tokens: [impl, for], note: "impl Type { .. } adds methods; impl Trait for Type { .. } provides an interface."}
+      rust: {tokens: [impl, for], groups: {for: behaviour}, note: "impl Type { .. } adds methods; impl Trait for Type { .. } provides an interface."}
       c: {note: "None: functions are free, and belong to a type only by naming convention."}
       python: {tokens: [class], note: "Behaviour is written inside the class body, with the data."}
 
@@ -274,7 +278,7 @@ constructs:
     look: {shape: circle, color: "#94a3b8"}
     spelled:
       c: {tokens: [for, while, do]}
-      rust: {tokens: [loop, while, for]}
+      rust: {tokens: [loop, while, for], groups: {for: iteration}}
       python: {tokens: [for, while]}
 
   # ── Facets: what a node can also be ────────────────────────────────────────

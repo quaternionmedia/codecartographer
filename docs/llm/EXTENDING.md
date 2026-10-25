@@ -156,8 +156,9 @@ in `codecarto/data/constructs.yaml`:
   Rust `enum` with `c_like` is an enumeration, not a sum type).
 
 Add the language's spellings under each construct's `spelled:` -- every token
-there must be in that language's lexicon, and a language with no spelling gets
-a `note` saying how it does without. A parser may call
+there must be in that language's lexicon, a token the lexicon files in more
+than one group names the one that spells this construct under `groups:`, and a
+language with no spelling gets a `note` saying how it does without. A parser may call
 `construct_service.annotate(graph)` itself; the pipeline calls it on every parse
 regardless, and a look the parser set is never overwritten.
 

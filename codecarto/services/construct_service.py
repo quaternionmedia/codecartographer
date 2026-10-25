@@ -41,10 +41,19 @@ from codecarto.models.construct import Construct, LanguageMap, Vocabulary
 VOCABULARY = Path(__file__).resolve().parent.parent / "data" / "constructs.yaml"
 
 # Abstraction layers, machine-facing (0) to abstract, as one sequential ramp.
-# Every lexicon numbers its layers from 0, so a token on C's layer 2 and one on
-# Rust's layer 2 are the same colour -- the colour says "how far from the
-# machine", never which language. Carried on nodes as `layer_color` so the
-# canvas draws what it is sent and the ramp has one home.
+#
+# **AN ORDINAL IS A RANK IN ITS OWN LEXICON, NOT A SCALE THE LANGUAGES SHARE.**
+# Each lexicon numbers its keyword layers and its operator layers from 0, the
+# most machine-facing first, and the ramp colours that rank. Rust's keyword
+# layers follow C's from 0 to 3 (where a value lives, primitive types,
+# aggregates, control flow) and its operator layers C's from 0 to 4, so there
+# one colour is one layer in both. Past those, and in Python's lexicon
+# throughout, the same number is a different layer: compile-time reasoning is
+# C's keyword layer 4 and Rust's 5, and control flow is Python's 0. One colour
+# in two languages is one rank in each language's own hierarchy, so a node
+# names its layer beside the number (`meta.lexicon_layers`). Carried on nodes
+# as `layer_color` so the canvas draws what it is sent and the ramp has one
+# home.
 LAYER_RAMP = ("#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899")
 
 # Shapes the canvas draws distinctly (web/src/features/graph/services/node_shapes.ts).
@@ -210,6 +219,14 @@ def _facet_sources(vocabulary: Vocabulary, language: str, construct_id: str) -> 
     return found
 
 
+def _senses(spelling, token: str, index: dict[str, list[dict]]) -> list[dict]:
+    """The lexicon contexts of *token* that spell this construct: the group
+    the spelling names, where the lexicon files the token in several."""
+    contexts = index.get(token, [])
+    group = spelling.groups.get(token)
+    return [c for c in contexts if c["group"] == group] if group else contexts
+
+
 def reading(construct_id: str) -> dict[str, Any] | None:
     """One construct across every language, as rows. None when nobody named it."""
     vocabulary = load()
@@ -221,7 +238,7 @@ def reading(construct_id: str) -> dict[str, Any] | None:
         spelling = construct.spelled.get(language)
         lexicon = _lexicon(language)
         index = lexicon.index_by_token() if lexicon is not None else {}
-        tokens = [{"token": tok, "contexts": index.get(tok, [])}
+        tokens = [{"token": tok, "contexts": _senses(spelling, tok, index)}
                   for tok in (spelling.tokens if spelling else [])]
         display = _display_name(language)
         rows.append({
@@ -274,7 +291,10 @@ def caveat() -> str:
             "parser kind from what that language's parser emits; the join is "
             "codecarto/data/constructs.yaml. It compares how languages *write* a "
             "construct, not what their compilers do with it, and a language with "
-            "no spelling is drawn with its note rather than left out.")
+            "no spelling is drawn with its note rather than left out. A layer's "
+            "number, and so its colour, ranks it within one language's own "
+            "lexicon: the same colour in two languages is the same rank, not the "
+            "same distance from the machine.")
 
 
 def _source() -> str:
@@ -283,9 +303,10 @@ def _source() -> str:
 
 def as_graph(construct_id: str) -> nx.DiGraph | None:
     """The construct at the centre, each language around it, each language's
-    tokens and parser kinds around that. Tokens carry their lexicon layer and
-    are coloured by it, so the same distance from the machine reads the same
-    in every language."""
+    tokens and parser kinds around that. A token is drawn on the layer of the
+    sense that spells this construct, coloured by that layer's rank in its own
+    lexicon -- a rank, not a distance from the machine every language shares
+    (see LAYER_RAMP) -- and names the layer in `meta.lexicon_layers`."""
     found = reading(construct_id)
     if found is None:
         return None
@@ -310,13 +331,16 @@ def as_graph(construct_id: str) -> nx.DiGraph | None:
         graph.add_edge(root, lang_id, kind="spelled_in", label="spelled in",
                        style="dashed" if silent else "solid")
         for tok in row["tokens"]:
+            # One sense: a token filed in several names the one it spells
+            # here (Spelling.groups), and a test holds every such choice.
             contexts = tok["contexts"]
-            ordinal = min((c["layer_ordinal"] for c in contexts), default=-1)
+            ordinal = contexts[0]["layer_ordinal"] if contexts else -1
             where = "; ".join(sorted({f"L{c['layer_ordinal']} {c['layer_name']} · {c['group']}"
                                       for c in contexts})) or "not in this language's lexicon"
             tok_id = f"token:{language}:{tok['token']}"
             graph.add_node(tok_id, label=tok["token"], kind="token", depth=2,
                            layer_ordinal=ordinal, layer_color=layer_color(ordinal),
+                           meta={"lexicon_layers": contexts},
                            shape="circle", color=layer_color(ordinal), size=14,
                            hover=f"{tok['token']} — {where}",
                            click=f"<p><code>{tok['token']}</code></p><p>{where}</p>")
