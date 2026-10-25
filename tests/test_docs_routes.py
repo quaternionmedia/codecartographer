@@ -6,6 +6,9 @@ it describes, and each check here fails on a document that disagrees with it:
 - every prefix `codecarto.main.app` mounts appears in `docs/api.md`'s overview
   table and under one of its headings, and in `web/vite.config.js`'s
   `API_PATHS`;
+- every route a document names is mounted, unless `UNSERVED_ROUTES` names it
+  as planned, and every route the OpenAPI schema (`/docs`) leaves out is named
+  in `docs/api.md`;
 - the README is an onramp: at most `README_LINES` lines;
 - no document names the port this project no longer binds, or a test count;
 - every relative link resolves, and so does every repository path written in
@@ -15,6 +18,7 @@ it describes, and each check here fails on a document that disagrees with it:
 - every JSON envelope in `docs/api.md` has `status`, `message` and `results`;
 - every environment variable the code reads is in `docs/cli.md`'s table, and
   every one a document names is read by the code;
+- every sync a document or the code tells a reader to run is `ONE_SYNC`;
 - `docs/index.md` links every page under `docs/`;
 - the UI reference names every registered panel, and the default layout and
   the source tree agree with the registry and the dev proxy.
@@ -23,9 +27,11 @@ The application, the click tree and the code are the sources; nothing here
 keeps a list of routes, commands or variables of its own.
 
 WHAT THIS CANNOT SEE. Whether a description is right: it checks that what a
-document names exists, not that the sentence about it is true. Paths into a
-submodule are checked only where the submodule is checked out, which CI does
-not do.
+document names exists, not that the sentence about it is true. A route is read
+only where it is written after its method or `$API`, or in backticks under a
+prefix the application mounts, so a bare `/name` elsewhere is not a claim it
+checks. Paths into a submodule, and graphbase's `/db` routes, are checked only
+where the submodule is checked out, which CI does not do.
 """
 
 from __future__ import annotations
@@ -148,6 +154,30 @@ def test_api_reference_has_a_heading_for_every_mounted_prefix(prefixes):
     assert not missing, f"docs/api.md has no heading naming: {missing}"
 
 
+# FastAPI's own pages, the root redirect and the build's static files: served,
+# and not routes a reader calls.
+FRAMEWORK = {"", "docs", "redoc", "openapi.json", "assets"}
+
+
+def test_api_reference_names_every_route_the_schema_leaves_out():
+    """`/docs` lists the OpenAPI schema, which has no WebSockets and none of
+    the routes kept out of it; `serve --help` sends a reader to `docs/api.md`
+    for those."""
+    from codecarto.main import app
+
+    schema = set(app.openapi()["paths"])
+    left_out = sorted({path.rstrip("/") for route in app.routes
+                       if (path := getattr(route, "path", "")) not in schema
+                       and path.strip("/").split("/")[0] not in FRAMEWORK})
+    assert left_out, "the schema has every route; serve --help's sentence is stale"
+    api = (ROOT / "docs" / "api.md").read_text(encoding="utf-8")
+    named = {p.rstrip("/") for p in re.findall(r"`(?:[A-Z]+ )?(/[^`\s?]*)", api)}
+    missing = [p for p in left_out if p not in named]
+    assert not missing, (
+        f"/docs does not list these and docs/api.md does not name them, so a "
+        f"reader of either cannot find them: {missing}")
+
+
 def test_dev_server_proxies_every_mounted_prefix(prefixes):
     """A prefix absent from `API_PATHS` is a request Vite answers itself."""
     config = (ROOT / "web" / "vite.config.js").read_text(encoding="utf-8")
@@ -156,6 +186,101 @@ def test_dev_server_proxies_every_mounted_prefix(prefixes):
     listed = set(re.findall(r"'(/[^']*)'", block.group(1)))
     missing = sorted(p for p in prefixes if p not in listed)
     assert not missing, f"web/vite.config.js API_PATHS lacks: {missing}"
+
+
+# A document names a route when it writes one after its method or after `$API`,
+# fenced or not, or in backticks in prose with a first segment the application
+# mounts. `{name}` and `<name>` are a parameter; a trailing `*` or `...` is
+# everything under the path before it.
+METHOD_ROUTE = re.compile(
+    r"\b(?:GET|POST|PUT|PATCH|DELETE|WebSocket)\s+`?(/[A-Za-z][^\s`|)\"',]*)")
+API_ROUTE = re.compile(r"\$API(/[A-Za-z][^\s`|)\"',]*)")
+SPAN_ROUTE = re.compile(r"`(/[A-Za-z][^`\s]*)`")
+
+# Routes a document names that nothing mounts, each for a stated reason.
+UNSERVED_ROUTES = {
+    "/parse/repo": "planned in docs/llm/LARGE_REPOS.md, Phase 4",
+    "/parse/job": "planned in docs/llm/LARGE_REPOS.md, Phase 5",
+    "/parse/job/{id}/ws": "planned in docs/llm/LARGE_REPOS.md, Phase 5",
+}
+
+
+def _segments(path: str) -> tuple[str, ...]:
+    path = re.split(r"[?#]", path)[0].rstrip(".,:;")
+    return tuple(path.strip("/").split("/"))
+
+
+def _parameter(segment: str) -> bool:
+    return segment[:1] in "{<" and segment[-1:] in "}>"
+
+
+def _mounted_routes() -> tuple[list[tuple[str, ...]], bool]:
+    """Every path the application serves, as segments, and whether graphbase's
+    are among them. Those mount under `/db` only with `MONGODB_URI`, so they
+    are read from graphbase's router, where the submodule is checked out."""
+    from codecarto.main import app
+
+    paths = [getattr(route, "path", "") or "" for route in app.routes]
+    try:
+        from graphbase import graphdb
+    except Exception:  # not checked out, as in CI
+        graphbase = False
+    else:
+        paths += [f"/db{route.path}" for route in graphdb.routes]
+        graphbase = True
+    return [_segments(p) for p in paths if p.strip("/")], graphbase
+
+
+def _serves(mounted: list[tuple[str, ...]], written: tuple[str, ...]) -> bool:
+    """A route is mounted at `written`, or under it."""
+    if written[-1] in ("*", "..."):
+        written = written[:-1]
+    return any(len(route) >= len(written)
+               and all(w == r or _parameter(r) for w, r in zip(written, route))
+               for route in mounted)
+
+
+def _route_mentions(first_segments: set[str]):
+    """(document, line, the route as written) for every route a document names."""
+    for path in DOCUMENTS:
+        for number, line, fenced in _prose_lines(path):
+            found = METHOD_ROUTE.findall(line) + API_ROUTE.findall(line)
+            if not fenced:
+                found += [s for s in SPAN_ROUTE.findall(line)
+                          if _segments(s)[0] in first_segments]
+            for written in dict.fromkeys(found):
+                yield path, number, written
+
+
+def test_every_route_a_document_names_is_mounted():
+    mounted, graphbase = _mounted_routes()
+    unserved = {_segments(p) for p in UNSERVED_ROUTES}
+    wrong = []
+    for path, number, written in _route_mentions({r[0] for r in mounted}):
+        segments = _segments(written)
+        if segments in unserved or (segments[0] == "db" and not graphbase):
+            continue
+        if not _serves(mounted, segments):
+            wrong.append(f"{_rel(path)}:{number}: {written}")
+    assert not wrong, (
+        "these documents name routes nothing mounts; repair them, or name a "
+        f"planned one in UNSERVED_ROUTES with the reason: {wrong}")
+
+
+def test_the_route_reader_sees_routes():
+    """The reader finds routes written each way, so a green result is not an
+    empty one."""
+    mounted, _ = _mounted_routes()
+    seen = {w for _, _, w in _route_mentions({r[0] for r in mounted})}
+    assert {"/parse/unified", "/pam/ws/live", "/lexicon/{language}/graph",
+            "/c-parser/cache/git-git"} <= seen, sorted(seen)
+
+
+def test_unserved_routes_are_still_unserved():
+    """An allowance for a route that has since been mounted is a stale exemption."""
+    mounted, _ = _mounted_routes()
+    served = sorted(p for p in UNSERVED_ROUTES if _serves(mounted, _segments(p)))
+    assert not served, f"UNSERVED_ROUTES exempts routes that are mounted: {served}"
 
 
 def test_no_document_names_the_port_this_project_no_longer_binds():
@@ -479,6 +604,63 @@ def test_every_variable_a_document_names_is_read_by_the_code():
             stale += [f"{_rel(path)}:{number}: {v}" for v in OURS.findall(line)
                       if v not in read]
     assert not stale, f"documents name variables nothing reads: {stale}"
+
+
+# ── The environment ──────────────────────────────────────────────────────────
+
+# The environment is uv.lock with both extras. A sync without `--locked` may
+# rewrite the lockfile; one without `dev` uninstalls pytest and ruff; one
+# without `c-parsing` uninstalls libclang, after which C files draw empty.
+ONE_SYNC = "uv sync --locked --extra dev --extra c-parsing"
+SYNC = re.compile(r"\buv\s+sync\b([^`\"'#|;)\n]*)")
+CODE = ("codecarto", "scripts", "tests", "web")
+
+
+def _code_files() -> list[Path]:
+    """Every tracked file under `CODE`; outside a git checkout, every file
+    there that is not a dependency, a build or a cache."""
+    try:
+        listing = subprocess.run(
+            ["git", "ls-files", "--", *CODE], cwd=ROOT,
+            capture_output=True, text=True, check=True).stdout
+        return sorted(ROOT / name for name in listing.splitlines())
+    except (OSError, subprocess.CalledProcessError):
+        skip = {"node_modules", "dist", "dist-pure", "__pycache__"}
+        return sorted(p for d in CODE for p in (ROOT / d).rglob("*")
+                      if p.is_file() and not skip & set(p.relative_to(ROOT).parts))
+
+
+def _sync_hints():
+    """(file, line, what follows the command) for every sync a document or
+    the code tells a reader to run, fenced or not."""
+    for path in [*DOCUMENTS, *_code_files()]:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            for written in SYNC.findall(line):
+                yield path, number, written
+
+
+def _missing_from_the_one_sync(written: str) -> list[str]:
+    tokens = written.split()
+    extras = {tokens[i + 1] for i, t in enumerate(tokens[:-1]) if t == "--extra"}
+    extras |= {t.split("=", 1)[1] for t in tokens if t.startswith("--extra=")}
+    missing = [] if "--locked" in tokens else ["--locked"]
+    return missing + [f"--extra {e}" for e in ("dev", "c-parsing") if e not in extras]
+
+
+def test_every_sync_a_reader_is_told_to_run_is_the_one_sync():
+    hints = list(_sync_hints())
+    assert {"codecarto/cli.py", "docs/cli.md"} <= {_rel(p) for p, _, _ in hints}, (
+        "the reader found no sync in the lint hint or its document; its pattern is stale")
+    wrong = [f"{_rel(path)}:{number}: lacks {', '.join(missing)}"
+             for path, number, written in hints
+             if (missing := _missing_from_the_one_sync(written))]
+    assert not wrong, (
+        f"a reader who runs these leaves the environment short of the lockfile; "
+        f"each is to be `{ONE_SYNC}`: {wrong}")
 
 
 # ── The index ────────────────────────────────────────────────────────────────

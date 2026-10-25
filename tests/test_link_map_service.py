@@ -581,7 +581,7 @@ def test_generic_instances_and_closures_are_their_items_bytes(tmp_path):
 REAL_GNU = FIXTURES / "linkmaps" / "sensor-c-gnu.map"
 SENSOR = FIXTURES / "linkmaps" / "sensor-c"
 requires_libclang = pytest.mark.skipif(importlib.util.find_spec("clang") is None,
-                                       reason="libclang not installed — install with: uv sync --extra c-parsing")
+                                       reason="libclang not installed — install with: uv sync --locked --extra dev --extra c-parsing")
 
 
 class TestRealGnu:

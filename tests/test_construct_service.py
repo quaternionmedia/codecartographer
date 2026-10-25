@@ -236,7 +236,7 @@ _HAS_LIBCLANG = __import__("importlib").util.find_spec("clang") is not None
 
 
 @pytest.mark.skipif(not _HAS_LIBCLANG,
-                    reason="libclang not installed — install with: uv sync --extra c-parsing")
+                    reason="libclang not installed — install with: uv sync --locked --extra dev --extra c-parsing")
 def test_the_c_parser_says_which_variables_are_locals():
     """End to end through libclang: what the stamp above reads is what the C
     parser states. Mutation: stop marking block-scope variables in
