@@ -21,7 +21,10 @@ panel that is not in the layout, closed ones included, and under *Layout*
 offers *Save current as default* and *Reset to built-in default*. A panel it
 adds joins the stack whose tab was last clicked, or else the stack holding the
 most panels, and never the Graph panel's own stack while another stack exists,
-so the canvas stays in view.
+so the canvas stays in view. The menu takes the focus when it opens, so a
+keyboard reader is on its first item; closed with the focus inside it --
+Escape, or one of its items -- it gives the focus back to `+`, and a click
+outside it leaves the focus where that click put it.
 
 A panel also comes forward when something loads data for it:
 
@@ -32,10 +35,13 @@ A panel also comes forward when something loads data for it:
   Graph panel to the front when they have drawn.
 
 **A saved layout** is kept in the browser (`localStorage`, key
-`cc:gl-layout:default`). One that names a window this version does not have is
-dropped, a toast says which, and the default loads. A layout saved with the
-Upload, Repository and Actions windows loads with the Open window in their
-place.
+`cc:gl-layout:default`). Its windows are read wherever Golden Layout reads
+them: the layout's root, or a legacy layout's `content[0]`, and every open
+popout's, a popout's own popouts included. One that names a window this version
+does not have is dropped, a toast says which, and the default loads. A layout
+saved with the Upload, Repository and Actions windows loads with the Open window
+in their place; it is saved back so, and a toast says once which windows became
+Open.
 
 ## Panels
 
@@ -66,8 +72,9 @@ Where a graph starts. From top to bottom on the left:
   its tooltip says how much of the repository is drawn.
 - **Local files**: drop them on the box or click it to browse. They are listed
   in the Files panel.
-- **Demo and lexicons**: ⚡ Load Demo draws a sample graph, and each language
-  with a lexicon has a 📖 button that draws it.
+- **Demo and lexicons**: ⚡ Load Demo draws a sample graph, CodeCartographer's
+  own source, from one `POST /plotter/demo` answer rather than a stream; each
+  language with a lexicon has a 📖 button that draws it.
 
 On the right:
 
@@ -152,9 +159,19 @@ none. **draw the construct** draws it.
 Id `file-tree`. In the default arrangement.
 
 The loaded repository's tree, and the added files. Click a file to draw that
-file alone. In a large repository a folder marked … has not been read; click it
-to read it, or **⊞ Expand All** to read them all. With nothing loaded, it points
-at the Open panel.
+file alone. With nothing loaded, it points at the Open panel.
+
+In a large repository a folder marked … has not been read; click it to read
+it. It shows ↻ while it is read. A read that fails ends the ↻, leaves the folder
+marked …, and says so in a toast; the next click reads it again. Several
+folders can be read at once, each answer put into the tree as it comes.
+**⊞ Expand All** reads every folder three levels down, and says in a toast that
+it has begun, and again if it fails; a folder below that, or one GitHub would
+not list, stays marked … and reads on a click. The tree it builds is shown,
+though its root holds only folders. Every read is of the repository the tree
+shows, whatever the Open panel's URL field has been typed to since, and an
+answer that comes after another repository was fetched is dropped. A read
+leaves the plot bar's ⏹ Cancel and progress to the stream they belong to.
 
 ### Graphbase
 
