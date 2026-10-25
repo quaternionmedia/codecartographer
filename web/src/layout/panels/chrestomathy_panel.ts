@@ -75,7 +75,7 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
         readGraph = state.graphData;
         shown = '';
         if (state.graphData && metadata?.kind !== 'chrestomathy') {
-          void ctx.actions.plot.loadCensus(ctx.canvasNodes());
+          void plot.loadCensus(ctx.canvasNodes());
         }
       }
       const census = state.chrestomathyCensus;

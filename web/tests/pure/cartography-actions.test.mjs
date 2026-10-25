@@ -51,9 +51,10 @@ function harness() {
     cargoPath: '', cargoReading: null, cargoProblem: null,
     constructIndex: null, constructIndexProblem: null, constructChosen: 'type.product',
     chrestomathyReading: null, chrestomathyProblem: null, graphData: null,
+    chrestomathyCensus: null, censusProblem: null,
   };
-  const asked = { cargoData: [], cargoGraph: [], constructs: [], chrestomathy: [], chrestomathyGraph: [] };
-  const waiting = { cargoData: [], cargoGraph: [], constructs: [], chrestomathy: [], chrestomathyGraph: [] };
+  const asked = { cargoData: [], cargoGraph: [], constructs: [], chrestomathy: [], chrestomathyGraph: [], census: [] };
+  const waiting = { cargoData: [], cargoGraph: [], constructs: [], chrestomathy: [], chrestomathyGraph: [], census: [] };
   const plotted = [];
   const route = (name) => (...args) => {
     asked[name].push(args);
@@ -73,6 +74,7 @@ function harness() {
     constructs: route('constructs'),
     chrestomathy: route('chrestomathy'),
     chrestomathyGraph: route('chrestomathyGraph'),
+    census: route('census'),
   });
   return {
     actions,
@@ -301,4 +303,50 @@ test('after a failed chrestomathy draw, "try again" draws that construct again',
   assert.equal(again.op, 'draw');
   void again.run();
   assert.equal(h.asked.chrestomathyGraph[1][0], 'type.product');
+});
+
+// --- the census of the canvas -------------------------------------------------
+
+/** A `/lexicon/chrestomathy/census` answer, as much of one as the panel reads. */
+const census = (graphName, construct) => ({
+  nodes: 1,
+  constructs: [{ id: construct, name: construct, gloss: '', facet: false, look: null, count: 1,
+                 languages: [{ language: 'rust', display_name: 'Rust', count: 1 }], ids: [`${graphName}:n`] }],
+  facets: [], walk: [], not_constructs: [], unplaced: [], outside: [], unknown: [], unlabelled: 0,
+  source: '', caveat: '', graph: graphName,
+});
+
+test("a late census of an earlier graph is not shown for the graph drawn since", async () => {
+  /**
+   * The crate graph is drawn, then a code map: the panel asks for each one's
+   * census, and the crate graph's answering last showed Package under the
+   * code map. Mutation: drop the ticket check in `loadCensus` -- this fails.
+   */
+  const h = harness();
+  const a = h.actions.loadCensus([{ id: 'crate::a', language: 'cargo', kind: 'crate' }]);
+  const b = h.actions.loadCensus([{ id: 'src::f', language: 'rust', kind: 'function' }]);
+  await h.answer('census', 1, ok(census('code map', 'callable.function')));
+  await h.answer('census', 0, ok(census('crate graph', 'namespace.package')));
+  await Promise.all([a, b]);
+  assert.equal(h.state.chrestomathyCensus.graph, 'code map');
+  assert.deepEqual(h.state.chrestomathyCensus.constructs.map((r) => r.id), ['callable.function']);
+});
+
+test('a census replaces the one before it, and is sent each node with what places it', async () => {
+  /** A stamped node goes with its stamp; an unstamped one with its whole `meta`. */
+  const h = harness();
+  const read = h.actions.loadCensus([
+    { id: 's', language: 'rust', kind: 'struct', construct: 'type.product', meta: { facets: ['memory.unsafe'], x: 1 } },
+    { id: 'u', language: 'c', kind: 'variable', meta: { automatic: true } },
+  ]);
+  assert.deepEqual(h.asked.census[0][0], [
+    { id: 's', language: 'rust', kind: 'struct', construct: 'type.product', meta: { facets: ['memory.unsafe'] } },
+    { id: 'u', language: 'c', kind: 'variable', construct: undefined, meta: { automatic: true } },
+  ]);
+  await h.answer('census', 0, ok({ ...census('one', 'type.product'), outside: [{ language: 'javascript', count: 3 }] }));
+  await read;
+  const again = h.actions.loadCensus([]);
+  await h.answer('census', 1, ok(census('two', 'callable.function')));
+  await again;
+  assert.deepEqual(h.state.chrestomathyCensus.outside, [], "one graph's gaps are not carried into the next");
 });

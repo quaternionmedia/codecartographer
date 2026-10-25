@@ -51,6 +51,7 @@ export class PlotActions {
         chrestomathy: (construct) => CartographyService.chrestomathy(controller.api.lexicon, construct),
         chrestomathyGraph: (construct, layout) =>
           CartographyService.chrestomathyGraph(controller.api.lexicon, construct, layout),
+        census: (nodes) => CartographyService.census(controller.api.lexicon, nodes),
       },
     );
   }
@@ -631,28 +632,7 @@ export class PlotActions {
   // The same four outcomes and the same two fields per reading as the estate
   // above, sequenced in `cartography_actions.ts` -- pure, and tested under
   // `node --test` -- through `this.cartography`, which the constructor hands
-  // the state, the canvas and the routes.
-
-  /**
-   * The chrestomathy of the graph on the canvas: which constructs its nodes
-   * are, in which languages. A stamped node is sent with its stamp; one that
-   * arrived without one is sent with its whole `meta`, so the server's one
-   * rule can place it -- the client never decides a construct.
-   */
-  async loadCensus(nodes: ReadonlyArray<Record<string, unknown>>): Promise<void> {
-    const sent = nodes.map((n) => {
-      const meta = n.meta && typeof n.meta === 'object' ? (n.meta as Record<string, unknown>) : {};
-      return {
-        id: n.id,
-        language: n.language,
-        kind: n.kind,
-        construct: n.construct,
-        meta: typeof n.construct === 'string' ? { facets: meta.facets } : meta,
-      };
-    });
-    const found = await CartographyService.census(this.stateController.api.lexicon, sent);
-    this._settle(found, 'chrestomathyCensus', 'censusProblem');
-  }
+  // the state, the canvas and the routes -- the census of the canvas too.
 
   private _layout(): string {
     return convertLayoutToBackend(this.stateController.state.graphStyling.layout);
@@ -661,8 +641,8 @@ export class PlotActions {
   /** Put a document in one field and clear the other, or the reverse (`settlePatch`). */
   private _settle(
     found: SeamOutcome,
-    readingField: 'capabilitiesReading' | 'overviewReading' | 'chrestomathyCensus',
-    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'censusProblem',
+    readingField: 'capabilitiesReading' | 'overviewReading',
+    problemField: 'capabilitiesProblem' | 'overviewProblem',
   ): void {
     if (isProblem(found)) logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
     this.stateController.update(settlePatch(found, readingField, problemField) as Patch<ICellState>);
