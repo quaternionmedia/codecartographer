@@ -30,6 +30,8 @@ it describes, and each check here fails on a document that disagrees with it:
   open and move a ring, as the code binds them;
 - the default layout and the source tree agree with the registry and the dev
   proxy;
+- every fenced Python example parses, and every `async def` in one awaits
+  something;
 - every statement of the graph cache key names the schema version
   `cache_service._make_key` hashes with the url, mode, layout and extensions;
 - the caches section says what evicting a GitHub repository from either cache
@@ -53,9 +55,11 @@ where the submodule is checked out, which CI does not do.
 
 from __future__ import annotations
 
+import ast
 import functools
 import re
 import subprocess
+import textwrap
 from pathlib import Path
 
 import click
@@ -1105,6 +1109,54 @@ def test_the_api_reference_says_the_errors_the_envelope_does_not_carry():
     assert invalid.status_code == 422 and isinstance(invalid.json().get("detail"), list)
     assert '{"detail": "Not Found"}' in reference, "api.md does not show an unknown route's 404"
     assert re.search(r"^\| 422 \|", reference, re.M), "api.md's error table has no 422 row"
+
+
+# ── Examples ─────────────────────────────────────────────────────────────────
+
+
+def _python_examples(path: Path):
+    """(first line number, source) for each fenced Python block of a document."""
+    language, lines, start = None, [], 0
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        fence = line.lstrip()
+        if language is None and fence.startswith("```"):
+            language, lines, start = fence[3:].strip().lower(), [], number + 1
+        elif language is not None and fence.startswith("```"):
+            if language in ("python", "py"):
+                yield start, textwrap.dedent("\n".join(lines))
+            language = None
+        elif language is not None:
+            lines.append(line)
+
+
+def test_no_example_async_def_awaits_nothing():
+    """FastAPI runs an `async def` route on the event loop, so one whose body
+    awaits nothing runs all of it there and holds up every other request until
+    it returns. A template is what a new route is copied from, and the route
+    and service templates showed exactly that. Every `async def` in a fenced
+    Python example awaits something. Mutation: put `async` back on
+    `my_endpoint` in `docs/extending.md` -- this fails naming it."""
+    functions, wrong = 0, []
+    for path in DOCUMENTS:
+        for start, source in _python_examples(path):
+            try:
+                tree = ast.parse(source)
+            except SyntaxError as error:
+                wrong.append(f"{_rel(path)}:{start}: does not parse ({error.msg})")
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                functions += 1
+                awaits = any(isinstance(inner, (ast.Await, ast.AsyncFor, ast.AsyncWith))
+                             for inner in ast.walk(node))
+                if isinstance(node, ast.AsyncFunctionDef) and not awaits:
+                    wrong.append(f"{_rel(path)}:{start + node.lineno - 1}: "
+                                 f"async def {node.name} awaits nothing")
+    assert functions, "the reader found no function in a Python example; its pattern is stale"
+    assert not wrong, (
+        f"these examples run their whole body on the event loop; write a plain "
+        f"`def`, or await the slow call through `run_in_threadpool`: {wrong}")
 
 
 # ── Statements the code can hold ─────────────────────────────────────────────
