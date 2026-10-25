@@ -15,13 +15,20 @@ and the corpus, from the seam `playwright.config.ts` hands the backend, and
 `.gitmodules` from the job that fetches the corpus. A list in this file would
 be one more copy to go stale.
 
+**A SKIP ON A RUNNER IS A TEST THAT CANNOT FAIL THERE.** The moat replay test
+skips when no `moat` clone sits beside the backend, and a runner never has
+one, so the run reported it as skipped among the passes on every pull request.
+A browser test that can skip is left out of the run by name, where the
+workflow says why, so the summary counts only tests that ran.
+
 Seen red before trusted: against the filter this branch had, the path test
 failed naming `docs`, `examples`, `governance/qm` and `tests/fixtures/...`;
-with each entry since added dropped in turn, it fails naming that one.
+with each entry since added dropped in turn, it fails naming that one. The
+skip test failed on the run step this branch had, which excluded nothing.
 
-WHAT THIS CANNOT SEE. A path a spec reaches some other way than these: a
-click on a bundled example other than `examples/`, or a request to a route
-that reads a file nothing here names.
+WHAT THIS CANNOT SEE. A path a spec reaches some other way than these, such as
+a route that reads a file nothing here names; and a skip in a test the specs
+spell some other way than `test.skip(` in its own body.
 """
 
 from __future__ import annotations
@@ -117,6 +124,26 @@ def _changes_to(path: str) -> list[str]:
     return [f"{path}/added", f"{path}/a/b/added"]
 
 
+def _browser_tests() -> dict[str, bool]:
+    """Every browser test's title, and whether its body calls `test.skip(`."""
+    found = {}
+    for spec in sorted(E2E.glob("*.spec.ts")):
+        text = spec.read_text(encoding="utf-8")
+        heads = list(re.finditer(r"\btest\(\s*(['\"`])(.+?)\1", text))
+        for here, after in zip(heads, [*heads[1:], None]):
+            body = text[here.end():after.start() if after else len(text)]
+            found[here.group(2)] = "test.skip(" in body
+    return found
+
+
+def _browser_run() -> str:
+    """The one step of the e2e job that runs the browser suite."""
+    runs = [str(step["run"]) for step in _workflow()["jobs"]["e2e"]["steps"]
+            if "test:e2e" in str(step.get("run", ""))]
+    assert len(runs) == 1, f"the e2e job should run test:e2e once, not {runs}"
+    return runs[0]
+
+
 def test_the_matcher_reads_a_filter_as_github_does():
     assert _starts_the_workflow("web/src/a.ts", ["web/**"])
     assert not _starts_the_workflow("webx/a.ts", ["web/**"])
@@ -141,3 +168,17 @@ def test_every_path_the_browser_suite_reads_starts_the_workflow():
     assert not missing, (
         f"web.yml's pull_request paths leave out what the browser suite reads, "
         f"so a change to these runs no browser: {missing}")
+
+
+def test_a_browser_test_that_can_skip_is_left_out_by_name_not_counted_as_a_skip():
+    tests = _browser_tests()
+    skipping = sorted(title for title, skips in tests.items() if skips)
+    # The premise: the test the review found skipping on every runner.
+    assert "moat is derived from its clone and replays real history" in skipping, skipping
+    inverted = [quoted[1:-1] for quoted in
+                re.findall(r"--grep-invert[= ](\"[^\"]*\"|'[^']*')", _browser_run())]
+    left_out = sorted(title for title in tests
+                      if any(re.search(pattern, title) for pattern in inverted))
+    assert left_out == skipping, (
+        f"the e2e run should leave out by name exactly the browser tests that "
+        f"can skip, {skipping}, and leaves out {left_out}")

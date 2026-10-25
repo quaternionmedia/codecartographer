@@ -9,7 +9,9 @@ name: Web
 #
 # `test:families` is not run here: it reads families.json from a qm clone
 # beside this one (web/tests/families/reachable.test.mjs), which a runner does
-# not have, so every case would skip and the check would enforce nothing.
+# not have, so every case would skip and the check would enforce nothing. The
+# browser suite's moat replay is left out of `e2e` by name for the same reason;
+# tests/test_web_workflow.py fails on a browser test that can skip and is not.
 #
 # Not a seed file. This is the project's own workflow and is free to change.
 
@@ -104,9 +106,13 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
-      - name: Run the browser suite
+      # Less the moat replay, by name: it replays the history of a moat clone
+      # beside the backend (web/tests/e2e/system-monitor.spec.ts), a runner has
+      # none, and it would skip -- one more line in the summary that nothing
+      # here can turn red. It runs where a moat clone sits beside this one.
+      - name: Run the browser suite, less the moat replay
         working-directory: web
-        run: npm run test:e2e
+        run: npm run test:e2e -- --grep-invert "moat is derived from its clone"
 
       - name: Keep the report of a failed run
         if: failure()
