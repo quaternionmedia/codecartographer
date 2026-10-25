@@ -618,7 +618,11 @@ def cargo_read(path: str, as_json: bool):
 
     from codecarto.services import cargo_service
 
-    reading = cargo_service.read(path)
+    try:
+        reading = cargo_service.read(path)
+    except Exception as error:  # a reader that raised is a sentence here, never a traceback
+        click.secho(f"✗ reading {path} stopped on something the reader did not expect: {error}", fg="red")
+        raise SystemExit(1)
     if not reading.ok:
         click.secho(f"✗ {reading.reason}", fg="red")
         raise SystemExit(1)
@@ -658,15 +662,20 @@ def cargo_read(path: str, as_json: bool):
 @click.option("--timeout", default=600, show_default=True, help="Seconds each cargo command may take")
 def cargo_record(path: str, all_targets: bool, online: bool, timeout: int):
     """
-    Run cargo in PATH and write what it says to PATH/target/codecarto/.
+    Run cargo in PATH and write what it says to the workspace's target/codecarto/.
 
     \b
     This RUNS THE WORKSPACE'S CODE: `cargo check` compiles build scripts and
     proc macros and executes them. Run it on a workspace you would build. The
     window itself never runs cargo; it reads the two files this writes:
 
-        metadata.json   cargo metadata --format-version 1
-        check.jsonl     cargo check --workspace --message-format=json
+        metadata.json   cargo metadata --format-version 1 --locked
+        check.jsonl     cargo check --workspace --message-format=json --locked
+
+    \b
+    They go under the workspace root cargo names -- PATH's own, or the one
+    above a member crate -- and nothing else is written: `--locked` keeps
+    cargo from rewriting Cargo.lock.
     """
     import shutil
 
@@ -680,14 +689,17 @@ def cargo_record(path: str, all_targets: bool, online: bool, timeout: int):
         raise SystemExit(1)
 
     root = Path(path).resolve()
+    if not (root / "Cargo.toml").is_file():
+        click.secho(f"✗ no Cargo.toml in {root}, so there is no workspace to record and "
+                    f"nothing was run. Name a workspace root or a crate as PATH.", fg="red")
+        raise SystemExit(1)
     out = root / cargo_service.DOCUMENTS
-    out.mkdir(parents=True, exist_ok=True)
     offline = [] if online else ["--offline"]
     steps = [
         (cargo_service.METADATA_DOCUMENT,
-         [cargo_bin, "metadata", "--format-version", "1", *offline]),
+         [cargo_bin, "metadata", "--format-version", "1", "--locked", *offline]),
         (cargo_service.CHECK_DOCUMENT,
-         [cargo_bin, "check", "--workspace", "--message-format=json", *offline,
+         [cargo_bin, "check", "--workspace", "--message-format=json", "--locked", *offline,
           *(["--all-targets"] if all_targets else [])]),
     ]
     failed = False
@@ -696,26 +708,75 @@ def cargo_record(path: str, all_targets: bool, online: bool, timeout: int):
         try:
             result = subprocess.run(command, cwd=root, capture_output=True, text=True,
                                     timeout=timeout, encoding="utf-8", errors="replace")
-            stdout, code = result.stdout, result.returncode
+            stdout, stderr, code = result.stdout, result.stderr or "", result.returncode
         except subprocess.TimeoutExpired as expired:
             # A bound that fires is reported: what arrived is kept, and said to be partial.
             stdout = (expired.stdout or b"").decode("utf-8", "replace") \
                 if isinstance(expired.stdout, bytes) else (expired.stdout or "")
-            code = None
+            stderr, code = "", None
+        if name == cargo_service.METADATA_DOCUMENT:
+            out = _workspace_documents(stdout, root, cargo_service.DOCUMENTS)
+            if out.parent.parent != root:
+                click.echo(f"  cargo answered for the workspace at {out.parent.parent}; "
+                           f"both documents go there, where reading it looks")
+        out.mkdir(parents=True, exist_ok=True)
         (out / name).write_text(stdout, encoding="utf-8")
+        written = (out / name).as_posix() if out.parent.parent != root \
+            else (out / name).relative_to(root).as_posix()
         if code is None:
             failed = True
             click.secho(f"  ✗ did not finish in {timeout}s; {name} holds only what arrived", fg="red")
         elif code != 0 and name == cargo_service.METADATA_DOCUMENT:
             failed = True
-            click.secho(f"  ✗ exited {code}: {result.stderr.strip().splitlines()[-1] if result.stderr.strip() else ''}",
-                        fg="red")
+            click.secho(f"  ✗ exited {code}: {_cargo_said(stderr)}", fg="red")
+        elif name == cargo_service.CHECK_DOCUMENT and not _check_finished(stdout):
+            # Stopped before compiling -- a dependency it could not fetch, a
+            # lockfile `--locked` would not let it write: no diagnostics here
+            # is not a clean build, and the reader says so too.
+            failed = True
+            click.secho(f"  ✗ cargo stopped before checking anything (exited {code}): "
+                        f"{_cargo_said(stderr)}", fg="red")
         else:
             # A failing check still wrote its diagnostics, which is what it is for.
-            click.secho(f"  ✓ wrote {(out / name).relative_to(root).as_posix()}"
-                        + (f" (cargo exited {code})" if code else ""), fg="green")
+            click.secho(f"  ✓ wrote {written}" + (f" (cargo exited {code})" if code else ""), fg="green")
+        if code and "--locked" in stderr:
+            click.echo("  Cargo.lock is missing or out of date, and record does not rewrite it: "
+                       "run `cargo generate-lockfile` or `cargo update` yourself, then record again.")
     if failed:
         raise SystemExit(1)
+
+
+def _workspace_documents(metadata: str, root: Path, documents: Path) -> Path:
+    """Where the window looks for what cargo said about PATH: the
+    target/codecarto/ of the workspace root cargo names, which is above PATH
+    when PATH is a member crate; PATH's own when cargo named none."""
+    import json
+
+    try:
+        found = json.loads(metadata).get("workspace_root")
+    except (ValueError, AttributeError):
+        found = None
+    return (Path(found).resolve() if found else root) / documents
+
+
+def _check_finished(stdout: str) -> bool:
+    """Whether cargo got as far as reporting the check's outcome."""
+    import json
+
+    for line in stdout.splitlines():
+        if line.startswith("{") and "build-finished" in line:
+            try:
+                if json.loads(line).get("reason") == "build-finished":
+                    return True
+            except ValueError:
+                continue
+    return False
+
+
+def _cargo_said(stderr: str) -> str:
+    """cargo's first error line, or its last line."""
+    lines = [line.strip() for line in stderr.splitlines() if line.strip()]
+    return next((line for line in lines if line.startswith("error")), lines[-1] if lines else "")
 
 
 def _format_size(size_bytes: int) -> str:

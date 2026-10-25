@@ -9,8 +9,9 @@ radial menu as a code map.
 
 - `/cargo/gjgf?path=` -- crates, their targets, dependencies, native libraries
   and device targets, as `GraphData`. `features=true` adds each crate's
-  features and what they enable; `transitive=true` adds the lockfile's
-  dependencies of dependencies.
+  features and what they enable; `transitive=true` adds dependencies of
+  dependencies -- cargo's resolution's when `metadata.json` answered, the
+  lockfile's otherwise, and each edge says which.
 - `/cargo/data?path=` -- the reading itself, without a layout: packages,
   dependencies with their kind and condition, the recorded diagnostics,
   build-script facts and which documents were read, so this window's answer
@@ -55,7 +56,11 @@ def _read(path: str):
     if not path.strip():
         return None, _unreadable("no path was given, so there is no workspace to read",
                                  "/cargo?path=")
-    reading = cargo_service.read(path.strip())
+    try:
+        reading = cargo_service.read(path.strip())
+    except Exception as error:  # a reader that raised is a sentence here, never a 500
+        return None, _unreadable(f"reading {path.strip()} stopped on something the reader "
+                                 f"did not expect: {error}", path)
     if not reading.ok:
         return None, _unreadable(reading.reason, path)
     return reading, None
