@@ -19,17 +19,20 @@ import { ProblemView } from '../../features/estate/problem_view';
 import { Provenance, caveatShown } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import type { Draw } from '../../features/cartography/cartography_actions';
+import { FollowedDraft } from '../../features/cartography/followed_draft';
 import '../../features/estate/estate.css';
 
 export function createCargoPanel(ctx: LayoutContext): m.Component {
   const plot = ctx.actions.plot.cartography;
-  let draft = ctx.appState.state.cargoPath;
+  // Follows `cargoPath`, which a bundled example's click sets from outside.
+  const draft = new FollowedDraft(ctx.appState.state.cargoPath);
   let features = false;
   let transitive = false;
 
   const read = () => {
-    if (!draft.trim()) return;
-    void plot.loadCargoReading(draft.trim());
+    const path = draft.shown(ctx.appState.state.cargoPath).trim();
+    if (!path) return;
+    void plot.loadCargoReading(path);
   };
   // Remembered for a relayout as it was asked for; the canvas comes forward
   // only when a graph reached it, never to show a cleared one over the problem.
@@ -50,8 +53,8 @@ export function createCargoPanel(ctx: LayoutContext): m.Component {
           m('h4.estate-view__heading', 'Workspace'),
           m('input.cartography__input[type=text]', {
             placeholder: 'a directory holding Cargo.toml',
-            value: draft,
-            oninput: (e: Event) => { draft = (e.target as HTMLInputElement).value; },
+            value: draft.shown(state.cargoPath),
+            oninput: (e: Event) => { draft.edit((e.target as HTMLInputElement).value); },
             onkeydown: (e: KeyboardEvent) => { if (e.key === 'Enter') read(); },
           }),
           m('button.estate-view__draw', { onclick: read }, 'read'),

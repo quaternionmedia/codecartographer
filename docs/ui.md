@@ -169,7 +169,8 @@ commit of each clone, so a second drawing asks git nothing.
 Id `cargo-panel`. Opens from the `+` menu, or comes forward with a bundled
 Cargo example.
 
-Name a workspace (a directory holding `Cargo.toml`) and **read** it: which
+Name a workspace (a directory holding `Cargo.toml`) and **read** it -- the
+field follows the workspace shown, so a bundled example's click fills it: which
 engine read it, its crates and targets, the documents a recorded build left and
 whether each is current, and the device target. Running
 `codecarto cargo record <path>` in the workspace first adds cargo's own
