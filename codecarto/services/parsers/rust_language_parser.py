@@ -21,10 +21,12 @@ contains     item -> its fields, variants, methods, associated items, and the
 declares     `mod foo;` -> the file it names (`foo.rs` or `foo/mod.rs`, or a
              `#[path]`). Exact for files present in the batch.
 depends_on   file -> file, from `use` paths walked through the module tree the
-             `mod` declarations build; file -> external crate otherwise. A
+             `mod` declarations build, each from the module it sits in (an
+             inline `mod` block's own); file -> external crate otherwise. A
              workspace crate is recognised by its directory name, which is
              right when the directory and the package agree and is said to be
-             a guess in the edge's `resolution`.
+             a guess in the edge's `resolution`; a name two crates' directories
+             share draws nothing.
 implements   `impl Trait for T` -> `Trait`, when exactly one local trait has
              that name.
 extends      `impl [Trait for] T` -> `T`, when exactly one local type has that
@@ -50,7 +52,8 @@ reach the file node's `meta` through the pipeline's `file_meta` hook.
 Node ID format
 --------------
 ``rust::{file}::{kind}::{qualified name}::{line}`` -- ``file`` is the File's
-``url`` or ``name``, so two crates' ``src/lib.rs`` never share an id.
+``url`` or ``name``, so two crates' ``src/lib.rs`` never share an id. A second
+item of one kind and name on one line takes ``#2`` after its line, and so on.
 """
 
 from __future__ import annotations
@@ -98,16 +101,22 @@ _TOKEN = re.compile(
     re.VERBOSE | re.DOTALL,
 )
 
+# `#!` opening a file is a shebang unless a `[` follows: `#![no_std]` is an
+# inner attribute, `#!/usr/bin/env rust-script` is not Rust at all.
+_SHEBANG = re.compile(r"#!(?!\s*\[)[^\n]*")
+
 
 def tokenize(src: str) -> list[Tok]:
-    """Rust source -> tokens. Comments are dropped, outer doc lines kept.
+    """Rust source -> tokens. Comments and a shebang line are dropped, outer
+    doc lines kept.
 
     Total on any input: a quote that never closes becomes one punct token and
     reading carries on after it; an unterminated block comment or raw string
     runs to the end of the text.
     """
     toks: list[Tok] = []
-    pos, n, line = 0, len(src), 1
+    shebang = _SHEBANG.match(src)
+    pos, n, line = shebang.end() if shebang else 0, len(src), 1
     while pos < n:
         m = _TOKEN.match(src, pos)
         if m is None:  # unterminated string literal, or a lone quote
@@ -301,6 +310,16 @@ class _Reader:
                 return i
             i += 1
         return end
+
+    def body_start(self, i: int, end: int) -> int:
+        """The `{` or `;` that ends a signature or an impl header from *i*.
+
+        Angle-aware, so the block of a const generic argument (`Buf<{ N }>`)
+        is not taken for the body: a header is all type positions. A `<` that
+        never closes would carry that search to *end*, so then the first `{`
+        or `;` is taken, and broken code costs one item, not the file."""
+        k = self.until(i, end, {"{", ";"}, angles=True)
+        return k if k < end else self.until(i, end, {"{", ";"})
 
     def joined(self, i: int, j: int, limit: int = 96) -> str:
         """Tokens [i, j) as compact source text, cut at *limit* characters."""
@@ -529,19 +548,21 @@ class _Reader:
                     params = params[1:]
             item.param_count = len(params)
             j = pclose + 1
-        body = self.until(j, end, {"{", ";"})
+        body = self.body_start(j, end)
         if self.text(body) == "{":
             close = self.group_end(body)
             self.read_body(item, body + 1, close)
             return item, close
         return item, body
 
-    def split_commas(self, i: int, j: int) -> list[tuple[int, int]]:
-        """Top-level comma-separated spans in [i, j), angle-aware."""
+    def split_commas(self, i: int, j: int, angles: bool = True) -> list[tuple[int, int]]:
+        """Top-level comma-separated spans in [i, j), angle-aware unless
+        *angles* is off -- as it is between enum variants, whose
+        discriminants are expressions and `1 << 2` a shift."""
         spans: list[tuple[int, int]] = []
         start = i
         while i < j:
-            k = self.until(i, j, {","}, angles=True)
+            k = self.until(i, j, {","}, angles=angles)
             if k > start:
                 spans.append((start, k))
             i = start = k + 1
@@ -657,7 +678,7 @@ class _Reader:
         if self.text(brace) != "{":
             return item, brace
         close = self.group_end(brace)
-        for a, b in self.split_commas(brace + 1, close):
+        for a, b in self.split_commas(brace + 1, close, angles=False):
             a = self.skip_attrs(a, b)
             if self.kind(a) != "ident":
                 continue
@@ -718,7 +739,7 @@ class _Reader:
         j = i + 1
         if self.text(j) == "<":
             j = self.skip_generics(j)
-        brace = self.until(j, end, {"{", ";"})
+        brace = self.body_start(j, end)
         header_end = self.until(j, brace, {"where"}, angles=True)
         # The `for` that separates trait from type is the first one at depth 0
         # that is not a higher-ranked `for<'a>`.
@@ -839,6 +860,7 @@ class RustLanguageParser:
 
     language: ClassVar[str] = "rust"
     extensions: ClassVar[list[str]] = [".rs"]
+    kinds: ClassVar[tuple[str, ...]] = KINDS
 
     # Whole tree at once: `mod` declarations, `use` paths and calls cross files.
     batch_whole_tree: ClassVar[bool] = True
@@ -878,7 +900,8 @@ class RustLanguageParser:
         for item, target in declares:
             node_id = index.node_of.get(id(item))
             if node_id:
-                relations.append((node_id, original_key[target], {"kind": "declares"}))
+                relations.append((node_id, original_key[target],
+                                  {"kind": "declares", "resolution": "module-tree"}))
         for src, dst, attrs in self._dependencies(parsed, modules, original_key):
             if dst.startswith("external::") and dst not in graph:
                 graph.add_node(dst, **make_node(
@@ -902,7 +925,11 @@ class RustLanguageParser:
             if level > depth:
                 return
             qualified = f"{prefix}{item.name}" if item.name else f"{prefix}{item.kind}"
-            node_id = f"rust::{file}::{item.kind}::{qualified}::{item.line}"
+            base = node_id = f"rust::{file}::{item.kind}::{qualified}::{item.line}"
+            seen = 1
+            while node_id in graph:  # `impl S {..} impl S {..}` on one line
+                seen += 1
+                node_id = f"{base}#{seen}"
             meta: dict = {
                 "qualifiers": item.qualifiers,
                 "visibility": item.visibility,
@@ -988,16 +1015,19 @@ class RustLanguageParser:
     def _dependencies(self, parsed: dict[str, tuple[list[Item], list[str]]],
                       modules: dict[str, _Module], original_key: dict[str, str]
                       ) -> list[tuple[str, str, dict]]:
-        crates: dict[str, _Module] = {}
+        # Two library crates in directories of one name make that name
+        # ambiguous, and an ambiguous name draws nothing -- not even an
+        # external crate, which it is not.
+        by_name: dict[str, list[_Module]] = {}
         for key, module in modules.items():
             name = crate_name_for(key) if module.path == ("crate",) else ""
             if name and _basename(key) == "lib.rs":
-                crates[name] = module
+                by_name.setdefault(name, []).append(module)
+        crates = {name: found[0] for name, found in by_name.items() if len(found) == 1}
 
         edges: dict[tuple[str, str], dict] = {}
         for key, (items, _) in parsed.items():
-            here = modules.get(key)
-            for item in _walk(items):
+            for item, here in _in_modules(items, modules.get(key)):
                 for path in item.use_paths:
                     target, resolution = _resolve_use(path, here, crates)
                     if target is None:
@@ -1005,7 +1035,7 @@ class RustLanguageParser:
                         # A capitalised head is a type or a variant in scope
                         # (`use Color::*`), never a crate by convention.
                         if not first or first in ("crate", "self", "super") or first[:1].isupper() or (
-                                here and first in here.children):
+                                here and first in here.children) or first in by_name:
                             continue
                         dest = f"external::crate::{first}"
                         attrs = {"kind": "depends_on", "resolution": "external",
@@ -1048,7 +1078,10 @@ class RustLanguageParser:
                 target = None
                 if form == "path":
                     if len(segs) >= 2 and (segs[-2] == "Self" or segs[-2][:1].isupper()):
-                        self_type = owner.self_type if (segs[-2] == "Self" and owner is not None) else segs[-2]
+                        # In a trait, `Self` is the implementor; what it names
+                        # is the trait's own item, keyed by the trait's name.
+                        self_type = (owner.self_type or owner.name) if (
+                            segs[-2] == "Self" and owner is not None) else segs[-2]
                         target = index.associated(self_type, segs[-1])
                     else:
                         target = index.unique("fn", segs[-1])
@@ -1065,10 +1098,17 @@ class RustLanguageParser:
                 graph.nodes[node_id]["meta"]["calls_unresolved"] = unresolved
 
 
-def _walk(items: Iterable[Item]) -> Iterable[Item]:
+def _in_modules(items: Iterable[Item], here: _Module | None
+                ) -> Iterable[tuple[Item, _Module | None]]:
+    """Every item, with the module it sits in. An inline `mod` block's items
+    sit in that module, so `mod tests { use super::*; }` names the file's own
+    module, not its parent."""
     for item in items:
-        yield item
-        yield from _walk(item.children)
+        yield item, here
+        inner = here
+        if item.kind == "module" and item.mod_inline:
+            inner = here.children.get(item.name) if here is not None else None
+        yield from _in_modules(item.children, inner)
 
 
 def _resolve_use(path: list[str], here: _Module | None, crates: dict[str, _Module]

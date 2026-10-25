@@ -31,7 +31,9 @@
   "include": [
     "src/features/graph/extensions/legend_marks.ts",
     "src/features/graph/services/node_shapes.ts",
+    "src/features/graph/services/vis_look.ts",
     "src/features/estate/seam_client.ts",
+    "src/features/estate/provenance_shown.ts",
     "src/features/graph/services/layout_names.ts",
     "src/features/graph/services/node_info.ts",
     "src/features/graph/services/renderer_controls.ts",
@@ -40,6 +42,9 @@
     "src/features/graph/services/outline_labels.ts",
     "src/features/examples/examples.ts",
     "src/features/cartography/chrestomathy_rows.ts",
-    "src/layout/saved_layout.ts"
+    "src/layout/saved_layout.ts",
+    "src/features/graph/services/parse_notes.ts",
+    "src/features/cartography/cartography_actions.ts",
+    "src/features/cartography/followed_draft.ts"
   ]
 }

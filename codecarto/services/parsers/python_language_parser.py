@@ -7,7 +7,7 @@ Wraps PythonCustomAST and converts its output to the unified node schema.
 Node schema mapping
 -------------------
 AST type     → unified kind    depth
-Module       → 'module'        1
+Module       → (not emitted: the walk's file node stands for it)
 Class        → 'class'         2
 Function     → 'function'      2
 Import       → 'import'        2
@@ -52,8 +52,21 @@ _TYPE_MAP: dict[str, tuple[str, int]] = {
 }
 
 
+# The AST's Module root is never emitted -- see `_convert` for why.
+_SKIPPED_TYPES = frozenset({"Module"})
+_FALLBACK_KIND = "symbol"
+
+# Every `kind` this adapter can emit. `constructs.yaml` maps each one, or says
+# why it is not a construct, and a test holds the two to each other in both
+# directions.
+KINDS = tuple(sorted(
+    {kind for ast_type, (kind, _) in _TYPE_MAP.items() if ast_type not in _SKIPPED_TYPES}
+    | {_FALLBACK_KIND}
+))
+
+
 def _ast_type_to_kind_depth(ast_type: str) -> tuple[str, int]:
-    return _TYPE_MAP.get(ast_type, ("symbol", 3))
+    return _TYPE_MAP.get(ast_type, (_FALLBACK_KIND, 3))
 
 
 def extract_python_imports(raw: str) -> list[str]:
@@ -115,6 +128,7 @@ class PythonLanguageParser:
 
     language: ClassVar[str] = "python"
     extensions: ClassVar[list[str]] = [".py"]
+    kinds: ClassVar[tuple[str, ...]] = KINDS
 
     def parse_files(self, files: list[File], depth: int = 2) -> nx.DiGraph:
         """Parse Python files and return a unified-schema graph.
@@ -162,7 +176,7 @@ class PythonLanguageParser:
             # its direct children (classes/functions/imports) surface as
             # in-degree-0 roots, which _merge_subgraph already connects
             # straight to the real file node.
-            if ast_type == "Module":
+            if ast_type in _SKIPPED_TYPES:
                 continue
 
             kind, node_depth = _ast_type_to_kind_depth(ast_type)
