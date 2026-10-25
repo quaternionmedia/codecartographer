@@ -176,6 +176,19 @@ language that writes it -- and is offered disabled on a node the vocabulary did
 not place. *Info* says the node's name, its parser's kind, its construct and
 facets, and where it is, every time it is used.
 
+*Source* and a double-click on a node open the same place, on the same rule:
+
+| The node | View ▸ Source and a double-click |
+|---|---|
+| A file or symbol from a GitHub repository | The file's page on GitHub in a new tab, at the symbol's line; a file, and a Python symbol, whose parser records no line, open at the top |
+| A file or symbol from a local checkout or an upload | A badge beside the node, for a few seconds, naming the file's path and the line |
+| A node that names no file, such as a directory | Source is offered disabled; a double-click zooms the canvas in, as it does off the nodes |
+
+A C symbol names its file only by the file's stem and a Python symbol by
+`module.py`; both are opened where the file node they are drawn inside says
+the file is. `node_info.sourceTarget` decides where, `npm run test:pure` holds
+it, and `streaming_renderer.openSource` opens it for both routes.
+
 \* Shown but **disabled**: node positions come from the backend layout and
 there is no force simulation to toggle. They keep their wedges so the other
 items do not shift position between states. **A capability the host lacks is
