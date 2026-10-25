@@ -2,7 +2,8 @@
 
 The estate and topology routes ask other servers -- the harness, the corpus's
 neighbours -- and wait up to a timeout when nobody answers. The plotter routes
-parse this project's own source or render a figure, which takes seconds. FastAPI
+parse this project's own source or render a figure, and the capability and
+overview routes read a file and lay it out, which takes seconds. FastAPI
 runs an `async def` route on the event loop, so a blocking call inside one
 stalls every other request until it returns. These tests make the slow part
 slow and check that a cheap route answers in the meantime.
@@ -18,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import threading
 import time
+from types import SimpleNamespace
 
 import gravis
 import httpx
@@ -25,7 +27,8 @@ import pytest
 
 from codecarto.main import app
 from codecarto.routers import plotter_router
-from codecarto.services import estate_service, qmcp_client
+from codecarto.services import (capability_service, estate_service, overview_service,
+                                 qmcp_client)
 from codecarto.services.unified_parser_service import UnifiedParserService
 
 SLOW = 0.8
@@ -72,6 +75,13 @@ def _nothing(*_args, **_kwargs) -> None:
     return None
 
 
+def _slow_reading(*_args, **_kwargs) -> SimpleNamespace:
+    """A registry or overview read that takes SLOW and finds nothing to draw."""
+    _waiting.set()
+    time.sleep(SLOW)
+    return SimpleNamespace(ok=False, reason="slow test reading", source="none: a test")
+
+
 async def _cheap_while(slow_path: str, body: dict | None = None) -> tuple[float, int]:
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -115,6 +125,12 @@ _RENDER = {"graph_data": {"graph": {"nodes": {}, "edges": []}}, "options": {}}
     ("/plotter/demo", _DEMO, [(plotter_router, "get_local_repo", _nothing),
                               (UnifiedParserService, "parse", _slow_parse)]),
     ("/plotter/render/html", _RENDER, [(gravis, "d3", _slow_figure)]),
+    # Each reads a file, parses it and lays it out; the first Kamada-Kawai
+    # layout also imports scipy, 2.27s measured.
+    ("/capabilities/gjgf", None, [(capability_service, "read", _slow_reading)]),
+    ("/capabilities/data", None, [(capability_service, "read", _slow_reading)]),
+    ("/overview/gjgf", None, [(overview_service, "read", _slow_reading)]),
+    ("/overview/data", None, [(overview_service, "read", _slow_reading)]),
 ])
 def test_slow_work_does_not_hold_up_a_cheap_route(monkeypatch, slow_path, body, patches):
     for target, name, stand_in in patches:
