@@ -68,10 +68,15 @@ browser or a test framework:
 ```
 
 ```json
-"test:rad": "npm run lint:rad && npm run build:rad && node --test tests/rad/"
+"test:rad": "npm run lint:rad && npm run build:rad && node scripts/node-test.mjs tests/rad"
 ```
 
-`node --test` has shipped since Node 18. The whole suite runs in ~100 ms.
+`node --test` has shipped since Node 18, but give it files, not the directory:
+Node 20 runs a directory it is given, and Node 22 reads the directory as a
+module path and fails with `Cannot find module`. A glob works on 22 and not on
+20, and npm on Windows runs scripts through cmd, which expands nothing.
+[`web/scripts/node-test.mjs`](../../web/scripts/node-test.mjs) hands it the
+suite's test files by name. The whole suite runs in ~100 ms.
 
 Three practical notes:
 
