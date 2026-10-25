@@ -9,6 +9,8 @@ import type { Network } from 'vis-network';
 import type { DataSet } from 'vis-data';
 import { IGraphRenderer } from './base_renderer';
 import { GraphData, GraphNode, GraphEdge } from './graph_types';
+import { nodePath } from './node_shapes';
+import { visLook } from './vis_look';
 import { GraphStylingOptions } from '../../../state/types';
 import { logger } from '../../../core/logger';
 
@@ -212,17 +214,19 @@ export class GravisGraphRenderer implements IGraphRenderer {
     const nodeColorOverride = styling?.nodeColorOverride;
 
     nodes.forEach((node: GraphNode) => {
-      const baseColor = nodeColorOverride || node.color;
+      const look = visLook(node, styling?.colorBy);
+      const baseColor = nodeColorOverride || look.color;
       const colorWithOpacity = this.applyOpacity(baseColor, nodeOpacity);
 
       const visNode: Record<string, unknown> = {
         id: node.id,
         label: node.label || node.id,
         title: node.label || node.id, // Tooltip
-        shape: this.convertNodeShape(node.shape),
+        shape: look.shape,
         x: node.x,
         y: node.y
       };
+      if (look.path) visNode.ctxRenderer = this.drawnShape(look.path, styling);
 
       if (colorWithOpacity) {
         visNode.color = {
@@ -263,21 +267,42 @@ export class GravisGraphRenderer implements IGraphRenderer {
   }
 
   /**
-   * Convert node shape from gJGF to vis-network format
+   * vis-network's `custom` shape for one it does not draw itself: the D3
+   * canvas's `nodePath`, filled and stroked as vis-network styled it, with the
+   * label drawn beneath as its `dot` draws one. A custom shape draws no label
+   * of its own, so without the second half every record would be nameless.
    */
-  private convertNodeShape(shape?: string): string {
-    if (!shape) return 'dot';
-
-    const mapping: Record<string, string> = {
-      'circle': 'dot',
-      'square': 'square',
-      'triangle': 'triangle',
-      'diamond': 'diamond',
-      'hexagon': 'hexagon',
-      'star': 'star'
+  private drawnShape(path: { shape: string; sides?: number }, styling?: GraphStylingOptions) {
+    const showLabels = styling?.showNodeLabels ?? true;
+    const labelSize = styling?.labelSize || 11;
+    const labelColor = styling?.labelColor || '#00ff41';
+    return ({ ctx, x, y, style, label }: {
+      ctx: CanvasRenderingContext2D; x: number; y: number;
+      style: { size: number; color: string; borderColor: string; borderWidth: number };
+      label?: string;
+    }) => {
+      const r = style.size;
+      return {
+        drawNode: () => {
+          ctx.translate(x, y);
+          const outline = new Path2D(nodePath(path.shape, r, path.sides));
+          ctx.fillStyle = style.color;
+          ctx.fill(outline);
+          ctx.lineWidth = style.borderWidth;
+          ctx.strokeStyle = style.borderColor;
+          ctx.stroke(outline);
+        },
+        drawExternalLabel: () => {
+          if (!showLabels || !label) return;
+          ctx.font = `${labelSize}px Consolas, Monaco, monospace`;
+          ctx.fillStyle = labelColor;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(label, x, y + r + 4);
+        },
+        nodeDimensions: { width: 2 * r, height: 2 * r },
+      };
     };
-
-    return mapping[shape.toLowerCase()] || 'dot';
   }
 
   /**

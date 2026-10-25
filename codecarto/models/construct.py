@@ -25,11 +25,17 @@ class Spelling(BaseModel):
     """How one language writes a construct.
 
     ``tokens`` are lexicon spellings -- a test holds every one to that
-    language's lexicon, when it has one. ``note`` says what the tokens cannot,
-    including that a language has no spelling at all.
+    language's lexicon, when it has one. ``groups`` names, for a token the
+    lexicon files in more than one place, the group of the sense that spells
+    *this* construct (Rust's ``for`` is ``iteration`` in a loop and
+    ``behaviour`` in ``impl Trait for Type``); the token is drawn on that
+    group's layer, and a test requires the choice wherever there is one.
+    ``note`` says what the tokens cannot, including that a language has no
+    spelling at all.
     """
 
     tokens: List[str] = []
+    groups: Dict[str, str] = {}
     note: str = ""
 
 
@@ -61,7 +67,17 @@ class Refinement(BaseModel):
 
 
 class LanguageMap(BaseModel):
+    """One language's parser kinds and facet sources, against the constructs.
+
+    ``kinds`` and ``not_constructs`` together name every kind the language's
+    parsers can emit, and nothing else: a kind is a construct, or it is listed
+    with the reason it is not one (an expression inside a body, say, is what
+    code does rather than a thing it declares). A node of a kind listed there
+    carries no ``construct``.
+    """
+
     kinds: Dict[str, str] = {}
+    not_constructs: Dict[str, str] = {}
     refine: List[Refinement] = []
     qualifiers: Dict[str, str] = {}
     attributes: Dict[str, str] = {}
@@ -70,9 +86,20 @@ class LanguageMap(BaseModel):
 
 
 class Vocabulary(BaseModel):
+    """``languages`` are the languages codecarto parses: each is a row of every
+    construct's chrestomathy, and its kinds are held to its parsers. ``graphs``
+    are graphs a service draws that are no language's parse -- the crate graph
+    -- mapped the same way so their nodes are placed, but no row of any
+    chrestomathy: nothing is written in them to set beside the languages."""
+
     version: int
     constructs: List[Construct]
     languages: Dict[str, LanguageMap] = {}
+    graphs: Dict[str, LanguageMap] = {}
 
     def get(self, construct_id: str) -> Optional[Construct]:
         return next((c for c in self.constructs if c.id == construct_id), None)
+
+    def mapping(self, name: str) -> Optional[LanguageMap]:
+        """The kinds of a language, or of a graph that is no language's parse."""
+        return self.languages.get(name) or self.graphs.get(name)

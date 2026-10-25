@@ -83,8 +83,9 @@ test('the crate graph is coloured by what each node is', async ({ page }) => {
   await page.locator('select.panel-settings__select', { has: page.locator('option[value="construct"]') })
     .selectOption('construct');
   // A crate is a package, the colour every package is in every language.
-  // Mutation: drop the renderer's construct branch -- the fill stays the
-  // crate graph's own and this fails.
+  // Mutation: drop the construct branch from `paintedColor`, which the
+  // renderer and the key share -- the fill stays the crate graph's own and
+  // this fails.
   await expect(hal).toHaveAttribute('fill', '#6d28d9');
   expect(own).not.toBe('#6d28d9');
 
