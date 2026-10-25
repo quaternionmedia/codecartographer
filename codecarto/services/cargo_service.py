@@ -278,27 +278,37 @@ def read(path: Path | str, documents: Path | str | None = None) -> Reading:
 
     check_doc = _read_check(reading, docs_dir, root)
     reading.documents.append(check_doc)
-    for map_path in sorted(docs_dir.glob("*.map")) if docs_dir.is_dir() else []:
-        reading.documents.append(_read_map(reading, map_path, docs_dir, root))
+    maps = sorted(docs_dir.glob("*.map")) if docs_dir.is_dir() else []
+    if maps:
+        from codecarto.services import link_map_service
+
+        newest_input = link_map_service.newest_input(root)
+        for map_path in maps:
+            reading.documents.append(_read_map(reading, map_path, docs_dir, root, newest_input))
     reading.firmware = _firmware(root, reading, memory_maps, toml)
     return reading
 
 
-def _read_map(reading: Reading, map_path: Path, docs_dir: Path, root: Path) -> Document:
+def _read_map(reading: Reading, map_path: Path, docs_dir: Path, root: Path,
+              newest_input: float) -> Document:
     """A recorded link map, measured against the regions its binary links into.
 
     The binary is the map's name (`blinky.map` is the `blinky` bin target);
     its regions are the map's own memory table when the linker printed one
     (GNU ld), else the `memory.x` beside the package that owns the binary. A
-    map older than a source is not used, as a stale resolution is not: it
-    measured a build that is no longer the one in the tree."""
+    map older than *newest_input* -- `link_map_service.newest_input`, the
+    newest source, linker script or manifest, by the rule the code map judges
+    the same map by -- is not used, as a stale resolution is not: it measured a
+    build that is no longer the one in the tree. Not `newest_source`, which
+    makes `check.jsonl` stale: a linker script changes what the link writes,
+    and not what rustc says."""
     from codecarto.services import link_map_service
 
-    doc = _document(docs_dir, map_path.name, reading.newest_source, root)
+    doc = _document(docs_dir, map_path.name, newest_input, root)
     if doc.stale:
-        doc.problem = (f"linked before a source last changed, so its figures are not used; "
-                       f"record again (`{RECORD_COMMAND} <path> --map {map_path.stem}`) to measure "
-                       f"the build in the tree")
+        doc.problem = (f"linked before a source, linker script or manifest last changed, so its "
+                       f"figures are not used; record again (`{RECORD_COMMAND} <path> --map "
+                       f"{map_path.stem}`) to measure the build in the tree")
         return doc
     link_map = link_map_service.read(map_path)
     if not link_map.ok:
