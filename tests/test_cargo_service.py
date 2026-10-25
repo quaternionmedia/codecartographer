@@ -378,6 +378,18 @@ def test_a_recorded_map_measures_its_binary(tmp_path):
     assert "blinky's memory use is its linker map" in cargo_service.caveat(reading)
 
 
+def test_a_map_older_than_a_source_is_not_used_and_says_why(tmp_path):
+    """Mutation: use a stale map's figures, marked stale -- the binary's
+    label says its fill and this fails."""
+    reading = cargo_service.read(copy_workspace(tmp_path, "stale"))
+    doc = next(d for d in reading.documents if d.name == "blinky.map")
+    assert doc.present and doc.stale and not doc.used
+    assert "blinky" not in reading.memory and "record again" in doc.problem
+    label = cargo_service.as_graph(reading).nodes["target::blinky::bin::blinky"]["label"]
+    assert "FLASH" not in label
+    assert "blinky.map was linked before a source changed" in cargo_service.caveat(reading)
+
+
 def test_a_map_with_nothing_to_measure_against_says_so(tmp_path):
     root = copy_workspace(tmp_path, "current")
     (root / "crates" / "blinky" / "memory.x").unlink()
@@ -421,8 +433,11 @@ def test_record_links_a_binary_for_its_map(tmp_path, monkeypatch):
 
     (tmp_path / cargo_service.DOCUMENTS / "blinky.map").unlink()
 
+    class Linked(Done):
+        stderr = "   Compiling blinky v0.1.0 (/ws/crates/blinky)\n    Finished `release` profile\n"
+
     def no_map(command, **kwargs):
-        done = Done()
+        done = Linked()
         if command[1] == "metadata":
             done.stdout = metadata
         return done
@@ -431,3 +446,71 @@ def test_record_links_a_binary_for_its_map(tmp_path, monkeypatch):
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
     assert result.exit_code == 1
     assert "the linker wrote no blinky.map" in result.output
+
+
+class Ran:
+    """What a faked cargo run returns."""
+
+    def __init__(self, stdout="", stderr="", returncode=0):
+        self.stdout, self.stderr, self.returncode = stdout, stderr, returncode
+
+
+# What `cargo metadata` says of a workspace whose member `blinky` has a `blinky` bin.
+BLINKY_METADATA = json.dumps({
+    "version": 1, "workspace_members": ["path+file:///ws/crates/blinky#0.1.0"],
+    "packages": [{"id": "path+file:///ws/crates/blinky#0.1.0", "name": "blinky",
+                  "targets": [{"name": "blinky", "kind": ["bin"]}]}]})
+
+
+@pytest.mark.parametrize("flag, arg", [(None, "link-arg=-Map={path}"),
+                                       ("-C link-arg=-Wl,-Map={path}", "link-arg=-Wl,-Map={path}")])
+def test_record_passes_a_map_path_with_a_space_as_one_argument(tmp_path, monkeypatch, flag, arg):
+    """Mutation: fill the path in before splitting the flag -- `C:/Users/Jane
+    Doe/...` arrives as two arguments and this fails."""
+    root = tmp_path / "Jane Doe" / "ws"
+    root.mkdir(parents=True)
+    ran = []
+
+    def fake_run(command, **kwargs):
+        ran.append(command[1:])
+        if command[1] == "rustc":
+            target = Path(next(a for a in command if "-Map=" in a).split("-Map=", 1)[1])
+            if target.parent.is_dir():
+                target.write_text("     VMA      LMA     Size Align Out     In      Symbol\n")
+            return Ran(stderr="   Compiling blinky v0.1.0\n")
+        return Ran(stdout=BLINKY_METADATA if command[1] == "metadata" else "")
+
+    monkeypatch.setattr("shutil.which", lambda name: "cargo")
+    monkeypatch.setattr("subprocess.run", fake_run)
+    result = CliRunner().invoke(cli, ["cargo", "record", str(root), "--map", "blinky",
+                                      *(["--map-flag", flag] if flag else [])])
+    expected = (root / cargo_service.DOCUMENTS / "blinky.map").resolve().as_posix()
+    assert ran[-1][-2:] == ["-C", arg.format(path=expected)]
+    assert result.exit_code == 0, result.output
+
+
+def test_record_says_when_cargo_did_not_relink(tmp_path, monkeypatch):
+    """cargo links only when the binary is out of date, so a build already up
+    to date writes no map. Mutation: judge by the map's presence alone -- an
+    old map reads as written and, with none, the flag is blamed; this fails."""
+    docs = tmp_path / cargo_service.DOCUMENTS
+    docs.mkdir(parents=True)
+    old = docs / "blinky.map"
+    old.write_text("     VMA      LMA     Size Align Out     In      Symbol\n")
+    then = time.time() - 7200
+    os.utime(old, (then, then))
+    fresh = Ran(stderr="    Finished `release` profile [optimized] target(s) in 0.04s\n")
+    monkeypatch.setattr("shutil.which", lambda name: "cargo")
+    monkeypatch.setattr("subprocess.run", lambda command, **kwargs:
+                        Ran(stdout=BLINKY_METADATA) if command[1] == "metadata" else fresh)
+
+    result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
+    assert result.exit_code == 1
+    assert "wrote target/codecarto/blinky.map" not in result.output
+    assert "did not relink" in result.output
+    assert f"still the link of {cargo_service._iso(then)}" in result.output
+
+    old.unlink()
+    result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
+    assert result.exit_code == 1
+    assert "did not relink" in result.output and "--map-flag" not in result.output

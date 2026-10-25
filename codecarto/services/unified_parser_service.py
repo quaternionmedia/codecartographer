@@ -1025,7 +1025,7 @@ def _annotate_recorded_memory(graph: nx.DiGraph, directory: Directory) -> None:
     `target/codecarto/` -- `codecarto cargo record --map <bin>` writes one per
     binary, and a C build passing `-Wl,-Map=target/codecarto/<name>.map` writes
     the same. Reads them and runs nothing; a map older than the newest source
-    file in the parse is marked stale on everything it stamps.
+    file in the parse is not used, and its regions say so.
     """
     root = directory.info.url
     if not root or "://" in root or not Path(root).is_dir():
@@ -1041,13 +1041,23 @@ def _annotate_recorded_memory(graph: nx.DiGraph, directory: Directory) -> None:
             newest = max(newest, Path(f.url).stat().st_mtime)
         except (OSError, ValueError):
             continue
+    # Which crate each Rust file is compiled in starts from cargo's targets: a
+    # package's directory need not be named after it.
+    crate_roots: dict[str, str] = {}
+    if any(d.get("language") == "rust" for _, d in graph.nodes(data=True)):
+        from codecarto.services import cargo_service
+
+        for package in cargo_service.read(root).packages:
+            for target in package.targets if package.member else ():
+                if target.src:
+                    crate_roots[str(Path(root) / target.src)] = target.name.replace("-", "_")
     for path in maps:
         link_map = link_map_service.read(path)
         if not link_map.ok:
             continue
         recorded_at, _ = link_map_service.age(path)
         link_map_service.annotate(graph, link_map, owner=path.stem, recorded_at=recorded_at,
-                                  stale=newest > path.stat().st_mtime)
+                                  stale=newest > path.stat().st_mtime, crate_roots=crate_roots)
 
 
 def _file_key(file: File) -> str:

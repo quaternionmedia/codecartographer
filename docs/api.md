@@ -53,7 +53,9 @@ Rust repository with a recorded `target/codecarto/check.jsonl` has rustc's
 diagnostics on the items they name (`meta.diagnostics`, `meta.messages`,
 `meta.diagnostics_recorded_at`), and with a recorded `target/codecarto/<bin>.map`
 the linker script's regions and sections carry what the link measured
-(`meta.measured`) and functions and statics their size (`meta.bytes`).
+(`meta.measured`) and functions and statics their size (`meta.bytes`). A map
+older than a source is not used: the regions it would measure say so
+(`meta.measured.used: false`) and nothing carries its figures.
 
 ### POST `/parse/unified`
 
@@ -762,7 +764,7 @@ their condition. `features=true` adds features and what each enables;
 `transitive=true` adds the lockfile's dependencies of dependencies. Targets
 carry the recorded diagnostics in their label and `meta.diagnostics`; a binary
 with a recorded link map carries each region's fill in its label and
-`meta.memory`.
+`meta.memory`, while the map is newer than every source.
 
 `metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
 `metadata.json` is newer than every manifest, `manifests` otherwise -- a stale

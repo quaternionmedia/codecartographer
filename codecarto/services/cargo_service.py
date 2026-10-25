@@ -261,10 +261,17 @@ def _read_map(reading: Reading, map_path: Path, docs_dir: Path, root: Path) -> D
 
     The binary is the map's name (`blinky.map` is the `blinky` bin target);
     its regions are the map's own memory table when the linker printed one
-    (GNU ld), else the `memory.x` beside the package that owns the binary."""
+    (GNU ld), else the `memory.x` beside the package that owns the binary. A
+    map older than a source is not used, as a stale resolution is not: it
+    measured a build that is no longer the one in the tree."""
     from codecarto.services import link_map_service
 
     doc = _document(docs_dir, map_path.name, reading.newest_source, root)
+    if doc.stale:
+        doc.problem = (f"linked before a source last changed, so its figures are not used; "
+                       f"record again (`{RECORD_COMMAND} <path> --map {map_path.stem}`) to measure "
+                       f"the build in the tree")
+        return doc
     link_map = link_map_service.read(map_path)
     if not link_map.ok:
         doc.problem = link_map.reason
@@ -284,11 +291,8 @@ def _read_map(reading: Reading, map_path: Path, docs_dir: Path, root: Path) -> D
         "package": owner.name if owner else "",
         "regions": [u.as_dict() for u in link_map_service.usage(link_map, regions)],
         "recorded_at": doc.generated_at,
-        "stale": doc.stale,
     }
     doc.used = True
-    if doc.stale:
-        doc.problem = "a source changed after this link was recorded"
     return doc
 
 
@@ -975,8 +979,11 @@ def caveat(reading: Reading) -> str:
         parts.append(f"Diagnostics are what rustc said at {check.generated_at}"
                      + (", and a source has changed since." if check.stale else "."))
     for binary, memory in sorted(reading.memory.items()):
-        parts.append(f"{binary}'s memory use is its linker map, recorded at {memory['recorded_at']}"
-                     + (", and a source has changed since." if memory["stale"] else "."))
+        parts.append(f"{binary}'s memory use is its linker map, recorded at {memory['recorded_at']}.")
+    for doc in reading.documents:
+        if doc.name.endswith(".map") and doc.present and doc.stale:
+            parts.append(f"{doc.name} was linked before a source changed, at {doc.generated_at}, "
+                         "so no memory use is drawn from it.")
     if reading.notes:
         parts.append(" ".join(reading.notes))
     return " ".join(parts)
