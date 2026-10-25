@@ -336,16 +336,22 @@ def census(nodes: Iterable[dict]) -> dict[str, Any]:
     Each node is a dict with at least `id`, `language` and `kind`; a node that
     arrived stamped keeps its stamp, and one that did not is stamped here, by
     the same rule. Nothing the caller sent is changed. A node of a language the
-    vocabulary does not list is counted under `outside`, and a listed
-    language's kind it does not map under `unplaced` -- said, never dropped."""
+    vocabulary does not list is counted under `outside`, a listed language's
+    kind it does not map under `unplaced`, and a stamp naming a construct or
+    facet the vocabulary does not hold -- a graph drawn before it changed --
+    under `unknown`: said, never dropped."""
     vocabulary = load()
     found: dict[str, dict[str, Any]] = {}
     unplaced: dict[tuple[str, str], int] = {}
     outside: dict[str, int] = {}
+    unknown: dict[str, list[str]] = {}
     unlabelled = 0
     total = 0
 
     def count(construct_id: str, language: str, node_id: str) -> None:
+        if vocabulary.get(construct_id) is None:
+            unknown.setdefault(construct_id, []).append(node_id)
+            return
         entry = found.setdefault(construct_id, {"languages": {}, "ids": []})
         entry["languages"][language] = entry["languages"].get(language, 0) + 1
         entry["ids"].append(node_id)
@@ -395,6 +401,8 @@ def census(nodes: Iterable[dict]) -> dict[str, Any]:
                      for (lang, kind), n in sorted(unplaced.items(), key=lambda kv: -kv[1])],
         "outside": [{"language": lang, "count": n}
                     for lang, n in sorted(outside.items(), key=lambda kv: -kv[1])],
+        "unknown": [{"construct": cid, "count": len(ids), "ids": ids}
+                    for cid, ids in sorted(unknown.items(), key=lambda kv: -len(kv[1]))],
         "unlabelled": unlabelled,
         "source": _source(),
         "caveat": census_caveat(),
@@ -404,9 +412,9 @@ def census(nodes: Iterable[dict]) -> dict[str, Any]:
 def census_caveat() -> str:
     return ("Each node is placed by the construct its language's parser kind maps "
             "to in codecarto/data/constructs.yaml. A node of a language the "
-            "vocabulary does not list, or of a kind it does not map, is counted "
-            "here rather than placed, and the count is of nodes on the canvas, "
-            "not of the code behind them.")
+            "vocabulary does not list, of a kind it does not map, or stamped with "
+            "a construct it does not hold, is counted here rather than placed, "
+            "and the count is of nodes on the canvas, not of the code behind them.")
 
 
 def caveat() -> str:

@@ -78,6 +78,7 @@ const census = {
   ],
   unplaced: [{ language: 'rust', display_name: 'Rust', kind: 'doc_comment', count: 4 }],
   outside: [{ language: 'javascript', count: 30 }],
+  unknown: [{ construct: 'storage.gone', count: 2, ids: ['x1', 'x2'] }],
   unlabelled: 7,
 };
 
@@ -94,12 +95,15 @@ test('a construct written in two languages on one canvas is marked: the comparis
 
 test('what the census could not place is said, every kind of it', async () => {
   /* Mutation: drop the unplaced sentences -- a graph would read as wholly
-     covered by the vocabulary, and this fails. */
+     covered by the vocabulary, and this fails. Drop the `unknown` loop -- a
+     node stamped with a construct the vocabulary no longer holds is in no row
+     and no sentence, and this fails. */
   const { censusGaps } = await import('../../dist-pure/features/cartography/chrestomathy_rows.js');
   assert.deepEqual(censusGaps(census), [
     '4 Rust doc_comment node(s): a kind the vocabulary does not place',
     '30 javascript node(s): a language the vocabulary does not list',
+    '2 node(s) stamped storage.gone: a construct constructs.yaml does not hold',
     '7 node(s) with no language: folders, files, or a graph that is not code',
   ]);
-  assert.deepEqual(censusGaps({ ...census, unplaced: [], outside: [], unlabelled: 0 }), []);
+  assert.deepEqual(censusGaps({ ...census, unplaced: [], outside: [], unknown: [], unlabelled: 0 }), []);
 });

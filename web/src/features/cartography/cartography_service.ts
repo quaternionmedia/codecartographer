@@ -129,6 +129,8 @@ export interface CensusDocument {
   facets: CensusRow[];
   unplaced: Array<{ language: string; display_name: string; kind: string; count: number }>;
   outside: Array<{ language: string; count: number }>;
+  /** Stamps naming a construct or facet the vocabulary does not hold. */
+  unknown: Array<{ construct: string; count: number; ids: string[] }>;
   unlabelled: number;
   source: string;
   caveat: string;

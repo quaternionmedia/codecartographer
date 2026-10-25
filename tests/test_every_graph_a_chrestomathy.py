@@ -232,7 +232,25 @@ def test_what_the_census_cannot_place_it_says():
     assert found["unplaced"] == [{"language": "rust", "display_name": "Rust", "kind": "doc_comment", "count": 1}]
     assert found["outside"] == [{"language": "javascript", "count": 1}]
     assert found["unlabelled"] == 1 and found["nodes"] == len(MIXED)
+    assert found["unknown"] == []
     assert found["caveat"]
+
+
+def test_a_stamp_the_vocabulary_does_not_hold_is_said_not_dropped():
+    """A node arrives stamped by the vocabulary a graph was drawn under, which
+    may not be this one. Its construct was counted into a row the census
+    then built only for constructs it holds, so the node was in no row and no
+    gap: two nodes in, one counted, nothing said. Mutation: count an unknown
+    id as any other -- `unknown` is empty and `x` is nowhere."""
+    sent = [{"id": "x", "language": "c", "kind": "variable", "construct": "storage.gone",
+             "meta": {"facets": ["memory.gone", "linkage.internal"]}},
+            {"id": "y", "language": "rust", "kind": "function", "construct": "callable.function"}]
+    found = construct_service.census(sent)
+    assert [(r["id"], r["ids"]) for r in found["constructs"]] == [("callable.function", ["y"])]
+    assert [(r["id"], r["ids"]) for r in found["facets"]] == [("linkage.internal", ["x"])]
+    assert found["unknown"] == [{"construct": "storage.gone", "count": 1, "ids": ["x"]},
+                                {"construct": "memory.gone", "count": 1, "ids": ["x"]}]
+    assert found["nodes"] == 2
 
 
 def test_the_census_changes_nothing_it_was_sent():

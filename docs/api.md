@@ -770,10 +770,11 @@ The chrestomathy of a graph. Body: `{"nodes": [{"id", "language", "kind",
 `count`, the `languages` it occurs in with their counts, and the `ids` of the
 nodes that are it; then what was not placed: `unplaced` (a kind of a listed
 language, or of a graph under `graphs:`, the vocabulary does not map), `outside`
-(a language it lists in neither) and
-`unlabelled` (no language at all), with the `caveat`. A node that arrived
-without a stamp is stamped by the same rule as a drawn graph; nothing sent is
-changed.
+(a language it lists in neither), `unknown` (a stamp naming a construct or facet
+the vocabulary does not hold, with the `ids` that carry it -- a graph drawn
+under another vocabulary) and `unlabelled` (no language at all), with the
+`caveat`. A node that arrived without a stamp is stamped by the same rule as a
+drawn graph; nothing sent is changed.
 
 ### GET `/lexicon/chrestomathy/{construct}/gjgf?layout=`
 

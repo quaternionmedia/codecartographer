@@ -67,6 +67,7 @@ export interface CensusLike {
   facets: CensusRowLike[];
   unplaced: Array<{ language: string; display_name: string; kind: string; count: number }>;
   outside: Array<{ language: string; count: number }>;
+  unknown: Array<{ construct: string; count: number }>;
   unlabelled: number;
 }
 
@@ -105,6 +106,9 @@ export function censusGaps(census: CensusLike): string[] {
     `${u.count} ${u.display_name || u.language} ${u.kind} node(s): a kind the vocabulary does not place`);
   for (const o of census.outside) {
     gaps.push(`${o.count} ${o.language} node(s): a language the vocabulary does not list`);
+  }
+  for (const u of census.unknown) {
+    gaps.push(`${u.count} node(s) stamped ${u.construct}: a construct constructs.yaml does not hold`);
   }
   if (census.unlabelled) {
     gaps.push(`${census.unlabelled} node(s) with no language: folders, files, or a graph that is not code`);
