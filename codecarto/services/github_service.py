@@ -377,24 +377,32 @@ async def _expand_folder(
     headers: dict,
     max_depth: int,
     current_depth: int,
+    unlisted: list[str],
 ) -> Folder:
     """Recursively fetch directory structure without file content.
 
-    Files are included as stubs (raw='').  Sub-folders beyond *max_depth* are
-    returned as empty stub Folders (no children fetched).
+    Files are included as stubs (raw='').  Sub-folders beyond *max_depth*, and
+    any GitHub refuses to list, are returned as empty stub Folders (no children
+    fetched), and their paths appended to *unlisted*. A refused root raises:
+    there is no tree to return, and an empty one would stand in for it.
     """
     api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
     async with httpx.AsyncClient() as client:
         resp = await _api_get(client, api_url, headers)
 
+    folder_name = path.split("/")[-1] if path else repo
     if resp.status_code != 200:
-        # Return a stub on error rather than crashing the whole expansion
-        folder_name = path.split("/")[-1] if path else repo
+        if not path:
+            raise handle_status_code(resp, f"https://github.com/{owner}/{repo}/", api_url)
+        # A stub rather than crashing the whole expansion; the tree says so.
+        unlisted.append(path)
         return Folder(name=folder_name, size=0, files=[], folders=[])
 
     items = resp.json()
     if not isinstance(items, list):
-        folder_name = path.split("/")[-1] if path else repo
+        if not path:
+            raise GithubNoDataError("Expected directory listing", {"github_url": api_url, "path": path})
+        unlisted.append(path)
         return Folder(name=folder_name, size=0, files=[], folders=[])
 
     files: list[File] = []
@@ -413,24 +421,32 @@ async def _expand_folder(
         elif item["type"] == "dir":
             if current_depth + 1 < max_depth:
                 sub = await _expand_folder(
-                    owner, repo, item["path"], headers, max_depth, current_depth + 1
+                    owner, repo, item["path"], headers, max_depth, current_depth + 1, unlisted
                 )
             else:
+                unlisted.append(item["path"])
                 sub = Folder(name=item["name"], size=0, files=[], folders=[])
             folders.append(sub)
 
-    folder_name = path.split("/")[-1] if path else repo
     return Folder(name=folder_name, size=len(files), files=files, folders=folders)
 
 
 async def expand_all_tree(
     owner: str, repo: str, github_token: str | None = None, max_depth: int = 3
-) -> Folder:
-    """Expand all folders in a repo tree to *max_depth* without downloading file content."""
+) -> tuple[Folder, list[str]]:
+    """Expand all folders in a repo tree to *max_depth* without downloading file content.
+
+    Returns the tree, and the path of every folder in it left unlisted: below
+    *max_depth*, or refused by GitHub. Each is an empty Folder in the tree, as
+    an empty folder is, so a caller that does not say which were not listed
+    shows them as empty.
+    """
     headers = {"Accept": "application/vnd.github.v3+json"}
     if github_token:
         headers["Authorization"] = f"token {github_token}"
-    return await _expand_folder(owner, repo, "", headers, max_depth, 0)
+    unlisted: list[str] = []
+    root = await _expand_folder(owner, repo, "", headers, max_depth, 0, unlisted)
+    return root, unlisted
 
 
 def get_owner_repo_from_url(url: str) -> tuple[str, str]:
