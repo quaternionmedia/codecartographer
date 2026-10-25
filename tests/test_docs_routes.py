@@ -1033,6 +1033,30 @@ def test_ui_reference_names_the_keys_and_the_hold_that_work_a_ring():
         f"geometry.ts holds for {hold.group(1)} ms; '### Opening a ring' does not say so")
 
 
+def test_the_open_section_names_the_window_its_quick_starts_are_measured_in():
+    """The Open panel is a share of the window's height, so what its left
+    column shows without scrolling depends on the window: the quick starts
+    are measured in view in the window `open-panel.spec.ts` sets, and a
+    shorter one leaves the last of them below the column's fold. The section
+    said they were in view in the default arrangement, in any window. Each of
+    its paragraphs that says what is in view without scrolling names the
+    window the spec measures. Mutation: drop the size from `docs/ui.md`, or
+    measure at another height in the spec -- this fails."""
+    spec = (ROOT / "web" / "tests" / "e2e" / "open-panel.spec.ts").read_text(encoding="utf-8")
+    measured = re.search(r"viewport: \{ width: (\d+), height: (\d+) \}[^\n]*\n\s*"
+                         r"test\('[^']*without scrolling", spec)
+    assert measured, ("open-panel.spec.ts measures nothing in view without scrolling, "
+                      "or the viewport pattern is stale")
+    size = f"{measured[1]}×{measured[2]}"
+    paragraphs = [" ".join(p.split()) for p in re.split(r"\n\s*\n", _ui_sections()["Open"])]
+    claims = [p for p in paragraphs if "without scrolling" in p]
+    assert claims, "docs/ui.md's Open section no longer says what is in view without scrolling"
+    unsized = [p for p in claims if size not in p]
+    assert not unsized, (
+        f"open-panel.spec.ts measures the quick starts in a {size} window; "
+        f"these say they are in view without naming it: {unsized}")
+
+
 def test_no_source_directory_is_shadowed_by_the_dev_proxy(prefixes):
     """A top-level `web/src/<name>/` named like an API prefix never loads.
 

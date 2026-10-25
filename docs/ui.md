@@ -61,7 +61,7 @@ Open panel.
 Id `open`. In the default arrangement, in front.
 
 Where a graph starts. From top to bottom on the left, the quick starts first,
-so that in the default arrangement they are in view without scrolling:
+then the examples:
 
 - **A GitHub URL or a local path**, then `→ Fetch` or Enter: draws it and loads
   its tree into the Files panel. Once loaded, a line names the repository and
@@ -76,6 +76,11 @@ so that in the default arrangement they are in view without scrolling:
   recorded, so it needs no network, and a Cargo workspace's records go to the
   Cargo panel, which comes forward. A GitHub example draws the code map only;
   its tooltip says how much of the repository is drawn.
+
+In the default arrangement in a 1600×1000 window, the URL, Local files, Load
+Demo and the lexicons are in view without scrolling. The panel is a share of
+the window's height, so in a shorter window the column's fold rises, and the
+lexicons are the first to fall below it.
 
 On the right:
 
