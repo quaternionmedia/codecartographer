@@ -7,6 +7,7 @@ workspace with a HAL crate, a `no_std` binary and a host tool that builds C.
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -277,6 +278,57 @@ class TestRelations:
         graph = parse(self.SRC)
         assert "memory.volatile" in node(graph, "method", "write")["meta"]["facets"]
 
+    def test_self_in_a_trait_default_method_is_the_trait(self):
+        """A trait has no self type, and `Self::init()` in its default method
+        looked up an empty name and was counted unresolved. Mutation: resolve
+        `Self` by the owner's self type alone."""
+        graph = parse("pub trait Driver { fn init(); fn reset() { Self::init(); } }")
+        assert ("reset", "init") in edges(graph, "calls")
+        assert node(graph, "method", "reset")["meta"]["calls_unresolved"] == 0
+
+
+# ── Across files ──────────────────────────────────────────────────────────────
+
+
+def parse_tree(sources: dict[str, str]):
+    files = [File(name=Path(path).name, url=path, raw=src) for path, src in sources.items()]
+    return RustLanguageParser().parse_files(files, depth=3)
+
+
+def file_relations(graph, kind: str) -> dict[tuple[str, str], str | None]:
+    return {(src, dst): attrs.get("resolution")
+            for src, dst, attrs in graph.graph["file_relations"] if attrs["kind"] == kind}
+
+
+class TestAcrossFiles:
+    def test_a_use_inside_an_inline_module_is_read_from_that_module(self):
+        """`mod tests { use super::*; }` in `src/a.rs` names `a`, not the crate
+        root. Read from the file's module, every file with the test idiom
+        depended on its parent. Mutation: walk every `use` from the file's
+        module -- `a.rs -> lib.rs` comes back."""
+        graph = parse_tree({
+            "src/lib.rs": "mod a;\nmod b;\n",
+            "src/a.rs": "pub fn f() {}\n#[cfg(test)]\nmod tests { use super::*; use crate::b::Thing; }\n",
+            "src/b.rs": "pub struct Thing;\n",
+        })
+        assert file_relations(graph, "depends_on") == {("src/a.rs", "src/b.rs"): "module-tree"}
+
+    def test_a_declaration_says_how_it_was_resolved(self):
+        graph = parse_tree({"src/lib.rs": "mod a;\n", "src/a.rs": "pub fn f() {}\n"})
+        ((_, target), resolution), = file_relations(graph, "declares").items()
+        assert (target, resolution) == ("src/a.rs", "module-tree")
+
+    def test_two_crates_with_one_directory_name_draw_nothing(self):
+        """A crate is named by its directory, and two `hal` directories made the
+        name ambiguous: the last one read won it. Mutation: keep a crate per
+        name, last wins -- `main.rs -> vendor-b/hal` is drawn."""
+        graph = parse_tree({
+            "vendor-a/hal/src/lib.rs": "pub mod gpio { pub fn set() {} }\n",
+            "vendor-b/hal/src/lib.rs": "pub mod gpio { pub fn set() {} }\n",
+            "app/src/main.rs": "use hal::gpio;\nfn main() {}\n",
+        })
+        assert [r for r in graph.graph["file_relations"] if r[0] == "app/src/main.rs"] == []
+
 
 # ── Across the workspace fixture ──────────────────────────────────────────────
 
@@ -297,8 +349,28 @@ class TestWorkspace:
     def test_registered_for_rs(self):
         assert isinstance(ParserRegistry.get(".rs"), RustLanguageParser)
 
-    def test_target_directory_is_not_walked(self, workspace_graph):
-        assert not any("/target/" in n for n in workspace_graph)
+    def test_target_directory_is_not_walked(self, tmp_path):
+        """Cargo's build output sits beside the sources, and code generated
+        into it is not the workspace's. The fixture holds no `target/`, so a
+        copy of it is given one. Mutation: drop `target` from the walker's
+        exclusions -- `generated` and the directory appear."""
+        root = tmp_path / "workspace"
+        shutil.copytree(WORKSPACE, root)
+        generated = root / "target" / "debug" / "build" / "hal-1" / "out" / "bindings.rs"
+        generated.parent.mkdir(parents=True)
+        generated.write_text("pub fn generated() {}\n", newline="\n")
+        directory = get_local_repo(str(root), extensions=[".rs", ".x"])
+        graph = UnifiedParserService.build_graph(directory, depth=3, extensions=[".rs", ".x"])
+        assert file_id(graph, "crates/hal/src/lib.rs")  # the walk did run
+        assert not [n for n in graph if "/target/" in n or n.endswith("/target")]
+        assert not [n for n, d in graph.nodes(data=True) if d.get("label") == "generated"]
+
+    def test_every_relation_says_how_it_was_resolved(self, workspace_graph):
+        """The record's rule, over all both readers draw here: an edge that
+        is not nesting carries a `resolution`."""
+        unlabelled = {d["kind"] for _, _, d in workspace_graph.edges(data=True)
+                      if d["kind"] != "contains" and "resolution" not in d}
+        assert unlabelled == set()
 
     def test_each_crate_keeps_its_own_files(self, workspace_graph):
         """`src/main.rs` exists in two crates; they are two nodes."""
