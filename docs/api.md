@@ -139,6 +139,13 @@ bypass the response cache (the cache key doesn't vary on this field).
 }
 ```
 
+A parser that could not run over files the graph still draws -- C without
+libclang -- says so in `metadata.notes`, one sentence per batch
+(`"2 c file(s) drawn without their contents: libclang is not installed, …"`).
+A result with notes is not cached, on this route or either stream: a replay
+carries nodes and edges and nothing beside them, so it would arrive empty and
+silent. The next request parses again.
+
 ---
 
 ### POST `/parse/stream`
@@ -156,6 +163,7 @@ arrive instead of all at once at the end.
 | event | payload | when |
 |-------|---------|------|
 | `meta` | `{nodeCount, edgeCount, layout, from_cache?}` | first, once the graph size is known |
+| `note` | `{message}` | after `meta`, once per batch a parser could not read (`metadata.notes` above) |
 | `node` | flat node dict (`id` + unified schema fields) | once per node |
 | `edge` | `{source, target, label?, ...}` | once per edge, after all nodes |
 | `done` | `{elapsed_ms, from_cache?}` | last |
@@ -167,7 +175,8 @@ from the cache (`from_cache: true`) instead of re-parsing.
 After a fresh stream completes (the `done` event is emitted), the full
 accumulated graph is automatically written to cache — subsequent requests
 with the same URL, mode, layout, and extensions are served as instant
-replays without re-parsing.
+replays without re-parsing. A stream that carried a `note` is not written:
+its replay would arrive without it.
 
 ---
 
@@ -184,11 +193,11 @@ streams its parse — no separate `/repo/tree` round-trip first.
 **Response:** Same SSE event types as `/parse/stream`, plus a `fetching`
 event (`{message}`) emitted during phase 1 (repo tree fetch) before any
 `node`/`edge` events arrive. Phase 2 (symbol parsing) streams nodes as each
-file's content is fetched and parsed.
+file's content is fetched and parsed, and a `note` where a batch could not be.
 
 After streaming completes, the full accumulated graph is written to cache
-(GitHub URLs only) — the next request for the same repo and settings is an
-instant cache replay.
+(GitHub URLs only, and not when the stream carried a `note`) — the next
+request for the same repo and settings is an instant cache replay.
 
 ---
 

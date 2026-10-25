@@ -105,7 +105,74 @@ async def test_the_github_stream_carries_it_too(monkeypatch, without_libclang):
     assert notes == [{"message": f"1 c file(s) drawn without their contents: {MISSING}"}]
 
 
-def test_a_stream_that_carried_a_note_is_not_cached(monkeypatch):
+@pytest.fixture
+def cache_dir(monkeypatch, tmp_path):
+    """The graph cache, in a directory of this test's own."""
+    import codecarto.services.cache_service as cache_svc
+
+    repos = tmp_path / "cache" / "repos"
+    monkeypatch.setattr(cache_svc, "_CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos)
+    monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos / "index.json")
+
+
+def a_repository(name: str, file: str = "main.c", raw: str = "int main(void) { return 0; }\n") -> dict:
+    """A request body for one file of a repository with a URL, so it has a cache key."""
+    return {
+        "directory": {
+            "info": {"url": f"https://github.com/test/{name}", "owner": "test", "name": name},
+            "size": len(raw),
+            "root": {"name": name, "size": len(raw), "folders": [],
+                     "files": [{"name": file, "size": len(raw), "raw": raw}]},
+            "is_partial": False,
+        },
+        "depth": 2,
+        "layout": "Spring",
+    }
+
+
+def test_a_directory_stream_that_carried_a_note_is_parsed_again(cache_dir, without_libclang):
+    """`/parse/stream` kept every graph it finished, so a C repository streamed
+    without libclang was replayed empty, and without its note, for a day --
+    after libclang was installed too. Mutation: write the cache on `done`
+    whether or not a note went before it -- the second answer is a replay
+    with no note, and this fails."""
+    from codecarto.main import app
+
+    client = TestClient(app)
+    first = client.post("/parse/stream", json=a_repository("noted-stream")).text
+    again = client.post("/parse/stream", json=a_repository("noted-stream")).text
+    assert "event: note" in first
+    assert "event: note" in again and '"from_cache": true' not in again
+
+
+def test_a_one_shot_parse_that_carried_a_note_is_not_cached(cache_dir, without_libclang):
+    """`/parse/unified` writes the key `/parse/stream` reads, and the replay
+    carries nodes and edges, not `metadata.notes`. Mutation: cache the one-shot
+    result regardless -- the stream after it is a replay with no note."""
+    from codecarto.main import app
+
+    client = TestClient(app)
+    results = client.post("/parse/unified", json=a_repository("noted-unified")).json()["results"]
+    assert results["metadata"]["notes"] == [f"1 c file(s) drawn without their contents: {MISSING}"]
+    again = client.post("/parse/stream", json=a_repository("noted-unified")).text
+    assert "event: note" in again and '"from_cache": true' not in again
+
+
+@pytest.mark.parametrize("route", ["/parse/stream", "/parse/unified"])
+def test_a_parse_with_nothing_to_say_is_still_cached(cache_dir, route):
+    """The control for the two above: what keeps a noted graph out of the
+    cache keeps nothing else out."""
+    from codecarto.main import app
+
+    client = TestClient(app)
+    body = a_repository(f"quiet{route.replace('/', '-')}", "tool.py", "def tool():\n    return 1\n")
+    client.post(route, json=body)
+    again = client.post("/parse/stream", json=body).text
+    assert '"from_cache": true' in again and "event: note" not in again
+
+
+def test_a_stream_that_carried_a_note_is_not_cached(monkeypatch, cache_dir):
     """Mutation: write the cache regardless -- the replay would serve this
     graph again without saying what it lacks, and this fails."""
     import codecarto.routers.unified_parser_router as router
