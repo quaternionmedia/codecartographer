@@ -321,4 +321,3 @@ test("a lexicon's keyword and operator layers of one ordinal are two rows", () =
     ['L0 Storage & memory placement', 1],
   ]);
 });
-

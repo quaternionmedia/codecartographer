@@ -187,6 +187,14 @@ exactly one row. What each row means is decided in
 `web/src/features/graph/extensions/legend_marks.ts`, which is pure and covered
 by `npm run test:pure`.
 
+**It keys the colours on screen.** Under "Color By: Abstraction Layer" a row's
+swatch takes the colour the canvas paints its nodes, and an *Abstraction layers*
+section names each layer painted and counts its nodes — by language where the
+graph holds more than one, since a layer's number is a rank within one
+language's lexicon and the same number in two languages is two layers. Under
+"Auto" there is no layers section, because nothing is painted by layer. A
+record (`ngon`) is a row per side count, and says it: *Struct · 4 sides*.
+
 Like rad, it is a `BaseExtension` mounted against the canvas, so it appears on
 every path that draws a graph.
 
