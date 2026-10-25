@@ -59,6 +59,27 @@ class TestLexiconRouterEnvelope:
         meta = sample.get("metadata", sample)
         assert "x" in meta and "y" in meta and "size" in meta
 
+    @pytest.mark.parametrize("language", ["c", "python", "rust"])
+    def test_every_layered_node_carries_the_colour_the_canvas_draws(self, client, language):
+        """"Color By: Abstraction Layer" paints `layer_color` and the key names
+        a layer from `meta.lexicon_layers`; the lexicon graph sent only
+        `layer_ordinal`, so choosing it on a lexicon changed no pixel and the
+        key showed every layer as one steelblue "Layer N". Mutation: stop
+        stamping `layer_color` in `LexiconService.to_graph` -- this fails."""
+        from codecarto.services.construct_service import layer_color
+
+        nodes = client.get(f"/lexicon/{language}/graph").json()["results"]["graph"]["nodes"]
+        layered = [n.get("metadata", n) for n in nodes.values()
+                   if n.get("metadata", n).get("layer_ordinal", -1) >= 0]
+        assert layered
+        for node in layered:
+            ordinal = node["layer_ordinal"]
+            assert node.get("layer_color") == layer_color(ordinal), node
+            assert node.get("language") == language
+            names = {c["layer_name"] for c in (node.get("meta") or {}).get("lexicon_layers", [])
+                     if c["layer_ordinal"] == ordinal}
+            assert len(names) == 1, node
+
     def test_get_lexicon_index_envelope(self, client):
         resp = client.get("/lexicon/python/index")
         assert resp.status_code == 200
