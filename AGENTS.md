@@ -30,9 +30,11 @@ other briefing, read this file fully before your first commit or edit.
    branch is updated from `main`. The checks run part of a change, so the
    suite is the rest of the evidence: a suite that cannot run is not a pass,
    a failure `main` shares is still a failure, and a skip is named with its
-   reason. Merge at the head you tested (`gh pr merge <n> --merge
-   --match-head-commit <sha>`), and put that head and what each command
-   reported in the PR body. **A PR into `project/codecartographer` is the
+   reason. Bolster the tests first: every defect a review of the PR finds is
+   pinned by a test you have seen fail, then fixed on its branch -- not
+   deferred as a follow-up. Merge at the head you tested (`gh pr merge <n>
+   --merge --match-head-commit <sha>`), and put that head and what each
+   command reported in the PR body. **A PR into `project/codecartographer` is the
    human's click**: no session merges its own records. Never push `main`
    directly, and never close a PR by pushing its commits onto its base --
    pushing first *merges* it. `governance/qm/AGENTS.md` item 3 and
