@@ -111,18 +111,7 @@ web/src/
 │   ├── layout_context.ts        # shared state hub for all GL panels
 │   ├── panel_registry.ts        # panel definitions (id/config/mount) — add panels here
 │   ├── default_layout.ts        # built-in panel arrangement
-│   └── panels/
-│       ├── graph_panel.ts           # the one canvas
-│       ├── file_tree_panel.ts       # repo + upload file browser
-│       ├── upload_panel.ts          # local file dropzone
-│       ├── repo_panel.ts            # GitHub URL fetch + recent/examples
-│       ├── graphbase_panel.ts       # durable named bookmarks (MongoDB)
-│       ├── graph_settings_panel.ts  # styling/layout controls
-│       ├── actions_panel.ts         # plot/cancel/status
-│       ├── estate_panel.ts          # every seam, live or not, with the way to its panel
-│       ├── topology_panel.ts        # choose a harness flow; the drawing goes to the canvas
-│       ├── capabilities_panel.ts    # the registry's declarations; draw them
-│       └── overview_panel.ts        # dossier's masthead and sections; draw them
+│   └── panels/                  # one file per panel; docs/ui.md describes each
 │
 ├── features/estate/                 # what every estate panel shares
 │   ├── seam_client.ts               # the four outcomes a seam can answer, told apart (pure; tested under node)
@@ -138,7 +127,7 @@ web/src/
 │   │   ├── graph_types.ts           # GraphNode / GraphEdge / GraphData
 │   │   ├── compound_layout.ts       # CompoundLayoutManager (bounding circles + child map)
 │   │   └── renderers.ts             # renderer registry (gravis, notebook, system)
-│   ├── extensions/                  # BaseExtension seam; legend mounts here
+│   ├── extensions/                  # drag, zoom, selection, highlight, tooltip, colour, legend
 │   └── rad/                         # the radial menu, conformant to rad's vectors
 │
 ├── state/
@@ -153,6 +142,37 @@ web/src/
 web/src/features/repository/services/
     └── repo_service.ts          # repo tree fetch/expand
 ```
+
+## The unified graph
+
+Every parser produces nodes in one schema, so any renderer draws any language
+without negotiating a format. `make_node()` and `make_edge()` in
+`codecarto/services/parsers/language_parser.py` build them; the fields, and
+how a renderer reads them, are in [Extending](extending.md#the-node-schema).
+
+| depth | meaning | node id |
+|-------|---------|---------|
+| 0 | directory | `dir::<path from the root>` |
+| 1 | file | `file::<path from the root>` |
+| 2 | top-level symbol | the parser's own |
+| 3 | sub-symbol (argument, field, enum constant, a C function's locals) | the parser's own |
+
+Each language adapter implements the `LanguageParser` protocol
+(`language`, `extensions`, `parse_files(files, depth)`) and registers itself
+with `ParserRegistry` when `codecarto/services/parsers/__init__.py` imports
+it. The registry
+maps an extension to its parser; `GET /parse/languages` lists each language
+with its extensions. Python (`PythonLanguageParser`), C (`CLangaugeParser`,
+which needs the `c-parsing` extra), Rust (`RustLanguageParser`) and linker
+scripts (`LinkerScriptParser`) have readers of their own; `RegexLanguageParser`
+reads the rest.
+
+**`batch_whole_tree`.** By default the walk (`_walk_folder`) hands a parser one
+file at a time. A parser that sets `batch_whole_tree = True` (C, Rust, linker
+scripts) instead receives every file it owns across the whole tree in one
+`parse_files` call, made after the walk (`_parse_pending_batches`). C needs
+this because a call is resolved to a function that may be declared in another
+file, which takes the complete file set in one `CParser` call.
 
 ## Data Flow
 
@@ -170,7 +190,7 @@ UnifiedParserService.stream_parse_url()
   │── walk folder: depth-0 dir nodes, depth-1 file nodes
   │── per language: ParserRegistry.get(ext) → parser.parse_files()
   │     regular parsers: per-file dispatch
-  │     batch_whole_tree parsers (C/H): collect all, parse once via asyncio.to_thread
+  │     batch_whole_tree parsers: collect all, parse once via asyncio.to_thread
   │── compute layout (NetworkX → PositionService)
   │── SSE: meta → nodes (BFS) → edges → done
   │
@@ -180,6 +200,157 @@ StreamingGraphRenderer (frontend rAF loop)
   │── addEdge() per SSE 'edge' event
   │── finalize() on 'done' → fit view + draw compound backgrounds
 ```
+
+A local directory takes the same path through `POST /parse/stream`
+(`UnifiedParserService.stream_parse`). Either is replayed from `CacheService`
+when the same url, mode, layout and extensions were parsed before under the
+current `GRAPH_SCHEMA_VERSION`.
+
+### The demo
+
+The Demo button's `POST /plotter/demo` reads this repository's own `codecarto/`
+package, its `.py` files only, through `UnifiedParserService.parse`, as every
+other parse is read; its `parse_by` sets only the depth (`plotter_router.py`,
+`_DEMO_MODE_TO_DEPTH`), which [the API reference](api.md) tabulates.
+
+### Expanding one node
+
+`POST /parse/expand` (`UnifiedParserService.expand_node`) returns a file
+node's sub-graph to the requested depth; `LayoutContext` merges it into the
+graph on the canvas, using the directory the last parse read. The
+[UI reference](ui.md) says where Expand is.
+
+### C: two pipelines
+
+C and C++ are read by libclang (`c_parser.py`'s `CParser`, the `c-parsing`
+extra) through two routes that share that engine.
+
+**Through `/parse/*`, like every other language.** `CLangaugeParser`
+(`c_language_parser.py`) is a `batch_whole_tree` adapter, so cross-file `calls`
+resolve. Content with no file on disk -- a GitHub file, which exists only as
+`File.raw` -- is passed to libclang as `unsaved_files` under a virtual path.
+Every virtual file in a batch shares one root (`_VIRTUAL_ROOT`), so a sibling
+`#include "x.h"` resolves; an include through a subdirectory
+(`#include "sub/x.h"`) does not, because the virtual tree is flat. In
+`stream_parse_url`, structure streams at once and the batch parse runs in
+`asyncio.to_thread`, so a C-heavy repository does not block the server; its
+symbols arrive as one burst after every file of the batch has been fetched and
+parsed, with no progress signal in between.
+
+**Through `/c-parser/*`, the dedicated pipeline.** These routes answer a flat
+`{nodes, edges, meta}` rather than gJGF; the web application does not call
+them. `/c-parser/stream-github` runs the parse in a background thread
+(`start_threaded_feeder`, the pattern the PAM log tailers share) and streams
+each file's declarations as libclang finishes it. Calls and the derived type
+edges (`FIELD_OF`, `POINTS_TO`) need the complete node set, so they arrive in
+one batch at the end:
+
+```
+POST /c-parser/stream-github  (SSE)
+  │
+  ▼
+c_parser_router.stream_c_github()
+  │── background thread: CParserService.parse_github(url, on_progress=...)
+  │     │── download + extract the archive (or reuse Cache B)  -> 'fetching'
+  │     │── skip platform-specific compat files                -> 'meta'
+  │     │── CParser.parse_files() pass 1, one file at a time   -> on_file_parsed
+  │     └── pass 2 (cross-file CALLS) + type-edge derivation
+  │
+  ▼
+the request coroutine drains the queue: 'node' events as the thread produces
+them, then 'reposition', every 'edge', and 'done'
+```
+
+Both pipelines put `has_parse_warning` at the top level of a node rather than
+under `meta`, so the canvas reads it in one place whichever produced the node.
+
+## The two caches
+
+Both live under `~/.codecarto/cache/repos/`, kept as two caches because a hit
+in each skips different work:
+
+| | Cache A (`CacheService`) | Cache B (`CParserService`'s repo cache) |
+|---|---|---|
+| Caches | repository trees and parsed graphs | extracted source trees (the unzipped GitHub archive) |
+| Location | `{repo_key}/tree.json` and `{repo_key}/graphs/{hash}.json`; `index.json` lists the graphs | `{owner}-{repo}/src/` and `metadata.json` |
+| Key | `repo_key` is `{owner}-{repo}` for GitHub, `sha256(url)[:16]` otherwise; a graph is `{repo_key}::{sha256(v{GRAPH_SCHEMA_VERSION}, url, mode, layout, extensions)[:16]}` | `{owner}-{repo}` |
+| Freshness | `CC_CACHE_TTL` seconds (24 h by default) | the same variable |
+| A hit skips | fetching (a tree) or parsing (a graph) | the download and extract; the parse still runs |
+| List / evict | `GET /parse/cache`, `DELETE /parse/cache/{key}` (one graph); `CacheService.evict_repo`, which no route calls, drops the repository's directory | `GET /c-parser/cache`, `DELETE /c-parser/cache/{key}` drops the repository's directory |
+| Used by | `/repo/tree`, `/repo/subtree`, `/repo/expand-all` (trees); `/parse/unified`, `/parse/stream`, `/parse/stream-url`, `/c-parser/stream-github` (graphs) | `/c-parser/github`, `/c-parser/stream-github` |
+
+For a GitHub repository the two caches are one directory,
+`~/.codecarto/cache/repos/{owner}-{repo}/`, and an eviction that drops a
+repository drops that directory whole. `DELETE /c-parser/cache/{key}`
+(`CParserService.evict_repo_cache`) takes Cache A's `tree.json` and graphs with
+Cache B's source, and leaves their entries in `index.json`: `GET /parse/cache`
+goes on listing those graphs, and recalling one parses it again.
+`CacheService.evict_repo` takes Cache B's source with Cache A's. Only
+`DELETE /parse/cache/{key}` (`CacheService.evict`) leaves the rest: it removes
+one graph and its entry.
+
+A tree in Cache A holds what `github_service.get_raw_from_repo` fetched for the
+repository's size tier: full content under about 5 MB, structure only under
+about 50 MB, a shallow listing above that. `stream_parse_url` uses a cached
+tree in place of a fetch only when it is complete and carries content. With
+`MONGODB_URI` set, Cache A's graphs are also kept in MongoDB, keyed the same
+way, and the filesystem remains the fallback.
+
+## The graphbase store
+
+`graphbase` is a separate, user-named store, mounted at `/db` only when
+`MONGODB_URI` is set; `GET /db/` answers `available: false` otherwise. It is a
+submodule; `codecarto/` imports it as `from graphbase import graphdb, get_db`.
+Its collections:
+
+| Collection | Holds | Key | Eviction |
+|------------|-------|-----|----------|
+| `graph` | named NetworkX graphs (`nx.node_link_data`) | `name` | manual |
+| `snapshots` | a rendered graph's gJGF nodes and edges, replayed without a parse | `name` | manual |
+| `bookmarks` | a URL and its parse settings, re-streamed on load | `name` | manual |
+| `history` | per-URL render snapshots, appended when tracking is on | `(url_hash, captured_at)` | automatic, 20 per URL |
+
+`web/src/services/graphbase_service.ts` is the client; the Graphbase panel is
+in the [UI reference](ui.md). The routes are in [the API reference](api.md).
+
+## Compound layout
+
+`compound_layout` (`codecarto/models/custom_layouts/compound_layout.py`,
+registered in `position_service.py` with `params=["graph"]`) places a code map
+in four passes:
+
+1. **Directories**: a spring layout of the directory nodes, stretched
+   horizontally (`x_stretch` 1.6, `y_stretch` 0.7) and scaled so no two
+   clusters overlap.
+2. **Files**: an even ring around their directory.
+3. **Symbols**: a 300° arc around their file, in source order: sorted by
+   `line`, line 1 at 12 o'clock, later lines clockwise, and a 60° gap at 6
+   o'clock.
+4. **Sub-symbols**: the same arc around their nearest depth-2 ancestor; a
+   module-level statement with none orbits its file just outside the symbol
+   ring.
+
+A node's parent is the source of its `contains` or `field_of` edge (the C
+parser's kind for a struct's fields); a node with neither falls back to its
+`file` attribute, then to a ring of orphans at its level. One layout unit is
+about 100 px in the browser (`GraphSerializer`'s `spread`).
+
+On the canvas, `CompoundLayoutManager` (`web/src/features/graph/services/compound_layout.ts`)
+draws a translucent circle behind each directory's and each file's group,
+assigning children by the same containment edges and by nearest position only
+for an orphan. The circles are drawn whatever the layout, when a draw finishes,
+unless Group Outlines (`showCompoundGroups`) is off: `StreamingGraphRenderer`
+checks only that setting, and the toggle is offered with the D3 renderer for
+every layout. Each circle encloses its group where the chosen layout put it.
+They are in a `<g class="compound-backgrounds">` that is the transform group's
+first child, so they sit behind links and nodes. Where the layout and its
+outline toggle are chosen is in the [UI reference](ui.md).
+
+`computeChildrenMap` covers all four tiers, so dragging a node moves its whole
+subtree, and the circles are redrawn when the drag ends. The map is computed
+where the circles are drawn, so with Group Outlines off from the first draw a
+drag moves the one node; and the redraw after a drag does not read the setting,
+so a drag after the outlines are turned off draws them again.
 
 ## Calculated, stored, displayed
 
@@ -261,6 +432,16 @@ the overview panel shows when the reading was made (the producer's stamp when
 the seam carries one, else the file's time, named as such) so a stale number is
 delivered with its date.
 
+## Known limitations
+
+**A popped-out panel is empty.** Golden Layout opens a popped-out panel in a
+new browser window, which loads the page and redraws the frame, but the
+component factories are bound to the first window's Mithril instance and are
+not registered again in the new one, so nothing mounts. `popInOnClose`
+(`default_layout.ts`) returns the panel to the main window when the pop-out is
+closed. Mounting in the new window needs Golden Layout's virtual-layout or
+binding-context API.
+
 ## Key Architectural Decisions
 
 All non-obvious structural choices are documented as ADR drafts in
@@ -279,30 +460,13 @@ All non-obvious structural choices are documented as ADR drafts in
 
 ## Extension Points
 
-### Adding a New Language Parser (fastest path)
-
-Add a `_PATTERNS` list and one entry in `_LANGUAGES` in
-`codecarto/services/parsers/regex_language_parser.py`.
-The new extensions appear in `/parse/languages` immediately.
-See `docs/llm/EXTENDING.md` for the full guide including the
-`batch_whole_tree` option for cross-file languages.
-
-### Adding a New GL Panel
-
-Add one entry to `PANEL_DEFINITIONS` in
-`web/src/layout/panel_registry.ts` (id, title, GL config, mount fn).
-It automatically appears in the "+" add-window menu.
-
-### Adding a New Renderer
-
-Implement `IGraphRenderer`, register in
-`web/src/features/graph/services/renderers.ts`.
-
-### Adding a New Graph Layout
-
-Add `my_layout(G: nx.DiGraph) -> dict` in
-`codecarto/models/custom_layouts/`, import inside `add_custom_layouts()`
-in `position_service.py`, register with `params=["graph"]`.
+[Extending](extending.md) has the steps for each: a language parser (the
+fastest is one entry in `regex_language_parser.py`'s `_LANGUAGES`), a renderer,
+a styling option, a canvas extension, a route, and a system diagram. A panel is
+one entry in `PANEL_DEFINITIONS` (`web/src/layout/panel_registry.ts`). A layout
+is a function `my_layout(G) -> dict` in `codecarto/models/custom_layouts/`,
+added in `position_service.py`'s `add_custom_layouts()` with
+`params=["graph"]`.
 
 ## Architecture Decision Records
 

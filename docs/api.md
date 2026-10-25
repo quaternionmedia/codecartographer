@@ -109,7 +109,7 @@ Parse a directory tree to the requested depth and return a gJGF graph.
 **`annotate_lexicon`** (default `false`): stamp Lexicon abstraction-layer
 data (`layer_ordinal`, `meta.lexicon_layers`) onto nodes whose language
 has one (`c`, `python` and `rust`; `GET /lexicon/` lists them — see
-`docs/llm/roadmap/lexicon.md`).
+`docs/roadmap/lexicon.md`).
 Opt-in: existing callers see no change. Requests with this set to `true`
 bypass the response cache (the cache key doesn't vary on this field).
 
@@ -195,9 +195,9 @@ from the cache (`from_cache: true`) instead of re-parsing.
 
 After a fresh stream completes (the `done` event is emitted), the full
 accumulated graph is automatically written to cache — subsequent requests
-with the same URL, mode, layout, and extensions are served as instant
-replays without re-parsing. A stream that carried a `note` is not written:
-its replay would arrive without it.
+with the same URL, mode, layout, and extensions, under the same graph schema
+version, are served as instant replays without re-parsing. A stream that
+carried a `note` is not written: its replay would arrive without it.
 
 ---
 
@@ -275,7 +275,15 @@ parsing; these two are demo/rendering utilities, not parse entry points.
 
 ### POST `/plotter/demo`
 
-Generate a demo graph from the codecarto source code itself.
+Generate a demo graph from the codecarto source code itself: the `.py` files of
+this repository's `codecarto/` package, read through
+`UnifiedParserService.parse` as every other parse is read. `parse_by` sets only
+the depth (`plotter_router.py`, `_DEMO_MODE_TO_DEPTH`):
+
+| `parse_by` | `depth` | output |
+|------------|---------|--------|
+| `directory` | 1 | directories and files |
+| anything else (`ast`, `dependencies`, the default `code`) | 2 | + symbols and file-to-file dependency edges |
 
 **Request Body:**
 ```json
@@ -352,8 +360,8 @@ Parse a single C/H source file.
 }
 ```
 
-> **Note:** `/c-parser/*` returns a legacy flat `{nodes, edges, meta}` dict, not
-> gJGF — the frontend's `adaptCGraphToGJGF` converts it. `/parse/unified` with
+> **Note:** `/c-parser/*` returns a flat `{nodes, edges, meta}` dict, not
+> gJGF, and the web application does not call it. `/parse/unified` with
 > `.c`/`.h` extensions produces gJGF natively and, since the unification pass,
 > the *same* cross-file CALLS resolution, stub-header diagnostics, and
 > `has_parse_warning` flagging as this dedicated pipeline — both call into the
@@ -406,21 +414,18 @@ file-by-file progress events.
 
 ### POST `/c-parser/stream-github`
 
-Streamed variant of `/c-parser/github`, used by the "C" example chips
-(git, curl, Lua, SQLite, Redis) in earlier frontend builds. The current
-web UI routes those chips through the unified `/parse/stream-url` flow;
-this endpoint remains available for direct/manual callers. libclang parsing
+Streamed variant of `/c-parser/github`. The web application's C examples go
+through `/parse/stream-url`; this route is for direct callers. libclang parsing
 is synchronous CPU-bound work, so it runs in a background thread while this
-endpoint drains its progress queue and forwards SSE events in real time —
-see "C semantic stream path" in `docs/llm/ARCHITECTURE.md` for the full
-design rationale.
+endpoint drains its progress queue and forwards SSE events as they arrive —
+see `docs/architecture.md`, *C: two pipelines*.
 
 **Request Body:** same as `/c-parser/github`.
 
 **Response:** `Content-Type: text/event-stream`:
 
 If the request matches a cached parsed graph (`CacheService`, Cache A — see
-`docs/llm/ARCHITECTURE.md` "Two C-parser caches"), all events are replayed
+`docs/architecture.md`, *The two caches*), all events are replayed
 instantly (`from_cache: true`) with positions baked into each node and a
 `reposition` event restoring the saved layout.
 
@@ -460,8 +465,8 @@ List extracted GitHub repos in the C-parser's repo cache (newest first).
 This is a *different* cache from `GET /parse/cache` — that one lists cached
 *parsed graphs*; this one lists cached *extracted source trees* (downloaded
 zip contents, re-parsed fresh on every request — only the download+extract
-step is skipped on a hit). See `docs/llm/ARCHITECTURE.md`'s "Two C-parser
-caches" for why these aren't merged into one.
+step is skipped on a hit). `docs/architecture.md`, *The two caches*, sets
+the two side by side.
 
 **Response:**
 ```json
@@ -501,8 +506,8 @@ request. There is no separate set of local-only endpoints.
 
 Fetch the directory tree of a GitHub repository **or** a local path.
 
-For GitHub URLs, the result is cached (see "Two C-parser caches" in
-ARCHITECTURE.md for the cache layout) — a repeat call for the same repo
+For GitHub URLs, the result is cached (see `docs/architecture.md`, *The two
+caches*, for the layout) — a repeat call for the same repo
 within `CC_CACHE_TTL` (default 24h) returns instantly with no GitHub calls.
 On a cache miss, the repo's full tree is fetched in two GitHub API calls
 (`github_service.fetch_tree_fast`, the Git Trees API) regardless of repo
@@ -771,7 +776,7 @@ Delete a specific history entry.
 
 Hand-authored per-language ontologies (reserved words/operators on a
 hierarchy of abstraction layers), projected into the same graph pipeline
-the parsers use. See `docs/llm/roadmap/lexicon.md` for the full design.
+the parsers use. See `docs/roadmap/lexicon.md` for the full design.
 
 ### GET `/lexicon/`
 

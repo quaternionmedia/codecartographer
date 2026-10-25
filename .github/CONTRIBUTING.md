@@ -8,7 +8,7 @@ work is described; it repeats none of it.
   proposed and recorded, gives the test commands and the governance gates, and
   holds the contributorship rule: bylines are human, and tool use is disclosed
   as a `Tools:` note.
-- **Patterns:** [Extending](../docs/llm/EXTENDING.md), for a new parser,
+- **Patterns:** [Extending](../docs/extending.md), for a new parser,
   renderer, styling option, extension or route.
 - **How the pieces fit:** [Architecture](../docs/architecture.md).
 - **Why it is built this way:** the decision records in `governance/qm/adr/`.

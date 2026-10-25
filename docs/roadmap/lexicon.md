@@ -123,7 +123,7 @@ join): mechanical, unchanged from before Option B existed.
 **Also joining the chrestomathy**: name the language's tokens under each
 construct's `spelled:` in `codecarto/data/constructs.yaml` (a test holds every
 one to the lexicon) and map its parser kinds under `languages:` -- see
-`docs/llm/EXTENDING.md`, *Joining the construct vocabulary*.
+`docs/extending.md`, *Joining the construct vocabulary*.
 
 **Also wiring Option B** (join real parsed code to this language's layers)
 — a real, small, per-language step, not implied-free by step 1-3 above:

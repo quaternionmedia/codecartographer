@@ -31,9 +31,9 @@ submodules and a first graph.
   server's `/docs` lists those in its OpenAPI schema, which leaves out the
   WebSockets and a few others `docs/api.md` names.
 - [Architecture](docs/architecture.md): how the pieces fit
-- [Extending](docs/llm/EXTENDING.md): adding a parser, renderer, panel or route
-- [UI reference](docs/llm/UI_REFERENCE.md): the panels, the canvas and the menus
-- Planned work is listed in [the roadmap](docs/llm/roadmap/README.md).
+- [Extending](docs/extending.md): adding a parser, renderer, panel or route
+- [UI reference](docs/ui.md): the panels, the canvas and the menus
+- Planned work is listed in [the roadmap](docs/roadmap/README.md).
 - [Contributing](.github/CONTRIBUTING.md) and [`AGENTS.md`](AGENTS.md): how a
   change is made here
 - Decision records: `governance/qm/adr/`, in the governance submodule

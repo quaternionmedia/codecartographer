@@ -12,7 +12,9 @@ it describes, and each check here fails on a document that disagrees with it:
 - the README is an onramp: at most `README_LINES` lines;
 - no document names the port this project no longer binds, or a test count;
 - every relative link resolves, and so does every repository path written in
-  backticks in prose, unless `EXAMPLE_PATHS` names it;
+  backticks in prose, unless `EXAMPLE_PATHS` names it, and every page under
+  `docs/` that the code names; a link's `#anchor` is one a heading of its page
+  makes, as GitHub makes them;
 - every `codecarto ...` command a document writes exists in the click tree,
   with its options, and a value from a fixed choice is one of the choices;
 - every JSON envelope in `docs/api.md` has `status`, `message` and `results`;
@@ -21,7 +23,14 @@ it describes, and each check here fails on a document that disagrees with it:
 - every sync a document or the code tells a reader to run is `ONE_SYNC`;
 - `docs/index.md` links every page under `docs/`;
 - the UI reference names every registered panel, and the default layout and
-  the source tree agree with the registry and the dev proxy.
+  the source tree agree with the registry and the dev proxy;
+- every statement of the graph cache key names the schema version
+  `cache_service._make_key` hashes with the url, mode, layout and extensions;
+- the caches section says what evicting a GitHub repository from either cache
+  removes, as the two evictions do;
+- a C edge kind is named in upper case only about `/c-parser/*`, and in lower
+  case only as `c_language_parser._EDGE_KIND_MAP` gives it;
+- every depth table's row 3 names what the C adapter puts at depth 3.
 
 The application, the click tree and the code are the sources; nothing here
 keeps a list of routes, commands or variables of its own.
@@ -36,6 +45,7 @@ where the submodule is checked out, which CI does not do.
 
 from __future__ import annotations
 
+import functools
 import re
 import subprocess
 from pathlib import Path
@@ -199,9 +209,9 @@ SPAN_ROUTE = re.compile(r"`(/[A-Za-z][^`\s]*)`")
 
 # Routes a document names that nothing mounts, each for a stated reason.
 UNSERVED_ROUTES = {
-    "/parse/repo": "planned in docs/llm/LARGE_REPOS.md, Phase 4",
-    "/parse/job": "planned in docs/llm/LARGE_REPOS.md, Phase 5",
-    "/parse/job/{id}/ws": "planned in docs/llm/LARGE_REPOS.md, Phase 5",
+    "/parse/repo": "planned in docs/roadmap/large-repos.md, A whole repository in one request",
+    "/parse/job": "planned in docs/roadmap/large-repos.md, Parse jobs",
+    "/parse/job/{id}/ws": "planned in docs/roadmap/large-repos.md, Parse jobs",
 }
 
 
@@ -344,6 +354,7 @@ REPO_PATH = re.compile(
 # Paths a document names that are not in the tree, each for a stated reason.
 EXAMPLE_PATHS = {
     "web/dist": "the build's output, written by `npm run build` and not tracked",
+    "docs/wiring.md": "a file test_link_map_service.py hands link_input, not a page",
     "codecarto/routers/parse_job_router.py": "planned in the large-repository roadmap",
     "codecarto/services/parse_job_service.py": "planned in the large-repository roadmap",
 }
@@ -417,6 +428,81 @@ def test_paths_into_the_submodules_resolve():
         pytest.skip(f"{deferred} references into submodules that are not "
                     f"checked out here (CI checks out none)")
     assert not missing, f"these paths name nothing in their submodule: {missing}"
+
+
+def _slug(heading: str) -> str:
+    """GitHub's anchor for a heading: its text as rendered, lower-cased, with
+    everything but letters, digits, `_`, `-` and spaces dropped, and each
+    space a hyphen."""
+    text = re.sub(r"`([^`]*)`", r"\1", heading)
+    text = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"<[^>]+>", "", text).replace("*", "")
+    return re.sub(r"[^\w\- ]", "", text.strip().lower()).replace(" ", "-")
+
+
+@functools.lru_cache(maxsize=None)
+def _anchors(path: Path) -> frozenset[str]:
+    """Every anchor a page has: one per heading, a repeated one numbered from
+    `-1` as GitHub numbers it, and any `<a id>` or `<a name>`."""
+    found, counts = set(), {}
+    for _, line, fenced in _prose_lines(path):
+        heading = re.match(r"#{1,6}\s+(.*?)\s*#*\s*$", line)
+        if fenced or not heading:
+            continue
+        slug = _slug(heading.group(1))
+        found.add(f"{slug}-{counts[slug]}" if slug in counts else slug)
+        counts[slug] = counts.get(slug, 0) + 1
+    text = path.read_text(encoding="utf-8")
+    found |= set(re.findall(r"<a\s+(?:id|name)=\"([^\"]+)\"", text))
+    return frozenset(found)
+
+
+def test_every_link_anchor_names_a_heading():
+    """A link's `#anchor` that no heading makes opens the page at its top, and
+    the link check above drops the anchor. Mutation: link
+    `architecture.md#the-unified-graphs` -- this fails naming it."""
+    seen, wrong = 0, []
+    for path in DOCUMENTS:
+        for number, line, fenced in _prose_lines(path):
+            if fenced:
+                continue
+            for target in LINK.findall(line):
+                if re.match(r"^[a-z][a-z0-9+.-]*:", target) or "#" not in target:
+                    continue
+                page, _, anchor = target.partition("#")
+                page = page.split("?")[0]
+                file = path.parent / page if page else path
+                if file.suffix != ".md" or not file.is_file() or _in_unchecked_submodule(file):
+                    continue
+                seen += 1
+                if anchor not in _anchors(file.resolve()):
+                    wrong.append(f"{_rel(path)}:{number} -> {target}")
+    assert seen, "the reader found no link with an anchor; its pattern is stale"
+    assert not wrong, f"these links name an anchor no heading of their page makes: {wrong}"
+
+
+DOC_PATH = re.compile(r"\bdocs/[\w./-]*?\.md\b")
+
+
+def test_every_page_the_code_names_exists():
+    """A comment, a docstring or a tooltip naming a page that is gone sends its
+    reader nowhere, and the link check reads only documents. Mutation: point
+    the Color By tooltip in `control_panel.ts` back under `docs/llm/` -- this
+    fails naming it."""
+    seen, missing = 0, []
+    for path in _code_files():
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            for written in DOC_PATH.findall(line):
+                seen += 1
+                if written not in EXAMPLE_PATHS and not (ROOT / written).is_file():
+                    missing.append(f"{_rel(path)}:{number} -> {written}")
+    assert seen, "the reader found no page named in the code; its pattern is stale"
+    assert not missing, (
+        f"the code names these pages, and none is in the tree: {missing}")
 
 
 def test_example_paths_are_still_absent():
@@ -706,9 +792,9 @@ def test_ui_reference_names_every_registered_panel():
     registry = (ROOT / "web" / "src" / "layout" / "panel_registry.ts").read_text(encoding="utf-8")
     ids = set(re.findall(r"^\s+id: '([a-z-]+)',", registry, re.M))
     assert ids, "no panel ids found in panel_registry.ts; the pattern is stale"
-    reference = (ROOT / "docs" / "llm" / "UI_REFERENCE.md").read_text(encoding="utf-8")
+    reference = (ROOT / "docs" / "ui.md").read_text(encoding="utf-8")
     missing = sorted(i for i in ids if f"`{i}`" not in reference)
-    assert not missing, f"docs/llm/UI_REFERENCE.md's panel table lacks: {missing}"
+    assert not missing, f"docs/ui.md's panel table lacks: {missing}"
 
 
 def test_no_source_directory_is_shadowed_by_the_dev_proxy(prefixes):
@@ -759,3 +845,211 @@ def test_the_api_reference_says_the_errors_the_envelope_does_not_carry():
     assert invalid.status_code == 422 and isinstance(invalid.json().get("detail"), list)
     assert '{"detail": "Not Found"}' in reference, "api.md does not show an unknown route's 404"
     assert re.search(r"^\| 422 \|", reference, re.M), "api.md's error table has no 422 row"
+
+
+# ── Statements the code can hold ─────────────────────────────────────────────
+
+
+def _paragraphs(path: Path):
+    """(first line, text) for each prose paragraph of a document, its lines
+    joined. A heading, a table row and a list item each start one; a table
+    row and a heading are one line. Fenced blocks are not prose."""
+    para, start = [], 0
+    for number, line, fenced in _prose_lines(path):
+        text = line.strip()
+        opens = text.startswith(("|", "#")) or re.match(r"(?:[-*+]|\d+\.)\s", text)
+        if (fenced or not text or opens) and para:
+            yield start, " ".join(para)
+            para = []
+        if fenced or not text:
+            continue
+        if text.startswith(("|", "#")):
+            yield number, text
+            continue
+        if not para:
+            start = number
+        para.append(text)
+    if para:
+        yield start, " ".join(para)
+
+
+GRAPH_KEY_PARTS = re.compile(r"\burl\W+mode\W+layout\W+(?:and\W+)?extensions\b", re.I)
+SCHEMA_VERSION = re.compile(r"schema version|GRAPH_SCHEMA_VERSION", re.I)
+
+
+def test_every_statement_of_the_graph_cache_key_names_the_schema_version(monkeypatch):
+    """`cache_service._make_key` hashes `v{GRAPH_SCHEMA_VERSION}` with the url,
+    mode, layout and extensions, so a graph cached in an older shape is a
+    miss. A sentence giving the key as those four alone tells a reader that an
+    old graph is replayed. Mutation: drop the version from a statement, or from
+    `_make_key`'s payload -- this fails naming it."""
+    from codecarto.services import cache_service
+
+    parts = ["https://github.com/o/r", "full", "Spring", [".py"]]
+    key = cache_service._make_key(*parts)
+    for i, other in enumerate(["https://github.com/o/s", "c", "Circular", [".c"]]):
+        changed = [*parts[:i], other, *parts[i + 1:]]
+        assert cache_service._make_key(*changed) != key, (
+            f"_make_key no longer varies on its {['url', 'mode', 'layout', 'extensions'][i]}")
+    monkeypatch.setattr(cache_service, "GRAPH_SCHEMA_VERSION",
+                        cache_service.GRAPH_SCHEMA_VERSION + 1)
+    assert cache_service._make_key(*parts) != key, (
+        "the graph key no longer carries GRAPH_SCHEMA_VERSION; the statements "
+        "this reads are stale, and so is this check")
+
+    seen, wrong = 0, []
+    for path in DOCUMENTS:
+        for number, text in _paragraphs(path):
+            for match in GRAPH_KEY_PARTS.finditer(text):
+                if re.search(r"\b(?:cache_key|_make_key)\($", text[:match.start()]):
+                    continue  # the function's signature: the version is not an argument
+                seen += 1
+                window = text[max(0, match.start() - 120):match.end() + 120]
+                if not SCHEMA_VERSION.search(window):
+                    wrong.append(f"{_rel(path)}:{number}: {match.group(0)}")
+    assert seen, "no document states the graph cache key; the reader is stale"
+    assert not wrong, (
+        f"these give the graph cache key without the schema version "
+        f"(`v{{GRAPH_SCHEMA_VERSION}}`, cache_service._make_key): {wrong}")
+
+
+def _section(path: Path, heading: str) -> list[tuple[int, str]]:
+    """The paragraphs under `## heading`, to the next heading of that level."""
+    found, inside = [], False
+    for number, text in _paragraphs(path):
+        if text.startswith("## "):
+            inside = text == f"## {heading}"
+            continue
+        if inside:
+            found.append((number, text))
+    return found
+
+
+def test_the_caches_section_says_evicting_one_cache_empties_the_other(monkeypatch, tmp_path):
+    """For a GitHub repository both caches are one directory,
+    `~/.codecarto/cache/repos/{owner}-{repo}/`, and each eviction that removes
+    a repository removes it whole: `DELETE /c-parser/cache/{key}` takes Cache
+    A's tree and graphs and leaves their `index.json` entries, and
+    `CacheService.evict_repo` takes Cache B's source. Mutation: drop the
+    paragraph from architecture.md, or give the caches separate directories
+    or the C eviction the index -- this fails, and the paragraph is to say what
+    the code then does."""
+    from codecarto.services import c_parser_service, cache_service
+    from codecarto.services.c_parser_service import CParserService
+    from codecarto.services.cache_service import CacheService
+
+    assert cache_service._REPOS_DIR == c_parser_service._REPO_CACHE_DIR, (
+        "the two caches no longer share a directory; the paragraph is stale")
+    repos = tmp_path / "repos"
+    monkeypatch.setattr(cache_service, "_REPOS_DIR", repos)
+    monkeypatch.setattr(cache_service, "_INDEX_FILE", repos / "index.json")
+    monkeypatch.setattr(cache_service, "_mongo_col", lambda: None)
+    monkeypatch.setattr(c_parser_service, "_REPO_CACHE_DIR", repos)
+
+    url = "https://github.com/o/r"
+    key = CacheService.cache_key(url, "2", "Spring", [])
+
+    def fill():
+        CacheService.set_tree(url, {"tree": True})
+        CacheService.set(key, {"graph": {}}, label="o/r", url=url)
+        (repos / "o-r" / "src").mkdir(parents=True, exist_ok=True)
+        (repos / "o-r" / "metadata.json").write_text("{}")
+
+    fill()
+    assert CParserService.evict_repo_cache("o-r")
+    assert CacheService.get_tree(url) is None and CacheService.get(key) is None, (
+        "DELETE /c-parser/cache/{key} no longer removes Cache A's tree and graphs")
+    assert key in {e["key"] for e in CacheService.list_cached()}, (
+        "DELETE /c-parser/cache/{key} now drops the index entries it orphans")
+    fill()
+    assert CacheService.evict_repo(url)
+    assert not (repos / "o-r" / "src").exists(), (
+        "CacheService.evict_repo no longer removes Cache B's source")
+
+    paragraphs = [text for _, text in _section(
+        ROOT / "docs" / "architecture.md", "The two caches") if not text.startswith("|")]
+    stated = [t for t in paragraphs if "DELETE /c-parser/cache/{key}" in t
+              and "index.json" in t and "evict_repo" in t]
+    assert stated, (
+        "docs/architecture.md, *The two caches*, does not say that evicting a "
+        "GitHub repository from one cache removes the other's directory too, "
+        "and leaves index.json naming graphs that are gone")
+
+
+def test_c_edge_kinds_are_named_as_the_graph_that_carries_them():
+    """`CParser` writes its edge kinds in upper case (`CALLS`, `FIELD_OF`);
+    `/c-parser/*` answers them so, and `c_language_parser._EDGE_KIND_MAP`
+    turns them into what a `/parse/*` graph carries (`calls`, `field_of`, and
+    `contains` for `LOCAL_OF`). A paragraph naming an upper-case kind is about
+    `/c-parser/*`, and a lower-case spelling of one is a kind the map gives.
+    Mutation: write `CALLS` into a paragraph about `/parse/*`, or `local_of`
+    anywhere -- this fails naming it."""
+    from codecarto.services.parsers.c_language_parser import _EDGE_KIND_MAP
+
+    assert all(k.isupper() for k in _EDGE_KIND_MAP), _EDGE_KIND_MAP
+    assert all(v.islower() for v in _EDGE_KIND_MAP.values()), _EDGE_KIND_MAP
+    upper = set(_EDGE_KIND_MAP)
+    spelled = {k.lower() for k in upper}
+    given = set(_EDGE_KIND_MAP.values())
+    wrong = []
+    for path in DOCUMENTS:
+        for number, text in _paragraphs(path):
+            spans = {s.strip() for s in CODE_SPAN.findall(text)}
+            if spans & upper and "/c-parser" not in text:
+                wrong.append(f"{_rel(path)}:{number}: {sorted(spans & upper)} "
+                             f"outside /c-parser/*")
+            if (spans & spelled) - given:
+                wrong.append(f"{_rel(path)}:{number}: {sorted((spans & spelled) - given)} "
+                             f"is no kind _EDGE_KIND_MAP gives")
+    assert not wrong, (
+        f"a /parse/* graph's C edges are {sorted(given)} "
+        f"(c_language_parser._EDGE_KIND_MAP); the upper-case kinds are "
+        f"/c-parser/*'s: {wrong}")
+
+
+def _depth_rows(depth: int):
+    """(document, line, the row's other cells) for the row of `depth` in every
+    table whose first header cell is `depth`."""
+    for path in DOCUMENTS:
+        header = None
+        for number, line, fenced in _prose_lines(path):
+            text = line.strip()
+            if fenced or not text.startswith("|"):
+                header = None
+                continue
+            cells = [c.strip() for c in text.strip("|").split("|")]
+            if header is None:
+                header = cells
+            elif header[0] == "depth" and cells[0] == str(depth):
+                yield path, number, " ".join(cells[1:])
+
+
+def test_every_depth_table_names_what_the_c_parser_puts_at_depth_3():
+    """`CLangaugeParser._convert` puts a struct's fields, an enum's constants and
+    a function's locals (a `LOCAL_OF` target) at depth 3. Each depth table's
+    row 3 names the three, so a reader asking for depth 3 knows a C function
+    brings its locals. Mutation: drop "locals" from a row -- this fails."""
+    from codecarto.services.parsers.c_language_parser import CLangaugeParser
+
+    def node(nid, kind):
+        return {"id": nid, "kind": kind, "name": nid, "file": "a", "line": 1}
+
+    raw = {"nodes": [node("f", "function"), node("f::x", "variable"),
+                     node("struct s", "struct"), node("struct s::a", "field"),
+                     node("enum e", "enum"), node("enum e::A", "enum_constant")],
+           "edges": [{"src": "f", "dst": "f::x", "kind": "LOCAL_OF"},
+                     {"src": "struct s", "dst": "struct s::a", "kind": "FIELD_OF"}]}
+    graph = CLangaugeParser()._convert(raw, 3)
+    kinds = {a["kind"] for _, a in graph.nodes(data=True) if a["depth"] == 3}
+    assert kinds == {"variable", "field", "enum_constant"}, kinds
+    # A variable reaches depth 3 only as a function's local.
+    words = {"local" if k == "variable" else k.replace("_", " ") for k in kinds}
+
+    rows, wrong = 0, []
+    for path, number, row in _depth_rows(3):
+        rows += 1
+        missing = sorted(w for w in words if not re.search(rf"\b{w}s?\b", row, re.I))
+        if missing:
+            wrong.append(f"{_rel(path)}:{number}: lacks {missing}")
+    assert rows >= 2, "the reader found fewer depth tables than api.md and architecture.md hold"
+    assert not wrong, f"these depth-3 rows do not name what C puts there: {wrong}"

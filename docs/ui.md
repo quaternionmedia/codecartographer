@@ -149,7 +149,7 @@ The default renderer is `StreamingGraphRenderer` — nodes and edges arrive prog
 rather than inside a renderer, so it reaches whatever drew the graph — Load
 Demo, plot repo, plot file, cache recall, bookmark replay, a lexicon. Source is
 `web/src/features/graph/rad/`; see
-[`RAD_INTEGRATION_HANDOFF.md`](RAD_INTEGRATION_HANDOFF.md) for the contract it
+[`RAD_INTEGRATION_HANDOFF.md`](llm/RAD_INTEGRATION_HANDOFF.md) for the contract it
 conforms to.
 
 Press-and-hold, right-click, or press the menu key on a focused canvas. Flick

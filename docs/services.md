@@ -98,7 +98,7 @@ Integrates with GitHub API to fetch repository contents.
 #### `get_raw_from_repo(url)`
 
 Fetch a GitHub repository's directory tree, cached via `CacheService`
-(see ARCHITECTURE.md's "Two C-parser caches"). On a cache miss, fetches the
+(see `docs/architecture.md`, *The two caches*). On a cache miss, fetches the
 full tree in two API calls (`fetch_tree_fast`, the Git Trees API) and then
 fetches file content per the repo's size tier — full content for small
 repos, structure only for medium repos, a shallow listing for huge ones.
@@ -133,9 +133,12 @@ content = await get_raw_from_url(
 `create_headers()`. Resolution order (first non-empty wins):
 `CC_GITHUB_TOKEN` env var → `gh auth token` (keyring) → `GITHUB_TOKEN`/
 `GH_TOKEN` env vars → `/run/secrets/github_token` (Docker secret) →
-unauthenticated. See `governance/qm/adr/DRAFT-github-token-resolution.md` for
-why the order is keyring-before-env-var, and `GET /auth/github`
-(`docs/api.md`) to inspect the resolved source at runtime.
+unauthenticated, at 60 requests an hour, with a warning in the log. `gh auth
+token` runs with `GITHUB_TOKEN` and `GH_TOKEN` removed from its environment, so
+it answers from the keyring; to use another token, set `CC_GITHUB_TOKEN`. See
+`governance/qm/adr/DRAFT-github-token-resolution.md` for why the order is
+keyring-before-env-var, and `GET /auth/github` (`docs/api.md`) to inspect the
+resolved source at runtime.
 
 ---
 
@@ -148,7 +151,7 @@ each file to its registered `LanguageParser` (via `ParserRegistry`,
 keyed by extension), walks folders to the requested depth, and — for
 languages needing cross-file context (`batch_whole_tree = True`, e.g.
 C) — batches all of that language's files into one parser call instead
-of one-at-a-time. See `docs/llm/ARCHITECTURE.md` for the full pipeline.
+of one-at-a-time. `docs/architecture.md` has the pipeline.
 
 ### Methods
 
@@ -209,10 +212,9 @@ graph = parser.parse(folder)
 
 ---
 
-Directory/file hierarchy and Python import-dependency edges are both
-produced by `UnifiedParserService` itself now (depth=1 for the
-hierarchy; `_add_python_dependency_edges()` for `depends_on` edges at
-depth>=2), not by separate parser classes.
+`UnifiedParserService` builds the directory and file hierarchy itself (depth
+1), and `_add_python_dependency_edges()` adds Python's `depends_on` edges between
+files at depth 2 and deeper.
 
 ---
 
@@ -223,7 +225,7 @@ depth>=2), not by separate parser classes.
 Loads a hand-authored per-language lexicon (reserved words/operators on
 a hierarchy of abstraction layers, from `data/lexicons/<language>.yaml`)
 and projects it into the same graph pipeline the parsers use. See
-`docs/llm/roadmap/lexicon.md` for the full design and the `/lexicon/*`
+`docs/roadmap/lexicon.md` for the full design and the `/lexicon/*`
 endpoints in `docs/api.md`.
 
 ### Methods
@@ -323,7 +325,7 @@ separate.
 | `list_cached()` | List all cached entries |
 | `evict(key)` | Remove one cached entry |
 | `get_tree(url)` / `set_tree(url, data)` | Cache a fetched repo tree separately from parsed graphs |
-| `evict_repo(url)` | Remove a cached repo tree |
+| `evict_repo(url)` | Remove the repository's directory: its tree, every graph, their `index.json` entries and, for GitHub, `CParserService`'s extracted source, which shares the directory. No route calls it |
 
 ---
 
@@ -334,7 +336,7 @@ separate.
 C-specific parse orchestration via libclang, used by the dedicated
 `/c-parser/*` endpoints (distinct from C files going through the
 generic `/parse/*` path via `c_language_parser.py` — see
-`docs/llm/ARCHITECTURE.md`'s "Two C-parser caches").
+`docs/architecture.md`, *The two caches*).
 
 ### Methods
 
@@ -343,7 +345,7 @@ generic `/parse/*` path via `c_language_parser.py` — see
 | `parse_file(path)` | Parse a single C/H file |
 | `parse_directory(path, ...)` | Parse a local directory, with an optional per-file progress callback |
 | `parse_github(...)` | Parse a GitHub repo's C/H files |
-| `list_cached_repos()` / `evict_repo_cache(key)` | Manage this service's own repo-tree cache |
+| `list_cached_repos()` / `evict_repo_cache(key)` | List and remove the extracted source trees; removing one removes the whole `{owner}-{repo}/` directory, `CacheService`'s tree and graphs with it, and leaves their `index.json` entries |
 
 ---
 
