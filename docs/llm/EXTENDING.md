@@ -188,9 +188,12 @@ edge_attrs = make_edge("contains", weight=1.0)
 > It only falls back to its own heuristics for nodes that have neither field set (e.g. raw
 > directory/file nodes emitted by the directory walker).
 >
-> The `'ngon'` shape draws an N-sided polygon. Set `meta["sides"]` to control the
-> polygon order (clamped 3–12 by the renderer). Used by the C parser for `struct`/`union`
-> nodes where `sides = min(max(field_count, 3), 10)`.
+> The `'ngon'` shape draws an N-sided polygon, turned a quarter of a side so that
+> no count draws as `diamond`, `square` or `hexagon`. Set `meta["sides"]` with
+> `construct_service.ngon_sides(count)`, which clamps to `NGON_SIDES` — the one
+> statement of the range; the renderer draws the count it is sent, and a pentagon
+> when there is none. Used by the C parser for `struct`/`union` nodes from their
+> field count, and by the construct vocabulary for every record.
 
 ---
 
