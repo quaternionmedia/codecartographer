@@ -211,9 +211,12 @@ const DRAWN = [
   { kind: 'function', shape: 'diamond', color: '#ff9d3d' },
   { kind: 'token', shape: 'circle', color: '#95a5a6', layer_ordinal: 1 },
   { kind: 'field', shape: 'square' },
+  // The crate graph's crate: its own colour, and a construct whose colour is another.
+  { kind: 'crate', shape: 'square', color: '#2563eb', language: 'cargo',
+    construct: 'namespace.package', construct_name: 'Package', construct_color: '#6d28d9' },
 ];
 
-for (const colorBy of ['auto', 'layer']) {
+for (const colorBy of ['auto', 'layer', 'construct']) {
   test(`every node's row draws the path and fill the canvas draws it with (${colorBy})`, () => {
     /**
      * The key drew every record as a pentagon, because a mark carried no side
@@ -239,6 +242,21 @@ test('the canvas paints a layer only where the server sent its colour', () => {
   assert.equal(drawnFill({ color: '#123456', layer_color: '#ef4444' }, 'layer'), '#ef4444');
   assert.equal(drawnFill({ color: '#123456', layer_color: '#ef4444' }, 'auto'), '#123456');
   assert.equal(drawnFill({}, 'layer'), DEFAULT_NODE_COLOR);
+});
+
+test("Color By: Construct paints a construct's colour, through the one fill the key reads", () => {
+  /**
+   * The renderer painted `construct_color` from a branch of its own while the
+   * key's fill kept each node's colour, so under Construct the node rows were
+   * swatches of colours nothing was painted in. Mutation: drop the construct
+   * branch from `paintedColor` -- this fails.
+   */
+  const crate = DRAWN.find((n) => n.kind === 'crate');
+  assert.equal(drawnFill(crate, 'construct'), '#6d28d9');
+  assert.equal(drawnFill(crate, 'auto'), '#2563eb');
+  assert.equal(drawnFill(crate, 'layer'), '#2563eb');
+  assert.equal(drawnFill({ color: '#123456' }, 'construct'), '#123456');
+  assert.deepEqual(nodeMarks([crate], 'construct').map((m) => m.color), ['#6d28d9']);
 });
 
 test("a record's row says how many sides it is drawn with", () => {
@@ -333,4 +351,50 @@ test("a lexicon's keyword and operator layers of one ordinal are two rows", () =
     ['L0 Memory & address', 2],
     ['L0 Storage & memory placement', 1],
   ]);
+});
+
+// --- constructs ------------------------------------------------------------------
+
+test('the constructs key is one row per construct, whichever language drew it', async () => {
+  /* Mutation: key the rows on language and construct -- a C struct and a Rust
+     struct become two rows and this fails. */
+  const { constructMarks } = await import('../../dist-pure/features/graph/extensions/legend_marks.js');
+  const marks = constructMarks([
+    { language: 'c', construct: 'type.product', construct_name: 'Product type', construct_color: '#4a9eff' },
+    { language: 'rust', construct: 'type.product', construct_name: 'Product type', construct_color: '#4a9eff' },
+    { language: 'rust', construct: 'callable.function', construct_name: 'Function', construct_color: '#ff9d3d' },
+    { language: 'javascript', kind: 'function' },
+  ], 'construct');
+  assert.deepEqual(marks.map((m) => [m.construct, m.name, m.color, m.count]), [
+    ['type.product', 'Product type', '#4a9eff', 2],
+    ['callable.function', 'Function', '#ff9d3d', 1],
+  ]);
+});
+
+for (const colorBy of ['auto', 'layer', 'construct']) {
+  test(`the constructs key names a construct only in a colour the canvas paints (${colorBy})`, async () => {
+    /**
+     * Under "Auto" the crate graph's key listed Package in #6d28d9 while the
+     * canvas drew every crate in the Cargo panel's own colour. Mutation: ignore
+     * `colorBy` in `constructMarks` -- under auto and layer the crate is a row
+     * nothing was painted for, and this fails.
+     */
+    const { constructMarks } = await import('../../dist-pure/features/graph/extensions/legend_marks.js');
+    const marks = constructMarks(DRAWN, colorBy);
+    for (const mark of marks) {
+      const counted = DRAWN.filter((n) => n.construct === mark.construct && drawnFill(n, colorBy) === mark.color);
+      assert.equal(counted.length, mark.count, `${mark.construct}: a row for nodes painted ${mark.color}`);
+    }
+    assert.deepEqual(marks.map((m) => m.construct), colorBy === 'construct' ? ['namespace.package'] : []);
+  });
+}
+
+test("a node whose own colour is its construct's is a construct row in any colouring", async () => {
+  /* A Rust struct with no look of its own wears its construct's, so "Auto"
+     paints it in that colour and the key has to name it. Mutation: return no
+     rows unless `colorBy` is `construct` -- this fails. */
+  const { constructMarks } = await import('../../dist-pure/features/graph/extensions/legend_marks.js');
+  const struct = { language: 'rust', kind: 'struct', color: '#4a9eff',
+    construct: 'type.product', construct_name: 'Product type', construct_color: '#4a9eff' };
+  assert.deepEqual(constructMarks([struct], 'auto').map((m) => m.name), ['Product type']);
 });

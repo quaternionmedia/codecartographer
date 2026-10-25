@@ -25,6 +25,9 @@ export interface CartographyState {
   constructIndexProblem?: SeamProblem | null;
   chrestomathyReading: { construct: { id: string } } | null;
   chrestomathyProblem: SeamProblem | null;
+  /** The graph on the canvas, read as the constructs its nodes are. */
+  chrestomathyCensus?: unknown;
+  censusProblem?: SeamProblem | null;
 }
 
 /** What these actions need from the application. */
@@ -48,6 +51,30 @@ export interface CartographyReads {
   constructs(): Promise<SeamOutcome>;
   chrestomathy(construct: string): Promise<SeamOutcome>;
   chrestomathyGraph(construct: string, layout: string): Promise<SeamOutcome>;
+  census(nodes: ReadonlyArray<Record<string, unknown>>): Promise<SeamOutcome>;
+}
+
+/**
+ * The nodes a census is sent. A stamped node goes with its stamp; one that
+ * arrived without one with its whole `meta`, so the server's one rule can
+ * place it -- the client never decides a construct.
+ */
+export function censusNodes(nodes: ReadonlyArray<Record<string, unknown>>): Array<Record<string, unknown>> {
+  return nodes.map((n) => {
+    const meta = n.meta && typeof n.meta === 'object' ? (n.meta as Record<string, unknown>) : {};
+    return {
+      id: n.id,
+      language: n.language,
+      kind: n.kind,
+      construct: n.construct,
+      meta: typeof n.construct === 'string' ? { facets: meta.facets } : meta,
+    };
+  });
+}
+
+/** The graph on the canvas, as far as `readCanvas` reads it: what drew it. */
+export interface CanvasGraph {
+  metadata?: { [key: string]: unknown } | null;
 }
 
 export interface CargoDraw {
@@ -128,6 +155,7 @@ export class CartographyActions {
   private readonly indexReads = new Latest();
   private readonly chrestomathyReads = new Latest();
   private readonly chrestomathyDraws = new Latest();
+  private readonly censusReads = new Latest();
   private cargoFailed: Retry | null = null;
   private chrestomathyFailed: Retry | null = null;
 
@@ -220,6 +248,37 @@ export class CartographyActions {
   /** What "try again" on the Chrestomathy panel's problem repeats, or null with none shown. */
   chrestomathyRetry(): Retry | null {
     return this.chrestomathyFailed;
+  }
+
+  /**
+   * The chrestomathy of the graph on the canvas: which constructs its nodes
+   * are, in which languages. Ticketed like every read here: draw graph A, then
+   * B, and A's census answering last was shown under B.
+   */
+  async loadCensus(nodes: ReadonlyArray<Record<string, unknown>>): Promise<void> {
+    const latest = this.censusReads.take();
+    // At once: the census shown is of the graph before this one.
+    this.host.update(replacing({ chrestomathyCensus: null, censusProblem: null }));
+    const found = await this.reads.census(censusNodes(nodes));
+    if (!latest()) return;
+    this.settle(settlePatch(found, 'chrestomathyCensus', 'censusProblem'));
+  }
+
+  /**
+   * Read the graph now on the canvas, or forget the census of the one before.
+   *
+   * **A CENSUS IS NEVER OF A PICTURE THAT HAS GONE.** "draw the construct"
+   * puts the vocabulary's own drawing on the canvas -- tokens and parser kinds,
+   * not code -- and the census of the code map drawn before it stayed, its
+   * *show* framing 0 nodes and clearing the selection. With nothing drawn, or
+   * that drawing, there is no census, and one on its way is of a graph that
+   * has gone, so it is dropped when it answers.
+   */
+  readCanvas(graph: CanvasGraph | null | undefined, nodes: () => ReadonlyArray<Record<string, unknown>>): Promise<void> {
+    if (graph && graph.metadata?.kind !== 'chrestomathy') return this.loadCensus(nodes());
+    this.censusReads.take();
+    this.settle(replacing({ chrestomathyCensus: null, censusProblem: null }));
+    return Promise.resolve();
   }
 
   // --- shared ------------------------------------------------------------------

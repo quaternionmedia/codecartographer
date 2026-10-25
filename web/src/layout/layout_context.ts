@@ -534,6 +534,7 @@ export class LayoutContext {
       pinned: !!(id && this._nodeViewState[id]?.pinned),
       hasSource: !!node?.file,
       hasGroup: (node?.depth as number | undefined) !== undefined && (node!.depth as number) < 2,
+      hasConstruct: typeof node?.construct === 'string',
       selectionCount: this._radSelection.size,
       anyHidden: anyHidden(this._nodeViewState),
       // The streaming renderer has no force simulation; positions come from
@@ -560,6 +561,34 @@ export class LayoutContext {
   private _replaceSelection(nodes: GraphNode[]): void {
     this._radSelection.clear();
     for (const n of nodes) this._radSelection.add(n);
+  }
+
+  /**
+   * The nodes on the canvas now, whichever panel or parse drew them: the
+   * graph of record first, complete by the time it is set, and the renderer's
+   * own when nothing is recorded.
+   */
+  public canvasNodes(): GraphNode[] {
+    const recorded = this._normaliseGraph(this.appState.state.graphData).nodes;
+    return recorded.length ? recorded : this._streamingRenderer?.getNodes() ?? [];
+  }
+
+  /**
+   * Frame these nodes and make them the selection the radial menu's selection
+   * ring acts on -- how the chrestomathy points back at the graph it read.
+   * Returns how many were on the canvas; with none, the selection is left as
+   * it was rather than emptied.
+   */
+  public showOnCanvas(ids: readonly string[]): number {
+    const r = this._streamingRenderer;
+    if (!r) return 0;
+    const wanted = new Set(ids);
+    const found = r.getNodes().filter((n) => wanted.has(n.id));
+    if (!found.length) return 0;
+    this._replaceSelection(found);
+    r.fitTo(found.map((n) => n.id));
+    this.focusDockPanel('graph');
+    return found.length;
   }
 
   /** A verb the ring shows disabled, refused out loud if it ever commits. */
@@ -701,6 +730,14 @@ export class LayoutContext {
       showInfo: (id) => {
         const node = renderer()?.getNodes().find((n) => n.id === id);
         if (node) ToastManager.show(infoLine(node), 8_000);
+      },
+      // What this node is, beside every language that writes it. The panel
+      // reads `constructChosen`, which loading sets, so it opens on it.
+      compare: (id) => {
+        const node = renderer()?.getNodes().find((n) => n.id === id);
+        if (typeof node?.construct !== 'string') return;
+        void this.actions.plot.cartography.loadChrestomathy(node.construct);
+        this.restoreDockPanel('chrestomathy-panel');
       },
     };
   }
@@ -866,14 +903,15 @@ export class LayoutContext {
             // Announced rather than mounted here, so this path and the
             // registry's converge on the one subscription in the constructor.
             GraphSurface.publish(renderer);
-            this.appState.update({
-              parseDirectory: directory,
-              graphData: this._buildGraphData(accNodes, accEdges, {
-                nodeCount,
-                edgeCount: accEdges.length,
-                layout,
-              }) as any,
-            });
+            this.appState.update({ parseDirectory: directory });
+            // Replaced, never merged: a plain patch is the union of this graph
+            // and every one drawn before it, which the census then read as
+            // the canvas -- a code map after the crate graph listed crates.
+            this.appState.replaceGraphData(this._buildGraphData(accNodes, accEdges, {
+              nodeCount,
+              edgeCount: accEdges.length,
+              layout,
+            }) as any);
             if (this.appState.state.selectedRenderer !== 'd3') {
               this.actions.plot.createGraphVnode();
             }
@@ -956,13 +994,12 @@ export class LayoutContext {
             // Announced rather than mounted here, so this path and the
             // registry's converge on the one subscription in the constructor.
             GraphSurface.publish(renderer);
-            this.appState.update({
-              graphData: this._buildGraphData(accNodes, accEdges, {
-                nodeCount,
-                edgeCount: accEdges.length,
-                layout,
-              }) as any,
-            });
+            // Replaced, never merged (see `_startStream`).
+            this.appState.replaceGraphData(this._buildGraphData(accNodes, accEdges, {
+              nodeCount,
+              edgeCount: accEdges.length,
+              layout,
+            }) as any);
             if (this.appState.state.selectedRenderer !== 'd3') {
               this.actions.plot.createGraphVnode();
             }

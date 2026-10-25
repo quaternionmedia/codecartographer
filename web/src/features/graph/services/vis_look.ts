@@ -8,13 +8,15 @@
  * -- and it ignored "Color By". The shapes vis-network draws natively stay
  * native; the two it lacks are drawn as `custom`, from the same `nodePath` the
  * D3 canvas and its key use, so all three draw one mark. The colour is the D3
- * canvas's rule: a layer's colour in layer mode where the server sent one.
+ * canvas's rule, `paintedColor`: a layer's colour in layer mode and a
+ * construct's in construct mode, where the server sent one.
  *
  * Pure, so `node --test` holds it; `gravis_renderer.ts` only applies it.
  */
 
 // `.js`, so the build `node --test` reads resolves it as the bundler does.
 import { nodeSides, polygonSides } from './node_shapes.js';
+import { paintedColor } from '../extensions/legend_marks.js';
 
 const NATIVE: Record<string, string> = {
   circle: 'dot',
@@ -42,13 +44,12 @@ export interface VisNode {
   meta?: unknown;
   color?: unknown;
   layer_color?: unknown;
+  construct_color?: unknown;
 }
 
 export function visLook(node: VisNode, colorBy: string | undefined): VisLook {
   const shape = typeof node.shape === 'string' ? node.shape.toLowerCase() : '';
-  const layered = colorBy === 'layer' && typeof node.layer_color === 'string' && node.layer_color;
-  const color = layered ? (node.layer_color as string)
-    : typeof node.color === 'string' && node.color ? node.color : undefined;
+  const color = paintedColor(node, colorBy);
   if (DRAWN.has(shape)) {
     const sides = shape === 'ngon' ? polygonSides(nodeSides(node)) : undefined;
     return { shape: 'custom', path: sides === undefined ? { shape } : { shape, sides }, color };

@@ -20,6 +20,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from codecarto.models.source_data import Directory, RepoInfo, Folder
+from codecarto.services import construct_service
 from codecarto.util.exceptions import CodeCartoException, proc_exception
 from codecarto.util.utilities import generate_return
 
@@ -102,6 +103,25 @@ async def _relay_and_keep(chunks, keep):
             keep(acc_nodes, acc_edges)
 
 
+def _stamp_cached(cached: dict) -> dict:
+    """A cached gJGF graph's nodes, stamped by the vocabulary as it is now.
+
+    **A RE-STAMP READS ONLY WHAT THE CACHE KEPT.** The cache key carries no
+    trace of `constructs.yaml`, so a mapping added since a graph was cached is
+    applied here, on every route that serves one. It cannot restore a fact the
+    parser had not yet recorded when the graph was cached -- C's
+    `meta.automatic` on a local, say: a node without it is stamped static
+    storage, as its kind alone says -- nor take back a construct the
+    vocabulary no longer gives. A change of what a parse records is a
+    `GRAPH_SCHEMA_VERSION` bump, which makes the old graph a miss."""
+    nodes = (cached.get("graph") or {}).get("nodes")
+    if isinstance(nodes, dict):
+        for nd in nodes.values():
+            if isinstance(nd, dict) and isinstance(nd.get("metadata"), dict):
+                construct_service.stamp(nd["metadata"])
+    return cached
+
+
 async def _stream_cached_graph(cached: dict, layout: str):
     """Replay a cached graph as SSE events: meta → nodes (depth-sorted) → edges → done.
 
@@ -124,6 +144,9 @@ async def _stream_cached_graph(cached: dict, layout: str):
                 if k != "metadata":
                     flat[k] = v
             flat.update(nd.get("metadata", {}))
+            # Stamped again by the vocabulary as it is now (see
+            # `_stamp_cached`, the same rule on `/parse/unified`'s hit).
+            construct_service.stamp(flat)
             nodes_list.append(flat)
     meta = {
         "nodeCount": len(nodes_list),
@@ -232,6 +255,7 @@ async def parse_unified(request: UnifiedParseRequest) -> dict:
             )
             cached = CacheService.get(key)
             if cached is not None:
+                cached = _stamp_cached(cached)
                 cached["from_cache"] = True
                 return generate_return(200, "parse/unified - Cache hit", cached)
 

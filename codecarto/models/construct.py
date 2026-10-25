@@ -86,9 +86,20 @@ class LanguageMap(BaseModel):
 
 
 class Vocabulary(BaseModel):
+    """``languages`` are the languages codecarto parses: each is a row of every
+    construct's chrestomathy, and its kinds are held to its parsers. ``graphs``
+    are graphs a service draws that are no language's parse -- the crate graph
+    -- mapped the same way so their nodes are placed, but no row of any
+    chrestomathy: nothing is written in them to set beside the languages."""
+
     version: int
     constructs: List[Construct]
     languages: Dict[str, LanguageMap] = {}
+    graphs: Dict[str, LanguageMap] = {}
 
     def get(self, construct_id: str) -> Optional[Construct]:
         return next((c for c in self.constructs if c.id == construct_id), None)
+
+    def mapping(self, name: str) -> Optional[LanguageMap]:
+        """The kinds of a language, or of a graph that is no language's parse."""
+        return self.languages.get(name) or self.graphs.get(name)

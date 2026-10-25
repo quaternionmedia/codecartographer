@@ -236,6 +236,12 @@ statement.
    own how their nodes look; `constructs.yaml` is where looks shared across
    languages live, and a node keeps any look its parser gave it. The estate
    palette (rule 1) is a different vocabulary for a different kind of graph.
+   **And every graph says what its nodes are**: `GraphSerializer` stamps each
+   node's construct for every gJGF route, the unified streams as they parse, a
+   cached graph is stamped again whenever it is served, and
+   `construct_service.stamp` is the one place the decision is
+   made -- the census (`/lexicon/chrestomathy/census`) that reads a drawn graph
+   as a chrestomathy calls it too, and the client never decides a construct.
 10. **The window runs nothing it reads.** Running cargo runs a workspace's build
     scripts, proc macros and configured `rustc`, so no route does: a person runs
     `codecarto cargo record`, and the window reads what it wrote with its age.

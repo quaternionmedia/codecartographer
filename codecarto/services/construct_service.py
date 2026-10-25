@@ -26,13 +26,21 @@ and group each token sits on. Nothing here parses code to find out how a
 construct is used -- it says how each language *writes* one, and a language
 that has no spelling is drawn with its note rather than left out, because that
 absence is often the lesson.
+
+**ANY GRAPH CAN BE READ AS ONE.** Every graph a route serves passes through
+`GraphSerializer`, which stamps it here, and a cached graph is stamped again as
+it is replayed -- so whatever is on the canvas says what its nodes are.
+`census` turns that into the chrestomathy *of the graph*: the constructs
+present, in which languages, and what the vocabulary could not place. The one
+place a node's construct is decided is `stamp`; nothing on the client decides
+it again.
 """
 
 from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import networkx as nx
 
@@ -96,7 +104,7 @@ def load() -> Vocabulary:
 
 def construct_for(language: str, kind: str, meta: dict | None = None) -> str | None:
     """The construct a node of *language* and *kind* is, or None."""
-    mapping = load().languages.get(language)
+    mapping = load().mapping(language)
     if mapping is None:
         return None
     return _construct(mapping, kind, meta or {})
@@ -146,43 +154,54 @@ def _facets(mapping: LanguageMap, meta: dict, construct: str | None) -> list[str
     return sorted({f for f in found if f != construct})
 
 
-def annotate(graph: nx.Graph) -> int:
-    """Stamp `construct`, `meta.facets` and a default look. Returns how many
-    nodes the vocabulary recognised.
+def stamp(data: dict) -> bool:
+    """Stamp one node's attributes: `construct`, `meta.facets`, the construct's
+    own colour and name (`construct_color`, `construct_name`, which Color By →
+    Construct and the key read whatever look the node wears), and a default
+    look. True when the vocabulary recognised the node.
 
-    Idempotent: running it twice gives the same graph, so a parser may call it
-    and the pipeline may call it again over the merged graph.
-    """
+    The one place a node's construct is decided -- a graph being drawn, a
+    cached graph being replayed and a census all come here."""
     vocabulary = load()
-    recognised = 0
-    for _, data in graph.nodes(data=True):
-        mapping = vocabulary.languages.get(str(data.get("language", "")))
-        if mapping is None:
-            continue
-        meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
-        construct_id = _construct(mapping, str(data.get("kind", "")), meta)
-        facets = _facets(mapping, meta, construct_id)
-        if construct_id is None and not facets:
-            continue
-        recognised += 1
-        if construct_id:
-            data["construct"] = construct_id
-        if facets:
-            data.setdefault("meta", {})["facets"] = facets
-        construct = vocabulary.get(construct_id) if construct_id else None
-        if construct is None or construct.look is None:
-            continue
-        data.setdefault("shape", construct.look.shape)
-        data.setdefault("color", construct.look.color)
-        if data.get("shape") == "ngon" and "sides" not in meta:
-            # The first count the parser gave, zero included: `or` read a unit
-            # struct's zero fields as no count and drew it with four sides.
-            count = next((meta[k] for k in ("field_count", "variant_count", "member_count")
-                          if meta.get(k) is not None), None)
-            sides = ngon_sides(count)
-            if sides is not None:
-                data.setdefault("meta", {})["sides"] = sides
-    return recognised
+    mapping = vocabulary.mapping(str(data.get("language", "")))
+    if mapping is None:
+        return False
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    construct_id = _construct(mapping, str(data.get("kind", "")), meta)
+    facets = _facets(mapping, meta, construct_id)
+    if construct_id is None and not facets:
+        return False
+    if construct_id:
+        data["construct"] = construct_id
+    if facets:
+        data.setdefault("meta", {})["facets"] = facets
+    construct = vocabulary.get(construct_id) if construct_id else None
+    if construct is None or construct.look is None:
+        return True
+    data["construct_color"] = construct.look.color
+    data["construct_name"] = construct.name
+    data.setdefault("shape", construct.look.shape)
+    data.setdefault("color", construct.look.color)
+    if data.get("shape") == "ngon" and "sides" not in meta:
+        # The first count the parser gave, zero included: `or` read a unit
+        # struct's zero fields as no count and drew it with four sides.
+        count = next((meta[k] for k in ("field_count", "variant_count", "member_count")
+                      if meta.get(k) is not None), None)
+        sides = ngon_sides(count)
+        if sides is not None:
+            data.setdefault("meta", {})["sides"] = sides
+    return True
+
+
+def annotate(graph: nx.Graph) -> int:
+    """Stamp every node (see `stamp`). Returns how many the vocabulary
+    recognised.
+
+    Idempotent: running it twice gives the same graph, so a parser may call it,
+    the pipeline may call it over the merged graph, and the serializer may call
+    it again over whatever reaches it.
+    """
+    return sum(stamp(data) for _, data in graph.nodes(data=True))
 
 
 # ── The chrestomathy ──────────────────────────────────────────────────────────
@@ -202,7 +221,8 @@ def _display_name(language: str) -> str:
     lexicon = _lexicon(language)
     if lexicon is not None:
         return lexicon.display_name or language
-    return {"assembly": "Assembly", "linker": "Linker script"}.get(language, language)
+    return {"assembly": "Assembly", "linker": "Linker script",
+            "cargo": "Cargo manifest"}.get(language, language)
 
 
 def _languages(vocabulary: Vocabulary, construct: Construct) -> list[str]:
@@ -307,6 +327,117 @@ def table() -> dict[str, Any]:
         "source": _source(),
         "caveat": caveat(),
     }
+
+
+# The walk's own nodes: `unified_parser_service` draws each folder it walks as
+# a `directory` and each file as a `file`, carrying the file's language. A file
+# is a file, not a construct of the language it is written in, and a folder
+# says nothing of any language.
+WALK_KINDS = ("directory", "file")
+
+
+def census(nodes: Iterable[dict]) -> dict[str, Any]:
+    """The chrestomathy of a graph: which constructs its nodes are, in which
+    languages, and what the vocabulary could not place.
+
+    Each node is a dict with at least `id`, `language` and `kind`; a node that
+    arrived stamped keeps its stamp, and one that did not is stamped here, by
+    the same rule. Nothing the caller sent is changed. Everything not placed
+    is counted as what it is -- said, never dropped: the walk's folders and
+    files under `walk`; a kind the vocabulary lists as no construct under
+    `not_constructs`, with its reason; a node of a language the vocabulary does
+    not list under `outside`; a listed language's kind it neither maps nor
+    lists under `unplaced`; and a stamp naming a construct or facet the
+    vocabulary does not hold -- a graph drawn before it changed -- under
+    `unknown`."""
+    vocabulary = load()
+    found: dict[str, dict[str, Any]] = {}
+    walk: dict[str, int] = {}
+    not_constructs: dict[tuple[str, str], int] = {}
+    unplaced: dict[tuple[str, str], int] = {}
+    outside: dict[str, int] = {}
+    unknown: dict[str, list[str]] = {}
+    unlabelled = 0
+    total = 0
+
+    def count(construct_id: str, language: str, node_id: str) -> None:
+        if vocabulary.get(construct_id) is None:
+            unknown.setdefault(construct_id, []).append(node_id)
+            return
+        entry = found.setdefault(construct_id, {"languages": {}, "ids": []})
+        entry["languages"][language] = entry["languages"].get(language, 0) + 1
+        entry["ids"].append(node_id)
+
+    for node in nodes:
+        total += 1
+        language = str(node.get("language") or "")
+        kind = str(node.get("kind") or "")
+        if kind in WALK_KINDS:
+            walk[kind] = walk.get(kind, 0) + 1
+            continue
+        if not language:
+            unlabelled += 1
+            continue
+        mapping = vocabulary.mapping(language)
+        if mapping is None:
+            outside[language] = outside.get(language, 0) + 1
+            continue
+        data = {k: v for k, v in node.items() if k != "meta"}
+        data["meta"] = dict(node.get("meta") or {}) if isinstance(node.get("meta"), dict) else {}
+        if not data.get("construct"):
+            stamp(data)
+        node_id = str(node.get("id", ""))
+        if data.get("construct"):
+            count(str(data["construct"]), language, node_id)
+        elif kind in mapping.not_constructs:
+            not_constructs[(language, kind)] = not_constructs.get((language, kind), 0) + 1
+        else:
+            unplaced[(language, kind)] = unplaced.get((language, kind), 0) + 1
+        for facet in data["meta"].get("facets") or []:
+            count(str(facet), language, node_id)
+
+    def row(construct: Construct) -> dict[str, Any]:
+        entry = found[construct.id]
+        return {
+            "id": construct.id,
+            "name": construct.name,
+            "gloss": construct.gloss,
+            "facet": construct.facet,
+            "look": construct.look.model_dump() if construct.look else None,
+            "count": len(entry["ids"]),
+            "languages": [{"language": lang, "display_name": _display_name(lang), "count": n}
+                          for lang, n in sorted(entry["languages"].items(), key=lambda kv: -kv[1])],
+            "ids": entry["ids"],
+        }
+
+    present = [c for c in vocabulary.constructs if c.id in found]
+    return {
+        "nodes": total,
+        "constructs": [row(c) for c in present if not c.facet],
+        "facets": [row(c) for c in present if c.facet],
+        "walk": [{"kind": kind, "count": walk[kind]} for kind in WALK_KINDS if kind in walk],
+        "not_constructs": [{"language": lang, "display_name": _display_name(lang), "kind": kind, "count": n,
+                            "reason": vocabulary.mapping(lang).not_constructs[kind]}
+                           for (lang, kind), n in sorted(not_constructs.items(), key=lambda kv: -kv[1])],
+        "unplaced": [{"language": lang, "display_name": _display_name(lang), "kind": kind, "count": n}
+                     for (lang, kind), n in sorted(unplaced.items(), key=lambda kv: -kv[1])],
+        "outside": [{"language": lang, "count": n}
+                    for lang, n in sorted(outside.items(), key=lambda kv: -kv[1])],
+        "unknown": [{"construct": cid, "count": len(ids), "ids": ids}
+                    for cid, ids in sorted(unknown.items(), key=lambda kv: -len(kv[1]))],
+        "unlabelled": unlabelled,
+        "source": _source(),
+        "caveat": census_caveat(),
+    }
+
+
+def census_caveat() -> str:
+    return ("Each node is placed by the construct its language's parser kind maps "
+            "to in codecarto/data/constructs.yaml. A folder or file the walk drew, "
+            "a kind the vocabulary says is no construct, a node of a language it "
+            "does not list, of a kind it does not map, or stamped with a construct "
+            "it does not hold, is counted here rather than placed, and the count "
+            "is of nodes on the canvas, not of the code behind them.")
 
 
 def caveat() -> str:

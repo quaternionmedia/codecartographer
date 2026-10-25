@@ -18,6 +18,7 @@ Mount in main.py alongside the other routers, e.g.::
 """
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from codecarto.models.plot_data import PlotOptions
 from codecarto.services import construct_service
@@ -47,6 +48,23 @@ async def list_constructs() -> dict:
     parse each -- the index a Chrestomathy panel chooses from."""
     return generate_return(message="list_constructs - Success",
                            results=construct_service.table())
+
+
+class CensusRequest(BaseModel):
+    """The nodes on a canvas: each needs `id`, `language` and `kind`; a
+    stamped node's `construct` and `meta.facets` are kept as they arrived."""
+
+    nodes: list[dict] = []
+
+
+@LexiconRouter.post("/chrestomathy/census")
+async def chrestomathy_census(request: CensusRequest) -> dict:
+    """The chrestomathy of whatever graph is drawn: the constructs its nodes
+    are, in which languages, the ids of the nodes that are each, and what the
+    vocabulary could not place -- so any graph, from any panel, can be set
+    beside the other languages that write the same things."""
+    return generate_return(message="chrestomathy_census - Success",
+                           results=construct_service.census(request.nodes))
 
 
 def _no_construct(construct: str) -> dict:

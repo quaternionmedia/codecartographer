@@ -34,6 +34,8 @@ export interface MenuFacts {
   hasSource?: boolean;
   /** True when this node belongs to a compound cluster with bounds. */
   hasGroup?: boolean;
+  /** True when the vocabulary placed this node (it carries a `construct`). */
+  hasConstruct?: boolean;
   /** Number of nodes currently selected. */
   selectionCount?: number;
   /** True when at least one node is hidden. */
@@ -79,6 +81,7 @@ function nodeRing(f: MenuFacts): MenuItem[] {
       children: [
         { id: 'source', label: 'Source', action: HOST_VERBS.VIEW_SOURCE, enabled: !!f.hasSource },
         { id: 'info', label: 'Info', action: HOST_VERBS.NODE_INFO },
+        { id: 'compare', label: 'Compare', action: HOST_VERBS.COMPARE, enabled: !!f.hasConstruct },
         { id: 'focus', label: 'Focus', action: HOST_VERBS.FOCUS_GROUP, enabled: !!f.hasGroup },
       ],
     },

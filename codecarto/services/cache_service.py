@@ -86,7 +86,10 @@ def _repo_key_from_url(url: str) -> str:
 #      a member of an anonymous record is held by the named record around
 #      it, a function's locals are depth-3 nodes it `contains`, and a local
 #      that lives for one call carries no `meta.bytes`.
-GRAPH_SCHEMA_VERSION = 7
+#   8: a node the vocabulary places carries its construct's colour and name
+#      (`construct_color`, `construct_name`), which Color By: Construct and
+#      the key read.
+GRAPH_SCHEMA_VERSION = 8
 
 
 def _make_key(url: str, mode: str, layout: str, extensions: list[str]) -> str:

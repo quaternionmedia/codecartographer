@@ -41,6 +41,7 @@ export interface MarkableNode {
   color?: unknown;
   meta?: unknown;
   layer_color?: unknown;
+  construct_color?: unknown;
 }
 
 export interface MarkableEdge {
@@ -101,12 +102,30 @@ export function nodeMarks(nodes: readonly MarkableNode[], colorBy: string | unde
  * The ramp lives with the lexicons (`construct_service.LAYER_RAMP`), so a node
  * the server placed on a layer and sent no colour for keeps its own, as the
  * control's tooltip says, rather than this side guessing a colour for it.
+ *
+ * **"COLOR BY: CONSTRUCT" PAINTS `construct_color`, WHICH THE SERVER STAMPS.**
+ * What a node is, in one colour across languages -- a C struct and a Rust
+ * struct alike, whatever look each parser gave them. A node the vocabulary did
+ * not place keeps its own colour.
  */
 export function drawnFill(node: MarkableNode, colorBy: string | undefined): string {
+  return paintedColor(node, colorBy) ?? DEFAULT_NODE_COLOR;
+}
+
+/**
+ * `drawnFill` before the D3 canvas's default: undefined for a node with no
+ * colour under this colouring, which the vis-network canvas leaves to its own
+ * default (`vis_look.ts`). One rule for all three, so the second canvas
+ * follows "Color By" as the first does.
+ */
+export function paintedColor(node: MarkableNode, colorBy: string | undefined): string | undefined {
   if (colorBy === 'layer' && typeof node.layer_color === 'string' && node.layer_color) {
     return node.layer_color;
   }
-  return typeof node.color === 'string' && node.color ? node.color : DEFAULT_NODE_COLOR;
+  if (colorBy === 'construct' && typeof node.construct_color === 'string' && node.construct_color) {
+    return node.construct_color;
+  }
+  return typeof node.color === 'string' && node.color ? node.color : undefined;
 }
 
 /** The path a node row's swatch is drawn with, at half-extent `s`: the canvas's, sides and all. */
@@ -162,6 +181,56 @@ export interface LayerMark {
   label: string;
   color: string;
   count: number;
+}
+
+export interface ConstructMark {
+  construct: string;
+  name: string;
+  color: string;
+  count: number;
+}
+
+export interface ConstructedNode extends MarkableNode {
+  construct?: unknown;
+  construct_name?: unknown;
+  construct_color?: unknown;
+  [key: string]: unknown;
+}
+
+/**
+ * The constructs the canvas paints, most numerous first.
+ *
+ * **WHAT "COLOR BY: CONSTRUCT" MEANS, IN THE KEY.** The server stamps each node
+ * the vocabulary places with its construct and that construct's colour and
+ * name; the key names each and counts it, so a C struct and a Rust struct are
+ * one row. A node the vocabulary did not place has no construct, and this
+ * does not invent one.
+ *
+ * **ONLY WHERE THE CANVAS PAINTS A NODE IN ITS CONSTRUCT'S COLOUR**, as
+ * `layerMarks` counts layers: `drawnFill` under the current colouring is the
+ * construct's colour. Under "Auto" the crate graph's crates are drawn in the
+ * Cargo panel's own colours, and the key listed Package in a purple nothing on
+ * the canvas was painted with; a node whose own colour is its construct's (a
+ * look the vocabulary gave it) is a construct row in any colouring.
+ */
+export function constructMarks(nodes: readonly ConstructedNode[], colorBy: string | undefined): ConstructMark[] {
+  const seen = new Map<string, ConstructMark>();
+  for (const node of nodes) {
+    if (typeof node.construct !== 'string' || typeof node.construct_color !== 'string') continue;
+    if (drawnFill(node, colorBy) !== node.construct_color) continue;
+    const found = seen.get(node.construct);
+    if (found) {
+      found.count += 1;
+      continue;
+    }
+    seen.set(node.construct, {
+      construct: node.construct,
+      name: typeof node.construct_name === 'string' ? node.construct_name : node.construct,
+      color: node.construct_color,
+      count: 1,
+    });
+  }
+  return [...seen.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 export interface LayeredNode {

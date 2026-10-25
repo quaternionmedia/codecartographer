@@ -9,10 +9,13 @@
 # is the same. Three things read it:
 #
 #   - `construct_service.annotate` stamps `construct` (and `meta.facets`) on
-#     every node of a language listed under `languages:`, and gives a node
-#     that carries no look of its own the construct's `look`.
+#     every node of a language listed under `languages:` or a graph listed
+#     under `graphs:`, and gives a node that carries no look of its own the
+#     construct's `look`.
 #   - The chrestomathy (`/lexicon/chrestomathy/...`) sets one construct beside
-#     itself across every language that spells it, from `spelled:`.
+#     itself in every language listed under `languages:`, from `spelled:`; and
+#     its census (`/lexicon/chrestomathy/census`) reads any graph on the canvas
+#     as the constructs its nodes are, in the languages they are written in.
 #   - Tests hold it to the lexicons (every token named here is in that
 #     language's lexicon), to the parsers (every kind a parser on the branch
 #     can emit is under `kinds` or, with the reason, under `not_constructs`,
@@ -29,6 +32,13 @@
 # A spelling's `groups:` names, for a token its lexicon files in more than one
 # place, the lexicon group of the sense that spells this construct; the
 # chrestomathy draws the token on that group's layer.
+#
+# `graphs:` maps the kinds of a graph a service draws that is no language's
+# parse -- the crate graph -- exactly as `languages:` maps a parser's, so its
+# nodes are stamped and the census places them. It is no row of the
+# chrestomathy: nothing is written in it, so it has no spelling of any
+# construct to set beside the languages', and listing it under `languages:`
+# made every construct carry a row saying it records none.
 
 version: 1
 
@@ -187,6 +197,15 @@ constructs:
       rust: {tokens: [mod]}
       python: {note: "A file is a module; a directory with __init__.py is a package."}
       c: {note: "None. A translation unit is the nearest thing, and every external name shares one space."}
+
+  - id: namespace.package
+    name: Package
+    gloss: The unit a build tool resolves, versions and builds -- what a dependency names.
+    look: {shape: square, color: "#6d28d9"}
+    spelled:
+      rust: {tokens: [crate], note: "A Cargo package, named in Cargo.toml; each of its targets compiles as one crate."}
+      c: {note: "None in the language: a library or an executable is what a build system names."}
+      python: {note: "A distribution named in pyproject.toml; import names the modules inside it."}
 
   - id: namespace.import
     name: Import
@@ -465,3 +484,10 @@ languages:
       section: layout.section
       entry: firmware.entry
       symbol: linkage.symbol
+
+graphs:
+  cargo:
+    # The crate graph `cargo_service` draws from what cargo resolved.
+    kinds:
+      crate: namespace.package
+      external_crate: namespace.package

@@ -51,6 +51,7 @@ export class PlotActions {
         chrestomathy: (construct) => CartographyService.chrestomathy(controller.api.lexicon, construct),
         chrestomathyGraph: (construct, layout) =>
           CartographyService.chrestomathyGraph(controller.api.lexicon, construct, layout),
+        census: (nodes) => CartographyService.census(controller.api.lexicon, nodes),
       },
     );
   }
@@ -631,7 +632,7 @@ export class PlotActions {
   // The same four outcomes and the same two fields per reading as the estate
   // above, sequenced in `cartography_actions.ts` -- pure, and tested under
   // `node --test` -- through `this.cartography`, which the constructor hands
-  // the state, the canvas and the routes.
+  // the state, the canvas and the routes -- the census of the canvas too.
 
   private _layout(): string {
     return convertLayoutToBackend(this.stateController.state.graphStyling.layout);

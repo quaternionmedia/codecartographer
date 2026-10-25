@@ -1023,6 +1023,17 @@ def _count_label(counts: dict[str, int]) -> str:
 
 
 def as_graph(reading: Reading, features: bool = False, transitive: bool = False):
+    graph = _as_graph(reading, features, transitive)
+    # Every node is read from cargo's answer, so the vocabulary reads it as
+    # the `cargo` graph (constructs.yaml's `graphs:`, no language's parse) --
+    # a crate is a package there, the construct a C library or a Python
+    # distribution is.
+    for _, data in graph.nodes(data=True):
+        data.setdefault("language", "cargo")
+    return graph
+
+
+def _as_graph(reading: Reading, features: bool = False, transitive: bool = False):
     """The workspace as a `networkx` graph the serializer accepts.
 
     **EVERY EDGE IS ONE A MANIFEST, THE LOCKFILE OR CARGO DECLARED.** Nothing is

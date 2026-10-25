@@ -48,10 +48,20 @@ so two files with one name are two nodes.
 Every node whose language and kind `codecarto/data/constructs.yaml` maps also
 carries `construct` -- what it *is*, the same across languages (`type.product`
 for a C or Rust struct) -- and, where its qualifiers, attributes or body say so,
-`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`). A kind
-the vocabulary lists under `not_constructs`, with its reason, carries none --
-Python's calls, names and literals are what a body does, not what it declares --
-and neither do the walk's own `directory` and `file` nodes. A local Rust
+`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`), and, for
+a construct with a look, `construct_color` and `construct_name` (what "Color By:
+Construct" draws and the key names). A kind the vocabulary lists under
+`not_constructs`, with its reason, carries none -- Python's calls, names and
+literals are what a body does, not what it declares -- and neither do the
+walk's own `directory` and `file` nodes. Every route that serializes a graph to
+gJGF stamps these, the unified streams stamp each file's nodes as they parse,
+and a cached graph is stamped again whenever `/parse/unified` or a stream serves
+it, so any graph on the canvas can be read by `POST /lexicon/chrestomathy/census`.
+A re-stamp applies the vocabulary as it is now to what the cache kept: a mapping
+added since is applied, but a fact the parser had not recorded when the graph
+was cached (C's `meta.automatic` on a local) is not recovered, and a construct
+the vocabulary no longer gives is not taken back -- a change to what a parse
+records bumps `GRAPH_SCHEMA_VERSION`, so the old graph is a miss. A local Rust
 repository with a recorded `target/codecarto/check.jsonl` has rustc's
 diagnostics on the items they name (`meta.diagnostics`, `meta.messages`,
 `meta.diagnostics_recorded_at`), and `metadata.recorded_check` is that document's
@@ -747,8 +757,27 @@ parser `kinds` that realise it, what `carried_by` a facet in source (`#[interrup
 `languages:` is a row of every construct, never a missing one**: a language with
 no spelling has its note -- Rust has no `volatile`, C has no method -- and one the
 vocabulary records nothing for has a note saying so. C, Rust, Python, assembly and
-the linker script are listed, so each is a row of every construct. An unknown construct
+the linker script are listed, so each is a row of every construct. The crate
+graph's nodes (`language: cargo`) are mapped under `graphs:`, which places them
+without making Cargo a row: nothing is written in it. An unknown construct
 is a 200 with `unreadable`, `problem` and the known ids as `remedy`.
+
+### POST `/lexicon/chrestomathy/census`
+
+The chrestomathy of a graph. Body: `{"nodes": [{"id", "language", "kind",
+"construct"?, "meta"?: {"facets"?}}]}` -- the nodes on the canvas. Answers the
+`constructs` and `facets` present, each with its `name`, `gloss`, `look`,
+`count`, the `languages` it occurs in with their counts, and the `ids` of the
+nodes that are it; then what was not placed, each as what it is: `walk` (the
+walk's own `directory` and `file` nodes, whatever language a file carries),
+`not_constructs` (a kind the vocabulary lists as no construct, with its
+`reason`), `unplaced` (a kind of a listed language, or of a graph under
+`graphs:`, the vocabulary neither maps nor lists), `outside`
+(a language it lists in neither), `unknown` (a stamp naming a construct or facet
+the vocabulary does not hold, with the `ids` that carry it -- a graph drawn
+under another vocabulary) and `unlabelled` (no language at all), with the
+`caveat`. A node that arrived without a stamp is stamped by the same rule as a
+drawn graph; nothing sent is changed.
 
 ### GET `/lexicon/chrestomathy/{construct}/gjgf?layout=`
 
