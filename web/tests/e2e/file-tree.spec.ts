@@ -109,7 +109,7 @@ test('a folder whose read failed stops loading and reads again on the next click
 
   await page.goto('/');
   await dismissOnboardingModal(page);
-  await page.locator('.lm_tab', { hasText: 'Repository' }).click();
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
   await page.locator('.panel-source__url-input input').fill(REPO);
   await page.locator('.panel-source__url-input button.primary').click();
 
