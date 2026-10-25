@@ -48,6 +48,11 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
   function initGoldenLayout(hostElement: HTMLElement): void {
     glInstance = new GoldenLayout(hostElement);
     ctx.attachLayoutManager(glInstance);
+    // The stack whose tab the reader last clicked is where the "+" menu adds a
+    // window. Heard in the capture phase, so before Golden Layout's own tab
+    // handler, which is where its focus moves -- and focus also moves from
+    // code, which is why it is not read for this.
+    hostElement.addEventListener('click', (e) => ctx.noteClick(e.target), { capture: true });
 
     for (const def of PanelRegistry.all()) {
       glInstance.registerComponentFactoryFunction(def.id, (container) => {

@@ -57,3 +57,26 @@ test('a window added from the + menu leaves the canvas in view', async ({ page }
   const stack = page.locator('.lm_stack', { has: page.locator('.lm_tab', { hasText: 'Cargo' }) });
   await expect(stack.locator('.lm_tab', { hasText: 'Graph Settings' })).toHaveCount(1);
 });
+
+test('a window joins the stack whose tab was clicked last, and never the canvas\'s', async ({ page }) => {
+  // Not run with the change that added it: the browser suites bind fixed
+  // ports this workstation shares. new-panel-stack.test.mjs holds the choice.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const stackOf = (title: string) =>
+    page.locator('.lm_stack', { has: page.locator('.lm_tab', { hasText: title }) });
+
+  // Mutation: ignore the tab clicked -- Cargo lands in the dock's tabs, and
+  // this fails.
+  await page.locator('.lm_tab', { hasText: /Files$/ }).click();
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Cargo$/ }).click();
+  await expect(stackOf('Cargo').locator('.lm_tab', { hasText: /Files$/ })).toHaveCount(1);
+
+  // Mutation: drop the guard that keeps the canvas's stack out -- Overview
+  // lands on the Graph tab's stack, and this fails.
+  await page.locator('.lm_tab', { hasText: /◈ Graph$/ }).click();
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Overview$/ }).click();
+  await expect(stackOf('Overview').locator('.lm_tab', { hasText: /◈ Graph$/ })).toHaveCount(0);
+});

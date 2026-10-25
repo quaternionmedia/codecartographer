@@ -34,6 +34,7 @@ import { notesTail } from '../features/graph/services/parse_notes';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { readSavedLayout } from './saved_layout';
+import { stackForNewPanel, stackOfTabClicked } from './new_panel_stack';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
 import { GraphSurface } from '../features/graph/services/graph_surface';
@@ -208,28 +209,26 @@ export class LayoutContext {
       return;
     }
 
-    const stack = this._stackForNewPanel(layout);
+    // Where: `new_panel_stack.ts`, which says why it is not Golden Layout's
+    // focus. Null leaves it to Golden Layout's own placement.
+    const canvas = layout.findFirstComponentItemById('graph')?.parent ?? null;
+    const stack = stackForNewPanel<ContentItem>(layout.rootItem, canvas, this._tabStackClicked) as Stack | null;
     if (stack) stack.newItem(def.config);
     else layout.newItemAtLocation(def.config, LayoutManager.defaultLocationSelectors);
     layout.updateRootSize(true);
   }
 
-  /** Where `openPanel` adds a panel; null leaves it to Golden Layout. */
-  private _stackForNewPanel(layout: LayoutManager): Stack | null {
-    const canvas = layout.findFirstComponentItemById('graph')?.parent ?? null;
-    const focused = layout.focusedComponentItem?.parent ?? null;
-    if (focused && focused.isStack && focused !== canvas) return focused as Stack;
-    let fullest: Stack | null = null;
-    const visit = (item: ContentItem | undefined): void => {
-      if (!item) return;
-      if (item.isStack && item !== canvas
-          && item.contentItems.length > (fullest?.contentItems.length ?? 0)) {
-        fullest = item as Stack;
-      }
-      item.contentItems.forEach(visit);
-    };
-    visit(layout.rootItem);
-    return fullest;
+  /** The `.lm_stack` element of the tab the reader last clicked; see `noteClick`. */
+  private _tabStackClicked: unknown = null;
+
+  /**
+   * Hear a click in the dock, before Golden Layout does. A click on a tab
+   * records that tab's stack, which is where `openPanel` adds a window next;
+   * any other click records nothing.
+   */
+  public noteClick(target: EventTarget | null): void {
+    const clicked = stackOfTabClicked(target);
+    if (clicked) this._tabStackClicked = clicked;
   }
 
   /** Ids of every registered panel currently present in the live layout. */
