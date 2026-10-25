@@ -742,7 +742,7 @@ and device targets, and what the last recorded build said. **The window never
 runs cargo**: running it on a path runs that path's build scripts, proc macros
 and configured `rustc`. It reads manifests (`Cargo.toml`, `Cargo.lock`,
 `.cargo/config.toml`, memory maps) and the two documents
-`uv run codecarto cargo record <path>` writes under `<path>/target/codecarto/`:
+`uv run codecarto cargo record <path>` writes under the workspace's `target/codecarto/`:
 `metadata.json` (`cargo metadata --format-version 1`) and `check.jsonl`
 (`cargo check --message-format=json`). The same envelope and absence rules as the
 estate routes below: status 200, and a path that is not a workspace is

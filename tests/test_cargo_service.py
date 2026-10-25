@@ -259,6 +259,17 @@ class TestRecordedDocuments:
         assert graph.nodes["crate::host-tool"]["label"] == "host-tool 0.1.0 · 1 error"
         assert graph.nodes["crate::hal"]["label"] == "hal 0.1.0 · 1 warning"
 
+    def test_a_check_that_never_finished_is_not_a_clean_build(self, tmp_path):
+        """A check.jsonl with no build-finished message is cargo stopping
+        before the check did -- no diagnostics in it is not a clean build."""
+        root = copy_workspace(tmp_path, "current")
+        check = root / cargo_service.DOCUMENTS / cargo_service.CHECK_DOCUMENT
+        check.write_text("", encoding="utf-8")
+        reading = cargo_service.read(root)
+        assert reading.diagnostics == [] and reading.build_success is None
+        assert "build-finished" in reading.documents[1].problem
+        assert "not a clean one" in cargo_service.caveat(reading)
+
     def test_a_check_older_than_a_source_says_so(self, tmp_path):
         reading = cargo_service.read(copy_workspace(tmp_path, "stale"))
         check = reading.documents[1]
@@ -613,31 +624,81 @@ def test_record_without_cargo_says_so(tmp_path, monkeypatch):
     assert "cargo is not on PATH" in result.output
 
 
-def test_record_writes_what_cargo_printed(tmp_path, monkeypatch):
-    """The commands and flags are asserted, since they are the contract: the
-    window reads these two files and nothing else."""
+class Done:
+    def __init__(self, stdout, returncode=0, stderr=""):
+        self.stdout, self.returncode, self.stderr = stdout, returncode, stderr
+
+
+def fake_cargo(monkeypatch, metadata: Done, check: Done) -> list[list[str]]:
+    """cargo on PATH, answering each command with what it is given; returns
+    the commands run, and where."""
     ran = []
 
-    class Done:
-        def __init__(self, stdout, returncode=0):
-            self.stdout, self.returncode, self.stderr = stdout, returncode, ""
-
     def fake_run(command, **kwargs):
-        ran.append(command[1:])
-        if command[1] == "metadata":
-            return Done('{"version": 1, "packages": []}')
-        return Done('{"reason": "build-finished", "success": false}\n', returncode=101)
+        ran.append(command[1:] + [f"cwd={Path(kwargs['cwd']).name}"])
+        return metadata if command[1] == "metadata" else check
 
     monkeypatch.setattr("shutil.which", lambda name: "cargo")
     monkeypatch.setattr("subprocess.run", fake_run)
+    return ran
+
+
+FINISHED = Done('{"reason": "build-finished", "success": false}\n', returncode=101)
+
+
+def test_record_writes_what_cargo_printed(tmp_path, monkeypatch):
+    """The commands and flags are asserted, since they are the contract: the
+    window reads these two files and nothing else, and `--locked` keeps cargo
+    from rewriting Cargo.lock, which is not under target/."""
+    write(tmp_path / "Cargo.toml", '[package]\nname = "app"\nversion = "0.1.0"\n')
+    ran = fake_cargo(monkeypatch, Done('{"version": 1, "packages": []}'), FINISHED)
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path)])
     assert result.exit_code == 0, result.output
-    assert ran == [["metadata", "--format-version", "1", "--offline"],
-                   ["check", "--workspace", "--message-format=json", "--offline"]]
+    here = f"cwd={tmp_path.name}"
+    assert ran == [["metadata", "--format-version", "1", "--locked", "--offline", here],
+                   ["check", "--workspace", "--message-format=json", "--locked", "--offline", here]]
     docs = tmp_path / cargo_service.DOCUMENTS
     assert json.loads((docs / "metadata.json").read_text())["version"] == 1
     assert "build-finished" in (docs / "check.jsonl").read_text()
     assert "cargo exited 101" in result.output  # a failing check still recorded
+
+
+def test_record_refuses_a_directory_without_a_manifest(tmp_path, monkeypatch):
+    """PATH defaults to `.`: run anywhere else, record ran cargo and made
+    target/codecarto/ there first."""
+    ran = fake_cargo(monkeypatch, Done('{"version": 1, "packages": []}'), FINISHED)
+    result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path)])
+    assert result.exit_code == 1
+    assert "no Cargo.toml" in result.output
+    assert ran == [] and not (tmp_path / "target").exists()
+
+
+def test_record_from_a_member_crate_writes_where_the_workspace_is_read(tmp_path, monkeypatch):
+    """Run in a member's directory, cargo answers for the workspace above it;
+    the documents go to that workspace's target/codecarto/, where reading the
+    workspace looks for them."""
+    root = tmp_path / "ws"
+    write(root / "Cargo.toml", '[workspace]\nmembers = ["crates/*"]\n')
+    crate(root, "crates/hal", "hal")
+    metadata = Done(json.dumps({"version": 1, "packages": [], "workspace_root": str(root)}))
+    fake_cargo(monkeypatch, metadata, FINISHED)
+    result = CliRunner().invoke(cli, ["cargo", "record", str(root / "crates" / "hal")])
+    assert result.exit_code == 0, result.output
+    assert not (root / "crates" / "hal" / "target").exists()
+    assert [d.present for d in cargo_service.read(root).documents] == [True, True]
+
+
+def test_record_says_a_check_that_never_compiled_failed(tmp_path, monkeypatch):
+    """`--offline` with a dependency not yet downloaded: cargo prints its
+    error on stderr and no JSON at all."""
+    write(tmp_path / "Cargo.toml", '[package]\nname = "app"\nversion = "0.1.0"\n')
+    stopped = Done("", returncode=101, stderr="error: failed to download `heapless v0.8.0`\n\nCaused by:\n"
+                                              "  attempting to make an HTTP request, but --offline was specified\n")
+    fake_cargo(monkeypatch, Done('{"version": 1, "packages": []}'), stopped)
+    result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path)])
+    assert result.exit_code == 1, result.output
+    assert "wrote target/codecarto/check.jsonl" not in result.output
+    assert "failed to download `heapless v0.8.0`" in result.output
 
 
 def test_record_reports_a_timeout_and_keeps_what_arrived(tmp_path, monkeypatch):
@@ -646,6 +707,7 @@ def test_record_reports_a_timeout_and_keeps_what_arrived(tmp_path, monkeypatch):
     def slow(command, **kwargs):
         raise subprocess.TimeoutExpired(command, 1, output='{"version": 1')
 
+    write(tmp_path / "Cargo.toml", '[package]\nname = "app"\nversion = "0.1.0"\n')
     monkeypatch.setattr("shutil.which", lambda name: "cargo")
     monkeypatch.setattr("subprocess.run", slow)
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--timeout", "1"])

@@ -798,8 +798,14 @@ def _read_check(reading: Reading, docs_dir: Path, root: Path) -> Document:
         reading.notes.append(f"stopped at the diagnostic bound ({MAX_DIAGNOSTICS}); later ones are not drawn")
     if unreadable:
         reading.notes.append(f"{unreadable} line(s) of {CHECK_DOCUMENT} were not JSON and were skipped")
+    problems = []
+    if reading.build_success is None:
+        # cargo writes `build-finished` last; without it the check stopped
+        # first -- before compiling, or at a timeout.
+        problems.append("it holds no build-finished message, so cargo stopped before the check finished")
     if doc.stale:
-        doc.problem = "a source or manifest changed after this check was recorded"
+        problems.append("a source or manifest changed after this check was recorded")
+    doc.problem = "; ".join(problems)
     return doc
 
 
@@ -1104,6 +1110,9 @@ def caveat(reading: Reading) -> str:
     else:
         parts.append(f"Diagnostics are what rustc said at {check.generated_at}"
                      + (", and a source has changed since." if check.stale else "."))
+        if reading.build_success is None:
+            parts.append("That check never finished -- check.jsonl holds no build-finished "
+                         "message -- so a crate with no diagnostic in it is not a clean one.")
     if reading.notes:
         parts.append(" ".join(reading.notes))
     return " ".join(parts)
