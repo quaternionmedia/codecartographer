@@ -20,11 +20,15 @@ _DEMO_MODE_TO_DEPTH: dict[str, int] = {"directory": 1}
 
 
 @PlotterRouter.post("/demo")
-async def plot_demo(options: PlotOptions = Body(..., embed=True)) -> dict:
+def plot_demo(options: PlotOptions = Body(..., embed=True)) -> dict:
     """
     Generate demo graph data using the codecarto project itself, through the
     same UnifiedParserService pipeline every other repo uses.
     Returns GraphData JSON format that can be rendered with any client-side renderer.
+
+    A plain `def`, so FastAPI runs it in its threadpool: reading and parsing
+    this project's source takes seconds, and on the event loop every other
+    request would wait for it.
     """
     try:
         # Use the codecarto project directory as demo data
@@ -56,13 +60,14 @@ async def plot_demo(options: PlotOptions = Body(..., embed=True)) -> dict:
 
 
 @PlotterRouter.post("/render/html")
-async def render_graph_to_html(graph_data: dict, options: PlotOptions) -> dict:
+def render_graph_to_html(graph_data: dict, options: PlotOptions) -> dict:
     """
     Accept GraphData JSON and return pre-rendered HTML visualization.
     Allows frontend to send any graph data and get HTML back for Notebook renderer.
 
     This endpoint converts client-side GraphData format to server-rendered HTML
-    using gravis visualization library.
+    using gravis visualization library. A plain `def`, like `plot_demo`, so the
+    import and the render happen in the threadpool rather than on the loop.
     """
     try:
         import gravis as gv
