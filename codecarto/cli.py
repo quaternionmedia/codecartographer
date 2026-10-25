@@ -188,7 +188,9 @@ def serve(host: str, port: int, reload: bool):
     """
     Start the FastAPI backend server only.
 
-    The running server lists every route it mounts at /docs.
+    The running server's /docs lists the routes in its OpenAPI schema. The
+    WebSockets and the routes kept out of the schema -- /app, /db/ and the
+    PAM page's /pam/api/* -- are not there; docs/api.md names every one.
     """
     click.secho(f"🌐 Starting Codecarto API server...", fg="green", bold=True)
     click.echo(f"  → http://{host}:{port}")
@@ -304,7 +306,8 @@ def info():
     """
     Show project info and environment details.
 
-    Displays Python version, package info, and configuration.
+    Displays Python version, package info, and configuration. Exits 1 when one
+    of the package's dependencies it lists cannot be imported.
     """
     import platform
     
@@ -326,14 +329,20 @@ def info():
     # Check for key dependencies
     click.echo()
     click.echo("  Dependencies:")
+    # Each is in [project] dependencies, so one missing is a broken install.
     deps = ["fastapi", "networkx", "click", "gravis", "uvicorn"]
+    missing = []
     for dep in deps:
         try:
             mod = __import__(dep)
             version = getattr(mod, "__version__", "installed")
             click.echo(f"    ✓ {dep}: {version}")
         except ImportError:
+            missing.append(dep)
             click.secho(f"    ✗ {dep}: not found", fg="red")
+    if missing:
+        _fail(f"{', '.join(missing)} not installed; "
+              "`uv sync --locked --extra dev --extra c-parsing` installs the environment")
 
 
 @cli.command()
@@ -350,7 +359,7 @@ def lint(fix: bool):
 
     ruff = shutil.which("ruff")
     if ruff is None:
-        _fail("ruff not found. `uv sync --extra dev` installs it")
+        _fail("ruff not found. `uv sync --locked --extra dev --extra c-parsing` installs it")
     cmd = [ruff, "check", str(REPO_ROOT / "codecarto")]
     if fix:
         cmd.append("--fix")
