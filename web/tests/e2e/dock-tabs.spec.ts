@@ -17,16 +17,26 @@ interface TabGap {
   gap: number;
 }
 
-/** Each tab in a strip: its title, and the ✕'s left edge less the title's right edge. */
+/**
+ * Each tab in a strip that shows a ✕: its title, and the ✕'s left edge less
+ * the title's right edge.
+ *
+ * **A TAB THAT CANNOT BE CLOSED IS PASSED OVER.** Golden Layout removes an
+ * unclosable tab's ✕, and a hidden one measures at the page's left edge, so
+ * either would read as a ✕ far inside its title. Mutation: make Topology
+ * `isClosable: false` in `panel_registry.ts` and read every tab -- reading its
+ * missing ✕ throws.
+ */
 async function tabGaps(page: Page): Promise<TabGap[]> {
   return page.locator('.lm_tabs > .lm_tab').evaluateAll((tabs) =>
-    tabs.map((tab) => {
+    tabs.flatMap((tab) => {
       const title = tab.querySelector('.lm_title') as HTMLElement;
-      const close = tab.querySelector('.lm_close_tab') as HTMLElement;
-      return {
+      const close = tab.querySelector<HTMLElement>('.lm_close_tab');
+      if (!close || getComputedStyle(close).display === 'none') return [];
+      return [{
         title: title.textContent ?? '',
         gap: close.getBoundingClientRect().left - title.getBoundingClientRect().right,
-      };
+      }];
     }),
   );
 }
