@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+from codecarto.services import cargo_service
 from codecarto.services import link_map_service as L
 from codecarto.services.local_repo_service import get_local_repo
 from codecarto.services.unified_parser_service import UnifiedParserService
@@ -292,6 +293,73 @@ def test_a_method_is_matched_through_its_impls_type(measured):
     the symbol names the impl, so only the impl's method gets the bytes."""
     methods = [d for _, d in measured.nodes(data=True) if d.get("label") == "set_high"]
     assert sorted(d["meta"].get("bytes", 0) for d in methods) == [0, 0x26]
+
+
+NRF_OBJ = "/ws/target/thumbv7em-none-eabihf/release/deps/blinky-1.blinky.2-cgu.0.rcgu.o"
+NRF_BLINKY_MAP = f"""\
+     VMA      LMA     Size Align Out     In      Symbol
+       0        0      400     4 .vector_table
+       0        0      400     4         {NRF_OBJ}:(.vector_table.interrupts)
+     400      400       30     4 .text
+     400      400       20     2         {NRF_OBJ}:(.text.main)
+     400      400       20     1                 main
+     420      420       10     2         {NRF_OBJ}:(.text.delay)
+     420      420       10     1                 blinky::delay
+       0        0    c0000     1 .debug_info
+       0        0    c0000     1         {NRF_OBJ}:(.debug_info)
+"""
+
+
+def nrf_package(tmp_path: Path, directory: str, package: str, main: str) -> Path:
+    """A package with a build script, linked for a part whose flash is at 0."""
+    root = tmp_path / "ws"
+    pkg = root / directory
+    (pkg / Path(main).parent).mkdir(parents=True)
+    (root / "target" / "codecarto").mkdir(parents=True)
+    (pkg / "Cargo.toml").write_text(f'[package]\nname = "{package}"\nversion = "0.1.0"\nedition = "2021"\n')
+    (pkg / "build.rs").write_text('fn main() {\n    println!("cargo:rustc-link-search=.");\n}\n')
+    (pkg / main).write_text("#![no_std]\n#![no_main]\n\nfn delay(n: u32) {\n    let _ = n;\n}\n\n"
+                            "#[entry]\nfn main() -> ! {\n    loop { delay(1); }\n}\n")
+    (pkg / "memory.x").write_text("MEMORY\n{\n  FLASH : ORIGIN = 0x00000000, LENGTH = 1024K\n"
+                                  "  RAM : ORIGIN = 0x20000000, LENGTH = 256K\n}\n")
+    then = time.time() - 3600
+    for path in root.rglob("*"):
+        if path.is_file():
+            os.utime(path, (then, then))
+    (root / "target" / "codecarto" / "blinky.map").write_text(NRF_BLINKY_MAP)
+    return root
+
+
+def parse_rust(root: Path):
+    return UnifiedParserService.build_graph(get_local_repo(str(root), extensions=[".rs", ".x"]),
+                                            3, [".rs", ".x"])
+
+
+def test_the_binary_is_found_by_its_package_not_its_directory(tmp_path):
+    """Package `blinky` checked out in `fw/`: no directory is named after the
+    crate the map's symbols name, so cargo's targets say which file the binary
+    starts from. Mutation: name crates by directory alone -- the binary is
+    crate `fw`, its `main` gets nothing and this fails."""
+    root = nrf_package(tmp_path, "fw", "blinky", "src/main.rs")
+    graph = parse_rust(root)
+    assert "bytes" not in node(graph, "function", "main", "/fw/build.rs")["meta"]
+    assert node(graph, "function", "main", "/fw/src/main.rs")["meta"]["bytes"] == 0x20
+    assert node(graph, "function", "delay", "/fw/src/main.rs")["meta"]["bytes"] == 0x10
+    # Flash at 0 holds the vector table and the code, not the 768 KiB of debug information.
+    assert node(graph, "region", "FLASH")["hover"].startswith("FLASH — 1.0 KiB of 1024.0 KiB used (0.1%)")
+    reading = cargo_service.read(root)
+    label = cargo_service.as_graph(reading).nodes["target::blinky::bin::blinky"]["label"]
+    assert label.endswith("FLASH 0.1%, RAM 0.0%")
+
+
+def test_a_binary_this_parse_did_not_read_lends_its_bytes_to_nothing(tmp_path):
+    """`src/bin/blinky.rs` in package `firmware`: the local reader skips `bin`
+    directories, so the binary's items are not on the map, and the build
+    script's `main` must not stand in for them. Mutation: fall back to an item
+    outside any `src` folder when the binary's crate has none -- `build.rs`'s
+    `main` takes 32 B and this fails."""
+    graph = parse_rust(nrf_package(tmp_path, ".", "firmware", "src/bin/blinky.rs"))
+    assert "bytes" not in node(graph, "function", "main", "/build.rs")["meta"]
 
 
 def test_a_map_older_than_the_source_says_so(tmp_path):

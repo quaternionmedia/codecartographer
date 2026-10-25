@@ -77,8 +77,16 @@ the build that is flashed -- and keeps its map; a C build passing
   statics carry `meta.bytes`: a symbol is demangled (Rust's legacy mangling,
   and the half-demangled form LLD prints) and joined within the crate it was
   compiled in, by name and, for a method, its impl's type -- only where one
-  item answers. A symbol from outside the parse (`core`, a runtime) is counted,
+  item answers. A file's crate is the target whose root reaches it through
+  `mod` items, cargo's targets naming the roots, so a package need not sit in a
+  directory named after it; an unmangled name is looked for in the map's own
+  binary only. A symbol from outside the parse (`core`, a runtime) is counted,
   not drawn.
+- **Only placed sections count.** Both linkers print debug information, symbol
+  tables, `.comment` and build attributes at address 0, inside any region that
+  starts there (nRF52, SAMD, LPC, Kinetis); they are told by name, or by lying
+  on addresses a placed section already holds (an `(INFO)` section such as
+  defmt's).
 - **On the crate graph**, the binary's target says its fill per region, and the
   map is a document row with its age, stale once a source changes after it.
 

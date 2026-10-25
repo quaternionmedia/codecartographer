@@ -39,6 +39,7 @@ symbol of its own and is counted in its caller.
 
 from __future__ import annotations
 
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -411,14 +412,54 @@ def _last(path: str) -> str:
 _CODE_KINDS = {"rust": {"function", "method", "static"}, "c": {"function", "variable"}}
 
 
-def _crate_of(path: str) -> str:
-    """`.../crates/hal-core/src/gpio.rs` -> `hal_core`: the directory above `src`."""
+def _path_key(path: str) -> str:
+    return os.path.normcase(os.path.normpath(path)) if path else ""
+
+
+def _root_crate(path: str) -> str:
+    """The crate a target's root file starts, by Cargo's conventions:
+    `hal-core/src/lib.rs` -> `hal_core`, `src/bin/flash-tool.rs` -> `flash_tool`,
+    `build.rs` -> `build_script_build`. Empty for a file that starts none."""
     parts = path.replace("\\", "/").split("/")
-    if "src" in parts:
-        at = len(parts) - 1 - parts[::-1].index("src")
-        if at >= 1:
-            return parts[at - 1].replace("-", "_")
+    if parts[-1] == "build.rs":
+        return "build_script_build"
+    if len(parts) >= 3 and parts[-2] == "src" and parts[-1] in ("lib.rs", "main.rs"):
+        return parts[-3].replace("-", "_")
+    targets = ("bin", "examples", "tests", "benches")
+    if len(parts) >= 2 and parts[-2] in targets and parts[-1].endswith(".rs"):
+        return parts[-1][:-3].replace("-", "_")
+    if len(parts) >= 3 and parts[-3] in targets and parts[-1] == "main.rs":
+        return parts[-2].replace("-", "_")
     return ""
+
+
+def _rust_crates(graph, roots: dict[str, str]) -> dict[str, set[str]]:
+    """Each Rust file's crates, by path key: walked from every crate root through
+    the files its `mod` items declare. *roots* names a root's crate (cargo's
+    targets, by path); a root it does not name is named by convention. A file
+    no root reaches is in no crate, and nothing is joined to it."""
+    declares: dict[str, list[str]] = {}
+    declared: set[str] = set()
+    for u, v, e in graph.edges(data=True):
+        if e.get("kind") == "declares" and graph.nodes[u].get("language") == "rust":
+            child = _path_key(str(graph.nodes[v].get("file", "")))
+            declares.setdefault(_path_key(str(graph.nodes[u].get("file", ""))), []).append(child)
+            declared.add(child)
+    named = {_path_key(path): name for path, name in roots.items()}
+    crates: dict[str, set[str]] = {}
+    for _, d in graph.nodes(data=True):
+        if d.get("kind") != "file" or d.get("language") != "rust":
+            continue
+        key = _path_key(str(d.get("file", "")))
+        crate = named.get(key) or ("" if key in declared else _root_crate(str(d.get("file", ""))))
+        stack = [key] if crate else []
+        while stack:
+            here = stack.pop()
+            if crate in crates.setdefault(here, set()):
+                continue
+            crates[here].add(crate)
+            stack.extend(declares.get(here, []))
+    return crates
 
 
 def _symbol_crate(symbol: str, owner: str) -> str:
@@ -438,7 +479,8 @@ def _kib(n: int) -> str:
     return f"{n} B" if n < 1024 else f"{n / 1024:.1f} KiB"
 
 
-def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: bool) -> dict:
+def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: bool,
+             crate_roots: dict[str, str] | None = None) -> dict:
     """Put what the link measured on a parsed code map. Returns what was joined.
 
     - **Regions** drawn from a linker script get `meta.measured` (bytes used at
@@ -451,6 +493,10 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
     - **Code items** get `meta.bytes` from the symbols that name them, matched
       within the crate the symbol was compiled in, by function name and, for a
       method, its impl's type -- and only when exactly one item answers. A
+      Rust file's crate is the target whose root reaches it through `mod`
+      items; *crate_roots* (root file -> crate, cargo's targets) names the
+      roots, else Cargo's conventions do. An unmangled name (`main`, a
+      `#[no_mangle]` handler) is looked for in the map's own binary only. A
       symbol from a crate outside the parse (`core`, a runtime) is counted, not
       drawn."""
     owner = owner.replace("-", "_")
@@ -489,11 +535,14 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
 
     # Code items, by crate, then name, then (for a method) the impl's type.
     items: dict[tuple[str, str], list[tuple[str, dict]]] = {}
+    rust_crates = _rust_crates(graph, crate_roots or {})
     for node_id, d in graph.nodes(data=True):
         if d.get("kind") not in _CODE_KINDS.get(d.get("language", ""), ()):
             continue
-        crate = _crate_of(str(d.get("file", ""))) if d.get("language") == "rust" else owner
-        items.setdefault((crate, d.get("label", "")), []).append((node_id, d))
+        crates = (rust_crates.get(_path_key(str(d.get("file", ""))), ())
+                  if d.get("language") == "rust" else (owner,))
+        for crate in crates:
+            items.setdefault((crate, d.get("label", "")), []).append((node_id, d))
 
     def impl_type(node_id: str) -> str:
         for parent in graph.predecessors(node_id):
@@ -509,8 +558,6 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
                 type_name, name = symbol_key(sym.name)
                 crate = _symbol_crate(sym.name, owner)
                 found = items.get((crate, name), [])
-                if not found and crate == owner:
-                    found = [c for (cr, n), cs in items.items() if n == name and cr == "" for c in cs]
                 if type_name:
                     found = [(n, d) for n, d in found if impl_type(n) == type_name]
                 else:
