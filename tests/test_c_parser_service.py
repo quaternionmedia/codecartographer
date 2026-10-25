@@ -693,3 +693,21 @@ class TestNamesKeepTheirNamespaces:
         for field in ("raw", "lo", "hi", "tail"):
             assert list(g.predecessors(f"unit::struct reg::{field}")) == ["unit::struct reg"], field
             assert g.edges["unit::struct reg", f"unit::struct reg::{field}"]["kind"] == "field_of"
+
+    def test_a_local_is_contained_by_its_function(self, tmp_path):
+        """A function's local was a node of its own held only by its file, so
+        a file drew one indistinguishable `i` per function that has one.
+        A local is now a sub-symbol of its function, as a field is of its
+        record and a method of its class. Mutation: draw no edge from the
+        function -- each local is at depth 2 under the file, and this fails."""
+        g = self.drawn(tmp_path,
+                       "int count;\n"
+                       "int f(void) { int count = 0; static int calls; { int i = count; } return calls; }\n"
+                       "int g(void) { int i = 1; return i; }\n")
+        for local, function in [("f::count", "f"), ("f::calls", "f"), ("f::i", "f"), ("g::i", "g")]:
+            assert list(g.predecessors(f"unit::{local}")) == [f"unit::{function}"], local
+            assert g.edges[f"unit::{function}", f"unit::{local}"]["kind"] == "contains"
+            assert g.nodes[f"unit::{local}"]["depth"] == 3
+        # A file-scope variable of the same name is still its file's.
+        (holder,) = g.predecessors("unit::count")
+        assert g.nodes[holder]["kind"] == "file" and g.nodes["unit::count"]["depth"] == 2

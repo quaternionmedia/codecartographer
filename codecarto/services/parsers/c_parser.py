@@ -151,23 +151,28 @@ def _record_of(cursor):
     return scope if scope is not None and scope.kind.name in _TAGS else None
 
 
+def _function_of(cursor):
+    """The function a variable is local to, or None at file scope. A block-scope
+    `extern` names a file-scope variable, and libclang gives it no function."""
+    scope = cursor.semantic_parent
+    return scope if scope is not None and scope.kind.name == 'FUNCTION_DECL' else None
+
+
 def _node_id(cursor) -> str:
     """A declaration's id: its file's stem and its name, in the namespace and
     scope C gives the name. A tag is not an ordinary identifier (`struct config
     config;` declares two things), a field belongs to its record, and a local
     to its function -- so each is qualified by what C keeps it apart by, and a
-    file-scope name stays `stem::name`. The record a field's id is qualified
-    by is the node its FIELD_OF edge comes from."""
+    file-scope name stays `stem::name`. The record or function an id is
+    qualified by is the node its FIELD_OF or LOCAL_OF edge comes from."""
     stem = Path(cursor.location.file.name).stem if cursor.location.file else '__global'
     kind = cursor.kind.name
     if kind in _TAGS:
         return f"{stem}::{_TAGS[kind]} {cursor.spelling}"
-    record = _record_of(cursor) if kind == 'FIELD_DECL' else None
-    if record is not None:
-        return f"{_node_id(record)}::{cursor.spelling}"
-    scope = cursor.semantic_parent
-    if kind == 'VAR_DECL' and scope is not None and scope.kind.name == 'FUNCTION_DECL':
-        return f"{stem}::{scope.spelling}::{cursor.spelling}"
+    owner = (_record_of(cursor) if kind == 'FIELD_DECL'
+             else _function_of(cursor) if kind == 'VAR_DECL' else None)
+    if owner is not None:
+        return f"{_node_id(owner)}::{cursor.spelling}"
     return f"{stem}::{cursor.spelling}"
 
 
@@ -286,6 +291,11 @@ def _pass1_declarations(tu, in_target, nodes, edges, edge_set, cindex):
                 record = _record_of(cursor)
                 if record is not None:
                     _add_edge(edges, edge_set, _node_id(record), nid, 'FIELD_OF')
+
+            if kind == 'variable':
+                function = _function_of(cursor)
+                if function is not None:
+                    _add_edge(edges, edge_set, _node_id(function), nid, 'LOCAL_OF')
 
             if kind == 'enum_constant' and parent is not None:
                 if parent.kind == cindex.CursorKind.ENUM_DECL and parent.spelling:

@@ -108,7 +108,7 @@ bypass the response cache (the cache key doesn't vary on this field).
 | 0 | directories only |
 | 1 | directories + files |
 | 2 | + top-level symbols (class, function, struct, …) |
-| 3 | + sub-symbols (arguments, fields, enum constants) |
+| 3 | + sub-symbols (arguments, fields, enum constants, a C function's locals) |
 
 **Response:**
 ```json

@@ -15,9 +15,14 @@ union           → 'union'           2
 enum            → 'enum'            2
 typedef         → 'typedef'         2
 macro           → 'macro'           2
-variable        → 'variable'        2
+variable        → 'variable'        2, or 3 for a function's local
 field           → 'field'           3
 enum_constant   → 'enum_constant'   3
+
+A depth-3 node is held by the depth-2 node its id is qualified by: a field
+by its record (FIELD_OF -> 'field_of'), a local by its function (LOCAL_OF
+-> 'contains'), as a method is by its class. The pipeline gives only depth-2
+nodes a file edge.
 """
 
 from __future__ import annotations
@@ -82,6 +87,7 @@ _C_COLOR: dict[str, str] = {
 # C edge kind → unified edge kind
 _EDGE_KIND_MAP: dict[str, str] = {
     "FIELD_OF":  "field_of",
+    "LOCAL_OF":  "contains",
     "CALLS":     "calls",
     "POINTS_TO": "type_of",
     "ALIASES":   "aliases",
@@ -196,6 +202,8 @@ class CLangaugeParser:
 
         c_nodes: list[dict] = raw.get("nodes", [])
         c_edges: list[dict] = raw.get("edges", [])
+        # A function's locals are its sub-symbols, held by it rather than by the file.
+        local_ids = {e.get("dst") for e in c_edges if e.get("kind") == "LOCAL_OF"}
 
         # ── Pass 1: nodes ─────────────────────────────────────────────────────
         for n in c_nodes:
@@ -205,7 +213,10 @@ class CLangaugeParser:
             file_stem = n.get("file", "")
             line      = n.get("line", 0)
 
-            if c_kind in _DEPTH_2_KINDS:
+            if nid in local_ids:
+                node_depth = 3
+                unified_kind = c_kind
+            elif c_kind in _DEPTH_2_KINDS:
                 node_depth = 2
                 unified_kind = c_kind
             elif c_kind in _DEPTH_3_KINDS:
