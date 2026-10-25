@@ -48,7 +48,7 @@ the chrestomathy of code -- is `plans/the-web-window.md` in the governance corpu
 
 Codecarto parses source code repositories into interactive graph visualizations:
 
-- **Multi-language**: Python by AST, C/H by libclang, and a regex parser per language for the rest -- `GET /parse/languages` lists every extension
+- **Multi-language**: Python by AST, C/H by libclang, Rust and linker scripts by structural readers, and a regex parser per language for the rest -- `GET /parse/languages` lists every extension
 - **Streaming**: nodes stream progressively via SSE as each file is parsed
 - **Compound layout**: directories, files, and symbols in nested hierarchical orbits
 - **Interactive**: drag nodes, right-click radial menu, zoom/pan, group outline circles

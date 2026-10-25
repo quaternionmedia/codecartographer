@@ -14,7 +14,7 @@ import pytest
 
 from codecarto.services import construct_service
 from codecarto.services.lexicon_service import LexiconService
-from codecarto.services.parsers import c_language_parser
+from codecarto.services.parsers import c_language_parser, linker_script_parser
 from codecarto.services.parsers.language_parser import ParserRegistry
 
 VOCABULARY = construct_service.load()
@@ -127,6 +127,14 @@ def test_c_reference_design_and_the_vocabulary_agree():
         if actual != (look.shape, look.color):
             disagree.append((kind, actual, (look.shape, look.color)))
     assert not disagree
+
+
+def test_linker_kinds_are_mapped():
+    graph = linker_script_parser.LinkerScriptParser().parse_files([
+        linker_script_parser.File(name="m.x", raw="MEMORY { RAM : ORIGIN = 0, LENGTH = 1K }\n"
+                                                   "ENTRY(r)\nx = 1;\nSECTIONS { .t : { } > RAM }")])
+    kinds = {d["kind"] for _, d in graph.nodes(data=True)}
+    assert kinds == set(VOCABULARY.languages["linker"].kinds)
 
 
 # ── annotate ──────────────────────────────────────────────────────────────────
@@ -247,9 +255,8 @@ def test_a_construct_read_across_languages_keeps_the_silent_ones():
     assert set(rows) >= {"c", "rust", "python"}
     assert rows["c"]["tokens"] == [] and rows["c"]["note"]
     assert [t["token"] for t in rows["rust"]["tokens"]] == ["fn", "impl"]
-    # The line parser reads Rust's fn the same in an impl as out of one, so no
-    # parser here emits a method; "(parsed)" says only what a parser does.
-    assert rows["rust"]["kinds"] == []
+    # The Rust reader tells a fn in an impl from one outside it.
+    assert rows["rust"]["kinds"] == ["method"]
 
 
 def test_every_listed_language_is_a_row_of_every_construct():

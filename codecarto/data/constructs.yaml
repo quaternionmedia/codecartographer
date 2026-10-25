@@ -390,13 +390,25 @@ languages:
   rust:
     kinds:
       function: callable.function
+      method: callable.method
       struct: type.product
       enum: type.sum
+      union: type.union
       trait: type.interface
       impl: type.implementation
       module: namespace.module
       type: type.alias
+      const: storage.constant
+      static: storage.static
+      use: namespace.import
+      extern_crate: namespace.import
+      extern_block: linkage.foreign-block
       macro: meta.macro
+      macro_invocation: meta.macro-call
+      field: member.field
+      variant: member.variant
+      assoc_type: member.associated
+      assoc_const: member.associated
     refine:
       # A Rust enum whose variants carry no data is an enumeration, not a sum type.
       - {kind: enum, meta: c_like, construct: type.enumeration}
@@ -446,3 +458,10 @@ languages:
     kinds:
       label: code.label
       section: layout.section
+
+  linker:
+    kinds:
+      region: layout.region
+      section: layout.section
+      entry: firmware.entry
+      symbol: linkage.symbol
