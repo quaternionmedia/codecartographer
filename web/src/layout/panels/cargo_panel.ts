@@ -105,7 +105,7 @@ export function createCargoPanel(ctx: LayoutContext): m.Component {
                   ])
                 : null,
               reading.notes.map((note) => m('p.estate-view__hint', note)),
-              caveatShown(metadata, 'cargo') ? null : m('p.estate-view__hint', reading.caveat),
+              caveatShown(metadata, 'cargo', reading.caveat) ? null : m('p.estate-view__hint', reading.caveat),
               m('label.cartography__options', [
                 m('input[type=checkbox]', {
                   checked: features,

@@ -116,7 +116,7 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
                     m('td', row.note),
                   ]))),
               ]),
-              caveatShown(metadata, 'chrestomathy') ? null : m('p.estate-view__hint', reading.caveat),
+              caveatShown(metadata, 'chrestomathy', reading.caveat) ? null : m('p.estate-view__hint', reading.caveat),
               m('button.estate-view__draw', {
                 onclick: () => {
                   const action = plot.chrestomathyDraw();
