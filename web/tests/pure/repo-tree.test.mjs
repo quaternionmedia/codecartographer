@@ -13,7 +13,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { RepoTree } from '../../dist-pure/features/repository/repo_tree.js';
+import { RepoTree, hasTree } from '../../dist-pure/features/repository/repo_tree.js';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../../dist-pure/components/models/source.js';
 
 const A = 'https://github.com/example/a/';
@@ -154,4 +154,15 @@ test('a read that brings nothing back fails, and the tree is left as it was', as
   await h.answer('subtree', 0, null);
   await failed;
   assert.equal(h.shown, before);
+});
+
+test('a tree Expand All built is shown though its root holds only folders', () => {
+  /* Expand All gives the root folder's own file count as the size: 0 here, and
+     the Files panel hid the whole tree. Mutation: show a tree by its size
+     again -- this fails. */
+  const onlyFolders = new Directory(new RepoInfo('example', 'a', A), 0, new RawFolder('', 0, [], [unread('src'), unread('docs')]), false);
+  assert.equal(hasTree(onlyFolders), true);
+  assert.equal(hasTree(new Directory(new RepoInfo('example', 'a', A), 0, new RawFolder('', 0, [], []), false)), false);
+  assert.equal(hasTree(null), false);
+  assert.equal(hasTree(undefined), false);
 });
