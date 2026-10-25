@@ -65,6 +65,9 @@ export interface ICellState {
   cargoProblem: SeamProblem | null;
   /** Every construct, for the Chrestomathy panel's choice; null before asked. */
   constructIndex: ConstructIndex | null;
+  /** Why the construct list could not be read -- its own field, so the reading
+   *  of one construct neither clears nor is cleared by it. */
+  constructIndexProblem: SeamProblem | null;
   constructChosen: string;
   chrestomathyReading: ChrestomathyDocument | null;
   chrestomathyProblem: SeamProblem | null;
@@ -103,6 +106,7 @@ export class CellState implements ICellState {
   public cargoReading: CargoDocument | null = null;
   public cargoProblem: SeamProblem | null = null;
   public constructIndex: ConstructIndex | null = null;
+  public constructIndexProblem: SeamProblem | null = null;
   public constructChosen: string = 'type.product';
   public chrestomathyReading: ChrestomathyDocument | null = null;
   public chrestomathyProblem: SeamProblem | null = null;
