@@ -1,5 +1,8 @@
 # Next step: compile_commands-first parsing for the GitHub-example flow
 
+**State:** open — delete when a repository fetched for C parsing is parsed from
+a real `compile_commands.json` where one can be had.
+
 ## Background
 
 The C parser (`codecarto/services/parsers/c_parser.py`) has two parse paths:

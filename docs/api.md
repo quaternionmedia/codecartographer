@@ -2,16 +2,14 @@
 
 REST API documentation for Codecarto backend.
 
-**Base URL:** `http://127.0.0.1:<port>` — the port is `codecarto.cli.DEFAULT_PORT`,
-the constant `uv run qm dashboard` in the corpus allocates to this project;
-`uv run codecarto serve --help` prints it, and `CODECARTO_PORT` or `--port`
-overrides it. The examples below write `$API` for that base.
-**Interactive Docs:** `$API/docs` — every route in the running server's OpenAPI
-schema, which is the authority for those; this page is the map. The schema has
-no WebSockets and leaves out `/app`, `/db/` and the `/pam/api/*` aliases; each
-is named in its section below.
-**Identity:** `$API/openapi.json` names the app `codecarto`. Ask before believing
-a port: several of this org's servers run on one workstation.
+**Base URL:** `http://127.0.0.1:<port>`, where the port is
+`codecarto.cli.DEFAULT_PORT`; `uv run codecarto serve --help` prints it, and
+`CODECARTO_PORT` or `--port` overrides it. The examples write `$API` for that
+base.
+**Interactive docs:** `$API/docs` lists every route in the running server's
+OpenAPI schema. The schema has no WebSockets and leaves out `/app`, `/db/` and
+the `/pam/api/*` aliases; each is named in its section below.
+**Identity:** `$API/openapi.json` names the app `codecarto`.
 
 ---
 
@@ -29,7 +27,7 @@ a port: several of this org's servers run on one workstation.
 | `/lexicon` | lexicon | Hand-authored language lexicons, the construct vocabulary and the chrestomathy |
 | `/cargo` | cargo | A Cargo workspace and its last recorded build, as graph data -- read, never run |
 | `/topology` | topology | The harness's flows, as graph data |
-| `/capabilities` | capabilities | What each named thing this estate can do has reached |
+| `/capabilities` | capabilities | The governance corpus's capability registry, as graph data |
 | `/overview` | overview | dossier's reading of the estate, as graph data |
 | `/estate` | estate | Every seam above and whether each is there |
 | `/auth` | auth | Which GitHub credential source is active |
@@ -109,9 +107,9 @@ Parse a directory tree to the requested depth and return a gJGF graph.
 **`annotate_lexicon`** (default `false`): stamp Lexicon abstraction-layer
 data (`layer_ordinal`, `meta.lexicon_layers`) onto nodes whose language
 has one (`c`, `python` and `rust`; `GET /lexicon/` lists them — see
-`docs/roadmap/lexicon.md`).
-Opt-in: existing callers see no change. Requests with this set to `true`
-bypass the response cache (the cache key doesn't vary on this field).
+`docs/architecture.md`, *Lexicons and the construct vocabulary*). Requests
+with this set to `true` bypass the response cache, whose key does not include
+it.
 
 **`layout` values:**
 
@@ -267,11 +265,7 @@ language, each with the extensions it reads.
 
 ## Plotter Endpoints
 
-Only two routes remain here — the rest of `/plotter/*` (`whole_repo`,
-`whole_repo_deps`, `folder`, `file`, `url`, `local_directory`) were dead
-code (zero frontend callers, fully superseded by `/parse/unified`) and were
-removed in the parser/cache unification pass. Use `/parse/unified` for
-parsing; these two are demo/rendering utilities, not parse entry points.
+Two demo and rendering routes. To parse, use `/parse/unified`.
 
 ### POST `/plotter/demo`
 
@@ -362,12 +356,12 @@ Parse a single C/H source file.
 
 > **Note:** `/c-parser/*` returns a flat `{nodes, edges, meta}` dict, not
 > gJGF, and the web application does not call it. `/parse/unified` with
-> `.c`/`.h` extensions produces gJGF natively and, since the unification pass,
-> the *same* cross-file CALLS resolution, stub-header diagnostics, and
+> `.c`/`.h` extensions produces gJGF natively, with the *same* cross-file
+> CALLS resolution, stub-header diagnostics, and
 > `has_parse_warning` flagging as this dedicated pipeline — both call into the
 > same `CParser` engine (per-symbol extras like `field_count`/`qualifiers`
 > live under each unified node's `meta` field instead of top-level). Prefer
-> `/parse/unified` unless you specifically need this legacy flat shape.
+> `/parse/unified` unless you need this flat shape.
 
 When parsing without a `compile_commands.json` (i.e. `parse_files`/`parse_directory`,
 which backs `/c-parser/file`, `/c-parser/directory`, and `/c-parser/github`), each
@@ -685,13 +679,12 @@ issue described in *GitHub token resolution order* (`governance/qm/adr/`).
 
 ## Graphbase Endpoints (`/db/*`)
 
-Mounted **only** when `MONGODB_URI` env var is set. Otherwise `GET /db/`
-answers `{"available": false, "reason": "..."}` -- the front end asks it
-whether the store is on, and an unmounted route's 404 was a browser console
-error on every page -- and every other `/db/*` route returns 404. See `governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why this
-store is separate from the filesystem `CacheService`.
+Mounted only when `MONGODB_URI` is set. Without it, `GET /db/` returns
+`{"available": false, "reason": …}` and every other `/db/*` route returns 404.
+See `governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why this store
+is separate from the filesystem `CacheService`.
 
-The graphbase submodule exposes three typed collections:
+The graphbase submodule exposes four collections:
 
 | Collection | Purpose | Key |
 |------------|---------|-----|
@@ -776,7 +769,8 @@ Delete a specific history entry.
 
 Hand-authored per-language ontologies (reserved words/operators on a
 hierarchy of abstraction layers), projected into the same graph pipeline
-the parsers use. See `docs/roadmap/lexicon.md` for the full design.
+the parsers use. `docs/architecture.md`, *Lexicons and the construct
+vocabulary*, describes them.
 
 ### GET `/lexicon/`
 
@@ -795,9 +789,8 @@ the existing D3 pipeline unchanged. Every node carries `language`,
 `layer_ordinal` and `kind`; every node on a layer (layer, group, token) also
 carries `layer_color`, which the `colorBy: 'layer'` styling option paints, and
 `meta.lexicon_layers`, from which the legend names the layer — what an
-annotated parsed node carries. **Not** `LexiconService.to_json()`'s plain node-link
-dump — that shape isn't recognized by the frontend renderer at all
-(verified directly; an earlier version of this doc claimed otherwise).
+annotated parsed node carries. Use this route, not `LexiconService.to_json()`; the front end cannot draw
+the node-link shape.
 
 ### GET `/lexicon/{language}/index`
 
@@ -912,14 +905,11 @@ with what `cargo metadata` says rather than only drawable.
 
 ## Estate Endpoints
 
-Four routers draw things this project does not own — the harness's topologies,
-the corpus's capability registry, dossier's overview seam — and one says whether
-each is there. They share two rules, stated in each router's docstring: **they
-serve a codecarto graph, not a picture of one** (a `networkx` graph handed to
-`GraphSerializer`, so every layout, palette and extension applies), and **an
-absence is a sentence, never an empty graph** (status 200; `results` carries
-`unreachable` or `unreadable`, a `problem`, a `remedy` and `where`). The front
-end's `web/src/features/estate/seam_client.ts` tells the outcomes apart.
+These routes draw data other projects produce, and `/estate/seams` says
+whether each source is there. The drawing routes return `{graph, metadata}`.
+When the source is missing they still return 200, with `results.unreachable`
+or `results.unreadable`, plus `problem`, `remedy` and `where`. The front end's
+`web/src/features/estate/seam_client.ts` tells the outcomes apart.
 
 ### GET `/estate/seams`
 

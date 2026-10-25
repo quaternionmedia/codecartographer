@@ -3,9 +3,8 @@
 #
 # Second lexicon in this repo (after C), added deliberately compact — three
 # layers instead of C's five — as the simpler onboarding example for anyone
-# adding a third language. See docs/roadmap/lexicon.md's "Adding a
-# language" section for what wiring Option B (parser enrichment) for a new
-# language actually requires.
+# adding a language. See docs/extending.md's "Adding a lexicon" for what
+# joining a new language to parsed code requires.
 #
 # Coverage here is intentionally partial, same honesty standard as C's own
 # lexicon: not all 35 Python keywords have a slot yet (True/False/None,
@@ -13,10 +12,10 @@
 # this first pass covers what's most load-bearing for reading real code, not
 # an exhaustive keyword-by-keyword catalogue. Extend groups/tokens freely.
 #
-# Option B coverage is narrower still: today only `class`, `for`, `import`,
-# and `def` are reachable by the real parser join (see
-# codecarto/services/lexicon_bridge.py's _KIND_TOKEN_MAP) — PythonCustomAST
-# only emits those four keyword-shaped node kinds. The rest of the tokens
+# The join to parsed code (Option B) reaches fewer still: today only `class`,
+# `for`, `import`, and `def` (see codecarto/services/lexicon_bridge.py's
+# _KIND_TOKEN_MAP) — PythonLanguageParser emits only those four
+# keyword-shaped node kinds. The rest of the tokens
 # below exist for Option A (the standalone lexicon graph) and for whenever
 # parser coverage grows, not because Option B reaches them today.
 

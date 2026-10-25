@@ -6,9 +6,10 @@ from machine-facing (ordinal 0) to abstract (higher ordinals).
 
 This is reference data *about* a language, distinct from the per-file ASTs
 codecarto derives by parsing source. The two are designed to meet: every
-``Token`` carries the exact source ``token`` spelling, so a future C parser
-(Option B) can look a lexed token up by spelling and recover its ``layer`` and
-``group`` to color/group generated graphs by abstraction level.
+``Token`` carries the exact source ``token`` spelling, so the join to parsed
+code (Option B, ``lexicon_bridge``) can look a parsed node's keyword up by
+spelling and recover its ``layer`` and ``group`` to colour a code map by
+abstraction level.
 
 Data lives in ``codecarto/data/lexicons/<language>.yaml`` and is loaded by
 ``LexiconService``.
@@ -69,7 +70,7 @@ class Lexicon(BaseModel):
     keywords: TokenKind = TokenKind()
     operators: TokenKind = TokenKind()
 
-    # -- convenience for Option B (parser enrichment) -----------------------
+    # -- for Option B, the join to parsed code (lexicon_bridge) -------------
 
     def index_by_token(self) -> dict[str, List[dict]]:
         """Map every source spelling to the layer/group/kind contexts it

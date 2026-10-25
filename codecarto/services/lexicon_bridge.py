@@ -1,14 +1,16 @@
 """Joins real parsed-graph nodes to a language's Lexicon abstraction layers.
 
-This is Lexicon "Option B" (see ``docs/roadmap/lexicon.md``): a
+The join to parsed code (see ``docs/architecture.md``, "Lexicons and the
+construct vocabulary"): a
 :class:`~codecarto.models.lexicon.Lexicon` token's spelling is the join key,
 but only keywords/operators actually appear as node ``kind`` values or
 tokenized qualifier lists — a node's ``label`` (a declared identifier like
 ``main``) is essentially never a lexicon token, so no automatic string match
 is attempted there.
 
-Adding a language here (beyond Option A, which needs nothing but a new YAML
-file — see ``LexiconService``) means adding its entry below:
+Adding a language here (beyond Option A, the lexicon's own graph, which needs
+nothing but a new YAML file — see ``LexiconService``) means adding its entry
+below:
 
 - ``_KIND_TOKEN_MAP[language]``: maps a unified node's ``kind`` string to the
   exact keyword spelling it represents, where that mapping is not a trivial
@@ -47,7 +49,7 @@ _KIND_TOKEN_MAP: dict[str, dict[str, str]] = {
         "class": "class",
         "function": "def",
         "import": "import",
-        "loop": "for",  # depth 3 only - see lexicon.md's Option B coverage note
+        "loop": "for",  # depth 3 only
     },
     # rust_language_parser.py's kinds are its own names for items, and four
     # of them are not the keyword: `function`/`method` are `fn`, `module` is

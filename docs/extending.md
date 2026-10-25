@@ -172,6 +172,41 @@ and the census places them, but it is no row of the chrestomathy: nothing is
 written in it, and under `languages:` every construct would carry a row saying
 it records no spelling there.
 
+`tests/test_construct_service.py` holds each join: every token the vocabulary
+names is in that language's lexicon; every parser's `kinds` and the
+vocabulary's `kinds` and `not_constructs` name each other in both directions;
+C's shapes and colours agree with the vocabulary's looks; every look is a shape
+the canvas draws (`KNOWN_SHAPES` in `node_shapes.ts`).
+
+### Adding a lexicon
+
+A lexicon of its own (its graph at `/lexicon/{language}/graph`):
+
+1. Copy `codecarto/data/lexicons/python.yaml`, the shorter template, or
+   `c.yaml` to `codecarto/data/lexicons/<lang>.yaml`.
+2. Author its layers (ordinal 0 is the most machine-facing) and groups.
+3. `LexiconService.available()` finds it, and the tests in
+   `tests/test_lexicon.py` parametrized over `LexiconService.available()`
+   cover it.
+
+To join it to the chrestomathy, name its tokens under each construct's
+`spelled:` in `constructs.yaml` and map its parser kinds, as above.
+
+To join it to parsed code (`annotate_lexicon`):
+
+4. In `codecarto/services/lexicon_bridge.py`, add the language to
+   `_KIND_TOKEN_MAP`, mapping each unified `kind` that is a keyword to the
+   keyword's exact spelling. Read the parser's own kind table to find them
+   (`python_language_parser.py`'s `_TYPE_MAP`, `c_parser.py`'s `_cursor_map`):
+   a kind's lower case is not always its keyword. Python's `function` is `def`
+   and its `loop` is `for`, and `python_custom_ast.py`'s type names are a
+   different vocabulary that never reaches a graph.
+5. If the parser puts a tokenized list of keyword modifiers on a node, as C's
+   `meta['qualifiers']` is, add the language to `_QUALIFIER_META_KEY`.
+6. Add cases to `TestLexiconAnnotation` in
+   `tests/test_unified_parser_service.py`, with at least one from really
+   parsed input (`@requires_libclang` where the parser needs libclang).
+
 ---
 
 ## The node schema

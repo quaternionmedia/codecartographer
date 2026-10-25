@@ -14,7 +14,8 @@ it describes, and each check here fails on a document that disagrees with it:
 - every relative link resolves, and so does every repository path written in
   backticks in prose, unless `EXAMPLE_PATHS` names it, and every page under
   `docs/` that the code names; a link's `#anchor` is one a heading of its page
-  makes, as GitHub makes them;
+  makes, as GitHub makes them; a `module.name` a document writes is a module
+  in the tree that defines the name;
 - every `codecarto ...` command a document writes exists in the click tree,
   with its options, and a value from a fixed choice is one of the choices;
 - every JSON envelope in `docs/api.md` has `status`, `message` and `results`;
@@ -30,7 +31,9 @@ it describes, and each check here fails on a document that disagrees with it:
   removes, as the two evictions do;
 - a C edge kind is named in upper case only about `/c-parser/*`, and in lower
   case only as `c_language_parser._EDGE_KIND_MAP` gives it;
-- every depth table's row 3 names what the C adapter puts at depth 3.
+- every depth table's row 3 names what the C adapter puts at depth 3;
+- each lexicon Option the code names is defined in the architecture page's
+  lexicon section, and said beside its first use in each file.
 
 The application, the click tree and the code are the sources; nothing here
 keeps a list of routes, commands or variables of its own.
@@ -503,6 +506,50 @@ def test_every_page_the_code_names_exists():
     assert seen, "the reader found no page named in the code; its pattern is stale"
     assert not missing, (
         f"the code names these pages, and none is in the tree: {missing}")
+
+
+# `module.name` in backticks, the module snake_case with an underscore, as the
+# code's own modules are named; `meta.bytes` and `nx.node_link_data` are not
+# read. A file name (`layout_context.ts`) is not a module and its member.
+MODULE_MEMBER = re.compile(r"^([a-z][a-z0-9]*_[a-z0-9_]*)\.([A-Za-z_]\w*)")
+FILE_SUFFIXES = {"py", "ts", "js", "mjs", "md", "yaml", "yml", "json", "jsonl",
+                 "toml", "txt", "map", "ld", "lds", "x", "rs", "c", "h", "html", "lock"}
+
+
+def _modules() -> dict[str, list[Path]]:
+    found: dict[str, list[Path]] = {}
+    for path in [*(ROOT / "codecarto").rglob("*.py"), *(ROOT / "web" / "src").rglob("*.ts")]:
+        found.setdefault(path.stem, []).append(path)
+    return found
+
+
+def test_every_module_member_a_document_names_is_defined():
+    """A page that writes `cache_service._make_key` sends a reader to a module
+    and a name in it; when either is gone the sentence is about nothing.
+    Mutation: write `gravis_settings.GravisOptions`, a module deleted in
+    eeb2574, into a page -- this fails naming it."""
+    modules = _modules()
+    seen, wrong = 0, []
+    for path in DOCUMENTS:
+        for number, line, fenced in _prose_lines(path):
+            if fenced:
+                continue
+            for span in CODE_SPAN.findall(line):
+                found = MODULE_MEMBER.match(span.strip())
+                if not found or found.group(2) in FILE_SUFFIXES:
+                    continue
+                module, name = found.groups()
+                seen += 1
+                defines = re.compile(
+                    rf"^\s*(?:export\s+)?(?:async\s+)?(?:def|class|function|const|let|"
+                    rf"interface|type)\s+{re.escape(name)}\b|^\s*{re.escape(name)}\s*[:=(]",
+                    re.M)
+                if not any(defines.search(f.read_text(encoding="utf-8"))
+                           for f in modules.get(module, [])):
+                    where = "no such module" if module not in modules else f"{module} defines no {name}"
+                    wrong.append(f"{_rel(path)}:{number}: {span} ({where})")
+    assert seen, "the reader found no module member named in a document; its pattern is stale"
+    assert not wrong, f"these name a module member that is not in the tree: {wrong}"
 
 
 def test_example_paths_are_still_absent():
@@ -1053,3 +1100,44 @@ def test_every_depth_table_names_what_the_c_parser_puts_at_depth_3():
             wrong.append(f"{_rel(path)}:{number}: lacks {missing}")
     assert rows >= 2, "the reader found fewer depth tables than api.md and architecture.md hold"
     assert not wrong, f"these depth-3 rows do not name what C puts there: {wrong}"
+
+
+OPTION = re.compile(r"\bOption ([A-Z])\b")
+
+
+def test_every_lexicon_option_the_code_names_is_defined():
+    """The lexicon code calls its two halves Option A (the lexicon's own graph)
+    and Option B (the join to parsed code). A label no page defines is a
+    reference to a page that was deleted, so the lexicon section of
+    `docs/architecture.md` names each one the code uses, and each file that
+    uses one says what it is beside it. Mutation: drop "Option B" from the
+    section, or the clause from `lexicon_router.py` -- this fails."""
+    used: dict[str, list[str]] = {}
+    for path in _code_files():
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        if path.name == Path(__file__).name:
+            continue
+        for letter in sorted(set(OPTION.findall(text))):
+            used.setdefault(letter, []).append(_rel(path))
+    assert used, "no code names a lexicon Option; this check's premise is gone"
+    section = " ".join(t for _, t in _section(
+        ROOT / "docs" / "architecture.md", "Lexicons and the construct vocabulary"))
+    undefined = sorted(f"Option {x}" for x in used if not re.search(rf"\bOption {x}\b", section))
+    assert not undefined, (
+        f"the code names {undefined} and docs/architecture.md, *Lexicons and the "
+        f"construct vocabulary*, does not say what they are")
+    meaning = {"A": r"own graph|standalone", "B": r"join|enrich|stamp|annotat"}
+    unsaid = []
+    for letter, files in used.items():
+        for name in files:
+            text = (ROOT / name).read_text(encoding="utf-8")
+            first = OPTION.pattern.replace("([A-Z])", letter)
+            match = re.search(first, text)
+            around = text[max(0, match.start() - 200):match.end() + 200]
+            if not re.search(meaning.get(letter, r"$^"), around, re.I):
+                unsaid.append(f"{name}: Option {letter}")
+    assert not unsaid, (
+        f"these name an Option without saying beside its first use what it is: {unsaid}")

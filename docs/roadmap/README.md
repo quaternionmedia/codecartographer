@@ -1,25 +1,26 @@
 # Roadmap
 
-Forward-looking design docs for work that's been scoped but not fully
-built.
+**State:** open — delete when every page it lists has been deleted and its
+own sections are empty.
 
-| Doc | What it's about |
+Work that is scoped and not built. A page here is deleted when its work lands;
+what has landed is described in the reference pages under `docs/`.
+
+| Page | What is open |
 |---|---|
-| [`topology-functionality-abstraction-maps.md`](topology-functionality-abstraction-maps.md) | What "useful, practical maps of code and the systems it represents" already means concretely in this codebase, and the next concrete step toward more of it |
-| [`lexicon.md`](lexicon.md) | The Language Lexicon feature: hand-authored per-language ontologies on a hierarchy of abstraction layers, for C, Python and Rust. Option A (static reference graph) and Option B (joining real parsed code to abstraction layers, behind the parse UI's Annotate Lexicon toggle) are both shipped, and the construct vocabulary joins the lexicons into the chrestomathy |
-| [`rust.md`](rust.md) | Rust and the firmware languages: the Rust reader, linker scripts, the Cargo workspace read from what cargo recorded, the dev loop that records it, and the construct vocabulary that sets all of it beside C and Python. What is shipped, what each piece cannot see, and what comes next with the engine each would buy |
-| *the web window* (in the corpus: `plans/the-web-window.md`) | The estate frame, the topology designer on it, and the chrestomathy of code -- the plan the estate panels, `web/src/features/estate/` and `/estate/seams` are built to. Kept in the corpus because it decides things for three repositories; this table points at it rather than copying it. Its first two phases are on `main`; the pickup for the rest is the section below |
-| [`c_parser_phase3_compile_commands.md`](c_parser_phase3_compile_commands.md) | Using a real `compile_commands.json` (or a sandboxed build to generate one) instead of naive directory-walking, for more accurate C parse graphs on the GitHub-example flow |
+| [`rust.md`](rust.md) | Rust and the firmware languages: semantic resolution through SCIP, peripherals, C firmware at parity, the build, running firmware |
+| [`lexicon.md`](lexicon.md) | More lexicons and constructs for the chrestomathy |
+| [`c_parser_phase3_compile_commands.md`](c_parser_phase3_compile_commands.md) | Parsing C from a real `compile_commands.json` instead of walking the directory |
+| [`large-repos.md`](large-repos.md) | A repository the size of linux, parsed whole and explored on the canvas |
+| *the web window* (in the corpus: `plans/the-web-window.md`) | The estate frame, the topology designer on it, and the chrestomathy of code. Kept in the corpus because it decides things for three repositories; the pickup for this repository is the section below |
 
 ## Picking up the web window
 
-The plan's phases 0 and 1 -- the estate frame -- are what `main` carries. The
-phases that remain are stated once, in the corpus, as
+The phases of the plan that remain are stated once, in the corpus, as
 `handbook/handoffs/the-web-window.md`: what each builds, where in this
 repository it lands, what to read first, and what "done" is. Read that page
-before the plan, because it was stamped after the merges and the plan was
-written before them. What falls to this repository, in the order the handoff
-gives it:
+before the plan. What falls to this repository, in the order the handoff gives
+it:
 
 - **The live flow on the shape.** Run state from the harness's invocations and
   human queue, joined to the drawn boxes by address, as a
@@ -31,16 +32,41 @@ gives it:
   `/v1/topologies` and shown with the plane's verdict as given. The authored
   verbs for the ring begin with this repository's own record naming `rad` in
   its `Pends on` row, on `project/codecartographer`, before anything is built.
-- **Cartography and chrestomathy.** Shipped: `annotate_lexicon` in the parse
-  flow, layer colouring with legend rows, a third lexicon (Rust), the construct
-  vocabulary and a Chrestomathy panel across every language it lists
-  ([`rust.md`](rust.md)), and any graph on the canvas read as one -- a census
-  of its constructs by language, Color By: Construct, and View → Compare on
-  any node. Remaining: the panel the Estate table's prose row
+- **Cartography and chrestomathy.** The panel the Estate table's prose row
   lacks -- a thread's topics drawn with the same caveat discipline as every
   other seam -- and the looksatwords bridge both ways.
 
 What does not move: the window calculates layout and palette vocabulary and
 nothing else, stores nothing, and shows a producer's caveat verbatim --
 `docs/architecture.md`, *Calculated, stored, displayed*, and
-`tests/test_boundaries.py`, which stays green through every phase above.
+`tests/test_boundaries.py`.
+
+## Maps of code
+
+- **A wider lexicon join.** The join to parsed code reaches only the keywords
+  a parser exposes as a kind or a qualifier, so most of each lexicon is
+  reachable only in its own graph.
+- **C's type strings.** `meta['type_str']` (`"struct Foo *"`) holds keywords
+  and operators that are not tokenized, so the join cannot reach them.
+
+## Smaller open work
+
+- **`DefaultPalette` is a literal** in `codecarto/models/plot_data.py`. As
+  `data/palettes/default.yaml`, beside the lexicons, it could be edited without
+  touching Python; `Palette` is built at import time by several callers.
+- **Nothing validates a palette.** One missing `unknown` resolves every
+  unmatched base to `palette_service`'s fallbacks without a message; a
+  `Palette.validate()` naming missing keys would say so.
+- **The palette's shapes are matplotlib markers** (`o`, `s`, `^`), translated
+  to the canvas's shape names in one tested table. Canvas-neutral names with a
+  table per renderer would be a data migration.
+- **The lexicon and the palette describe one language twice**, as abstraction
+  layers and as dotted bases, and neither reads the other.
+- **`plotter_router.render_graph_to_html` reads gJGF by hand**, about a
+  hundred lines, where `GraphSerializer` and the models already describe it.
+- **`Positions._layouts` is read from outside** by `topology_router.py` and
+  `estate_service.py`; a public `names()` would end that.
+- **`StateController.update` does not repaint.** A caller reached from a DOM
+  event is repainted by Mithril; one that awaits in `oninit` is not, so it must
+  redraw itself. Either `update` redraws, with a way to batch, or its name says
+  it does not.
