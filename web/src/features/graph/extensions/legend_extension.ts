@@ -54,7 +54,7 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
     const nodes_ = nodeMarks(nodes, colorBy);
     const edges_ = edgeMarks(edges);
     const layers_ = layerMarks(nodes, colorBy);
-    const constructs_ = constructMarks(nodes);
+    const constructs_ = constructMarks(nodes, colorBy);
 
     const root = document.createElement('div');
     root.className = 'graph-legend';

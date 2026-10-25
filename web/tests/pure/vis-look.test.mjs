@@ -45,3 +45,16 @@ test('"Color By: Abstraction Layer" paints the layer colour here too', () => {
     'placed on a layer and sent no colour: its own');
   assert.equal(visLook({}, 'layer').color, undefined, "vis-network's default stays its default");
 });
+
+test('"Color By: Construct" paints the construct colour here too', () => {
+  /**
+   * The vis-network canvas had its own colour rule, which knew the layer and
+   * not the construct, so it ignored Construct while the D3 canvas and its key
+   * followed it. Mutation: give `visLook` its own rule again (layer only) --
+   * this fails with the crate's own colour.
+   */
+  const crate = { color: '#2563eb', construct_color: '#6d28d9' };
+  assert.equal(visLook(crate, 'construct').color, '#6d28d9');
+  assert.equal(visLook(crate, 'auto').color, '#2563eb');
+  assert.equal(visLook({}, 'construct').color, undefined, "vis-network's default stays its default");
+});
