@@ -59,6 +59,9 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
     for (const def of PanelRegistry.all()) {
       glInstance.registerComponentFactoryFunction(def.id, (container) => {
         container.element.style.cssText = `width:100%;height:100%;overflow:${def.overflow};`;
+        // A saved layout keeps the tab titles it was saved with, a renamed
+        // window's included; the registry's title is the one drawn.
+        if (def.config.title) container.setTitle(def.config.title);
         def.mount(ctx, container.element);
       });
     }

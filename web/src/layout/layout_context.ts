@@ -31,6 +31,7 @@ import { ToastManager } from '../components/codecarto/help/toast';
 import { infoLine } from '../features/graph/services/node_info';
 import type { BundledExample } from '../features/examples/examples';
 import { notesTail } from '../features/graph/services/parse_notes';
+import { plotTarget } from '../features/repository/plot_target';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { readSavedLayout } from './saved_layout';
@@ -79,7 +80,6 @@ export class LayoutContext {
 
   // Reactive UI-only state shared by the docked panels.
   public panelState: ControlPanelState = {
-    codeSourceMode: 'upload',
     repoUrl: '',
     currentTheme: 'forest',
     isLoading: false,
@@ -87,6 +87,7 @@ export class LayoutContext {
     progress: null,
     graphSections: { layout: true, visual: false, theme: false },
     parseDepth: 2,
+    parseOptionsOpen: false,
   };
 
   /** Files uploaded via the local file picker (not stored in Meiosis state). */
@@ -262,9 +263,23 @@ export class LayoutContext {
       /* storage blocked: nothing saved to read */
     }
     const saved = readSavedLayout(raw, PanelRegistry.all().map((def) => def.id));
-    if (saved.kind === 'usable') return saved.config as LayoutConfig;
+    if (saved.kind === 'usable') {
+      if (saved.renamed.length) this._keepRenamedLayout(saved.config, saved.renamed);
+      return saved.config as LayoutConfig;
+    }
     if (saved.kind === 'unusable') this.dropSavedLayout(saved.why);
     return DEFAULT_LAYOUT_CONFIG;
+  }
+
+  /** Save a layout whose merged windows were renamed, and say so once. */
+  private _keepRenamedLayout(config: object, renamed: string[]): void {
+    try {
+      localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(config));
+    } catch {
+      /* storage blocked: the renamed layout still loads this time */
+    }
+    const names = renamed.map((id) => `'${id}'`).join(', ');
+    ToastManager.show(`The saved layout's ${names} window(s) are the Open window in this version.`, 8_000);
   }
 
   /** Forget the saved layout, and say why the default is showing instead. */
@@ -308,6 +323,8 @@ export class LayoutContext {
       availableLexiconLanguages: s.availableLexiconLanguages ?? [],
       cachedGraphs: this.cachedGraphs,
       bundledExamples: this.bundledExamples,
+      graphbaseAvailable: this.graphbaseAvailable,
+      savedUrls: this.graphbaseBookmarks.map((b) => b.url),
     };
   }
 
@@ -386,7 +403,7 @@ export class LayoutContext {
 
   /** Load a graphbase bookmark: stream the URL with the saved settings. */
   public loadGraphbaseBookmark(bookmark: GraphbaseBookmark): void {
-    this.updatePanelState({ repoUrl: bookmark.url, codeSourceMode: 'repo' });
+    this.updatePanelState({ repoUrl: bookmark.url });
     this._startStreamFromUrl(bookmark.url);
     this.actions.repo.fetchRepository(bookmark.url)
       .then(() => m.redraw())
@@ -441,7 +458,7 @@ export class LayoutContext {
 
     // If the snapshot has a URL, also populate the file tree
     if (snap.meta?.url) {
-      this.updatePanelState({ repoUrl: snap.meta.url, codeSourceMode: 'repo' });
+      this.updatePanelState({ repoUrl: snap.meta.url });
       this.actions.repo.fetchRepository(snap.meta.url)
         .then(() => m.redraw())
         .catch(() => {});
@@ -844,17 +861,6 @@ export class LayoutContext {
     return ` — ${placed} of ${total} placed without backend positions`;
   }
 
-  /**
-   * Plot an uploaded file and say what its parse could not read, as a stream
-   * says its `note` events: each in a toast, and all of them returned for the
-   * caller's status line (`notesTail`).
-   */
-  private async _plotUpload(file: RawFile): Promise<string[]> {
-    const notes = await this.actions.plot.plotUploadedFile(file);
-    for (const note of notes) ToastManager.show(note, 15_000);
-    return notes;
-  }
-
   private _mountAndStream(
     startFn: (renderer: StreamingGraphRenderer) => () => void,
     statusMsg: string,
@@ -863,6 +869,9 @@ export class LayoutContext {
       this._cancelStream();
       this._cancelStream = null;
     }
+    // The stream is the latest plot: added files, the demo or a lexicon still
+    // waiting for an answer are not drawn over it.
+    this.actions.plot.supersedePlots();
     this._streamingRenderer = null;
 
     const styling = this.appState.state.graphStyling;
@@ -1069,16 +1078,42 @@ export class LayoutContext {
     );
   }
 
+  /**
+   * Plot added files, every one given, at the parse depth the Open panel
+   * shows; one file clicked in the Files panel and Plot over all of them both
+   * come here. A plot asked for before these answered owns the status line,
+   * and their answer is dropped (`latest_plot.ts`).
+   */
+  private async _plotUploads(files: RawFile[]): Promise<void> {
+    const many = files.length === 1 ? files[0].name : `${files.length} files`;
+    this.updatePanelState({ isLoading: true, statusMessage: `Plotting ${many}\u2026` });
+    // What the parse could not read is said as a stream says its `note`
+    // events: each in a toast, and all of them after "Ready" (`notesTail`).
+    let notes: string[] | null = [];
+    this._lastPlotAction = async () => {
+      notes = await this.actions.plot.plotUploads(files, this.panelState.parseDepth);
+      for (const note of notes ?? []) ToastManager.show(note, 15_000);
+    };
+    try {
+      await this._lastPlotAction();
+      if (notes) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
+    } catch {
+      this.updatePanelState({ isLoading: false, statusMessage: `Error plotting ${many}` });
+    }
+  }
+
   // ── Callback builder ───────────────────────────────────────────────────────
 
   private _buildCallbacks(): ControlPanelCallbacks {
     return {
       onDemo: async () => {
         this.updatePanelState({ isLoading: true, statusMessage: 'Loading demo...' });
-        this._lastPlotAction = async () => { await this.actions.plot.loadDemo(); };
+        let drawn = true;
+        this._lastPlotAction = async () => { drawn = await this.actions.plot.loadDemo(); };
         try {
           await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          // Not drawn: a plot asked for since owns the status line.
+          if (drawn) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: 'Error loading demo' });
         }
@@ -1086,10 +1121,11 @@ export class LayoutContext {
 
       onLoadLexicon: async (language: string) => {
         this.updatePanelState({ isLoading: true, statusMessage: `Loading ${language} lexicon...` });
-        this._lastPlotAction = async () => { await this.actions.plot.loadLexicon(language); };
+        let drawn = true;
+        this._lastPlotAction = async () => { drawn = await this.actions.plot.loadLexicon(language); };
         try {
           await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          if (drawn) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: `Error loading ${language} lexicon` });
         }
@@ -1141,16 +1177,27 @@ export class LayoutContext {
         this._startStream(singleFileDir, `Plotting ${file.name}\u2026`);
       },
 
-      onPlotWholeRepo: () => {
-        if (this.panelState.codeSourceMode === 'repo' && this.panelState.repoUrl) {
-          this._lastPlotAction = () => { this.panelCallbacks.onPlotWholeRepo(); };
-          this._startStreamFromUrl(this.panelState.repoUrl);
-          return;
+      /**
+       * The Open panel's Plot: the loaded repository, by the URL its tree was
+       * read from when it has one; else every added file; else the URL in the
+       * field, fetched and drawn as → Fetch does (`plot_target.ts`). What was
+       * drawn is what a layout change or Relayout draws again.
+       */
+      onPlot: () => {
+        const repo = this.appState.repo.content;
+        const target = plotTarget(repo, this.uploadedFiles.length, this.panelState.repoUrl);
+        if (target?.kind === 'repository') {
+          const { url } = target;
+          this._lastPlotAction = () => { this._startStreamFromUrl(url); };
+          this._startStreamFromUrl(url);
+        } else if (target?.kind === 'tree' && repo) {
+          this._lastPlotAction = () => { this._startStream(repo, 'Streaming graph\u2026'); };
+          this._startStream(repo, 'Streaming graph\u2026');
+        } else if (target?.kind === 'files') {
+          void this._plotUploads([...this.uploadedFiles]);
+        } else if (target?.kind === 'fetch') {
+          this.panelCallbacks.onRepoSubmit(target.url);
         }
-        const repoContent = this.appState.repo.content;
-        if (!repoContent || repoContent.size === 0) return;
-        this._lastPlotAction = () => { this.panelCallbacks.onPlotWholeRepo(); };
-        this._startStream(repoContent, 'Streaming graph\u2026');
       },
 
       onFileUpload: (files: FileList) => {
@@ -1189,32 +1236,7 @@ export class LayoutContext {
       },
 
       onUploadedFileClick: async (file: RawFile) => {
-        this.updatePanelState({ isLoading: true, statusMessage: 'Plotting file...' });
-        let notes: string[] = [];
-        this._lastPlotAction = async () => { notes = await this._plotUpload(file); };
-        try {
-          await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
-        } catch {
-          this.updatePanelState({ isLoading: false, statusMessage: 'Error plotting file' });
-        }
-      },
-
-      onPlotAllUploads: async () => {
-        if (this.uploadedFiles.length > 0) {
-          this.updatePanelState({ isLoading: true, statusMessage: 'Plotting all files...' });
-          let notes: string[] = [];
-          this._lastPlotAction = async () => {
-            if (this.uploadedFiles.length > 0)
-              notes = await this._plotUpload(this.uploadedFiles[0]);
-          };
-          try {
-            await this._lastPlotAction();
-            this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
-          } catch {
-            this.updatePanelState({ isLoading: false, statusMessage: 'Error plotting files' });
-          }
-        }
+        await this._plotUploads([file]);
       },
 
       onThemeChange: (theme: string) => {
@@ -1258,8 +1280,8 @@ export class LayoutContext {
       },
 
       // **NEITHER READ TOUCHES THE PANEL'S LOADING STATE.** `isLoading` and
-      // the status line are the stream's: the Actions panel shows Cancel and
-      // the progress bar while it is set. These set it and cleared it with
+      // the status line are the stream's: the Open panel's Plot bar shows
+      // Cancel and the progress bar while it is set. These set it and cleared it with
       // "Ready" when they ended, so a folder opened mid-parse took Cancel and
       // the progress bar from a stream still running. The folder's ↻ says it
       // is being read; a toast says Expand All has begun, and either failing.
@@ -1292,7 +1314,7 @@ export class LayoutContext {
         const entry = this.cachedGraphs?.find((e) => e.key === key);
         if (!entry) return;
         // Streaming from the URL will hit the backend cache and replay instantly.
-        this.updatePanelState({ repoUrl: entry.url, codeSourceMode: 'repo' });
+        this.updatePanelState({ repoUrl: entry.url });
         this._startStreamFromUrl(entry.url);
         // fetchRepository populates state.repo.content, which the Files panel
         // reads — without this the recalled graph renders but the tree stays empty.
@@ -1304,7 +1326,11 @@ export class LayoutContext {
       onClearRepo: () => {
         this.appState.clearRepoData();
         this.uploadedFiles = [];
-        this.updatePanelState({ repoUrl: '', codeSourceMode: 'repo' });
+        this.updatePanelState({ repoUrl: '' });
+      },
+
+      onSaveRecent: (entry) => {
+        void this.saveGraphbaseBookmark(entry.label || entry.url.replace('https://github.com/', ''), entry.url);
       },
 
       onEvictCache: async (key: string) => {

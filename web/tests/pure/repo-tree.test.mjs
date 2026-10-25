@@ -130,7 +130,7 @@ test('a whole tree expanded for a repository no longer shown is dropped', async 
 test('a folder is read from the repository the tree shows, whatever the URL field holds', async () => {
   /**
    * The Files panel passed `panelState.repoUrl`, which follows every keystroke
-   * in the Repository panel's URL field: type B's URL without fetching it,
+   * in the Open panel's URL field: type B's URL without fetching it,
    * open a folder of A's tree, and B was asked for A's folder. Mutation: read
    * from a URL the caller passes -- this fails.
    */

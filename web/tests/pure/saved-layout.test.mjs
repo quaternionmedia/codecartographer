@@ -5,9 +5,10 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-import { componentTypesIn, readSavedLayout } from '../../dist-pure/layout/saved_layout.js';
+import { RENAMED_PANELS, componentTypesIn, readSavedLayout } from '../../dist-pure/layout/saved_layout.js';
 
 const REGISTERED = ['graph', 'file-tree', 'estate-panel'];
 
@@ -29,10 +30,10 @@ test('a layout naming only registered windows is loaded as saved', () => {
 test('a layout naming a window this version does not have is dropped, and says which', () => {
   /* Mutation: return 'usable' without comparing against the registry -- Golden
      Layout is handed a type it throws on, and this fails. */
-  const saved = readSavedLayout(layout('graph', 'upload-panel', 'upload-panel'), REGISTERED);
+  const saved = readSavedLayout(layout('graph', 'gone-panel', 'gone-panel'), REGISTERED);
   assert.equal(saved.kind, 'unusable');
-  assert.match(saved.why, /'upload-panel'/);
-  assert.equal(saved.why.match(/upload-panel/g).length, 1, 'each unknown window named once');
+  assert.match(saved.why, /'gone-panel'/);
+  assert.equal(saved.why.match(/gone-panel/g).length, 1, 'each unknown window named once');
 });
 
 test('a window nested in stacks, rows and an open popout is found', () => {
@@ -51,6 +52,75 @@ test('text that is not a layout is dropped rather than handed on', () => {
   assert.equal(readSavedLayout('{not json', REGISTERED).kind, 'unusable');
   assert.equal(readSavedLayout('[]', REGISTERED).kind, 'unusable');
   assert.equal(readSavedLayout('42', REGISTERED).kind, 'unusable');
+});
+
+test('Upload, Repository and Actions in a saved layout become one Open window', () => {
+  /* Mutation: drop the renames -- the layout names three windows this
+     version lacks, is dropped for the default, and this fails. */
+  const saved = {
+    root: { type: 'column', content: [
+      { type: 'stack', content: [{ type: 'component', componentType: 'graph', id: 'graph' }] },
+      { type: 'row', content: [
+        { type: 'stack', content: [{ type: 'component', componentType: 'file-tree', id: 'file-tree' }] },
+        { type: 'stack', activeItemIndex: 3, content: [
+          { type: 'component', componentType: 'upload-panel', id: 'upload-panel', title: '↑ Upload' },
+          { type: 'component', componentType: 'repo-panel', id: 'repo-panel', title: '⬇ Repository' },
+          { type: 'component', componentType: 'graph-settings-panel', id: 'graph-settings-panel' },
+          { type: 'component', componentType: 'plotbar', id: 'plotbar', title: '▶ Actions' },
+          { type: 'component', componentType: 'estate-panel', id: 'estate-panel' },
+        ] },
+      ] },
+    ] },
+  };
+  const read = readSavedLayout(JSON.stringify(saved), ['graph', 'file-tree', 'open', 'graph-settings-panel', 'estate-panel']);
+  assert.equal(read.kind, 'usable');
+  assert.deepEqual(read.renamed.sort(), ['plotbar', 'repo-panel', 'upload-panel']);
+  assert.deepEqual(componentTypesIn(read.config), ['graph', 'file-tree', 'open', 'graph-settings-panel', 'estate-panel']);
+  const dock = read.config.root.content[1].content[1];
+  assert.equal(dock.content[0].id, 'open');
+  // Actions was the active tab, and Open is what it became.
+  assert.equal(dock.activeItemIndex, 0);
+});
+
+test('a stack holding only windows merged away goes with them', () => {
+  const saved = {
+    root: { type: 'row', content: [
+      { type: 'stack', content: [{ type: 'component', componentType: 'upload-panel' }] },
+      { type: 'stack', content: [{ type: 'component', componentType: 'plotbar' }] },
+      { type: 'stack', activeItemIndex: 1, content: [
+        { type: 'component', componentType: 'graph' },
+        { type: 'component', componentType: 'estate-panel' },
+      ] },
+    ] },
+  };
+  const read = readSavedLayout(JSON.stringify(saved), ['graph', 'open', 'estate-panel']);
+  assert.equal(read.kind, 'usable');
+  assert.equal(read.config.root.content.length, 2);
+  assert.deepEqual(componentTypesIn(read.config), ['open', 'graph', 'estate-panel']);
+  assert.equal(read.config.root.content[1].activeItemIndex, 1);
+});
+
+test('a layout with nothing to rename is read unchanged', () => {
+  const text = layout('graph', 'estate-panel');
+  const read = readSavedLayout(text, REGISTERED);
+  assert.deepEqual(read.renamed, []);
+  assert.deepEqual(read.config, JSON.parse(text));
+});
+
+test('the renames name only windows this version lacks, onto one it has', () => {
+  /**
+   * Read against the ids `panel_registry.ts` registers, not a copy of the
+   * table. Mutations: rename a window this version has (`graph-settings-panel`),
+   * or onto one it lacks -- this fails.
+   */
+  const registry = readFileSync('src/layout/panel_registry.ts', 'utf8');
+  const ids = [...registry.matchAll(/^\s+id: '([^']+)',$/gm)].map((m) => m[1]);
+  assert.ok(ids.includes('graph') && ids.includes('open'), 'no ids read from panel_registry.ts; the pattern is stale');
+  assert.ok(Object.keys(RENAMED_PANELS).length > 0);
+  assert.deepEqual(Object.keys(RENAMED_PANELS).filter((was) => ids.includes(was)), [],
+    'a rename names a window this version registers, so a saved layout loses it');
+  assert.deepEqual(Object.values(RENAMED_PANELS).filter((now) => !ids.includes(now)), [],
+    'a rename names a window this version does not register, so a saved layout is dropped');
 });
 
 test('a legacy layout, its root written as `content[0]`, is read as Golden Layout reads it', () => {
@@ -92,4 +162,53 @@ test('`content` beside a `root` is not read, since Golden Layout does not read i
   };
   assert.deepEqual(componentTypesIn(both), ['graph']);
   assert.equal(readSavedLayout(JSON.stringify(both), REGISTERED).kind, 'usable');
+});
+
+const OPEN_REGISTERED = ['graph', 'file-tree', 'open', 'estate-panel'];
+
+test('Upload and Repository in a legacy root, written as `content[0]`, become one Open window', () => {
+  /**
+   * The renames walked `root` alone, and the registry check reads the root
+   * where Golden Layout does, so a legacy layout naming the old windows was
+   * dropped for the default instead of renamed. Mutation: rename in `root`
+   * only -- this fails.
+   */
+  const legacy = { content: [{ type: 'row', content: [
+    { type: 'component', componentType: 'graph' },
+    { type: 'stack', content: [
+      { type: 'component', componentType: 'upload-panel', id: 'upload-panel' },
+      { type: 'component', componentType: 'repo-panel', id: 'repo-panel' },
+    ] },
+  ] }] };
+  const read = readSavedLayout(JSON.stringify(legacy), OPEN_REGISTERED);
+  assert.equal(read.kind, 'usable', read.why);
+  assert.deepEqual(read.renamed.sort(), ['repo-panel', 'upload-panel']);
+  assert.deepEqual(componentTypesIn(read.config), ['graph', 'open']);
+  assert.equal(read.config.root, undefined, 'the legacy root is renamed where it is written');
+});
+
+test("Actions in a popout's own popout, its root written either way, is renamed too", () => {
+  /** Mutation: rename in one level of `openPopouts` -- this fails. */
+  const config = {
+    root: { type: 'component', componentType: 'graph' },
+    openPopouts: [{
+      content: [{ type: 'component', componentType: 'file-tree' }],
+      openPopouts: [{ root: { type: 'stack', content: [{ type: 'component', componentType: 'plotbar' }] } }],
+    }],
+  };
+  const read = readSavedLayout(JSON.stringify(config), OPEN_REGISTERED);
+  assert.equal(read.kind, 'usable', read.why);
+  assert.deepEqual(read.renamed, ['plotbar']);
+  assert.deepEqual(componentTypesIn(read.config), ['graph', 'file-tree', 'open']);
+});
+
+test('a legacy popout root holding only a window merged into one kept already is emptied', () => {
+  const config = {
+    root: { type: 'component', componentType: 'upload-panel' },
+    openPopouts: [{ content: [{ type: 'stack', content: [{ type: 'component', componentType: 'repo-panel' }] }] }],
+  };
+  const read = readSavedLayout(JSON.stringify(config), OPEN_REGISTERED);
+  assert.equal(read.kind, 'usable', read.why);
+  assert.deepEqual(componentTypesIn(read.config), ['open']);
+  assert.deepEqual(read.config.openPopouts[0].content, []);
 });

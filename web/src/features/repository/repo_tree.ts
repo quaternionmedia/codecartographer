@@ -53,7 +53,7 @@ export function mergeFolderAtPath(root: RawFolder, pathParts: string[], expanded
 }
 
 /** The repository a tree is of. Two readings of one repository are one tree. */
-function repositoryOf(tree: Directory | null | undefined): string {
+export function repositoryOf(tree: Directory | null | undefined): string {
   return (tree?.info?.url ?? '').replace(/\/+$/, '');
 }
 
@@ -85,8 +85,8 @@ export class RepoTree {
    *
    * **READ FROM THE REPOSITORY THE TREE IS OF.** The URL is the shown tree's
    * own (`info.url`), never one the caller holds: the Files panel passed the
-   * Repository panel's URL field, which follows every keystroke, so a folder
-   * of A's tree was asked of whatever had been typed since.
+   * Open panel's URL field, which follows every keystroke, so a folder of A's
+   * tree was asked of whatever had been typed since.
    */
   async expandPath(path: string): Promise<boolean> {
     const shown = this.host.shown;

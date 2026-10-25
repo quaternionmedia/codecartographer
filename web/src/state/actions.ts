@@ -20,6 +20,7 @@ import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/so
 import { logger } from '../core/logger';
 import { backendLayoutName } from '../features/graph/services/layout_names';
 import { parseNotes } from '../features/graph/services/parse_notes';
+import { LatestPlot } from './latest_plot';
 
 // The menu's registry name, as the backend spells it. One rule in
 // `layout_names.ts`; this used to be a private table here that fell back to
@@ -33,9 +34,12 @@ const convertLayoutToBackend = backendLayoutName;
 export class PlotActions {
   /** The Cargo and Chrestomathy panels' reads and draws. */
   public readonly cartography: CartographyActions;
+  /** The Open panel's plots, each drawn only while it is the latest asked for (`latest_plot.ts`). */
+  private readonly plots: LatestPlot;
 
   constructor(private stateController: StateController) {
     const controller = stateController;
+    this.plots = new LatestPlot(() => controller.clear());
     this.cartography = new CartographyActions(
       {
         get state() { return controller.state; },
@@ -460,13 +464,15 @@ export class PlotActions {
    * Load and display a language's standalone Lexicon graph (Option A —
    * see docs/architecture.md, Lexicons and the construct vocabulary).
    * Switchable: grows automatically as more languages get a lexicon YAML,
-   * no frontend change needed.
+   * no frontend change needed. Resolves true when it was drawn, false when
+   * another plot was asked for before it answered.
    */
-  async loadLexicon(language: string): Promise<void> {
-    this.stateController.clear();
+  async loadLexicon(language: string): Promise<boolean> {
     try {
-      const data = await PlotService.plotLexicon(this.stateController.api.lexicon, language);
-      this.handlePlotData(data);
+      return await this.plots.plot(
+        () => PlotService.plotLexicon(this.stateController.api.lexicon, language),
+        (data) => this.handlePlotData(data),
+      );
     } catch (error) {
       console.error(`Failed to load ${language} lexicon:`, error);
       throw error;
@@ -474,17 +480,16 @@ export class PlotActions {
   }
 
   /**
-   * Load and display demo visualization
+   * Load and display demo visualization. Resolves true when it was drawn,
+   * false when another plot was asked for before it answered.
    */
-  async loadDemo(): Promise<void> {
-    this.stateController.clear();
+  async loadDemo(): Promise<boolean> {
     try {
       const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const data = await PlotService.loadDemo(
-        this.stateController.api.plotter,
-        layout
+      return await this.plots.plot(
+        () => PlotService.loadDemo(this.stateController.api.plotter, layout),
+        (data) => this.handlePlotData(data),
       );
-      this.handlePlotData(data);
     } catch (error) {
       console.error('Failed to load demo:', error);
       throw error;
@@ -675,27 +680,43 @@ export class PlotActions {
   }
 
   /**
-   * Plot a single uploaded file via /parse/unified. Resolves to what the parse
-   * said it could not read (`parse_notes.ts`), for the caller to say.
+   * Plot added files as one directory, every file given, at `depth`, via
+   * /parse/unified. Resolves to what the parse said it could not read
+   * (`parse_notes.ts`), for the caller to say; null when another plot was
+   * asked for before it answered, and its answer was dropped.
    */
-  async plotUploadedFile(file: RawFile): Promise<string[]> {
-    this.stateController.clear();
+  async plotUploads(files: RawFile[], depth: number): Promise<string[] | null> {
     try {
       const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
       const opts   = this.stateController.state.parserOptions;
       const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
-      const dir    = new Directory(new RepoInfo(), 1, new RawFolder('upload', file.size, [file]));
-      const data   = await PlotService.plotUnified(
-        this.stateController.api.parse, dir, 2, exts, layout, undefined, opts.annotateLexicon
+      const size   = files.reduce((total, f) => total + f.size, 0);
+      const dir    = new Directory(new RepoInfo(), files.length, new RawFolder('upload', size, files));
+      let notes: string[] = [];
+      const drawn = await this.plots.plot(
+        async () => {
+          const data = await PlotService.plotUnified(
+            this.stateController.api.parse, dir, depth, exts, layout, undefined, opts.annotateLexicon
+          );
+          if (!data) throw new Error('No data returned from parse/unified');
+          return data;
+        },
+        (data) => {
+          this.stateController.update({ parseDirectory: dir });
+          this.handlePlotData(data);
+          notes = parseNotes(data);
+        },
       );
-      if (!data) throw new Error('No data returned from parse/unified');
-      this.stateController.update({ parseDirectory: dir });
-      this.handlePlotData(data);
-      return parseNotes(data);
+      return drawn ? notes : null;
     } catch (error) {
-      console.error('Failed to plot uploaded file:', error);
+      console.error('Failed to plot uploaded files:', error);
       throw error;
     }
+  }
+
+  /** A stream has begun on the canvas: an answer the Open panel still waits for is dropped. */
+  supersedePlots(): void {
+    this.plots.supersede();
   }
 }
 

@@ -44,10 +44,6 @@ export function createFileTreePanel(ctx: LayoutContext): m.Component {
                 }),
               ]),
               m('div.gl-file-tree__actions', [
-                m('button.gl-file-tree__action-btn', {
-                  onclick: () => ctx.panelCallbacks.onPlotWholeRepo(),
-                  title: 'Plot the entire repository',
-                }, '◈ Plot All'),
                 ctx.panelCallbacks.onExpandAll
                   ? m('button.gl-file-tree__action-btn', {
                       onclick: () => ctx.panelCallbacks.onExpandAll?.(),
@@ -82,7 +78,7 @@ export function createFileTreePanel(ctx: LayoutContext): m.Component {
           ? m('div.gl-file-tree__empty', [
               m('span.gl-file-tree__empty-icon', '◉'),
               m('p.gl-file-tree__empty-text',
-                'No source loaded. Fetch a repository in the Repository panel, or add files in the Upload panel.',
+                'No source loaded. Open a repository or add files in the Open panel.',
               ),
             ])
           : null,

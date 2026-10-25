@@ -19,7 +19,7 @@ const WORKSPACE = 'tests/fixtures/cargo/workspace';
 async function drawWorkspace(page: Page): Promise<void> {
   await page.goto('/');
   await dismissOnboardingModal(page);
-  await page.locator('.lm_tab', { hasText: 'Repository' }).click();
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
   await page.locator('.panel-source__url-input input').fill(WORKSPACE);
   await page.locator('.panel-source__url-input button.primary').click();
   await expect(page.locator('.graph-node').first()).toBeVisible({ timeout: SETTLED });
