@@ -32,8 +32,10 @@
     "src/features/estate/provenance_shown.ts",
     "src/features/graph/services/layout_names.ts",
     "src/features/graph/services/node_info.ts",
+    "src/features/examples/examples.ts",
     "src/features/graph/services/parse_notes.ts",
     "src/features/cartography/chrestomathy_rows.ts",
-    "src/features/cartography/cartography_actions.ts"
+    "src/features/cartography/cartography_actions.ts",
+    "src/features/cartography/followed_draft.ts"
   ]
 }

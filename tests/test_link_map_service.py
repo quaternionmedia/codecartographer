@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from codecarto.services import cargo_service
+from codecarto.services import cargo_service, examples_service
 from codecarto.services import link_map_service as L
 from codecarto.services.local_repo_service import get_local_repo
 from codecarto.services.unified_parser_service import UnifiedParserService
@@ -725,3 +725,124 @@ def test_which_input_sections_name_a_static(section, named):
             "                0x08000000       0x10 build/a.o\n")
     link_map = L.parse(text, "a.map")
     assert [s.name for s in link_map.symbols()] == ([named] if named else [])
+
+
+# ── What makes a map stale ────────────────────────────────────────────────────
+# A map is stale when something the link read changed after it, and never
+# because of a file it did not read. The code map and the Cargo reading judge
+# the same map, so they judge it by the same rule: a README rewritten by a
+# checkout after `blinky.map` once had the code map say FLASH and RAM were not
+# measured while the Cargo panel used the map.
+
+EXAMPLE = examples_service.ROOT / "rust-firmware"
+# What a file made in the copy holds, by suffix: enough to parse, and no region
+# a second FLASH could be read from.
+WRITTEN = {".rs": "pub fn probe() {}\n", ".c": "int crc(int x) { return x; }\n",
+           ".h": "int crc(int x);\n", ".S": "    .syntax unified\n", ".ld": "/* board */\n",
+           ".md": "# Wiring\n", ".txt": "notes\n"}
+
+
+def recorded_example(tmp_path: Path, changed: str) -> Path:
+    """A copy of the bundled example, every file an hour old and its map
+    recorded after them, then *changed* -- made if the example has no such
+    file -- given a time after the map's."""
+    root = tmp_path / "rust-firmware"
+    shutil.copytree(EXAMPLE, root)
+    then = time.time() - 3600
+    for path in root.rglob("*"):
+        if path.is_file():
+            os.utime(path, (then, then))
+    os.utime(root / "target" / "codecarto" / "blinky.map", (then + 60, then + 60))
+    path = root / changed
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(WRITTEN[path.suffix], encoding="utf-8")
+    os.utime(path, (then + 120, then + 120))
+    return root
+
+
+def map_used(root: Path) -> tuple[bool, bool]:
+    """Whether the code map measured FLASH from `blinky.map`, and whether the
+    Cargo reading used it -- each reader's own verdict, read the way the
+    window reads it: a parse of the directory with every parser, and `/cargo`."""
+    graph = UnifiedParserService.build_graph(get_local_repo(str(root)), 3, None)
+    measured = node(graph, "region", "FLASH")["meta"]["measured"]
+    doc = next(d for d in cargo_service.read(root).documents if d.name == "blinky.map")
+    return measured["used"], doc.used
+
+
+def test_a_readme_changed_after_the_map_leaves_it_used_in_both(tmp_path):
+    """The link reads no README. Mutation: count every file the parse read --
+    the code map says not measured, the Cargo reading uses the map, and this
+    fails."""
+    assert map_used(recorded_example(tmp_path, "README.md")) == (True, True)
+
+
+def test_a_linker_script_changed_after_the_map_makes_it_stale_in_both(tmp_path):
+    """`memory.x` says where the link puts everything. Mutation: judge the map
+    by Rust sources and manifests only -- the Cargo reading uses it, and this
+    fails."""
+    assert map_used(recorded_example(tmp_path, "crates/blinky/memory.x")) == (False, False)
+
+
+@pytest.mark.parametrize("changed", [
+    "crates/hal/src/uart.rs", "crates/blinky/build.rs",
+    # `src/bin/` holds a binary cargo builds; the parse skips `bin` directories.
+    "crates/blinky/src/bin/probe.rs"])
+def test_a_rust_source_changed_after_the_map_makes_it_stale_in_both(tmp_path, changed):
+    """Mutation: count only the files the parse read -- `src/bin/probe.rs` is
+    not one, the code map measures FLASH from the map, and this fails.
+    Mutation: leave `.rs` out of the rule -- all three fail, in both."""
+    assert map_used(recorded_example(tmp_path, changed)) == (False, False)
+
+
+@pytest.mark.parametrize("changed, stale", [
+    ("README.md", False), ("docs/wiring.md", False), ("crates/blinky/notes.txt", False),
+    ("crates/blinky/memory.x", True), ("crates/blinky/board.ld", True),
+    ("crates/hal/src/uart.rs", True), ("crates/blinky/src/bin/probe.rs", True),
+    ("crates/blinky/csrc/startup.S", True),
+    pytest.param("crates/blinky/csrc/crc.c", True, marks=requires_libclang),
+    pytest.param("crates/blinky/csrc/crc.h", True, marks=requires_libclang),
+    ("Cargo.toml", True), ("Cargo.lock", True), (".cargo/config.toml", True)])
+def test_the_code_map_and_the_cargo_reading_judge_a_map_alike(tmp_path, changed, stale):
+    """Each reader's verdict on the same change, and the rule's. Mutation:
+    judge the code map's map by the files the parse read -- it uses the map
+    after `Cargo.lock` or a source in `src/bin/` changes, and calls it stale
+    after a README or a doc does, and this fails. Mutation: judge the Cargo
+    reading's by Rust sources and manifests -- it uses the map after a
+    linker script, an assembly or a C source changes, and this fails."""
+    code_map, cargo = map_used(recorded_example(tmp_path, changed))
+    assert (code_map, cargo) == (not stale, not stale)
+    assert L.link_input(Path(changed)) is stale
+
+
+def test_a_code_map_cached_while_a_readme_made_its_map_stale_is_parsed_again(monkeypatch, tmp_path):
+    """At 9 a map is judged by what the link reads; a code map of the same
+    tree cached at 8 says FLASH was not measured because the README is newer
+    than the map, and the cache key has no file times in it to tell. Mutation:
+    leave GRAPH_SCHEMA_VERSION at 8 -- the graph cached at 8 is served."""
+    import hashlib
+
+    import codecarto.services.cache_service as cache_svc
+    from fastapi.testclient import TestClient
+
+    from codecarto.main import app
+
+    repos_dir = tmp_path / "cache" / "repos"
+    monkeypatch.setattr(cache_svc, "_CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos_dir)
+    monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos_dir / "index.json")
+    directory = get_local_repo(str(recorded_example(tmp_path, "README.md")))
+    url = directory.info.url
+    at_8 = hashlib.sha256(f"v8::{url}::3::Spring::{sorted([])}".encode()).hexdigest()[:16]
+    old = {"graph": {"nodes": {"CACHED_AT_8": {"label": "FLASH", "metadata": {
+                         "kind": "region", "meta": {"measured": {"used": False}}}}},
+                     "edges": []}, "metadata": {}}
+    cache_svc.CacheService.set(f"{cache_svc._repo_key_from_url(url)}::{at_8}", old, label="rust-firmware",
+                               url=url, mode="3", layout="Spring")
+    body = {"directory": directory.model_dump(), "depth": 3, "layout": "Spring"}
+    results = TestClient(app).post("/parse/unified", json=body).json()["results"]
+    assert not results.get("from_cache") and "CACHED_AT_8" not in results["graph"]["nodes"]
+    flash = [n["metadata"] for n in results["graph"]["nodes"].values()
+             if n["metadata"].get("kind") == "region" and n.get("label") == "FLASH"]
+    assert [m["meta"]["measured"]["used"] for m in flash] == [True]

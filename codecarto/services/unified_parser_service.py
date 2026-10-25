@@ -1045,8 +1045,11 @@ def _annotate_recorded_memory(graph: nx.DiGraph, directory: Directory) -> None:
     Only for a local repository with recorded map files under
     `target/codecarto/` -- `codecarto cargo record --map <bin>` writes one per
     binary, and a C build passing `-Wl,-Map=target/codecarto/<name>.map` writes
-    the same. Reads them and runs nothing; a map older than the newest source
-    file in the parse is not used, and its regions say so.
+    the same. Reads them and runs nothing; a map older than anything under the
+    repository the link reads is not used, and its regions say so. Which files
+    those are is `link_map_service.newest_input`'s to say, not this parse's:
+    the parse reads a README the link never did and skips a `bin/` cargo
+    builds, and `/cargo` judges the same map by the same call.
     """
     root = directory.info.url
     if not root or "://" in root or not Path(root).is_dir():
@@ -1056,12 +1059,7 @@ def _annotate_recorded_memory(graph: nx.DiGraph, directory: Directory) -> None:
         return
     from codecarto.services import link_map_service
 
-    newest = 0.0
-    for _, f in directory.root.iter_files():
-        try:
-            newest = max(newest, Path(f.url).stat().st_mtime)
-        except (OSError, ValueError):
-            continue
+    newest = link_map_service.newest_input(root)
     # Which crate each Rust file is compiled in starts from cargo's targets: a
     # package's directory need not be named after it.
     crate_roots: dict[str, str] = {}

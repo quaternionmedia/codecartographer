@@ -16,7 +16,7 @@ this table is a reading of it.
 | Graph | `graph` | The one canvas. Every graph in the application draws here — code maps, lexicons, the estate views — through `StreamingGraphRenderer` |
 | Files | `file-tree` | Repository and upload file browser |
 | Upload | `upload-panel` | Local file dropzone, plus the source controls (Load Demo lives here) |
-| Repository | `repo-panel` | GitHub URL fetch, recent graphs, examples |
+| Repository | `repo-panel` | GitHub URL or local path fetch, recent graphs, and the project selector: examples by language, Rust first. A bundled example (`examples/`, from `GET /repo/examples`) leads its group with a filled chip: it is read from this checkout with its recorded documents, so it needs no network, and a Cargo workspace's records are loaded into the Cargo panel as it opens. The GitHub examples draw the code map only -- a fetched repository brings no records of a build |
 | Graphbase | `graphbase-panel` | Durable named bookmarks (needs `MONGODB_URI`) |
 | Graph Settings | `graph-settings-panel` | Layout, physics, styling controls |
 | Actions | `plotbar` | Plot, cancel, status |
@@ -24,7 +24,7 @@ this table is a reading of it.
 | Topology | `topology-panel` | Choose one of the harness's flows, or ask what the archive says about a project; the drawing goes to the canvas |
 | Capabilities | `capabilities-panel` | The corpus's capability registry: each declaration and the rung it claims; draw them |
 | Overview | `overview-panel` | dossier's reading of the estate: masthead figures and sections; draw them |
-| Cargo | `cargo-panel` | A Rust workspace by path: which engine read it, its crates, the recorded documents and whether each is current, the device target; draw the crate graph, with features or locked dependencies if asked |
+| Cargo | `cargo-panel` | A Rust workspace by path (the field follows the workspace shown, so a bundled example's click fills it): which engine read it, its crates, the recorded documents and whether each is current, the device target; draw the crate graph, with features or locked dependencies if asked |
 | Chrestomathy | `chrestomathy-panel` | **On the canvas:** whatever graph is drawn -- a code map, a crate graph, a linker script -- read as the constructs its nodes are, in which languages, with what the vocabulary could not place, each said as what it is (a file the walk drew, a kind that is no construct and why); a row opens that construct below, and *show* frames and selects its nodes. Read again whenever a new graph is drawn, and never kept for one that has gone: a construct drawn from the vocabulary is not code and has no census. **Construct:** one construct set beside itself in each of C, Rust, Python, assembly and the linker script, every language `constructs.yaml` lists: each language's tokens with their abstraction layer, its parser kinds, and its note -- a language with no spelling is a row with its note, or one saying the vocabulary records none; draw it |
 
 **Default layout** (`default_layout.ts`): Graph on top; below it Files on the
