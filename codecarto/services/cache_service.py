@@ -72,7 +72,9 @@ def _repo_key_from_url(url: str) -> str:
 # by looking. Bump it whenever a parse's nodes or edges gain, lose or change
 # what they carry.
 #   2: nodes carry `construct` and `meta.facets` (data/constructs.yaml).
-GRAPH_SCHEMA_VERSION = 2
+#   3: Rust items come from the Rust reader and linker scripts are parsed;
+#      a Rust item carries a recorded check's `meta.diagnostics`.
+GRAPH_SCHEMA_VERSION = 3
 
 
 def _make_key(url: str, mode: str, layout: str, extensions: list[str]) -> str:
