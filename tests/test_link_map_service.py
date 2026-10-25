@@ -645,6 +645,27 @@ class TestRealGnu:
         assert node(graph, "region", "FLASH")["meta"]["measured"]["used_bytes"] == 696 + 12
 
 
+def test_a_name_two_files_answer_goes_to_the_one_the_object_names():
+    """The guard the libclang test above holds, on a graph built by hand as the
+    C parser draws one -- `file` is the source's stem -- so it runs without
+    libclang. `startup.c` declares `main` and `USART2_IRQHandler`; `main.c` and
+    `uart.c` define them. Mutation: do not narrow by the object the map names
+    -- each name answers from two files, gets no bytes, and this fails."""
+    import networkx as nx
+
+    graph = nx.DiGraph()
+    for stem, kind, label in [("startup", "function", "main"), ("main", "function", "main"),
+                              ("startup", "function", "USART2_IRQHandler"),
+                              ("uart", "function", "USART2_IRQHandler"), ("uart", "variable", "rx_buffer")]:
+        graph.add_node(f"c::{stem}::{label}", language="c", kind=kind, label=label, file=stem, meta={})
+    joined = L.annotate(graph, L.read(REAL_GNU), owner="sensor-c", recorded_at="", stale=False)
+    bytes_of = {n: d["meta"].get("bytes") for n, d in graph.nodes(data=True)}
+    assert bytes_of == {"c::startup::main": None, "c::main::main": 0x58,
+                        "c::startup::USART2_IRQHandler": None, "c::uart::USART2_IRQHandler": 0x2c,
+                        "c::uart::rx_buffer": 0x100}
+    assert joined["ambiguous"] == 0
+
+
 @pytest.mark.parametrize("section, named", [
     (".bss.rx_buffer", "rx_buffer"), (".text.startup.main", "main"), (".text.unlikely.fault", "fault"),
     # The clones GCC makes under -Os and -O2 -- constant-propagated, split,
