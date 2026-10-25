@@ -276,8 +276,18 @@ in each skips different work:
 | Key | `repo_key` is `{owner}-{repo}` for GitHub, `sha256(url)[:16]` otherwise; a graph is `{repo_key}::{sha256(v{GRAPH_SCHEMA_VERSION}, url, mode, layout, extensions)[:16]}` | `{owner}-{repo}` |
 | Freshness | `CC_CACHE_TTL` seconds (24 h by default) | the same variable |
 | A hit skips | fetching (a tree) or parsing (a graph) | the download and extract; the parse still runs |
-| List / evict | `GET /parse/cache`, `DELETE /parse/cache/{key}`; `CacheService.evict_repo` drops a repository's tree and graphs | `GET /c-parser/cache`, `DELETE /c-parser/cache/{key}` |
+| List / evict | `GET /parse/cache`, `DELETE /parse/cache/{key}` (one graph); `CacheService.evict_repo`, which no route calls, drops the repository's directory | `GET /c-parser/cache`, `DELETE /c-parser/cache/{key}` drops the repository's directory |
 | Used by | `/repo/tree`, `/repo/subtree`, `/repo/expand-all` (trees); `/parse/unified`, `/parse/stream`, `/parse/stream-url`, `/c-parser/stream-github` (graphs) | `/c-parser/github`, `/c-parser/stream-github` |
+
+For a GitHub repository the two caches are one directory,
+`~/.codecarto/cache/repos/{owner}-{repo}/`, and an eviction that drops a
+repository drops that directory whole. `DELETE /c-parser/cache/{key}`
+(`CParserService.evict_repo_cache`) takes Cache A's `tree.json` and graphs with
+Cache B's source, and leaves their entries in `index.json`: `GET /parse/cache`
+goes on listing those graphs, and recalling one parses it again.
+`CacheService.evict_repo` takes Cache B's source with Cache A's. Only
+`DELETE /parse/cache/{key}` (`CacheService.evict`) leaves the rest: it removes
+one graph and its entry.
 
 A tree in Cache A holds what `github_service.get_raw_from_repo` fetched for the
 repository's size tier: full content under about 5 MB, structure only under

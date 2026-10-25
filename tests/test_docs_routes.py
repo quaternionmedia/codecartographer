@@ -827,3 +827,66 @@ def test_every_statement_of_the_graph_cache_key_names_the_schema_version(monkeyp
     assert not wrong, (
         f"these give the graph cache key without the schema version "
         f"(`v{{GRAPH_SCHEMA_VERSION}}`, cache_service._make_key): {wrong}")
+
+
+def _section(path: Path, heading: str) -> list[tuple[int, str]]:
+    """The paragraphs under `## heading`, to the next heading of that level."""
+    found, inside = [], False
+    for number, text in _paragraphs(path):
+        if text.startswith("## "):
+            inside = text == f"## {heading}"
+            continue
+        if inside:
+            found.append((number, text))
+    return found
+
+
+def test_the_caches_section_says_evicting_one_cache_empties_the_other(monkeypatch, tmp_path):
+    """For a GitHub repository both caches are one directory,
+    `~/.codecarto/cache/repos/{owner}-{repo}/`, and each eviction that removes
+    a repository removes it whole: `DELETE /c-parser/cache/{key}` takes Cache
+    A's tree and graphs and leaves their `index.json` entries, and
+    `CacheService.evict_repo` takes Cache B's source. Mutation: drop the
+    paragraph from architecture.md, or give the caches separate directories
+    or the C eviction the index -- this fails, and the paragraph is to say what
+    the code then does."""
+    from codecarto.services import c_parser_service, cache_service
+    from codecarto.services.c_parser_service import CParserService
+    from codecarto.services.cache_service import CacheService
+
+    assert cache_service._REPOS_DIR == c_parser_service._REPO_CACHE_DIR, (
+        "the two caches no longer share a directory; the paragraph is stale")
+    repos = tmp_path / "repos"
+    monkeypatch.setattr(cache_service, "_REPOS_DIR", repos)
+    monkeypatch.setattr(cache_service, "_INDEX_FILE", repos / "index.json")
+    monkeypatch.setattr(cache_service, "_mongo_col", lambda: None)
+    monkeypatch.setattr(c_parser_service, "_REPO_CACHE_DIR", repos)
+
+    url = "https://github.com/o/r"
+    key = CacheService.cache_key(url, "2", "Spring", [])
+
+    def fill():
+        CacheService.set_tree(url, {"tree": True})
+        CacheService.set(key, {"graph": {}}, label="o/r", url=url)
+        (repos / "o-r" / "src").mkdir(parents=True, exist_ok=True)
+        (repos / "o-r" / "metadata.json").write_text("{}")
+
+    fill()
+    assert CParserService.evict_repo_cache("o-r")
+    assert CacheService.get_tree(url) is None and CacheService.get(key) is None, (
+        "DELETE /c-parser/cache/{key} no longer removes Cache A's tree and graphs")
+    assert key in {e["key"] for e in CacheService.list_cached()}, (
+        "DELETE /c-parser/cache/{key} now drops the index entries it orphans")
+    fill()
+    assert CacheService.evict_repo(url)
+    assert not (repos / "o-r" / "src").exists(), (
+        "CacheService.evict_repo no longer removes Cache B's source")
+
+    paragraphs = [text for _, text in _section(
+        ROOT / "docs" / "architecture.md", "The two caches") if not text.startswith("|")]
+    stated = [t for t in paragraphs if "DELETE /c-parser/cache/{key}" in t
+              and "index.json" in t and "evict_repo" in t]
+    assert stated, (
+        "docs/architecture.md, *The two caches*, does not say that evicting a "
+        "GitHub repository from one cache removes the other's directory too, "
+        "and leaves index.json naming graphs that are gone")

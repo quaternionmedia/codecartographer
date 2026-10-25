@@ -325,7 +325,7 @@ separate.
 | `list_cached()` | List all cached entries |
 | `evict(key)` | Remove one cached entry |
 | `get_tree(url)` / `set_tree(url, data)` | Cache a fetched repo tree separately from parsed graphs |
-| `evict_repo(url)` | Remove a cached repo tree |
+| `evict_repo(url)` | Remove the repository's directory: its tree, every graph, their `index.json` entries and, for GitHub, `CParserService`'s extracted source, which shares the directory. No route calls it |
 
 ---
 
@@ -345,7 +345,7 @@ generic `/parse/*` path via `c_language_parser.py` — see
 | `parse_file(path)` | Parse a single C/H file |
 | `parse_directory(path, ...)` | Parse a local directory, with an optional per-file progress callback |
 | `parse_github(...)` | Parse a GitHub repo's C/H files |
-| `list_cached_repos()` / `evict_repo_cache(key)` | Manage this service's own repo-tree cache |
+| `list_cached_repos()` / `evict_repo_cache(key)` | List and remove the extracted source trees; removing one removes the whole `{owner}-{repo}/` directory, `CacheService`'s tree and graphs with it, and leaves their `index.json` entries |
 
 ---
 
