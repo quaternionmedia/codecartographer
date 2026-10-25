@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { GITHUB_EXAMPLES, exampleGroups } from '../../dist-pure/features/examples/examples.js';
+import { GITHUB_EXAMPLES, SIZES_MEASURED, exampleGroups } from '../../dist-pure/features/examples/examples.js';
 
 const blinky = {
   id: 'rust-firmware', label: 'blinky (recorded)', language: 'rust',
@@ -35,13 +35,17 @@ test('a bundled example in a language with no group gets one', () => {
   assert.equal(groups.at(-1).examples[0].label, 'z');
 });
 
-test('every GitHub example is a repository URL, once, with a title that says how much is drawn', () => {
+test('every GitHub example is a repository URL, once, measured, with a title that ends saying how much is drawn', () => {
+  /* Which of the three words the server's thresholds give for its size is
+     held by tests/test_examples.py, which reads github_service's limits. */
   const urls = GITHUB_EXAMPLES.flatMap((g) => g.examples.map((e) => e.url));
   assert.equal(new Set(urls).size, urls.length);
+  assert.match(SIZES_MEASURED, /^\d{4}-\d{2}-\d{2}$/);
   for (const group of GITHUB_EXAMPLES) {
     for (const e of group.examples) {
       assert.match(e.url, /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/);
-      assert.match(e.title, /content|structure only|shallow root/);
+      assert.ok(Number.isInteger(e.sizeKb) && e.sizeKb > 0, `${e.label} has no measured size`);
+      assert.match(e.title, /, (with content|structure only|shallow root)$/);
     }
   }
 });

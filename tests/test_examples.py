@@ -389,6 +389,44 @@ def test_what_names_a_machine(text, found):
     assert _recorder().machine_paths(text) == found
 
 
+EXAMPLES_TS = REPO / "web" / "src" / "features" / "examples" / "examples.ts"
+GITHUB_EXAMPLE = re.compile(
+    r"\{ label: '(?P<label>[^']+)', url: 'https://github\.com/[\w.-]+/[\w.-]+', "
+    r"sizeKb: (?P<kb>\d+),\s*title: '(?P<title>[^']+)' \}")
+DRAWN = ("with content", "structure only", "shallow root")
+UNITS = {"KB": 1, "MB": 1_000, "GB": 1_000_000}
+
+
+def _drawn(kb: int) -> str:
+    """How much the server draws of a repository GitHub says is *kb* KB."""
+    from codecarto.services import github_service
+
+    if kb >= github_service._STRUCTURE_FETCH_LIMIT_KB:
+        return "shallow root"
+    return "with content" if kb < github_service._CONTENT_FETCH_LIMIT_KB else "structure only"
+
+
+def test_each_github_example_is_titled_with_what_the_server_draws_of_its_size():
+    """Mutation: the titles this branch had -- curl and Redis "full content" at
+    ~151 and ~219 MB, requests and Lua at ~14 and ~12 MB, git, SQLite and React
+    "structure only" past 50,000 KB -- and this fails naming those seven."""
+    source = EXAMPLES_TS.read_text(encoding="utf-8")
+    examples = [m.groupdict() for m in GITHUB_EXAMPLE.finditer(source)]
+    assert len(examples) == source.count("url: 'https://github.com/"), "an example this does not read"
+    assert re.search(r"export const SIZES_MEASURED = '\d{4}-\d{2}-\d{2}';", source)
+    wrong = []
+    for example in examples:
+        kb, title = int(example["kb"]), example["title"]
+        drawn = _drawn(kb)
+        said = [word for word in DRAWN if word in title]
+        if said != [drawn] or not title.endswith(f", {drawn}"):
+            wrong.append(f"{example['label']} ({kb} KB) is drawn {drawn}; its title says {said or title}")
+        size = re.search(r"\(~(\d+(?:\.\d+)?) (KB|MB|GB)\)", title)
+        if not size or not 0.9 <= float(size[1]) * UNITS[size[2]] / kb <= 1.1:
+            wrong.append(f"{example['label']} is {kb} KB; its title says {size[0] if size else title}")
+    assert wrong == []
+
+
 def test_the_route():
     from codecarto.main import app
 
