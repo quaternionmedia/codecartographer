@@ -72,6 +72,24 @@
       "kinds": [],
       "carried_by": [],
       "note": "A class holding fields; @dataclass is the closest spelling."
+    },
+    {
+      "language": "assembly",
+      "display_name": "Assembly",
+      "has_lexicon": false,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "constructs.yaml records no Assembly spelling of product type."
+    },
+    {
+      "language": "linker",
+      "display_name": "Linker script",
+      "has_lexicon": false,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "constructs.yaml records no Linker script spelling of product type."
     }
   ],
   "memory.volatile": [
@@ -108,6 +126,33 @@
       "kinds": [],
       "carried_by": [],
       "note": "No keyword: core::ptr::read_volatile and write_volatile, chosen per access rather than per type."
+    },
+    {
+      "language": "python",
+      "display_name": "Python",
+      "has_lexicon": true,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "constructs.yaml records no Python spelling of volatile access."
+    },
+    {
+      "language": "assembly",
+      "display_name": "Assembly",
+      "has_lexicon": false,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "constructs.yaml records no Assembly spelling of volatile access."
+    },
+    {
+      "language": "linker",
+      "display_name": "Linker script",
+      "has_lexicon": false,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "constructs.yaml records no Linker script spelling of volatile access."
     }
   ]
 }

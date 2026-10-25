@@ -3,17 +3,15 @@
  *
  * A printed chrestomathy taught a language by placing passages side by side;
  * this one places a construct — a record, a sum type, an interrupt handler, a
- * volatile access — in each language the server reads it in: of C, Rust,
- * Python, assembly and the linker script, every one whose entry in
- * `constructs.yaml` spells or notes the construct, or whose parser emits a
- * kind that realises it — with the tokens each spells it with and the
- * abstraction layer each token sits on.
+ * volatile access — in each language the server reads it in: C, Rust, Python,
+ * assembly and the linker script, every language `constructs.yaml` lists —
+ * with the tokens each spells it with, the parser kinds that realise it and
+ * the abstraction layer each token sits on.
  *
  * THE ROW WITH NOTHING IN IT IS THE LESSON. Rust has no `volatile`; C has no
- * method. A language whose entry is a note and no spelling is sent as a row
- * saying so, and stays one: `chrestomathy_rows.ts` drops no row it is sent,
- * under test against the server's own rows. A language the vocabulary says
- * nothing about for a construct is not sent, and has no row.
+ * method. A language with no spelling is sent as a row with its note, or with
+ * one saying the vocabulary records none, and stays one: `chrestomathy_rows.ts`
+ * drops no row it is sent, under test against the server's own rows.
  *
  * Controls, not a canvas: "draw" puts the construct on the one canvas with its
  * tokens coloured by layer, and the legend names the layers.

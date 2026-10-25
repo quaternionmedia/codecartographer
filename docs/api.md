@@ -732,8 +732,8 @@ parser `kinds` that realise it, what `carried_by` a facet in source (`#[interrup
 `qualifier volatile`), and a `note`. **Every language the vocabulary lists under
 `languages:` is a row of every construct, never a missing one**: a language with
 no spelling has its note -- Rust has no `volatile`, C has no method -- and one the
-vocabulary records nothing for has a note saying so. A language it does not list
-(the linker script) is a row where it spells the construct. An unknown construct
+vocabulary records nothing for has a note saying so. C, Rust, Python, assembly and
+the linker script are listed, so each is a row of every construct. An unknown construct
 is a 200 with `unreadable`, `problem` and the known ids as `remedy`.
 
 ### GET `/lexicon/chrestomathy/{construct}/gjgf?layout=`
