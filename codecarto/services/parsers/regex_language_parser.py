@@ -283,6 +283,12 @@ class RegexLanguageParser:
     def extensions(self) -> list[str]:  # type: ignore[override]
         return self._extensions
 
+    @property
+    def kinds(self) -> tuple[str, ...]:
+        """Every `kind` this language's patterns can emit -- what
+        `constructs.yaml` is held to for a language it lists."""
+        return tuple(sorted({kind for _, kind, _ in self._patterns}))
+
     def parse_files(self, files: list[File], depth: int = 2) -> nx.DiGraph:
         """
         Scan each file line-by-line and emit depth-2 symbol nodes.

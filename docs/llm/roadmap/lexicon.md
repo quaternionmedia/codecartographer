@@ -4,10 +4,26 @@ A hand-authored ontology of a language's **reserved words and operators**,
 arranged on a **hierarchy of abstraction layers** (machine-facing → abstract),
 projected into codecarto's existing graph-visualization pipeline.
 
-Two lexicons exist: **C** (five layers) and **Python** (three layers,
-deliberately more compact — the simpler onboarding example; see "Adding a
-language" below). The schema is language-agnostic; more languages are meant
-to follow as additional YAML files.
+Three lexicons exist: **C**, **Python** (deliberately more compact — the
+simpler onboarding example; see "Adding a language" below) and **Rust**, whose
+layers follow C's wherever the two languages answer the same question, so the
+chrestomathy can set a C layer beside a Rust one. The schema is
+language-agnostic; more languages are meant to follow as additional YAML files.
+
+**A layer's ordinal is a rank within its own lexicon**, the most machine-facing
+first, and not a scale the languages share. Rust's keyword layers line up with
+C's from 0 to 3 and its operator layers with C's from 0 to 4, so there the
+number -- and the colour the one ramp gives it -- is one layer in both; past
+those, and in Python's lexicon throughout, the same number is a different layer
+(compile-time reasoning is C's keyword layer 4 and Rust's 5; control flow is
+Python's 0 and C's 3). Read the layer's name beside its number.
+
+Lexicons are one half of the chrestomathy. The other is the construct
+vocabulary, `codecarto/data/constructs.yaml`, which names what each token
+spells (`struct` in C and Rust is a product type; `enum` in Rust is a sum type
+or an enumeration, by whether its variants carry data) and is read by
+`/lexicon/chrestomathy/*`. Annotated nodes carry `layer_color` from one ramp,
+which "Color By: Abstraction Layer" reads.
 
 ## Why this is a distinct primitive
 
@@ -103,6 +119,11 @@ join): mechanical, unchanged from before Option B existed.
    test_lexicon.py`'s generic parametrized tests (`@pytest.mark.parametrize
    ("language", LexiconService.available())`) cover it automatically, no new
    test file needed.
+
+**Also joining the chrestomathy**: name the language's tokens under each
+construct's `spelled:` in `codecarto/data/constructs.yaml` (a test holds every
+one to the lexicon) and map its parser kinds under `languages:` -- see
+`docs/llm/EXTENDING.md`, *Joining the construct vocabulary*.
 
 **Also wiring Option B** (join real parsed code to this language's layers)
 — a real, small, per-language step, not implied-free by step 1-3 above:

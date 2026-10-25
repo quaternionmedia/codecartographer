@@ -28,6 +28,7 @@ import networkx as nx
 
 from codecarto.models.source_data import Directory, File, Folder
 from codecarto.models.plot_data import PlotOptions
+from codecarto.services import construct_service
 from codecarto.services.graph_serializer import GraphSerializer
 from codecarto.services.lexicon_bridge import annotate_graph_with_lexicon
 from codecarto.services.lexicon_service import LexiconService
@@ -344,6 +345,7 @@ class UnifiedParserService:
             files batched together don't all collapse onto the same point),
             then emit node events followed by edge events."""
             by_key = file_id_by_key or {}
+            construct_service.annotate(sub)
 
             def origin(ndata: dict) -> str:
                 attr = ndata.get("file", "")
@@ -612,6 +614,11 @@ class UnifiedParserService:
 
         if depth >= 2:
             _add_python_dependency_edges(graph, directory.root, allowed_exts)
+
+        # What each node *is*, across languages. Cheap, idempotent and
+        # additive -- a node keeps every attribute its parser gave it -- so it
+        # runs on every parse rather than behind a flag nobody sets.
+        construct_service.annotate(graph)
 
         if annotate_lexicon:
             # A single graph can span multiple languages (a repo isn't

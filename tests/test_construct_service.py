@@ -1,0 +1,365 @@
+"""The construct vocabulary, held to everything that depends on it.
+
+`constructs.yaml` is joined to three other sources: the lexicons (by token),
+the parsers (by kind) and C's reference design (by look). Each join has a test
+here, because each one drifts silently -- a token renamed in a lexicon, a kind
+added to a parser, a colour changed in one place -- and the picture still
+draws.
+"""
+
+from __future__ import annotations
+
+import networkx as nx
+import pytest
+
+from codecarto.services import construct_service
+from codecarto.services.lexicon_service import LexiconService
+from codecarto.services.parsers import c_language_parser
+from codecarto.services.parsers.language_parser import ParserRegistry
+
+VOCABULARY = construct_service.load()
+IDS = {c.id for c in VOCABULARY.constructs}
+
+
+def test_ids_are_unique_and_dotted():
+    ids = [c.id for c in VOCABULARY.constructs]
+    assert len(ids) == len(set(ids))
+    assert all("." in i for i in ids)
+
+
+def test_every_mapping_names_a_construct_that_exists():
+    for language, mapping in VOCABULARY.languages.items():
+        targets = [*mapping.kinds.values(), *(r.target for r in mapping.refine),
+                   *mapping.qualifiers.values(), *mapping.attributes.values(),
+                   *mapping.meta.values(), *mapping.macros.values()]
+        missing = [t for t in targets if t not in IDS]
+        assert not missing, (language, missing)
+
+
+def test_a_kind_maps_to_something_a_node_can_be():
+    """A facet has no look; a node's construct must have one."""
+    for language, mapping in VOCABULARY.languages.items():
+        for kind, target in [*mapping.kinds.items(), *((r.kind, r.target) for r in mapping.refine)]:
+            assert not VOCABULARY.get(target).facet, (language, kind, target)
+
+
+@pytest.mark.parametrize("language", sorted(set(LexiconService.available())))
+def test_every_spelled_token_is_in_that_languages_lexicon(language):
+    """Mutation: rename `trait` in rust.yaml -- this fails and names it."""
+    index = LexiconService.load(language).index_by_token()
+    missing = [(c.id, tok) for c in VOCABULARY.constructs
+               for tok in (c.spelled.get(language).tokens if language in c.spelled else [])
+               if tok not in index]
+    assert not missing
+
+
+@pytest.mark.parametrize("language", sorted(set(LexiconService.available())))
+def test_a_token_with_several_senses_names_the_one_that_spells_the_construct(language):
+    """Rust's `for` is iteration in a loop and behaviour in `impl Trait for
+    Type`; nothing but the vocabulary can say which a construct means, and
+    without it the chrestomathy took the lowest layer of the two. Mutation:
+    drop `groups: {for: iteration}` from control.loop -- this fails and names
+    it; misspell the group -- it fails as a sense the lexicon does not have."""
+    index = LexiconService.load(language).index_by_token()
+    unnamed, unknown = [], []
+    for c in VOCABULARY.constructs:
+        spelling = c.spelled.get(language)
+        if spelling is None:
+            continue
+        for tok in spelling.tokens:
+            groups = {ctx["group"] for ctx in index.get(tok, [])}
+            if tok in spelling.groups and spelling.groups[tok] not in groups:
+                unknown.append((c.id, tok, spelling.groups[tok]))
+            elif tok not in spelling.groups and len(index.get(tok, [])) > 1:
+                unnamed.append((c.id, tok))
+        unknown += [(c.id, tok, g) for tok, g in spelling.groups.items() if tok not in spelling.tokens]
+    assert unnamed == [] and unknown == []
+
+
+def test_every_look_is_a_shape_the_canvas_draws():
+    shapes = {c.look.shape for c in VOCABULARY.constructs if c.look}
+    assert shapes <= construct_service.CANVAS_SHAPES
+
+
+def _parsers_of(language: str) -> list:
+    return [p for p in ParserRegistry.all_parsers() if p.language == language]
+
+
+@pytest.mark.parametrize("language", sorted(VOCABULARY.languages))
+def test_parser_kinds_and_the_vocabulary_agree_both_ways(language):
+    """Every kind a parser on this branch can emit is mapped to a construct or
+    listed under `not_constructs` with its reason, and the vocabulary names no
+    kind that no parser emits -- so the chrestomathy's "(parsed)" is a
+    parser's word, not the vocabulary's. Mutations: drop `call` from Python's
+    `not_constructs` -- the first half fails; map Python `module` again (the
+    adapter skips the AST's Module root) -- the second does."""
+    parsers = _parsers_of(language)
+    assert parsers, f"constructs.yaml lists {language}, and no parser on this branch reads it"
+    undeclared = [type(p).__name__ for p in parsers if not getattr(p, "kinds", None)]
+    assert not undeclared, f"{language}: {undeclared} declare no `kinds`"
+    emitted = {kind for p in parsers for kind in p.kinds}
+    mapping = VOCABULARY.languages[language]
+    named = set(mapping.kinds) | set(mapping.not_constructs)
+    assert sorted(emitted - named) == [], "emitted, and the vocabulary says nothing of them"
+    refined = {r.kind for r in mapping.refine}
+    assert sorted((named | refined) - emitted) == [], "named, and no parser emits them"
+
+
+def test_a_kind_that_is_not_a_construct_says_why():
+    for language, mapping in VOCABULARY.languages.items():
+        assert not set(mapping.kinds) & set(mapping.not_constructs), language
+        assert all(reason.strip() for reason in mapping.not_constructs.values()), language
+
+
+def test_c_adapter_kinds_are_all_mapped():
+    c_kinds = c_language_parser._DEPTH_2_KINDS | c_language_parser._DEPTH_3_KINDS
+    assert c_kinds == set(VOCABULARY.languages["c"].kinds)
+
+
+def test_c_reference_design_and_the_vocabulary_agree():
+    """C's adapter carries the c-visualizer design; the vocabulary carries the
+    same looks for the same constructs, so a Rust struct is drawn as a C one.
+    When the two disagree, the vocabulary is the one to keep."""
+    disagree = []
+    for kind, construct_id in VOCABULARY.languages["c"].kinds.items():
+        look = VOCABULARY.get(construct_id).look
+        actual = (c_language_parser._C_SHAPE.get(kind), c_language_parser._C_COLOR.get(kind))
+        if actual != (look.shape, look.color):
+            disagree.append((kind, actual, (look.shape, look.color)))
+    assert not disagree
+
+
+# ── annotate ──────────────────────────────────────────────────────────────────
+
+
+def graph_of(*nodes: tuple[str, dict]) -> nx.DiGraph:
+    g = nx.DiGraph()
+    for node_id, attrs in nodes:
+        g.add_node(node_id, **attrs)
+    return g
+
+
+def test_annotate_stamps_construct_and_facets_and_a_default_look():
+    g = graph_of(("s", {"language": "rust", "kind": "struct",
+                        "meta": {"attributes": ["repr(C)"], "field_count": 7}}))
+    assert construct_service.annotate(g) == 1
+    data = g.nodes["s"]
+    assert data["construct"] == "type.product"
+    assert data["meta"]["facets"] == ["layout.repr"]
+    assert (data["shape"], data["color"], data["meta"]["sides"]) == ("ngon", "#4a9eff", 7)
+
+
+def test_a_parsers_own_look_wins():
+    g = graph_of(("f", {"language": "c", "kind": "function", "shape": "square", "color": "#000"}))
+    construct_service.annotate(g)
+    assert (g.nodes["f"]["shape"], g.nodes["f"]["color"]) == ("square", "#000")
+    assert g.nodes["f"]["construct"] == "callable.function"
+
+
+def test_a_c_local_is_automatic_unless_static_and_carries_no_linkage():
+    """`static` at file scope is linkage; inside a function it is storage
+    duration, and a local without it lives for one call. Mutations: drop the
+    `automatic` refinement -- `total` is static storage again; drop the
+    no-linkage rule -- a static local claims internal linkage."""
+    g = graph_of(
+        ("total", {"language": "c", "kind": "variable",
+                   "meta": {"qualifiers": [], "automatic": True, "no_linkage": True}}),
+        ("calls", {"language": "c", "kind": "variable",
+                   "meta": {"qualifiers": ["static"], "no_linkage": True}}),
+        ("hidden", {"language": "c", "kind": "variable", "meta": {"qualifiers": ["static"]}}))
+    construct_service.annotate(g)
+    assert g.nodes["total"]["construct"] == "storage.automatic"
+    assert g.nodes["calls"]["construct"] == "storage.static"
+    assert "linkage.internal" not in g.nodes["calls"]["meta"].get("facets", [])
+    assert g.nodes["hidden"]["meta"]["facets"] == ["linkage.internal"]
+
+
+_HAS_LIBCLANG = __import__("importlib").util.find_spec("clang") is not None
+
+
+@pytest.mark.skipif(not _HAS_LIBCLANG,
+                    reason="libclang not installed — install with: uv sync --extra c-parsing")
+def test_the_c_parser_says_which_variables_are_locals():
+    """End to end through libclang: what the stamp above reads is what the C
+    parser states. Mutation: stop marking block-scope variables in
+    `c_parser` -- `total` and `i` are static storage again."""
+    from codecarto.models.source_data import Directory, File, Folder, RepoInfo
+    from codecarto.services.unified_parser_service import UnifiedParserService
+
+    src = ("int counter;\n"
+           "static int hidden;\n"
+           "extern int shared;\n"
+           "int sum(int n) {\n"
+           "    int total = 0;\n"
+           "    static int calls = 0;\n"
+           "    extern int elsewhere;\n"
+           "    for (int i = 0; i < n; i++) total += i;\n"
+           "    calls++;\n"
+           "    return total + counter + hidden + shared + elsewhere;\n"
+           "}\n")
+    d = Directory(info=RepoInfo(name="m"),
+                  root=Folder(name="m", files=[File(name="m.c", raw=src)]))
+    g = UnifiedParserService.build_graph(d, depth=3, extensions=None)
+    seen = {data["label"]: (data.get("construct"), data.get("meta", {}).get("facets") or [])
+            for _, data in g.nodes(data=True) if data.get("kind") == "variable"}
+    assert seen == {
+        "counter": ("storage.static", []),
+        "hidden": ("storage.static", ["linkage.internal"]),
+        "shared": ("storage.static", ["linkage.extern"]),
+        "total": ("storage.automatic", []),
+        "calls": ("storage.static", []),
+        "elsewhere": ("storage.static", ["linkage.extern"]),
+        "i": ("storage.automatic", []),
+    }
+
+
+def test_an_unlisted_language_is_left_exactly_as_it_arrived():
+    g = graph_of(("j", {"language": "javascript", "kind": "function", "meta": {}}))
+    assert construct_service.annotate(g) == 0
+    assert g.nodes["j"] == {"language": "javascript", "kind": "function", "meta": {}}
+
+
+def test_annotate_is_idempotent():
+    g = graph_of(("e", {"language": "rust", "kind": "enum", "meta": {"c_like": True,
+                                                                      "qualifiers": ["pub"]}}))
+    construct_service.annotate(g)
+    once = {k: (dict(v) if isinstance(v, dict) else v) for k, v in g.nodes["e"].items()}
+    construct_service.annotate(g)
+    assert g.nodes["e"] == once
+    assert once["construct"] == "type.enumeration"
+
+
+def test_attribute_names():
+    name = construct_service.attribute_name
+    assert name("cortex_m_rt::entry") == "entry"
+    assert name("repr(C, packed)") == "repr"
+    assert name('link_section = ".x"') == "link_section"
+    assert name("unsafe(no_mangle)") == "no_mangle"
+
+
+# ── the chrestomathy ──────────────────────────────────────────────────────────
+
+
+def test_a_construct_read_across_languages_keeps_the_silent_ones():
+    """C has no keyword for a method; the row is there, with its note."""
+    reading = construct_service.reading("callable.method")
+    rows = {r["language"]: r for r in reading["languages"]}
+    assert set(rows) >= {"c", "rust", "python"}
+    assert rows["c"]["tokens"] == [] and rows["c"]["note"]
+    assert [t["token"] for t in rows["rust"]["tokens"]] == ["fn", "impl"]
+    # The line parser reads Rust's fn the same in an impl as out of one, so no
+    # parser here emits a method; "(parsed)" says only what a parser does.
+    assert rows["rust"]["kinds"] == []
+
+
+def test_every_listed_language_is_a_row_of_every_construct():
+    """docs/api.md: a language with no spelling is a row, never a missing one.
+    Python has no untagged union and neither C nor Python an associated item,
+    and none of the three had a row. Mutation: draw rows only for languages
+    that spell or parse the construct -- this fails and names the pairs."""
+    missing = []
+    for construct in VOCABULARY.constructs:
+        rows = {r["language"] for r in construct_service.reading(construct.id)["languages"]}
+        missing += [(construct.id, language) for language in VOCABULARY.languages if language not in rows]
+    assert missing == []
+
+
+def test_a_language_the_vocabulary_records_nothing_for_says_so():
+    rows = {r["language"]: r for r in construct_service.reading("type.union")["languages"]}
+    python = rows["python"]
+    assert (python["tokens"], python["kinds"], python["carried_by"]) == ([], [], [])
+    assert "records no Python spelling" in python["note"]
+
+
+def test_tokens_carry_their_lexicon_layer():
+    reading = construct_service.reading("type.product")
+    rust = next(r for r in reading["languages"] if r["language"] == "rust")
+    (context,) = rust["tokens"][0]["contexts"]
+    assert (context["layer_ordinal"], context["group"]) == (2, "aggregate")
+
+
+def test_one_keyword_two_constructs():
+    """`enum` spells both an enumeration and a sum type in Rust; the parser
+    kind tells them apart only through the refinement."""
+    enumeration = construct_service.reading("type.enumeration")
+    rust = next(r for r in enumeration["languages"] if r["language"] == "rust")
+    assert rust["kinds"] == ["enum"]
+    assert construct_service.construct_for("rust", "enum", {"c_like": True}) == "type.enumeration"
+    assert construct_service.construct_for("rust", "enum", {"c_like": False}) == "type.sum"
+
+
+def test_facets_say_what_carries_them():
+    reading = construct_service.reading("firmware.interrupt")
+    rust = next(r for r in reading["languages"] if r["language"] == "rust")
+    assert set(rust["carried_by"]) == {"#[interrupt]", "#[exception]"}
+
+
+def test_the_graph_puts_the_construct_at_the_centre_and_colours_tokens_by_layer():
+    graph = construct_service.as_graph("memory.volatile")
+    root = "construct:memory.volatile"
+    assert set(graph.successors(root)) == {f"language:{lang}" for lang in VOCABULARY.languages}
+    token = graph.nodes["token:c:volatile"]
+    assert token["color"] == construct_service.layer_color(token["layer_ordinal"])
+    # Rust spells it with no token: drawn, dashed, with its note.
+    rust_edge = graph.edges[root, "language:rust"]
+    assert rust_edge["style"] == "dashed"
+    assert "read_volatile" in graph.nodes["language:rust"]["hover"]
+
+
+def test_a_token_is_drawn_on_the_layer_of_the_sense_that_spells_the_construct():
+    """A token's colour was the lowest layer of all its senses, so a Rust loop's
+    `for` drew as Rust's layer 2, the `for` of `impl Trait for Type`. Mutation:
+    read every sense of a token again, ignoring `Spelling.groups` -- the
+    loop's `for` is 2."""
+    loop = construct_service.as_graph("control.loop").nodes["token:rust:for"]
+    implementation = construct_service.as_graph("type.implementation").nodes["token:rust:for"]
+    assert (loop["layer_ordinal"], loop["color"]) == (3, construct_service.layer_color(3))
+    assert (implementation["layer_ordinal"], implementation["color"]) == (2, construct_service.layer_color(2))
+    assert "behaviour" not in loop["hover"] and "iteration" not in implementation["hover"]
+
+
+def test_a_layer_number_is_a_rank_in_its_own_lexicon_and_the_token_names_its_layer():
+    """The number -- and so the colour -- ranks a layer within one language's
+    lexicon, not on a scale the languages share: control flow is C's keyword
+    layer 3 and Python's 0; compile-time reasoning is C's 4 and Rust's 5. So a
+    token node names its layer beside the number, in the `meta.lexicon_layers`
+    a lexicon-annotated parse node carries. Mutation: drop that meta from the
+    token nodes -- this fails."""
+    def layer(graph, node_id):
+        (context,) = graph.nodes[node_id]["meta"]["lexicon_layers"]
+        assert context["layer_ordinal"] == graph.nodes[node_id]["layer_ordinal"]
+        return context["layer_ordinal"], context["layer_name"]
+
+    loop = construct_service.as_graph("control.loop")
+    assert layer(loop, "token:c:for") == (3, "Control flow")
+    assert layer(loop, "token:python:for") == (0, "Control flow")
+    constant = construct_service.as_graph("storage.constant")
+    assert layer(constant, "token:c:const") == (4, "Compile-time reasoning & contracts")
+    assert layer(constant, "token:rust:const") == (5, "Compile-time reasoning & contracts")
+
+
+def test_a_kind_drawn_as_parsed_is_one_a_parser_on_this_branch_emits():
+    """`region (parsed)` was drawn for the linker with no linker parser here,
+    and `module (parsed)` for Python, whose adapter skips the Module root.
+    Mutation: put either mapping back in constructs.yaml -- this fails and
+    names the node."""
+    drawn = []
+    for construct in VOCABULARY.constructs:
+        graph = construct_service.as_graph(construct.id)
+        for node_id, data in graph.nodes(data=True):
+            if data["kind"] == "parser_kind":
+                _, language, kind = node_id.split(":", 2)
+                if kind not in {k for p in _parsers_of(language) for k in p.kinds}:
+                    drawn.append(node_id)
+    assert drawn == []
+
+
+def test_an_unknown_construct_is_none():
+    assert construct_service.reading("no.such") is None
+    assert construct_service.as_graph("no.such") is None
+
+
+def test_layer_ramp():
+    assert construct_service.layer_color(0) == construct_service.LAYER_RAMP[0]
+    assert construct_service.layer_color(99) == construct_service.LAYER_RAMP[-1]
+    assert construct_service.layer_color(-1) not in construct_service.LAYER_RAMP

@@ -140,6 +140,31 @@ Relations are resolved on the in-memory and the GitHub streaming paths alike.
 has already sent its file nodes when the parser runs, so their `meta` is not
 updated there.
 
+### Joining the construct vocabulary
+
+A parser's `kind` says what its language calls a thing. To have its nodes carry
+`construct` (what the thing *is*, the same in every language), drawn with the
+shared looks and read by the chrestomathy, add the language under `languages:`
+in `codecarto/data/constructs.yaml`:
+
+- `kinds`: each kind the parser emits, to a construct; `not_constructs`: each
+  kind it emits that is not one, with the reason. The parser declares `kinds`,
+  every kind it can emit, and `tests/test_construct_service.py` holds the two
+  lists to it in both directions: nothing emitted goes unnamed, and nothing is
+  named that no parser emits -- the chrestomathy draws a kind as "(parsed)".
+- `qualifiers`, `attributes`, `macros`, `meta`: what in a node's `meta` makes it
+  *also* a facet (`unsafe` -> `memory.unsafe`, `#[interrupt]` ->
+  `firmware.interrupt`).
+- `refine`: a kind that is a different construct when a meta flag is set (a
+  Rust `enum` with `c_like` is an enumeration, not a sum type).
+
+Add the language's spellings under each construct's `spelled:` -- every token
+there must be in that language's lexicon, a token the lexicon files in more
+than one group names the one that spells this construct under `groups:`, and a
+language with no spelling gets a `note` saying how it does without. A parser may call
+`construct_service.annotate(graph)` itself; the pipeline calls it on every parse
+regardless, and a look the parser set is never overwritten.
+
 ### Unified node schema helpers
 
 ```python

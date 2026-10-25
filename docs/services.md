@@ -16,6 +16,7 @@ services/
 ├── cache_service.py           # Parsed-graph + repo-tree cache (filesystem + optional MongoDB)
 ├── c_parser_service.py        # C-specific parse orchestration (libclang)
 ├── lexicon_service.py         # Hand-authored language lexicons -> graph
+├── construct_service.py       # What a node is across languages; the chrestomathy
 ├── graph_serializer.py        # Graph JSON serialization
 ├── position_service.py        # Node positioning
 └── parsers/
@@ -230,13 +231,28 @@ endpoints in `docs/api.md`.
 
 ---
 
+## construct_service
+
+**File:** `construct_service.py`, data in `data/constructs.yaml`
+
+What a parsed node *is*, said once for every language the vocabulary lists.
+`annotate(graph)` stamps `construct` and `meta.facets` and gives a node with no
+look of its own its construct's; the unified pipeline runs it on every parse.
+`reading(id)`, `table()` and `as_graph(id)` are the chrestomathy behind
+`/lexicon/constructs` and `/lexicon/chrestomathy/*`. `layer_color(ordinal)` is
+the one abstraction-layer ramp.
+
+---
+
 ## CacheService
 
 **File:** `cache_service.py`
 
 Content-addressed cache for parsed graphs and fetched repo trees —
 filesystem-backed, with an optional MongoDB backend when `MONGODB_URI`
-is set. Key = `SHA256(url + mode + layout + extensions)[:16]`. Distinct
+is set. Key = `SHA256(schema version + url + mode + layout + extensions)[:16]`;
+`GRAPH_SCHEMA_VERSION` is bumped when a parse's nodes change what they carry, so
+a graph cached in an older shape is a miss rather than a reply. Distinct
 from `graphbase` (a separate, user-named durable store) — see
 `governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why they're kept
 separate.

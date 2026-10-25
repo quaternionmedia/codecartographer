@@ -21,6 +21,7 @@
 │  │  PositionService       CParserService   LexiconService   │    │
 │  │  topology_service  capability_service  overview_service  │    │
 │  │  estate_service (the seam registry)   qmcp_client        │    │
+│  │  construct_service (what a node is, across languages)    │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
 │  ┌─────────────────────────▼───────────────────────────────┐    │
 │  │                      Parsers                             │    │
@@ -54,7 +55,7 @@ codecarto/
 │   ├── repo_router.py            # /repo/*   (GitHub tree, local paths)
 │   ├── c_parser_router.py        # /c-parser/* (libclang semantic parse)
 │   ├── pam_router.py             # /pam/*    (PAM log monitor, WebSocket)
-│   ├── lexicon_router.py         # /lexicon/* (hand-authored ontologies, as graphs)
+│   ├── lexicon_router.py         # /lexicon/* (lexicons, the construct vocabulary, the chrestomathy)
 │   ├── palette_router.py         # /palette/*
 │   ├── topology_router.py        # /topology/*     the harness's shapes, as GraphData
 │   ├── capability_router.py      # /capabilities/* the corpus's registry, as GraphData
@@ -75,6 +76,7 @@ codecarto/
 │   ├── capability_service.py      # registry YAML -> networkx -> GraphSerializer
 │   ├── overview_service.py        # overview seam -> networkx -> GraphSerializer
 │   ├── estate_service.py          # the seam registry: identity probes, the liveness table
+│   ├── construct_service.py       # what a node *is* across languages; the chrestomathy
 │   └── parsers/
 │       ├── language_parser.py          # LanguageParser Protocol + ParserRegistry
 │       ├── python_language_parser.py   # Python (custom AST visitor)
@@ -178,11 +180,12 @@ statement.
 
 | | who calculates | who stores | who displays |
 |---|---|---|---|
-| **Code maps** (`/parse`, `/repo`) | this backend: parsers produce nodes and edges, `PositionService` lays them out, `GraphSerializer` sizes by degree | `CacheService` — content-addressed, keyed by url + mode + layout + extensions, filesystem or MongoDB; `graphbase` for named bookmarks (separate store, separate decision) | the one canvas, `StreamingGraphRenderer`; the legend counts what was drawn |
+| **Code maps** (`/parse`, `/repo`) | this backend: parsers produce nodes and edges, `PositionService` lays them out, `GraphSerializer` sizes by degree | `CacheService` — content-addressed, keyed by the graph schema version + url + mode + layout + extensions, filesystem or MongoDB; `graphbase` for named bookmarks (separate store, separate decision) | the one canvas, `StreamingGraphRenderer`; the legend counts what was drawn |
 | **Topologies** (`/topology`) | the harness declares shapes (boxes, arrows, no coordinates) and measures relation weights from its archive; this backend resolves the *encoding* — width from strength, dashed from unmeasured, colour from kind — and lays out | nothing here. Read live on every request; the harness stores its own archive and its own runs | the canvas draws exactly the channels `topology_service` resolved; the panel shows the harness's caveat verbatim |
 | **Capabilities** (`/capabilities`) | the corpus's registry states claims; this backend counts nothing but the rungs naming no evidence, and lays out | nothing here; the registry is the corpus's file at the governance pin | the canvas; the panel lists the claims as stated, with who stated them and when |
 | **Overview** (`/overview`) | dossier builds masthead figures and sections from its database and writes them as a seam; this backend draws the one relation the seam states (a section lists a subject) and lays out | dossier's seam file — a snapshot; this window reads it and never writes it | the canvas; the panel shows the masthead as written, with the producer's own `note` beside each figure, and when the reading was made |
 | **Liveness** (`/estate/seams`) | this backend probes each seam for a document whose shape it knows | nothing | the Estate panel, one row per seam, the server's `ok` and the server's sentence |
+| **Chrestomathy** (`/lexicon/chrestomathy`) | nothing new: the hand-authored construct vocabulary and lexicons are read and laid out | the YAML files, shipped in the package | the canvas, tokens coloured from the one layer ramp; the panel's table, a language with no spelling included |
 
 **Rules, and where each was learned.**
 
@@ -221,6 +224,10 @@ statement.
    `layout_names.ts` strips `_layout` and capitalises; there is no fallback.
    Two hand tables used to fall back to `Spring` for any name they did not
    list.
+9. **A construct's look is the code map's visual grammar, said once.** Parsers
+   own how their nodes look; `constructs.yaml` is where looks shared across
+   languages live, and a node keeps any look its parser gave it. The estate
+   palette (rule 1) is a different vocabulary for a different kind of graph.
 
 **What a reader should still not expect.** That a seam's *content* is right —
 the probes say a seam is there and is what this window expects, and each seam's
