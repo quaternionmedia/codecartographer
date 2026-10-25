@@ -42,7 +42,8 @@ export interface ControlPanelCallbacks {
   onGraphStylingChange: (options: Partial<GraphStylingOptions>) => void;
   onParserOptionsChange: (options: Partial<ParserOptions>) => void;
   onRendererChange: (renderer: GraphRendererType) => void;
-  onFolderExpand: (path: string) => void;
+  /** Read an unread folder; true when its contents reached the tree. */
+  onFolderExpand: (path: string) => Promise<boolean>;
   onExpandAll?: () => Promise<void>;
   onCancel?: () => void;
   onLoadFromCache?: (key: string) => void;
