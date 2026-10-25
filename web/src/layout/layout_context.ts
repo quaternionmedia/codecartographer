@@ -570,8 +570,8 @@ export class LayoutContext {
     if (address.view === 'estate') {
       this._leaveSystemRenderer();
       this._compoundLayout();
-      await this.plotWith(() => this.actions.plot.drawShow(address));
-      this.focusDockPanel('graph');
+      const drawn = await this.plotWith(() => this.actions.plot.drawShow(address));
+      if (drawn) this.focusDockPanel('graph');
       return;
     }
 

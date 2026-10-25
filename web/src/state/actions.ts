@@ -644,13 +644,17 @@ export class PlotActions {
     this._settle(found, 'showViews', 'showProblem');
   }
 
-  /** A showgraph's estate view -- the index, a family or a project -- on the canvas. */
-  async drawShow(address: ShowAddress, request: DrawRequest = {}): Promise<void> {
+  /**
+   * A showgraph's estate view -- the index, a family or a project -- on the
+   * canvas. Resolves whether it drew, as the other estate draws do, so the
+   * canvas is brought forward only over a graph and never over the problem.
+   */
+  async drawShow(address: ShowAddress, request: DrawRequest = {}): Promise<boolean> {
     this.stateController.clear();
     const found = await ShowService.graph(this.stateController.api.show, address,
       { ...request, layout: request.layout ?? this._layout() });
     this.stateController.update({ showAddress: address });
-    this._draw(found, 'showProblem');
+    return this._draw(found, 'showProblem');
   }
 
   /** dossier's sections, for the panel's list. Draws nothing. */
