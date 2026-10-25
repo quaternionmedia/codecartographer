@@ -293,7 +293,16 @@ with their sizes, and GNU ld's memory table) or a reason. `usage(map, regions)`
 measures each region's use at run time and as load images; `annotate(graph,
 map, ...)` puts the figures on a parsed code map's regions, sections, functions
 and statics; `demangle` and `symbol_key` turn a Rust symbol back into the path,
-type and function it was compiled from.
+type and function it was compiled from. A map is stale when something the link
+reads changed after it was written: `link_input(path)` says which files those
+are -- Rust, C, C++ and assembly sources (`.rs`, `.c`, `.h`, `.cc`, `.cpp`,
+`.hpp`, `.s`, `.S`), linker scripts (`.ld`, `.lds`, `.x`, so `memory.x`),
+`Cargo.toml`, `Cargo.lock` and `.cargo/config[.toml]`, and never a README or
+other docs -- and `newest_input(root)` is the newest of them under a repository,
+outside `target/`, `build/` and `dist/`. The code map and `cargo_service` both
+judge a map by `newest_input`, so they cannot disagree about one; a recorded
+`check.jsonl` or `metadata.json` is judged by `cargo_service`'s own walk, which a
+linker script does not move.
 
 It reads both shapes firmware is linked with: GNU ld's (`arm-none-eabi-gcc
 -Wl,-Map=...`, which also prints the memory table) and LLD's (`rust-lld`, the
@@ -327,9 +336,11 @@ one read the same way.
   on addresses a placed section already holds (an `(INFO)` section such as
   defmt's).
 - **On the crate graph**, the binary's target says its fill per region, and
-  the map is a document row with its age. Once a source changes after it the
-  map is not used -- as a stale `metadata.json` is not -- and the row, the
-  caveat and the code map's regions say why.
+  the map is a document row with its age. Once anything the link reads
+  changes after it -- a source, a linker script, a manifest; not a README --
+  the map is not used, as a stale `metadata.json` is not, and the row, the
+  caveat and the code map's regions say why. Both judge it by
+  `link_map_service.link_input`.
 
 What it cannot see: inlined code has no symbol, so its bytes are its caller's;
 and a map is only as current as the link that wrote it. Two of the test maps

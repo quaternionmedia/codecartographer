@@ -74,8 +74,11 @@ row. A check older than a source or manifest is not used: nothing is placed from
 it, and the row says `used: false`, `stale: true` and why. With a recorded
 `target/codecarto/<bin>.map` the linker script's regions and sections carry
 what the link measured (`meta.measured`) and functions and statics their size (`meta.bytes`). A map
-older than a source is not used: the regions it would measure say so
-(`meta.measured.used: false`) and nothing carries its figures.
+older than anything the link reads -- a Rust, C, C++ or assembly source, a linker
+script such as `memory.x`, a manifest, `Cargo.lock` or `.cargo/config.toml`, but
+not a README or other docs -- is not used: the regions it would measure say so
+(`meta.measured.used: false`) and nothing carries its figures. `/cargo` judges
+the same map by the same rule (`link_map_service.link_input`).
 
 ### POST `/parse/unified`
 
@@ -842,7 +845,9 @@ their condition. `features=true` adds features and what each enables;
 `meta.diagnostics`, from a `check.jsonl` newer than every source and manifest;
 an older one is not used -- no diagnostic, build-script fact or outcome is drawn
 from it -- and its row and the caveat say why. A binary with a recorded link map carries each region's fill in its label and
-`meta.memory`, while the map is newer than every source.
+`meta.memory`, while the map is newer than everything the link reads -- every
+source, linker script and manifest, by the rule the code map judges it by, and no
+README or other docs.
 
 `metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
 `metadata.json` is newer than every manifest, `manifests` otherwise -- a stale

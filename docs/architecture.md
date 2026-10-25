@@ -481,7 +481,10 @@ what displays it. `tests/test_boundaries.py` checks the rules below.
 10. **The window runs nothing it reads.** Running cargo runs a workspace's build
     scripts, proc macros and configured `rustc`, so no route does: a person runs
     `codecarto cargo record`, and the window reads what it wrote with its age.
-    A recorded resolution older than a manifest is not used, and says so.
+    A recorded resolution older than a manifest is not used, and says so; nor
+    is a link map older than anything the link reads (a source, a linker
+    script, a manifest -- not a README), judged by one rule,
+    `link_map_service.link_input`, wherever the map is read.
 
 **What a reader should still not expect.** That a seam's *content* is right —
 the probes say a seam is there and is what this window expects, and each seam's
