@@ -155,7 +155,7 @@ how a renderer reads them, are in [Extending](extending.md#the-node-schema).
 | 0 | directory | `dir::<path from the root>` |
 | 1 | file | `file::<path from the root>` |
 | 2 | top-level symbol | the parser's own |
-| 3 | sub-symbol (argument, field, enum constant) | the parser's own |
+| 3 | sub-symbol (argument, field, enum constant, a C function's locals) | the parser's own |
 
 Each language adapter implements the `LanguageParser` protocol
 (`language`, `extensions`, `parse_files(files, depth)`) and registers itself

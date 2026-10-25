@@ -27,7 +27,8 @@ it describes, and each check here fails on a document that disagrees with it:
 - the caches section says what evicting a GitHub repository from either cache
   removes, as the two evictions do;
 - a C edge kind is named in upper case only about `/c-parser/*`, and in lower
-  case only as `c_language_parser._EDGE_KIND_MAP` gives it.
+  case only as `c_language_parser._EDGE_KIND_MAP` gives it;
+- every depth table's row 3 names what the C adapter puts at depth 3.
 
 The application, the click tree and the code are the sources; nothing here
 keeps a list of routes, commands or variables of its own.
@@ -925,3 +926,51 @@ def test_c_edge_kinds_are_named_as_the_graph_that_carries_them():
         f"a /parse/* graph's C edges are {sorted(given)} "
         f"(c_language_parser._EDGE_KIND_MAP); the upper-case kinds are "
         f"/c-parser/*'s: {wrong}")
+
+
+def _depth_rows(depth: int):
+    """(document, line, the row's other cells) for the row of `depth` in every
+    table whose first header cell is `depth`."""
+    for path in DOCUMENTS:
+        header = None
+        for number, line, fenced in _prose_lines(path):
+            text = line.strip()
+            if fenced or not text.startswith("|"):
+                header = None
+                continue
+            cells = [c.strip() for c in text.strip("|").split("|")]
+            if header is None:
+                header = cells
+            elif header[0] == "depth" and cells[0] == str(depth):
+                yield path, number, " ".join(cells[1:])
+
+
+def test_every_depth_table_names_what_the_c_parser_puts_at_depth_3():
+    """`CLangaugeParser._convert` puts a struct's fields, an enum's constants and
+    a function's locals (a `LOCAL_OF` target) at depth 3. Each depth table's
+    row 3 names the three, so a reader asking for depth 3 knows a C function
+    brings its locals. Mutation: drop "locals" from a row -- this fails."""
+    from codecarto.services.parsers.c_language_parser import CLangaugeParser
+
+    def node(nid, kind):
+        return {"id": nid, "kind": kind, "name": nid, "file": "a", "line": 1}
+
+    raw = {"nodes": [node("f", "function"), node("f::x", "variable"),
+                     node("struct s", "struct"), node("struct s::a", "field"),
+                     node("enum e", "enum"), node("enum e::A", "enum_constant")],
+           "edges": [{"src": "f", "dst": "f::x", "kind": "LOCAL_OF"},
+                     {"src": "struct s", "dst": "struct s::a", "kind": "FIELD_OF"}]}
+    graph = CLangaugeParser()._convert(raw, 3)
+    kinds = {a["kind"] for _, a in graph.nodes(data=True) if a["depth"] == 3}
+    assert kinds == {"variable", "field", "enum_constant"}, kinds
+    # A variable reaches depth 3 only as a function's local.
+    words = {"local" if k == "variable" else k.replace("_", " ") for k in kinds}
+
+    rows, wrong = 0, []
+    for path, number, row in _depth_rows(3):
+        rows += 1
+        missing = sorted(w for w in words if not re.search(rf"\b{w}s?\b", row, re.I))
+        if missing:
+            wrong.append(f"{_rel(path)}:{number}: lacks {missing}")
+    assert rows >= 2, "the reader found fewer depth tables than api.md and architecture.md hold"
+    assert not wrong, f"these depth-3 rows do not name what C puts there: {wrong}"
