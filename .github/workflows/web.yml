@@ -17,12 +17,25 @@ on:
   push:
     branches: [main]
   pull_request:
+    # Every path the suites, or the backend the browser suite starts, read.
+    # tests/test_web_workflow.py derives that set from the specs and the
+    # backend and fails on a path this leaves out.
     paths:
       - 'web/**'
       - 'codecarto/**'
       - 'pyproject.toml'
       - 'uv.lock'
       - '.github/workflows/web.yml'
+      # The Cargo specs read tests/fixtures/cargo/workspace; the project
+      # selector opens the bundled examples/rust-firmware.
+      - 'tests/fixtures/**'
+      - 'examples/**'
+      # The Cargo panel's not-a-workspace case reads docs/ and expects no
+      # Cargo.toml there.
+      - 'docs/**'
+      # The estate panels read the corpus: its pin, and where it is fetched from.
+      - 'governance/qm'
+      - '.gitmodules'
 
 permissions:
   contents: read
