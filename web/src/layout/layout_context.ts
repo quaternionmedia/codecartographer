@@ -1252,15 +1252,18 @@ export class LayoutContext {
 
       onFolderExpand: async (path: string) => {
         const content = this.appState.repo.content;
-        if (!content?.is_partial) return;
+        if (!content?.is_partial) return false;
         this.updatePanelState({ isLoading: true, statusMessage: `Loading ${path}...` });
         try {
           // The tree's own repository, not the URL field's: that follows every
           // keystroke, and need not name the repository shown.
-          await this.actions.repo.expandPath(path);
+          const read = await this.actions.repo.expandPath(path);
           this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          return read;
         } catch {
+          // The folder is left unread, so a click reads it again.
           this.updatePanelState({ isLoading: false, statusMessage: `Error expanding ${path}` });
+          return false;
         }
       },
 

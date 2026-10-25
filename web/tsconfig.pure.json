@@ -38,6 +38,7 @@
     "src/features/graph/services/parse_notes.ts",
     "src/features/cartography/cartography_actions.ts",
     "src/features/cartography/followed_draft.ts",
-    "src/features/repository/repo_tree.ts"
+    "src/features/repository/repo_tree.ts",
+    "src/components/qm_comp_lib/directory/stub_read.ts"
   ]
 }

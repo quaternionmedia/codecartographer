@@ -83,13 +83,16 @@ export class RepoTree {
     const asked = repositoryOf(shown);
     if (!shown || !asked) return false;
     const folder = await this.reads.subtree(shown.info.url, path);
+    // `RequestHandler.getRequest` answers null when the request never reached
+    // the server. That is a failed read, not an empty folder.
+    if (!folder) throw new Error(`nothing came back for ${path}`);
     const now = this.host.shown;
     if (!now || repositoryOf(now) !== asked) return false;
     const pathParts = path.split('/').filter((p) => p.length > 0);
     // Constructed via `new Directory(...)`, not a `{...now}` spread --
     // isEmpty is a computed getter on the class prototype, which a plain
     // object spread silently drops.
-    this.host.show(new Directory(now.info, now.size, mergeFolderAtPath(now.root, pathParts, folder as RawFolder), now.is_partial));
+    this.host.show(new Directory(now.info, now.size, mergeFolderAtPath(now.root, pathParts, folder), now.is_partial));
     return true;
   }
 

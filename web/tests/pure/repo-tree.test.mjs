@@ -140,3 +140,18 @@ test('a folder is read from the repository the tree shows, whatever the URL fiel
   assert.deepEqual(h.asked.subtree, [[A, 'src']]);
   assert.deepEqual(h.asked.expandAll, [[A, 3]]);
 });
+
+test('a read that brings nothing back fails, and the tree is left as it was', async () => {
+  /**
+   * `RequestHandler.getRequest` answers null when the request never reached
+   * the server, and the null was merged in as the folder. The folder's
+   * spinner ends on a failure (`stub_read.ts`), so this has to be one.
+   * Mutation: merge whatever came back -- this fails.
+   */
+  const before = partial(A, unread('src'));
+  const h = harness(before);
+  const failed = assert.rejects(h.tree.expandPath('src'), /nothing/);
+  await h.answer('subtree', 0, null);
+  await failed;
+  assert.equal(h.shown, before);
+});
