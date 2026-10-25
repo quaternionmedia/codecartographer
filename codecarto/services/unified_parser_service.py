@@ -84,6 +84,9 @@ class UnifiedParserService:
         options = PlotOptions(layout=layout, type="d3")
         gjgf = GraphSerializer.serialize_to_gjgf(graph, options)
         meta = GraphSerializer.create_metadata(graph, options)
+        if "recorded_check" in graph.graph:
+            # Whether rustc's diagnostics are on this map, or why not.
+            meta["recorded_check"] = graph.graph["recorded_check"]
         return {"graph": gjgf, "metadata": meta}
 
     @staticmethod
@@ -1002,7 +1005,8 @@ def _annotate_recorded_diagnostics(graph: nx.DiGraph, directory: Directory) -> N
     Only for a local repository with a recorded `target/codecarto/check.jsonl`
     at its root -- `codecarto cargo record` writes one. Reads that document and
     runs nothing; an item carries the time the check was recorded beside its
-    counts, so a reader can tell a current complaint from an old one.
+    counts. A check older than a source or manifest is not used, so nothing is
+    placed from it, and `graph.graph["recorded_check"]` says so.
     """
     if not any(d.get("language") == "rust" for _, d in graph.nodes(data=True)):
         return

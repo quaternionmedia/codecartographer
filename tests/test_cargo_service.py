@@ -290,11 +290,19 @@ class TestRecordedDocuments:
         assert "build-finished" in reading.documents[1].problem
         assert "not a clean one" in cargo_service.caveat(reading)
 
-    def test_a_check_older_than_a_source_says_so(self, tmp_path):
+    def test_a_check_older_than_a_source_is_not_used_and_says_why(self, tmp_path):
+        """The record allows no "used and marked stale": nothing is drawn
+        from it -- no diagnostic, no build-script fact, no outcome."""
         reading = cargo_service.read(copy_workspace(tmp_path, "stale"))
         check = reading.documents[1]
-        assert check.used and check.stale
-        assert "a source has changed since" in cargo_service.caveat(reading)
+        assert check.present and check.stale and not check.used
+        assert "changed after this check was recorded" in check.problem
+        assert (reading.diagnostics, reading.scripts, reading.build_success) == ([], [], None)
+        graph = cargo_service.as_graph(reading)
+        assert graph.nodes["target::host-tool::bin::host-tool"]["label"] == "bin host-tool"
+        assert "links static" not in {d.get("label") for _, _, d in graph.edges(data=True)}
+        caveat = cargo_service.caveat(reading)
+        assert "no diagnostics are drawn from it" in caveat and "never finished" not in caveat
 
     @pytest.mark.parametrize("package_id,name", [
         ("hal 0.1.0 (path+file:///ws/crates/hal)", "hal"),
@@ -574,26 +582,27 @@ def test_recorded_diagnostics_land_on_the_items_they_name(tmp_path):
     assert verbose["meta"]["diagnostics_recorded_at"]
 
 
-def test_a_check_older_than_a_source_is_stale_on_the_code_map_too(tmp_path):
-    """Edit uart.rs after the check, so line 11 is now `struct Uart`: the overlay
-    says stale, as a full read of the directory does; the diagnostic in the
-    edited file is not put on whatever item now sits at its line; and the
-    others say they are stale rather than marking an error as current."""
+def test_a_check_older_than_a_source_draws_nothing_on_the_code_map_and_says_so(tmp_path):
+    """Edit uart.rs after the check, so line 11 is now `struct Uart`: the
+    overlay agrees with a full read that the check is stale, places none of
+    it -- not on `Uart`, not in the files nobody touched -- and the graph
+    says the recorded check was not used, and why."""
     root = copy_workspace(tmp_path, "current")
     uart = root / "crates" / "hal" / "src" / "uart.rs"
     uart.write_text("// two lines\n// added\n" + uart.read_text(encoding="utf-8"), encoding="utf-8")
     later = time.time() + 60
     os.utime(uart, (later, later))
     assert cargo_service.read(root).documents[1].stale
-    assert cargo_service.recorded_diagnostics(root).documents[0].stale
+    overlay = cargo_service.recorded_diagnostics(root)
+    assert overlay.documents[0].stale and not overlay.documents[0].used and overlay.diagnostics == []
 
-    graph = UnifiedParserService.build_graph(get_local_repo(str(root), extensions=[".rs"]), 3, [".rs"])
-    flagged = {d["label"]: d["meta"] for _, d in graph.nodes(data=True)
-               if (d.get("meta") or {}).get("diagnostics")}
-    assert set(flagged) == {"SysTick", "verbose"}
-    assert all(meta["diagnostics_stale"] for meta in flagged.values())
-    verbose = next(d for _, d in graph.nodes(data=True) if d.get("label") == "verbose")
-    assert not verbose.get("has_parse_warning")
+    directory = get_local_repo(str(root), extensions=[".rs"])
+    graph = UnifiedParserService.build_graph(directory, 3, [".rs"])
+    assert not any((d.get("meta") or {}).get("diagnostics") or d.get("has_parse_warning")
+                   for _, d in graph.nodes(data=True))
+    recorded = UnifiedParserService.parse(directory, depth=3, extensions=[".rs"])["metadata"]["recorded_check"]
+    assert recorded["stale"] and not recorded["used"]
+    assert "changed after this check was recorded" in recorded["problem"]
 
 
 def test_no_recorded_check_means_no_overlay(tmp_path):

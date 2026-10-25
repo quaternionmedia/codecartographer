@@ -30,8 +30,8 @@ draws no diagnostics and says there was nothing to read, which is a different
 sentence from "the last check was clean".
 
 WHAT THIS CANNOT SEE. Whether the build would succeed now. A diagnostic is what
-`rustc` said when the document was written; `stale` says when a source changed
-afterwards, and nothing here re-checks.
+`rustc` said when the document was written; once a source or manifest changes
+afterwards the document is stale, is not used, and nothing here re-checks.
 """
 
 from __future__ import annotations
@@ -780,9 +780,16 @@ def _from_metadata(reading: Reading, data: dict, root: Path) -> None:
 
 
 def _read_check(reading: Reading, docs_dir: Path, root: Path) -> Document:
-    """Diagnostics, artifacts and build-script facts from check.jsonl."""
+    """Diagnostics, artifacts and build-script facts from check.jsonl -- only
+    while it is current. A check recorded before a source or manifest last
+    changed is not used, as a stale metadata.json is not: what rustc said
+    then, drawn now, is a stale answer delivered as current."""
     doc = _document(docs_dir, CHECK_DOCUMENT, reading.newest_source, root)
     if not doc.present:
+        return doc
+    if doc.stale:
+        doc.problem = ("a source or manifest changed after this check was recorded, so nothing "
+                       f"in it is drawn; `{RECORD_COMMAND} <path>` records it again")
         return doc
     names: dict[str, str] = {}
     try:
@@ -840,14 +847,10 @@ def _read_check(reading: Reading, docs_dir: Path, root: Path) -> Document:
         reading.notes.append(f"stopped at the diagnostic bound ({MAX_DIAGNOSTICS}); later ones are not drawn")
     if unreadable:
         reading.notes.append(f"{unreadable} line(s) of {CHECK_DOCUMENT} were not JSON and were skipped")
-    problems = []
     if reading.build_success is None:
         # cargo writes `build-finished` last; without it the check stopped
         # first -- before compiling, or at a timeout.
-        problems.append("it holds no build-finished message, so cargo stopped before the check finished")
-    if doc.stale:
-        problems.append("a source or manifest changed after this check was recorded")
-    doc.problem = "; ".join(problems)
+        doc.problem = "it holds no build-finished message, so cargo stopped before the check finished"
     return doc
 
 
@@ -1149,9 +1152,11 @@ def caveat(reading: Reading) -> str:
     if check is None or not check.present:
         parts.append("No check.jsonl was recorded, so no diagnostics are drawn -- which "
                      "is not the same as a clean build.")
+    elif not check.used:
+        parts.append(f"check.jsonl was not used ({check.problem}), so no diagnostics are drawn "
+                     f"from it -- which is not the same as a clean build.")
     else:
-        parts.append(f"Diagnostics are what rustc said at {check.generated_at}"
-                     + (", and a source has changed since." if check.stale else "."))
+        parts.append(f"Diagnostics are what rustc said at {check.generated_at}.")
         if reading.build_success is None:
             parts.append("That check never finished -- check.jsonl holds no build-finished "
                          "message -- so a crate with no diagnostic in it is not a clean one.")
@@ -1214,28 +1219,16 @@ def recorded_diagnostics(root: Path | str) -> Reading | None:
     code map. None when there is no such document.
 
     Staleness is the full read's -- the same walk, without parsing a manifest
-    -- so the code map and `/cargo` never disagree about it. When it is stale,
-    a diagnostic in a file changed after the check is dropped: its line now
-    names whatever item sits there, not the one rustc meant."""
+    -- so the code map and `/cargo` never disagree about it, and a stale check
+    is not used here either: its lines would name whatever item sits there
+    now, and its complaints are rustc's then."""
     root = Path(root)
     docs_dir = root / DOCUMENTS
-    check = docs_dir / CHECK_DOCUMENT
-    if not check.is_file():
+    if not (docs_dir / CHECK_DOCUMENT).is_file():
         return None
     reading = Reading(root=str(root))
     reading.newest_source, _ = _walk(root, reading, [], [])
-    doc = _read_check(reading, docs_dir, root)
-    reading.documents.append(doc)
-    if doc.stale:
-        recorded = check.stat().st_mtime
-
-        def unchanged(d: Diagnostic) -> bool:
-            try:
-                return (root / d.file).stat().st_mtime <= recorded
-            except OSError:
-                return False
-
-        reading.diagnostics = [d for d in reading.diagnostics if d.file and unchanged(d)]
+    reading.documents.append(_read_check(reading, docs_dir, root))
     return reading
 
 
@@ -1246,11 +1239,14 @@ def annotate_diagnostics(graph, reading: Reading) -> int:
     Joined by path suffix and line range: a diagnostic at `crates/hal/src/uart.rs:12`
     lands on the item in that file whose `line`..`line_end` holds line 12, the
     innermost when several do. A diagnostic no item holds is left unjoined --
-    `/cargo/data` still lists it. When a source changed after the check, each
-    item says `diagnostics_stale` and an error on it does not set
-    `has_parse_warning`: what rustc said then is not presented as now."""
+    `/cargo/data` still lists it.
+
+    The check document's row -- present, used, stale, and why not -- is
+    `graph.graph["recorded_check"]`, so a code map with nothing on it says
+    whether that is a clean check or one that was not used."""
     check = next((doc for doc in reading.documents if doc.name == CHECK_DOCUMENT), None)
-    stale = bool(check and check.stale)
+    if check is not None:
+        graph.graph["recorded_check"] = asdict(check)
     by_file: dict[str, list[Diagnostic]] = {}
     for d in reading.diagnostics:
         if d.file:
@@ -1277,12 +1273,9 @@ def annotate_diagnostics(graph, reading: Reading) -> int:
             diags = meta.setdefault("diagnostics", {})
             diags[d.level] = diags.get(d.level, 0) + 1
             meta.setdefault("messages", []).append(f"{d.level}: {d.message} (line {d.line})")
-            # Provenance travels with the figure: when rustc said it, and
-            # whether a source has changed since.
+            # Provenance travels with the figure: when rustc said it.
             meta["diagnostics_recorded_at"] = check.generated_at if check else ""
-            if stale:
-                meta["diagnostics_stale"] = True
-            elif d.level == "error":
+            if d.level == "error":
                 data["has_parse_warning"] = True
             touched += 1
     return touched

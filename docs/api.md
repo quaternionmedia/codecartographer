@@ -51,7 +51,9 @@ Rust struct) -- and, where its qualifiers, attributes or body say so,
 `meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`). A local
 Rust repository with a recorded `target/codecarto/check.jsonl` has rustc's
 diagnostics on the items they name (`meta.diagnostics`, `meta.messages`,
-`meta.diagnostics_recorded_at`).
+`meta.diagnostics_recorded_at`), and `metadata.recorded_check` is that document's
+row. A check older than a source or manifest is not used: nothing is placed from
+it, and the row says `used: false`, `stale: true` and why.
 
 ### POST `/parse/unified`
 
@@ -760,7 +762,9 @@ their condition. `features=true` adds features and what each enables;
 `transitive=true` adds dependencies of dependencies -- cargo's resolution's
 (edges labelled `resolved`) when `metadata.json` answered, the lockfile's
 (`locked`) otherwise. Targets carry the recorded diagnostics in their label and
-`meta.diagnostics`.
+`meta.diagnostics`, from a `check.jsonl` newer than every source and manifest;
+an older one is not used -- no diagnostic, build-script fact or outcome is drawn
+from it -- and its row and the caveat say why.
 
 `metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
 `metadata.json` is newer than every manifest, `manifests` otherwise -- a stale
