@@ -9,6 +9,7 @@
 
 import m from 'mithril';
 import type { LayoutContext } from '../layout_context';
+import { closeOnOutsideClickOrEscape } from './menu_dismissal';
 
 interface Attrs {
   ctx: LayoutContext;
@@ -17,21 +18,25 @@ interface Attrs {
   onClose: () => void;
 }
 
-export const AddPanelMenu: m.Component<Attrs> = {
-  oncreate: ({ attrs }) => {
-    // Defer listener registration one tick so the click that opened the
-    // menu doesn't immediately close it via the same event.
-    setTimeout(() => {
-      document.addEventListener('click', attrs.onClose, { once: true });
-      document.addEventListener('keydown', onKeydown);
-    }, 0);
+interface MenuState {
+  /** Removes the outside-click and Escape listeners (`menu_dismissal.ts`). */
+  disarm: () => void;
+}
 
-    function onKeydown(e: KeyboardEvent): void {
-      if (e.key === 'Escape') {
-        document.removeEventListener('keydown', onKeydown);
-        attrs.onClose();
-      }
-    }
+export const AddPanelMenu: m.Component<Attrs, MenuState> = {
+  oncreate: (vnode) => {
+    // Armed a tick later, so the click that opened the menu does not close it.
+    vnode.state.disarm = closeOnOutsideClickOrEscape(
+      document,
+      vnode.attrs.onClose,
+      (fn) => { setTimeout(fn, 0); },
+    );
+  },
+
+  // However the menu closed -- a click outside, Escape, one of its items, or
+  // "+" again -- nothing it listened with outlives it.
+  onremove: (vnode) => {
+    vnode.state.disarm();
   },
 
   view: ({ attrs }) => {

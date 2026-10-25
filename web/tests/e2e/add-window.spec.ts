@@ -80,3 +80,20 @@ test('a window joins the stack whose tab was clicked last, and never the canvas\
   await page.locator('.gl-add-panel-menu__item', { hasText: /^Overview$/ }).click();
   await expect(stackOf('Overview').locator('.lm_tab', { hasText: /◈ Graph$/ })).toHaveCount(0);
 });
+
+test('the + menu closed with Escape opens again on the next click', async ({ page }) => {
+  // Not run with the change that added it: the browser suites bind fixed
+  // ports this workstation shares. menu-dismissal.test.mjs holds the order.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const menu = page.locator('.gl-add-panel-menu');
+
+  await page.locator('.gl-app-header__add-btn').click();
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  // Mutation: leave the outside-click listener armed after Escape -- this
+  // click opens the menu and closes it at once, and this fails.
+  await page.locator('.gl-app-header__add-btn').click();
+  await expect(menu).toBeVisible();
+});
