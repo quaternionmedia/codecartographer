@@ -768,8 +768,11 @@ The chrestomathy of a graph. Body: `{"nodes": [{"id", "language", "kind",
 "construct"?, "meta"?: {"facets"?}}]}` -- the nodes on the canvas. Answers the
 `constructs` and `facets` present, each with its `name`, `gloss`, `look`,
 `count`, the `languages` it occurs in with their counts, and the `ids` of the
-nodes that are it; then what was not placed: `unplaced` (a kind of a listed
-language, or of a graph under `graphs:`, the vocabulary does not map), `outside`
+nodes that are it; then what was not placed, each as what it is: `walk` (the
+walk's own `directory` and `file` nodes, whatever language a file carries),
+`not_constructs` (a kind the vocabulary lists as no construct, with its
+`reason`), `unplaced` (a kind of a listed language, or of a graph under
+`graphs:`, the vocabulary neither maps nor lists), `outside`
 (a language it lists in neither), `unknown` (a stamp naming a construct or facet
 the vocabulary does not hold, with the `ids` that carry it -- a graph drawn
 under another vocabulary) and `unlabelled` (no language at all), with the

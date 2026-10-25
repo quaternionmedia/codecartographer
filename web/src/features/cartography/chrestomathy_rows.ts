@@ -65,6 +65,8 @@ export interface CensusRowLike {
 export interface CensusLike {
   constructs: CensusRowLike[];
   facets: CensusRowLike[];
+  walk: Array<{ kind: string; count: number }>;
+  not_constructs: Array<{ language: string; display_name: string; kind: string; count: number; reason: string }>;
   unplaced: Array<{ language: string; display_name: string; kind: string; count: number }>;
   outside: Array<{ language: string; count: number }>;
   unknown: Array<{ construct: string; count: number }>;
@@ -97,21 +99,30 @@ export function censusLines(census: CensusLike): CensusLine[] {
 }
 
 /**
- * What the census could not place, each as a sentence. A graph read as only
- * its placed nodes would claim the vocabulary covers what it does not, so the
- * rest is said, never dropped.
+ * What the census could not place, each as a sentence saying what it is. A
+ * graph read as only its placed nodes would claim the vocabulary covers what
+ * it does not, so the rest is said, never dropped -- and said truly: a file
+ * the walk drew is a file, not a kind the vocabulary failed to place, and a
+ * kind the vocabulary lists as no construct says why.
  */
 export function censusGaps(census: CensusLike): string[] {
   const gaps = census.unplaced.map((u) =>
     `${u.count} ${u.display_name || u.language} ${u.kind} node(s): a kind the vocabulary does not place`);
+  for (const n of census.not_constructs) {
+    gaps.push(`${n.count} ${n.display_name || n.language} ${n.kind} node(s): not a construct. ${n.reason}`);
+  }
   for (const o of census.outside) {
     gaps.push(`${o.count} ${o.language} node(s): a language the vocabulary does not list`);
   }
   for (const u of census.unknown) {
     gaps.push(`${u.count} node(s) stamped ${u.construct}: a construct constructs.yaml does not hold`);
   }
+  for (const w of census.walk) {
+    const what = w.kind === 'directory' ? 'folder' : w.kind;
+    gaps.push(`${w.count} ${what} node(s): the parse's walk of the tree, a ${what} and no construct`);
+  }
   if (census.unlabelled) {
-    gaps.push(`${census.unlabelled} node(s) with no language: folders, files, or a graph that is not code`);
+    gaps.push(`${census.unlabelled} node(s) with no language: a graph that is not code`);
   }
   return gaps;
 }

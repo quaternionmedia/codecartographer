@@ -207,8 +207,11 @@ MIXED = [
     {"id": "c2", "language": "c", "kind": "struct"},
     {"id": "p1", "language": "python", "kind": "class"},
     {"id": "r3", "language": "rust", "kind": "doc_comment"},        # a kind nothing maps
+    {"id": "p2", "language": "python", "kind": "call"},             # a kind that is no construct
     {"id": "j1", "language": "javascript", "kind": "function"},     # a language nothing lists
-    {"id": "d1", "kind": "directory"},                              # no language at all
+    {"id": "f1", "language": "rust", "kind": "file"},               # the walk's own
+    {"id": "d1", "language": "unknown", "kind": "directory"},
+    {"id": "e1", "kind": "capability"},                             # no language at all
 ]
 
 
@@ -230,10 +233,37 @@ def test_the_census_reads_a_graph_as_its_constructs_and_their_languages():
 def test_what_the_census_cannot_place_it_says():
     found = construct_service.census(MIXED)
     assert found["unplaced"] == [{"language": "rust", "display_name": "Rust", "kind": "doc_comment", "count": 1}]
+    assert found["not_constructs"] == [{"language": "python", "display_name": "Python", "kind": "call", "count": 1,
+                                        "reason": VOCABULARY.languages["python"].not_constructs["call"]}]
+    assert found["walk"] == [{"kind": "directory", "count": 1}, {"kind": "file", "count": 1}]
     assert found["outside"] == [{"language": "javascript", "count": 1}]
     assert found["unlabelled"] == 1 and found["nodes"] == len(MIXED)
     assert found["unknown"] == []
     assert found["caveat"]
+
+
+def test_a_code_maps_folders_files_and_expressions_are_said_as_what_they_are():
+    """Every code map's file nodes carry their file's language and its
+    folders `language: unknown`, so the census reported each file as "a kind
+    the vocabulary does not place" and each folder as a language it does not
+    list; and a Python call, which the vocabulary lists as no construct with
+    its reason, as a kind it does not place. Mutations: drop the walk's kinds
+    -- `rust file` is unplaced and `unknown` outside; drop the
+    `not_constructs` branch -- `python call` is unplaced."""
+    from codecarto.models.source_data import Directory, File, Folder, RepoInfo
+    from codecarto.services.unified_parser_service import UnifiedParserService
+
+    d = Directory(info=RepoInfo(name="m"), root=Folder(name="m", folders=[Folder(name="src", files=[
+        File(name="lib.rs", raw="pub fn delay() {}\n"),
+        File(name="a.py", raw="def f():\n    print(1)\n")])]))
+    graph = UnifiedParserService.build_graph(d, depth=3, extensions=None)
+    found = construct_service.census(
+        [{"id": n, **{k: v.get(k) for k in ("language", "kind", "construct", "meta")}}
+         for n, v in graph.nodes(data=True)])
+    assert found["walk"] == [{"kind": "directory", "count": 2}, {"kind": "file", "count": 2}]
+    assert found["unplaced"] == [] and found["outside"] == [] and found["unlabelled"] == 0
+    said = {(n["language"], n["kind"]): n["reason"] for n in found["not_constructs"]}
+    assert said[("python", "call")] == VOCABULARY.languages["python"].not_constructs["call"]
 
 
 def test_a_stamp_the_vocabulary_does_not_hold_is_said_not_dropped():

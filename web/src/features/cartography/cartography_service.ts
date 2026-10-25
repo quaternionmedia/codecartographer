@@ -127,6 +127,10 @@ export interface CensusDocument {
   nodes: number;
   constructs: CensusRow[];
   facets: CensusRow[];
+  /** The walk's own folders (`directory`) and files (`file`). */
+  walk: Array<{ kind: string; count: number }>;
+  /** Kinds the vocabulary lists as no construct, each with its reason. */
+  not_constructs: Array<{ language: string; display_name: string; kind: string; count: number; reason: string }>;
   unplaced: Array<{ language: string; display_name: string; kind: string; count: number }>;
   outside: Array<{ language: string; count: number }>;
   /** Stamps naming a construct or facet the vocabulary does not hold. */

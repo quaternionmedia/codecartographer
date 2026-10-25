@@ -329,19 +329,31 @@ def table() -> dict[str, Any]:
     }
 
 
+# The walk's own nodes: `unified_parser_service` draws each folder it walks as
+# a `directory` and each file as a `file`, carrying the file's language. A file
+# is a file, not a construct of the language it is written in, and a folder
+# says nothing of any language.
+WALK_KINDS = ("directory", "file")
+
+
 def census(nodes: Iterable[dict]) -> dict[str, Any]:
     """The chrestomathy of a graph: which constructs its nodes are, in which
     languages, and what the vocabulary could not place.
 
     Each node is a dict with at least `id`, `language` and `kind`; a node that
     arrived stamped keeps its stamp, and one that did not is stamped here, by
-    the same rule. Nothing the caller sent is changed. A node of a language the
-    vocabulary does not list is counted under `outside`, a listed language's
-    kind it does not map under `unplaced`, and a stamp naming a construct or
-    facet the vocabulary does not hold -- a graph drawn before it changed --
-    under `unknown`: said, never dropped."""
+    the same rule. Nothing the caller sent is changed. Everything not placed
+    is counted as what it is -- said, never dropped: the walk's folders and
+    files under `walk`; a kind the vocabulary lists as no construct under
+    `not_constructs`, with its reason; a node of a language the vocabulary does
+    not list under `outside`; a listed language's kind it neither maps nor
+    lists under `unplaced`; and a stamp naming a construct or facet the
+    vocabulary does not hold -- a graph drawn before it changed -- under
+    `unknown`."""
     vocabulary = load()
     found: dict[str, dict[str, Any]] = {}
+    walk: dict[str, int] = {}
+    not_constructs: dict[tuple[str, str], int] = {}
     unplaced: dict[tuple[str, str], int] = {}
     outside: dict[str, int] = {}
     unknown: dict[str, list[str]] = {}
@@ -359,10 +371,15 @@ def census(nodes: Iterable[dict]) -> dict[str, Any]:
     for node in nodes:
         total += 1
         language = str(node.get("language") or "")
+        kind = str(node.get("kind") or "")
+        if kind in WALK_KINDS:
+            walk[kind] = walk.get(kind, 0) + 1
+            continue
         if not language:
             unlabelled += 1
             continue
-        if vocabulary.mapping(language) is None:
+        mapping = vocabulary.mapping(language)
+        if mapping is None:
             outside[language] = outside.get(language, 0) + 1
             continue
         data = {k: v for k, v in node.items() if k != "meta"}
@@ -372,9 +389,10 @@ def census(nodes: Iterable[dict]) -> dict[str, Any]:
         node_id = str(node.get("id", ""))
         if data.get("construct"):
             count(str(data["construct"]), language, node_id)
+        elif kind in mapping.not_constructs:
+            not_constructs[(language, kind)] = not_constructs.get((language, kind), 0) + 1
         else:
-            key = (language, str(data.get("kind", "")))
-            unplaced[key] = unplaced.get(key, 0) + 1
+            unplaced[(language, kind)] = unplaced.get((language, kind), 0) + 1
         for facet in data["meta"].get("facets") or []:
             count(str(facet), language, node_id)
 
@@ -397,6 +415,10 @@ def census(nodes: Iterable[dict]) -> dict[str, Any]:
         "nodes": total,
         "constructs": [row(c) for c in present if not c.facet],
         "facets": [row(c) for c in present if c.facet],
+        "walk": [{"kind": kind, "count": walk[kind]} for kind in WALK_KINDS if kind in walk],
+        "not_constructs": [{"language": lang, "display_name": _display_name(lang), "kind": kind, "count": n,
+                            "reason": vocabulary.mapping(lang).not_constructs[kind]}
+                           for (lang, kind), n in sorted(not_constructs.items(), key=lambda kv: -kv[1])],
         "unplaced": [{"language": lang, "display_name": _display_name(lang), "kind": kind, "count": n}
                      for (lang, kind), n in sorted(unplaced.items(), key=lambda kv: -kv[1])],
         "outside": [{"language": lang, "count": n}
@@ -411,10 +433,11 @@ def census(nodes: Iterable[dict]) -> dict[str, Any]:
 
 def census_caveat() -> str:
     return ("Each node is placed by the construct its language's parser kind maps "
-            "to in codecarto/data/constructs.yaml. A node of a language the "
-            "vocabulary does not list, of a kind it does not map, or stamped with "
-            "a construct it does not hold, is counted here rather than placed, "
-            "and the count is of nodes on the canvas, not of the code behind them.")
+            "to in codecarto/data/constructs.yaml. A folder or file the walk drew, "
+            "a kind the vocabulary says is no construct, a node of a language it "
+            "does not list, of a kind it does not map, or stamped with a construct "
+            "it does not hold, is counted here rather than placed, and the count "
+            "is of nodes on the canvas, not of the code behind them.")
 
 
 def caveat() -> str:

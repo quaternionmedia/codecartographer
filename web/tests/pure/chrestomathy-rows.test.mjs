@@ -76,6 +76,9 @@ const census = {
     { id: 'memory.unsafe', name: 'Unsafe', facet: true, count: 1, ids: ['r1'],
       languages: [{ language: 'rust', display_name: 'Rust', count: 1 }] },
   ],
+  walk: [{ kind: 'directory', count: 3 }, { kind: 'file', count: 12 }],
+  not_constructs: [{ language: 'python', display_name: 'Python', kind: 'call', count: 9,
+                     reason: 'A call expression: a use of a callable, not one.' }],
   unplaced: [{ language: 'rust', display_name: 'Rust', kind: 'doc_comment', count: 4 }],
   outside: [{ language: 'javascript', count: 30 }],
   unknown: [{ construct: 'storage.gone', count: 2, ids: ['x1', 'x2'] }],
@@ -97,13 +100,20 @@ test('what the census could not place is said, every kind of it', async () => {
   /* Mutation: drop the unplaced sentences -- a graph would read as wholly
      covered by the vocabulary, and this fails. Drop the `unknown` loop -- a
      node stamped with a construct the vocabulary no longer holds is in no row
-     and no sentence, and this fails. */
+     and no sentence, and this fails. Drop the `not_constructs` or `walk`
+     loop -- a Python call or a file, which the census says is no construct,
+     is said nowhere, and this fails. */
   const { censusGaps } = await import('../../dist-pure/features/cartography/chrestomathy_rows.js');
   assert.deepEqual(censusGaps(census), [
     '4 Rust doc_comment node(s): a kind the vocabulary does not place',
+    '9 Python call node(s): not a construct. A call expression: a use of a callable, not one.',
     '30 javascript node(s): a language the vocabulary does not list',
     '2 node(s) stamped storage.gone: a construct constructs.yaml does not hold',
-    '7 node(s) with no language: folders, files, or a graph that is not code',
+    "3 folder node(s): the parse's walk of the tree, a folder and no construct",
+    "12 file node(s): the parse's walk of the tree, a file and no construct",
+    '7 node(s) with no language: a graph that is not code',
   ]);
-  assert.deepEqual(censusGaps({ ...census, unplaced: [], outside: [], unknown: [], unlabelled: 0 }), []);
+  assert.deepEqual(censusGaps({
+    ...census, walk: [], not_constructs: [], unplaced: [], outside: [], unknown: [], unlabelled: 0,
+  }), []);
 });
