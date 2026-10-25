@@ -134,8 +134,11 @@ another file, an import reaching one, a file-level attribute -- sets
 `graph.graph["file_relations"]` (`[(source, target, attrs)]`, each end a node
 id or a file key, `attrs["kind"]` the edge kind) and `graph.graph["file_meta"]`
 (`{file_key: {...}}`, merged into that file node's `meta`). The parser does not
-create file nodes -- the walk does -- so the pipeline resolves the keys to them,
-in the in-memory and the streaming paths alike.
+create file nodes -- the walk does -- so the pipeline resolves the keys to them.
+Relations are resolved on the in-memory and the GitHub streaming paths alike.
+`file_meta` reaches the file node on the in-memory path only: the GitHub stream
+has already sent its file nodes when the parser runs, so their `meta` is not
+updated there.
 
 ### Joining the construct vocabulary
 
