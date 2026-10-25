@@ -28,6 +28,7 @@ from pathlib import Path
 import networkx as nx
 
 from codecarto.models.source_data import File
+from codecarto.services.construct_service import ngon_sides
 from codecarto.services.parsers.language_parser import (
     LanguageParser,
     ParserRegistry,
@@ -230,9 +231,12 @@ class CLangaugeParser:
                 if n.get(fact): meta[fact] = True
 
             # For ngon shapes (struct/union), expose sides so the renderer can
-            # draw the correct polygon without knowing it is a C struct.
+            # draw the correct polygon without knowing it is a C struct. The
+            # walker counts a union's fields as it does a struct's.
             if c_kind in ("struct", "union"):
-                meta["sides"] = min(max(int(n.get("field_count", 4)), 3), 10)
+                sides = ngon_sides(n.get("field_count"))
+                if sides is not None:
+                    meta["sides"] = sides
 
             attrs = make_node(
                 nid,

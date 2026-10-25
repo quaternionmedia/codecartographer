@@ -15,9 +15,11 @@ All parsers emit nodes with these attributes:
     label    : str   display name
     file     : str   source file path (empty for directories)
     line     : int   source line (0 if not tracked)
-    meta     : dict  language-specific extras (may include 'sides' for ngon shapes)
-    shape    : str   visual shape hint for renderers ('circle' | 'square' | 'diamond' |
-                     'hexagon' | 'triangle' | 'ngon' | 'star' | 'cross')
+    meta     : dict  language-specific extras (may include 'sides' for ngon shapes,
+                     clamped by construct_service.ngon_sides to NGON_SIDES)
+    shape    : str   visual shape hint for renderers: one of KNOWN_SHAPES in
+                     web/src/features/graph/services/node_shapes.ts (any other
+                     name is drawn as a circle)
     color    : str   hex colour hint for renderers (e.g. '#4a9eff')
 
 Parsers are responsible for setting shape and color so that language-specific

@@ -226,7 +226,7 @@ def _pass1_declarations(tu, in_target, nodes, edges, edge_set, cindex):
                     'type_str':   cursor.type.spelling if cursor.type else '',
                 }
 
-                if kind == 'struct':
+                if kind in ('struct', 'union'):
                     n['field_count'] = sum(
                         1 for c in cursor.get_children()
                         if c.kind == cindex.CursorKind.FIELD_DECL

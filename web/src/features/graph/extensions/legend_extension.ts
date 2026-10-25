@@ -15,17 +15,17 @@
  *
  * What the rows *mean* is decided in `legend_marks.ts`, which is pure and
  * tested under `node --test`. This file draws what it is given and decides
- * nothing. Shapes come from `nodePath`, the same function the canvas draws
- * with, so a swatch and a node cannot disagree.
+ * nothing. A swatch is `swatchPath` filled with the mark's colour -- the
+ * canvas's path, sides and all, and its fill under the current "Color By" --
+ * so a swatch and a node cannot disagree.
  */
 
 import * as d3 from 'd3';
 
 import { BaseExtension } from './base';
 import type { GraphNode, GraphEdge } from '../services/graph_types';
-import { nodePath } from '../services/node_shapes';
-import { edgeMarks, nodeMarks, readable } from './legend_marks';
-import type { EdgeMark, NodeMark } from './legend_marks';
+import { edgeMarks, layerMarks, nodeLabel, nodeMarks, readable, swatchPath } from './legend_marks';
+import type { EdgeMark, LayerMark, NodeMark } from './legend_marks';
 import './legend_extension.css';
 
 const SWATCH = 16;
@@ -34,7 +34,12 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
   private root: HTMLDivElement | null = null;
   private expanded = false;
 
-  constructor() {
+  /**
+   * @param colorBy The colouring the canvas is drawn with, read each time the
+   *   key is built: the key describes the colours on screen, and those follow
+   *   "Color By".
+   */
+  constructor(private readonly colorBy: () => string | undefined = () => 'auto') {
     super('legend', 'Legend', 'A key built from the nodes and edges actually drawn');
   }
 
@@ -45,8 +50,10 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
 
     const nodes = ctx.data.nodes ?? [];
     const edges = ctx.data.edges ?? [];
-    const nodes_ = nodeMarks(nodes);
+    const colorBy = this.colorBy();
+    const nodes_ = nodeMarks(nodes, colorBy);
     const edges_ = edgeMarks(edges);
+    const layers_ = layerMarks(nodes, colorBy);
 
     const root = document.createElement('div');
     root.className = 'graph-legend';
@@ -55,24 +62,28 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
     const header = document.createElement('button');
     header.type = 'button';
     header.className = 'graph-legend__header';
-    header.setAttribute('aria-expanded', 'false');
+    header.setAttribute('aria-expanded', String(this.expanded));
     header.textContent = `${nodes.length} nodes · ${edges.length} edges`;
 
     const caret = document.createElement('span');
     caret.className = 'graph-legend__caret';
     caret.setAttribute('aria-hidden', 'true');
-    caret.textContent = '▾';
+    caret.textContent = this.expanded ? '▴' : '▾';
     header.appendChild(caret);
 
     const body = document.createElement('div');
     body.className = 'graph-legend__body';
-    body.hidden = true;
+    // Rebuilt when "Color By" changes; a key the reader had open stays open.
+    body.hidden = !this.expanded;
 
     if (nodes_.length) {
       body.appendChild(this.section('Nodes', nodes_.map((m) => this.nodeRow(m))));
     }
     if (edges_.length) {
       body.appendChild(this.section('Edges', edges_.map((m) => this.edgeRow(m))));
+    }
+    if (layers_.length) {
+      body.appendChild(this.section('Abstraction layers', layers_.map((m) => this.layerRow(m))));
     }
     if (!nodes_.length && !edges_.length) {
       const empty = document.createElement('p');
@@ -127,12 +138,29 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
       .attr('aria-hidden', 'true');
     svg
       .append('path')
-      .attr('d', nodePath(mark.shape, SWATCH / 2 - 2))
+      .attr('d', swatchPath(mark, SWATCH / 2 - 2))
       .attr('transform', `translate(${SWATCH / 2},${SWATCH / 2})`)
       .attr('fill', mark.color)
       .attr('stroke', 'currentColor')
       .attr('stroke-width', 1);
-    return this.row(svg.node() as SVGSVGElement, readable(mark.kind), mark.count);
+    return this.row(svg.node() as SVGSVGElement, nodeLabel(mark), mark.count);
+  }
+
+  private layerRow(mark: LayerMark): HTMLElement {
+    const svg = d3
+      .create('svg')
+      .attr('width', SWATCH)
+      .attr('height', SWATCH)
+      .attr('class', 'graph-legend__swatch')
+      .attr('aria-hidden', 'true');
+    svg
+      .append('rect')
+      .attr('x', 2)
+      .attr('y', 2)
+      .attr('width', SWATCH - 4)
+      .attr('height', SWATCH - 4)
+      .attr('fill', mark.color);
+    return this.row(svg.node() as SVGSVGElement, mark.label, mark.count);
   }
 
   private edgeRow(mark: EdgeMark): HTMLElement {

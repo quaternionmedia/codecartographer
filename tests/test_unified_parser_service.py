@@ -938,6 +938,23 @@ class TestLexiconAnnotation:
             assert "aggregate" in groups
 
     @requires_libclang
+    def test_a_c_union_has_as_many_sides_as_fields(self):
+        """A union is a polygon of its fields, as a struct is. The walker counted
+        fields for structs only, so every union arrived with no count and was
+        drawn with a default four sides whatever it held. Mutation: count
+        `struct` alone in `c_parser.visit` -- this fails with 4."""
+        import codecarto.services.parsers.c_language_parser  # noqa: F401
+
+        code = "union Word { int i; float f; char c; short s; long l; };\n"
+        d = _simple_dir([File(name="word.c", size=len(code), raw=code, url="")])
+        graph = UnifiedParserService.build_graph(d, depth=3, extensions=None)
+
+        unions = [data for _, data in graph.nodes(data=True) if data.get("kind") == "union"]
+        assert len(unions) == 1
+        assert unions[0]["meta"]["field_count"] == 5
+        assert (unions[0]["shape"], unions[0]["meta"]["sides"]) == ("ngon", 5)
+
+    @requires_libclang
     def test_c_qualifier_reaches_a_different_layer_than_kind_would(self):
         """static is Layer 0 (Storage & memory placement); the function
         kind itself has no direct keyword match - this only works because

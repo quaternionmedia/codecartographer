@@ -11,7 +11,8 @@
 
 import * as d3 from 'd3';
 import { GraphNode, GraphEdge } from './graph_types';
-import { nodePath } from './node_shapes';
+import { canvasPath } from './node_shapes';
+import { drawnFill } from '../extensions/legend_marks';
 import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
@@ -97,6 +98,7 @@ export class StreamingGraphRenderer {
       labelSize: styling?.labelSize ?? 9,
       labelColor: styling?.labelColor ?? '#aaaaaa',
       interactionProfile: styling?.interactionProfile ?? 'default',
+      colorBy: styling?.colorBy ?? 'auto',
     };
 
     container.innerHTML = '';
@@ -231,6 +233,17 @@ export class StreamingGraphRenderer {
     }
     if (options.labelColor !== undefined) {
       this.labelGroup.selectAll('text').attr('fill', options.labelColor);
+    }
+    if (options.colorBy !== undefined) {
+      // Recolour in place: the drawn graph is the same graph, read by a
+      // different property. `data-base-fill` moves too, so a highlight that
+      // restores the base restores the colour now chosen.
+      for (const [id, el] of this._nodeGroupEl) {
+        const n = this.nodeById.get(id);
+        if (!n) continue;
+        const fill = this._fillFor(n);
+        d3.select(el).select('path').attr('fill', fill).attr('data-base-fill', fill);
+      }
     }
     if (options.showCompoundGroups !== undefined) {
       if (options.showCompoundGroups) {
@@ -369,10 +382,11 @@ export class StreamingGraphRenderer {
     // Cache element for O(1) drag-propagation lookups (avoids per-frame CSS selector)
     this._nodeGroupEl.set(node.id, group.node()!);
 
-    const baseFill = (node.color as string) || 'steelblue';
+    const baseFill = this._fillFor(node);
     group
       .append('path')
-      .attr('d', this._nodePath(node.shape as string, size))
+      // Shapes come from `node_shapes`, so the legend's swatches match.
+      .attr('d', canvasPath(node, size))
       .attr('fill', baseFill)
       // Remembered so a colour override can be undone without re-deriving
       // the parser's visual grammar here.
@@ -766,9 +780,12 @@ export class StreamingGraphRenderer {
     }
   }
 
-  /** Shapes come from `node_shapes`, so the legend's swatches match. */
-  private _nodePath(shape: string | undefined, s: number): string {
-    return nodePath(shape, s);
+  /**
+   * The fill a node is drawn with: `drawnFill`, which the key reads too, so a
+   * swatch and the node it stands for are one decision rather than two.
+   */
+  private _fillFor(node: GraphNode): string {
+    return drawnFill(node, this.styling.colorBy);
   }
 
   private _updateEdgesForNode(nodeId: string, x: number, y: number): void {
