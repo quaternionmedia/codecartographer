@@ -13,7 +13,8 @@ it describes, and each check here fails on a document that disagrees with it:
 - no document names the port this project no longer binds, or a test count;
 - every relative link resolves, and so does every repository path written in
   backticks in prose, unless `EXAMPLE_PATHS` names it, and every page under
-  `docs/` that the code names;
+  `docs/` that the code names; a link's `#anchor` is one a heading of its page
+  makes, as GitHub makes them;
 - every `codecarto ...` command a document writes exists in the click tree,
   with its options, and a value from a fixed choice is one of the choices;
 - every JSON envelope in `docs/api.md` has `status`, `message` and `results`;
@@ -44,6 +45,7 @@ where the submodule is checked out, which CI does not do.
 
 from __future__ import annotations
 
+import functools
 import re
 import subprocess
 from pathlib import Path
@@ -426,6 +428,57 @@ def test_paths_into_the_submodules_resolve():
         pytest.skip(f"{deferred} references into submodules that are not "
                     f"checked out here (CI checks out none)")
     assert not missing, f"these paths name nothing in their submodule: {missing}"
+
+
+def _slug(heading: str) -> str:
+    """GitHub's anchor for a heading: its text as rendered, lower-cased, with
+    everything but letters, digits, `_`, `-` and spaces dropped, and each
+    space a hyphen."""
+    text = re.sub(r"`([^`]*)`", r"\1", heading)
+    text = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"<[^>]+>", "", text).replace("*", "")
+    return re.sub(r"[^\w\- ]", "", text.strip().lower()).replace(" ", "-")
+
+
+@functools.lru_cache(maxsize=None)
+def _anchors(path: Path) -> frozenset[str]:
+    """Every anchor a page has: one per heading, a repeated one numbered from
+    `-1` as GitHub numbers it, and any `<a id>` or `<a name>`."""
+    found, counts = set(), {}
+    for _, line, fenced in _prose_lines(path):
+        heading = re.match(r"#{1,6}\s+(.*?)\s*#*\s*$", line)
+        if fenced or not heading:
+            continue
+        slug = _slug(heading.group(1))
+        found.add(f"{slug}-{counts[slug]}" if slug in counts else slug)
+        counts[slug] = counts.get(slug, 0) + 1
+    text = path.read_text(encoding="utf-8")
+    found |= set(re.findall(r"<a\s+(?:id|name)=\"([^\"]+)\"", text))
+    return frozenset(found)
+
+
+def test_every_link_anchor_names_a_heading():
+    """A link's `#anchor` that no heading makes opens the page at its top, and
+    the link check above drops the anchor. Mutation: link
+    `architecture.md#the-unified-graphs` -- this fails naming it."""
+    seen, wrong = 0, []
+    for path in DOCUMENTS:
+        for number, line, fenced in _prose_lines(path):
+            if fenced:
+                continue
+            for target in LINK.findall(line):
+                if re.match(r"^[a-z][a-z0-9+.-]*:", target) or "#" not in target:
+                    continue
+                page, _, anchor = target.partition("#")
+                page = page.split("?")[0]
+                file = path.parent / page if page else path
+                if file.suffix != ".md" or not file.is_file() or _in_unchecked_submodule(file):
+                    continue
+                seen += 1
+                if anchor not in _anchors(file.resolve()):
+                    wrong.append(f"{_rel(path)}:{number} -> {target}")
+    assert seen, "the reader found no link with an anchor; its pattern is stale"
+    assert not wrong, f"these links name an anchor no heading of their page makes: {wrong}"
 
 
 DOC_PATH = re.compile(r"\bdocs/[\w./-]*?\.md\b")
