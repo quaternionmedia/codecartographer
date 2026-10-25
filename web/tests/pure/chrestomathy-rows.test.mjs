@@ -1,11 +1,19 @@
 /**
  * The Chrestomathy panel's table says what each language spells, on which
- * layer, and that a language with no spelling has none.
+ * layer, and keeps a row the server sends with no spelling as a row that says
+ * so.
+ *
+ * **THE ROWS ARE THE SERVER'S.** They come from
+ * `fixtures/chrestomathy-readings.json`, which `tests/test_construct_service.py`
+ * holds equal to what `construct_service.reading` sends. A hand-made reading
+ * carried an assembly row for a record -- a row the server never sends -- and
+ * so asserted a table nobody could see.
  *
  *   npm run test:pure
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
@@ -13,47 +21,37 @@ import {
   layerLabels,
 } from '../../dist-pure/features/cartography/chrestomathy_rows.js';
 
-const product = [
-  {
-    language: 'c', display_name: 'C', has_lexicon: true, kinds: ['struct'], carried_by: [], note: '',
-    tokens: [{ token: 'struct', contexts: [{ layer_ordinal: 2, layer_name: 'Aggregate & user-defined types', group: 'aggregate' }] }],
-  },
-  {
-    language: 'rust', display_name: 'Rust', has_lexicon: true, kinds: ['struct'], carried_by: [],
-    note: 'Layout is the compiler’s choice unless #[repr(C)] fixes it.',
-    tokens: [{ token: 'struct', contexts: [{ layer_ordinal: 2, layer_name: 'Aggregate & user-defined types', group: 'aggregate' }] }],
-  },
-  {
-    language: 'assembly', display_name: 'Assembly', has_lexicon: false, kinds: [], carried_by: [],
-    note: 'Offsets from a base address; nothing names the record.', tokens: [],
-  },
-];
+const SENT = JSON.parse(readFileSync(new URL('./fixtures/chrestomathy-readings.json', import.meta.url), 'utf-8'));
+const product = SENT['type.product'];
+const volatile = SENT['memory.volatile'];
 
-test('a language with no spelling is a row that says so, never a missing row', () => {
-  /* Mutation: filter silent rows out of `chrestomathyRows` -- this fails. */
-  const rows = chrestomathyRows(product);
-  assert.deepEqual(rows.map((r) => r.language), ['c', 'rust', 'assembly']);
-  const asm = rows[2];
-  assert.equal(asm.silent, true);
-  assert.equal(asm.spelling, '—');
-  assert.match(asm.note, /nothing names the record/);
+test('every row the server sends is a row, in its order', () => {
+  /* Mutation: filter silent rows out of `chrestomathyRows` -- the volatile case fails. */
+  for (const sent of [product, volatile]) {
+    assert.deepEqual(chrestomathyRows(sent).map((r) => r.language), sent.map((r) => r.language));
+  }
+});
+
+test('a row the server sends with no spelling stays, and says so', () => {
+  /** Rust has no keyword for a volatile access; its row is the note. */
+  const rust = chrestomathyRows(volatile).find((r) => r.language === 'rust');
+  assert.equal(rust.silent, true);
+  assert.equal(rust.spelling, '—');
+  assert.match(rust.note, /read_volatile/);
 });
 
 test('a spelled row carries its tokens, layers and parser kinds', () => {
-  const rust = chrestomathyRows(product)[1];
+  const rust = chrestomathyRows(product).find((r) => r.language === 'rust');
   assert.equal(rust.silent, false);
   assert.equal(rust.spelling, 'struct');
   assert.deepEqual(rust.layers, ['L2 Aggregate & user-defined types · aggregate']);
   assert.equal(rust.parsedAs, 'struct (parsed)');
 });
 
-test('a facet carried by an attribute is not silent', () => {
-  const [row] = chrestomathyRows([{
-    language: 'rust', display_name: 'Rust', has_lexicon: true, tokens: [], kinds: [],
-    carried_by: ['#[interrupt]', '#[exception]'], note: '',
-  }]);
-  assert.equal(row.silent, false);
-  assert.equal(row.parsedAs, '#[interrupt], #[exception]');
+test('a facet carried by a qualifier is not silent', () => {
+  const c = chrestomathyRows(volatile).find((r) => r.language === 'c');
+  assert.equal(c.silent, false);
+  assert.equal(c.parsedAs, 'qualifier volatile');
 });
 
 test('layers are distinct and machine-facing first', () => {
