@@ -18,6 +18,7 @@ services/
 ├── lexicon_service.py         # Hand-authored language lexicons -> graph
 ├── construct_service.py       # What a node is across languages; the chrestomathy
 ├── cargo_service.py           # A Cargo workspace from manifests and recorded cargo documents
+├── link_map_service.py        # A linker's map file: sections, symbols, each region's measured use
 ├── graph_serializer.py        # Graph JSON serialization
 ├── position_service.py        # Node positioning
 └── parsers/
@@ -258,6 +259,20 @@ documents and their staleness, diagnostics, build-script facts) or a reason.
 `recorded_diagnostics(root)` and `annotate_diagnostics(graph, reading)` put
 rustc's diagnostics on a parsed code map. The CLI's `cargo record` is the only
 code that runs cargo.
+
+---
+
+## link_map_service
+
+**File:** `link_map_service.py`
+
+A linker's map file in GNU ld's or LLD's shape: `read(path)` returns a `LinkMap`
+(output sections with their run and load addresses, input sections, symbols
+with their sizes, and GNU ld's memory table) or a reason. `usage(map, regions)`
+measures each region's use at run time and as load images; `annotate(graph,
+map, ...)` puts the figures on a parsed code map's regions, sections, functions
+and statics; `demangle` and `symbol_key` turn a Rust symbol back into the path,
+type and function it was compiled from.
 
 ---
 

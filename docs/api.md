@@ -51,13 +51,16 @@ for a C or Rust struct) -- and, where its qualifiers, attributes or body say so,
 `meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`). A kind
 the vocabulary lists under `not_constructs`, with its reason, carries none --
 Python's calls, names and literals are what a body does, not what it declares --
-and neither do the walk's own `directory` and `file` nodes.
-A local Rust
+and neither do the walk's own `directory` and `file` nodes. A local Rust
 repository with a recorded `target/codecarto/check.jsonl` has rustc's
 diagnostics on the items they name (`meta.diagnostics`, `meta.messages`,
 `meta.diagnostics_recorded_at`), and `metadata.recorded_check` is that document's
 row. A check older than a source or manifest is not used: nothing is placed from
-it, and the row says `used: false`, `stale: true` and why.
+it, and the row says `used: false`, `stale: true` and why. With a recorded
+`target/codecarto/<bin>.map` the linker script's regions and sections carry
+what the link measured (`meta.measured`) and functions and statics their size (`meta.bytes`). A map
+older than a source is not used: the regions it would measure say so
+(`meta.measured.used: false`) and nothing carries its figures.
 
 ### POST `/parse/unified`
 
@@ -779,20 +782,22 @@ their condition. `features=true` adds features and what each enables;
 (`locked`) otherwise. Targets carry the recorded diagnostics in their label and
 `meta.diagnostics`, from a `check.jsonl` newer than every source and manifest;
 an older one is not used -- no diagnostic, build-script fact or outcome is drawn
-from it -- and its row and the caveat say why.
+from it -- and its row and the caveat say why. A binary with a recorded link map carries each region's fill in its label and
+`meta.memory`, while the map is newer than every source.
 
 `metadata` carries `kind: "cargo"`, `engine` (`cargo metadata` when a recorded
 `metadata.json` is newer than every manifest, `manifests` otherwise -- a stale
 document is not used, and says so), `generated_at`, every `documents` row with
-`present`, `used`, `stale` and `problem`, the recorded `diagnostics` counts,
-`build_success`, `firmware`, and the `caveat`.
+`present`, `used`, `stale` and `problem` -- a recorded `<bin>.map` among them --
+the recorded `diagnostics` counts, `build_success`, `firmware`, and the `caveat`.
 
 ### GET `/cargo/data?path=`
 
 The reading without a layout: `packages` (with `dependencies`, `targets`,
 `features`, `resolved_features`, `no_std`, `links`, `memory_maps`), `documents`,
-`diagnostics`, `artifacts`, `scripts`, `build_success`, `firmware`, `notes` and
-`caveat` -- comparable with what `cargo metadata` says rather than only drawable.
+`diagnostics`, `artifacts`, `scripts`, `build_success`, `firmware`, `memory`
+(each recorded map's region use, by binary), `notes` and `caveat` -- comparable
+with what `cargo metadata` says rather than only drawable.
 
 
 ---

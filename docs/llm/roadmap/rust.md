@@ -31,9 +31,10 @@ memory map.
 ## The dev loop
 
 ```text
-edit  ->  uv run codecarto cargo record <workspace>  ->  the window reads it
-             runs cargo metadata and cargo check          crate graph, diagnostics on
-             writes target/codecarto/*.json[l]            the targets and on the items
+edit  ->  uv run codecarto cargo record <workspace> [--map <bin>]  ->  the window reads it
+             runs cargo metadata and cargo check, and with           crate graph, diagnostics and
+             --map links <bin> asking the linker for its map         memory use on the targets and
+             writes target/codecarto/*.json[l] and <bin>.map         on the items they name
 ```
 
 `codecarto cargo record` is the **only** place this project runs cargo. Running
@@ -49,8 +50,50 @@ window reads what was recorded and says how old it is:
   local parse of the same repository, on the innermost Rust item whose lines
   hold each one, with `diagnostics_recorded_at` beside the counts. A source
   changed after the check is reported as `stale`; nothing re-checks.
+- `<bin>.map` -- the linker's map of a release link -- measures what the
+  linker script only declares: each region's use against its length, at run
+  time and as load images, each section's size, and the bytes each function and
+  static occupies. See *The memory map, measured* below.
 - No document is a sentence: "no diagnostics drawn, which is not the same as a
   clean build".
+
+## The memory map, measured
+
+`services/link_map_service.py` reads the map a linker writes when asked
+(`-Map=<file>`), in the two shapes firmware is linked with: GNU ld's
+(`arm-none-eabi-gcc -Wl,-Map=...`, which also prints the memory table) and
+LLD's (`rust-lld`, the default for Rust's embedded targets, which does not).
+`codecarto cargo record --map <bin>` links `<bin>` with `--profile release` --
+the build that is flashed -- and keeps its map; a C build passing
+`-Wl,-Map=target/codecarto/<name>.map` writes one the window reads the same way.
+
+- **A region's use** is the sections the link placed in it at run time, plus
+  the load images of sections run from elsewhere (`.data`, a `.ram_func`).
+  `.bss`, `.uninit`, a stack or heap have no load image -- told by name, since
+  LLD's map does not print a section's type, and pinned by a test whose map
+  gives `.bss` a flash load address the way a linker does.
+- **On the code map**, the linker script's regions and sections carry what was
+  measured (`meta.measured`, and a tooltip that says it), and functions and
+  statics carry `meta.bytes`: a symbol is demangled (Rust's legacy mangling,
+  and the half-demangled form LLD prints) and joined within the crate it was
+  compiled in, by name and, for a method, its impl's type -- only where one
+  item answers. A file's crate is the target whose root reaches it through
+  `mod` items, cargo's targets naming the roots, so a package need not sit in a
+  directory named after it; an unmangled name is looked for in the map's own
+  binary only. A symbol from outside the parse (`core`, a runtime) is counted,
+  not drawn.
+- **Only placed sections count.** Both linkers print debug information, symbol
+  tables, `.comment` and build attributes at address 0, inside any region that
+  starts there (nRF52, SAMD, LPC, Kinetis); they are told by name, or by lying
+  on addresses a placed section already holds (an `(INFO)` section such as
+  defmt's).
+- **On the crate graph**, the binary's target says its fill per region, and the
+  map is a document row with its age. Once a source changes after it the map
+  is not used -- as a stale `metadata.json` is not -- and the row, the caveat
+  and the code map's regions say why.
+
+What it cannot see: inlined code has no symbol, so its bytes are its caller's;
+and a map is only as current as the link that wrote it.
 
 ## What the Rust reader knows, and how
 
@@ -91,26 +134,22 @@ turns it red, and each was broken and seen red.
    would replace every `unique-name` edge with a resolved one, for both
    languages, through one seam -- the `ownership-is-the-deliverable` and
    `seams-on-standard-protocols` answer to "how does a code map know what a call
-   is". It needs a protobuf reader, which is outside the house stack, so it
-   starts as a record.
-2. **The memory map, measured.** A linker `.map` file (or `cargo size` /
-   `arm-none-eabi-size`) says how full each region is. Joined to the regions the
-   linker reader already draws, a region would carry its use against its
-   length -- the first figure here a firmware reader would check.
-3. **Peripherals.** CMSIS-SVD files describe a device's registers; joined to the
+   is". How its protobuf wire format is decoded is a house-stack question, so
+   it starts as an org record.
+2. **Peripherals.** CMSIS-SVD files describe a device's registers; joined to the
    `#[repr(C)]` register blocks the reader already finds, a HAL's structs would
    point at the hardware they model.
-4. **C firmware at parity.** `.ino` sketches through the C adapter (as C++),
+3. **C firmware at parity.** `.ino` sketches through the C adapter (as C++),
    `compile_commands.json` (`c_parser_phase3_compile_commands.md`), and clang's
    machine-readable diagnostics, so a C workspace has the same overlay a Rust
    one has.
-5. **The build itself.** `cargo build --timings` and the unit graph (unstable
+4. **The build itself.** `cargo build --timings` and the unit graph (unstable
    today) would draw what compiled, in what order, for how long. Read from a
    recorded document, as the check is.
-6. **Running firmware.** probe-rs and defmt logs as a monitoring overlay on the
+5. **Running firmware.** probe-rs and defmt logs as a monitoring overlay on the
    same graph: which handler ran, from a recorded trace. The `monitoring` rung,
    reached the same way.
-7. **More of the chrestomathy.** Lexicons for C++, assembly directives and the
+6. **More of the chrestomathy.** Lexicons for C++, assembly directives and the
    linker script; constructs for ownership, generics and closures; Python's
    facets.
 

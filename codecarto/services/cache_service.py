@@ -76,7 +76,9 @@ def _repo_key_from_url(url: str) -> str:
 #      a Rust item carries a recorded check's `meta.diagnostics`.
 #   4: a record's `meta.sides` counts a unit struct's zero fields and a C
 #      union's fields, and is absent where nothing was counted.
-GRAPH_SCHEMA_VERSION = 4
+#   5: with a recorded link map, linker regions and sections carry
+#      `meta.measured` and functions and statics `meta.bytes`.
+GRAPH_SCHEMA_VERSION = 5
 
 
 def _make_key(url: str, mode: str, layout: str, extensions: list[str]) -> str:

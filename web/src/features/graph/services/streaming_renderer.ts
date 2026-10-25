@@ -395,7 +395,9 @@ export class StreamingGraphRenderer {
       .attr('stroke', '#fff')
       .attr('stroke-width', this.styling.nodeBorderWidth!);
 
-    group.append('title').text(node.label || node.id);
+    // A producer's `hover` says more than the label -- a capability's claim, a
+    // region's measured use -- and edges already show theirs.
+    group.append('title').text((node.hover as string) || node.label || node.id);
 
     // Pop-in entrance animation
     group

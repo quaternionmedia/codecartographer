@@ -318,7 +318,8 @@ and used, the diagnostics counts, and the caveat. `--json` prints the reading
 ### `cargo record`
 
 ```bash
-uv run codecarto cargo record [PATH] [--all-targets] [--online] [--timeout SECONDS]
+uv run codecarto cargo record [PATH] [--all-targets] [--online] [--map BIN]... \
+    [--map-flag TEXT] [--profile NAME] [--timeout SECONDS]
 ```
 
 Runs, in PATH:
@@ -326,6 +327,8 @@ Runs, in PATH:
 ```bash
 cargo metadata --format-version 1 --locked --offline              # -> target/codecarto/metadata.json
 cargo check --workspace --message-format=json --locked --offline  # -> target/codecarto/check.jsonl
+# and, for each --map BIN, a link that keeps the linker's map:
+cargo rustc --locked --profile release --bin BIN --offline -- -C link-arg=-Map=<workspace>/target/codecarto/BIN.map
 ```
 
 The documents go to the `target/codecarto/` of the workspace root cargo names:
@@ -344,6 +347,16 @@ tests, examples and benches too (a `no_std` binary usually cannot build them);
 `--online` lets cargo reach the network; a command that outlives `--timeout`
 (600s by default) keeps what arrived and says it is partial. Without cargo on
 PATH it says so and exits 1; the window still draws the manifests.
+
+`--map BIN` (repeatable) links a binary and keeps its map: the linker writes it,
+so a build that finishes without one is a failure, not a document. cargo links
+only a binary that is out of date, so recording a build already current writes
+nothing; the command says so, and how old the map left behind is, rather than
+claiming a write. `--map-flag` is how the linker is asked -- the default suits
+`rust-lld`; a GCC linker wants `'-C link-arg=-Wl,-Map={path}'` -- and is split
+into arguments before the path is put in, so a path with a space stays one.
+`--profile` is the build measured, `release` by default because that is the
+one flashed.
 
 ---
 
