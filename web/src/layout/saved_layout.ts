@@ -30,7 +30,21 @@ export type SavedLayout =
 
 type Item = { type?: unknown; componentType?: unknown; id?: unknown; content?: unknown; activeItemIndex?: unknown };
 
-/** Every `componentType` a layout names, in its root and in any open popout. */
+/**
+ * The root Golden Layout 2.6 loads from a layout or a popout: `root`, or when
+ * that is absent the legacy `content[0]` (`LayoutConfig.resolve` and
+ * `PopoutLayoutConfig.resolve` both read it so). `content` beside a `root` is
+ * not read.
+ */
+function rootOf(config: { root?: unknown; content?: unknown }): unknown {
+  if (config.root !== undefined) return config.root;
+  return Array.isArray(config.content) && config.content.length > 0 ? config.content[0] : undefined;
+}
+
+/**
+ * Every `componentType` a layout names, in its root and in any open popout,
+ * a popout's own popouts included, wherever Golden Layout reads a root.
+ */
 export function componentTypesIn(config: unknown): string[] {
   const found: string[] = [];
   const walk = (item: unknown): void => {
@@ -39,20 +53,25 @@ export function componentTypesIn(config: unknown): string[] {
     if (typeof componentType === 'string') found.push(componentType);
     if (Array.isArray(content)) content.forEach(walk);
   };
-  const { root, openPopouts } = (config ?? {}) as { root?: unknown; openPopouts?: unknown };
-  walk(root);
-  if (Array.isArray(openPopouts)) {
-    for (const popout of openPopouts) walk((popout as { root?: unknown } | null)?.root);
-  }
+  const layout = (config: unknown): void => {
+    if (!config || typeof config !== 'object') return;
+    const { openPopouts } = config as { openPopouts?: unknown };
+    walk(rootOf(config as { root?: unknown; content?: unknown }));
+    if (Array.isArray(openPopouts)) openPopouts.forEach(layout);
+  };
+  layout(config);
   return found;
 }
 
 /**
- * Rename the windows in `renamed`. Where several land on one id, the first in
- * the layout stays and the rest go, and a stack, row or column they leave
- * empty goes too. A stack's active tab stays on the window it showed: the one
- * it merged into when that is in the same stack, else the one before it. Returns the old ids found. Mutates `config`, which the caller
- * has just parsed.
+ * Rename the windows in `renamed`, in every root `componentTypesIn` reads:
+ * the layout's and each open popout's, a popout's own popouts included, each
+ * where Golden Layout reads it (`rootOf`). Where several land on one id, the
+ * first in the layout stays and the rest go, and a stack, row or column they
+ * leave empty goes too. A stack's active tab stays on the window it showed:
+ * the one it merged into when that is in the same stack, else the one before
+ * it. Returns the old ids found. Mutates `config`, which the caller has just
+ * parsed.
  */
 export function renamePanels(config: Record<string, unknown>, renamed: Readonly<Record<string, string>>): string[] {
   const found = new Set<string>();
@@ -97,16 +116,22 @@ export function renamePanels(config: Record<string, unknown>, renamed: Readonly<
     return emptied ? null : it;
   };
 
-  config.root = visit(config.root) ?? undefined;
-  const popouts = config.openPopouts;
-  if (Array.isArray(popouts)) {
-    for (const popout of popouts) {
-      if (popout && typeof popout === 'object') {
-        const p = popout as { root?: unknown };
-        p.root = visit(p.root) ?? undefined;
-      }
+  // **THE ROOT GOLDEN LAYOUT READS, NOT `root` ALONE.** The registry check
+  // reads a legacy `content[0]` and a popout's popouts (`componentTypesIn`);
+  // renaming only `root` and one level of popouts left the old ids there, and
+  // the layout was dropped for the default rather than renamed.
+  const layout = (cfg: unknown): void => {
+    if (!cfg || typeof cfg !== 'object') return;
+    const c = cfg as { root?: unknown; content?: unknown; openPopouts?: unknown };
+    // Renamed in place; emptied in whichever form it was written when nothing
+    // in it stays.
+    if (visit(rootOf(c)) === null) {
+      if (c.root !== undefined) c.root = undefined;
+      else c.content = [];
     }
-  }
+    if (Array.isArray(c.openPopouts)) c.openPopouts.forEach(layout);
+  };
+  layout(config);
   return [...found];
 }
 

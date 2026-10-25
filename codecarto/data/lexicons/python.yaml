@@ -12,10 +12,10 @@
 # this first pass covers what's most load-bearing for reading real code, not
 # an exhaustive keyword-by-keyword catalogue. Extend groups/tokens freely.
 #
-# Option B coverage is narrower still: today only `class`, `for`, `import`,
-# and `def` are reachable by the real parser join (see
-# codecarto/services/lexicon_bridge.py's _KIND_TOKEN_MAP) — PythonCustomAST
-# only emits those four keyword-shaped node kinds. The rest of the tokens
+# The join to parsed code (Option B) reaches fewer still: today only `class`,
+# `for`, `import`, and `def` (see codecarto/services/lexicon_bridge.py's
+# _KIND_TOKEN_MAP) — PythonLanguageParser emits only those four
+# keyword-shaped node kinds. The rest of the tokens
 # below exist for Option A (the standalone lexicon graph) and for whenever
 # parser coverage grows, not because Option B reaches them today.
 
