@@ -88,11 +88,12 @@ def portable_document(name: str, text: str, roots: list[tuple[str, str]]) -> str
     return portable(text, roots)
 
 
-_DRIVE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:(?:\\\\|\\|/)[^\s\"'<>|]*")
-_FILE_URL = re.compile(r"file://(/[^\s\"'<>|#]*)")
-# A `/` that starts a path: not inside a word (`and/or`), a URL (`https://`),
-# a feature (`quote?/proc-macro`) or a file URL, which `_FILE_URL` reads.
-_POSIX = re.compile(r"(?<![\w.:/~?-])/[^\s\"'`<>|,;()\[\]{}#]+")
+_DRIVE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:(?:\\\\|\\|/)[^\s\"'<>|:#]*")
+_FILE_URL = re.compile(r"file://(/[^\s\"'<>|:#]*)")
+# A `/` that starts a path: not inside a word (`and/or`), a feature
+# (`quote?/proc-macro`), or the `//` of a URL -- a file URL's path is read by
+# `_FILE_URL`. It ends at a `:`, as `lib.rs:3:1` and a map's `blinky.o:(.text)` do.
+_POSIX = re.compile(r"(?<![\w.~?/-])/(?!/)[^\s\"'`<>|,;:()\[\]{}#]+")
 
 
 def _under_a_stand_in(path: str) -> bool:
@@ -100,12 +101,22 @@ def _under_a_stand_in(path: str) -> bool:
 
 
 def machine_paths(text: str) -> list[str]:
-    """Each absolute path in *text* that is not under a stand-in: a drive
-    letter's, or a POSIX one anywhere else."""
-    found = [m.group(0) for m in _DRIVE.finditer(text)]
-    found += [p for p in _FILE_URL.findall(text) if not _under_a_stand_in(p)]
-    found += [m.group(0) for m in _POSIX.finditer(text) if not _under_a_stand_in(m.group(0))]
-    return list(dict.fromkeys(found))
+    """Each absolute path in *text* that is not under a stand-in: any with a
+    drive letter, and any POSIX one -- in a file URL or not -- that does not
+    start at `/ws`, `/cargo-home` or `/rustup-home`."""
+    drives = [m.span() for m in _DRIVE.finditer(text)]
+    found = {text[start:end]: None for start, end in drives}
+
+    def in_a_drive_path(at: int) -> bool:
+        return any(start <= at < end for start, end in drives)
+
+    for m in _FILE_URL.finditer(text):
+        if not in_a_drive_path(m.start(1) + 1) and not _under_a_stand_in(m.group(1)):
+            found[m.group(1)] = None
+    for m in _POSIX.finditer(text):
+        if not in_a_drive_path(m.start()) and not _under_a_stand_in(m.group(0)):
+            found[m.group(0)] = None
+    return list(found)
 
 
 def stand_ins(workspace: str, environ: dict | None = None, home: Path | None = None) -> list[tuple[str, str]]:

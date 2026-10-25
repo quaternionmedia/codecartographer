@@ -359,11 +359,34 @@ def test_a_build_of_the_example_leaves_only_its_records_to_commit(path, ignored)
 
 
 def test_the_records_name_no_machine():
-    """Every absolute path is under /ws, /cargo-home or /rustup-home."""
-    for doc in (EXAMPLE / "target" / "codecarto").iterdir():
+    """Every absolute path in them is under /ws, /cargo-home or /rustup-home.
+    Mutation: put `/home/alice/.cargo/registry/...` into a copy of check.jsonl
+    and point `EXAMPLE` at it -- this fails naming that path, where a scan for
+    drive letters, `Users` and `AppData` passed it."""
+    rec = _recorder()
+    for doc in sorted((EXAMPLE / "target" / "codecarto").iterdir()):
         text = doc.read_text(encoding="utf-8")
-        assert not re.search(r"(?<![a-z])[A-Za-z]:[\\/]", text), doc.name
+        assert rec.machine_paths(text) == [], doc.name
         assert "Users" not in text and "AppData" not in text, doc.name
+
+
+@pytest.mark.parametrize("text, found", [
+    ('"src_path": "/home/alice/.cargo/registry/src/x/lib.rs"', ["/home/alice/.cargo/registry/src/x/lib.rs"]),
+    ('"id": "path+file:///home/alice/rust-firmware/crates/hal#0.1.0"', ["/home/alice/rust-firmware/crates/hal"]),
+    ('"linked_paths": ["native=/opt/arm/lib"], "PATH": "/ws/bin:/usr/bin"', ["/opt/arm/lib", "/usr/bin"]),
+    ("  --> /tmp/build/src/lib.rs:3:1", ["/tmp/build/src/lib.rs"]),
+    (" 8000004 4 4 /wsx/target/blinky.o:(.text)", ["/wsx/target/blinky.o"]),  # a stand-in's prefix is not one
+    ('"workspace_root": "C:\\\\Users\\\\you\\\\rust-firmware"', ["C:\\\\Users\\\\you\\\\rust-firmware"]),
+    ('"id": "path+file:///C:/Users/you/rust-firmware#0.1.0"', ["C:/Users/you/rust-firmware"]),
+    ('"/ws", "/ws/target/debug", "path+file:///ws/crates/hal#0.1.0", "/cargo-home/registry",'
+     ' "/rustup-home/toolchains", "/ws/target/x.o:(.text)"', []),
+    ('"homepage": "https://github.com/rust-embedded/cortex-m-rt", "source": "registry+https://x/"', []),
+    ('"features": ["quote?/proc-macro"], "description": "runtime / startup, and/or more"', []),
+])
+def test_what_names_a_machine(text, found):
+    """Mutation: find only drive letters -- the POSIX homes, an /opt toolchain
+    and a stand-in's look-alike pass, and their cases fail."""
+    assert _recorder().machine_paths(text) == found
 
 
 def test_the_route():
