@@ -5,6 +5,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import { RENAMED_PANELS, componentTypesIn, readSavedLayout } from '../../dist-pure/layout/saved_layout.js';
@@ -107,8 +108,19 @@ test('a layout with nothing to rename is read unchanged', () => {
 });
 
 test('the renames name only windows this version lacks, onto one it has', () => {
-  assert.deepEqual(Object.keys(RENAMED_PANELS).sort(), ['plotbar', 'repo-panel', 'upload-panel']);
-  assert.deepEqual([...new Set(Object.values(RENAMED_PANELS))], ['open']);
+  /**
+   * Read against the ids `panel_registry.ts` registers, not a copy of the
+   * table. Mutations: rename a window this version has (`graph-settings-panel`),
+   * or onto one it lacks -- this fails.
+   */
+  const registry = readFileSync('src/layout/panel_registry.ts', 'utf8');
+  const ids = [...registry.matchAll(/^\s+id: '([^']+)',$/gm)].map((m) => m[1]);
+  assert.ok(ids.includes('graph') && ids.includes('open'), 'no ids read from panel_registry.ts; the pattern is stale');
+  assert.ok(Object.keys(RENAMED_PANELS).length > 0);
+  assert.deepEqual(Object.keys(RENAMED_PANELS).filter((was) => ids.includes(was)), [],
+    'a rename names a window this version registers, so a saved layout loses it');
+  assert.deepEqual(Object.values(RENAMED_PANELS).filter((now) => !ids.includes(now)), [],
+    'a rename names a window this version does not register, so a saved layout is dropped');
 });
 
 test('a legacy layout, its root written as `content[0]`, is read as Golden Layout reads it', () => {
