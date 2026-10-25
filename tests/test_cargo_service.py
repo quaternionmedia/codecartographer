@@ -849,46 +849,42 @@ def test_a_map_with_nothing_to_measure_against_says_so(tmp_path):
     assert "blinky" not in reading.memory
 
 
+class Ran:
+    """What a faked cargo run returns."""
+
+    def __init__(self, stdout="", stderr="", returncode=0):
+        self.stdout, self.stderr, self.returncode = stdout, stderr, returncode
+
+
 def test_record_links_a_binary_for_its_map(tmp_path, monkeypatch):
     """The map is the linker's own output: the command asks for it, and a
     build that wrote none is a failure, not a document."""
+    write(tmp_path / "Cargo.toml", '[package]\nname = "blinky"\nversion = "0.1.0"\n')
     ran = []
-
-    class Done:
-        stdout, stderr, returncode = "", "", 0
 
     def fake_run(command, **kwargs):
         ran.append(command[1:])
         if command[1] == "rustc":
             target = command[-1].split("-Map=", 1)[1]
             Path(target).write_text("     VMA      LMA     Size Align Out     In      Symbol\n")
-        return Done()
+        return FINISHED if command[1] == "check" else Ran()
 
     monkeypatch.setattr("shutil.which", lambda name: "cargo")
     monkeypatch.setattr("subprocess.run", fake_run)
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
     assert result.exit_code == 0, result.output
     expected = (tmp_path / cargo_service.DOCUMENTS / "blinky.map").resolve().as_posix()
-    assert ran[-1] == ["rustc", "--profile", "release", "--bin", "blinky", "--offline", "--",
+    assert ran[-1] == ["rustc", "--locked", "--profile", "release", "--bin", "blinky", "--offline", "--",
                        "-C", f"link-arg=-Map={expected}"]
     assert (tmp_path / cargo_service.DOCUMENTS / "blinky.map").is_file()
 
     (tmp_path / cargo_service.DOCUMENTS / "blinky.map").unlink()
-
-    class Linked(Done):
-        stderr = "   Compiling blinky v0.1.0 (/ws/crates/blinky)\n    Finished `release` profile\n"
-
-    monkeypatch.setattr("subprocess.run", lambda command, **kwargs: Linked())
+    linked = Ran(stderr="   Compiling blinky v0.1.0 (/ws/crates/blinky)\n    Finished `release` profile\n")
+    monkeypatch.setattr("subprocess.run",
+                        lambda command, **kwargs: FINISHED if command[1] == "check" else linked)
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
     assert result.exit_code == 1
     assert "the linker wrote no blinky.map" in result.output
-
-
-class Ran:
-    """What a faked cargo run returns."""
-
-    def __init__(self, stdout="", stderr="", returncode=0):
-        self.stdout, self.stderr, self.returncode = stdout, stderr, returncode
 
 
 @pytest.mark.parametrize("flag, arg", [(None, "link-arg=-Map={path}"),
@@ -897,7 +893,7 @@ def test_record_passes_a_map_path_with_a_space_as_one_argument(tmp_path, monkeyp
     """Mutation: fill the path in before splitting the flag -- `C:/Users/Jane
     Doe/...` arrives as two arguments and this fails."""
     root = tmp_path / "Jane Doe" / "ws"
-    root.mkdir(parents=True)
+    write(root / "Cargo.toml", '[package]\nname = "blinky"\nversion = "0.1.0"\n')
     ran = []
 
     def fake_run(command, **kwargs):
@@ -907,7 +903,7 @@ def test_record_passes_a_map_path_with_a_space_as_one_argument(tmp_path, monkeyp
             if target.parent.is_dir():
                 target.write_text("     VMA      LMA     Size Align Out     In      Symbol\n")
             return Ran(stderr="   Compiling blinky v0.1.0\n")
-        return Ran()
+        return FINISHED if command[1] == "check" else Ran()
 
     monkeypatch.setattr("shutil.which", lambda name: "cargo")
     monkeypatch.setattr("subprocess.run", fake_run)
@@ -922,6 +918,7 @@ def test_record_says_when_cargo_did_not_relink(tmp_path, monkeypatch):
     """cargo links only when the binary is out of date, so a build already up
     to date writes no map. Mutation: judge by the map's presence alone -- an
     old map reads as written and, with none, the flag is blamed; this fails."""
+    write(tmp_path / "Cargo.toml", '[package]\nname = "blinky"\nversion = "0.1.0"\n')
     docs = tmp_path / cargo_service.DOCUMENTS
     docs.mkdir(parents=True)
     old = docs / "blinky.map"
@@ -930,7 +927,8 @@ def test_record_says_when_cargo_did_not_relink(tmp_path, monkeypatch):
     os.utime(old, (then, then))
     fresh = Ran(stderr="    Finished `release` profile [optimized] target(s) in 0.04s\n")
     monkeypatch.setattr("shutil.which", lambda name: "cargo")
-    monkeypatch.setattr("subprocess.run", lambda command, **kwargs: fresh)
+    monkeypatch.setattr("subprocess.run",
+                        lambda command, **kwargs: FINISHED if command[1] == "check" else fresh)
 
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
     assert result.exit_code == 1
@@ -942,3 +940,31 @@ def test_record_says_when_cargo_did_not_relink(tmp_path, monkeypatch):
     result = CliRunner().invoke(cli, ["cargo", "record", str(tmp_path), "--map", "blinky"])
     assert result.exit_code == 1
     assert "did not relink" in result.output and "--map-flag" not in result.output
+
+
+def test_record_from_a_member_crate_links_its_map_where_the_workspace_is_read(tmp_path, monkeypatch):
+    """cargo metadata names the workspace above a member crate, and the
+    documents go to that workspace's target/codecarto/; the map is one of
+    them. Mutation: name the map's path before cargo metadata has answered --
+    the linker writes it under the member, where nothing reads it, and this
+    fails."""
+    root = tmp_path / "ws"
+    write(root / "Cargo.toml", '[workspace]\nmembers = ["crates/*"]\n')
+    crate(root, "crates/blinky", "blinky")
+    metadata = Ran(json.dumps({"version": 1, "packages": [], "workspace_root": str(root)}))
+    linked_to = []
+
+    def fake_run(command, **kwargs):
+        if command[1] == "rustc":
+            target = Path(command[-1].split("-Map=", 1)[1])
+            linked_to.append(target)
+            target.write_text("     VMA      LMA     Size Align Out     In      Symbol\n")
+            return Ran(stderr="   Compiling blinky v0.1.0\n")
+        return metadata if command[1] == "metadata" else FINISHED
+
+    monkeypatch.setattr("shutil.which", lambda name: "cargo")
+    monkeypatch.setattr("subprocess.run", fake_run)
+    result = CliRunner().invoke(cli, ["cargo", "record", str(root / "crates" / "blinky"), "--map", "blinky"])
+    assert result.exit_code == 0, result.output
+    assert linked_to == [(root / cargo_service.DOCUMENTS / "blinky.map").resolve()]
+    assert not (root / "crates" / "blinky" / "target").exists()
