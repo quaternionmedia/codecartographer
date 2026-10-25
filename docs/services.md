@@ -289,7 +289,8 @@ lists each one `BUNDLED` names whose directory exists under `examples/`, with
 the absolute path it is read from and whether it is a Cargo workspace. Only what
 is named is offered, and an installed package, which has no `examples/`, offers
 none. `examples/rust-firmware` carries the records real cargo and rust-lld wrote
-for it, its absolute paths rewritten; its README says how to record it afresh.
+for it, its absolute paths rewritten; its README says how to record it afresh,
+with `scripts/record_example.py`, which records and rewrites them.
 
 ---
 
@@ -299,7 +300,9 @@ for it, its absolute paths rewritten; its README says how to record it afresh.
 
 Content-addressed cache for parsed graphs and fetched repo trees —
 filesystem-backed, with an optional MongoDB backend when `MONGODB_URI`
-is set. Key = `SHA256(url + mode + layout + extensions)[:16]`. Distinct
+is set. Key = `SHA256(schema version + url + mode + layout + extensions)[:16]`;
+`GRAPH_SCHEMA_VERSION` is bumped when a parse's nodes change what they carry, so
+a graph cached in an older shape is a miss rather than a reply. Distinct
 from `graphbase` (a separate, user-named durable store) — see
 `governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why they're kept
 separate.

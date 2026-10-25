@@ -86,6 +86,9 @@ class UnifiedParserService:
         meta = GraphSerializer.create_metadata(graph, options)
         if graph.graph.get("notes"):
             meta["notes"] = list(graph.graph["notes"])
+        if "recorded_check" in graph.graph:
+            # Whether rustc's diagnostics are on this map, or why not.
+            meta["recorded_check"] = graph.graph["recorded_check"]
         return {"graph": gjgf, "metadata": meta}
 
     @staticmethod
@@ -820,12 +823,11 @@ def _resolve_python_dependencies(
     pass, the unified-pipeline counterpart to the old standalone
     DependencyParser.
 
-    Resolution is stem-based (filename without extension), matching this
-    module's existing id scheme (file_id = "file::{parent_dir}/{name}", not
-    a full repo-relative path) — two files sharing a stem (e.g. two
+    Resolution is stem-based (filename without extension). A file id is
+    the path from the root (file_id = "file::{path}/{name}"), but an import
+    names a module, not a path, so two files sharing a stem (e.g. two
     packages each with their own __init__.py) can't be disambiguated; the
-    last one registered in *file_id_by_stem* wins. Pre-existing limitation
-    of this id scheme, not introduced here.
+    last one registered in *file_id_by_stem* wins.
 
     Returns
     -------
@@ -1021,7 +1023,8 @@ def _annotate_recorded_diagnostics(graph: nx.DiGraph, directory: Directory) -> N
     Only for a local repository with a recorded `target/codecarto/check.jsonl`
     at its root -- `codecarto cargo record` writes one. Reads that document and
     runs nothing; an item carries the time the check was recorded beside its
-    counts, so a reader can tell a current complaint from an old one.
+    counts. A check older than a source or manifest is not used, so nothing is
+    placed from it, and `graph.graph["recorded_check"]` says so.
     """
     if not any(d.get("language") == "rust" for _, d in graph.nodes(data=True)):
         return
@@ -1043,7 +1046,7 @@ def _annotate_recorded_memory(graph: nx.DiGraph, directory: Directory) -> None:
     `target/codecarto/` -- `codecarto cargo record --map <bin>` writes one per
     binary, and a C build passing `-Wl,-Map=target/codecarto/<name>.map` writes
     the same. Reads them and runs nothing; a map older than the newest source
-    file in the parse is marked stale on everything it stamps.
+    file in the parse is not used, and its regions say so.
     """
     root = directory.info.url
     if not root or "://" in root or not Path(root).is_dir():
@@ -1059,13 +1062,23 @@ def _annotate_recorded_memory(graph: nx.DiGraph, directory: Directory) -> None:
             newest = max(newest, Path(f.url).stat().st_mtime)
         except (OSError, ValueError):
             continue
+    # Which crate each Rust file is compiled in starts from cargo's targets: a
+    # package's directory need not be named after it.
+    crate_roots: dict[str, str] = {}
+    if any(d.get("language") == "rust" for _, d in graph.nodes(data=True)):
+        from codecarto.services import cargo_service
+
+        for package in cargo_service.read(root).packages:
+            for target in package.targets if package.member else ():
+                if target.src:
+                    crate_roots[str(Path(root) / target.src)] = target.name.replace("-", "_")
     for path in maps:
         link_map = link_map_service.read(path)
         if not link_map.ok:
             continue
         recorded_at, _ = link_map_service.age(path)
         link_map_service.annotate(graph, link_map, owner=path.stem, recorded_at=recorded_at,
-                                  stale=newest > path.stat().st_mtime)
+                                  stale=newest > path.stat().st_mtime, crate_roots=crate_roots)
 
 
 def _file_key(file: File) -> str:
