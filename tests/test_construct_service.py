@@ -9,6 +9,7 @@ draws.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -129,6 +130,7 @@ def test_a_kind_that_is_not_a_construct_says_why():
 
 
 def test_c_adapter_kinds_are_all_mapped():
+    """Mutation: drop `macro` from the vocabulary's `c.kinds` -- this fails."""
     c_kinds = c_language_parser._DEPTH_2_KINDS | c_language_parser._DEPTH_3_KINDS
     assert c_kinds == set(VOCABULARY.languages["c"].kinds)
 
@@ -136,7 +138,8 @@ def test_c_adapter_kinds_are_all_mapped():
 def test_c_reference_design_and_the_vocabulary_agree():
     """C's adapter carries the c-visualizer design; the vocabulary carries the
     same looks for the same constructs, so a Rust struct is drawn as a C one.
-    When the two disagree, the vocabulary is the one to keep."""
+    When the two disagree, the vocabulary is the one to keep. Mutation: change
+    `_C_COLOR["struct"]` -- this fails."""
     disagree = []
     for kind, construct_id in VOCABULARY.languages["c"].kinds.items():
         look = VOCABULARY.get(construct_id).look
@@ -358,6 +361,33 @@ def test_the_graph_puts_the_construct_at_the_centre_and_colours_tokens_by_layer(
     rust_edge = graph.edges[root, "language:rust"]
     assert rust_edge["style"] == "dashed"
     assert "read_volatile" in graph.nodes["language:rust"]["hover"]
+
+
+PANEL_FIXTURE = Path(__file__).resolve().parent.parent / "web/tests/pure/fixtures/chrestomathy-readings.json"
+
+
+def test_the_panels_fixture_is_what_the_server_sends():
+    """The Chrestomathy panel's pure test reads its rows from this fixture, so
+    they are the rows `reading` sends -- the test carried an assembly row for a
+    record, which the server never sends. When the server's rows change, so
+    must the fixture: `uv run python -c "import json; from codecarto.services
+    import construct_service as c; print(json.dumps({k: c.reading(k)['languages']
+    for k in ('type.product', 'memory.volatile')}, indent=2, ensure_ascii=False))"`.
+    Mutation: add a row to the fixture -- this fails."""
+    fixture = json.loads(PANEL_FIXTURE.read_text(encoding="utf-8"))
+    for construct, rows in fixture.items():
+        assert rows == construct_service.reading(construct)["languages"], construct
+
+
+def test_a_drawn_token_says_whose_it_is():
+    """An ordinal is a rank in one lexicon, so the key names a layer by
+    language where two share a number -- which it can only do for a node that
+    says its language. Mutation: drop `language` from the token node -- this
+    fails."""
+    graph = construct_service.as_graph("control.loop")
+    tokens = [(n, d) for n, d in graph.nodes(data=True) if d["kind"] == "token"]
+    assert {d.get("language") for _, d in tokens} == {"c", "rust", "python"}
+    assert all(n.startswith(f"token:{d['language']}:") for n, d in tokens)
 
 
 def test_a_token_is_drawn_on_the_layer_of_the_sense_that_spells_the_construct():

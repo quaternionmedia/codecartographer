@@ -24,11 +24,13 @@ this table is a reading of it.
 | Topology | `topology-panel` | Choose one of the harness's flows, or ask what the archive says about a project; the drawing goes to the canvas |
 | Capabilities | `capabilities-panel` | The corpus's capability registry: each declaration and the rung it claims; draw them |
 | Overview | `overview-panel` | dossier's reading of the estate: masthead figures and sections; draw them |
+| Cargo | `cargo-panel` | A Rust workspace by path: which engine read it, its crates, the recorded documents and whether each is current, the device target; draw the crate graph, with features or locked dependencies if asked |
+| Chrestomathy | `chrestomathy-panel` | One construct set beside itself in each of C, Rust, Python, assembly and the linker script, every language `constructs.yaml` lists: each language's tokens with their abstraction layer, its parser kinds, and its note -- a language with no spelling is a row with its note, or one saying the vocabulary records none; draw it |
 
 **Default layout** (`default_layout.ts`): Graph on top; below it Files on the
 left and a tab stack of Upload (active), Repository, Graph Settings, Actions and
-Estate. Topology, Capabilities and Overview are opened from the **`+`** menu in
-the header — or from a live row in the Estate panel — because each asks its seam
+Estate. Topology, Capabilities, Overview, Cargo and Chrestomathy are opened
+from the **`+`** menu in the header — or from a live row in the Estate panel — because each asks its seam
 on open, and a fresh workstation has none up.
 
 **Adding, restoring, saving.** The `+` button (and right-click on the dock) opens

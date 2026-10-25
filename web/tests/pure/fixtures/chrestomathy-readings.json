@@ -1,0 +1,158 @@
+{
+  "type.product": [
+    {
+      "language": "c",
+      "display_name": "C",
+      "has_lexicon": true,
+      "tokens": [
+        {
+          "token": "struct",
+          "contexts": [
+            {
+              "kind": "keyword",
+              "layer_ordinal": 2,
+              "layer_name": "Aggregate & user-defined types",
+              "group": "aggregate",
+              "role": "",
+              "since": ""
+            }
+          ]
+        }
+      ],
+      "kinds": [
+        "struct"
+      ],
+      "carried_by": [],
+      "note": ""
+    },
+    {
+      "language": "rust",
+      "display_name": "Rust",
+      "has_lexicon": true,
+      "tokens": [
+        {
+          "token": "struct",
+          "contexts": [
+            {
+              "kind": "keyword",
+              "layer_ordinal": 2,
+              "layer_name": "Aggregate & user-defined types",
+              "group": "aggregate",
+              "role": "",
+              "since": ""
+            }
+          ]
+        }
+      ],
+      "kinds": [
+        "struct"
+      ],
+      "carried_by": [],
+      "note": "Layout is the compiler's choice unless #[repr(C)] fixes it to C's."
+    },
+    {
+      "language": "python",
+      "display_name": "Python",
+      "has_lexicon": true,
+      "tokens": [
+        {
+          "token": "class",
+          "contexts": [
+            {
+              "kind": "keyword",
+              "layer_ordinal": 1,
+              "layer_name": "Structure & definition",
+              "group": "definition",
+              "role": "",
+              "since": ""
+            }
+          ]
+        }
+      ],
+      "kinds": [],
+      "carried_by": [],
+      "note": "A class holding fields; @dataclass is the closest spelling."
+    },
+    {
+      "language": "assembly",
+      "display_name": "Assembly",
+      "has_lexicon": false,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "constructs.yaml records no Assembly spelling of product type."
+    },
+    {
+      "language": "linker",
+      "display_name": "Linker script",
+      "has_lexicon": false,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "constructs.yaml records no Linker script spelling of product type."
+    }
+  ],
+  "memory.volatile": [
+    {
+      "language": "c",
+      "display_name": "C",
+      "has_lexicon": true,
+      "tokens": [
+        {
+          "token": "volatile",
+          "contexts": [
+            {
+              "kind": "keyword",
+              "layer_ordinal": 0,
+              "layer_name": "Storage & memory placement",
+              "group": "access qualifier",
+              "role": "",
+              "since": ""
+            }
+          ]
+        }
+      ],
+      "kinds": [],
+      "carried_by": [
+        "qualifier volatile"
+      ],
+      "note": "A type qualifier: every access through such an lvalue is a side effect."
+    },
+    {
+      "language": "rust",
+      "display_name": "Rust",
+      "has_lexicon": true,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "No keyword: core::ptr::read_volatile and write_volatile, chosen per access rather than per type."
+    },
+    {
+      "language": "python",
+      "display_name": "Python",
+      "has_lexicon": true,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "constructs.yaml records no Python spelling of volatile access."
+    },
+    {
+      "language": "assembly",
+      "display_name": "Assembly",
+      "has_lexicon": false,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "constructs.yaml records no Assembly spelling of volatile access."
+    },
+    {
+      "language": "linker",
+      "display_name": "Linker script",
+      "has_lexicon": false,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "constructs.yaml records no Linker script spelling of volatile access."
+    }
+  ]
+}

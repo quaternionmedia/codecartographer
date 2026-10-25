@@ -154,9 +154,9 @@ export class LayoutContext {
    * the selection was kept and not applied until somebody pressed draw again,
    * which nobody guesses. Every panel that draws goes through this.
    */
-  public async plotWith(action: () => Promise<void>): Promise<void> {
-    this._lastPlotAction = action;
-    await action();
+  public async plotWith<T>(action: () => Promise<T>): Promise<T> {
+    this._lastPlotAction = async () => { await action(); };
+    return action();
   }
 
   public updatePanelState(updates: Partial<ControlPanelState>): void {
