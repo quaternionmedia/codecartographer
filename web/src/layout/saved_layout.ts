@@ -30,7 +30,21 @@ export type SavedLayout =
 
 type Item = { type?: unknown; componentType?: unknown; id?: unknown; content?: unknown; activeItemIndex?: unknown };
 
-/** Every `componentType` a layout names, in its root and in any open popout. */
+/**
+ * The root Golden Layout 2.6 loads from a layout or a popout: `root`, or when
+ * that is absent the legacy `content[0]` (`LayoutConfig.resolve` and
+ * `PopoutLayoutConfig.resolve` both read it so). `content` beside a `root` is
+ * not read.
+ */
+function rootOf(config: { root?: unknown; content?: unknown }): unknown {
+  if (config.root !== undefined) return config.root;
+  return Array.isArray(config.content) && config.content.length > 0 ? config.content[0] : undefined;
+}
+
+/**
+ * Every `componentType` a layout names, in its root and in any open popout,
+ * a popout's own popouts included, wherever Golden Layout reads a root.
+ */
 export function componentTypesIn(config: unknown): string[] {
   const found: string[] = [];
   const walk = (item: unknown): void => {
@@ -39,20 +53,24 @@ export function componentTypesIn(config: unknown): string[] {
     if (typeof componentType === 'string') found.push(componentType);
     if (Array.isArray(content)) content.forEach(walk);
   };
-  const { root, openPopouts } = (config ?? {}) as { root?: unknown; openPopouts?: unknown };
-  walk(root);
-  if (Array.isArray(openPopouts)) {
-    for (const popout of openPopouts) walk((popout as { root?: unknown } | null)?.root);
-  }
+  const layout = (config: unknown): void => {
+    if (!config || typeof config !== 'object') return;
+    const { openPopouts } = config as { openPopouts?: unknown };
+    walk(rootOf(config as { root?: unknown; content?: unknown }));
+    if (Array.isArray(openPopouts)) openPopouts.forEach(layout);
+  };
+  layout(config);
   return found;
 }
 
 /**
- * Rename the windows in `renamed`. Where several land on one id, the first in
+ * Rename the windows in `renamed`, wherever Golden Layout reads a root, as
+ * `componentTypesIn` reads them. Where several land on one id, the first in
  * the layout stays and the rest go, and a stack, row or column they leave
  * empty goes too. A stack's active tab stays on the window it showed: the one
- * it merged into when that is in the same stack, else the one before it. Returns the old ids found. Mutates `config`, which the caller
- * has just parsed.
+ * it merged into when that is in the same stack, else the one before it.
+ * Returns the old ids found. Mutates `config`, which the caller has just
+ * parsed.
  */
 export function renamePanels(config: Record<string, unknown>, renamed: Readonly<Record<string, string>>): string[] {
   const found = new Set<string>();
@@ -97,16 +115,21 @@ export function renamePanels(config: Record<string, unknown>, renamed: Readonly<
     return emptied ? null : it;
   };
 
-  config.root = visit(config.root) ?? undefined;
-  const popouts = config.openPopouts;
-  if (Array.isArray(popouts)) {
-    for (const popout of popouts) {
-      if (popout && typeof popout === 'object') {
-        const p = popout as { root?: unknown };
-        p.root = visit(p.root) ?? undefined;
-      }
+  /** A layout or a popout: the root Golden Layout reads (`rootOf`), then its popouts. */
+  const visitLayout = (layout: unknown): void => {
+    if (!layout || typeof layout !== 'object') return;
+    const l = layout as { root?: unknown; content?: unknown; openPopouts?: unknown };
+    if (l.root !== undefined) {
+      l.root = visit(l.root) ?? undefined;
+    } else if (Array.isArray(l.content) && l.content.length > 0) {
+      const stays = visit(l.content[0]);
+      if (stays === null) l.content = [];
+      else l.content[0] = stays;
     }
-  }
+    if (Array.isArray(l.openPopouts)) l.openPopouts.forEach(visitLayout);
+  };
+
+  visitLayout(config);
   return [...found];
 }
 

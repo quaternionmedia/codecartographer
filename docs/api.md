@@ -194,9 +194,9 @@ from the cache (`from_cache: true`) instead of re-parsing.
 
 After a fresh stream completes (the `done` event is emitted), the full
 accumulated graph is automatically written to cache — subsequent requests
-with the same URL, mode, layout, and extensions are served as instant
-replays without re-parsing. A stream that carried a `note` is not written:
-its replay would arrive without it.
+with the same URL, mode, layout, and extensions, under the same graph schema
+version, are served as instant replays without re-parsing. A stream that
+carried a `note` is not written: its replay would arrive without it.
 
 ---
 
@@ -270,7 +270,15 @@ Two demo and rendering routes. To parse, use `/parse/unified`.
 
 ### POST `/plotter/demo`
 
-Generate a demo graph from the codecarto source code itself.
+Generate a demo graph from the codecarto source code itself: the `.py` files of
+this repository's `codecarto/` package, read through
+`UnifiedParserService.parse` as every other parse is read. `parse_by` sets only
+the depth (`plotter_router.py`, `_DEMO_MODE_TO_DEPTH`):
+
+| `parse_by` | `depth` | output |
+|------------|---------|--------|
+| `directory` | 1 | directories and files |
+| anything else (`ast`, `dependencies`, the default `code`) | 2 | + symbols and file-to-file dependency edges |
 
 **Request Body:**
 ```json
@@ -558,7 +566,10 @@ served directly from the cache without an additional GitHub API call.
 ### GET `/repo/expand-all`
 
 Expand all folders in a partial GitHub repo tree to `max_depth` (default 3),
-returning a full `Directory` with `is_partial: false`.
+returning a `Directory`. It is `is_partial: true` when any folder in it was
+left unlisted -- one below `max_depth`, or one GitHub refused to list -- and
+each such folder is an empty `Folder`, which the Files panel then draws with
+`…` to read on click. A refused root is an error, not an empty tree.
 
 **Query Parameters:** `url`, `max_depth` (optional, default 3)
 

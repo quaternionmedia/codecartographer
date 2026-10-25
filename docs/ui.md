@@ -3,39 +3,47 @@
 This page says where everything in the browser window is and how to reach it:
 the panels, the canvas, the radial menu and the header. Where it and the code
 disagree, the code is right and this page is repaired; `tests/test_docs_routes.py`
-reads the panel ids, the ring items and the menu keys against the code.
+reads the panel ids, each ring's items in order and the menu keys against the
+code.
 
 ## The window
 
 A header runs across the top, and under it a dock of panels
 ([Golden Layout](https://golden-layout.github.io/golden-layout/)). Each panel is
 a tab: drag a tab to move it or stack it with others, drag a divider to resize,
-and click a tab's ✕ to close it.
+and click a tab's ✕ to close it. The dock has no menu of its own: a right-click
+on the canvas opens the [radial menu](#the-radial-menu), and anywhere else it is
+the browser's.
 
 **The default arrangement** (`web/src/layout/default_layout.ts`) is the Graph
 panel across the top and, below it, Files on the left beside a stack of Open (in
 front), Graph Settings and Estate.
 
-**The header's `+` button is the one way to add a window.** Its menu lists every
-panel that is not in the layout, closed ones included, and under *Layout*
-offers *Save current as default* and *Reset to built-in default*. A panel it
-adds joins the stack whose tab was last clicked, or else the stack holding the
-most panels, and never the Graph panel's own stack while another stack exists,
-so the canvas stays in view.
+**The header's `+` button is the one menu that adds a window.** Its menu lists
+every panel that is not in the layout, closed ones included, and under *Layout*
+offers *Save current as default* and *Reset to built-in default*. It takes the
+focus when it opens, and gives it back to `+` when it closes.
 
-A panel also comes forward when something loads data for it:
+A panel also opens, or comes forward, when something loads data for it:
 
 - a live row in the Estate panel opens the panel that draws its seam;
 - View ▸ Compare in the [node ring](#node-ring) opens Chrestomathy;
 - a bundled Cargo example in the [Open panel](#open) opens Cargo;
+- a `?show=` address opens [Show](#show);
 - the Topology, Capabilities, Overview, Cargo and Chrestomathy panels bring the
   Graph panel to the front when they have drawn.
+
+A panel added, from the menu or any of these, joins the stack whose tab was
+last clicked, or else the stack holding the most panels, and never the Graph
+panel's own stack while another stack exists, so the canvas stays in view.
 
 **A saved layout** is kept in the browser (`localStorage`, key
 `cc:gl-layout:default`). One that names a window this version does not have is
 dropped, a toast says which, and the default loads. A layout saved with the
 Upload, Repository and Actions windows loads with the Open window in their
-place.
+place, and a toast says so once. Its windows are read where Golden Layout reads
+them: in its root, or a legacy layout's `content[0]`, and in every open popout,
+a popout's own popouts included.
 
 ## Panels
 
@@ -62,8 +70,9 @@ so that in the default arrangement they are in view without scrolling:
   its size, and its ✕ clears the repository and any added files.
 - **Local files**: drop them on the box or click it to browse. They are listed
   in the Files panel.
-- **Demo and lexicons**: ⚡ Load Demo draws a sample graph, and each language
-  with a lexicon has a 📖 button that draws it.
+- **Demo and lexicons**: ⚡ Load Demo draws CodeCartographer's own source as a
+  sample graph, from one `POST /plotter/demo` answer rather than a stream, and
+  each language with a lexicon has a 📖 button that draws it.
 - **The examples**, by language, Rust first. A bundled example leads its group
   as a filled chip: it is read from this checkout with the documents its build
   recorded, so it needs no network, and a Cargo workspace's records go to the
@@ -204,8 +213,12 @@ marked ·. Click a folder to open or close it, and a file to draw that file
 alone. A file from GitHub has a *raw* link beside its name that opens its
 contents in a new tab; a file read from disk has none, since the browser cannot
 open it. In a large repository a folder marked … has not been read; click it to
-read it, or **⊞ Expand All** to read them all. With nothing loaded, it points at
-the Open panel.
+read it, or **⊞ Expand All** to read them all. A folder is read from the
+repository its tree is of, whatever the URL field holds since, and is marked ↻
+while it reads. A read that fails leaves the folder unread, a toast says so,
+and the next click reads it again. Neither a folder's read nor Expand All
+touches a stream in flight: its ⏹ Cancel and its progress stay. With nothing
+loaded, it points at the Open panel.
 
 ### Graphbase
 
@@ -234,8 +247,9 @@ Id `graph-settings-panel`. In the default arrangement.
 - **Layout**, open by default. *Algorithm* (D3 only) re-draws whatever is on the
   canvas with the chosen layout; *Compound* nests symbols around their files and
   files around their directories. *Physics*, *Repulsion* and *Link Distance*
-  (Gravis only) drive vis-network's simulation. *Group Outlines* (D3 only)
-  circles each directory and file group.
+  (Gravis only) drive vis-network's simulation. *Group Outlines* (D3 only, on by
+  default) circles each directory and file group, under every layout, where
+  the layout put it.
 - **Visual**, folded: *Node Labels* (and per depth: Dir, File, Sym, Sub), *Node
   Size*, *Color By* (depth and kind, abstraction layer, or construct across
   languages), *Node Opacity*, *Border Width*, *Edge Labels*, *Edge Width*, *Edge
@@ -247,8 +261,11 @@ Id `graph-settings-panel`. In the default arrangement.
 ## The canvas
 
 - **Zoom** with the scroll wheel; **pan** by dragging the background.
-- **Drag a node** to move it; what is drawn inside it (a directory's files, a
-  file's symbols) moves with it.
+- **Drag a node** to move it. Once a graph's group outlines have been drawn,
+  what is drawn inside the node (a directory's files, a file's symbols) moves
+  with it, and the outlines are drawn again where the drag ends, even after
+  Group Outlines is turned off; a graph drawn with it off moves one node at a
+  time ([Compound layout](architecture.md#compound-layout)).
 - **Hover** a node for its tooltip.
 - **Double-click a node** that names a file to open its source: the file's page
   on GitHub at the node's line, or at the top of the file when it has none. For
@@ -306,7 +323,7 @@ A greyed item is offered but not available here; choosing it closes the ring.
 
 | | Item | Does |
 |---|---|---|
-| 1 | **Expand** | Asks the server for what lies under the node, using the directory the last parse read, and adds it. Greyed on a sub-symbol, which has nothing under it |
+| 1 | **Expand** | Asks the server (`POST /parse/expand`) for what lies under the node, using the directory the last parse read, and adds it. Greyed on a sub-symbol, which has nothing under it |
 | 2 | **Collapse** | Removes what is drawn under the node. Greyed when nothing is |
 | 3 | **Neighbors** | Selects the node and every node one edge away |
 | 4 | **Pin** / **Unpin** | Marks the node with a gold outline |
@@ -363,10 +380,12 @@ the chosen nodes.
 - **GH**: whether the server reaches GitHub with a token. Green when it does,
   *GH?* when it does not, with a tooltip naming the token's source or how to
   give it one.
-- **`?`**: the walkthrough. It opens by itself on a first visit; Escape, ×, or
-  a click outside it closes it, and that is remembered in the browser.
+- **`?`**: the walkthrough, in four steps. It opens by itself on a first visit;
+  Escape, ×, or a click outside it closes it, and that is remembered in the
+  browser.
 
 ## What the window does not have
 
-There are no deep links or URL parameters, no menu on a right-click in the dock,
-and no chords: the ring's chord words are defined and nothing listens for them.
+The page's address holds nothing but a Show drawing (`?show=`, under
+[Show](#show)). There is no menu on a right-click in the dock, and there are no
+chords: the ring's chord words are defined and nothing listens for them.

@@ -9,6 +9,7 @@
 import m from 'mithril';
 import type { LayoutContext } from '../layout_context';
 import { DirectoryContent } from '../../components/qm_comp_lib/directory/directory';
+import { hasTree } from '../../features/repository/repo_tree';
 
 export function createFileTreePanel(ctx: LayoutContext): m.Component {
   return {
@@ -16,8 +17,8 @@ export function createFileTreePanel(ctx: LayoutContext): m.Component {
       const state = ctx.appState.state;
       const repoDir = state.repo.content;
       const localDir = state.local.content;
-      const hasRepo = repoDir && repoDir.size > 0;
-      const hasLocal = localDir && localDir.size > 0;
+      const hasRepo = hasTree(repoDir);
+      const hasLocal = hasTree(localDir);
 
       return m('div.gl-panel.gl-panel--file-tree', [
         // Repository tree

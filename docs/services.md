@@ -336,10 +336,10 @@ one read the same way.
   on addresses a placed section already holds (an `(INFO)` section such as
   defmt's).
 - **On the crate graph**, the binary's target says its fill per region, and
-  the map is a document row with its age. Once anything the link reads
-  changes after it -- a source, a linker script, a manifest; not a README --
-  the map is not used, as a stale `metadata.json` is not, and the row, the
-  caveat and the code map's regions say why. Both judge it by
+  the map is a document row with its age. Once anything the link reads changes
+  after it -- a source, a linker script, a manifest; not a README -- the map is
+  not used, as a stale `metadata.json` is not, and the row, the caveat and the
+  code map's regions say why. Both ask `newest_input`, so both judge it by
   `link_map_service.link_input`.
 
 What it cannot see: inlined code has no symbol, so its bytes are its caller's;
@@ -385,7 +385,7 @@ separate.
 | `list_cached()` | List all cached entries |
 | `evict(key)` | Remove one cached entry |
 | `get_tree(url)` / `set_tree(url, data)` | Cache a fetched repo tree separately from parsed graphs |
-| `evict_repo(url)` | Remove a cached repo tree |
+| `evict_repo(url)` | Remove the repository's directory: its tree, every graph, their `index.json` entries and, for GitHub, `CParserService`'s extracted source, which shares the directory. No route calls it |
 
 ---
 
@@ -405,7 +405,7 @@ generic `/parse/*` path via `c_language_parser.py` — see
 | `parse_file(path)` | Parse a single C/H file |
 | `parse_directory(path, ...)` | Parse a local directory, with an optional per-file progress callback |
 | `parse_github(...)` | Parse a GitHub repo's C/H files |
-| `list_cached_repos()` / `evict_repo_cache(key)` | Manage this service's own repo-tree cache |
+| `list_cached_repos()` / `evict_repo_cache(key)` | List and remove the extracted source trees; removing one removes the whole `{owner}-{repo}/` directory, `CacheService`'s tree and graphs with it, and leaves their `index.json` entries |
 
 ---
 

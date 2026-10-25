@@ -75,8 +75,11 @@ async def get_repo_directory_tree(url: str) -> dict:
 async def expand_all_repo(url: str, max_depth: int = 3) -> dict:
     """Expand all folders in a partial repo to *max_depth* without downloading file content.
 
-    Returns a full Directory model (is_partial=False) whose Folder tree covers
-    all directories up to the requested depth.  Files are listed as stubs (raw='').
+    Returns a Directory model whose Folder tree covers all directories up to
+    the requested depth.  Files are listed as stubs (raw=''). It is marked
+    is_partial when any folder in it was left unlisted -- below *max_depth*, or
+    refused by GitHub -- since each is an empty Folder like an empty folder,
+    and the Files panel offers an empty folder its read only in a partial tree.
     """
     try:
         Log.info(f"Expanding all folders: {url} (max_depth={max_depth})")
@@ -96,10 +99,12 @@ async def expand_all_repo(url: str, max_depth: int = 3) -> dict:
 
         owner, repo_name = get_owner_repo_from_url(url)
         token = get_github_token()
-        root_folder = await expand_all_tree(owner, repo_name, token, max_depth)
+        root_folder, unlisted = await expand_all_tree(owner, repo_name, token, max_depth)
         root_folder.name = f"{owner}/{repo_name}"
         info = RepoInfo(owner=owner, name=repo_name, url=url)
-        directory = Directory(info=info, size=root_folder.size, root=root_folder, is_partial=False)
+        directory = Directory(
+            info=info, size=root_folder.size, root=root_folder, is_partial=bool(unlisted)
+        )
         return generate_return(200, "expand_all_repo - Success", directory.model_dump())
     except CodeCartoException as exc:
         return proc_exception(exc.source, exc.message, exc.params, exc, exc.status_code)
