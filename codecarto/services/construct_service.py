@@ -104,7 +104,7 @@ def load() -> Vocabulary:
 
 def construct_for(language: str, kind: str, meta: dict | None = None) -> str | None:
     """The construct a node of *language* and *kind* is, or None."""
-    mapping = load().languages.get(language)
+    mapping = load().mapping(language)
     if mapping is None:
         return None
     return _construct(mapping, kind, meta or {})
@@ -163,7 +163,7 @@ def stamp(data: dict) -> bool:
     The one place a node's construct is decided -- a graph being drawn, a
     cached graph being replayed and a census all come here."""
     vocabulary = load()
-    mapping = vocabulary.languages.get(str(data.get("language", "")))
+    mapping = vocabulary.mapping(str(data.get("language", "")))
     if mapping is None:
         return False
     meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
@@ -356,7 +356,7 @@ def census(nodes: Iterable[dict]) -> dict[str, Any]:
         if not language:
             unlabelled += 1
             continue
-        if language not in vocabulary.languages:
+        if vocabulary.mapping(language) is None:
             outside[language] = outside.get(language, 0) + 1
             continue
         data = {k: v for k, v in node.items() if k != "meta"}

@@ -167,6 +167,12 @@ language with no spelling gets a `note` saying how it does without. A parser may
 `construct_service.annotate(graph)` itself; the pipeline calls it on every parse
 regardless, and a look the parser set is never overwritten.
 
+A graph a service draws that is no language's parse -- the crate graph -- maps
+its kinds under `graphs:` instead, in the same shape. Its nodes are stamped
+and the census places them, but it is no row of the chrestomathy: nothing is
+written in it, and under `languages:` every construct would carry a row saying
+it records no spelling there.
+
 ### Unified node schema helpers
 
 ```python

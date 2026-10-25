@@ -78,12 +78,35 @@ def test_the_crate_graph_says_a_crate_is_a_package():
 
 
 def test_every_cargo_kind_the_vocabulary_maps_is_one_the_crate_graph_draws():
-    """The `cargo` language maps the kinds `cargo_service` draws -- a mapping
+    """The `cargo` graph maps the kinds `cargo_service` draws -- a mapping
     for a kind it never emits is a construct nothing could be."""
     graph = cargo_service.as_graph(cargo_service.read(WORKSPACE), features=True, transitive=True)
     drawn = {d.get("kind") for _, d in graph.nodes(data=True)}
-    assert set(VOCABULARY.languages["cargo"].kinds) <= drawn
+    assert set(VOCABULARY.graphs["cargo"].kinds) <= drawn
     assert {d.get("language") for _, d in graph.nodes(data=True)} == {"cargo"}
+
+
+def test_the_crate_graph_is_placed_and_is_no_row_of_any_chrestomathy():
+    """Cargo is a graph a service draws, not a language anything is written
+    in: listed under `languages:`, every construct's chrestomathy gained a row
+    saying constructs.yaml records no Cargo manifest spelling of it. Under
+    `graphs:` its nodes are still stamped and the census places them.
+    Mutations: list `cargo` under `languages:` again -- the row check fails;
+    drop `graphs` from `Vocabulary.mapping` -- the census places nothing."""
+    assert "cargo" not in VOCABULARY.languages
+    assert not set(VOCABULARY.languages) & set(VOCABULARY.graphs)
+    rows = {(c.id, row["language"]) for c in VOCABULARY.constructs
+            for row in construct_service.reading(c.id)["languages"]}
+    assert not {r for r in rows if r[1] in VOCABULARY.graphs}, "a graph is a chrestomathy row"
+
+    graph = cargo_service.as_graph(cargo_service.read(WORKSPACE))
+    found = construct_service.census(
+        [{"id": n, **{k: d.get(k) for k in ("language", "kind")}} for n, d in graph.nodes(data=True)])
+    package = next(r for r in found["constructs"] if r["id"] == "namespace.package")
+    crates = [n for n, d in graph.nodes(data=True) if d.get("kind") in ("crate", "external_crate")]
+    assert sorted(package["ids"]) == sorted(crates)
+    assert [l["language"] for l in package["languages"]] == ["cargo"]
+    assert found["outside"] == []
 
 
 @requires_libclang

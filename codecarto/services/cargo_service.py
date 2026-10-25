@@ -1025,7 +1025,9 @@ def _count_label(counts: dict[str, int]) -> str:
 def as_graph(reading: Reading, features: bool = False, transitive: bool = False):
     graph = _as_graph(reading, features, transitive)
     # Every node is read from cargo's answer, so the vocabulary reads it as
-    # `cargo` -- a crate is a package there, beside C's and Python's.
+    # the `cargo` graph (constructs.yaml's `graphs:`, no language's parse) --
+    # a crate is a package there, the construct a C library or a Python
+    # distribution is.
     for _, data in graph.nodes(data=True):
         data.setdefault("language", "cargo")
     return graph

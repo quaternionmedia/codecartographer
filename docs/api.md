@@ -751,7 +751,9 @@ parser `kinds` that realise it, what `carried_by` a facet in source (`#[interrup
 `languages:` is a row of every construct, never a missing one**: a language with
 no spelling has its note -- Rust has no `volatile`, C has no method -- and one the
 vocabulary records nothing for has a note saying so. C, Rust, Python, assembly and
-the linker script are listed, so each is a row of every construct. An unknown construct
+the linker script are listed, so each is a row of every construct. The crate
+graph's nodes (`language: cargo`) are mapped under `graphs:`, which places them
+without making Cargo a row: nothing is written in it. An unknown construct
 is a 200 with `unreadable`, `problem` and the known ids as `remedy`.
 
 ### POST `/lexicon/chrestomathy/census`
@@ -760,8 +762,9 @@ The chrestomathy of a graph. Body: `{"nodes": [{"id", "language", "kind",
 "construct"?, "meta"?: {"facets"?}}]}` -- the nodes on the canvas. Answers the
 `constructs` and `facets` present, each with its `name`, `gloss`, `look`,
 `count`, the `languages` it occurs in with their counts, and the `ids` of the
-nodes that are it; then what was not placed: `unplaced` (a listed language's
-kind the vocabulary does not map), `outside` (a language it does not list) and
+nodes that are it; then what was not placed: `unplaced` (a kind of a listed
+language, or of a graph under `graphs:`, the vocabulary does not map), `outside`
+(a language it lists in neither) and
 `unlabelled` (no language at all), with the `caveat`. A node that arrived
 without a stamp is stamped by the same rule as a drawn graph; nothing sent is
 changed.
