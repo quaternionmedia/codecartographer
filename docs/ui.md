@@ -200,9 +200,11 @@ Id `graph-settings-panel`. In the default arrangement.
 - **Layout**, open by default. *Algorithm* (D3 only) re-draws whatever is on the
   canvas with the chosen layout; *Compound* nests symbols around their files and
   files around their directories. *Physics*, *Repulsion* and *Link Distance*
-  (Gravis only) drive vis-network's simulation. *Group Outlines* (D3 only)
-  circles each group in a translucent dashed outline: grey around a
-  directory's, purple around a file's.
+  drive vis-network's simulation and are offered on Gravis only, the one
+  renderer that runs one; *Repulsion* and *Link Distance* show while *Physics*
+  is on. `renderer_controls.rendererControls` says which controls each renderer
+  takes. *Group Outlines* (D3 only) circles each group in a translucent dashed
+  outline: grey around a directory's, purple around a file's.
 - **Visual**, folded: *Node Labels* (and per depth: Dir, File, Sym, Sub), *Node
   Size*, *Color By* (depth and kind, abstraction layer, or construct across
   languages), *Node Opacity*, *Border Width*, *Edge Labels*, *Edge Width*, *Edge
@@ -217,10 +219,9 @@ Id `graph-settings-panel`. In the default arrangement.
 - **Drag a node** to move it; what is drawn inside it (a directory's files, a
   file's symbols) moves with it.
 - **Hover** a node for its tooltip.
-- **Double-click a node** that names a file to open its source: the file's page
-  on GitHub at the node's line, or at the top of the file when it has none. For
-  a file read from disk, which the browser cannot open, a badge beside the node
-  names the file and line. A double-click anywhere else zooms in.
+- **Double-click a node** that names a file to open its source, as
+  [A node's source](#a-nodes-source) says. A double-click anywhere else zooms
+  in.
 - When a stream finishes, the view fits the whole graph.
 - **The legend** sits at the bottom left. Its header gives the totals; click it
   to list the node and edge kinds actually drawn, each with its swatch and
@@ -242,6 +243,22 @@ Id `graph-settings-panel`. In the default arrangement.
   side count, and says it: *Struct · 4 sides*.
 - **Right-click** opens the [radial menu](#the-radial-menu).
 
+### A node's source
+
+A double-click on a node and View ▸ Source in the [node ring](#node-ring) open
+the same place, by one rule: `node_info.sourceTarget` decides where, and
+`streaming_renderer.openSource` opens it for both.
+
+| The node | What opens |
+|---|---|
+| A file or a symbol from a GitHub repository | The file's page on GitHub in a new tab, at the node's line. A file, and a Python symbol, whose parser records no line, open at the top |
+| A file or a symbol from a local checkout or an upload, which the browser cannot open | A badge beside the node for a few seconds, naming the node, the file's path and the line. It is kept wholly inside the window; a path wider than the window wraps |
+| A node that names no file, such as a directory | Nothing: Source is greyed, and a double-click zooms in, as it does off the nodes |
+
+A C symbol names its file only by the file's stem, and a Python symbol by
+`module.py`; both open where the file node they are drawn inside says the file
+is.
+
 ## The radial menu
 
 A ring of choices around the pointer, for the node, the selection or the
@@ -260,7 +277,8 @@ survive Relayout.
   the press. Slide to an item and lift to choose it; lift in the centre or
   outside the ring to cancel; slide out past an item with a ▸ to open its
   submenu.
-- **`m`** on the focused canvas opens a ring at its centre.
+- **`m`** on the focused canvas opens a ring at its centre. The context-menu key
+  and Shift+F10 open the same ring as `m` does.
 
 A greyed item is offered but not available here; choosing it closes the ring.
 
@@ -269,8 +287,14 @@ A greyed item is offered but not available here; choosing it closes the ring.
 | Opened | Nothing selected | One node selected | Several nodes selected |
 |---|---|---|---|
 | On a node | node ring, that node | node ring, the node under the pointer | selection ring |
-| Off the nodes | canvas ring | canvas ring | canvas ring |
-| With the key | canvas ring | selection ring | selection ring |
+| Off the nodes: the background, an edge | canvas ring | canvas ring | canvas ring |
+| With a key | canvas ring | node ring, the selected node | selection ring |
+
+`web/src/features/graph/rad/host/menu_context.ts` decides this. A key has no
+pointer and the nodes take no focus, so a key opens on the selection; with one
+node selected it is the only way a key reaches Pin, Collapse and View. The node
+ring has no Deselect, so `Escape` on the canvas with no ring open clears the
+selection, as Deselect does, and every item is reachable without a pointer.
 
 ### Node ring
 
@@ -281,7 +305,7 @@ A greyed item is offered but not available here; choosing it closes the ring.
 | 3 | **Neighbours** | Selects the node and every node one edge away |
 | 4 | **Pin** / **Unpin** | Marks the node with a gold outline |
 | 5 | **Color** ▸ | The [Color submenu](#color-submenu) |
-| 6 | **View** ▸ | **Source** opens the node's source, as a double-click does; greyed on a node that names no file. **Info** shows the node's name, what its parser called it, its construct and where it is. **Compare** opens the Chrestomathy panel at the node's construct; greyed when the vocabulary did not place it. **Focus** frames the node and everything inside it; greyed below files |
+| 6 | **View** ▸ | **Source** opens the node's source, as a double-click does (see [A node's source](#a-nodes-source)); greyed on a node that names no file. **Info** shows the node's name, what its parser called it, its construct and where it is. **Compare** opens the Chrestomathy panel at the node's construct; greyed when the vocabulary did not place it. **Focus** frames the node and everything inside it; greyed below files |
 | 7 | **Hide** | Hides the node |
 | 8 | **Delete** | Removes the node from the canvas; the source is untouched |
 
@@ -311,7 +335,8 @@ A greyed item is offered but not available here; choosing it closes the ring.
 | 7 | **Deselect** | Clears the selection. Greyed when nothing is selected |
 
 Spread, Cluster and Physics keep their places while greyed, so the items after
-them do not move.
+them do not move. The ring acts on the canvas and the selection, never on one
+node, so it has no Color; Color is on the node and selection rings.
 
 ### Color submenu
 
@@ -340,4 +365,7 @@ the chosen nodes.
 ## What the window does not have
 
 There are no deep links or URL parameters, no menu on a right-click in the dock,
-and no chords: the ring's chord words are defined and nothing listens for them.
+and no ring for an edge: a press on an edge opens the canvas ring. There are no
+chords: the ring's chord words are defined in
+`web/src/features/graph/rad/host/vocabulary.ts` and nothing listens for them,
+so no typed word commits a verb.

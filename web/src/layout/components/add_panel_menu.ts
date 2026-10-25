@@ -27,7 +27,8 @@ interface MenuState {
 
 export const AddPanelMenu: m.Component<Attrs, MenuState> = {
   oncreate: (vnode) => {
-    // Armed a tick later, so the click that opened the menu does not close it.
+    // The outside click is armed a tick later, so the click that opened the
+    // menu does not close it; Escape is heard at once (menu_dismissal.ts).
     vnode.state.disarm = closeOnOutsideClickOrEscape(
       document,
       vnode.attrs.onClose,

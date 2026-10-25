@@ -25,7 +25,8 @@ it describes, and each check here fails on a document that disagrees with it:
 - `docs/index.md` links every page under `docs/`;
 - the UI reference names every registered panel, and every key the window
   keeps in `localStorage`; under each radial ring, every item that ring builds,
-  in the order it builds them, and no other; and the keys and the hold that
+  in the order it builds them, and no other, and no section for a ring
+  `resolveGraphMenu` never returns; and the keys and the hold that
   open and move a ring, as the code binds them;
 - the default layout and the source tree agree with the registry and the dev
   proxy;
@@ -946,6 +947,18 @@ def _rings_built() -> dict[str, dict]:
     return rings
 
 
+def _rings_returned() -> set[str]:
+    """{'<Name> ring'} for every ring `resolveGraphMenu` in `resolve.ts` can
+    return: 'Node ring' for a case that returns `nodeRing(...)`'s items. A ring
+    function no case returns is one no press or key opens."""
+    source = (RAD / "host" / "resolve.ts").read_text(encoding="utf-8")
+    body = re.search(r"export function resolveGraphMenu\(.*?\n\}", source, re.S)
+    assert body, "resolveGraphMenu() was not found in resolve.ts; the pattern is stale"
+    rings = {f"{name.capitalize()} ring" for name in re.findall(r"items: (\w+)Ring\(", body[0])}
+    assert rings, "resolveGraphMenu() returns no ring the pattern recognises; it is stale"
+    return rings
+
+
 def _listed(section: str) -> list[str]:
     """The items a ring's section lists, in order: the first bold word of each
     numbered row of its table, or with no table each bold word in turn."""
@@ -960,13 +973,16 @@ def test_ui_reference_names_every_ring_item_in_order_and_no_other():
     section in the UI reference, which lists the ring's items in the order the
     ring builds them, and whose bold words are the labels it offers: all of
     them, and nothing the code does not build. A section for a ring the code
-    does not build is a ring the reader cannot open.
+    does not build is a ring the reader cannot open, and so is a section for a
+    ring function `resolveGraphMenu` never returns: the reference went on
+    listing an Edge ring after nothing opened one.
 
     The order is the ring's: an item's place is where a flick finds it, and
     Expand holds the 12 o'clock wedge. Labels are compared as the code writes
     them: the reference said "Colour" after the menu's label became "Color".
-    Mutations: move Expand from first to last in `nodeRing`, or add an
-    `export function edgeRing` -- this fails.
+    Mutations: move Expand from first to last in `nodeRing`, add an
+    `export function edgeRing`, or have the selection case return
+    `canvasRing(...)` -- this fails.
     """
     rings = _rings_built()
     assert rings and all(r["order"] and r["labels"] for r in rings.values()), (
@@ -976,6 +992,10 @@ def test_ui_reference_names_every_ring_item_in_order_and_no_other():
     wrong = [f"no section '### {name}'" for name in sorted(set(rings) - set(sections))]
     wrong += [f"'### {name}' names a ring resolve.ts does not build"
               for name in sorted(set(sections) - set(rings))]
+    returned = _rings_returned()
+    wrong += [f"'### {name}' names a ring resolveGraphMenu never returns, so no press or key opens it"
+              for name in sorted(set(sections) & set(rings))
+              if name.endswith(" ring") and name not in returned]
     for name in sorted(set(rings) & set(sections)):
         built = rings[name]
         named = set(BOLD.findall(sections[name]))
