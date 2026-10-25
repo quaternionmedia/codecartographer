@@ -141,3 +141,57 @@ def test_slow_work_does_not_hold_up_a_cheap_route(monkeypatch, slow_path, body, 
     assert took < CHEAP_WITHIN, (
         f"/parse/languages took {took:.2f}s while {slow_path} worked for {SLOW}s: "
         f"{slow_path} is blocking the event loop")
+
+
+def test_concurrent_seam_requests_share_one_survey(monkeypatch):
+    """Requests for `/estate/seams` that arrive while a survey runs wait for it.
+
+    A survey holds a threadpool slot for as long as its probes wait, four to
+    twelve seconds with nothing up. One per request, a page that asks again and
+    again fills the pool, and then every `run_in_threadpool` call in the server
+    queues behind them. A survey that has finished is not reused: the next
+    request probes afresh, so a seam brought up shows at once.
+    """
+    calls = []
+    lock = threading.Lock()
+
+    def counted(*_args, **_kwargs) -> list:
+        with lock:
+            calls.append(1)
+        time.sleep(SLOW / 2)
+        return [{"name": "harness", "ok": False}]
+
+    monkeypatch.setattr(estate_service, "survey", counted)
+
+    async def ask(times: int) -> list[httpx.Response]:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            together = await asyncio.gather(*(client.get("/estate/seams") for _ in range(times)))
+            after = await client.get("/estate/seams")
+            return [*together, after]
+
+    answers = asyncio.run(ask(8))
+    assert all(a.status_code == 200 for a in answers)
+    assert all(a.json()["results"]["seams"] == [{"name": "harness", "ok": False}]
+               for a in answers)
+    assert len(calls) == 2, (
+        f"8 concurrent requests and 1 after them ran {len(calls)} surveys: "
+        f"the concurrent ones should share one, and the one after should run its own")
+
+
+def test_a_request_that_goes_away_leaves_the_shared_survey_to_the_rest(monkeypatch):
+    """The first request's client leaving cancels its wait, not the survey."""
+    _waiting.clear()
+    monkeypatch.setattr(estate_service, "survey", _slow_survey)
+
+    async def leave_first() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            first = asyncio.create_task(client.get("/estate/seams"))
+            assert await asyncio.to_thread(_waiting.wait, 5), "the survey never started"
+            second = asyncio.create_task(client.get("/estate/seams"))
+            await asyncio.sleep(SLOW / 8)  # the second is inside its wait by now
+            first.cancel()
+            return await second
+
+    assert asyncio.run(leave_first()).status_code == 200
