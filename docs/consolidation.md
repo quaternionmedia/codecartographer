@@ -49,13 +49,14 @@ usable at that length, and not a thing to write down; it logs the token *kind*
 now.
 
 **The API's address was written down four times, and three were wrong.**
-`appsettings.json` said 8000 (which is what `playwright.config.ts` starts, so it
-was not arbitrary — it was one true case), the container publishes 2020, and the
-trio runs 2718. A build could only ever talk to one of them, and moving the API
-meant rebuilding the front end. Now: `ConfigManager` resolves at runtime
+`appsettings.json` said 8000 (which is what `playwright.config.ts` started then,
+so it was not arbitrary — it was one true case), the container publishes 2020,
+and the trio runs 2718. A build could only ever talk to one of them, and moving
+the API meant rebuilding the front end. Now: `ConfigManager` resolves at runtime
 (injected meta tag → same origin → settings), the dev server proxies API paths
 so development shares an origin like production does, and `playwright.config.ts`
-states the address it starts rather than relying on a constant agreeing with it.
+states the address it starts, 27182, rather than relying on a constant agreeing
+with it.
 
 **`StateController.update` changes state without repainting.** Every other
 action gets away with it because it is reached from a DOM event handler, and
