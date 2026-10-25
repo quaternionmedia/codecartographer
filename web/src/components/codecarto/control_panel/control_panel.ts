@@ -432,7 +432,7 @@ export function ControlPanel(
 
       // Lexicon annotation — stamps abstraction-layer data onto real
       // parsed nodes where the language has a Lexicon (see
-      // docs/llm/roadmap/lexicon.md); pair with the "Color By: Abstraction
+      // docs/roadmap/lexicon.md); pair with the "Color By: Abstraction
       // Layer" styling option to actually see it.
       m('div.panel-settings__group', [
         m('div.panel-settings__toggle-row', [
@@ -469,7 +469,7 @@ export function ControlPanel(
         }, [m('span', '⚡'), m('span', 'Load Demo')]),
 
         // Lexicon: one button per language with an abstraction-layer
-        // ontology (see docs/llm/roadmap/lexicon.md). Switchable/
+        // ontology (see docs/roadmap/lexicon.md). Switchable/
         // extendable — grows automatically as more languages get a
         // lexicon YAML, no UI change needed.
         content.availableLexiconLanguages.length > 0 && callbacks.onLoadLexicon
@@ -757,7 +757,7 @@ export function ControlPanel(
                   m('span.panel-settings__label-compact', 'Color By'),
                   m('select.panel-settings__select', {
                     value: styling.colorBy ?? 'auto',
-                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/llm/roadmap/lexicon.md); Construct mode by what each node is, alike across languages (codecarto/data/constructs.yaml). A node without one keeps its own colour.',
+                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/roadmap/lexicon.md); Construct mode by what each node is, alike across languages (codecarto/data/constructs.yaml). A node without one keeps its own colour.',
                     onchange: (e: Event) => {
                       callbacks.onGraphStylingChange({ colorBy: (e.target as HTMLSelectElement).value });
                     },

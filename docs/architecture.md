@@ -149,6 +149,11 @@ web/src/features/repository/services/
     └── repo_service.ts          # repo tree fetch/expand
 ```
 
+rad's suite, `npm run test:rad` from `web/`, lints and builds the radial menu
+and then runs `node scripts/node-test.mjs tests/rad`, which hands Node's test
+runner each test file by name: Node 22 reads a directory given to `node --test`
+as a module path. The other node suites run through the same script.
+
 ## The unified graph
 
 Every parser produces nodes in one schema, so any renderer draws any language
@@ -161,13 +166,16 @@ how a renderer reads them, are in [Extending](extending.md#the-node-schema).
 | 0 | directory | `dir::<path from the root>` |
 | 1 | file | `file::<path from the root>` |
 | 2 | top-level symbol | the parser's own |
-| 3 | sub-symbol (argument, field, enum constant) | the parser's own |
+| 3 | sub-symbol (argument, field, enum constant, a C function's locals) | the parser's own |
 
 Each language adapter implements the `LanguageParser` protocol
 (`language`, `extensions`, `parse_files(files, depth)`) and registers itself
 with `ParserRegistry` when `codecarto/services/parsers/__init__.py` imports
 it. The registry maps an extension to its parser; `GET /parse/languages` lists
-every one.
+each language with its extensions. Python (`PythonLanguageParser`), C
+(`CLangaugeParser`, which needs the `c-parsing` extra), Rust
+(`RustLanguageParser`) and linker scripts (`LinkerScriptParser`) have readers of
+their own; `RegexLanguageParser` reads the rest.
 
 **`batch_whole_tree`.** By default the walk (`_walk_folder`) hands a parser one
 file at a time. A parser that sets `batch_whole_tree = True` (C, Rust, linker
@@ -205,7 +213,15 @@ StreamingGraphRenderer (frontend rAF loop)
 
 A local directory takes the same path through `POST /parse/stream`
 (`UnifiedParserService.stream_parse`). Either is replayed from `CacheService`
-when the same url, mode, layout and extensions were parsed before.
+when the same url, mode, layout and extensions were parsed before under the
+current `GRAPH_SCHEMA_VERSION`.
+
+### The demo
+
+The Demo button's `POST /plotter/demo` reads this repository's own `codecarto/`
+package, its `.py` files only, through `UnifiedParserService.parse`, as every
+other parse is read; its `parse_by` sets only the depth (`plotter_router.py`,
+`_DEMO_MODE_TO_DEPTH`), which [the API reference](api.md) tabulates.
 
 ### Expanding one node
 
@@ -220,7 +236,7 @@ C and C++ are read by libclang (`c_parser.py`'s `CParser`, the `c-parsing`
 extra) through two routes that share that engine.
 
 **Through `/parse/*`, like every other language.** `CLangaugeParser`
-(`c_language_parser.py`) is a `batch_whole_tree` adapter, so cross-file `CALLS`
+(`c_language_parser.py`) is a `batch_whole_tree` adapter, so cross-file `calls`
 resolve. Content with no file on disk -- a GitHub file, which exists only as
 `File.raw` -- is passed to libclang as `unsaved_files` under a virtual path.
 Every virtual file in a batch shares one root (`_VIRTUAL_ROOT`), so a sibling
@@ -267,11 +283,21 @@ in each skips different work:
 |---|---|---|
 | Caches | repository trees and parsed graphs | extracted source trees (the unzipped GitHub archive) |
 | Location | `{repo_key}/tree.json` and `{repo_key}/graphs/{hash}.json`; `index.json` lists the graphs | `{owner}-{repo}/src/` and `metadata.json` |
-| Key | `repo_key` is `{owner}-{repo}` for GitHub, `sha256(url)[:16]` otherwise; a graph is `{repo_key}::{sha256(url, mode, layout, extensions)[:16]}` | `{owner}-{repo}` |
+| Key | `repo_key` is `{owner}-{repo}` for GitHub, `sha256(url)[:16]` otherwise; a graph is `{repo_key}::{sha256(v{GRAPH_SCHEMA_VERSION}, url, mode, layout, extensions)[:16]}` | `{owner}-{repo}` |
 | Freshness | `CC_CACHE_TTL` seconds (24 h by default) | the same variable |
 | A hit skips | fetching (a tree) or parsing (a graph) | the download and extract; the parse still runs |
-| List / evict | `GET /parse/cache`, `DELETE /parse/cache/{key}`; `CacheService.evict_repo` drops a repository's tree and graphs | `GET /c-parser/cache`, `DELETE /c-parser/cache/{key}` |
+| List / evict | `GET /parse/cache`, `DELETE /parse/cache/{key}` (one graph); `CacheService.evict_repo`, which no route calls, drops the repository's directory | `GET /c-parser/cache`, `DELETE /c-parser/cache/{key}` drops the repository's directory |
 | Used by | `/repo/tree`, `/repo/subtree`, `/repo/expand-all` (trees); `/parse/unified`, `/parse/stream`, `/parse/stream-url`, `/c-parser/stream-github` (graphs) | `/c-parser/github`, `/c-parser/stream-github` |
+
+For a GitHub repository the two caches are one directory,
+`~/.codecarto/cache/repos/{owner}-{repo}/`, and an eviction that drops a
+repository drops that directory whole. `DELETE /c-parser/cache/{key}`
+(`CParserService.evict_repo_cache`) takes Cache A's `tree.json` and graphs with
+Cache B's source, and leaves their entries in `index.json`: `GET /parse/cache`
+goes on listing those graphs, and recalling one parses it again.
+`CacheService.evict_repo` takes Cache B's source with Cache A's. Only
+`DELETE /parse/cache/{key}` (`CacheService.evict`) leaves the rest: it removes
+one graph and its entry.
 
 A tree in Cache A holds what `github_service.get_raw_from_repo` fetched for the
 repository's size tier: full content under about 5 MB, structure only under
@@ -322,11 +348,19 @@ about 100 px in the browser (`GraphSerializer`'s `spread`).
 On the canvas, `CompoundLayoutManager` (`web/src/features/graph/services/compound_layout.ts`)
 draws a translucent circle behind each directory's and each file's group,
 assigning children by the same containment edges and by nearest position only
-for an orphan. `computeChildrenMap` covers all four tiers, so dragging a node
-moves its whole subtree. The circles are drawn only for `compound_layout`, in a
-`<g class="compound-backgrounds">` that is the transform group's first child,
-so they sit behind links and nodes. Where the layout and its outline toggle
-are chosen is in the [UI reference](ui.md).
+for an orphan. The circles are drawn whatever the layout, when a draw finishes,
+unless Group Outlines (`showCompoundGroups`) is off: `StreamingGraphRenderer`
+checks only that setting, and the toggle is offered with the D3 renderer for
+every layout. Each circle encloses its group where the chosen layout put it.
+They are in a `<g class="compound-backgrounds">` that is the transform group's
+first child, so they sit behind links and nodes. Where the layout and its
+outline toggle are chosen is in the [UI reference](ui.md).
+
+`computeChildrenMap` covers all four tiers, so dragging a node moves its whole
+subtree, and the circles are redrawn when the drag ends. The map is computed
+where the circles are drawn, so with Group Outlines off from the first draw a
+drag moves the one node; and the redraw after a drag does not read the setting,
+so a drag after the outlines are turned off draws them again.
 
 ## Lexicons and the construct vocabulary
 
@@ -406,7 +440,10 @@ the command):
   or manifest is not used: nothing is placed from it, and the reading says why;
   nothing re-checks.
 - `<bin>.map` measures what the linker script only declares; see
-  [Services](services.md#link_map_service).
+  [Services](services.md#link_map_service). A map older than anything the link
+  reads -- a source, a linker script, a manifest, never a README
+  (`link_map_service.link_input`) -- is not used, and the reading says why; the
+  code map and `/cargo` both ask `link_map_service.newest_input`.
 - With no document, the reading says "no diagnostics drawn, which is not the
   same as a clean build".
 
@@ -475,7 +512,10 @@ what displays it. `tests/test_boundaries.py` checks the rules below.
 10. **The window runs nothing it reads.** Running cargo runs a workspace's build
     scripts, proc macros and configured `rustc`, so no route does: a person runs
     `codecarto cargo record`, and the window reads what it wrote with its age.
-    A recorded resolution older than a manifest is not used, and says so.
+    A recorded resolution older than a manifest is not used, and says so; nor
+    is a link map older than anything the link reads (a source, a linker
+    script, a manifest -- not a README, by `link_map_service.link_input`):
+    the code map and `/cargo` both ask `newest_input`, so they cannot disagree.
 
 **What a reader should still not expect.** That a seam's *content* is right —
 the probes say a seam is there and is what this window expects, and each seam's
