@@ -18,16 +18,23 @@ import type { LayoutContext } from '../layout_context';
 import { ProblemView } from '../../features/estate/problem_view';
 import { Provenance } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
+import type { Draw } from '../../features/cartography/cartography_actions';
 import '../../features/estate/estate.css';
 
 export function createCargoPanel(ctx: LayoutContext): m.Component {
+  const plot = ctx.actions.plot.cartography;
   let draft = ctx.appState.state.cargoPath;
   let features = false;
   let transitive = false;
 
   const read = () => {
     if (!draft.trim()) return;
-    void ctx.actions.plot.loadCargoReading(draft.trim());
+    void plot.loadCargoReading(draft.trim());
+  };
+  // Remembered for a relayout as it was asked for; the canvas comes forward
+  // only when a graph reached it, never to show a cleared one over the problem.
+  const draw = (action: Draw) => {
+    void ctx.plotWith(action).then((drawn) => { if (drawn) ctx.focusDockPanel('graph'); });
   };
 
   return {
@@ -54,9 +61,13 @@ export function createCargoPanel(ctx: LayoutContext): m.Component {
           ? m(ProblemView, {
               problem,
               prefix: 'cargo',
+              // Repeats what failed: the read, or the draw as it was asked for.
               onRetry: () => {
+                const again = plot.cargoRetry();
                 ctx.appState.update({ cargoProblem: null });
-                read();
+                if (again?.op === 'draw') draw(again.run);
+                else if (again) void again.run();
+                else read();
               },
             })
           : null,
@@ -108,9 +119,7 @@ export function createCargoPanel(ctx: LayoutContext): m.Component {
                 'locked dependencies of dependencies',
               ]),
               m('button.estate-view__draw', {
-                onclick: () => void ctx
-                  .plotWith(() => ctx.actions.plot.drawCargo({ features, transitive }))
-                  .then(() => ctx.focusDockPanel('graph')),
+                onclick: () => draw(plot.cargoDraw({ features, transitive })),
               }, 'draw the workspace'),
             ])
           : !problem

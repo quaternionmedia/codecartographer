@@ -301,7 +301,7 @@ never a route's.
 | Command | Description |
 |---------|-------------|
 | `read` | Print what the `/cargo` routes would draw for a path |
-| `record` | Run `cargo metadata` and `cargo check` in a path and write what they say to `target/codecarto/` |
+| `record` | Run `cargo metadata` and `cargo check` in a path and write what they say to the workspace's `target/codecarto/` |
 
 ### `cargo read`
 
@@ -325,14 +325,24 @@ uv run codecarto cargo record [PATH] [--all-targets] [--online] [--map BIN]... \
 Runs, in PATH:
 
 ```bash
-cargo metadata --format-version 1 --offline                 # -> target/codecarto/metadata.json
-cargo check --workspace --message-format=json --offline     # -> target/codecarto/check.jsonl
+cargo metadata --format-version 1 --locked --offline              # -> target/codecarto/metadata.json
+cargo check --workspace --message-format=json --locked --offline  # -> target/codecarto/check.jsonl
 # and, for each --map BIN, a link that keeps the linker's map:
-cargo rustc --profile release --bin BIN --offline -- -C link-arg=-Map=<PATH>/target/codecarto/BIN.map
+cargo rustc --locked --profile release --bin BIN --offline -- -C link-arg=-Map=<workspace>/target/codecarto/BIN.map
 ```
 
+The documents go to the `target/codecarto/` of the workspace root cargo names:
+PATH's own, or the workspace above it when PATH is a member crate, which is
+where reading the workspace looks. PATH must hold a `Cargo.toml`; without one
+nothing is run or written. `--locked` keeps cargo from rewriting `Cargo.lock`, so
+nothing outside `target/` changes; a workspace whose lockfile is missing or out
+of date needs `cargo generate-lockfile` or `cargo update` first, and says so.
+
 A check that finds errors still writes its document -- recording the
-diagnostics is the point -- and says cargo's exit status. `--all-targets` checks
+diagnostics is the point -- and says cargo's exit status. A check that stops
+before compiling (a dependency `--offline` cannot fetch) writes no diagnostics
+and exits 1 with cargo's error, and the reader says that document never
+finished rather than reading it as a clean build. `--all-targets` checks
 tests, examples and benches too (a `no_std` binary usually cannot build them);
 `--online` lets cargo reach the network; a command that outlives `--timeout`
 (600s by default) keeps what arrived and says it is partial. Without cargo on
