@@ -110,20 +110,29 @@ def test_the_crate_graph_is_placed_and_is_no_row_of_any_chrestomathy():
 
 
 @requires_libclang
-def test_a_c_local_is_a_local_and_a_static_one_is_not(tmp_path):
-    """C's locals were stamped as static storage, which they are not.
-    Mutation: drop the C refinement -- `n` is static storage and this fails."""
+def test_a_c_local_is_automatic_and_a_static_one_claims_no_linkage(tmp_path):
+    """Read from a local repository, as the Repository panel reads one: C's
+    locals were stamped as static storage, which they are not, and a static
+    local is static storage with no linkage -- `static` inside a body is how
+    long it lives, not who can name it. Mutations: drop the C refinement --
+    `n` is static storage; drop `no_linkage` from `_block_scope_facts` --
+    `calls` claims `linkage.internal`."""
     from codecarto.services.local_repo_service import get_local_repo
     from codecarto.services.unified_parser_service import UnifiedParserService
 
     (tmp_path / "unit.c").write_text(
         "int shared;\n"
-        "int count(void) { static int calls; int n = 0; calls++; return n; }\n")
+        "static int hidden;\n"
+        "int count(void) { static int calls; int n = 0; calls++; return n + hidden; }\n")
     graph = UnifiedParserService.build_graph(get_local_repo(str(tmp_path)), 3, None)
-    construct = {d.get("label"): d.get("construct") for _, d in graph.nodes(data=True) if d.get("language") == "c"}
-    assert construct["n"] == "storage.local"
-    assert construct["calls"] == "storage.static"
-    assert construct["shared"] == "storage.static"
+    seen = {d.get("label"): (d.get("construct"), (d.get("meta") or {}).get("facets") or [])
+            for _, d in graph.nodes(data=True) if d.get("kind") == "variable"}
+    assert seen == {
+        "shared": ("storage.static", []),
+        "hidden": ("storage.static", ["linkage.internal"]),
+        "calls": ("storage.static", []),
+        "n": ("storage.automatic", []),
+    }
 
 
 # ── The census ────────────────────────────────────────────────────────────────
