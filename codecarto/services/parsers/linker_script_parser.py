@@ -216,9 +216,14 @@ def _includes(file: str, text: str, keys: dict[str, str]) -> list[tuple[str, str
     return found
 
 
+# Every `kind` this parser emits; `constructs.yaml` is held to it both ways.
+KINDS = ("region", "section", "entry", "symbol")
+
+
 class LinkerScriptParser:
     language: ClassVar[str] = "linker"
     extensions: ClassVar[list[str]] = [".ld", ".lds", ".x"]
+    kinds: ClassVar[tuple[str, ...]] = KINDS
     batch_whole_tree: ClassVar[bool] = True  # INCLUDE crosses files
 
     def parse_files(self, files: list[File], depth: int = 2) -> nx.DiGraph:

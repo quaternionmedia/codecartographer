@@ -252,7 +252,9 @@ the one abstraction-layer ramp.
 
 Content-addressed cache for parsed graphs and fetched repo trees —
 filesystem-backed, with an optional MongoDB backend when `MONGODB_URI`
-is set. Key = `SHA256(url + mode + layout + extensions)[:16]`. Distinct
+is set. Key = `SHA256(schema version + url + mode + layout + extensions)[:16]`;
+`GRAPH_SCHEMA_VERSION` is bumped when a parse's nodes change what they carry, so
+a graph cached in an older shape is a miss rather than a reply. Distinct
 from `graphbase` (a separate, user-named durable store) — see
 `governance/qm/adr/DRAFT-cache-service-vs-graphbase.md` for why they're kept
 separate.

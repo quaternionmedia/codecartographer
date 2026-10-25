@@ -860,6 +860,7 @@ class RustLanguageParser:
 
     language: ClassVar[str] = "rust"
     extensions: ClassVar[list[str]] = [".rs"]
+    kinds: ClassVar[tuple[str, ...]] = KINDS
 
     # Whole tree at once: `mod` declarations, `use` paths and calls cross files.
     batch_whole_tree: ClassVar[bool] = True

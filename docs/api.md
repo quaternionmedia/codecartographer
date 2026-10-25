@@ -44,10 +44,13 @@ and produce gJGF output that any renderer can display.
 Folder and file ids are the path from the root (`file::ws/crates/hal/src/lib.rs`),
 so two files with one name are two nodes.
 
-Every node a language in `codecarto/data/constructs.yaml` produces also carries
-`construct` -- what it *is*, the same across languages (`type.product` for a C or
-Rust struct) -- and, where its qualifiers, attributes or body say so,
-`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`).
+Every node whose language and kind `codecarto/data/constructs.yaml` maps also
+carries `construct` -- what it *is*, the same across languages (`type.product`
+for a C or Rust struct) -- and, where its qualifiers, attributes or body say so,
+`meta.facets` (`memory.unsafe`, `firmware.interrupt`, `layout.section`). A kind
+the vocabulary lists under `not_constructs`, with its reason, carries none --
+Python's calls, names and literals are what a body does, not what it declares --
+and neither do the walk's own `directory` and `file` nodes.
 
 ### POST `/parse/unified`
 
@@ -717,17 +720,26 @@ construct's `id`, `name`, `gloss`, whether it is a `facet` (something a node can
 One construct set beside itself across every language: per language, the
 `tokens` that spell it with their lexicon `contexts` (layer and group), the
 parser `kinds` that realise it, what `carried_by` a facet in source (`#[interrupt]`,
-`qualifier volatile`), and a `note`. **A language with no spelling is a row with
-its note, never a missing row** -- Rust has no `volatile`, C has no method. An
-unknown construct is a 200 with `unreadable`, `problem` and the known ids as
-`remedy`.
+`qualifier volatile`), and a `note`. **Every language the vocabulary lists under
+`languages:` is a row of every construct, never a missing one**: a language with
+no spelling has its note -- Rust has no `volatile`, C has no method -- and one the
+vocabulary records nothing for has a note saying so. A language it does not list
+(the linker script) is a row where it spells the construct. An unknown construct
+is a 200 with `unreadable`, `problem` and the known ids as `remedy`.
 
 ### GET `/lexicon/chrestomathy/{construct}/gjgf?layout=`
 
 The same reading as `GraphData`: the construct at the centre, each language
-around it (a silent one on a dashed edge, its note as the hover), tokens
-coloured by abstraction layer. `metadata.kind` is `chrestomathy`, with the
-`layers` ramp and the `caveat`.
+around it (a silent one on a dashed edge, its note as the hover), each token on
+the layer of the sense that spells this construct (Rust's `for` is iteration
+under a loop, behaviour under an implementation), coloured by that layer's
+`layer_ordinal` and naming it in `meta.lexicon_layers`. **An ordinal is a rank
+within one language's lexicon, not a scale the languages share**: Rust's keyword
+layers follow C's from 0 to 3 and its operator layers C's from 0 to 4, but
+compile-time reasoning is C's keyword layer 4 and Rust's 5, and control flow is
+Python's 0 and C's 3 -- one colour in two languages is one rank, and the layer's
+name says what it is. `metadata.kind` is `chrestomathy`, with the `layers` ramp
+and the `caveat`.
 
 
 ---
