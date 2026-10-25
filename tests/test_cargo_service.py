@@ -890,8 +890,8 @@ def test_record_links_a_binary_for_its_map(tmp_path, monkeypatch):
 @pytest.mark.parametrize("flag, arg", [(None, "link-arg=-Map={path}"),
                                        ("-C link-arg=-Wl,-Map={path}", "link-arg=-Wl,-Map={path}")])
 def test_record_passes_a_map_path_with_a_space_as_one_argument(tmp_path, monkeypatch, flag, arg):
-    """Mutation: fill the path in before splitting the flag -- `C:/Users/Jane
-    Doe/...` arrives as two arguments and this fails."""
+    """Mutation: fill the path in before splitting the flag -- a workspace
+    under `Jane Doe/` arrives as two arguments and this fails."""
     root = tmp_path / "Jane Doe" / "ws"
     write(root / "Cargo.toml", '[package]\nname = "blinky"\nversion = "0.1.0"\n')
     ran = []
