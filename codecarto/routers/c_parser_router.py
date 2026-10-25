@@ -315,10 +315,11 @@ async def stream_c_github(request: CStreamGithubRequest) -> StreamingResponse:
             yield _sse("reposition", positions)
             await asyncio.sleep(0)
 
-        # Same filter the frontend's adaptCGraphToGJGF applies for the
-        # non-streaming endpoints: the C parser can emit edges to nodes
-        # outside the target file set (e.g. a FIELD_OF edge whose parent
-        # struct lives in a system header).
+        # Only edges between nodes that were sent, as the cached replay
+        # (_stream_cached_c_graph) and the layout (_compute_layout_positions)
+        # filter them: the C parser can emit edges to nodes outside the
+        # target file set (e.g. a FIELD_OF edge whose parent struct lives in
+        # a system header).
         for e in result["edges"]:
             if e["src"] in node_ids and e["dst"] in node_ids:
                 yield _sse("edge", {
