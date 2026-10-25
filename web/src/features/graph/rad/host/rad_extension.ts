@@ -13,13 +13,13 @@ import * as d3 from 'd3';
 import { BaseExtension } from '../../extensions/base';
 import type { ExtensionContext } from '../../extensions/base';
 import type { GraphNode, GraphEdge } from '../../services/graph_types';
-import type { Effect, MenuContext } from '../core/types.js';
+import type { Effect, Intent, MenuContext } from '../core/types.js';
 import { createSession } from '../session.js';
 import type { Session } from '../session.js';
 import { attach } from '../dom/attach.js';
 import type { Attachment } from '../dom/attach.js';
 import { resolveGraphMenu } from './resolve.js';
-import { menuContextFor } from './menu_context.js';
+import { canvasKeyVerb, menuContextFor } from './menu_context.js';
 import type { MenuFacts } from './resolve.js';
 import { createIntentRouter } from './graph_intents.js';
 import type { GraphOps } from './graph_intents.js';
@@ -47,6 +47,14 @@ function nodeIdAt(target: EventTarget | null): string | null {
 export class RadExtension extends BaseExtension<GraphNode, GraphEdge> {
   private session: Session | null = null;
   private attachment: Attachment | null = null;
+  private unlisten: (() => void) | null = null;
+  /**
+   * True from a context-menu key or Shift+F10 on the canvas until the next
+   * `contextmenu` or pointer press. The `contextmenu` the browser fires for
+   * that key is a MouseEvent, with coordinates like a right-click's, so the
+   * key before it is what says no pointer opened the ring.
+   */
+  private menuKeyPressed = false;
 
   constructor(private readonly opts: RadExtensionOptions) {
     super('rad', 'Radial menu', `QM rad radial menu, conformant to vectors v${VECTOR_VERSION}`);
@@ -58,16 +66,17 @@ export class RadExtension extends BaseExtension<GraphNode, GraphEdge> {
     if (!svg) return;
 
     const route = createIntentRouter({ ops: this.opts.ops, onError: this.opts.onError });
+    const commit = (intent: Intent) => {
+      route(intent);
+      // The renderer derives from state, so re-apply after every verb
+      // rather than letting the committing path paint anything itself.
+      this.applyViewState();
+      ctx.onGraphChange?.();
+    };
 
     this.session = createSession({
       resolve: (menuContext) => resolveGraphMenu(menuContext, this.opts.facts(menuContext)),
-      onIntent: (intent) => {
-        route(intent);
-        // The renderer derives from state, so re-apply after every verb
-        // rather than letting the committing path paint anything itself.
-        this.applyViewState();
-        ctx.onGraphChange?.();
-      },
+      onIntent: commit,
       onEffect: (fx: Effect) => this.onEffect(fx),
     });
 
@@ -77,6 +86,25 @@ export class RadExtension extends BaseExtension<GraphNode, GraphEdge> {
       container: ctx.container,
       contextAt: (ev) => this.contextFor(ev),
     });
+
+    // After attach's own keydown listener, so a key the open ring took --
+    // Escape closing it among them -- arrives here already handled.
+    const onKeyDown = (ev: KeyboardEvent) => {
+      this.menuKeyPressed = ev.key === 'ContextMenu' || (ev.key === 'F10' && ev.shiftKey);
+      if (ev.defaultPrevented || this.session?.isOpen) return;
+      const selected = [...ctx.selectedNodes].map((n) => n.id);
+      const action = canvasKeyVerb(ev.key, selected);
+      if (!action) return;
+      ev.preventDefault();
+      commit({ action, context: { type: 'canvas', targetIds: [], position: { x: 0, y: 0 } }, itemId: ev.key });
+    };
+    const onPointerDown = () => { this.menuKeyPressed = false; };
+    ctx.container.addEventListener('keydown', onKeyDown);
+    ctx.container.addEventListener('pointerdown', onPointerDown, true);
+    this.unlisten = () => {
+      ctx.container.removeEventListener('keydown', onKeyDown);
+      ctx.container.removeEventListener('pointerdown', onPointerDown, true);
+    };
 
     // The container must be focusable or the keyboard path is unreachable —
     // the contract's "pointer never required" clause is a host obligation
@@ -90,7 +118,8 @@ export class RadExtension extends BaseExtension<GraphNode, GraphEdge> {
   private contextFor(ev: PointerEvent | KeyboardEvent): MenuContext | null {
     const ctx = this.assertContext();
     const rect = ctx.container.getBoundingClientRect();
-    const pointer = 'clientX' in ev;
+    const pointer = 'clientX' in ev && !(ev.type === 'contextmenu' && this.menuKeyPressed);
+    if (ev.type === 'contextmenu') this.menuKeyPressed = false;
     return menuContextFor({
       pointer,
       underPointer: pointer ? nodeIdAt(ev.target) : null,
@@ -145,6 +174,8 @@ export class RadExtension extends BaseExtension<GraphNode, GraphEdge> {
   }
 
   public destroy(): void {
+    this.unlisten?.();
+    this.unlisten = null;
     this.attachment?.destroy();
     this.attachment = null;
     this.session = null;

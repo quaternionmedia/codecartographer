@@ -11,7 +11,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
-import { dismissOnboardingModal } from './helpers';
+import { dismissOnboardingModal, pointOn } from './helpers';
 
 const SETTLED = 30_000;
 const WORKSPACE = 'tests/fixtures/cargo/workspace';
@@ -34,6 +34,7 @@ test('a double-click and View ▸ Source name the same file and line', async ({ 
   const delay = page.locator('.graph-node[data-node-id*="function::delay"]').first();
   await delay.dblclick();
   await expect(badge).toHaveText(/^delay\s+.*main\.rs:21$/);
+  await expect(badge).toBeInViewport({ ratio: 1 });
   const fromDoubleClick = await badge.textContent();
   // The badge leaves after a few seconds; the next one is the menu's.
   await expect(badge).toHaveCount(0, { timeout: 10_000 });
@@ -49,6 +50,7 @@ test('a double-click and View ▸ Source name the same file and line', async ({ 
   // Mutation: route View ▸ Source to the toast it showed -- no badge, and this fails.
   await expect(badge).toHaveText(fromDoubleClick ?? '');
   await expect(badge).toHaveCount(1);
+  await expect(badge).toBeInViewport({ ratio: 1 });
 });
 
 test('a file opens from a double-click at the top, as a symbol opens at its line', async ({ page }) => {
@@ -56,10 +58,14 @@ test('a file opens from a double-click at the top, as a symbol opens at its line
   const file = page.locator('.graph-node[data-node-id^="file::"][data-node-id$="blinky/src/main.rs"]').first();
   // Mutation: open only symbols with a line, as the double-click did -- a
   // file node shows nothing, and this fails.
-  // Dispatched to the node: a pointer aimed at its centre once waited out the
-  // test's time for the node to receive it, and the node's own handler is
-  // what is under test here.
+  // A real double-click, hit-tested where the pointer is: a synthetic event
+  // dispatched to the node reaches it whatever is drawn over it, and carries
+  // no pointer position, so the badge it raised sat above the top of the page
+  // and the case still passed.
   await expect(file).toBeVisible();
-  await file.dispatchEvent('dblclick');
-  await expect(page.locator('.source-badge')).toHaveText(/^main\.rs\s+.*main\.rs$/);
+  const at = await pointOn(file);
+  await page.mouse.dblclick(at.x, at.y);
+  const badge = page.locator('.source-badge');
+  await expect(badge).toHaveText(/^main\.rs\s+.*main\.rs$/);
+  await expect(badge).toBeInViewport({ ratio: 1 });
 });
