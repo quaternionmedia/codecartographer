@@ -90,10 +90,14 @@ view:
   replay it without parsing; ☆ saves it in Graphbase when Graphbase is
   connected, and ★ marks one already saved; ✕ removes it from the cache.
 
-Across the foot, the plot bar: **▶ Plot** draws the loaded repository; with
-none, every added file; with neither, the URL in the field, as `→ Fetch` does.
-**⏹ Cancel** stops a stream in flight. Beside them, the status line and the
-progress of a stream.
+Across the foot, the plot bar: **▶ Plot** draws the loaded repository -- the
+one the Files panel shows, from the URL its tree was read from, whatever the
+field holds since; with none, every added file; with neither, the URL in the
+field, as `→ Fetch` does. Plot's tooltip names what it will draw. **⏹ Cancel**
+stops a stream in flight. Beside them, the status line and the progress of a
+stream. Added files, the demo and a lexicon are drawn only while they are the
+latest plot asked for: one whose answer arrives after another plot, or a
+stream, was asked for is dropped (`web/src/state/latest_plot.ts`).
 
 ### Estate
 
@@ -247,7 +251,10 @@ Id `graph-settings-panel`. In the default arrangement.
 - **Layout**, open by default. *Algorithm* (D3 only) re-draws whatever is on the
   canvas with the chosen layout; *Compound* nests symbols around their files and
   files around their directories. *Physics*, *Repulsion* and *Link Distance*
-  (Gravis only) drive vis-network's simulation. *Group Outlines* (D3 only, on by
+  (Gravis only, the one renderer that runs a force simulation) drive
+  vis-network's simulation; Repulsion and Link Distance are shown while Physics
+  is on. `renderer_controls.rendererControls` says which controls each renderer
+  takes. *Group Outlines* (D3 only, on by
   default) circles each directory and file group, under every layout, where
   the layout put it.
 - **Visual**, folded: *Node Labels* (and per depth: Dir, File, Sym, Sub), *Node
@@ -309,17 +316,26 @@ Relayout.
   the press. Slide to an item and lift to choose it; lift in the centre or
   outside the ring to cancel; slide out past an item with a ▸ to open its
   submenu.
-- **`m`** on the focused canvas opens a ring at its centre.
+- **`m`** on the focused canvas opens a ring at its centre. The context-menu
+  key and Shift+F10 open the ring `m` opens: the browser fires them as a
+  right-click, which the radial menu counts as a key, not a press.
 
 A greyed item is offered but not available here; choosing it closes the ring.
 
 ### Which ring opens
 
+`web/src/features/graph/rad/host/menu_context.ts` decides it:
+
 | Opened | Nothing selected | One node selected | Several nodes selected |
 |---|---|---|---|
 | On a node | node ring, that node | node ring, the node under the pointer | selection ring |
-| Off the nodes | canvas ring | canvas ring | canvas ring |
-| With the key | canvas ring | selection ring | selection ring |
+| Off the nodes: the background, an edge | canvas ring | canvas ring | canvas ring |
+| With a key | canvas ring | node ring, the selected node | selection ring |
+
+A key has no pointer and the nodes take no focus, so it opens on the
+selection. No ring acts on an edge. **Escape** on the canvas, with no ring
+open, clears the selection, as Deselect does: the node ring has no Deselect, so
+every item is reached from the keyboard.
 
 ### Node ring
 

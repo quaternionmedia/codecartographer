@@ -8,36 +8,13 @@
  * disk, so what is seen here is the badge.
  */
 
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
-import { dismissOnboardingModal } from './helpers';
+import { dismissOnboardingModal, pointOn } from './helpers';
 
 const SETTLED = 30_000;
 const WORKSPACE = 'tests/fixtures/cargo/workspace';
-
-/**
- * A point of the node that a pointer there reaches, as the browser hit-tests
- * it. A file node's centre is often under one of its symbols or its label,
- * which is where a double-click aimed at the centre waited out the test.
- */
-async function pointOn(node: Locator): Promise<{ x: number; y: number }> {
-  const point = await node.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    const steps = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
-    for (const fy of steps) {
-      for (const fx of steps) {
-        const x = r.left + r.width * fx;
-        const y = r.top + r.height * fy;
-        const hit = document.elementFromPoint(x, y);
-        if (hit && el.contains(hit)) return { x, y };
-      }
-    }
-    return null;
-  });
-  expect(point, 'no point of the node is reached by a pointer').not.toBeNull();
-  return point!;
-}
 
 async function drawWorkspace(page: Page): Promise<void> {
   await page.goto('/');

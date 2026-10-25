@@ -64,12 +64,13 @@ export function componentTypesIn(config: unknown): string[] {
 }
 
 /**
- * Rename the windows in `renamed`, wherever Golden Layout reads a root, as
- * `componentTypesIn` reads them. Where several land on one id, the first in
- * the layout stays and the rest go, and a stack, row or column they leave
- * empty goes too. A stack's active tab stays on the window it showed: the one
- * it merged into when that is in the same stack, else the one before it.
- * Returns the old ids found. Mutates `config`, which the caller has just
+ * Rename the windows in `renamed`, in every root `componentTypesIn` reads:
+ * the layout's and each open popout's, a popout's own popouts included, each
+ * where Golden Layout reads it (`rootOf`). Where several land on one id, the
+ * first in the layout stays and the rest go, and a stack, row or column they
+ * leave empty goes too. A stack's active tab stays on the window it showed:
+ * the one it merged into when that is in the same stack, else the one before
+ * it. Returns the old ids found. Mutates `config`, which the caller has just
  * parsed.
  */
 export function renamePanels(config: Record<string, unknown>, renamed: Readonly<Record<string, string>>): string[] {
@@ -115,21 +116,22 @@ export function renamePanels(config: Record<string, unknown>, renamed: Readonly<
     return emptied ? null : it;
   };
 
-  /** A layout or a popout: the root Golden Layout reads (`rootOf`), then its popouts. */
-  const visitLayout = (layout: unknown): void => {
-    if (!layout || typeof layout !== 'object') return;
-    const l = layout as { root?: unknown; content?: unknown; openPopouts?: unknown };
-    if (l.root !== undefined) {
-      l.root = visit(l.root) ?? undefined;
-    } else if (Array.isArray(l.content) && l.content.length > 0) {
-      const stays = visit(l.content[0]);
-      if (stays === null) l.content = [];
-      else l.content[0] = stays;
+  // **THE ROOT GOLDEN LAYOUT READS, NOT `root` ALONE.** The registry check
+  // reads a legacy `content[0]` and a popout's popouts (`componentTypesIn`);
+  // renaming only `root` and one level of popouts left the old ids there, and
+  // the layout was dropped for the default rather than renamed.
+  const layout = (cfg: unknown): void => {
+    if (!cfg || typeof cfg !== 'object') return;
+    const c = cfg as { root?: unknown; content?: unknown; openPopouts?: unknown };
+    // Renamed in place; emptied in whichever form it was written when nothing
+    // in it stays.
+    if (visit(rootOf(c)) === null) {
+      if (c.root !== undefined) c.root = undefined;
+      else c.content = [];
     }
-    if (Array.isArray(l.openPopouts)) l.openPopouts.forEach(visitLayout);
+    if (Array.isArray(c.openPopouts)) c.openPopouts.forEach(layout);
   };
-
-  visitLayout(config);
+  layout(config);
   return [...found];
 }
 

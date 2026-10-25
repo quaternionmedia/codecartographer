@@ -23,7 +23,7 @@ const row = (...items) => ({ isStack: false, contentItems: items });
 function dock() {
   const canvas = stack('canvas', 'graph');
   const files = stack('files', 'file-tree');
-  const tabs = stack('tabs', 'upload-panel', 'repo-panel', 'graph-settings-panel', 'plotbar', 'estate-panel');
+  const tabs = stack('tabs', 'open', 'graph-settings-panel', 'estate-panel');
   return { canvas, files, tabs, root: { isStack: false, contentItems: [canvas, row(files, tabs)] } };
 }
 

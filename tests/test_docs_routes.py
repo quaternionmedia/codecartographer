@@ -934,6 +934,16 @@ def test_ui_reference_names_the_keys_and_the_hold_that_work_a_ring():
         f"geometry.ts holds for {hold.group(1)} ms; '### Opening a ring' does not say so")
 
 
+def _rings_returned(source: str) -> list[str]:
+    """The rings `resolveGraphMenu` in `resolve.ts` can return, by name: `node`
+    for a case that returns `nodeRing(...)`'s items."""
+    body = re.search(r"export function resolveGraphMenu\(.*?\n\}", source, re.S)
+    assert body, "resolveGraphMenu() was not found in resolve.ts; the pattern is stale"
+    rings = re.findall(r"items: (\w+)Ring\(", body[0])
+    assert rings, "resolveGraphMenu() returns no ring the pattern recognises; it is stale"
+    return rings
+
+
 def _ring_items(source: str, ring: str) -> list[str]:
     """The items `<ring>Ring()` in `resolve.ts` returns, as the table writes them.
 
@@ -973,20 +983,30 @@ def test_ui_reference_ring_table_is_the_rings_the_menu_builds():
     """Each ring's table in the UI reference lists the ring as `resolve.ts` builds it, in order.
 
     The table said "Colour ▸" in three rings after the menu's label became
-    "Color", as Graph Settings writes it. A row's item is its bold label and
-    what follows it: ` ▸` for a submenu, ` *n*` for a count. A second label
-    after ` / ` is the item in its other state (**Unpin**), and is not
+    "Color", as Graph Settings writes it, and went on listing an Edge ring and
+    the canvas ring's Color after both were removed. A row's item is its bold
+    label and what follows it: ` ▸` for a submenu, ` *n*` for a count. A second
+    label after ` / ` is the item in its other state (**Unpin**), and is not
     compared, as an item's greying is not. Every ring `resolve.ts` builds is
-    read, so a ring it stops building is a table this does not ask for.
+    read, so a ring it stops building is a table this does not ask for; and
+    each is one `resolveGraphMenu` returns, as is every `### <Name> ring`
+    section, so a ring nothing opens is neither built nor documented.
     """
     source = (RAD / "host" / "resolve.ts").read_text(encoding="utf-8")
     rings = re.findall(r"^function (\w+)Ring\(", source, re.M)
     assert rings, "no `function <name>Ring(` in resolve.ts; the pattern is stale"
+    returned = _rings_returned(source)
     sections = _ui_sections()
-    wrong = []
+    wrong = [f"resolve.ts builds {ring}Ring(), which resolveGraphMenu does not return"
+             for ring in rings if ring not in returned]
+    wrong += [f"docs/ui.md has '### {title}'; resolveGraphMenu returns no such ring"
+              for title in sections
+              if re.fullmatch(r"\w+ ring", title) and title.split()[0].lower() not in returned]
     for ring in rings:
         title = f"{ring.capitalize()} ring"
-        assert title in sections, f"docs/ui.md has no '### {title}'"
+        if title not in sections:
+            wrong.append(f"docs/ui.md has no '### {title}'")
+            continue
         rows = re.findall(r"^\| \d+ \| (.+?) \| .*\|$", sections[title], re.M)
         documented = [re.sub(r"\*\*([^*\n]+)\*\*(?: / \*\*[^*\n]+\*\*)*", r"\1", row).strip()
                       for row in rows]

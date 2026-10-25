@@ -62,7 +62,7 @@ test('closed another way, the menu hears neither a click nor Escape', () => {
   assert.equal(m.closed, 0);
 });
 
-test('disarmed before the listeners are armed, none is ever added', () => {
+test('disarmed before the click listener is armed, the menu hears neither', () => {
   /** The opening click is let pass a tick first; a menu gone by then listens to nothing. */
   const doc = new EventTarget();
   let later;
@@ -71,7 +71,41 @@ test('disarmed before the listeners are armed, none is ever added', () => {
   disarm();
   later();
   doc.dispatchEvent(new Event('click'));
+  doc.dispatchEvent(key('Escape'));
   assert.equal(closed, 0);
+});
+
+test('Escape pressed before the opening click has passed closes the menu', () => {
+  /**
+   * The menu takes the focus as it is drawn, and the deferred arming runs
+   * after that: in the browser a `setTimeout(fn, 0)` that page work held back
+   * 29ms, and the Escape a reader pressed into the focused menu came first.
+   * Mutation: arm the Escape listener with the click listener, in `defer` --
+   * this fails.
+   */
+  const doc = new EventTarget();
+  let later;
+  let closed = 0;
+  closeOnOutsideClickOrEscape(doc, () => { closed++; }, (fn) => { later = fn; });
+  doc.dispatchEvent(key('Escape'));
+  assert.equal(closed, 1, 'Escape before the deferred arming left the menu open');
+  later();
+  doc.dispatchEvent(new Event('click'));
+  doc.dispatchEvent(key('Escape'));
+  assert.equal(closed, 1, 'a menu closed with Escape went on listening');
+});
+
+test('the click that opened the menu is not heard as an outside click', () => {
+  /** Mutation: arm the click listener at once, not in `defer` -- this fails. */
+  const doc = new EventTarget();
+  let later;
+  let closed = 0;
+  closeOnOutsideClickOrEscape(doc, () => { closed++; }, (fn) => { later = fn; });
+  doc.dispatchEvent(new Event('click'));
+  assert.equal(closed, 0, 'the opening click closed the menu');
+  later();
+  doc.dispatchEvent(new Event('click'));
+  assert.equal(closed, 1);
 });
 
 test('a key other than Escape leaves it open', () => {

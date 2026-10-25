@@ -53,7 +53,7 @@ export function mergeFolderAtPath(root: RawFolder, pathParts: string[], expanded
 }
 
 /** The repository a tree is of. Two readings of one repository are one tree. */
-function repositoryOf(tree: Directory | null | undefined): string {
+export function repositoryOf(tree: Directory | null | undefined): string {
   return (tree?.info?.url ?? '').replace(/\/+$/, '');
 }
 

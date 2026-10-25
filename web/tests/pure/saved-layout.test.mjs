@@ -5,6 +5,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import { RENAMED_PANELS, componentTypesIn, readSavedLayout } from '../../dist-pure/layout/saved_layout.js';
@@ -107,8 +108,19 @@ test('a layout with nothing to rename is read unchanged', () => {
 });
 
 test('the renames name only windows this version lacks, onto one it has', () => {
-  assert.deepEqual(Object.keys(RENAMED_PANELS).sort(), ['plotbar', 'repo-panel', 'upload-panel']);
-  assert.deepEqual([...new Set(Object.values(RENAMED_PANELS))], ['open']);
+  /**
+   * Read against the ids `panel_registry.ts` registers, not a copy of the
+   * table. Mutations: rename a window this version has (`graph-settings-panel`),
+   * or onto one it lacks -- this fails.
+   */
+  const registry = readFileSync('src/layout/panel_registry.ts', 'utf8');
+  const ids = [...registry.matchAll(/^\s+id: '([^']+)',$/gm)].map((m) => m[1]);
+  assert.ok(ids.includes('graph') && ids.includes('open'), 'no ids read from panel_registry.ts; the pattern is stale');
+  assert.ok(Object.keys(RENAMED_PANELS).length > 0);
+  assert.deepEqual(Object.keys(RENAMED_PANELS).filter((was) => ids.includes(was)), [],
+    'a rename names a window this version registers, so a saved layout loses it');
+  assert.deepEqual(Object.values(RENAMED_PANELS).filter((now) => !ids.includes(now)), [],
+    'a rename names a window this version does not register, so a saved layout is dropped');
 });
 
 test('a merged window is renamed wherever Golden Layout reads a root: a legacy one, and a popout\'s popout', () => {
@@ -177,4 +189,53 @@ test('`content` beside a `root` is not read, since Golden Layout does not read i
   };
   assert.deepEqual(componentTypesIn(both), ['graph']);
   assert.equal(readSavedLayout(JSON.stringify(both), REGISTERED).kind, 'usable');
+});
+
+const OPEN_REGISTERED = ['graph', 'file-tree', 'open', 'estate-panel'];
+
+test('Upload and Repository in a legacy root, written as `content[0]`, become one Open window', () => {
+  /**
+   * The renames walked `root` alone, and the registry check reads the root
+   * where Golden Layout does, so a legacy layout naming the old windows was
+   * dropped for the default instead of renamed. Mutation: rename in `root`
+   * only -- this fails.
+   */
+  const legacy = { content: [{ type: 'row', content: [
+    { type: 'component', componentType: 'graph' },
+    { type: 'stack', content: [
+      { type: 'component', componentType: 'upload-panel', id: 'upload-panel' },
+      { type: 'component', componentType: 'repo-panel', id: 'repo-panel' },
+    ] },
+  ] }] };
+  const read = readSavedLayout(JSON.stringify(legacy), OPEN_REGISTERED);
+  assert.equal(read.kind, 'usable', read.why);
+  assert.deepEqual(read.renamed.sort(), ['repo-panel', 'upload-panel']);
+  assert.deepEqual(componentTypesIn(read.config), ['graph', 'open']);
+  assert.equal(read.config.root, undefined, 'the legacy root is renamed where it is written');
+});
+
+test("Actions in a popout's own popout, its root written either way, is renamed too", () => {
+  /** Mutation: rename in one level of `openPopouts` -- this fails. */
+  const config = {
+    root: { type: 'component', componentType: 'graph' },
+    openPopouts: [{
+      content: [{ type: 'component', componentType: 'file-tree' }],
+      openPopouts: [{ root: { type: 'stack', content: [{ type: 'component', componentType: 'plotbar' }] } }],
+    }],
+  };
+  const read = readSavedLayout(JSON.stringify(config), OPEN_REGISTERED);
+  assert.equal(read.kind, 'usable', read.why);
+  assert.deepEqual(read.renamed, ['plotbar']);
+  assert.deepEqual(componentTypesIn(read.config), ['graph', 'file-tree', 'open']);
+});
+
+test('a legacy popout root holding only a window merged into one kept already is emptied', () => {
+  const config = {
+    root: { type: 'component', componentType: 'upload-panel' },
+    openPopouts: [{ content: [{ type: 'stack', content: [{ type: 'component', componentType: 'repo-panel' }] }] }],
+  };
+  const read = readSavedLayout(JSON.stringify(config), OPEN_REGISTERED);
+  assert.equal(read.kind, 'usable', read.why);
+  assert.deepEqual(componentTypesIn(read.config), ['open']);
+  assert.deepEqual(read.config.openPopouts[0].content, []);
 });
