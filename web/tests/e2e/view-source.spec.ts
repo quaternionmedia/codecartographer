@@ -8,13 +8,36 @@
  * disk, so what is seen here is the badge.
  */
 
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
 import { dismissOnboardingModal } from './helpers';
 
 const SETTLED = 30_000;
 const WORKSPACE = 'tests/fixtures/cargo/workspace';
+
+/**
+ * A point of the node that a pointer there reaches, as the browser hit-tests
+ * it. A file node's centre is often under one of its symbols or its label,
+ * which is where a double-click aimed at the centre waited out the test.
+ */
+async function pointOn(node: Locator): Promise<{ x: number; y: number }> {
+  const point = await node.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const steps = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
+    for (const fy of steps) {
+      for (const fx of steps) {
+        const x = r.left + r.width * fx;
+        const y = r.top + r.height * fy;
+        const hit = document.elementFromPoint(x, y);
+        if (hit && el.contains(hit)) return { x, y };
+      }
+    }
+    return null;
+  });
+  expect(point, 'no point of the node is reached by a pointer').not.toBeNull();
+  return point!;
+}
 
 async function drawWorkspace(page: Page): Promise<void> {
   await page.goto('/');
@@ -34,6 +57,7 @@ test('a double-click and View ▸ Source name the same file and line', async ({ 
   const delay = page.locator('.graph-node[data-node-id*="function::delay"]').first();
   await delay.dblclick();
   await expect(badge).toHaveText(/^delay\s+.*main\.rs:21$/);
+  await expect(badge).toBeInViewport({ ratio: 1 });
   const fromDoubleClick = await badge.textContent();
   // The badge leaves after a few seconds; the next one is the menu's.
   await expect(badge).toHaveCount(0, { timeout: 10_000 });
@@ -49,6 +73,7 @@ test('a double-click and View ▸ Source name the same file and line', async ({ 
   // Mutation: route View ▸ Source to the toast it showed -- no badge, and this fails.
   await expect(badge).toHaveText(fromDoubleClick ?? '');
   await expect(badge).toHaveCount(1);
+  await expect(badge).toBeInViewport({ ratio: 1 });
 });
 
 test('the badge stays inside the canvas, its path shortened and whole in its title', async ({ page }) => {
@@ -86,10 +111,14 @@ test('a file opens from a double-click at the top, as a symbol opens at its line
   const file = page.locator('.graph-node[data-node-id^="file::"][data-node-id$="blinky/src/main.rs"]').first();
   // Mutation: open only symbols with a line, as the double-click did -- a
   // file node shows nothing, and this fails.
-  // Dispatched to the node: a pointer aimed at its centre once waited out the
-  // test's time for the node to receive it, and the node's own handler is
-  // what is under test here.
+  // A real double-click, hit-tested where the pointer is: a synthetic event
+  // dispatched to the node reaches it whatever is drawn over it, and carries
+  // no pointer position, so the badge it raised sat above the top of the page
+  // and the case still passed.
   await expect(file).toBeVisible();
-  await file.dispatchEvent('dblclick');
-  await expect(page.locator('.source-badge')).toHaveText(/^main\.rs\s+.*main\.rs$/);
+  const at = await pointOn(file);
+  await page.mouse.dblclick(at.x, at.y);
+  const badge = page.locator('.source-badge');
+  await expect(badge).toHaveText(/^main\.rs\s+.*main\.rs$/);
+  await expect(badge).toBeInViewport({ ratio: 1 });
 });

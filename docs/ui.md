@@ -269,10 +269,12 @@ Id `graph-settings-panel`. In the default arrangement.
 - **Hover** a node for its tooltip.
 - **Double-click a node** that names a file to open its source: the file's page
   on GitHub at the node's line, or at the top of the file when it has none. For
-  a file read from disk, which the browser cannot open, a badge beside the node
-  names the file and line, kept inside the canvas. A path too long for the
-  canvas is shortened in its middle, and the badge's tooltip has it whole. A
-  double-click anywhere else zooms in.
+  a file read from disk or uploaded, which the browser cannot open, a
+  single-line badge beside the node names the file and line, kept inside the
+  canvas.
+  A path too long for the canvas is shortened in its middle, and the badge's
+  tooltip has it whole. A double-click anywhere else zooms in; see the
+  [table under the node ring](#node-ring) for each kind of node.
 - When a stream finishes, the view fits the whole graph: every node and every
   group outline, inside a margin, centred on what is drawn.
 - **The legend** sits at the bottom left. Its header gives the totals; click it
@@ -331,6 +333,19 @@ A greyed item is offered but not available here; choosing it closes the ring.
 | 6 | **View** ▸ | **Source** opens the node's source, as a double-click does; greyed on a node that names no file. **Info** shows the node's name, what its parser called it, its construct and where it is. **Compare** opens the Chrestomathy panel at the node's construct; greyed when the vocabulary did not place it. **Focus** frames the node and everything inside it; greyed below files |
 | 7 | **Hide** | Hides the node |
 | 8 | **Delete** | Removes the node from the canvas; the source is untouched |
+
+*Source* and a double-click on a node open the same place, on the same rule:
+
+| The node | View ▸ Source and a double-click |
+|---|---|
+| A file or symbol from a GitHub repository | The file's page on GitHub in a new tab, at the symbol's line; a file, and a Python symbol, whose parser records no line, open at the top |
+| A file or symbol from a local checkout or an upload | A badge beside the node for a few seconds, kept inside the canvas, naming the file's path and the line; a path too long for the canvas is shortened in its middle, and the badge's tooltip has it whole |
+| A node that names no file, such as a directory | Source is offered disabled; a double-click zooms the canvas in, as it does off the nodes |
+
+A C symbol names its file only by the file's stem and a Python symbol by
+`module.py`; both are opened where the file node they are drawn inside says
+the file is. `node_info.sourceTarget` decides where, `npm run test:pure` holds
+it, and `streaming_renderer.openSource` opens it for both routes.
 
 ### Selection ring
 

@@ -18,7 +18,8 @@ import { CompoundLayoutManager } from './compound_layout';
 import type { GroupBounds } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
-import { fitBadgeText, sourceTarget } from './node_info';
+import { fitBadgeText, sourceTarget, type SourceTarget } from './node_info';
+import { BADGE_MARGIN, badgePlace } from './source_badge';
 import { fitTransform } from './fit';
 import { placeOutlineLabels } from './outline_labels';
 import type { Circle } from './fit';
@@ -476,7 +477,9 @@ export class StreamingGraphRenderer {
 
     // ── Source navigation ──────────────────────────────────────────────────
     // Double-click opens the node's source through `openSource`, the opener
-    // View → Source uses. On a node from no file it opens nothing, and the
+    // View → Source uses, on every node that names a file -- a Python symbol,
+    // whose parser records no line, included: it opens its file at the top, as
+    // a file node does. On a node from no file it opens nothing, and the
     // double-click goes on to the zoom.
     //
     // **RIGHT-CLICK IS THE RADIAL MENU'S.** A handler here once opened the
@@ -779,14 +782,24 @@ export class StreamingGraphRenderer {
   }
 
   /**
-   * Open a node's source: its forge page in a new tab, or for a file read from
-   * disk a badge naming the file and line beside `at` (the node's own place on
-   * screen when not given). View → Source and a double-click both call this.
-   * False for a node from no file, which opens nothing.
+   * Where a node's source is, read against the graph drawn here: a symbol that
+   * names only its file's stem or module is found through the file node it is
+   * drawn inside. Null for a node from no file.
+   */
+  sourceTargetOf(id: string): SourceTarget | null {
+    const node = this.nodeById.get(id);
+    return node ? sourceTarget(node, { nodes: this.nodeById, edges: this._allEdges }) : null;
+  }
+
+  /**
+   * Open a node's source: its forge page in a new tab, or for a file with no
+   * page (read from disk, or uploaded) a badge naming the file and line beside
+   * `at` (the node's own place on screen when not given), on one line and
+   * wholly inside the canvas and the window. View → Source and a double-click
+   * both call this. False for a node from no file, which opens nothing.
    */
   openSource(id: string, at?: { x: number; y: number }): boolean {
-    const node = this.nodeById.get(id);
-    const target = node ? sourceTarget(node) : null;
+    const target = this.sourceTargetOf(id);
     if (!target) return false;
     if (target.kind === 'forge') {
       window.open(target.href, '_blank', 'noopener');
@@ -795,13 +808,29 @@ export class StreamingGraphRenderer {
 
     const point = at ?? this._screenCentreOf(id);
     document.querySelectorAll('.source-badge').forEach((old) => old.remove());
-    // The badge stays inside the canvas: a path from a deep checkout is wider
-    // than the space to the pointer's right, and often than the canvas.
+    // The badge stays inside the canvas, and so inside the window: a path from
+    // a deep checkout is wider than the space to the pointer's right, and
+    // often than the canvas. `area` is the part of the window the canvas
+    // covers, in viewport coordinates.
     const canvas = this.getContainer().getBoundingClientRect();
-    const inset = 4;
-    const room = Math.max(0, canvas.width - 2 * inset);
+    const view = {
+      width: document.documentElement.clientWidth || window.innerWidth,
+      height: document.documentElement.clientHeight || window.innerHeight,
+    };
+    const areaLeft = Math.max(0, canvas.left);
+    const areaTop = Math.max(0, canvas.top);
+    const area = {
+      left: areaLeft,
+      top: areaTop,
+      width: Math.max(0, Math.min(canvas.right, view.width) - areaLeft),
+      height: Math.max(0, Math.min(canvas.bottom, view.height) - areaTop),
+    };
+    const room = Math.max(0, area.width - 2 * BADGE_MARGIN);
     const badge = document.createElement('div');
     badge.className = 'source-badge';
+    // Measured at the window's top left, where its whole width is free, on one
+    // line; shortened to `room` when it is wider, then placed by `badgePlace`
+    // so that none of it is outside `area`.
     badge.style.cssText = [
       'position:fixed',
       'left:0',
@@ -825,8 +854,9 @@ export class StreamingGraphRenderer {
     badge.title = target.text;
     badge.textContent = target.text;
     document.body.appendChild(badge);
-    // Shortened from the middle when it does not fit (node_info.ts). The font
-    // is monospace, so a character's width is the measured mean.
+    // Shortened from the middle when it does not fit (node_info.ts), so the
+    // name and the file's end with its line stay. The font is monospace, so a
+    // character's width is the measured mean.
     const padding = 16;
     const textWidth = badge.scrollWidth - padding;
     const chrome = badge.offsetWidth - badge.clientWidth + padding; // border and padding
@@ -834,9 +864,14 @@ export class StreamingGraphRenderer {
       const perChar = textWidth / target.text.length;
       badge.textContent = fitBadgeText(target.text, Math.floor((room - chrome) / perChar));
     }
-    const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
-    badge.style.left = `${clamp(point.x + 8, canvas.left + inset, canvas.right - inset - badge.offsetWidth)}px`;
-    badge.style.top = `${clamp(point.y - 28, canvas.top + inset, canvas.bottom - inset - badge.offsetHeight)}px`;
+    const drawn = badge.getBoundingClientRect();
+    const place = badgePlace(
+      { x: point.x - area.left, y: point.y - area.top },
+      { width: drawn.width, height: drawn.height },
+      area,
+    );
+    badge.style.left = `${area.left + place.left}px`;
+    badge.style.top = `${area.top + place.top}px`;
     setTimeout(() => badge.remove(), 3500);
     return true;
   }
