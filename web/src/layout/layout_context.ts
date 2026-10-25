@@ -901,14 +901,15 @@ export class LayoutContext {
             // Announced rather than mounted here, so this path and the
             // registry's converge on the one subscription in the constructor.
             GraphSurface.publish(renderer);
-            this.appState.update({
-              parseDirectory: directory,
-              graphData: this._buildGraphData(accNodes, accEdges, {
-                nodeCount,
-                edgeCount: accEdges.length,
-                layout,
-              }) as any,
-            });
+            this.appState.update({ parseDirectory: directory });
+            // Replaced, never merged: a plain patch is the union of this graph
+            // and every one drawn before it, which the census then read as
+            // the canvas -- a code map after the crate graph listed crates.
+            this.appState.replaceGraphData(this._buildGraphData(accNodes, accEdges, {
+              nodeCount,
+              edgeCount: accEdges.length,
+              layout,
+            }) as any);
             if (this.appState.state.selectedRenderer !== 'd3') {
               this.actions.plot.createGraphVnode();
             }
@@ -991,13 +992,12 @@ export class LayoutContext {
             // Announced rather than mounted here, so this path and the
             // registry's converge on the one subscription in the constructor.
             GraphSurface.publish(renderer);
-            this.appState.update({
-              graphData: this._buildGraphData(accNodes, accEdges, {
-                nodeCount,
-                edgeCount: accEdges.length,
-                layout,
-              }) as any,
-            });
+            // Replaced, never merged (see `_startStream`).
+            this.appState.replaceGraphData(this._buildGraphData(accNodes, accEdges, {
+              nodeCount,
+              edgeCount: accEdges.length,
+              layout,
+            }) as any);
             if (this.appState.state.selectedRenderer !== 'd3') {
               this.actions.plot.createGraphVnode();
             }
