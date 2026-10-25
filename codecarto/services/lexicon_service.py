@@ -9,10 +9,12 @@ The graph hierarchy is::
 
     language -> kind (keywords|operators) -> layer -> group -> token
 
-Each node carries ``layer_ordinal`` and ``kind`` attributes so the plotter can
-color by abstraction level. This same attribute vocabulary is what a future C
-parser would stamp onto AST nodes (Option B), keeping the two views visually
-consistent.
+Each node carries ``layer_ordinal``, ``kind`` and ``language``, and every node
+on a layer carries what ``lexicon_bridge`` stamps onto parsed nodes (Option B):
+``layer_color``, which "Color By: Abstraction Layer" paints, and
+``meta.lexicon_layers``, from which the key names the layer. The lexicon graph
+sent the ordinal alone, so choosing that colouring on it changed no pixel and
+the key named every layer "Layer N" in one default colour.
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ import networkx as nx
 import yaml
 
 from codecarto.models.lexicon import Lexicon
+from codecarto.services.construct_service import layer_color
 
 LEXICON_DIR = Path(__file__).resolve().parent.parent / "data" / "lexicons"
 
@@ -52,40 +55,53 @@ class LexiconService:
     def to_graph(lexicon: Lexicon) -> nx.DiGraph:
         """Project a lexicon to a directed graph (language -> ... -> token)."""
         g = nx.DiGraph()
-        lang_id = f"lang:{lexicon.language}"
+        language = lexicon.language
+        lang_id = f"lang:{language}"
         g.add_node(
             lang_id,
-            label=lexicon.display_name or lexicon.language,
+            label=lexicon.display_name or language,
             type="language",
             layer_ordinal=-1,
             kind="root",
+            language=language,
         )
 
         for kind_name, kind in (("keywords", lexicon.keywords), ("operators", lexicon.operators)):
-            kind_id = f"kind:{lexicon.language}:{kind_name}"
-            g.add_node(kind_id, label=kind_name, type="kind", layer_ordinal=-1, kind=kind_name)
+            kind_id = f"kind:{language}:{kind_name}"
+            g.add_node(kind_id, label=kind_name, type="kind", layer_ordinal=-1, kind=kind_name,
+                       language=language)
             g.add_edge(lang_id, kind_id, relation="has_kind")
+            # The context's `kind` is singular, as `Lexicon.index_by_token` spells it.
+            sense = kind_name.rstrip("s")
 
             for layer in kind.layers:
                 layer_id = f"{kind_id}:L{layer.ordinal}"
+                on_layer = {"kind": sense, "layer_ordinal": layer.ordinal, "layer_name": layer.name}
                 g.add_node(
                     layer_id,
                     label=f"L{layer.ordinal} {layer.name}",
                     type="layer",
                     layer_ordinal=layer.ordinal,
+                    layer_color=layer_color(layer.ordinal),
                     kind=kind_name,
+                    language=language,
                     gloss=layer.gloss.strip(),
+                    meta={"lexicon_layers": [on_layer]},
                 )
                 g.add_edge(kind_id, layer_id, relation="has_layer")
 
                 for group in layer.groups:
                     group_id = f"{layer_id}:{group.name}"
+                    in_group = {**on_layer, "group": group.name}
                     g.add_node(
                         group_id,
                         label=group.name,
                         type="group",
                         layer_ordinal=layer.ordinal,
+                        layer_color=layer_color(layer.ordinal),
                         kind=kind_name,
+                        language=language,
+                        meta={"lexicon_layers": [in_group]},
                     )
                     g.add_edge(layer_id, group_id, relation="has_group")
 
@@ -98,9 +114,13 @@ class LexiconService:
                             label=tok.token,
                             type="token",
                             layer_ordinal=layer.ordinal,
+                            layer_color=layer_color(layer.ordinal),
                             kind=kind_name,
+                            language=language,
                             role=tok.role,
                             since=tok.since,
+                            meta={"lexicon_layers": [
+                                {**in_group, "role": tok.role, "since": tok.since}]},
                         )
                         g.add_edge(group_id, tok_id, relation="has_token")
         return g

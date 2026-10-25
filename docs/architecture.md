@@ -187,7 +187,7 @@ statement.
 
 | | who calculates | who stores | who displays |
 |---|---|---|---|
-| **Code maps** (`/parse`, `/repo`) | this backend: parsers produce nodes and edges, `PositionService` lays them out, `GraphSerializer` sizes by degree | `CacheService` — content-addressed, keyed by url + mode + layout + extensions, filesystem or MongoDB; `graphbase` for named bookmarks (separate store, separate decision) | the one canvas, `StreamingGraphRenderer`; the legend counts what was drawn |
+| **Code maps** (`/parse`, `/repo`) | this backend: parsers produce nodes and edges, `PositionService` lays them out, `GraphSerializer` sizes by degree | `CacheService` — content-addressed, keyed by the graph schema version + url + mode + layout + extensions, filesystem or MongoDB; `graphbase` for named bookmarks (separate store, separate decision) | the one canvas, `StreamingGraphRenderer`; the legend counts what was drawn |
 | **Topologies** (`/topology`) | the harness declares shapes (boxes, arrows, no coordinates) and measures relation weights from its archive; this backend resolves the *encoding* — width from strength, dashed from unmeasured, colour from kind — and lays out | nothing here. Read live on every request; the harness stores its own archive and its own runs | the canvas draws exactly the channels `topology_service` resolved; the panel shows the harness's caveat verbatim |
 | **Capabilities** (`/capabilities`) | the corpus's registry states claims; this backend counts nothing but the rungs naming no evidence, and lays out | nothing here; the registry is the corpus's file at the governance pin | the canvas; the panel lists the claims as stated, with who stated them and when |
 | **Overview** (`/overview`) | dossier builds masthead figures and sections from its database and writes them as a seam; this backend draws the one relation the seam states (a section lists a subject) and lays out | dossier's seam file — a snapshot; this window reads it and never writes it | the canvas; the panel shows the masthead as written, with the producer's own `note` beside each figure, and when the reading was made |
@@ -237,8 +237,9 @@ statement.
    languages live, and a node keeps any look its parser gave it. The estate
    palette (rule 1) is a different vocabulary for a different kind of graph.
    **And every graph says what its nodes are**: `GraphSerializer` stamps each
-   node's construct for every route, a cached graph is stamped again as it is
-   replayed, and `construct_service.stamp` is the one place the decision is
+   node's construct for every gJGF route, the unified streams as they parse, a
+   cached graph is stamped again whenever it is served, and
+   `construct_service.stamp` is the one place the decision is
    made -- the census (`/lexicon/chrestomathy/census`) that reads a drawn graph
    as a chrestomathy calls it too, and the client never decides a construct.
 10. **The window runs nothing it reads.** Running cargo runs a workspace's build

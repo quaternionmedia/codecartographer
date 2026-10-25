@@ -618,7 +618,11 @@ def cargo_read(path: str, as_json: bool):
 
     from codecarto.services import cargo_service
 
-    reading = cargo_service.read(path)
+    try:
+        reading = cargo_service.read(path)
+    except Exception as error:  # a reader that raised is a sentence here, never a traceback
+        click.secho(f"✗ reading {path} stopped on something the reader did not expect: {error}", fg="red")
+        raise SystemExit(1)
     if not reading.ok:
         click.secho(f"✗ {reading.reason}", fg="red")
         raise SystemExit(1)
@@ -666,7 +670,7 @@ def cargo_read(path: str, as_json: bool):
 def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_flag: str,
                  profile: str, timeout: int):
     """
-    Run cargo in PATH and write what it says to PATH/target/codecarto/.
+    Run cargo in PATH and write what it says to the workspace's target/codecarto/.
 
     \b
     This RUNS THE WORKSPACE'S CODE: `cargo check` compiles build scripts and
@@ -674,15 +678,21 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
     window itself never runs cargo; it reads the files this writes:
 
     \b
-        metadata.json   cargo metadata --format-version 1
-        check.jsonl     cargo check --workspace --message-format=json
-        BIN.map         cargo rustc --profile release --package PKG --bin BIN
+        metadata.json   cargo metadata --format-version 1 --locked
+        check.jsonl     cargo check --workspace --message-format=json --locked
+        BIN.map         cargo rustc --locked --profile release --package PKG --bin BIN
                             -- -C link-arg=-Map=...   (PKG: the member with that bin)
+
+    \b
+    They go under the workspace root cargo names -- PATH's own, or the one
+    above a member crate -- and nothing else is written: `--locked` keeps
+    cargo from rewriting Cargo.lock.
     """
+    import re
     import shlex
     import shutil
 
-    from codecarto.services import cargo_service
+    from codecarto.services import cargo_service, link_map_service
 
     cargo_bin = shutil.which("cargo")
     if cargo_bin is None:
@@ -692,17 +702,24 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
         raise SystemExit(1)
 
     root = Path(path).resolve()
+    if not (root / "Cargo.toml").is_file():
+        click.secho(f"✗ no Cargo.toml in {root}, so there is no workspace to record and "
+                    f"nothing was run. Name a workspace root or a crate as PATH.", fg="red")
+        raise SystemExit(1)
     out = root / cargo_service.DOCUMENTS
-    out.mkdir(parents=True, exist_ok=True)
     offline = [] if online else ["--offline"]
-    # (document, command, whether the document is the command's own output)
+    # (document, command, whether the document is the command's own output).
+    # A map's command names the file the linker writes, which is known once
+    # cargo metadata has said where the workspace's documents go.
     steps = [
         (cargo_service.METADATA_DOCUMENT,
-         [cargo_bin, "metadata", "--format-version", "1", *offline], True),
+         [cargo_bin, "metadata", "--format-version", "1", "--locked", *offline], True),
         (cargo_service.CHECK_DOCUMENT,
-         [cargo_bin, "check", "--workspace", "--message-format=json", *offline,
+         [cargo_bin, "check", "--workspace", "--message-format=json", "--locked", *offline,
           *(["--all-targets"] if all_targets else [])], True),
+        *((f"{binary}.map", None, False) for binary in maps),
     ]
+
     def package_of(binary: str) -> str | None:
         """The workspace package that owns a binary, from the metadata just
         recorded: `cargo rustc` in a workspace with no root package will not
@@ -721,56 +738,128 @@ def cargo_record(path: str, all_targets: bool, online: bool, maps: tuple, map_fl
                 return package.get("name")
         return None
 
-    for binary in maps:
-        # The linker writes the map itself; cargo's output is not the document.
-        def link(binary: str = binary) -> list[str] | None:
+    failed = False
+    metadata_failed = ""  # how the metadata step failed, when it did
+    for name, command, captured in steps:
+        if command is None:
+            binary = name[: -len(".map")]
             package = package_of(binary)
             if package is None:
-                return None
-            target = out / f"{binary}.map"
-            return [cargo_bin, "rustc", "--profile", profile, "--package", package, "--bin", binary,
-                    *offline, "--", *shlex.split(map_flag.format(path=target.as_posix()))]
-        steps.append((f"{binary}.map", link, False))
-    failed = False
-    for name, command, captured in steps:
-        if callable(command):
-            command = command()
-            if command is None:
                 failed = True
-                click.secho(f"✗ no workspace package has a binary named {name[:-4]}, "
-                            f"by the {cargo_service.METADATA_DOCUMENT} just recorded", fg="red")
+                if metadata_failed:
+                    # The package is read from that step's document: say why it is not known.
+                    click.secho(f"✗ cannot link {binary}: the metadata step {metadata_failed}, so "
+                                f"which workspace member has that binary is not known", fg="red")
+                else:
+                    click.secho(f"✗ no workspace package has a binary named {binary}, "
+                                f"by the {cargo_service.METADATA_DOCUMENT} just recorded", fg="red")
                 continue
+            # The linker writes the map itself; cargo's output is not the
+            # document. The flag is split before the path goes in, so a path
+            # with a space stays one argument.
+            command = [cargo_bin, "rustc", "--locked", "--profile", profile, "--package", package,
+                       "--bin", binary, *offline, "--",
+                       *(part.format(path=(out / name).as_posix()) for part in shlex.split(map_flag))]
         click.secho(f"→ cargo {' '.join(command[1:])}", fg="cyan")
-        stderr = ""
+        before = (out / name).stat().st_mtime if (out / name).is_file() else None
         try:
             result = subprocess.run(command, cwd=root, capture_output=True, text=True,
                                     timeout=timeout, encoding="utf-8", errors="replace")
-            stdout, code, stderr = result.stdout, result.returncode, result.stderr or ""
+            stdout, stderr, code = result.stdout, result.stderr or "", result.returncode
         except subprocess.TimeoutExpired as expired:
             # A bound that fires is reported: what arrived is kept, and said to be partial.
             stdout = (expired.stdout or b"").decode("utf-8", "replace") \
                 if isinstance(expired.stdout, bytes) else (expired.stdout or "")
-            code = None
+            stderr, code = "", None
+        if name == cargo_service.METADATA_DOCUMENT:
+            if code != 0:
+                metadata_failed = f"did not finish in {timeout}s" if code is None else f"exited {code}"
+            out = _workspace_documents(stdout, root, cargo_service.DOCUMENTS)
+            if out.parent.parent != root:
+                click.echo(f"  cargo answered for the workspace at {out.parent.parent}; "
+                           f"what is recorded goes there, where reading it looks")
+        out.mkdir(parents=True, exist_ok=True)
         if captured:
             (out / name).write_text(stdout, encoding="utf-8")
-        last = stderr.strip().splitlines()[-1] if stderr.strip() else ""
+        written = (out / name).as_posix() if out.parent.parent != root \
+            else (out / name).relative_to(root).as_posix()
         if code is None:
             failed = True
             click.secho(f"  ✗ did not finish in {timeout}s"
                         + (f"; {name} holds only what arrived" if captured else ""), fg="red")
         elif code != 0 and name != cargo_service.CHECK_DOCUMENT:
             failed = True
-            click.secho(f"  ✗ exited {code}: {last}", fg="red")
-        elif not captured and not (out / name).is_file():
+            click.secho(f"  ✗ exited {code}: {_cargo_said(stderr)}", fg="red")
+        elif name == cargo_service.CHECK_DOCUMENT and not _check_finished(stdout):
+            # Stopped before compiling -- a dependency it could not fetch, a
+            # lockfile `--locked` would not let it write: no diagnostics here
+            # is not a clean build, and the reader says so too.
             failed = True
-            click.secho(f"  ✗ the build finished and the linker wrote no {name}; "
-                        f"try --map-flag for this linker", fg="red")
+            click.secho(f"  ✗ cargo stopped before checking anything (exited {code}): "
+                        f"{_cargo_said(stderr)}", fg="red")
+        elif not captured and _unchanged(out / name, before):
+            # cargo links only a binary that is out of date, and says
+            # `Compiling` when it does; a build already current writes no map.
+            failed = True
+            if not re.search(r"^\s*Compiling\s", stderr, re.MULTILINE):
+                recorded, seconds = link_map_service.age(out / name) if before is not None else ("", 0)
+                old = (f"{name} is still the link of {recorded}, {seconds / 3600:.1f} h ago"
+                       if before is not None else f"there is no {name}")
+                click.secho(f"  ✗ cargo found the build up to date and did not relink, so the "
+                            f"linker wrote nothing: {old}. It relinks once a source changes, or "
+                            f"after `cargo clean --profile {profile}`.", fg="red")
+            else:
+                click.secho(f"  ✗ the build linked and the linker wrote no {name}; "
+                            f"try --map-flag for this linker", fg="red")
         else:
             # A failing check still wrote its diagnostics, which is what it is for.
-            click.secho(f"  ✓ wrote {(out / name).relative_to(root).as_posix()}"
-                        + (f" (cargo exited {code})" if code else ""), fg="green")
+            click.secho(f"  ✓ wrote {written}" + (f" (cargo exited {code})" if code else ""), fg="green")
+        if code and "--locked" in stderr:
+            click.echo("  Cargo.lock is missing or out of date, and record does not rewrite it: "
+                       "run `cargo generate-lockfile` or `cargo update` yourself, then record again.")
     if failed:
         raise SystemExit(1)
+
+
+def _unchanged(path: Path, before: float | None) -> bool:
+    """Whether the file at *path* is as it was before a command ran: still
+    absent, or not written since."""
+    if not path.is_file():
+        return True
+    return before is not None and path.stat().st_mtime == before
+
+
+def _workspace_documents(metadata: str, root: Path, documents: Path) -> Path:
+    """Where the window looks for what cargo said about PATH: the
+    target/codecarto/ of the workspace root cargo names, which is above PATH
+    when PATH is a member crate; PATH's own when cargo named none."""
+    import json
+
+    try:
+        found = json.loads(metadata).get("workspace_root")
+    except (ValueError, AttributeError):
+        found = None
+    return (Path(found).resolve() if found else root) / documents
+
+
+def _check_finished(stdout: str) -> bool:
+    """Whether cargo got as far as reporting the check's outcome."""
+    import json
+
+    for line in stdout.splitlines():
+        if line.startswith("{") and "build-finished" in line:
+            try:
+                if json.loads(line).get("reason") == "build-finished":
+                    return True
+            except ValueError:
+                continue
+    return False
+
+
+def _cargo_said(stderr: str) -> str:
+    """cargo's first error line, or its last line."""
+    lines = [line.strip() for line in stderr.splitlines() if line.strip()]
+    return next((line for line in lines if line.startswith("error")), lines[-1] if lines else "")
 
 
 def _format_size(size_bytes: int) -> str:
