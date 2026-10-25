@@ -16,7 +16,7 @@ import m from 'mithril';
 
 import type { LayoutContext } from '../layout_context';
 import { ProblemView } from '../../features/estate/problem_view';
-import { Provenance } from '../../features/estate/provenance';
+import { Provenance, caveatShown } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import type { Draw } from '../../features/cartography/cartography_actions';
 import '../../features/estate/estate.css';
@@ -105,7 +105,7 @@ export function createCargoPanel(ctx: LayoutContext): m.Component {
                   ])
                 : null,
               reading.notes.map((note) => m('p.estate-view__hint', note)),
-              m('p.estate-view__hint', reading.caveat),
+              caveatShown(metadata, 'cargo', reading.caveat) ? null : m('p.estate-view__hint', reading.caveat),
               m('label.cartography__options', [
                 m('input[type=checkbox]', {
                   checked: features,

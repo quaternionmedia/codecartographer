@@ -81,7 +81,12 @@ def _repo_key_from_url(url: str) -> str:
 #   6: `meta.bytes` and `meta.measured` read the maps LLD and GNU ld write
 #      as they write them, and reach a Rust generic's or closure's item and
 #      a C function GCC cloned (`.constprop`, `.part`, `.isra`).
-GRAPH_SCHEMA_VERSION = 6
+#   7: C ids keep C's namespaces apart -- a tag is `stem::struct name`, a
+#      field `stem::struct name::field`, a local `stem::function::name` --
+#      a member of an anonymous record is held by the named record around
+#      it, a function's locals are depth-3 nodes it `contains`, and a local
+#      that lives for one call carries no `meta.bytes`.
+GRAPH_SCHEMA_VERSION = 7
 
 
 def _make_key(url: str, mode: str, layout: str, extensions: list[str]) -> str:

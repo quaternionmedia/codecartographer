@@ -666,6 +666,44 @@ def test_a_name_two_files_answer_goes_to_the_one_the_object_names():
     assert joined["ambiguous"] == 0
 
 
+def test_a_local_of_a_statics_name_takes_none_of_its_bytes():
+    """A local that lives for one call (`meta.automatic`) has no storage a map
+    could list, but the join took every C `variable` by its file and name: a
+    local `rx_buffer` in `uart.c` was a second answer for the static's symbol,
+    and the static got no bytes. Mutation: join an automatic local -- `ambiguous`
+    is 1 and the static's bytes are missing."""
+    import networkx as nx
+
+    graph = nx.DiGraph()
+    graph.add_node("c::uart::rx_buffer", language="c", kind="variable", label="rx_buffer",
+                   file="uart", meta={})
+    graph.add_node("c::uart::uart_pending::rx_buffer", language="c", kind="variable", label="rx_buffer",
+                   file="uart", meta={"automatic": True, "no_linkage": True})
+    joined = L.annotate(graph, L.read(REAL_GNU), owner="sensor-c", recorded_at="", stale=False)
+    assert graph.nodes["c::uart::rx_buffer"]["meta"].get("bytes") == 0x100
+    assert "bytes" not in graph.nodes["c::uart::uart_pending::rx_buffer"]["meta"]
+    assert joined["ambiguous"] == 0
+
+
+@requires_libclang
+def test_on_the_code_map_a_local_of_a_statics_name_takes_none_of_its_bytes(tmp_path):
+    """The guard above, on the parser's own graph: the C parser marks a local
+    `automatic`, and the static it shares a file and a name with keeps its 256
+    bytes."""
+    root = tmp_path / "sensor-c"
+    shutil.copytree(SENSOR, root)
+    with (root / "src" / "uart.c").open("a", newline="\n") as source:
+        source.write("\nsize_t uart_pending(void)\n{\n    size_t rx_buffer = rx_head - rx_tail;\n"
+                     "    return rx_buffer;\n}\n")
+    (root / "target" / "codecarto").mkdir(parents=True)
+    shutil.copy(REAL_GNU, root / "target" / "codecarto" / "sensor-c.map")  # newer than every source
+    extensions = [".c", ".h", ".ld"]
+    graph = UnifiedParserService.build_graph(get_local_repo(str(root), extensions=extensions), 3, extensions)
+    local = graph.nodes["uart::uart_pending::rx_buffer"]
+    assert local["meta"].get("automatic") and "bytes" not in local["meta"]
+    assert graph.nodes["uart::rx_buffer"]["meta"]["bytes"] == 0x100
+
+
 @pytest.mark.parametrize("section, named", [
     (".bss.rx_buffer", "rx_buffer"), (".text.startup.main", "main"), (".text.unlikely.fault", "fault"),
     # The clones GCC makes under -Os and -O2 -- constant-propagated, split,

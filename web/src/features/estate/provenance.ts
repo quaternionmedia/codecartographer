@@ -15,6 +15,7 @@
 
 import m from 'mithril';
 
+import { stripShown } from './provenance_shown';
 import './estate.css';
 
 /** The estate fields a graph's metadata may carry. All optional: this is what
@@ -46,11 +47,13 @@ export interface ProvenanceAttrs {
   kind?: string;
 }
 
+// When the strip is drawn, and whether it is saying a panel's caveat for it.
+export { caveatShown } from './provenance_shown';
+
 export const Provenance: m.Component<ProvenanceAttrs> = {
   view: ({ attrs }) => {
     const md = attrs.metadata;
-    if (!md) return null;
-    if (attrs.kind && md.kind !== undefined && md.kind !== attrs.kind) return null;
+    if (!stripShown(md, attrs.kind)) return null;
     const p = attrs.prefix;
     const partial = typeof md.unmeasured === 'number' && md.unmeasured > 0;
 

@@ -18,6 +18,7 @@ import { GraphRendererRegistry } from '../features/graph/services/renderers';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
 import { logger } from '../core/logger';
 import { backendLayoutName } from '../features/graph/services/layout_names';
+import { parseNotes } from '../features/graph/services/parse_notes';
 
 // The menu's registry name, as the backend spells it. One rule in
 // `layout_names.ts`; this used to be a private table here that fell back to
@@ -671,9 +672,10 @@ export class PlotActions {
   }
 
   /**
-   * Plot a single uploaded file via /parse/unified
+   * Plot a single uploaded file via /parse/unified. Resolves to what the parse
+   * said it could not read (`parse_notes.ts`), for the caller to say.
    */
-  async plotUploadedFile(file: RawFile): Promise<void> {
+  async plotUploadedFile(file: RawFile): Promise<string[]> {
     this.stateController.clear();
     try {
       const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
@@ -686,6 +688,7 @@ export class PlotActions {
       if (!data) throw new Error('No data returned from parse/unified');
       this.stateController.update({ parseDirectory: dir });
       this.handlePlotData(data);
+      return parseNotes(data);
     } catch (error) {
       console.error('Failed to plot uploaded file:', error);
       throw error;

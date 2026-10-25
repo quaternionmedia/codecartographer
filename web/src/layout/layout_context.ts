@@ -28,6 +28,8 @@ import {
 import { PlotService } from '../services/plot_service';
 import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
+import { infoLine, sourceLine } from '../features/graph/services/node_info';
+import { notesTail } from '../features/graph/services/parse_notes';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
@@ -689,15 +691,16 @@ export class LayoutContext {
         r.fitTo(subtree);
       },
 
+      // `show`, not `hint`: a hint speaks once a session, and these are
+      // verbs a person uses again (node_info.ts says why that matters).
       viewSource: (id) => {
         const node = renderer()?.getNodes().find((n) => n.id === id);
-        if (node?.file) ToastManager.hint('rad-source', String(node.file));
+        const source = node ? sourceLine(node) : null;
+        if (source) ToastManager.show(source, 8_000);
       },
       showInfo: (id) => {
         const node = renderer()?.getNodes().find((n) => n.id === id);
-        if (node) {
-          ToastManager.hint('rad-info', `${node.label ?? node.id} · ${node.kind ?? 'node'}`);
-        }
+        if (node) ToastManager.show(infoLine(node), 8_000);
       },
     };
   }
@@ -766,6 +769,17 @@ export class LayoutContext {
     return ` — ${placed} of ${total} placed without backend positions`;
   }
 
+  /**
+   * Plot an uploaded file and say what its parse could not read, as a stream
+   * says its `note` events: each in a toast, and all of them returned for the
+   * caller's status line (`notesTail`).
+   */
+  private async _plotUpload(file: RawFile): Promise<string[]> {
+    const notes = await this.actions.plot.plotUploadedFile(file);
+    for (const note of notes) ToastManager.show(note, 15_000);
+    return notes;
+  }
+
   private _mountAndStream(
     startFn: (renderer: StreamingGraphRenderer) => () => void,
     statusMsg: string,
@@ -812,6 +826,7 @@ export class LayoutContext {
 
     const accNodes: { id: string; [k: string]: unknown }[] = [];
     const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
+    const notes: string[] = [];
     let nodeCount = 0;
 
     this._mountAndStream((renderer) =>
@@ -839,6 +854,10 @@ export class LayoutContext {
             accEdges.push(edge as any);
             renderer.addEdge(edge as any);
           },
+          onNote: (message) => {
+            notes.push(message);
+            ToastManager.show(message, 15_000);
+          },
           onDone: (elapsed_ms, from_cache) => {
             this._cancelStream = null;
             renderer.finalize();
@@ -863,7 +882,7 @@ export class LayoutContext {
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
             this.updatePanelState({
               isLoading: false,
-              statusMessage: msg + this._fallbackNote(renderer),
+              statusMessage: msg + this._fallbackNote(renderer) + notesTail(notes),
               progress: null,
             });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
@@ -896,6 +915,7 @@ export class LayoutContext {
 
     const accNodes: { id: string; [k: string]: unknown }[] = [];
     const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
+    const notes: string[] = [];
     let nodeCount = 0;
 
     this._mountAndStream((renderer) =>
@@ -924,6 +944,10 @@ export class LayoutContext {
             accEdges.push(edge as any);
             renderer.addEdge(edge as any);
           },
+          onNote: (message) => {
+            notes.push(message);
+            ToastManager.show(message, 15_000);
+          },
           onDone: (elapsed_ms, from_cache) => {
             this._cancelStream = null;
             renderer.finalize();
@@ -947,7 +971,7 @@ export class LayoutContext {
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
             this.updatePanelState({
               isLoading: false,
-              statusMessage: msg + this._fallbackNote(renderer),
+              statusMessage: msg + this._fallbackNote(renderer) + notesTail(notes),
               progress: null,
             });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
@@ -1080,10 +1104,11 @@ export class LayoutContext {
 
       onUploadedFileClick: async (file: RawFile) => {
         this.updatePanelState({ isLoading: true, statusMessage: 'Plotting file...' });
-        this._lastPlotAction = async () => { await this.actions.plot.plotUploadedFile(file); };
+        let notes: string[] = [];
+        this._lastPlotAction = async () => { notes = await this._plotUpload(file); };
         try {
           await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: 'Error plotting file' });
         }
@@ -1092,13 +1117,14 @@ export class LayoutContext {
       onPlotAllUploads: async () => {
         if (this.uploadedFiles.length > 0) {
           this.updatePanelState({ isLoading: true, statusMessage: 'Plotting all files...' });
+          let notes: string[] = [];
           this._lastPlotAction = async () => {
             if (this.uploadedFiles.length > 0)
-              await this.actions.plot.plotUploadedFile(this.uploadedFiles[0]);
+              notes = await this._plotUpload(this.uploadedFiles[0]);
           };
           try {
             await this._lastPlotAction();
-            this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+            this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
           } catch {
             this.updatePanelState({ isLoading: false, statusMessage: 'Error plotting files' });
           }

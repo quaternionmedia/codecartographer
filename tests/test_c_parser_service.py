@@ -219,6 +219,26 @@ class TestParseDirectoryDiagnostics:
         assert diag["unknown_type"] == 0
         assert diag["files_with_warnings"] == 0
 
+    @pytest.mark.parametrize("target", ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc",
+                                        "thumbv7em-none-eabihf"])
+    def test_the_stubs_parse_clean_for_every_target(self, tmp_path, target):
+        """The stub headers are read for whatever target libclang parses for,
+        and that is the host unless told otherwise -- so a check that ran only
+        on Windows passed while every Linux parse said `size_t` was unknown.
+        Each target is named here, so any host sees all three. Mutation: drop
+        `#include <stddef.h>` from the sys/types.h stub -- Linux and Cortex-M
+        fail; type size_t as `unsigned long` again -- Windows fails."""
+        from codecarto.services.parsers.c_parser import CParser, default_parse_args
+
+        source = tmp_path / "main.c"
+        source.write_text(
+            "#include <unistd.h>\n#include <pthread.h>\n#include <stdint.h>\n#include <stddef.h>\n"
+            "int main(void) { pthread_t t; size_t n = 0; uint32_t x = 1; sleep(0); return (int)(x + n); }\n"
+        )
+        result = CParser().parse_files([source], extra_args=default_parse_args() + ["-target", target])
+        diag = result["meta"]["diagnostics"]
+        assert (diag["missing_header"], diag["unknown_type"], diag["files_with_warnings"]) == (0, 0, 0)
+
     def test_genuinely_missing_header_is_classified_and_flagged(self, tmp_path):
         from codecarto.services.c_parser_service import CParserService
 
@@ -613,3 +633,81 @@ class TestCLanguageParserProjectRoot:
 
         labels = {d.get("label") for _, d in g.nodes(data=True)}
         assert "solo_fn" in labels
+
+
+@requires_libclang
+class TestNamesKeepTheirNamespaces:
+    """C keeps tags, each record's members and each function's locals apart
+    from file-scope names; a node id that did not merged them into one node,
+    and the second declaration was never drawn."""
+
+    def test_a_tag_a_variable_two_fields_and_two_locals_are_six_nodes(self, tmp_path):
+        """Mutation: id every declaration as `stem::name` -- `config` and
+        `struct config` are one node, the two `x` fields one, the two `n`
+        locals one, and this fails."""
+        from codecarto.services.parsers.c_parser import CParser
+
+        source = tmp_path / "unit.c"
+        source.write_text(
+            "struct config { int baud; } config;\n"
+            "struct point { int x; };\n"
+            "struct size { int x; };\n"
+            "int f(void) { int n = 0; return n; }\n"
+            "int g(void) { int n = 1; return n; }\n"
+        )
+        result = CParser().parse_files([source])
+        kinds = {n["id"]: n["kind"] for n in result["nodes"]}
+        assert kinds["unit::struct config"] == "struct"
+        assert kinds["unit::config"] == "variable"
+        assert kinds["unit::struct point::x"] == kinds["unit::struct size::x"] == "field"
+        assert kinds["unit::f::n"] == kinds["unit::g::n"] == "variable"
+        assert kinds["unit::f"] == "function"  # a file-scope name is unchanged
+
+    def test_a_field_is_contained_by_its_record(self, tmp_path):
+        from codecarto.services.parsers.c_parser import CParser
+
+        source = tmp_path / "unit.c"
+        source.write_text("struct point { int x; int y; };\n")
+        result = CParser().parse_files([source])
+        field_of = {(e["src"], e["dst"]) for e in result["edges"] if e["kind"] == "FIELD_OF"}
+        assert field_of == {("unit::struct point", "unit::struct point::x"),
+                            ("unit::struct point", "unit::struct point::y")}
+
+    @staticmethod
+    def drawn(tmp_path, source: str):
+        """One file's graph at depth 3, as the unified pipeline draws it."""
+        from codecarto.services.local_repo_service import get_local_repo
+        from codecarto.services.unified_parser_service import UnifiedParserService
+
+        (tmp_path / "unit.c").write_text(source)
+        return UnifiedParserService.build_graph(get_local_repo(str(tmp_path), extensions=[".c"]), 3, [".c"])
+
+    def test_a_member_of_an_anonymous_record_is_contained_by_the_record_its_id_names(self, tmp_path):
+        """A member of an anonymous union or struct is ided under the nearest
+        record with a name (`struct reg::raw`), but its FIELD_OF came from the
+        anonymous record it is written in, which is no node, so the edge was
+        dropped and `raw`, `lo` and `hi` had nothing holding them. Mutation:
+        draw FIELD_OF from the field's immediate parent again -- this fails."""
+        g = self.drawn(tmp_path,
+                       "struct reg { union { int raw; struct { int lo; int hi; }; }; int tail; };\n")
+        for field in ("raw", "lo", "hi", "tail"):
+            assert list(g.predecessors(f"unit::struct reg::{field}")) == ["unit::struct reg"], field
+            assert g.edges["unit::struct reg", f"unit::struct reg::{field}"]["kind"] == "field_of"
+
+    def test_a_local_is_contained_by_its_function(self, tmp_path):
+        """A function's local was a node of its own held only by its file, so
+        a file drew one indistinguishable `i` per function that has one.
+        A local is now a sub-symbol of its function, as a field is of its
+        record and a method of its class. Mutation: draw no edge from the
+        function -- each local is at depth 2 under the file, and this fails."""
+        g = self.drawn(tmp_path,
+                       "int count;\n"
+                       "int f(void) { int count = 0; static int calls; { int i = count; } return calls; }\n"
+                       "int g(void) { int i = 1; return i; }\n")
+        for local, function in [("f::count", "f"), ("f::calls", "f"), ("f::i", "f"), ("g::i", "g")]:
+            assert list(g.predecessors(f"unit::{local}")) == [f"unit::{function}"], local
+            assert g.edges[f"unit::{function}", f"unit::{local}"]["kind"] == "contains"
+            assert g.nodes[f"unit::{local}"]["depth"] == 3
+        # A file-scope variable of the same name is still its file's.
+        (holder,) = g.predecessors("unit::count")
+        assert g.nodes[holder]["kind"] == "file" and g.nodes["unit::count"]["depth"] == 2
