@@ -132,6 +132,27 @@ class TestRecordedDocuments:
         assert metadata_doc.present and metadata_doc.stale and not metadata_doc.used
         assert "manifests were read instead" in metadata_doc.problem
 
+    def test_metadata_older_than_the_lockfile_is_not_used(self, tmp_path):
+        """`cargo update -p heapless` rewrites only Cargo.lock, which is a
+        manifest: the resolution recorded before it is stale."""
+        root = copy_workspace(tmp_path, "current")
+        lock = root / "Cargo.lock"
+        lock.write_text(lock.read_text(encoding="utf-8").replace(
+            'name = "heapless"\nversion = "0.8.0"', 'name = "heapless"\nversion = "0.8.1"'), encoding="utf-8")
+        later = time.time() + 60
+        os.utime(lock, (later, later))
+        reading = cargo_service.read(root)
+        assert reading.engine == "manifests"
+        assert reading.documents[0].stale and not reading.documents[0].used
+        assert deps(package(reading, "hal"))["heapless"][3] == "0.8.1"
+
+    def test_metadata_older_than_the_cargo_config_is_not_used(self, tmp_path):
+        root = copy_workspace(tmp_path, "current")
+        later = time.time() + 60
+        os.utime(root / ".cargo" / "config.toml", (later, later))
+        reading = cargo_service.read(root)
+        assert reading.engine == "manifests" and reading.documents[0].stale
+
     def test_a_file_with_the_wrong_shape_is_not_cargos(self, tmp_path):
         root = copy_workspace(tmp_path, "current")
         path = root / cargo_service.DOCUMENTS / cargo_service.METADATA_DOCUMENT
@@ -371,6 +392,28 @@ def test_recorded_diagnostics_land_on_the_items_they_name(tmp_path):
     verbose = next(d for _, d in graph.nodes(data=True) if d.get("label") == "verbose")
     assert verbose["has_parse_warning"] is True
     assert verbose["meta"]["diagnostics_recorded_at"]
+
+
+def test_a_check_older_than_a_source_is_stale_on_the_code_map_too(tmp_path):
+    """Edit uart.rs after the check, so line 11 is now `struct Uart`: the overlay
+    says stale, as a full read of the directory does; the diagnostic in the
+    edited file is not put on whatever item now sits at its line; and the
+    others say they are stale rather than marking an error as current."""
+    root = copy_workspace(tmp_path, "current")
+    uart = root / "crates" / "hal" / "src" / "uart.rs"
+    uart.write_text("// two lines\n// added\n" + uart.read_text(encoding="utf-8"), encoding="utf-8")
+    later = time.time() + 60
+    os.utime(uart, (later, later))
+    assert cargo_service.read(root).documents[1].stale
+    assert cargo_service.recorded_diagnostics(root).documents[0].stale
+
+    graph = UnifiedParserService.build_graph(get_local_repo(str(root), extensions=[".rs"]), 3, [".rs"])
+    flagged = {d["label"]: d["meta"] for _, d in graph.nodes(data=True)
+               if (d.get("meta") or {}).get("diagnostics")}
+    assert set(flagged) == {"SysTick", "verbose"}
+    assert all(meta["diagnostics_stale"] for meta in flagged.values())
+    verbose = next(d for _, d in graph.nodes(data=True) if d.get("label") == "verbose")
+    assert not verbose.get("has_parse_warning")
 
 
 def test_no_recorded_check_means_no_overlay(tmp_path):

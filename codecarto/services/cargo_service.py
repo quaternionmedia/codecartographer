@@ -220,7 +220,7 @@ def read(path: Path | str, documents: Path | str | None = None) -> Reading:
 
     manifests: list[Path] = []
     memory_maps: list[Path] = []
-    newest = _walk(root, reading, manifests, memory_maps)
+    newest, newest_manifest = _walk(root, reading, manifests, memory_maps)
     if not manifests:
         reading.reason = (f"no Cargo.toml under {root.as_posix()} -- this is not a "
                           f"Cargo project, or its manifests sit inside a skipped "
@@ -233,12 +233,13 @@ def read(path: Path | str, documents: Path | str | None = None) -> Reading:
     # directory the walk skips (`build/`, `dist/`).
     for directory in _unwalked_members(parsed, manifests, root):
         start = len(manifests)
-        newest = max(newest, _walk(root / _rel(directory, root), reading, manifests, memory_maps))
+        sources, manifest_time = _walk(root / _rel(directory, root), reading, manifests, memory_maps)
+        newest, newest_manifest = max(newest, sources), max(newest_manifest, manifest_time)
         _parse(manifests[start:], parsed, reading, root, toml)
     reading.newest_source = newest
 
     docs_dir = Path(documents) if documents else root / DOCUMENTS
-    metadata_doc, metadata = _read_metadata(docs_dir, manifests, root)
+    metadata_doc, metadata = _read_metadata(docs_dir, newest_manifest, root)
     reading.documents.append(metadata_doc)
     if metadata is not None:
         _from_metadata(reading, metadata, root)
@@ -278,20 +279,27 @@ def _unwalked_members(parsed: dict[Path, dict], manifests: list[Path], root: Pat
     return sorted(d for d in found - walked if _under(d, root.resolve()))
 
 
-def _walk(top: Path, reading: Reading, manifests: list[Path], memory_maps: list[Path]) -> float:
-    """Every Cargo.toml and memory map under *top*, added to the lists, and the
-    newest mtime of any manifest or Rust source -- what makes a recorded
-    document stale."""
-    newest = 0.0
+def _walk(top: Path, reading: Reading, manifests: list[Path],
+          memory_maps: list[Path]) -> tuple[float, float]:
+    """Every Cargo.toml and memory map under *top*, added to the lists; the
+    newest mtime of any manifest or Rust source, which makes `check.jsonl`
+    stale; and the newest of a manifest alone -- a Cargo.toml, a Cargo.lock or
+    a `.cargo/config.toml` -- which makes `metadata.json` stale."""
+    newest = newest_manifest = 0.0
     for directory, dirs, files in os.walk(top):
         dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS and (not d.startswith(".") or d == ".cargo"))
         here = Path(directory)
         for name in files:
-            if name in ("Cargo.toml", "Cargo.lock") or name.endswith(".rs") or name == "build.rs":
+            manifest = (name in ("Cargo.toml", "Cargo.lock")
+                        or (here.name == ".cargo" and name in ("config.toml", "config")))
+            if manifest or name.endswith(".rs"):
                 try:
-                    newest = max(newest, (here / name).stat().st_mtime)
+                    mtime = (here / name).stat().st_mtime
                 except OSError:
-                    pass
+                    mtime = 0.0
+                newest = max(newest, mtime)
+                if manifest:
+                    newest_manifest = max(newest_manifest, mtime)
             if name == "Cargo.toml":
                 if len(manifests) >= MAX_MANIFESTS:
                     if not any("manifest bound" in n for n in reading.notes):
@@ -302,7 +310,7 @@ def _walk(top: Path, reading: Reading, manifests: list[Path], memory_maps: list[
                 manifests.append(here / name)
             elif name == "memory.x" or name.endswith((".ld", ".lds")):
                 memory_maps.append(here / name)
-    return newest
+    return newest, newest_manifest
 
 
 # ── From the manifests ────────────────────────────────────────────────────────
@@ -601,8 +609,7 @@ def _document(docs_dir: Path, name: str, newest: float, root: Path) -> Document:
     return doc
 
 
-def _read_metadata(docs_dir: Path, manifests: list[Path], root: Path) -> tuple[Document, dict | None]:
-    newest_manifest = max((m.stat().st_mtime for m in manifests), default=0.0)
+def _read_metadata(docs_dir: Path, newest_manifest: float, root: Path) -> tuple[Document, dict | None]:
     doc = _document(docs_dir, METADATA_DOCUMENT, newest_manifest, root)
     if not doc.present:
         return doc, None
@@ -1101,15 +1108,33 @@ def as_data(reading: Reading) -> dict[str, Any]:
 
 
 def recorded_diagnostics(root: Path | str) -> Reading | None:
-    """Only what `check.jsonl` under *root* recorded, without walking the
-    workspace: what the parse pipeline needs to put diagnostics on the code
-    map. None when there is no such document."""
+    """Only what `check.jsonl` under *root* recorded, and whether a source has
+    changed since: what the parse pipeline needs to put diagnostics on the
+    code map. None when there is no such document.
+
+    Staleness is the full read's -- the same walk, without parsing a manifest
+    -- so the code map and `/cargo` never disagree about it. When it is stale,
+    a diagnostic in a file changed after the check is dropped: its line now
+    names whatever item sits there, not the one rustc meant."""
     root = Path(root)
     docs_dir = root / DOCUMENTS
-    if not (docs_dir / CHECK_DOCUMENT).is_file():
+    check = docs_dir / CHECK_DOCUMENT
+    if not check.is_file():
         return None
     reading = Reading(root=str(root))
-    reading.documents.append(_read_check(reading, docs_dir, root))
+    reading.newest_source, _ = _walk(root, reading, [], [])
+    doc = _read_check(reading, docs_dir, root)
+    reading.documents.append(doc)
+    if doc.stale:
+        recorded = check.stat().st_mtime
+
+        def unchanged(d: Diagnostic) -> bool:
+            try:
+                return (root / d.file).stat().st_mtime <= recorded
+            except OSError:
+                return False
+
+        reading.diagnostics = [d for d in reading.diagnostics if d.file and unchanged(d)]
     return reading
 
 
@@ -1120,7 +1145,11 @@ def annotate_diagnostics(graph, reading: Reading) -> int:
     Joined by path suffix and line range: a diagnostic at `crates/hal/src/uart.rs:12`
     lands on the item in that file whose `line`..`line_end` holds line 12, the
     innermost when several do. A diagnostic no item holds is left unjoined --
-    `/cargo/data` still lists it."""
+    `/cargo/data` still lists it. When a source changed after the check, each
+    item says `diagnostics_stale` and an error on it does not set
+    `has_parse_warning`: what rustc said then is not presented as now."""
+    check = next((doc for doc in reading.documents if doc.name == CHECK_DOCUMENT), None)
+    stale = bool(check and check.stale)
     by_file: dict[str, list[Diagnostic]] = {}
     for d in reading.diagnostics:
         if d.file:
@@ -1147,10 +1176,12 @@ def annotate_diagnostics(graph, reading: Reading) -> int:
             diags = meta.setdefault("diagnostics", {})
             diags[d.level] = diags.get(d.level, 0) + 1
             meta.setdefault("messages", []).append(f"{d.level}: {d.message} (line {d.line})")
-            # Provenance travels with the figure: when rustc said it.
-            meta["diagnostics_recorded_at"] = next(
-                (doc.generated_at for doc in reading.documents if doc.name == CHECK_DOCUMENT), "")
-            if d.level == "error":
+            # Provenance travels with the figure: when rustc said it, and
+            # whether a source has changed since.
+            meta["diagnostics_recorded_at"] = check.generated_at if check else ""
+            if stale:
+                meta["diagnostics_stale"] = True
+            elif d.level == "error":
                 data["has_parse_warning"] = True
             touched += 1
     return touched
