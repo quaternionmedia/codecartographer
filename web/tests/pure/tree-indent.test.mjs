@@ -45,6 +45,28 @@ test("a folder's contents sit a step in from its name", () => {
   assert.ok(step > 0, `.folder_content is not indented: ${JSON.stringify([...rule])}`);
 });
 
+test("each of the tree's properties is stated once, so none is dead", () => {
+  /** Each of the tree's selectors states a property in one rule. A property
+      stated again in a later rule leaves the earlier value dead: the reader
+      changes it and nothing on screen moves. Mutation: state
+      `.folder_content`'s margin in a second rule -- this fails. */
+  const seen = new Set();
+  const twice = [];
+  for (const [, selectors, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    for (const selector of selectors.split(',').map((s) => s.trim().replace(/\s+/g, ' '))) {
+      if (!selector.startsWith('.gl-file-tree__tree')) continue;
+      for (const decl of body.split(';')) {
+        const at = decl.indexOf(':');
+        if (at <= 0) continue;
+        const key = `${selector} { ${decl.slice(0, at).trim()} }`;
+        if (seen.has(key)) twice.push(key);
+        seen.add(key);
+      }
+    }
+  }
+  assert.deepEqual(twice, []);
+});
+
 test("a folder's name is one line, cut short rather than wrapped", () => {
   /** Mutation: let the name wrap -- a long folder name takes two lines, and this fails. */
   const name = declarations('.gl-file-tree__tree .folder_name');

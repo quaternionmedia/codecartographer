@@ -223,6 +223,51 @@
   text-overflow: ellipsis;
 }
 
+/* A folder is marked ▸, and ▾ while open; a file is marked · in the same
+   width, so names line up. A marker's alternative text is empty, so a row is
+   named by its name alone, not "▸ src". A folder not yet read (…) and an
+   empty one are dimmed. Its contents' step and its one line are below. */
+.gl-file-tree__tree .folder_button {
+  cursor: pointer;
+  color: var(--c-secondary, #00ff41);
+}
+
+/* A folder's row is a flex line, so its marker is a flex item that a long
+   name would squeeze; it keeps its width, as a file's does in its line. */
+.gl-file-tree__tree .folder_button::before,
+.gl-file-tree__tree .file::before {
+  display: inline-block;
+  flex: none;
+  width: 1.2em;
+}
+
+.gl-file-tree__tree .folder_button::before {
+  content: '▸' / '';
+}
+
+.gl-file-tree__tree .folder_button.active::before {
+  content: '▾' / '';
+}
+
+.gl-file-tree__tree .file::before {
+  content: '·' / '';
+  color: var(--c-font-muted, #00aa2a);
+}
+
+.gl-file-tree__tree .folder_button--stub,
+.gl-file-tree__tree .folder_button--empty {
+  opacity: 0.75;
+}
+
+.gl-file-tree__tree .folder_button--empty {
+  cursor: default;
+}
+
+.gl-file-tree__tree .folder_stub_indicator,
+.gl-file-tree__tree .folder_loading_indicator {
+  color: var(--c-font-muted, #00aa2a);
+}
+
 .gl-file-tree__tree .file_raw_btn {
   flex: none;
   font-size: 0.8em;

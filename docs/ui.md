@@ -165,10 +165,12 @@ none. **draw the construct** draws it.
 
 Id `file-tree`. In the default arrangement.
 
-The loaded repository's tree, and the added files. Click a file to draw that
-file alone. A file from GitHub has a *raw* link beside its name that opens its
-contents in a new tab; a file read from disk has none, since the browser cannot
-open it. With nothing loaded, it points at the Open panel.
+The loaded repository's tree, and the added files. A folder is marked ▸, and
+▾ while open, with what it holds indented under it; a file is marked ·. Click
+a folder to open or close it, and a file to draw that file alone. A file from
+GitHub has a *raw* link beside its name that opens its contents in a new tab;
+a file read from disk has none, since the browser cannot open it. With nothing
+loaded, it points at the Open panel.
 
 Each file and folder is a tab stop, and Enter or Space presses it as a click
 does; a folder says whether it is open. A raw link is named for the file it
