@@ -92,15 +92,23 @@ test('every family opens with each name readable at the fit, and none over anoth
   });
   await drawEveryFamily(page);
   // The fit is a transition, and the names are sorted once it settles.
+  // **WAIT FOR THE SETTLE, NOT FOR A FRAME WITH NO OVERLAP.** Partway through
+  // the transition no name overlaps yet and none is hidden, and a poll for
+  // "no overlap" was met there on a fast machine: it read none of 48 hidden,
+  // where the settled fit hides 11, and it passed a mutation hiding all but
+  // one. A runner, slower, always read the settled fit.
+  await settledTransform(page);
   await expect.poll(async () => {
     const drawn = await names(page);
     return drawn.count > 0 && drawn.smallest >= 9.9 && drawn.overlaps.length === 0;
   }, { timeout: SETTLED }).toBe(true);
   // An overlap is removed by hiding a name, so none overlapping is no proof
-  // the names are readable: here 4 of 38 are hidden at the fit.
+  // the names are readable. A larger index hides a larger share at its fit:
+  // at 48 names, 11 here and 13 on a runner, whose monospace is wider. Up to a
+  // third may be hidden; a hidden name stays in its node's hover.
   // Mutation: hide every name but the first -- none overlaps, and this fails.
   const drawn = await names(page);
-  expect(drawn.hidden, `${drawn.hidden} of ${drawn.drawn} names hidden`).toBeLessThanOrEqual(drawn.drawn / 4);
+  expect(drawn.hidden, `${drawn.hidden} of ${drawn.drawn} names hidden`).toBeLessThanOrEqual(drawn.drawn / 3);
   // The page's address and the Show panel's default both open the index at
   // boot; it is asked for once. **NOT BY `openShow`'s GUARD**, which merges
   // a second ask for a drawing still opening: `_openShow` sets the address

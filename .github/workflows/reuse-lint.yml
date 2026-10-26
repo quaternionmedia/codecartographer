@@ -10,10 +10,9 @@ name: REUSE lint
 # a published tool, so there is nothing project-specific to run from the
 # governance submodule.
 #
-# Deliberately runtime-shape independent. It works identically for a corpus of
-# prose, a Python service, a single-file HTML deliverable and a hardware
-# repository -- which is what the open-license record's SBOM path cannot do,
-# and the gap the qmetronome onramp retrospective named.
+# This gate is independent of runtime shape: it works identically for a corpus
+# of prose, a Python service, a single-file HTML deliverable and a hardware
+# repository, which is what the open-license record's SBOM path cannot do.
 #
 # Start in reporting mode. A repository that has not had its licensing pass
 # will fail this immediately and usefully; make it blocking once it is green,
@@ -25,16 +24,13 @@ on:
     branches: [main]
   pull_request:
 
-# One run per branch per workflow. A second push supersedes the first: nobody
-# reads the result of a run whose commit has already been replaced, and the
-# minutes are real -- 55 of this repository's 129 runs on 2026-08-11 came from
-# five iterative pushes to two pull request branches, where only the last
-# mattered.
+# One run per branch per workflow. A second push supersedes the first: the
+# result of a run whose commit has been replaced is not read, and its minutes
+# are billed.
 #
-# Cancellation is scoped to pull requests deliberately. On the default branch
-# and on a project branch the run IS the record of what that commit reported,
-# and cancelling it to start a newer one destroys the only evidence that the
-# earlier commit was ever checked.
+# Cancellation applies to pull requests only. On the default branch and on a
+# project branch the run is the record of what that commit reported, and
+# cancelling it would remove the only evidence that the commit was checked.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -48,15 +44,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install REUSE
-        run: python -m pip install reuse
+      - uses: astral-sh/setup-uv@v5
 
       - name: reuse lint
-        # Invoked as a module rather than the console script: the entry point
-        # is not on PATH in every environment, which makes a local run of this
-        # workflow fail where CI passes -- or the reverse, which is worse.
-        run: python -m reuse lint
+        # Run through uv's tool runner rather than installed with pip. The tool
+        # gets an environment of its own, so the step writes into no
+        # interpreter it did not make and needs no pip in whichever python is
+        # first on PATH. A uv-made virtual environment has no pip, so a pip
+        # step fails under the local workflow runner in a uv-managed checkout.
+        #
+        # The charset-normalizer extra, not bare `reuse`: bare `reuse` detects
+        # file encodings through python-magic, which needs libmagic on the box
+        # that runs it and which reuse skips on Windows, so with no other
+        # encoding module installed it raises NoEncodingModuleError before it
+        # lints anything. charset-normalizer is the encoding module reuse
+        # accepts that imports everywhere.
+        run: uvx 'reuse[charset-normalizer]' lint

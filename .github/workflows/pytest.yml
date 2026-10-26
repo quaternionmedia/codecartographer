@@ -12,11 +12,11 @@ name: Tests
 # The frontend's suites run in web.yml, triggered on the paths they cover, so a
 # Python change is not gated on a browser download.
 #
-# Not a seed file. The governance workflows beside this one are copied from
-# governance/qm/project-seed/ci/, and their copies are not all current: diff
-# each against that directory at the pinned submodule rather than trusting the
-# "copy verbatim" header it carries. This one is the project's own and is free
-# to change.
+# Not a seed file. The governance workflows beside this one are copied verbatim
+# from governance/qm/project-seed/ci/ at the pinned submodule, and
+# tests/test_seed_copies.py holds them to it wherever the submodule is
+# checked out -- not here, where it is not. This one is the project's own and
+# is free to change.
 
 on:
   push:
