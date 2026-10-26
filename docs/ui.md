@@ -1,10 +1,10 @@
 # UI reference
 
 This page says where everything in the browser window is and how to reach it:
-the panels, the canvas, the radial menu and the header. Where it and the code
-disagree, the code is right and this page is repaired; `tests/test_docs_routes.py`
-reads the panel ids, each ring's items in order and the menu keys against the
-code.
+the steps, the panels, the canvas, the radial menu and the header. Where it and
+the code disagree, the code is right and this page is repaired;
+`tests/test_docs_routes.py` reads the steps, the panel ids, each ring's items in
+order and the menu keys against the code.
 
 ## The window
 
@@ -19,15 +19,16 @@ the browser's.
 panel across the top and, below it, Files on the left beside a stack of Open (in
 front), Graph Settings and Estate.
 
-**The header's `+` button is the one way to add a window.** Its menu lists every
-panel that is not in the layout, closed ones included, and under *Layout*
-offers *Save current as default* and *Reset to built-in default*. A panel it
-adds joins the stack whose tab was last clicked, or else the stack holding the
-most panels, and never the Graph panel's own stack while another stack exists,
-so the canvas stays in view. The menu takes the focus when it opens, so a
-keyboard reader is on its first item; closed with the focus inside it --
-Escape, or one of its items -- it gives the focus back to `+`, and a click
-outside it leaves the focus where that click put it.
+**The header's `+` button adds a window.** Its menu lists every panel that is
+not in the layout, closed ones included, and under *Layout* offers *Save current
+as default* and *Reset to built-in default*. A panel it adds joins the stack
+whose tab was last clicked, or else the stack holding the most panels, and never
+the Graph panel's own stack while another stack exists, so the canvas stays in
+view. A window chosen from it moves the [step](#the-steps) to the one that owns
+it; a step, in turn, opens its own windows again when they were closed. The menu
+takes the focus when it opens, so a keyboard reader is on its first item; closed
+with the focus inside it -- Escape, or one of its items -- it gives the focus
+back to `+`, and a click outside it leaves the focus where that click put it.
 
 A panel also opens, or comes forward, when something loads data for it:
 
@@ -38,6 +39,10 @@ A panel also opens, or comes forward, when something loads data for it:
 - the Topology, Capabilities, Overview, Cargo and Chrestomathy panels bring the
   Graph panel to the front when they have drawn.
 
+A panel that opens or comes forward while another stack is maximised -- step
+4's canvas, or a stack maximised with its ▢ -- restores that stack, so the
+panel is in view.
+
 **A saved layout** is kept in the browser (`localStorage`, key
 `cc:gl-layout:default`). Its windows are read wherever Golden Layout reads
 them: the layout's root, or a legacy layout's `content[0]`, and every open
@@ -46,6 +51,36 @@ does not have is dropped, a toast says which, and the default loads. A layout
 saved with the Upload, Repository and Actions windows loads with the Open window
 in their place; it is saved back so, and a toast says once which windows became
 Open.
+
+## The steps
+
+Four numbered steps lead from opening source to reading its graph. The header's
+rail shows all four, fills the one the reader is on, and ends with **Next**,
+which names the step after it; the last step has no Next.
+`web/src/layout/steps.ts` says what each step owns and brings forward.
+
+| | Step | Brings forward | Owns |
+|---|---|---|---|
+| 1 | **Open** | Open, then the Graph panel | Open, Estate, Show, Topology, Capabilities, Overview, Cargo, Graphbase |
+| 2 | **Browse** | Files, then the Graph panel | Files |
+| 3 | **Tune** | Graph Settings, then the Graph panel | Graph Settings |
+| 4 | **Read** | The Graph panel, maximised, which hides every other window | Graph, Chrestomathy |
+
+- **A step on the rail enters it**, the step already on included. Its windows
+  come to the front of their stacks and a closed one opens again; where two
+  share a stack, the first one named is in front. A maximised stack is restored
+  first, so any step after Read brings the windows back, as the stack's own
+  restore button does.
+- **Choosing a window moves the rail** to the step that owns it -- its tab, or
+  the `+` menu -- and moves nothing else: the Graph panel's tab says Read
+  without maximising the canvas. A window that comes forward by itself, as the
+  canvas does after a draw, leaves the step where it is, and so does closing a
+  tab.
+- **A page opens on step 1**, and *Reset to built-in default* returns to it. The
+  step is not kept anywhere: a reload has nothing drawn.
+- **The walkthrough** (the header's `?`) is a page per step and shows the step
+  the reader is on. Its ← Back, Next and dots enter a step, so the step's
+  windows come forward behind it, and the rail moves, as it turns.
 
 ## Panels
 
@@ -57,8 +92,8 @@ one of its entries, in the order the `+` menu lists them.
 Id `graph`. In the default arrangement.
 
 The one canvas: every graph draws here, whichever panel asked for it. What it
-does is under [The canvas](#the-canvas). With nothing drawn, it points at the
-Open panel.
+does is under [The canvas](#the-canvas). With nothing drawn, it points at step
+1, Open, which the canvas hides on step 4.
 
 ### Open
 
@@ -423,17 +458,20 @@ the chosen nodes.
 ## The header
 
 - **`+`**: the add-window menu, under [The window](#the-window).
+- **1 Open, 2 Browse, 3 Tune, 4 Read** and **Next**: the step rail, under
+  [The steps](#the-steps).
 - **GH**: whether the server reaches GitHub with a token. Green when it does,
   *GH?* when it does not, with a tooltip naming the token's source or how to
   give it one.
-- **`?`**: the walkthrough. It opens by itself on a first visit; Escape, ×, or
-  a click outside it closes it, and that is remembered in the browser
-  (`localStorage`, key `cc:help-dismissed`).
+- **`?`**: the walkthrough, a page per [step](#the-steps). It opens by itself on
+  a first visit, on step 1; Escape, ×, *Got it!* on the last page, or a click
+  outside it closes it, and that is remembered in the browser (`localStorage`,
+  key `cc:help-dismissed`).
 
 ## What the window does not have
 
 The page's address holds nothing but a Show drawing (`?show=`, under
-[Show](#show)). There is no menu on a right-click in the dock, and no ring for
+[Show](#show)); the step is not in it. There is no menu on a right-click in the dock, and no ring for
 an edge: a press on an edge opens the canvas ring. There are no chords: the
 ring's chord words are defined in
 `web/src/features/graph/rad/host/vocabulary.ts` and nothing listens for them,

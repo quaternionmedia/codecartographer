@@ -53,6 +53,14 @@
   margin-bottom: 12px;
 }
 
+/* Which step of the flow this page is, as the header's rail numbers it. */
+.cc-modal__step-count {
+  font-size: 0.75em;
+  letter-spacing: 0.5px;
+  color: var(--c-font-muted, #aaa);
+  margin: 0 0 6px;
+}
+
 .cc-modal__title {
   font-size: 1.2em;
   font-weight: 600;

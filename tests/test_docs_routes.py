@@ -853,6 +853,26 @@ def test_ui_reference_names_every_registered_panel():
     assert not missing, f"docs/ui.md's panel table lacks: {missing}"
 
 
+def test_ui_reference_names_the_steps_in_order_and_what_each_owns():
+    """The steps table in the UI reference is a reading of `steps.ts`: each
+    step's number and name in order, and the windows it owns, by the names
+    the `+` menu gives them. Mutation: move `chrestomathy-panel` to Open's
+    `owns` in `steps.ts`, or swap two of the table's rows -- this fails."""
+    layout = ROOT / "web" / "src" / "layout"
+    names = dict(re.findall(r"^\s+id: '([a-z-]+)',\s*\n\s+menuLabel: '([^']+)',",
+                            (layout / "panel_registry.ts").read_text(encoding="utf-8"), re.M))
+    assert names, "no menu labels found in panel_registry.ts; the pattern is stale"
+    source = (layout / "steps.ts").read_text(encoding="utf-8")
+    built = [(n, label, sorted(names[w] for w in re.findall(r"'([a-z-]+)'", owns)))
+             for n, (label, owns) in enumerate(re.findall(
+                 r"^\s+label: '([^']+)',.*?^\s+owns: \[(.*?)\]", source, re.M | re.S), start=1)]
+    assert len(built) == 4, f"steps.ts was read as {len(built)} steps; the pattern is stale"
+    rows = re.findall(r"^\|\s*(\d+)\s*\|\s*\*\*([^*]+)\*\*\s*\|[^|\n]*\|([^|\n]*)\|",
+                      _ui_sections()["The steps"], re.M)
+    documented = [(int(n), label, sorted(w.strip() for w in owns.split(","))) for n, label, owns in rows]
+    assert documented == built, f"docs/ui.md's steps table says {documented}; steps.ts builds {built}"
+
+
 def test_ui_reference_names_every_key_the_window_keeps_in_the_browser():
     """Each `cc:` key a module under `web/src` keeps in `localStorage` is named
     in backticks in the UI reference, which says what the window remembers and

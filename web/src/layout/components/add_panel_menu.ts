@@ -1,10 +1,11 @@
 /**
  * AddPanelMenu
  *
- * Small dropdown opened by the header "+" button, the one way to add a
- * window. Lists every registered panel not in the layout, closed ones
- * included, plus layout save/reset actions. Closes on outside click, on
- * Escape, or after an action is taken.
+ * Small dropdown opened by the header "+" button, which adds any window (a
+ * step opens only its own again). Lists every registered panel not in the
+ * layout, closed ones included, plus layout save/reset actions. A window
+ * chosen here moves the step to the one that owns it (`steps.ts`). Closes on
+ * outside click, on Escape, or after an action is taken.
  */
 
 import m from 'mithril';
@@ -61,7 +62,7 @@ export const AddPanelMenu: m.Component<Attrs, MenuState> = {
       addable.length > 0
         ? addable.map((def) =>
             m('button.gl-add-panel-menu__item', {
-              onclick: () => { ctx.openPanel(def.id); onClose(); },
+              onclick: () => { ctx.chooseWindow(def.id); onClose(); },
             }, def.menuLabel),
           )
         : m('div.gl-add-panel-menu__empty', 'All panels open'),

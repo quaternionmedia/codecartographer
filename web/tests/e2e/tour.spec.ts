@@ -3,7 +3,8 @@
  *
  * Walks the states a reviewer looks at -- a first visit, the default dock and
  * the Open panel, the bundled example with the rings and the panels it brings
- * forward, the demo graph, and a layout saved before the Open panel -- and
+ * forward, the demo graph on steps 3 and 4, and a layout saved before the
+ * Open panel -- and
  * attaches a screenshot of each to the HTML report, so how a pull request
  * looks can be read without running it:
  *
@@ -215,6 +216,22 @@ test('the demo graph', async ({ page }) => {
     await page.mouse.move(800, 300);
     await graphDrawn(page);
     await shot('14 demo graph', page);
+  });
+
+  await test.step('16 step 3, Tune', async () => {
+    await page.locator('.gl-steps__step', { hasText: 'Tune' }).click();
+    await expect(page.locator('.gl-panel--controls-graph-settings')).toBeVisible();
+    await page.mouse.move(800, 300);
+    await settle(page);
+    await shot('16 step 3, Tune', page);
+  });
+
+  await test.step('17 step 4, Read: the graph alone', async () => {
+    await page.locator('.gl-steps__step', { hasText: 'Read' }).click();
+    await expect(page.locator('.lm_maximised .gl-panel--graph')).toHaveCount(1);
+    await page.mouse.move(800, 300);
+    await settle(page);
+    await shot('17 step 4, Read: the graph alone', page);
   });
 });
 

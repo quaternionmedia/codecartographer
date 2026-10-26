@@ -1,43 +1,29 @@
 /**
  * HelpModal — first-time walkthrough + on-demand help overlay.
  *
+ * A page per step of the flow (`web/src/layout/steps.ts`), and the page shown
+ * is the step the reader is on: the card has no step of its own, it reads the
+ * one the header's rail fills. ← Back, Next → and the dots enter a step, so
+ * the step's windows come forward behind the card as it turns, and the rail
+ * moves with it. Closing it leaves the reader on the step it showed.
+ *
  * First-time behaviour:
- *   Auto-shows on first visit (localStorage 'cc:help-dismissed' absent).
+ *   Auto-shows on first visit (localStorage 'cc:help-dismissed' absent), on
+ *   step 1, which is where a page opens.
  *   Dismissed permanently via "Got it" / clicking outside.
  *
  * On-demand:
- *   Call HelpModal.open() to re-open from a help button.
+ *   Call HelpModal.open() to re-open from a help button, at the current step.
  */
 
 import m from 'mithril';
 
+import { STEPS, nextStep, previousStep, stepNamed, stepNumber } from '../../../layout/steps';
+import type { StepId } from '../../../layout/steps';
+
 const DISMISSED_KEY = 'cc:help-dismissed';
 
-const STEPS = [
-  {
-    icon: '📁',
-    title: 'Load a repository',
-    body: 'Everything starts in the Open panel: paste a GitHub URL or a local path and press → Fetch, pick an example, drop files, or press ⚡ Load Demo. ▶ Plot at its foot draws what is open, and Cancel stops it; recent graphs and the parse options are there too.',
-  },
-  {
-    icon: '◈',
-    title: 'Explore the graph',
-    body: 'Scroll to zoom, drag the canvas to pan, and drag individual nodes to rearrange. Hover a node for details.',
-  },
-  {
-    icon: '⚙',
-    title: 'Tune the visualization',
-    body: 'Open the Graph Settings tab to choose the renderer and the layout algorithm, adjust node size, labels and color, and pick a theme.',
-  },
-  {
-    icon: '⊞',
-    title: 'Manage panels',
-    body: 'Drag tabs to rearrange, and drag the dividers to resize. Click ✕ to close a panel. The + button in the top bar adds a panel, closed ones included, and saves or resets the layout.',
-  },
-];
-
 let _isOpen = false;
-let _step = 0;
 
 /**
  * Escape closes it. A modal that only closes on its own `×` is one every
@@ -53,7 +39,6 @@ export const HelpModal = {
   /** Open the help modal (always). */
   open(): void {
     _isOpen = true;
-    _step = 0;
     document.addEventListener('keydown', onKey);
     m.redraw();
   },
@@ -73,12 +58,20 @@ export const HelpModal = {
   },
 };
 
-export const HelpModalComponent: m.Component = {
-  view() {
+interface Attrs {
+  /** The step the reader is on, whose page is shown. */
+  step: StepId;
+  /** Enter a step: what ← Back, Next → and a dot ask for. */
+  onStep: (id: StepId) => void;
+}
+
+export const HelpModalComponent: m.Component<Attrs> = {
+  view({ attrs }) {
     if (!_isOpen) return null;
 
-    const step = STEPS[_step];
-    const isLast = _step === STEPS.length - 1;
+    const step = stepNamed(attrs.step);
+    const previous = previousStep(step.id);
+    const next = nextStep(step.id);
 
     return m('div.cc-modal-backdrop', {
       onclick: (e: MouseEvent) => {
@@ -87,38 +80,40 @@ export const HelpModalComponent: m.Component = {
         }
       },
     }, [
-      m('div.cc-modal', [
+      m('div.cc-modal', { 'data-step': step.id }, [
         m('button.cc-modal__close', { onclick: HelpModal.close.bind(HelpModal) }, '×'),
 
         m('div.cc-modal__step-icon', step.icon),
+        m('p.cc-modal__step-count', `Step ${stepNumber(step.id)} of ${STEPS.length} · ${step.label}`),
         m('h2.cc-modal__title', step.title),
         m('p.cc-modal__body', step.body),
 
         // Step dots
         m('div.cc-modal__dots',
-          STEPS.map((_, i) =>
+          STEPS.map((s, i) =>
             m('span.cc-modal__dot', {
-              class: i === _step ? 'cc-modal__dot--active' : '',
-              onclick: () => { _step = i; m.redraw(); },
+              class: s.id === step.id ? 'cc-modal__dot--active' : '',
+              title: `Step ${i + 1}: ${s.label}`,
+              onclick: () => attrs.onStep(s.id),
             })
           )
         ),
 
         // Navigation
         m('div.cc-modal__actions', [
-          _step > 0
+          previous
             ? m('button.cc-modal__btn.cc-modal__btn--secondary', {
-                onclick: () => { _step--; m.redraw(); },
+                onclick: () => attrs.onStep(previous.id),
               }, '← Back')
             : null,
 
-          isLast
+          next
             ? m('button.cc-modal__btn.cc-modal__btn--primary', {
-                onclick: HelpModal.close.bind(HelpModal),
-              }, 'Got it!')
+                onclick: () => attrs.onStep(next.id),
+              }, `Next: ${next.label} →`)
             : m('button.cc-modal__btn.cc-modal__btn--primary', {
-                onclick: () => { _step++; m.redraw(); },
-              }, 'Next →'),
+                onclick: HelpModal.close.bind(HelpModal),
+              }, 'Got it!'),
         ]),
       ]),
     ]);
