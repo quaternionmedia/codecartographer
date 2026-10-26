@@ -90,3 +90,42 @@ test('a subject is written as its pictures and one show document naming where ea
   expect(existsSync(join(out, 'project', 'carlos', 'system.png'))).toBe(false);
   expect(read(join(out, 'project', 'carlos', 'code.svg'))).toContain('data-node-id="dir::quaternionmedia/carlos/walkthrough"');
 });
+
+test("a system view is drawn only from the default branch's head the document names", async ({ page }) => {
+  /**
+   * The system view is composed from the project's clone on this disk, which
+   * may sit on another branch or hold commits nobody else has. A picture of
+   * that, published, describes a state no reader can see: codecartographer's
+   * own was composed at a local branch's commit. So the export draws it only
+   * when the clone is at the default branch's head, and otherwise states why.
+   */
+  test.setTimeout(120_000);
+  const out = test.info().outputPath('show');
+  let composedAt = 'bbbbbbb';
+  await page.route('**/show/project/*/views', (route) => route.fulfill({ json: { status: 200, results: {
+    name: 'carlos',
+    estate: { available: true },
+    code: { available: false, problem: 'not here', remedy: '' },
+    system: { available: true, components: 1 },
+  } } }));
+  // moat's own composition, at whichever commit the test says it was composed.
+  const moat = JSON.parse(read('tests/e2e/fixtures/moat-system.json'));
+  await page.route('**/system/compose*', (route) => route.fulfill({ json: { ...moat, commit: composedAt } }));
+
+  // Mutation: draw the system view whatever commit it was composed at -- the
+  // clone's own state is published, and this fails.
+  await exportSubject(page, carlos, manifest(out));
+  const elsewhere = JSON.parse(read(join(out, 'project', 'carlos', 'show.json')));
+  expect(elsewhere.views.system.absent).toBe(true);
+  expect(elsewhere.views.system.problem).toContain('bbbbbbb');
+  expect(elsewhere.views.system.problem).toContain('aaaaaaa');
+  expect(existsSync(join(out, 'project', 'carlos', 'system.png'))).toBe(false);
+
+  composedAt = 'aaaaaaa';
+  const again = test.info().outputPath('again');
+  await exportSubject(page, carlos, manifest(again));
+  const atHead = JSON.parse(read(join(again, 'project', 'carlos', 'show.json')));
+  expect(atHead.views.system.composed.commit).toBe('aaaaaaa');
+  expect(atHead.files.system).toBe('system.png');
+  expect(existsSync(join(again, 'project', 'carlos', 'system.png'))).toBe(true);
+});

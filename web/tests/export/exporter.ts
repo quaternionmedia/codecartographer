@@ -195,6 +195,29 @@ async function drawSystem(page: Page, subject: ManifestSubject, dir: string, ans
   return { composed, metadata: { components: answer.components ?? 0 } };
 }
 
+/**
+ * The system view's sentence when the clone it is composed from is not at the
+ * default branch's head the document names, or null when it is. The view is
+ * composed from the project's clone on this disk, which may be on another
+ * branch or hold commits nobody else has; published, its picture would
+ * describe a state no reader can see.
+ */
+async function notAtHead(page: Page, subject: ManifestSubject, manifest: Manifest) {
+  const where = `/system/compose?repo=${encodeURIComponent(subject.name)}`;
+  const composed = await page.evaluate(async (url) => (await fetch(url)).json(), where);
+  const at = String(composed?.commit ?? '');
+  const head = manifest.sources[subject.name]?.commit ?? '';
+  if (at && head.startsWith(at)) return null;
+  return {
+    absent: true,
+    problem: `the clone of ${subject.name} on this disk is at ${at.slice(0, 7) || 'an unknown commit'}, `
+      + `not at its default branch's head ${head.slice(0, 7) || 'unknown'}, so its system view would `
+      + `show a state the default branch does not hold`,
+    remedy: `check out the default branch in the clone of ${subject.name} and export again`,
+    where,
+  };
+}
+
 /** Draw every view of `subject` and write its pictures and its show document under `manifest.out`. */
 export async function exportSubject(page: Page, subject: ManifestSubject, manifest: Manifest): Promise<void> {
   const dir = join(manifest.out, ...subject.folder.split('/'));
@@ -225,6 +248,11 @@ export async function exportSubject(page: Page, subject: ManifestSubject, manife
       views.code = await drawCode(page, subject, dir, answers.code);
       files.code = 'code.svg';
     } else {
+      const elsewhere = await notAtHead(page, subject, manifest);
+      if (elsewhere) {
+        views.system = elsewhere;
+        continue;
+      }
       views.system = await drawSystem(page, subject, dir, answers.system);
       files.system = 'system.png';
     }

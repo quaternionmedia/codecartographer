@@ -389,7 +389,10 @@ Each subject's folder -- `index/`, `family/<name>/`, `project/<name>/` --
 holds `show.json` and a picture of each view the window draws: `estate.svg`,
 `code.svg` (a project's code map) and `system.png` (a project's system view,
 which draws in HTML). A view the window cannot draw here is stated in
-`show.json` with the window's reason, and has no picture.
+`show.json` with the window's reason, and has no picture. A system view is
+composed from the project's clone on this disk, so it is drawn only when that
+clone is at its default branch's head; otherwise the document says which
+commit the clone is at.
 
 The pictures come from the real renderer, run headlessly by
 `web/playwright.export.config.ts` on ports of its own: each subject's address
