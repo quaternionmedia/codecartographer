@@ -59,8 +59,21 @@ interface ViewAnswer {
   components?: number;
 }
 
-/** The view's sentence when the window cannot draw it here, as the document states it. */
+/**
+ * The view's sentence when the window cannot draw it here, as the document
+ * states it. The window says a clone is not "beside this checkout", which is
+ * true of one machine; a document is read on every machine, so it says what
+ * the export read.
+ */
 function absence(subject: ManifestSubject, view: View, answer: ViewAnswer | undefined) {
+  if (view === 'system' && answer?.problem?.startsWith('no clone of ')) {
+    return {
+      absent: true,
+      problem: `${subject.name}'s system view is composed from a clone of it, and this export read none`,
+      remedy: `export from a clone of ${subject.name} at its default branch's head`,
+      where: `/show/project/${subject.name}/views`,
+    };
+  }
   return {
     absent: true,
     problem: answer?.problem ?? `the ${view} view of ${subject.name} could not be asked for`,

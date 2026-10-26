@@ -138,3 +138,27 @@ test("a system view is drawn only from the default branch's head the document na
   expect(JSON.parse(read(join(again, 'project', 'carlos', 'show.json'))).views.system.absent).toBe(true);
   expect(existsSync(join(again, 'project', 'carlos', 'system.png'))).toBe(false);
 });
+
+test('a view with no clone to read says so of the export, not of the disk it ran on', async ({ page }) => {
+  /**
+   * The window says "no clone of carlos beside this checkout", which is true
+   * of one machine and is how the window should say it. A committed document
+   * is read on every machine, so it says what the export read.
+   */
+  test.setTimeout(120_000);
+  const out = test.info().outputPath('show');
+  await page.route('**/show/project/*/views', (route) => route.fulfill({ json: { status: 200, results: {
+    name: 'carlos',
+    estate: { available: true },
+    code: { available: false, problem: 'not here', remedy: '' },
+    system: { available: false, problem: 'no clone of carlos beside this checkout',
+              remedy: 'clone it beside this one, or set CODECARTO_REPO_ROOTS' },
+  } } }));
+  await exportSubject(page, carlos, manifest(out));
+  const system = JSON.parse(read(join(out, 'project', 'carlos', 'show.json'))).views.system;
+  // Mutation: state the window's own sentence -- it names this checkout, and
+  // this fails.
+  expect(system.problem).toBe("carlos's system view is composed from a clone of it, and this export read none");
+  expect(system.remedy).toBe("export from a clone of carlos at its default branch's head");
+  expect(JSON.stringify(system)).not.toMatch(/this checkout|CODECARTO_REPO_ROOTS/);
+});
