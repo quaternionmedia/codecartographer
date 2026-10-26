@@ -79,11 +79,18 @@ def parse_subject(text: str) -> Subject:
 
 
 def subjects(reading: show_service.Reading, which: str) -> list[Subject]:
-    """`all`: the index, then every family, then every public project, each by name."""
+    """`all`: the index, then every family, then every public project, each by name.
+
+    With an inventory, a public project is one the host lists: the site has a
+    page for each of those, and a project's showgraph sits on its page. A name
+    a family claims and the host does not list has no page to sit on.
+    """
     if which != "all":
         return [parse_subject(part) for part in which.split(",") if part]
     families = [Subject("family", name) for name in sorted(reading.families)]
-    projects = [Subject("project", name) for name in sorted(show_service.projects(reading), key=str.lower)]
+    named = [name for name in show_service.projects(reading)
+             if not reading.inventory or name in reading.inventory]
+    projects = [Subject("project", name) for name in sorted(named, key=str.lower)]
     return [Subject("index"), *families, *projects]
 
 

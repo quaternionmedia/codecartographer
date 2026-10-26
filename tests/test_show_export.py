@@ -61,6 +61,17 @@ def test_all_is_the_index_then_every_family_then_every_public_project() -> None:
     assert all(not s.name.startswith("private-") for s in chosen)
 
 
+def test_with_an_inventory_a_project_is_one_the_host_lists() -> None:
+    """The site has a page for each public repository the host lists, and a
+    project's showgraph sits on that page; a name a family claims and the host
+    does not list (planned, or not public) has no page to sit on."""
+    reading = _reading()
+    reading.inventory = {"carlos": {}, "moat": {}, "qm": {}}
+    # Mutation: take every name a family claims -- stomp is drawn for no page,
+    # and this fails.
+    assert [s.name for s in show_export.subjects(reading, "all") if s.kind == "project"] == ["carlos", "moat", "qm"]
+
+
 def test_a_project_has_three_views_and_every_other_subject_one() -> None:
     assert Subject("project", "carlos").views == ("estate", "code", "system")
     assert Subject("family", "performing").views == ("estate",)
