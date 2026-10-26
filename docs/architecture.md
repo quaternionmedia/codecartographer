@@ -108,8 +108,9 @@ codecarto/
 web/src/
 ├── layout/
 │   ├── golden_layout_shell.ts   # GL bootstrap; "+" add-window; layout save/restore
-│   ├── layout_context.ts        # shared state hub for all GL panels
+│   ├── layout_context.ts        # shared state hub for all GL panels; the step the reader is on
 │   ├── panel_registry.ts        # panel definitions (id/config/mount) — add panels here
+│   ├── steps.ts                 # the four steps and the windows each owns — a new panel names its step here (pure; tested under node)
 │   ├── default_layout.ts        # built-in panel arrangement
 │   └── panels/                  # one file per panel; docs/ui.md describes each
 │
