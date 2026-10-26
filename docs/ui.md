@@ -241,8 +241,9 @@ in which languages, and names what the vocabulary could not place, each as what
 it is (a file the walk drew, a kind that is no construct and why); it is read
 again whenever a new graph is drawn, and never kept for one that has gone -- a
 construct drawn from the vocabulary is not code and has no census. A construct's name sets it in the table
-below; **show** frames its nodes and selects them for the
-[selection ring](#selection-ring). *Construct* picks one construct and sets it
+below; **show** frames its nodes and selects them, so a key opens the
+[selection ring](#selection-ring) on them, or the [node ring](#node-ring) when
+the construct is one node. *Construct* picks one construct and sets it
 beside itself in every language: how each spells it, with the abstraction layer
 of each token, what its parser calls it, and a note. Every language
 `constructs.yaml` lists -- C, Rust, Python, assembly and the linker script -- is
@@ -253,12 +254,16 @@ none. **draw the construct** draws it.
 
 Id `file-tree`. In the default arrangement.
 
-The loaded repository's tree, and the added files, one line each. A folder is
-marked ▸, and ▾ while open, with what it holds indented under it; a file is
-marked ·. Click a folder to open or close it, and a file to draw that file
-alone. A file from GitHub has a *raw* link beside its name that opens its
-contents in a new tab; a file read from disk has none, since the browser cannot
-open it. With nothing loaded, it points at the Open panel.
+The loaded repository's tree, and the added files. A folder is marked ▸, and
+▾ while open, with what it holds indented under it; a file is marked ·. Click
+a folder to open or close it, and a file to draw that file alone. A file from
+GitHub has a *raw* link beside its name that opens its contents in a new tab;
+a file read from disk has none, since the browser cannot open it. With nothing
+loaded, it points at the Open panel.
+
+Each file and folder is a tab stop, and Enter or Space presses it as a click
+does; a folder says whether it is open. A raw link is named for the file it
+opens, "raw contents of" its path.
 
 In a large repository a folder marked … has not been read; click it to read
 it. It shows ↻ while it is read. A read that fails ends the ↻, leaves the folder
@@ -324,8 +329,10 @@ Id `graph-settings-panel`. In the default arrangement.
 - **Double-click a node** that names a file to open its source, as
   [A node's source](#a-nodes-source) says. A double-click anywhere else zooms
   in.
-- When a stream finishes, the view fits the whole graph: every node and every
-  group outline, inside a margin, centred on what is drawn.
+- When a stream finishes, the view fits the whole graph: every node, its label
+  while labels are shown, and every group outline, inside a margin, centred on
+  what is drawn. A hidden node is left out, and so is an outline that holds
+  only hidden nodes.
 - **The legend** sits at the bottom left. Its header gives the totals; click it
   to list the node and edge kinds actually drawn, each with its swatch and
   count: a kind absent from the picture has no row, and every node is in exactly

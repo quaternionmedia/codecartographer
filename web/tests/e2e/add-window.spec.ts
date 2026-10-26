@@ -39,9 +39,10 @@ test('after a window is added, the next + click opens the menu', async ({ page }
   await expect(menu).toHaveCount(0);
   await expect(page.locator('.gl-panel--cargo')).toBeVisible();
 
-  // Mutation: leave the closed menu's outside-click listener on `document`
-  // -- it fires on this click, after the + has opened the menu, and closes
-  // it again, and this fails.
+  // Mutation: drop the disarm from add_panel_menu.ts's `onremove` -- Cargo's
+  // click stopped at the menu and left its outside-click listener on
+  // `document`, it fires on this click after the + has opened the menu, and
+  // closes it again, and this fails.
   await add.click();
   await expect(menu).toBeVisible();
   // And it opens with the one click alone: still open a moment later.

@@ -207,7 +207,8 @@
 }
 
 /* One line per file (qm_comp_lib/directory/files.ts): its name, then its raw
-   link when it has one. A long name is cut short rather than wrapped. */
+   link when it has one. A long name is cut short rather than wrapped, and the
+   row's title holds it whole (tree_rows.ts). */
 .gl-file-tree__tree .file_container {
   display: flex;
   align-items: baseline;
@@ -275,6 +276,36 @@
   font-size: 0.8em;
   color: var(--c-font-muted, #00aa2a);
   text-decoration: underline dotted;
+}
+
+/* A folder's contents sit one step in from its name (qm_comp_lib/directory/
+   folder.ts), and the steps add up level by level, so crates/a/src/lib.rs
+   reads as inside crates/a/src and not beside crates/b/src/lib.rs. The
+   dashed rule down the step marks which folder an entry is in. */
+.gl-file-tree__tree .folder_content {
+  margin-left: 0.4em;
+  padding-left: 0.8em;
+  border-left: 1px dashed var(--c-border, #00ff4140);
+}
+
+/* A folder's row is one line, as a file's is: its name, cut short when long
+   and titled whole (tree_rows.ts), then its … or ↻, which keep their space. */
+.gl-file-tree__tree .folder_button {
+  display: flex;
+  align-items: baseline;
+}
+
+.gl-file-tree__tree .folder_name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gl-file-tree__tree .folder_stub_indicator,
+.gl-file-tree__tree .folder_loading_indicator {
+  flex: none;
+  white-space: pre;
 }
 
 .gl-file-tree__actions {
