@@ -25,6 +25,7 @@ const REGISTERED = [...readFileSync('src/layout/panel_registry.ts', 'utf8').matc
  * Stacks of windows, as Golden Layout keeps them: each shows its active
  * window, and while one is maximised it is the only stack shown. Showing a
  * window does not restore a maximised stack -- that is the step's to do.
+ * Opening a closed window is `LayoutContext`'s, and steps.spec.ts sees it.
  */
 function dock(...stacks) {
   const state = { stacks: stacks.map((ids) => ({ ids: [...ids], active: ids[0] })), maximised: null, focused: null };
@@ -32,13 +33,7 @@ function dock(...stacks) {
   return {
     state,
     show(id, focus) {
-      let stack = stackOf(id);
-      if (!stack) {
-        // Closed: opened in the fullest stack, as `openPanel` adds a window.
-        stack = [...state.stacks].sort((a, b) => b.ids.length - a.ids.length)[0];
-        stack.ids.push(id);
-      }
-      stack.active = id;
+      stackOf(id).active = id;
       if (focus) state.focused = id;
     },
     maximise(id) { state.maximised = stackOf(id); },
@@ -55,6 +50,7 @@ function dock(...stacks) {
 const defaultDock = () => dock(['graph'], ['file-tree'], ['open', 'graph-settings-panel', 'estate-panel']);
 
 test('four steps, numbered from 1: Open, Browse, Tune, Read', () => {
+  /** Mutation: call step 2 "Files" -- this fails, and so does the docs test that reads `docs/ui.md`'s table. */
   assert.deepEqual(STEPS.map((s) => `${stepNumber(s.id)} ${s.label}`), ['1 Open', '2 Browse', '3 Tune', '4 Read']);
   assert.equal(FIRST_STEP, 'open');
 });
@@ -66,6 +62,7 @@ test('each step says what comes next, and the last says nothing', () => {
 });
 
 test('a step that is not one is the first', () => {
+  /** Mutation: let stepNamed fall back to the last step -- this fails. */
   assert.equal(stepNamed('render').id, 'open');
   assert.equal(stepNamed(undefined).id, 'open');
 });
@@ -85,6 +82,7 @@ test('every registered window belongs to exactly one step', () => {
 });
 
 test('the tab chosen names its step', () => {
+  /** Mutation: let stepOfPanel answer step 1 for a window no step owns -- the rail would move on a stale tab, and this fails. */
   assert.equal(stepOfPanel('estate-panel'), 'open');
   assert.equal(stepOfPanel('file-tree'), 'browse');
   assert.equal(stepOfPanel('graph-settings-panel'), 'tune');
@@ -93,6 +91,7 @@ test('the tab chosen names its step', () => {
 });
 
 test('each step brings its own window forward first, and the canvas with it', () => {
+  /** Mutation: drop 'graph' from Browse's `forward` -- this fails. */
   for (const step of STEPS) {
     assert.ok(step.owns.includes(step.forward[0]), `${step.id} is about a window it does not own`);
     assert.ok(step.forward.includes('graph'), `${step.id} leaves the canvas where it was`);
@@ -137,17 +136,3 @@ test("where a step's windows share a stack, the one it is about is in front", ()
   assert.deepEqual(d.inView(), ['file-tree', 'open']);
 });
 
-test('a window a step needs is opened again when it was closed', () => {
-  const d = dock(['graph'], ['file-tree'], ['open', 'estate-panel']);
-  enterStep('tune', d);
-  assert.deepEqual(d.inView(), ['file-tree', 'graph', 'graph-settings-panel']);
-});
-
-test('entering the step already on brings it forward again', () => {
-  /** The rail's step is a button whatever step is on: one of its windows may be behind another since. */
-  const d = defaultDock();
-  enterStep('tune', d);
-  d.show('estate-panel', false);
-  enterStep('tune', d);
-  assert.deepEqual(d.inView(), ['file-tree', 'graph', 'graph-settings-panel']);
-});

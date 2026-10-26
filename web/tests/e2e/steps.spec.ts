@@ -154,6 +154,8 @@ test("a step opens its window again when it was closed, and a stack maximised by
   await page.goto('/');
   await dismissOnboardingModal(page);
 
+  // Closed from another step. Mutation: drop the step dock's `openPanel` for
+  // a window not in the layout -- Tune finds nothing to show, and this fails.
   const settings = page.locator('.lm_tab', { hasText: 'Graph Settings' });
   await settings.locator('.lm_close_tab').click();
   await expect(settings).toHaveCount(0);
@@ -161,12 +163,18 @@ test("a step opens its window again when it was closed, and a stack maximised by
   await expect(settings).toHaveCount(1);
   await expect.poll(() => windowsInView(page)).toEqual(['controls-graph-settings', 'file-tree', 'graph']);
 
-  // The step already on is a button too: Estate put in front, Tune again.
-  await page.locator('.lm_tab', { hasText: 'Estate' }).click();
-  await expect.poll(() => windowsInView(page)).toContain('estate');
+  // Closed on the step itself, which closing a tab does not move: the step
+  // already on is a button too. Mutation: have `enterStep` return when asked
+  // for the step already on -- this fails.
+  await page.locator('.lm_tab', { hasText: 'Graph Settings' }).locator('.lm_close_tab').click();
+  await expect(settings).toHaveCount(0);
+  await expect(current(page)).toHaveText('3Tune');
   await step(page, 'Tune').click();
+  await expect(settings).toHaveCount(1);
   await expect.poll(() => windowsInView(page)).toEqual(['controls-graph-settings', 'file-tree', 'graph']);
 
+  // Mutation: drop the restore from both `steps.enterStep` and
+  // `focusDockPanel` -- Files stays over everything, and this fails.
   const files = page.locator('.lm_stack', { has: page.locator('.lm_tab', { hasText: 'Files' }) });
   await files.locator('.lm_maximise').click();
   await expect.poll(() => windowsInView(page)).toEqual(['file-tree']);
