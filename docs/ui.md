@@ -493,7 +493,11 @@ the chosen nodes.
 
 - **`+`**: the add-window menu, under [The window](#the-window).
 - **1 Open, 2 Browse, 3 Tune, 4 Read** and **Next**: the step rail, under
-  [The steps](#the-steps).
+  [The steps](#the-steps). The header is one line, of one height on every
+  step. In a window narrower than 820 pixels the steps the reader is not on
+  show their numbers alone, their names in their tooltips; narrower than the
+  rail, the rail scrolls rather than run under the controls at the header's
+  right end.
 - **GH**: whether the server reaches GitHub with a token. Green when it does,
   *GH?* when it does not, with a tooltip naming the token's source or how to
   give it one.
