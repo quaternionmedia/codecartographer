@@ -248,6 +248,27 @@ def test_a_private_member_is_counted_and_not_named(client):
     assert subjects["private"] == 1
 
 
+def test_a_private_member_two_families_claim_is_counted_and_drawn_once(corpus, monkeypatch):
+    # The count summed each family's private members, and the index walked
+    # each family's list of them, so a private member in two families was
+    # counted twice and given each `member_of` edge twice. Broken by counting
+    # claims rather than members, `private` is 2; by walking the claims, the
+    # edges are four.
+    document = json.loads(json.dumps(FAMILIES))
+    irl = next(f for f in document["families"] if f["name"] == "irl")
+    irl["members"].append("private-07")
+    irl["all_members"].append("private-07")
+    (corpus / "families.json").write_text(json.dumps(document), encoding="utf-8")
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(corpus.parent / "no-clones"))
+    client = TestClient(app)
+    assert _results(client, "/show/subjects")["private"] == 1, \
+        "a private member was counted once per family"
+    edges = sorted(e["target"] for e in _edges(_results(client, "/show/index/gjgf"))
+                   if e["source"] == "repo::private-07" and e["kind"] == "member_of")
+    assert edges == ["family::irl", "family::sound"], "a private member's claims were drawn twice"
+
+
 def test_the_hue_is_the_corpus_palette_s(client):
     nodes = _nodes(_results(client, "/show/family/core/gjgf"))
     assert nodes["family::core"]["color"] == "#2a61bd"

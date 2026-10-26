@@ -276,6 +276,15 @@ def projects(reading: Reading) -> list[str]:
     return [name for name in seen if not PRIVATE.match(name)]
 
 
+def private_members(reading: Reading) -> list[str]:
+    """Every private member a family names, once each, in first-seen order.
+
+    A private member two families claim is one member, as a public one is.
+    """
+    return list(dict.fromkeys(m for f in reading.families.values()
+                              for m in f.members if PRIVATE.match(m)))
+
+
 def subjects(reading: Reading) -> dict[str, Any]:
     """The index of what can be drawn, as a panel lists it."""
     return {
@@ -297,8 +306,7 @@ def subjects(reading: Reading) -> dict[str, Any]:
             "views": list(VIEWS),
         } for name in projects(reading)],
         "unstated": len(reading.unstated),
-        "private": sum(1 for f in reading.families.values()
-                       for m in f.members if PRIVATE.match(m)),
+        "private": len(private_members(reading)),
     }
 
 
@@ -596,8 +604,7 @@ def index_graph(reading: Reading, among: list[Path] | None = None):
                   CLAIM, "contains", "within")
 
     drawn: set[str] = set()
-    for member in projects(reading) + [m for f in reading.families.values()
-                                       for m in f.members if PRIVATE.match(m)]:
+    for member in projects(reading) + private_members(reading):
         claimed = reading.claimed_by(member)
         if not claimed:
             continue
