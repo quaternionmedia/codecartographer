@@ -367,6 +367,44 @@ the reason given.
 
 ---
 
+## Showgraph Commands
+
+### `show export`
+
+Draw each subject's showgraph in the window and write its pictures and its
+show document: the triplet's graph leg, for the corpus's docs site.
+
+```bash
+uv run codecarto show export --corpus ../qm --out ../qm/docs/show
+uv run codecarto show export --corpus ../qm --subject project:carlos,family:performing --out show
+```
+
+| Option | Meaning |
+|---|---|
+| `--corpus` | A checkout of the governance corpus; its `families.json` names the subjects |
+| `--subject` | `all` (the default): the index, every family and every public project. Or `index`, `family:<name>` and `project:<name>`, comma-separated |
+| `--out` | Where each subject's folder is written |
+
+Each subject's folder -- `index/`, `family/<name>/`, `project/<name>/` --
+holds `show.json` and a picture of each view the window draws: `estate.svg`,
+`code.svg` (a project's code map) and `system.png` (a project's system view,
+which draws in HTML). A view the window cannot draw here is stated in
+`show.json` with the window's reason, and has no picture.
+
+The pictures come from the real renderer, run headlessly by
+`web/playwright.export.config.ts` on ports of its own: each subject's address
+is opened, the canvas maximised (step 4, Read), and the picture taken once
+the fit has settled. `show.json` holds the graph each view drew, and names
+where its claims and its source came from by repository and commit: the
+corpus, a project's default branch, and the codecartographer commit that drew
+it, marked `+changes` when that checkout had uncommitted changes.
+
+Exit 1 when the harness fails, when a subject's document or a file it names
+was not written, or when a document names a place on this machine, such as a
+home or drive path.
+
+---
+
 ## Utility Commands
 
 ### `parse`

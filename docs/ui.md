@@ -218,6 +218,9 @@ frame. A name that would overlap another is hidden until a zoom gives it room,
 and a node's hover always holds it. Names are ranked: families first, then
 projects, then other repositories. Each outline takes its family's hue.
 **Double-click** a family to open it, and a project to open its estate view.
+A project's **code map** is drawn as a map too: at the fit that frames a whole
+repository each directory's outline name and each file's name keep that size,
+where a code graph opened from the Open panel draws them a pixel high.
 
 Each drawing rewrites the page's address, so `?show=family:performing` or
 `?show=project:moat&view=system` reopens it. A drawing opened by a click adds

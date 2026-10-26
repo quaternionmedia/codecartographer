@@ -439,6 +439,48 @@ test("a project's system view leaves the renderer as it found it for the next pl
   await expect(page.locator('.sys-title')).toHaveCount(0);
 });
 
+/** Each outline name on the canvas: its text, its size on screen, and whether it is shown. */
+async function outlineNames(page: Page): Promise<Array<{ name: string; px: number; shown: boolean }>> {
+  return page.locator('.graphRenderer svg').first().evaluate((svg) =>
+    [...svg.querySelectorAll<SVGTextElement>('.compound-group text')].map((t) => ({
+      name: t.textContent ?? '',
+      px: Number(t.getAttribute('font-size')) * (t.getScreenCTM()?.a ?? 1),
+      shown: getComputedStyle(t).display !== 'none' && t.getAttribute('visibility') !== 'hidden',
+    })));
+}
+
+test("a project's code map is a map: every directory's name is readable at the fit", async ({ page }) => {
+  /**
+   * The code view drew its parse as any code graph is drawn: at the fit that
+   * frames a whole repository its directories' names were a pixel or two
+   * high and its files dots, so its picture on a project page was a dark
+   * rectangle. Drawn as a map, as the estate views are, each name is held at a
+   * readable size whatever the zoom, and a name that would overlap another is
+   * hidden. The stream is carlos's own coarse parse
+   * (`fixtures/carlos-code.sse`), so nothing here needs the host.
+   */
+  await stubViews(page, () => ({
+    estate: { available: true },
+    code: { available: true, url: 'https://github.com/quaternionmedia/carlos', depth: 1 },
+    system: { available: false, problem: 'not here', remedy: '' },
+  }));
+  await page.route('**/parse/stream-url', (route) => route.fulfill({
+    status: 200, contentType: 'text/event-stream', path: 'tests/e2e/fixtures/carlos-code.sse',
+  }));
+  await page.goto('/?show=project:carlos&view=code');
+  await dismissOnboardingModal(page);
+  // The outlines are drawn when the stream is done, and the fit starts then;
+  // until it does the zoom does not move, and reads as settled.
+  await expect(page.locator('.compound-group text').first()).toBeAttached({ timeout: SETTLED });
+  await settledTransform(page);
+  const outlines = await outlineNames(page);
+  expect(outlines.length, 'directory outlines drawn').toBeGreaterThan(3);
+  // Mutation: stream the code view without presenting it as a map -- each
+  // directory's name is drawn a pixel or two high, and this fails.
+  expect(outlines.filter((o) => !o.shown || o.px < 11.9).map((o) => `${o.name} at ${o.px.toFixed(1)} px`)).toEqual([]);
+  expect((await names(page)).overlaps).toEqual([]);
+});
+
 test("a code map drawn again in another layout is drawn at its own depth, under its own address", async ({ page }) => {
   await stubViews(page, () => ({
     estate: { available: true },
