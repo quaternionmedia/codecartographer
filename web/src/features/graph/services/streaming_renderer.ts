@@ -89,6 +89,10 @@ export class StreamingGraphRenderer {
   private styling: GraphStylingOptions;
   private width: number;
   private height: number;
+  /** The canvas: the element the svg fills, which the dock sizes. */
+  private readonly _container: HTMLElement;
+  // Set by `fitWhenResized`: the resize observer fits once the size lands.
+  private _fitOnResize = false;
 
   // Internal queues — filled by addNode/addEdge, drained by rAF loop
   private _nodeQueue: GraphNode[] = [];
@@ -150,6 +154,7 @@ export class StreamingGraphRenderer {
     };
 
     container.innerHTML = '';
+    this._container = container;
     this.width = container.clientWidth || 800;
     this.height = container.clientHeight || 600;
 
@@ -199,12 +204,15 @@ export class StreamingGraphRenderer {
     if (typeof ResizeObserver !== 'undefined') {
       const obs = new ResizeObserver(() => {
         requestAnimationFrame(() => {
+          const fit = this._fitOnResize;
+          this._fitOnResize = false;
           const w = container.clientWidth || this.width;
           const h = container.clientHeight || this.height;
           if (!w || !h || (w === this.width && h === this.height)) return;
           this.width = w;
           this.height = h;
           this.svg.attr('width', w).attr('height', h).attr('viewBox', [0, 0, w, h]);
+          if (fit) this._fitView();
         });
       });
       obs.observe(container);
@@ -646,6 +654,23 @@ export class StreamingGraphRenderer {
   /** Public so an intent can ask for a fit without reaching into the DOM. */
   fitView(): void {
     this._fitView();
+  }
+
+  /**
+   * Fit the drawing to the canvas at the size the dock has just given it, or
+   * do nothing when the canvas keeps its size, so the reader's zoom stands.
+   *
+   * **THE FIT WAITS FOR THE RESIZE OBSERVER.** The dock sizes the canvas at
+   * once, and the canvas measures at its new size, but the svg and the size a
+   * fit frames into (`width`, `height`) follow only when the observer fires.
+   * A fit before then frames the drawing in the size the canvas had, and the
+   * observer's frame comes when it comes, so no delay is the right one.
+   */
+  fitWhenResized(): void {
+    const w = this._container.clientWidth;
+    const h = this._container.clientHeight;
+    if (!w || !h || (w === this.width && h === this.height)) return;
+    this._fitOnResize = true;
   }
 
   /** Fit the viewport to these nodes only. Unknown ids are ignored. */

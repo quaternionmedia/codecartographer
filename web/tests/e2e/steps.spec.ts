@@ -51,6 +51,65 @@ async function frontTabs(page: Page): Promise<string[]> {
   return page.locator('.lm_tab.lm_active').allTextContents();
 }
 
+/** The canvas's svg; its first group is the drawing, which the zoom moves. */
+const canvas = (page: Page) => page.locator('.graphRenderer > svg');
+
+/**
+ * "framed" when the drawing is centred on the canvas and fills it on its
+ * tighter side, as a fit leaves it; otherwise where it is, in fractions of
+ * the canvas. The drawing is the zoomed group -- nodes, labels and group
+ * outlines, which are what a fit frames. The canvas is the svg's container,
+ * the space the reader sees: the svg is sized in pixels, and keeps the size
+ * it had until the renderer hears of a new one.
+ */
+async function framing(page: Page): Promise<string> {
+  return canvas(page).evaluate((svg) => {
+    const c = svg.parentElement!.getBoundingClientRect();
+    const g = svg.querySelector(':scope > g')!.getBoundingClientRect();
+    const x = (g.left + g.width / 2 - c.left) / c.width;
+    const y = (g.top + g.height / 2 - c.top) / c.height;
+    const w = g.width / c.width;
+    const h = g.height / c.height;
+    const fills = Math.max(w, h);
+    if (Math.abs(x - 0.5) <= 0.03 && Math.abs(y - 0.5) <= 0.03 && fills >= 0.9 && fills <= 1.01) return 'framed';
+    const at = (v: number) => v.toFixed(2);
+    return `centred at (${at(x)}, ${at(y)}), ${at(w)} × ${at(h)} of the canvas`;
+  });
+}
+
+/** The zoom on the canvas, as its drawing's transform attribute. */
+async function zoomOf(page: Page): Promise<string | null> {
+  return canvas(page).evaluate((svg) => svg.querySelector(':scope > g')!.getAttribute('transform'));
+}
+
+/**
+ * Hold back the canvas's own resize observer by `ms`, as a slow frame would.
+ * Golden Layout sizes the canvas as it maximises or restores a stack, and the
+ * renderer learns the new size only when its observer fires: a fit run as the
+ * dock moves, or after a fixed delay shorter than this, frames the drawing in
+ * the size the canvas had. Golden Layout's own observer is left alone.
+ */
+async function holdCanvasResizes(page: Page, ms: number): Promise<void> {
+  await page.addInitScript((late: number) => {
+    const Native = window.ResizeObserver;
+    window.ResizeObserver = class extends Native {
+      private readonly held: { canvas: boolean };
+      constructor(callback: ResizeObserverCallback) {
+        const held = { canvas: false };
+        super((entries, observer) => {
+          if (held.canvas) setTimeout(() => callback(entries, observer), late);
+          else callback(entries, observer);
+        });
+        this.held = held;
+      }
+      observe(target: Element, options?: ResizeObserverOptions): void {
+        if (target.matches('.graphRenderer')) this.held.canvas = true;
+        super.observe(target, options);
+      }
+    };
+  }, ms);
+}
+
 test('a first visit opens on step 1, and the walkthrough turns the steps with the rail', async ({ page }) => {
   await page.goto('/');
   await expect(card(page)).toHaveAttribute('data-step', 'open');
@@ -148,6 +207,50 @@ test('Read fills the dock with the canvas when a focus has scrolled it', async (
   expect(Math.round(canvas!.y - dock!.y), 'how far the canvas starts from the top of the dock').toBe(0);
   expect(Math.round(canvas!.height - dock!.height), 'how much of the dock the canvas leaves').toBe(0);
   await expect.poll(() => windowsInView(page)).toEqual(['graph']);
+});
+
+test('Read frames the drawing in the canvas it fills once the canvas has its size, and so does leaving it', async ({ page }) => {
+  /**
+   * Step 4 maximises the canvas, and the drawing kept the framing it had in
+   * the canvas it was drawn in -- the dock's top two thirds -- so it sat in
+   * the upper half with the lower half empty, until the ring's Fit. Leaving
+   * Read shrank the canvas under a drawing framed for the whole dock.
+   *
+   * The canvas's resize lands a second and a half late here, so the fit has
+   * to wait for it however long it takes.
+   */
+  await holdCanvasResizes(page, 1_500);
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.getByRole('button', { name: /Load Demo/i }).first().click();
+  await expect(page.locator('.graph-node[data-node-id]').first()).toBeVisible({ timeout: SETTLED });
+  await expect.poll(() => framing(page), { timeout: SETTLED }).toBe('framed');
+
+  await step(page, 'Read').click();
+  await expect.poll(() => windowsInView(page)).toEqual(['graph']);
+  // The canvas fills the dock, and its resize has not landed: the drawing is
+  // where the smaller canvas framed it.
+  expect(await framing(page)).not.toBe('framed');
+  // Mutation: fit as the dock moves rather than when the resize lands -- the
+  // drawing is framed in the smaller canvas's size, and this fails.
+  await expect.poll(() => framing(page), { timeout: 10_000 }).toBe('framed');
+
+  await step(page, 'Browse').click();
+  await expect.poll(() => windowsInView(page)).toEqual(['file-tree', 'graph', 'open']);
+  await expect.poll(() => framing(page), { timeout: 10_000 }).toBe('framed');
+
+  // A step that leaves the canvas its size leaves the reader's zoom as well.
+  // Mutation: fit on every step -- the zoom is undone, and this fails.
+  const box = (await canvas(page).boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, -600);
+  await expect.poll(() => framing(page)).not.toBe('framed');
+  const zoomed = await zoomOf(page);
+  await step(page, 'Open').click();
+  await expect.poll(() => windowsInView(page)).toEqual(['file-tree', 'graph', 'open']);
+  // Longer than the held resize and the fit's 0.7 s transition together.
+  await page.waitForTimeout(2_500);
+  expect(await zoomOf(page)).toBe(zoomed);
 });
 
 test("a step opens its window again when it was closed, and a stack maximised by Golden Layout's own control gives way", async ({ page }) => {

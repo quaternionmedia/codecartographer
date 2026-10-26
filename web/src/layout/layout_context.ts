@@ -323,10 +323,17 @@ export class LayoutContext {
    * order). The rail, Next and the walkthrough card all come here -- the step
    * already on included, since one of its windows may have been closed or put
    * behind another since.
+   *
+   * A step that changes the canvas's size -- into Read, or out of it --
+   * frames the drawing in the new size; one that keeps it leaves the
+   * reader's zoom.
    */
   public enterStep(id: StepId): void {
     this.step = id;
-    if (this._layoutManager) enterStep(id, this._stepDock());
+    if (this._layoutManager) {
+      enterStep(id, this._stepDock());
+      this._streamingRenderer?.fitWhenResized();
+    }
     m.redraw();
   }
 
