@@ -21,6 +21,11 @@ checkout can legitimately be older than the file. That answers 200 with
 like an estate that declares no capabilities, which is a different and much
 worse claim.
 
+**EVERY ROUTE IS A PLAIN `def`.** Reading the registry, parsing its YAML and
+laying it out all block, and the first Kamada-Kawai layout takes seconds while
+it imports scipy. FastAPI runs a plain `def` in its threadpool, where that work
+holds up no other request; an `async def` would run it on the event loop.
+
 Every route answers in `generate_return`'s envelope, like every other router
 here.
 """
@@ -62,7 +67,7 @@ def _unreadable(reading) -> dict[str, Any]:
 
 
 @CapabilityRouter.get("/gjgf")
-async def capabilities_gjgf(
+def capabilities_gjgf(
     layout: str = Query("Kamada Kawai"),
     palette_id: str = Query("0"),
 ) -> dict[str, Any]:
@@ -90,7 +95,7 @@ async def capabilities_gjgf(
 
 
 @CapabilityRouter.get("/data")
-async def capabilities_data() -> dict[str, Any]:
+def capabilities_data() -> dict[str, Any]:
     """Every declaration and its rungs, without a layout.
 
     The claim and the pointers side by side, which is the comparison the record

@@ -474,7 +474,7 @@ from codecarto.util.utilities import generate_return
 MyRouter = APIRouter()
 
 @MyRouter.post("/my-endpoint")
-async def my_endpoint(request: MyRequestModel) -> dict:
+def my_endpoint(request: MyRequestModel) -> dict:
     try:
         result = MyService.process(request)
         return generate_return(200, "my-endpoint - Success", {"data": result})
@@ -483,6 +483,17 @@ async def my_endpoint(request: MyRequestModel) -> dict:
     except Exception as exc:
         return proc_exception("my-endpoint", "Unexpected error", {}, exc)
 ```
+
+**A PLAIN `def`, UNLESS THE ROUTE AWAITS ALL ITS WORK.** FastAPI runs a plain
+`def` route in its threadpool and an `async def` route on the event loop. Most
+services here are synchronous: they read files, parse, lay out, or wait on
+another server. Called from an `async def` route, one holds up every other
+request until it returns. `/plotter/demo` was written that way, and its parse stalled
+the whole server for seconds. Write `async def` only when every slow call in the
+route is awaited, and hand a blocking one to `run_in_threadpool`, as
+`topology_router._fetch` does. Add the route to
+`tests/test_slow_seams_hold_up_nothing.py`, which times a cheap request while
+the route's slow part sleeps.
 
 ### Step 2: Register in `main.py`
 
