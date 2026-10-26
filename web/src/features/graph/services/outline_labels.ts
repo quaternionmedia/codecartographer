@@ -13,6 +13,12 @@
  * most of the graph -- and labels all set at the top would be written over
  * one another and over the nodes.
  *
+ * Each spot tried is checked only against the node and label boxes filed in
+ * the grid cells it covers (`BoxGrid`), not against every one: the renderer
+ * places the labels synchronously at a stream's end, on the outlines toggle,
+ * at every drag's end and after a removal, and a large graph's labels tried
+ * every spot against every box.
+ *
  * Pure: the renderer measures each label and draws it where this says.
  */
 
@@ -55,6 +61,61 @@ function boxAt(p: LabelPlace, w: number, h: number): Box {
 
 function overlaps(a: Box, b: Box): boolean {
   return a.l < b.r + GAP && b.l < a.r + GAP && a.t < b.b + GAP && b.t < a.b + GAP;
+}
+
+/** The side of a grid cell, in graph units: a few labels' height, a node's width or so. */
+const CELL = 64;
+
+/**
+ * Boxes filed by the grid cells they cover, so a query reads only the boxes
+ * near it. A box is filed in every cell it covers, grown by `GAP`, so any box
+ * that `overlaps` a query shares a cell with it.
+ */
+class BoxGrid {
+  private readonly cells = new Map<number, number[]>();
+  private readonly boxes: Box[] = [];
+  /** The query each box was last read in, so one in several cells counts once. */
+  private readonly seen: number[] = [];
+  private query = 0;
+
+  constructor(private readonly size: number) {}
+
+  /** The cells `box`, grown by `GAP`, covers, by key. */
+  private keys(box: Box): number[] {
+    // A cell's key packs its column and row; a column or row past the range
+    // shares a cell with the edge one, which costs time but never a box.
+    const at = (v: number) => Math.max(-0x8000, Math.min(0x7fff, Math.floor(v / this.size)));
+    const keys: number[] = [];
+    for (let i = at(box.l - GAP); i <= at(box.r + GAP); i++) {
+      for (let j = at(box.t - GAP); j <= at(box.b + GAP); j++) keys.push((i + 0x8000) * 0x10000 + (j + 0x8000));
+    }
+    return keys;
+  }
+
+  add(box: Box): void {
+    const id = this.boxes.length;
+    this.boxes.push(box);
+    this.seen.push(0);
+    for (const key of this.keys(box)) {
+      const cell = this.cells.get(key);
+      if (cell) cell.push(id);
+      else this.cells.set(key, [id]);
+    }
+  }
+
+  /** How many filed boxes `box` overlaps, counted no further than `limit`. */
+  count(box: Box, limit = Infinity): number {
+    const query = ++this.query;
+    let found = 0;
+    for (const key of this.keys(box)) {
+      for (const id of this.cells.get(key) ?? []) {
+        if (this.seen[id] === query) continue;
+        this.seen[id] = query;
+        if (overlaps(box, this.boxes[id]) && ++found >= limit) return found;
+      }
+    }
+    return found;
+  }
 }
 
 /** Whether a label's box fits inside its outline at all, its corners inside the rim. */
@@ -102,12 +163,17 @@ const DEPTHS = [0, 1, 2, 3, -1, -2];
  * with none, the place clear of the labels that covers fewest nodes; with
  * none of those either, the top, inside the rim when it fits there and
  * outside it when not. Inside the rim is tried before outside it.
+ *
+ * `cell` is the grid's cell side; the places do not depend on it, and
+ * `Infinity`, one cell for the whole graph, checks every spot against every box.
  */
 export function placeOutlineLabels(
   outlines: readonly OutlineLabel[],
   nodes: readonly Obstacle[] = [],
+  cell = CELL,
 ): LabelPlace[] {
-  const nodeBoxes = nodes.map((n) => ({ l: n.x - n.r, t: n.y - n.r, r: n.x + n.r, b: n.y + n.r }));
+  const nodeBoxes = new BoxGrid(cell);
+  for (const n of nodes) nodeBoxes.add({ l: n.x - n.r, t: n.y - n.r, r: n.x + n.r, b: n.y + n.r });
   const extent: Box = {
     l: Math.min(...outlines.map((o) => o.cx - o.r)),
     t: Math.min(...outlines.map((o) => o.cy - o.r)),
@@ -116,7 +182,7 @@ export function placeOutlineLabels(
   };
   const within = (b: Box) => b.l >= extent.l && b.t >= extent.t && b.r <= extent.r && b.b <= extent.b;
   const order = outlines.map((_, i) => i).sort((a, b) => outlines[b].r - outlines[a].r || a - b);
-  const placed: Box[] = [];
+  const placed = new BoxGrid(cell);
   const places: LabelPlace[] = new Array(outlines.length);
   for (const i of order) {
     const o = outlines[i];
@@ -129,8 +195,9 @@ export function placeOutlineLabels(
         const box = boxAt(p, o.w, o.h);
         if (depth === -1 && !within(box)) continue;
         if (depth === -2 && within(box)) continue;
-        if (placed.some((other) => overlaps(box, other))) continue;
-        const covered = nodeBoxes.filter((n) => overlaps(box, n)).length;
+        if (placed.count(box, 1) > 0) continue;
+        // Only whether it covers fewer than the best so far matters.
+        const covered = nodeBoxes.count(box, fewest);
         if (covered < fewest) {
           fewest = covered;
           chosen = p;
@@ -140,7 +207,7 @@ export function placeOutlineLabels(
       if (fewest === 0) break;
     }
     places[i] = chosen ?? placeAt(o, ANGLES[0], fitsInside(o) ? 0 : -1)!;
-    placed.push(boxAt(places[i], o.w, o.h));
+    placed.add(boxAt(places[i], o.w, o.h));
   }
   return places;
 }
