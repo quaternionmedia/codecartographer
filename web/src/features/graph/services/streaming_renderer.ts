@@ -810,8 +810,8 @@ export class StreamingGraphRenderer {
    * Open a node's source: its forge page in a new tab, or for a file with no
    * page (read from disk, or uploaded) a badge naming the file and line beside
    * `at` (the node's own place on screen when not given), on one line and
-   * wholly inside the canvas and the window. View → Source and a double-click
-   * both call this. False for a node from no file, which opens nothing.
+   * wholly inside the canvas. View → Source and a double-click both call
+   * this. False for a node from no file, which opens nothing.
    */
   openSource(id: string, at?: { x: number; y: number }): boolean {
     const target = this.sourceTargetOf(id);
@@ -869,9 +869,8 @@ export class StreamingGraphRenderer {
     badge.title = target.text;
     badge.textContent = target.text;
     document.body.appendChild(badge);
-    // Shortened from the middle when it does not fit (node_info.ts), so the
-    // name and the file's end with its line stay. The font is monospace, so a
-    // character's width is the measured mean.
+    // Shortened from the middle when it does not fit (node_info.ts). The font
+    // is monospace, so a character's width is the measured mean.
     const padding = 16;
     const textWidth = badge.scrollWidth - padding;
     const chrome = badge.offsetWidth - badge.clientWidth + padding; // border and padding

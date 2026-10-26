@@ -270,7 +270,7 @@ the same place, by one rule: `node_info.sourceTarget` decides where, and
 | The node | What opens |
 |---|---|
 | A file or a symbol from a GitHub repository | The file's page on GitHub in a new tab, at the node's line. A file, and a Python symbol, whose parser records no line, open at the top |
-| A file or a symbol from a local checkout or an upload, which the browser cannot open | A badge beside the node for a few seconds, on one line, naming the node, the file's path and the line. It is kept inside the canvas; a path too long for the canvas is shortened in its middle, and the badge's tooltip has it whole |
+| A file or a symbol from a local checkout or an upload, which the browser cannot open | A badge beside the node for a few seconds, naming the node, the file's path and the line, on one line and kept inside the canvas, never over the point it was opened from. A path too long for the canvas is shortened in its middle, and a name that leaves no room for the file's own name is shortened first, so the file and the line stay; the badge's tooltip has the text whole |
 | A node that names no file, such as a directory | Nothing: Source is greyed, and a double-click zooms in, as it does off the nodes |
 
 A C symbol names its file only by the file's stem, and a Python symbol by
