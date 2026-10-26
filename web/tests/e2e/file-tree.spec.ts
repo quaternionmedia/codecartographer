@@ -98,8 +98,6 @@ test("a GitHub file's raw link sits on its name's line", async ({ page }) => {
 });
 
 test('a file read from disk is listed by its name alone, on one line however long', async ({ page }) => {
-  // Not run with the change that made it measure a wrapped name: the browser
-  // suites bind fixed ports this workstation shares.
   const LONG = 'notes on why the streaming renderer fits again after a relayout.md';
   await openStubbedTree(page, '/work/small', [
     { name: 'Cargo.toml', url: '/work/small/Cargo.toml' },
@@ -118,8 +116,7 @@ test('a file read from disk is listed by its name alone, on one line however lon
 });
 
 test('a name cut short is titled whole', async ({ page }) => {
-  // Not run with the change that added it: the browser suites bind fixed
-  // ports this workstation shares. tree-rows.test.mjs holds the title.
+  // tree-rows.test.mjs holds the title; this sees it on the drawn row.
   const names = ['test_streaming_renderer_fit_after_stream.ts', 'test_streaming_renderer_fit_after_relayout.ts'];
   await openStubbedTree(page, '/work/small', names.map((name) => ({ name, url: `/work/small/${name}` })));
   const files = page.locator('.gl-panel--file-tree .file');
@@ -131,9 +128,7 @@ test('a name cut short is titled whole', async ({ page }) => {
 });
 
 test("each folder's contents sit a step in from its name", async ({ page }) => {
-  // Not run with the change that added it: the browser suites bind fixed
-  // ports this workstation shares. tree-indent.test.mjs reads the step from
-  // the stylesheet.
+  // tree-indent.test.mjs reads the step from the stylesheet; this sees it drawn.
   const RAW = 'https://raw.githubusercontent.com/example/small/main';
   const crate = (name: string): StubFolder => ({
     name, size: 1, files: [], folders: [{
@@ -151,10 +146,18 @@ test("each folder's contents sit a step in from its name", async ({ page }) => {
     await tree.locator(`.folder__${name} .folder__src > .folder_button`).click();
   }
   await expect(tree.locator('.file', { hasText: 'lib.rs' })).toHaveCount(2);
-  // offsetLeft, as the press's scale and the entries' slide-in transform the
-  // rows' boxes while they run.
+  // Each offsetLeft summed up its offset parents to the page, as the press's
+  // scale and the entries' slide-in transform the rows' boxes while they run,
+  // and a file's own offsetLeft is from its .file_container, a folder's from
+  // the content holding it.
   const left = (selector: string) => tree.locator(selector).first()
-    .evaluate((el) => (el as HTMLElement).offsetLeft);
+    .evaluate((el) => {
+      let x = 0;
+      for (let e: HTMLElement | null = el as HTMLElement; e; e = e.offsetParent as HTMLElement | null) {
+        x += e.offsetLeft;
+      }
+      return x;
+    });
   const root = await left('.folder__crates > .folder_button');
   const crateRow = await left('.folder__a > .folder_button');
   const srcRow = await left('.folder__a .folder__src > .folder_button');
@@ -168,9 +171,7 @@ test("each folder's contents sit a step in from its name", async ({ page }) => {
 });
 
 test('the tree is pressed from the keyboard, and a raw link says which file it opens', async ({ page }) => {
-  // Not run with the change that added it: the browser suites bind fixed
-  // ports this workstation shares. tree-rows.test.mjs holds the rows' roles,
-  // keys and names.
+  // tree-rows.test.mjs holds the rows' roles, keys and names; this presses them.
   const RAW = 'https://raw.githubusercontent.com/example/small/main';
   const fetched: string[] = [];
   await page.route(`${RAW}/**`, (route) => {
@@ -248,8 +249,7 @@ test('an unread folder in a partial tree reads itself on click', async ({ page }
 });
 
 test('a folder whose read failed stops loading and reads again on the next click', async ({ page }) => {
-  // Not run with the change that added it: the browser suites bind fixed
-  // ports this workstation shares. stub-read.test.mjs holds the same order.
+  // stub-read.test.mjs holds the same order.
   await page.route('**/repo/tree?**', (route) => route.fulfill({
     json: {
       status: 200,
