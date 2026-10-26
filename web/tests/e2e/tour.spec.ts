@@ -9,14 +9,15 @@
  *
  *   cd web && npx playwright test tour && npx playwright show-report
  *
- * It fails on any page error or console error on the way, and otherwise
- * asserts only what it needs to reach each state. Whether a state looks right
- * is for the reader of the screenshots; the other specs check behaviour.
+ * It fails on any page error or console error on the way, but Graphbase's
+ * reads with no database behind them, and otherwise asserts only what it needs
+ * to reach each state. Whether a state looks right is for the reader of the
+ * screenshots; the other specs check behaviour.
  */
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { dismissOnboardingModal } from './helpers';
+import { dismissOnboardingModal, pointOn } from './helpers';
 
 const SETTLED = 30_000;
 const FLASH = '.graph-node[data-node-id*="region::FLASH"]';
@@ -24,13 +25,26 @@ const SAVED_LAYOUT_KEY = 'cc:gl-layout:default';
 
 test.use({ viewport: { width: 1600, height: 1000 } });
 
+/**
+ * The page reads Graphbase's /db/bookmarks and /db/snapshots as it boots, and
+ * /db/history/<hash> for a repository it draws, as the bundled example is.
+ * With `MONGODB_URI` set and no database listening, Graphbase answers each
+ * with a 503, and the browser reports the failed request as a console error
+ * whose source is that request -- the gap demo-graph.spec.ts excuses for the
+ * first two, and the only one excused here. Matched on the request the error
+ * comes from, not on its text, so an error any script logs, or a failure of
+ * any other request, still fails the tour.
+ */
+const isKnownGraphbaseGap = (url: string) => /\/db\/(bookmarks|snapshots|history)\b/.test(url);
+
 let errors: string[] = [];
 
 test.beforeEach(({ page }) => {
   errors = [];
   page.on('pageerror', (e) => errors.push(`page error: ${e.message}`));
   page.on('console', (m) => {
-    if (m.type() === 'error') errors.push(`console error: ${m.text()}`);
+    if (m.type() !== 'error' || isKnownGraphbaseGap(m.location().url)) return;
+    errors.push(`console error: ${m.text()}`);
   });
 });
 
@@ -85,6 +99,18 @@ async function focusCanvas(page: Page): Promise<void> {
     .evaluate((el) => (el.closest('[tabindex]') as HTMLElement | null)?.focus());
 }
 
+/**
+ * Right-click a node where a pointer reaches it, and wait for its ring. Its
+ * centre can be under another node or its own label, and Playwright's click
+ * waits for the centre to come clear (`pointOn` in helpers.ts says why).
+ */
+async function openNodeRing(page: Page, node: Locator): Promise<void> {
+  await focusCanvas(page);
+  const at = await pointOn(node);
+  await page.mouse.click(at.x, at.y, { button: 'right' });
+  await expect(page.locator('.rad-root')).toHaveAttribute('aria-label', 'node');
+}
+
 async function closeRing(page: Page): Promise<void> {
   const ring = page.locator('.rad-root');
   for (let i = 0; i < 3 && (await ring.count()) > 0; i++) await page.keyboard.press('Escape');
@@ -92,6 +118,11 @@ async function closeRing(page: Page): Promise<void> {
 }
 
 test('a first visit, the Open panel, and the bundled example', async ({ page }) => {
+  // Playwright's 30s timeout is for the whole test, and five of these steps'
+  // waits allow SETTLED each: a slow stream would end the test before its own
+  // wait did. Those five, and a minute for the other waits, the presses and
+  // the screenshots.
+  test.setTimeout(5 * SETTLED + 60_000);
   await page.goto('/');
   const open = page.locator('.gl-panel--open');
 
@@ -140,8 +171,7 @@ test('a first visit, the Open panel, and the bundled example', async ({ page }) 
   });
 
   await test.step('07 the node ring', async () => {
-    await focusCanvas(page);
-    await page.locator(FLASH).click({ button: 'right' });
+    await openNodeRing(page, page.locator(FLASH));
     await expect(wedge(page, 'View')).toBeAttached();
     await shot('07 node ring', page);
   });
@@ -173,8 +203,7 @@ test('a first visit, the Open panel, and the bundled example', async ({ page }) 
 
   await test.step('11 View ▸ Source on a file read from disk', async () => {
     const file = page.locator('.graph-node[data-node-id^="file::"][data-node-id$=".rs"]').first();
-    await focusCanvas(page);
-    await file.click({ button: 'right' });
+    await openNodeRing(page, file);
     await pickWedge(page, 'View');
     await expect(wedge(page, 'Source')).toBeAttached();
     await pickWedge(page, 'Source');
@@ -199,6 +228,9 @@ test('a first visit, the Open panel, and the bundled example', async ({ page }) 
 });
 
 test('the demo graph', async ({ page }) => {
+  // Its one SETTLED wait, and half a minute for the page, the walkthrough and
+  // the settle around it.
+  test.setTimeout(SETTLED + 30_000);
   await page.goto('/');
   await dismissOnboardingModal(page);
 
@@ -238,8 +270,15 @@ test('a layout saved before the Open panel', async ({ page }) => {
   await dismissOnboardingModal(page);
 
   await test.step('15 migrated to one Open window', async () => {
+    // Mutation: drop the renames -- the layout is dropped for the default,
+    // which has an Open window too, the toast says the saved layout was not
+    // loaded, a Graph Settings tab appears, and this fails.
+    await expect(page.locator('.cc-toast__msg', { hasText: 'are the Open window in this version' })).toHaveText(
+      "The saved layout's 'upload-panel', 'repo-panel', 'plotbar' window(s) are the Open window in this version.",
+    );
+    await expect(page.locator('.lm_tab', { hasText: 'Open' })).toHaveCount(1);
+    await expect(page.locator('.lm_tab', { hasText: 'Graph Settings' })).toHaveCount(0);
     await expect(page.locator('.gl-panel--open')).toBeVisible();
-    await expect(page.locator('.cc-toast').first()).toBeVisible();
     await shot('15 old saved layout migrated', page);
   });
 });

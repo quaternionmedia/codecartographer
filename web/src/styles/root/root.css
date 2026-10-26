@@ -13,6 +13,9 @@
   --c-font: #00ff41;
   --c-font-muted: #00aa2a;
   --c-font-inverse: #0a0a0a;
+  /* Text on an accent fill. A dark theme's accent is light, and its inverse
+     colour reads on it; Light's accent is a mid orange, and white does not. */
+  --c-font-on-accent: var(--c-font-inverse);
   --c-disabled: #333333;
   --c-border: #00ff4140;
   --c-border-active: #00ff41;
@@ -78,6 +81,7 @@
   --c-font: #212121;
   --c-font-muted: #757575;
   --c-font-inverse: #ffffff;
+  --c-font-on-accent: var(--c-font);
   --c-disabled: #bdbdbd;
   --c-border: #e0e0e0;
   --c-border-active: #2196f3;

@@ -4,8 +4,8 @@ C Semantic Graph Parser
 Parses C source files using libclang and returns a typed semantic graph
 (nodes + edges + meta) suitable for the C Semantic Renderer.
 
-Requires the optional 'c-parsing' dependency group:
-    uv pip install "codecarto[c-parsing]"
+Requires the optional 'c-parsing' extra, which the one sync installs:
+    uv sync --locked --extra dev --extra c-parsing
 
 libclang native library candidates are probed automatically on Linux.
 """
@@ -94,7 +94,7 @@ def _get_clang():
     except ImportError as exc:
         raise ImportError(
             "libclang is not installed, so C and C++ declarations cannot be read. "
-            "Install it with: uv sync --extra c-parsing"
+            "Install it with: uv sync --locked --extra dev --extra c-parsing"
         ) from exc
 
     for candidate in _LIBCLANG_CANDIDATES:

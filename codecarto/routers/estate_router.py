@@ -24,25 +24,52 @@ reports presence and identity; each seam's own metadata carries its caveat.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from fastapi import APIRouter
+from fastapi.concurrency import run_in_threadpool
 
 from codecarto.services import estate_service
 from codecarto.util.utilities import generate_return
 
 EstateRouter = APIRouter()
 
+#: The survey running now, which every request that arrives meanwhile awaits.
+_survey: asyncio.Future | None = None
+
+
+async def _shared_survey() -> list[dict[str, Any]]:
+    """The running survey's rows, starting one only when none is running.
+
+    **ONE SURVEY AT A TIME, AND ITS WAITERS ON THE LOOP.** A survey waits on
+    other servers for four to twelve seconds when nothing is up, in a threadpool
+    slot. One per request, a page that keeps asking fills the pool, and every
+    other `run_in_threadpool` call in the server queues behind them. Requests
+    that arrive while one runs await it here, holding no slot.
+
+    **A FINISHED SURVEY IS NOT REUSED.** The next request probes afresh, so a
+    seam brought up shows at once; a joiner's rows are at most one survey old.
+    The task is shielded, so a client that goes away cancels its own wait and
+    not the survey the others are waiting for.
+    """
+    global _survey
+    running = _survey
+    if running is None or running.done():
+        running = asyncio.ensure_future(run_in_threadpool(estate_service.survey))
+        _survey = running
+    return await asyncio.shield(running)
+
 
 @EstateRouter.get("/seams")
-def estate_seams() -> dict[str, Any]:
+async def estate_seams() -> dict[str, Any]:
     """Every seam, probed once, with the caveat a reader needs first.
 
-    A plain `def`, so FastAPI runs it in its threadpool: the probes wait on
-    other servers, up to their timeouts, and on the event loop that wait would
-    hold up every other request.
+    The probes wait on other servers, up to their timeouts, so they run in the
+    threadpool: on the event loop that wait would hold up every other request.
+    `_shared_survey` says why concurrent requests share one.
     """
-    rows = estate_service.survey()
+    rows = await _shared_survey()
     return generate_return(results={
         "seams": rows,
         "live": sum(1 for r in rows if r["ok"]),

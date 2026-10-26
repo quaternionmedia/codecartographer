@@ -9,44 +9,44 @@
 
 import m from 'mithril';
 import type { LayoutContext } from '../layout_context';
+import { closeOnOutsideClickOrEscape } from './menu_dismissal';
 
 interface Attrs {
   ctx: LayoutContext;
   x: number;
   y: number;
   onClose: () => void;
+  /** The "+" button that opened the menu, which the focus goes back to. */
+  opener: HTMLElement | null;
 }
 
-interface State {
-  /** Removes what `oncreate` put on `document`. */
-  teardown?: () => void;
+interface MenuState {
+  /** Removes the outside-click and Escape listeners (`menu_dismissal.ts`). */
+  disarm: () => void;
 }
 
-export const AddPanelMenu: m.Component<Attrs, State> = {
+export const AddPanelMenu: m.Component<Attrs, MenuState> = {
   oncreate: (vnode) => {
-    const { onClose } = vnode.attrs;
-    const onKeydown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose();
-    };
-    // Defer listener registration one tick so the click that opened the
-    // menu doesn't immediately close it via the same event.
-    const timer = setTimeout(() => {
-      document.addEventListener('click', onClose);
-      document.addEventListener('keydown', onKeydown);
-    }, 0);
-    // Removed when the menu goes, however it goes. Choosing a window stops
-    // its click short of `document`, so a listener that waits to fire once
-    // stays armed after the menu is gone, and closes the next menu the +
-    // opens on the very click that opened it.
-    vnode.state.teardown = () => {
-      clearTimeout(timer);
-      document.removeEventListener('click', onClose);
-      document.removeEventListener('keydown', onKeydown);
-    };
+    // The outside click is armed a tick later, so the click that opened the
+    // menu does not close it; Escape is heard at once (menu_dismissal.ts).
+    vnode.state.disarm = closeOnOutsideClickOrEscape(
+      document,
+      vnode.attrs.onClose,
+      (fn) => { setTimeout(fn, 0); },
+    );
+    // **THE FOCUS GOES INTO THE MENU.** It stayed on "+", so a keyboard
+    // reader had to Tab through the header and the whole dock to reach the
+    // list, which is drawn last in the page.
+    (vnode.dom as HTMLElement).querySelector<HTMLElement>('button')?.focus();
   },
 
+  // However the menu closed -- a click outside, Escape, one of its items, or
+  // "+" again -- nothing it listened with outlives it.
   onremove: (vnode) => {
-    vnode.state.teardown?.();
+    vnode.state.disarm();
+    // Still in the DOM here. Focus inside the menu goes back to "+"; focus a
+    // click outside put elsewhere stays where the reader put it.
+    if ((vnode.dom as HTMLElement).contains(document.activeElement)) vnode.attrs.opener?.focus();
   },
 
   view: ({ attrs }) => {
