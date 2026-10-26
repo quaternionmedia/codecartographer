@@ -260,10 +260,16 @@ export class CompoundLayoutManager {
   }
 }
 
-/** How far an outline is drawn past what it encloses, and the size it reckons a node at. */
+/**
+ * How far an outline is drawn past what it encloses, and how far each node it
+ * encloses reaches: `radiusOf`, the node's drawn extent. A fresh drawing and
+ * the redraw after a removal both take it from here, so an outline keeps its
+ * size when a node outside its group is deleted.
+ */
 export interface OutlineSpacing {
   readonly padding: number;
   readonly baseNodeSize: number;
+  readonly radiusOf: (node: GraphNode) => number;
 }
 
 /**
@@ -285,5 +291,5 @@ export function outlinesAfterRemoval(
   spacing: OutlineSpacing,
 ): GroupBounds[] {
   if (drawn.length === 0) return [];
-  return manager.computeGroupBounds(remaining, edges, spacing.padding, spacing.baseNodeSize);
+  return manager.computeGroupBounds(remaining, edges, spacing.padding, spacing.baseNodeSize, spacing.radiusOf);
 }

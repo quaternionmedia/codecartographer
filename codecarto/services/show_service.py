@@ -88,6 +88,11 @@ MANIFESTS = (".gitmodules", "pyproject.toml", "package.json", "Cargo.toml")
 # add one spoke per member and say nothing the governed mark does not.
 CORPUS_NAME = "qm"
 
+# This project, as the corpus names it: its pin is `project/codecartographer`
+# (`.gitmodules`), so a listing of the corpus's project branches without that
+# one was not fetched in full.
+THIS_PROJECT = "codecartographer"
+
 VIEWS = ("estate", "code", "system")
 
 
@@ -129,28 +134,49 @@ class Reading:
         return [f.name for f in self.families.values() if repo in f.members]
 
 
-def _yaml(path: Path, notes: list[str], what: str) -> Any:
+def _rows(value: Any) -> list[Any]:
+    """The list a document holds where a list belongs, or none.
+
+    A number or a mapping there is read as nothing rather than iterated.
+    """
+    return value if isinstance(value, list) else []
+
+
+def _yaml(path: Path, notes: list[str], what: str) -> dict[str, Any]:
+    """A mapping the corpus keeps, or `{}` with a note saying why not."""
     import yaml
 
+    where = corpus_root.shown(path)
     if not path.is_file():
-        notes.append(f"no {what} at {path.as_posix()}")
-        return None
+        notes.append(f"no {what} at {where}")
+        return {}
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8"))
+        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except UnicodeDecodeError:
+        notes.append(f"{where} is not UTF-8, so no {what} was read")
+        return {}
     except yaml.YAMLError as error:
-        notes.append(f"{path.as_posix()} did not parse: {error}")
-        return None
+        notes.append(f"{where} did not parse: {error}")
+        return {}
+    if value is not None and not isinstance(value, dict):
+        notes.append(f"{where} is not a mapping, so no {what} was read")
+        return {}
+    return value or {}
 
 
 def _hues(path: Path, notes: list[str]) -> dict[str, tuple[str, str]]:
     """`FAMILY` from the corpus's palette, read as a literal and never executed."""
+    where = corpus_root.shown(path)
     if not path.is_file():
-        notes.append(f"no palette at {path.as_posix()}; families draw uncoloured")
+        notes.append(f"no palette at {where}; families draw uncoloured")
         return {}
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
+    except UnicodeDecodeError:
+        notes.append(f"{where} is not UTF-8; families draw uncoloured")
+        return {}
     except SyntaxError as error:
-        notes.append(f"{path.as_posix()} did not parse: {error}")
+        notes.append(f"{where} did not parse: {error}")
         return {}
     for node in tree.body:
         if (isinstance(node, ast.Assign) and len(node.targets) == 1
@@ -158,25 +184,41 @@ def _hues(path: Path, notes: list[str]) -> dict[str, tuple[str, str]]:
                 and node.targets[0].id == "FAMILY"):
             try:
                 value = ast.literal_eval(node.value)
-            except ValueError:
+            except (ValueError, TypeError):
+                break
+            if not isinstance(value, dict):
                 break
             return {str(k): (str(v[0]), str(v[1])) for k, v in value.items()
                     if isinstance(v, (tuple, list)) and len(v) == 2}
-    notes.append(f"{path.as_posix()} declares no FAMILY literal; families draw uncoloured")
+    notes.append(f"{where} declares no FAMILY mapping literal; families "
+                 f"draw uncoloured")
     return {}
 
 
-def _governed(root: Path, roster: dict[str, dict[str, Any]]) -> set[str] | None:
+def _governed(root: Path, roster: dict[str, dict[str, Any]],
+              notes: list[str]) -> set[str] | None:
     """Repositories governance reaches: a `project/<name>` branch, or the corpus.
 
-    The same reading `ci/cookbook.py`'s `adopted_names` makes. `None` when git
-    could not answer, which is unknown and is never drawn as "not adopted".
+    The same reading `ci/cookbook.py`'s `adopted_names` makes. `None` when that
+    is unknown, which is never drawn as "not adopted": git could not answer, or
+    its answer is short. A checkout of the pin's commit alone, as CI's
+    `--depth 1` makes, lists no project branch and git exits 0; a single-branch
+    clone lists one at most. Either lacks `project/<THIS_PROJECT>`, the branch
+    this project's own pin is on, and so says nothing about anyone else's.
     """
     out = corpus_root.git(root, "for-each-ref", "--format=%(refname)",
                           "refs/remotes/origin/project", "refs/heads/project")
     if out is None:
+        notes.append("git could not list the corpus's project branches, so "
+                     "whether a member is governed is unknown")
         return None
     names = {line.rsplit("project/", 1)[-1] for line in out.splitlines() if line}
+    if THIS_PROJECT not in names:
+        notes.append(f"the corpus checkout has no project/{THIS_PROJECT} branch, "
+                     f"this project's own, so it holds few project branches or "
+                     f"none (a shallow or single-branch checkout) and whether a "
+                     f"member is governed is unknown")
+        return None
     names |= {name for name, row in roster.items() if row.get("role") == "corpus"}
     return names
 
@@ -185,61 +227,76 @@ def read(corpus: Path | str | None = None) -> Reading:
     """Everything the showgraphs are drawn from. **Runs nothing but read-only git.**"""
     root = Path(corpus) if corpus else corpus_root.root()
     path = root / FAMILIES_FILE
-    reading = Reading(source=path.as_posix())
+    where = corpus_root.shown(path)
+    reading = Reading(source=where)
     if not path.is_file():
-        reading.reason = (f"no families document at {path.as_posix()}. The "
+        reading.reason = (f"no families document at {where}. The "
                           f"governance pin may predate it.")
         return reading
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
+    except UnicodeDecodeError:
+        reading.reason = f"{where} is not UTF-8"
+        return reading
     except json.JSONDecodeError as error:
-        reading.reason = f"{path.as_posix()} did not parse: {error}"
+        reading.reason = f"{where} did not parse: {error}"
+        return reading
+    if not isinstance(document, dict):
+        reading.reason = f"{where} is not a JSON object"
         return reading
 
     schema = document.get("schema")
     reading.schema = schema if isinstance(schema, int) else None
     if reading.schema not in KNOWN_SCHEMAS:
-        reading.reason = (f"{path.as_posix()} is at schema {schema!r}; this window "
+        reading.reason = (f"{where} is at schema {schema!r}; this window "
                           f"draws schemas {', '.join(map(str, KNOWN_SCHEMAS))}")
         return reading
+    if document.get("families") is not None and not isinstance(document["families"], list):
+        reading.reason = f"{where}: `families` is not a list"
+        return reading
 
-    for entry in document.get("families") or []:
+    for entry in _rows(document.get("families")):
         if not isinstance(entry, dict) or not entry.get("name"):
             continue
-        members = [str(m) for m in entry.get("members") or []]
+        members = [str(m) for m in _rows(entry.get("members"))]
+        within = entry.get("within")
         reading.families[str(entry["name"])] = Family(
             name=str(entry["name"]),
             drives=str(entry.get("drives") or ""),
-            within=entry.get("within") or None,
-            subfamilies=[str(s) for s in entry.get("subfamilies") or []],
+            within=within if isinstance(within, str) and within else None,
+            subfamilies=[str(s) for s in _rows(entry.get("subfamilies"))],
             members=members,
-            all_members=[str(m) for m in entry.get("all_members") or members],
+            all_members=[str(m) for m in _rows(entry.get("all_members")) or members],
         )
-    reading.unstated = [str(u) for u in document.get("unstated") or []]
+    reading.unstated = [str(u) for u in _rows(document.get("unstated"))]
     reading.generated_at = str(document.get("generated_at") or "")
     reading.commit = corpus_root.commit(root)
 
     notes = reading.notes
-    roster = _yaml(root / ROSTER_FILE, notes, "roster") or {}
-    for row in roster.get("repositories") or []:
+    roster = _yaml(root / ROSTER_FILE, notes, "roster")
+    for row in _rows(roster.get("repositories")):
         if isinstance(row, dict) and (row.get("name") or row.get("ref")):
             reading.roster[str(row.get("name") or row.get("ref"))] = row
 
-    inventory = _yaml(root / INVENTORY_FILE, notes, "inventory") or {}
-    reading.org = ((inventory.get("generator") or {}).get("org")) or None
-    for row in inventory.get("repositories") or []:
+    inventory = _yaml(root / INVENTORY_FILE, notes, "inventory")
+    generator = inventory.get("generator")
+    org = generator.get("org") if isinstance(generator, dict) else None
+    reading.org = org if isinstance(org, str) and org else None
+    for row in _rows(inventory.get("repositories")):
         if isinstance(row, dict) and row.get("name") and not row.get("private"):
             reading.inventory[str(row["name"])] = row
+    if not reading.org:
+        notes.append(f"no organisation is known ({INVENTORY_FILE.as_posix()}'s "
+                     f"generator.org), so nothing is measured: a manifest names a "
+                     f"repository by its URL on the host, and a URL is matched by "
+                     f"the organisation")
 
-    interop = _yaml(root / INTEROP_FILE, notes, "interop registry") or {}
-    reading.surfaces = [s for s in interop.get("surfaces") or []
+    interop = _yaml(root / INTEROP_FILE, notes, "interop registry")
+    reading.surfaces = [s for s in _rows(interop.get("surfaces"))
                         if isinstance(s, dict) and s.get("id")]
 
     reading.hues = _hues(root / PALETTE_FILE, notes)
-    reading.governed = _governed(root, reading.roster)
-    if reading.governed is None:
-        notes.append("git could not list the corpus's project branches, so "
-                      "whether a member is governed is unknown")
+    reading.governed = _governed(root, reading.roster, notes)
     return reading
 
 
@@ -254,6 +311,15 @@ def projects(reading: Reading) -> list[str]:
     for name in reading.roster:
         seen.setdefault(name, None)
     return [name for name in seen if not PRIVATE.match(name)]
+
+
+def private_members(reading: Reading) -> list[str]:
+    """Every private member a family names, once each, in first-seen order.
+
+    A private member two families claim is one member, as a public one is.
+    """
+    return list(dict.fromkeys(m for f in reading.families.values()
+                              for m in f.members if PRIVATE.match(m)))
 
 
 def subjects(reading: Reading) -> dict[str, Any]:
@@ -277,8 +343,7 @@ def subjects(reading: Reading) -> dict[str, Any]:
             "views": list(VIEWS),
         } for name in projects(reading)],
         "unstated": len(reading.unstated),
-        "private": sum(1 for f in reading.families.values()
-                       for m in f.members if PRIVATE.match(m)),
+        "private": len(private_members(reading)),
     }
 
 
@@ -383,14 +448,19 @@ def _edge(graph, source: str, target: str, basis: str, kind: str, label: str,
                    **LOOK[basis], **extra)
 
 
+def _end(value: Any) -> str:
+    """The repository at one end of a surface, `{repo: ...}`, or none."""
+    return str(value.get("repo") or "") if isinstance(value, dict) else ""
+
+
 def _declared(graph, reading: Reading, drawn: set[str]) -> int:
     """Every surface with an end among `drawn`, as implementation -> publisher."""
     count = 0
     for surface in reading.surfaces:
-        publisher = str((surface.get("publisher") or {}).get("repo") or "")
+        publisher = _end(surface.get("publisher"))
         protocol = str(surface.get("protocol") or surface["id"])
-        for implementation in surface.get("implementations") or []:
-            implementer = str((implementation or {}).get("repo") or "")
+        for implementation in _rows(surface.get("implementations")):
+            implementer = _end(implementation)
             if not publisher or not implementer:
                 continue
             if publisher not in drawn and implementer not in drawn:
@@ -410,12 +480,13 @@ def _declared(graph, reading: Reading, drawn: set[str]) -> int:
 _MANIFESTS_READ: dict[tuple[str, str], dict[str, str]] = {}
 
 
-def _manifests(clone: Path) -> dict[str, str]:
+def _manifests(clone: Path) -> dict[str, str] | None:
     """Every manifest at the clone's default branch, by name, in one git call.
 
     Kept per commit, so a second drawing reads nothing and a clone that moved
     is read again: the key is the commit the default branch is at, not the
-    clone's path.
+    clone's path. `None` when git could not read the clone, which is kept for
+    nothing: the next drawing asks again.
     """
     commit = clones.default_commit(clone)
     if commit is None:
@@ -431,7 +502,10 @@ def _manifests(clone: Path) -> dict[str, str]:
                               input=request.encode("utf-8"), capture_output=True,
                               timeout=15)
     except (OSError, subprocess.TimeoutExpired):
-        return {}
+        return None
+    if done.returncode != 0:
+        # Raises nothing, and its empty answer is not "no manifests".
+        return None
     found: dict[str, str] = {}
     data, at = done.stdout, 0
     for name in MANIFESTS:
@@ -452,15 +526,20 @@ def measured_links(reading: Reading, repos: list[str],
                    among: list[Path] | None = None) -> tuple[list[dict[str, str]], list[str]]:
     """Each estate repository a member's manifests name by its host URL.
 
-    Returns the links and the members that had no clone to read. Only a URL on
-    the host naming this organisation resolves; a package that merely shares a
-    repository's name is not a link, because drawing a guess would be the
-    measurement asserting a claim.
+    Returns the links and the members nothing was measured for: each with no
+    clone, or one git could not read, or every one when no organisation is
+    known. Only a URL on the host naming this organisation resolves; a package
+    that merely shares a repository's name is not a link, because drawing a
+    guess would be the measurement asserting a claim.
     """
     estate = set(projects(reading))
     if not reading.org:
         return [], [r for r in repos if not PRIVATE.match(r)]
-    url = re.compile(rf"github\.com[/:]{re.escape(reading.org)}/([A-Za-z0-9._-]+?)(?:\.git)?(?=[\"'\s/#)]|$)",
+    # A name ends at anything a name cannot hold: a quote, `/`, `#`, a tag's
+    # `@` or a query's `?`. The host and the organisation match in any case,
+    # as the host reads them.
+    url = re.compile(rf"(?i:github\.com[/:]{re.escape(reading.org)})/"
+                     rf"([A-Za-z0-9._-]+?)(?:\.git)?(?=[^A-Za-z0-9._-]|$)",
                      re.MULTILINE)
     links: list[dict[str, str]] = []
     unread: list[str] = []
@@ -468,11 +547,12 @@ def measured_links(reading: Reading, repos: list[str],
         if PRIVATE.match(repo):
             continue
         clone = clones.find(repo, among)
-        if clone is None:
+        manifests = None if clone is None else _manifests(clone)
+        if manifests is None:
             unread.append(repo)
             continue
         seen: set[str] = set()
-        for manifest, text in _manifests(clone).items():
+        for manifest, text in manifests.items():
             for target in url.findall(text):
                 if target in estate and target not in (repo, CORPUS_NAME) and target not in seen:
                     seen.add(target)
@@ -575,8 +655,7 @@ def index_graph(reading: Reading, among: list[Path] | None = None):
                   CLAIM, "contains", "within")
 
     drawn: set[str] = set()
-    for member in projects(reading) + [m for f in reading.families.values()
-                                       for m in f.members if PRIVATE.match(m)]:
+    for member in projects(reading) + private_members(reading):
         claimed = reading.claimed_by(member)
         if not claimed:
             continue
@@ -619,7 +698,11 @@ def _records(root: Path, name: str) -> list[dict[str, str]] | None:
             if text.startswith("# ") and row["title"] == Path(path).stem:
                 row["title"] = text[2:].strip()
             elif "**Status**" in text:
-                row["status"] = text.split("|")[2].strip().strip("*") or "unstated"
+                # `| **Status** | Proposed |`; a line with no cell after it
+                # states nothing.
+                cells = text.split("|")
+                status = cells[2].strip().strip("*") if len(cells) > 2 else ""
+                row["status"] = status or "unstated"
         return list(found.values())
     return None
 
@@ -696,7 +779,7 @@ def provenance(reading: Reading) -> dict[str, Any]:
     }
 
 
-def caveat(graph) -> str:
+def caveat(reading: Reading, graph) -> str:
     """The sentences a reader needs before believing the shape."""
     parts = ["Membership is a claim a person made in the roster; this draws it "
              "and cannot tell whether a repository drives what its family "
@@ -704,9 +787,17 @@ def caveat(graph) -> str:
              "declared in the interop registry, and dashed edges are measured "
              "from a member's own manifests and never place it."]
     unread = graph.graph.get("unread") or []
-    if unread:
-        parts.append(f"{len(unread)} member(s) had no clone beside this one, so "
-                     f"nothing was measured for them: {', '.join(unread)}.")
+    if unread and not reading.org:
+        # Every member is unread then, clone or no clone, and the clone is
+        # not the reason.
+        parts.append(f"No organisation is known, so nothing was measured for "
+                     f"{len(unread)} member(s): {', '.join(unread)}. A manifest "
+                     f"names a repository by its URL on the host, and a URL is "
+                     f"matched by the inventory's organisation.")
+    elif unread:
+        parts.append(f"{len(unread)} member(s) had no clone beside this one, or "
+                     f"one git could not read, so nothing was measured for them: "
+                     f"{', '.join(unread)}.")
     undeclared = graph.graph.get("undeclared") or []
     if undeclared:
         parts.append(f"{len(undeclared)} measured link(s) have no declared seam: "
@@ -734,7 +825,7 @@ def metadata(reading: Reading, graph, options: Any = None) -> dict[str, Any]:
         "undeclared": graph.graph.get("undeclared") or [],
         "unstated": len(reading.unstated),
         "notes": list(reading.notes),
-        "caveat": caveat(graph),
+        "caveat": caveat(reading, graph),
     }
 
 

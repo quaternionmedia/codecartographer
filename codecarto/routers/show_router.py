@@ -148,13 +148,21 @@ def show_project_views(name: str) -> dict[str, Any]:
         return problem
 
     code: dict[str, Any]
-    if reading.org:
-        code = {"available": True, "url": f"https://github.com/{reading.org}/{name}",
-                "depth": 1}
-    else:
+    if not reading.org:
         code = {"available": False,
                 "problem": "the inventory names no organisation, so the host address is unknown",
                 "remedy": "regenerate status/inventory.yaml with `uv run qm inventory --write`"}
+    elif name not in reading.inventory:
+        # A repository a family or the roster names is not thereby on the
+        # host: the inventory is the host's own list of its public ones.
+        code = {"available": False,
+                "problem": (f"the inventory lists no public repository named {name} "
+                            f"on the host, so there is no default branch to parse"),
+                "remedy": ("regenerate status/inventory.yaml with `uv run qm "
+                           "inventory --write` if it is there now")}
+    else:
+        code = {"available": True, "url": f"https://github.com/{reading.org}/{name}",
+                "depth": 1}
 
     clone = clones.find(name)
     system: dict[str, Any]

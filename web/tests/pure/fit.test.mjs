@@ -158,6 +158,23 @@ test("an outline whose own node is hidden is framed while it holds a shown node"
   assert.deepEqual(boundsOf(extents), { minX: -330, minY: -330, maxX: 330, maxY: 330 });
 });
 
+test("an outline's label is framed whole, wherever it is set", () => {
+  /* Mutation: frame the outlines without their labels -- the label set
+     outside a small outline at the graph's edge runs off the canvas, and this
+     fails. */
+  const nodes = [
+    { id: 'a', x: -300, y: 0, reach: 6, label: null },
+    { id: 'b', x: 300, y: 0, reach: 6, label: null },
+  ];
+  const label = { minX: 280, minY: -90, maxX: 420, maxY: -79 };
+  const outlines = [{ nodeId: 'b', x: 300, y: 0, r: 30, label }];
+  const t = fitTransform(framedExtents(nodes, outlines), VIEW);
+  assertBoxInside(t, label);
+  // An outline not framed brings no label either.
+  const far = [{ nodeId: 'other', x: 0, y: 0, r: 30, label: { minX: 900, minY: 0, maxX: 1000, maxY: 11 } }];
+  assert.deepEqual(boundsOf(framedExtents(nodes, far)), { minX: -306, minY: -6, maxX: 306, maxY: 6 });
+});
+
 test('an outline is framed with the nodes it is drawn around, and not with others', () => {
   const nodes = [{ id: 'file', x: 0, y: 0, reach: 6, label: null }];
   const around = { nodeId: 'file', x: 0, y: 0, r: 80 };

@@ -913,13 +913,18 @@ with what `cargo metadata` says rather than only drawable.
 
 What the show seam can draw, read from the corpus's `families.json`, roster,
 inventory, interop registry and palette: `families` (each with `name`,
-`drives`, `within`, `subfamilies`, `members`, `all_members` and its `hue`),
+`drives`, `within`, `subfamilies`, its `hue`, and `members` and `all_members`,
+which are counts: of the members it names itself, and of those with its
+subfamilies' members),
 `projects` (each public repository a family or the roster names, with its
-`families`, `governed` -- `null` when git could not say -- `phase`,
+`families`, `governed` -- `null` when git could not say, or when the corpus
+checkout has no `project/codecartographer` branch and so holds too few project
+branches to say, as a shallow or single-branch checkout does -- `phase`,
 `description` and `views`), `unstated` and `private` (counted, never named),
-`provenance` (the families document's path, the corpus `commit`, its `schema`,
-and whether `CODECARTO_CORPUS` replaced the pin) and `notes` for any input it
-could not read.
+`provenance` (the families document's path, printed from `~` when a
+`CODECARTO_CORPUS` checkout is under the home directory, the corpus `commit`,
+its `schema`, and whether `CODECARTO_CORPUS` replaced the pin) and `notes` for
+any input it could not read.
 
 ### GET `/show/index/gjgf?layout=&palette_id=`
 
@@ -929,9 +934,13 @@ claim drawn once, outside both outlines, with a `member_of` edge to each. Every
 edge carries `basis` -- `claim` (the families document), `declared` (the
 interop registry, labelled with the surface's protocol) or `measured` (a
 member's manifests at its default branch name another estate repository by its
-host URL; drawn dashed, and never used to place a member). `metadata.kind` is
+host URL; drawn dashed, and never used to place a member). A clone's default
+branch is its `origin/HEAD`, or the checked-out `HEAD` when it has no
+`origin/HEAD`. `metadata.kind` is
 `"show"`; `metadata.undeclared` lists measured links no surface declares, and
-`metadata.unread` the members with no clone to measure.
+`metadata.unread` the members nothing was measured for: each with no clone
+beside this one or one git could not read, or every member when the inventory
+names no organisation to match a URL by, which a note and the caveat say.
 
 ### GET `/show/family/{name}/gjgf?layout=&palette_id=`
 
@@ -951,14 +960,17 @@ or a name no family or roster entry gives, answers `unreadable`.
 
 Which of the project's three views can be drawn here: `estate` (the graph
 above), `code` (the parse of its default branch on the host, with the `url` and
-`depth` the Show panel streams through `/parse/stream-url`) and `system` (the
+`depth` the Show panel streams through `/parse/stream-url`, available when the
+inventory lists the repository among the host's public ones) and `system` (the
 derived system monitor, available when a clone beside this one declares
 components). A view that cannot be drawn carries `available: false`, a
 `problem` and a `remedy`.
 
 The corpus is read from `CODECARTO_CORPUS` when it is set, else the
-`governance/qm` submodule. A families document that is missing, or at a schema
-this window does not draw, answers `unreadable` rather than an empty estate.
+`governance/qm` submodule. A families document that is missing, not UTF-8, not a
+JSON object, or at a schema this window does not draw, answers `unreadable`
+rather than an empty estate. A roster, inventory, interop registry or palette
+that is missing, not UTF-8 or not a mapping is left out with a note.
 
 At `layout=Compound`, the layout the Show panel opens in, the three drawing
 routes re-place their nodes after the layout runs

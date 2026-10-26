@@ -129,14 +129,15 @@ def corpus(tmp_path: Path) -> Path:
 @pytest.fixture()
 def clones(tmp_path: Path) -> Path:
     """alpha's manifests: one URL to a declared seam, one to an undeclared one,
-    and one bare name that resolves to nothing."""
+    a shorthand to another host's repository, and `delta`, an estate
+    repository named only as a package."""
     where = tmp_path / "clones"
     alpha = where / "alpha"
     alpha.mkdir(parents=True)
     (alpha / "pyproject.toml").write_text(
         'dependencies = ["beta @ git+https://github.com/example/beta.git"]\n', encoding="utf-8")
     (alpha / "package.json").write_text(
-        '{"dependencies": {"g": "github:x/y", "gamma": "^1.0.0", '
+        '{"dependencies": {"g": "github:x/y", "gamma": "^1.0.0", "delta": "^1.0.0", '
         '"gg": "git+https://github.com/example/gamma.git"}}\n', encoding="utf-8")
     _commit_all(alpha)
     return where
@@ -185,6 +186,74 @@ def test_a_schema_this_window_does_not_read_draws_nothing(corpus, monkeypatch):
     assert results.get("unreadable") is True, \
         "a schema this window does not read drew a graph"
     assert "schema 3" in results["problem"]
+
+
+_FAMILY_OF_OTHER_SHAPES = {"schema": 2, "families": [
+    {"name": "core", "drives": "x", "within": ["y"], "members": 5, "subfamilies": 5,
+     "all_members": 5}], "unstated": 5}
+
+
+@pytest.mark.parametrize(("name", "content", "answer"), [
+    ("families.json", b"[]", "unreadable"),
+    ("families.json", b"\xff\xfe{}", "unreadable"),
+    ("families.json", b'{"schema": 2, "families": 5}', "unreadable"),
+    ("families.json", json.dumps(_FAMILY_OF_OTHER_SHAPES).encode(), "drawn"),
+    ("ci/workspace.yaml", b"- a list\n", "noted"),
+    ("ci/workspace.yaml", b"\xff\n", "noted"),
+    ("ci/workspace.yaml", b"repositories: 5\n", "drawn"),
+    ("status/inventory.yaml", b"- a list\n", "noted"),
+    ("status/inventory.yaml", b'{"generator": ["example"], "repositories": 5}', "noted"),
+    ("ci/interop-registry.yaml", b"- a list\n", "noted"),
+    ("ci/interop-registry.yaml",
+     b"surfaces:\n  - {id: s, publisher: beta, implementations: [alpha, 5]}\n", "drawn"),
+    ("ci/palette.py", b"FAMILY = []\n", "noted"),
+    ("ci/palette.py", b"\xff\n", "noted"),
+    ("ci/capability-registry.yaml", b"- a list\n", "drawn"),
+    ("ci/capability-registry.yaml", b"\xff\n", "drawn"),
+], ids=["families a list", "families not utf-8", "families' families a number",
+        "a family's fields", "roster a list", "roster not utf-8", "roster's rows a number",
+        "inventory a list", "inventory's generator a list", "registry a list",
+        "a surface's ends", "palette a list", "palette not utf-8",
+        "capabilities a list", "capabilities not utf-8"])
+def test_a_document_of_another_shape_answers_rather_than_failing(corpus, monkeypatch,
+                                                                 name, content, answer):
+    # Each read called `.get` on whatever parsed, iterated whatever a key
+    # held, and decoded as UTF-8 with nothing to catch it, so a list where a
+    # mapping belongs, a number where a list does, or a file that is not
+    # UTF-8 raised, and the route answered 500. Broken by taking any one of
+    # the shape checks out, its case raises again.
+    (corpus / name).write_bytes(content)
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(corpus.parent / "no-clones"))
+    client = TestClient(app)
+    for url in ("/show/subjects", "/show/index/gjgf", "/show/family/core/gjgf",
+                "/show/project/alpha/gjgf", "/show/project/alpha/views"):
+        results = _results(client, url)
+        if answer == "unreadable":
+            assert results.get("unreadable") is True, url
+            assert "families.json" in results["problem"], url
+        else:
+            assert not results.get("unreadable"), f"{url}: {results.get('problem')}"
+    if answer == "noted":
+        notes = _results(client, "/show/subjects")["notes"]
+        assert any(name in note for note in notes), notes
+
+
+def test_a_status_line_with_no_cell_is_unstated(corpus, monkeypatch):
+    # `| **Status**` with nothing after it split into two parts, and the
+    # third was read: an IndexError, and a 500. Broken by reading the cell
+    # unguarded again, it raises.
+    _commit_all(corpus)
+    _git(corpus, "switch", "-q", "-c", "project/alpha")
+    adr = corpus / "adr"
+    adr.mkdir()
+    (adr / "DRAFT-bare.md").write_text("# Bare\n\n| **Status**\n", encoding="utf-8")
+    _git(corpus, "add", "-A")
+    _git(corpus, "commit", "-q", "-m", "record")
+    _git(corpus, "switch", "-q", "main")
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    nodes = _nodes(_results(TestClient(app), "/show/project/alpha/gjgf"))
+    assert nodes["record::adr/DRAFT-bare.md"]["status"] == "unstated"
 
 
 def test_a_family_the_corpus_does_not_declare_is_named_with_the_ones_it_does(client):
@@ -248,6 +317,27 @@ def test_a_private_member_is_counted_and_not_named(client):
     assert subjects["private"] == 1
 
 
+def test_a_private_member_two_families_claim_is_counted_and_drawn_once(corpus, monkeypatch):
+    # The count summed each family's private members, and the index walked
+    # each family's list of them, so a private member in two families was
+    # counted twice and given each `member_of` edge twice. Broken by counting
+    # claims rather than members, `private` is 2; by walking the claims, the
+    # edges are four.
+    document = json.loads(json.dumps(FAMILIES))
+    irl = next(f for f in document["families"] if f["name"] == "irl")
+    irl["members"].append("private-07")
+    irl["all_members"].append("private-07")
+    (corpus / "families.json").write_text(json.dumps(document), encoding="utf-8")
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(corpus.parent / "no-clones"))
+    client = TestClient(app)
+    assert _results(client, "/show/subjects")["private"] == 1, \
+        "a private member was counted once per family"
+    edges = sorted(e["target"] for e in _edges(_results(client, "/show/index/gjgf"))
+                   if e["source"] == "repo::private-07" and e["kind"] == "member_of")
+    assert edges == ["family::irl", "family::sound"], "a private member's claims were drawn twice"
+
+
 def test_the_hue_is_the_corpus_palette_s(client):
     nodes = _nodes(_results(client, "/show/family/core/gjgf"))
     assert nodes["family::core"]["color"] == "#2a61bd"
@@ -285,11 +375,63 @@ def test_a_measured_link_is_dashed_and_never_places_a_member(client, clones, mon
 
 
 def test_a_name_that_only_matches_is_not_a_link(client, clones, monkeypatch):
+    # `delta` is an estate repository that alpha's package.json names only as
+    # a package. gamma is named so too, and also by its URL, so it cannot
+    # tell the two readings apart. Broken by also reading a quoted package
+    # name as a link, delta is drawn.
     monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(clones))
     reading = show_service.read()
     links, _ = show_service.measured_links(reading, ["alpha"], [clones])
-    assert sorted(link["target"] for link in links) == ["beta", "gamma"]
+    targets = sorted(link["target"] for link in links)
+    assert "delta" not in targets, "a package that shares a repository's name was drawn as a link"
+    assert targets == ["beta", "gamma"]
     assert all(link["file"] in ("pyproject.toml", "package.json") for link in links)
+
+
+@pytest.mark.parametrize("line", [
+    'dependencies = ["beta @ git+https://github.com/example/beta.git@v0.1.0"]\n',
+    'dependencies = ["beta @ git+https://github.com/example/beta.git?rev=1"]\n',
+    'dependencies = ["beta @ git+https://github.com/Example/beta"]\n',
+], ids=["a tag after it", "a query after it", "the organisation's case"])
+def test_a_host_url_names_its_repository_whatever_follows_it(corpus, tmp_path, monkeypatch, line):
+    # The pattern ended a name only at a quote, a space, `/`, `#` or `)`, and
+    # matched the organisation's case exactly, so a pinned tag, a query or
+    # `github.com/Example` lost the link. Broken back to that ending, the
+    # first two are lost; with the organisation's case matched, the third.
+    alpha = tmp_path / "clones" / "alpha"
+    alpha.mkdir(parents=True)
+    (alpha / "pyproject.toml").write_text(line, encoding="utf-8")
+    _commit_all(alpha)
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    links, unread = show_service.measured_links(show_service.read(), ["alpha"],
+                                                [tmp_path / "clones"])
+    assert unread == []
+    assert [link["target"] for link in links] == ["beta"], f"{line.strip()} lost its link"
+
+
+def test_a_clone_git_could_not_read_is_unread_and_read_again(corpus, clones, monkeypatch):
+    # `git cat-file` exiting non-zero raises nothing, so its empty answer was
+    # kept for the clone's commit as "no manifests" until a restart, and the
+    # member counted as measured. Broken by taking a failure for no
+    # manifests, alpha is not unread; by keeping the failure for the commit,
+    # the second call is unread too.
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    reading = show_service.read()
+    real, failed = subprocess.run, []
+
+    def fails_once(args, *rest, **kwargs):
+        if "cat-file" in args and not failed:
+            failed.append(args)
+            return subprocess.CompletedProcess(args, 128, b"", b"fatal: a test")
+        return real(args, *rest, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", fails_once)
+    links, unread = show_service.measured_links(reading, ["alpha"], [clones])
+    assert failed, "the manifests were not read with git cat-file"
+    assert (links, unread) == ([], ["alpha"]), "a clone git could not read was measured"
+    links, unread = show_service.measured_links(reading, ["alpha"], [clones])
+    assert unread == [], "a failed read was kept"
+    assert sorted(link["target"] for link in links) == ["beta", "gamma"]
 
 
 def test_only_a_measured_link_with_no_declared_seam_is_reported(client, clones, monkeypatch):
@@ -304,6 +446,27 @@ def test_a_member_with_no_clone_is_named_as_unmeasured(client):
     assert "alpha" in metadata["unread"] and "beta" in metadata["unread"]
 
 
+@pytest.mark.parametrize("inventory", ["absent", "no organisation"])
+def test_an_unknown_organisation_is_not_blamed_on_a_missing_clone(corpus, clones, monkeypatch,
+                                                                  inventory):
+    # With no organisation no host URL can be matched, so nothing is measured
+    # for any member. The caveat said each "had no clone beside this one",
+    # alpha among them, whose clone is right there. Broken by giving the clone
+    # as the reason whatever the organisation, alpha is blamed again.
+    path = corpus / "status" / "inventory.yaml"
+    if inventory == "absent":
+        path.unlink()
+    else:
+        path.write_text(json.dumps(dict(INVENTORY, generator={})), encoding="utf-8")
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(clones))
+    metadata = _results(TestClient(app), "/show/family/core/gjgf")["metadata"]
+    assert "alpha" in metadata["unread"], "a member nothing was measured for was not named"
+    assert "no clone" not in metadata["caveat"], "a member with a clone was blamed on a missing one"
+    assert "organisation" in metadata["caveat"]
+    assert any("organisation" in note for note in metadata["notes"])
+
+
 # --- a project's views ------------------------------------------------------
 
 def test_a_project_says_which_views_it_can_draw(client):
@@ -312,6 +475,17 @@ def test_a_project_says_which_views_it_can_draw(client):
     assert views["code"]["url"] == "https://github.com/example/alpha"
     assert views["system"]["available"] is False
     assert "no clone" in views["system"]["problem"]
+
+
+def test_the_code_view_is_offered_only_for_a_repository_the_host_lists(client):
+    # beta is in a family and the roster and has no inventory row: the host
+    # lists no public repository by that name. Offering its code map whenever
+    # the organisation is known, as the route did, sends the panel to stream
+    # an address that is not there.
+    code = _results(client, "/show/project/beta/views")["code"]
+    assert code["available"] is False, "a repository the host does not list offered its code map"
+    assert "beta" in code["problem"] and "inventory" in code["problem"]
+    assert "url" not in code
 
 
 def test_a_project_s_claims_and_measurement_sit_side_by_side(client):
@@ -334,6 +508,8 @@ def test_records_on_a_project_branch_are_drawn_with_their_status(corpus, monkeyp
     _git(corpus, "add", "-A")
     _git(corpus, "commit", "-q", "-m", "record")
     _git(corpus, "switch", "-q", "main")
+    # This project's own branch, without which the listing is a short one.
+    _git(corpus, "branch", f"project/{show_service.THIS_PROJECT}")
     monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
     nodes = _nodes(_results(TestClient(app), "/show/project/alpha/gjgf"))
     record = nodes["record::adr/DRAFT-one-thing.md"]
@@ -352,6 +528,24 @@ def test_governance_is_unknown_without_git_and_not_drawn_as_not_adopted(client):
     assert any("git" in note for note in subjects["notes"])
 
 
+@pytest.mark.parametrize("branches", [[], ["project/alpha"]], ids=["none", "another"])
+def test_governance_is_unknown_when_the_listing_lacks_this_project_s_branch(
+        corpus, monkeypatch, branches):
+    # A checkout of the pin's commit alone, as CI's `--depth 1` makes, holds no
+    # `project/*` ref: `git for-each-ref` lists nothing and exits 0. A
+    # single-branch clone lists one branch at most. Reading either listing as
+    # the whole answer, as `_governed` did, gives beta `False`: "not adopted".
+    _commit_all(corpus)
+    for branch in branches:
+        _git(corpus, "branch", branch)
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    subjects = _results(TestClient(app), "/show/subjects")
+    governed = {p["name"]: p["governed"] for p in subjects["projects"]}
+    assert governed["beta"] is None, "a short listing drew a member as not adopted"
+    assert governed["alpha"] is None
+    assert any("shallow or single-branch" in note for note in subjects["notes"])
+
+
 def test_a_flat_schema_draws_as_families_with_no_nesting(corpus, monkeypatch):
     flat = {"schema": 1, "families": [
         {"name": "core", "drives": "the corpus", "members": ["qm", "alpha"]}],
@@ -361,6 +555,37 @@ def test_a_flat_schema_draws_as_families_with_no_nesting(corpus, monkeypatch):
     nodes = _nodes(_results(TestClient(app), "/show/index/gjgf"))
     assert nodes["family::core"]["depth"] == 0
     assert nodes["repo::alpha"]["depth"] == 1
+
+
+def test_a_corpus_named_by_the_override_is_named_without_the_home_directory(
+        corpus, tmp_path, monkeypatch):
+    # CODECARTO_CORPUS names a checkout by its absolute path, and every
+    # drawing's `metadata.source` and `provenance.source`, every note and
+    # every `unreadable` answer carried it, the account's home directory in
+    # it. Broken by printing the path as it was given, the home is back.
+    home = tmp_path.as_posix()
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    (corpus / "ci" / "palette.py").unlink()  # a note that names a path
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    client = TestClient(app)
+    drawn = _results(client, "/show/index/gjgf")["metadata"]
+    subjects = _results(client, "/show/subjects")
+    assert drawn["source"] == "~/qm/families.json", "the home directory was printed"
+    assert drawn["provenance"]["source"] == "~/qm/families.json"
+    assert subjects["provenance"]["source"] == "~/qm/families.json"
+    assert any("~/qm/ci/palette.py" in note for note in subjects["notes"])
+    assert not any(home in note for note in drawn["notes"] + subjects["notes"])
+    monkeypatch.setenv("CODECARTO_CORPUS", str(tmp_path / "empty"))
+    absent = _results(client, "/show/index/gjgf")
+    assert absent["where"] == "~/empty/families.json"
+    assert home not in absent["problem"]
+
+
+def test_the_pin_is_named_as_it_is_mounted(corpus, monkeypatch):
+    monkeypatch.chdir(corpus.parent)
+    monkeypatch.setattr(show_service.corpus_root, "SUBMODULE", Path("qm"))
+    assert show_service.read().source == "qm/families.json"
 
 
 def test_the_seam_is_in_the_liveness_table(client):

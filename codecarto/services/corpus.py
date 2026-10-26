@@ -46,6 +46,22 @@ def root(default: Path | str | None = None) -> Path:
     return Path(default if default is not None else SUBMODULE)
 
 
+def shown(path: Path) -> str:
+    """A path in the corpus as a reading prints it, naming no home directory.
+
+    The pin is relative and printed as mounted. A `CODECARTO_CORPUS` checkout
+    is named by its absolute path, and under the home directory it is printed
+    from `~`, so a drawing exported, committed or pasted names the checkout
+    and not the account.
+    """
+    if path.is_absolute():
+        try:
+            return "~/" + path.relative_to(Path.home()).as_posix()
+        except (ValueError, RuntimeError):
+            pass
+    return path.as_posix()
+
+
 def overridden() -> bool:
     """Whether a person pointed this window at a corpus other than the pin."""
     return bool(os.environ.get(ENV, "").strip())

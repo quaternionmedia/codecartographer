@@ -3,8 +3,8 @@
  *
  * Controls, not a canvas: the graph draws in the Graph panel through the same
  * path every other plot takes. This panel lists what the server read from the
- * corpus -- the families with their nesting and hues, and each public project
- * -- and opens each one. A project opens three ways: its place in the estate,
+ * corpus -- each top-level family with the families directly within it, their
+ * hues, and each public project -- and opens each one. A project opens three ways: its place in the estate,
  * its code map, and its system diagram where it declares one.
  *
  * THE VOCABULARY IS THE CORPUS'S. Family names, what each drives, which sits
@@ -17,8 +17,9 @@
  *
  * Every row goes through `ctx.openShow`, which also writes the page's address,
  * so the location bar can be copied to reopen exactly what is drawn. Opened
- * onto an empty canvas, the panel draws every family at once: the default
- * showgraph is the whole estate, and a family or a project is a step into it.
+ * with nothing on the canvas and nothing being drawn, the panel draws every
+ * family at once: the default showgraph is the whole estate, and a family or a
+ * project is a step into it.
  *
  * **WHERE YOU ARE COMES FIRST.** The panel opens on what is drawn: the trail
  * from every family down to it, each step a link back, a project's three
@@ -36,6 +37,7 @@ import type { EstateMetadata } from '../../features/estate/provenance';
 import type { ShowAddress, ShowView } from '../../features/show/show_address';
 import { VIEWS, crumbLabel, formatShow, trail } from '../../features/show/show_address';
 import type { ShowFamilyRow, ShowProjectRow } from '../../features/show/show_service';
+import { pressable } from '../../components/codecarto/control_panel/pressable';
 import '../../features/estate/estate.css';
 import './show_panel.css';
 
@@ -71,8 +73,10 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
       // THE DEFAULT IS EVERY FAMILY AT ONCE. A panel opened onto an empty
       // canvas draws the whole estate; one opened over a graph somebody drew
       // leaves it, and **draw every family** is the first thing it offers.
+      // A graph still being drawn is one: a stream records its graph only
+      // when it ends, and the index was drawn over it.
       const state = ctx.appState.state;
-      if (state.showSubjects && !state.showAddress && !state.graphData) {
+      if (state.showSubjects && !state.showAddress && !state.graphData && !ctx.panelState.isLoading) {
         void ctx.openShow({ kind: 'index', name: '', view: 'estate' }, 'replace');
       }
     }).catch(() => {
@@ -82,12 +86,24 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
 
   const open = (address: ShowAddress) => void ctx.openShow(address);
 
+  /**
+   * A family row, and a project's name, are pressed as a button is: a place
+   * in the tab order, the button role, and Enter and Space (`pressable`, as
+   * the Files panel's rows are). They were a `div` and a `span` with only a
+   * click handler, reached by a pointer and never from the keyboard. Neither
+   * can be a `<button>`: a row holds paragraphs, which a button may not.
+   */
+  const pressed = (address: ShowAddress) => {
+    const press = () => open(address);
+    return { ...pressable(press), onclick: press };
+  };
+
   const familyRow = (family: ShowFamilyRow, depth: number, current: ShowAddress | null) =>
     m('div.estate__row.is-live.show__family', {
       'data-family': family.name,
       class: same(current, 'family', family.name) ? 'is-current' : '',
       style: { '--show-hue': family.hue ?? 'var(--c-font-muted, #888)', '--show-indent': `${depth}` },
-      onclick: () => open({ kind: 'family', name: family.name, view: 'estate' }),
+      ...pressed({ kind: 'family', name: family.name, view: 'estate' }),
       title: `draw the ${family.name} family`,
     }, [
       m('span.estate__dot.show__hue'),
@@ -108,7 +124,7 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
     }, [
       m('span.estate__dot.show__hue'),
       m('span.estate__name', {
-        onclick: () => open({ kind: 'project', name: project.name, view: 'estate' }),
+        ...pressed({ kind: 'project', name: project.name, view: 'estate' }),
         title: `draw ${project.name}'s place in the estate`,
       }, project.name),
       m('span.estate__actions', m('span.estate-view__rung',
@@ -132,6 +148,8 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
           'data-view': view,
           disabled,
           class: current.view === view ? 'is-current' : '',
+          // Which of the three is drawn, said as well as shown.
+          'aria-pressed': current.view === view ? 'true' : 'false',
           title: disabled ? (state?.problem ?? 'asking which views can be drawn…') : `draw the ${VIEW_LABEL[view]}`,
           onclick: () => open({ kind: 'project', name: current.name, view }),
         }, VIEW_LABEL[view]);
@@ -262,6 +280,8 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
                 m('h4.estate-view__heading', 'Projects'),
                 m('input.show__filter', {
                   type: 'search',
+                  // A placeholder goes as the reader types, and is no label.
+                  'aria-label': 'filter projects by name or family',
                   placeholder: 'filter by name or family',
                   value: filter,
                   oninput: (e: Event) => { filter = (e.target as HTMLInputElement).value; },

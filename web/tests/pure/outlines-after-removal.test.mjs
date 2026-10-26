@@ -17,7 +17,13 @@ import { test } from 'node:test';
 
 import { CompoundLayoutManager, outlinesAfterRemoval } from '../../dist-pure/features/graph/services/compound_layout.js';
 
-const SPACING = { padding: 40, baseNodeSize: 12 };
+/**
+ * The renderer's spacing at a node size of 4: each node reaches its drawn
+ * extent, 1.5 × 4 × its depth's multiplier (`_extentOf`), and not the
+ * `baseNodeSize` that `computeGroupBounds` falls back on.
+ */
+const EXTENT = [18, 10.8, 6, 3.6];
+const SPACING = { padding: 40, baseNodeSize: 12, radiusOf: (n) => EXTENT[n.depth] };
 
 /**
  * A directory holding two files, `main.rs` with two functions and `lib.rs`
@@ -40,8 +46,9 @@ function scene() {
 
 const manager = new CompoundLayoutManager();
 
+/** The outlines drawn on a fresh drawing, as `_drawCompoundBackgrounds` draws them. */
 function drawn({ nodes, edges }) {
-  return manager.computeGroupBounds(nodes, edges, SPACING.padding, SPACING.baseNodeSize);
+  return manager.computeGroupBounds(nodes, edges, SPACING.padding, SPACING.baseNodeSize, SPACING.radiusOf);
 }
 
 /** The scene without `gone`, as `removeNodes` leaves it: the nodes, and every edge not touching them. */
@@ -53,6 +60,31 @@ function without({ nodes, edges }, gone) {
 }
 
 const radiusOf = (outlines, id) => outlines.find((b) => b.nodeId === id)?.radius;
+
+test('a removal of nothing redraws every outline as it was drawn, each node by its drawn extent', () => {
+  /** Mutation: compute the outlines after a removal without the spacing's
+      radiusOf -- each node counts as baseNodeSize, every outline changes
+      size, and this fails. */
+  const { nodes, edges } = scene();
+  const outlines = drawn({ nodes, edges });
+  assert.deepEqual(outlinesAfterRemoval(manager, outlines, nodes, edges, SPACING), outlines);
+});
+
+test("deleting a node outside a file's group leaves that file's outline as it was", () => {
+  // A file at the origin with a symbol 100 to its right, beside a lone
+  // directory: its outline is 78.4 drawn, and was 82 after the delete.
+  const nodes = [
+    { id: 'f', depth: 1, x: 0, y: 0, label: 'f.rs' },
+    { id: 's', depth: 2, x: 100, y: 0 },
+    { id: 'other', depth: 0, x: 500, y: 500, label: 'other' },
+  ];
+  const edges = [{ source: 'f', target: 's', kind: 'contains' }];
+  const outlines = drawn({ nodes, edges });
+  assert.ok(Math.abs(radiusOf(outlines, 'f') - 78.4) < 1e-9, `drawn at ${radiusOf(outlines, 'f')}`);
+  const after = without({ nodes, edges }, ['other']);
+  const left = outlinesAfterRemoval(manager, outlines, after.nodes, after.edges, SPACING);
+  assert.equal(radiusOf(left, 'f'), radiusOf(outlines, 'f'));
+});
 
 test("collapsing a file drops its outline, and its directory's is drawn around what remains", () => {
   /** Mutation: leave the outlines as drawn -- main.rs keeps its outline around nothing, and this fails. */

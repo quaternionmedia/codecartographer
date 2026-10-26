@@ -224,30 +224,33 @@
 }
 
 /* A folder is marked ▸, and ▾ while open; a file is marked · in the same
-   width, so names line up. An open folder's contents sit indented inside it,
-   along a dashed guide. A folder not yet read (…) and an empty one are dimmed. */
+   width, so names line up. A marker's alternative text is empty, so a row is
+   named by its name alone, not "▸ src". A folder not yet read (…) and an
+   empty one are dimmed. Its contents' step and its one line are below. */
 .gl-file-tree__tree .folder_button {
   cursor: pointer;
   color: var(--c-secondary, #00ff41);
-  white-space: nowrap;
 }
 
+/* A folder's row is a flex line, so its marker is a flex item that a long
+   name would squeeze; it keeps its width, as a file's does in its line. */
 .gl-file-tree__tree .folder_button::before,
 .gl-file-tree__tree .file::before {
   display: inline-block;
+  flex: none;
   width: 1.2em;
 }
 
 .gl-file-tree__tree .folder_button::before {
-  content: '▸';
+  content: '▸' / '';
 }
 
 .gl-file-tree__tree .folder_button.active::before {
-  content: '▾';
+  content: '▾' / '';
 }
 
 .gl-file-tree__tree .file::before {
-  content: '·';
+  content: '·' / '';
   color: var(--c-font-muted, #00aa2a);
 }
 
@@ -263,12 +266,6 @@
 .gl-file-tree__tree .folder_stub_indicator,
 .gl-file-tree__tree .folder_loading_indicator {
   color: var(--c-font-muted, #00aa2a);
-}
-
-.gl-file-tree__tree .folder_content {
-  margin-left: 0.45em;
-  padding-left: 0.6em;
-  border-left: 1px dashed var(--c-border, #00ff4140);
 }
 
 .gl-file-tree__tree .file_raw_btn {
