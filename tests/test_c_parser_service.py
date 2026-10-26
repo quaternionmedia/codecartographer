@@ -14,7 +14,7 @@ from codecarto.util.exceptions import CodeCartoException
 _HAS_LIBCLANG = importlib.util.find_spec("clang") is not None
 requires_libclang = pytest.mark.skipif(
     not _HAS_LIBCLANG,
-    reason="libclang not installed — install with: uv sync --extra c-parsing",
+    reason="libclang not installed — install with: uv sync --locked --extra dev --extra c-parsing",
 )
 
 

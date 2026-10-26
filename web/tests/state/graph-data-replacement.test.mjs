@@ -14,7 +14,7 @@
  * have, which is a property of the dock and not of this bug. This asserts the
  * merge semantics directly: fast, deterministic, and about the actual defect.
  *
- *   node --test tests/state/
+ *   npm run test:state
  */
 
 import assert from 'node:assert/strict';

@@ -13,7 +13,11 @@ measures each region's use against its length.
 links anything. `codecarto cargo record --map <bin>` writes
 `target/codecarto/<bin>.map` for a Rust binary; a C build that passes
 `-Wl,-Map=target/codecarto/<name>.map` writes the same. The reading carries the
-file's time, and a source changed after it makes it stale -- read, and not used.
+file's time, and a change after it to anything the link reads makes it stale --
+read, and not used. What the link reads is said once, in `link_input`: Rust, C,
+C++ and assembly sources, linker scripts and Cargo's manifests, never a README.
+The code map and the Cargo reading both judge a map by `newest_input`, so they
+cannot disagree about it.
 
 How each figure is found
 ------------------------
@@ -576,7 +580,8 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
       answers for nothing. A symbol from a crate outside the parse (`core`, a
       runtime, the C library) is counted, not drawn.
 
-    A *stale* map -- linked before a source changed -- is not used: the
+    A *stale* map -- linked before something it was linked from changed
+    (`newest_input`) -- is not used: the
     regions it would measure say so in `meta.measured` (`used: False`) and
     their `hover`, and no figure of it is stamped anywhere."""
     owner = owner.replace("-", "_")
@@ -691,6 +696,53 @@ def annotate(graph, link_map: LinkMap, *, owner: str, recorded_at: str, stale: b
         d["hover"] = f"{d.get('label')} — {_kib(size)} in {section_name}, from {provenance['map']}"
         joined["symbols"] += 1
     return joined
+
+
+# ── What a map was linked from ────────────────────────────────────────────────
+
+# Sources a link compiles -- Rust, C and C++ with their headers, and assembly:
+# `.s`, and `.S`, which the preprocessor reads first -- and the linker scripts
+# that place what it compiled (`memory.x`, `link.x`, `*.ld`, `*.lds`).
+_LINK_SUFFIXES = frozenset({".rs", ".c", ".h", ".cc", ".cpp", ".hpp", ".s", ".S", ".ld", ".lds", ".x"})
+# What decides which sources, with which flags: the manifests, the lockfile,
+# and Cargo's configuration, which sets the target and the linker's arguments.
+_MANIFESTS = frozenset({"Cargo.toml", "Cargo.lock"})
+_CARGO_CONFIG = frozenset({"config", "config.toml"})
+# Where no file a person changes is read: build output -- `target/` holds the
+# map itself and what a build script generated, which the next build rewrites
+# with no source changed -- version control and environments. A dot-directory
+# is skipped too, except `.cargo`.
+_NOT_READ = frozenset({"target", "build", "dist", ".git", "node_modules", ".venv", "venv", "__pycache__"})
+
+
+def link_input(path: Path | str) -> bool:
+    """Whether a change to the file at *path* changes what a link writes, so
+    makes a map recorded before it stale. A README, docs and every other file
+    the link does not read do not."""
+    p = Path(path)
+    if p.name in _MANIFESTS or (p.parent.name == ".cargo" and p.name in _CARGO_CONFIG):
+        return True
+    return p.suffix in _LINK_SUFFIXES
+
+
+def newest_input(root: Path | str) -> float:
+    """The newest time of any file under *root* that `link_input` names, or 0.
+
+    The one judgement of a map's age: a map older than this is stale. The code
+    map and `/cargo` both ask it of the same root, whatever either of them read
+    for its own purposes -- a parse reads READMEs and skips `bin/`, a Cargo
+    reading reads manifests -- so they cannot disagree about a map."""
+    newest = 0.0
+    for directory, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in _NOT_READ and (not d.startswith(".") or d == ".cargo")]
+        here = Path(directory)
+        for name in files:
+            if link_input(here / name):
+                try:
+                    newest = max(newest, (here / name).stat().st_mtime)
+                except OSError:
+                    continue
+    return newest
 
 
 def age(path: Path) -> tuple[str, float]:

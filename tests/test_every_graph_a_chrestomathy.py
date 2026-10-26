@@ -27,7 +27,7 @@ from codecarto.services.graph_serializer import GraphSerializer
 VOCABULARY = construct_service.load()
 WORKSPACE = Path(__file__).parent / "fixtures" / "cargo" / "workspace"
 requires_libclang = pytest.mark.skipif(importlib.util.find_spec("clang") is None,
-                                       reason="libclang not installed — install with: uv sync --extra c-parsing")
+                                       reason="libclang not installed — install with: uv sync --locked --extra dev --extra c-parsing")
 
 
 def nodes_of(gjgf: dict) -> dict[str, dict]:
@@ -173,7 +173,7 @@ def test_the_crate_graph_is_placed_and_is_no_row_of_any_chrestomathy():
 
 @requires_libclang
 def test_a_c_local_is_automatic_and_a_static_one_claims_no_linkage(tmp_path):
-    """Read from a local repository, as the Repository panel reads one: C's
+    """Read from a local repository, as the Open panel reads one: C's
     locals were stamped as static storage, which they are not, and a static
     local is static storage with no linkage -- `static` inside a body is how
     long it lives, not who can name it. Mutations: drop the C refinement --

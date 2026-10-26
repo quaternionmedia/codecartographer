@@ -8,7 +8,7 @@
 
 import { expect, test } from '@playwright/test';
 
-import { dismissOnboardingModal } from './helpers';
+import { dismissOnboardingModal, pointOn } from './helpers';
 
 test("a greyed item's label is dimmed with its wedge", async ({ page }) => {
   await page.goto('/');
@@ -47,8 +47,12 @@ test('Deselect is reached from the canvas ring while nodes are selected', async 
   await expect(node).toBeVisible({ timeout: 20_000 });
 
   // Select the node and its neighbors: Neighbors is the node ring's third wedge.
+  // Pressed where a pointer reaches the node: its centre can be under another
+  // node, and Playwright's click waits for the centre to come clear.
   await node.evaluate((el) => (el.closest('[tabindex]') as HTMLElement | null)?.focus());
-  await node.click({ button: 'right' });
+  const at = await pointOn(node);
+  await page.mouse.click(at.x, at.y, { button: 'right' });
+  await expect(page.locator('.rad-root')).toHaveAttribute('aria-label', 'node');
   for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect(page.locator('.rad-root')).toHaveCount(0);
