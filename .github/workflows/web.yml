@@ -118,10 +118,13 @@ jobs:
         working-directory: web
         run: npm run test:e2e -- --grep-invert "moat is derived from its clone"
 
-      - name: Keep the report of a failed run
-        if: failure()
+      # Kept from every run that was not cancelled, passed or failed: the
+      # report holds the screenshots tests/e2e/tour.spec.ts attaches, so a
+      # reviewer can see how any pull request's window looks without running it.
+      - name: Keep the browser suite's report, with the tour's screenshots
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: browser-suite-report-with-tour-screenshots
           path: web/playwright-report
           retention-days: 7

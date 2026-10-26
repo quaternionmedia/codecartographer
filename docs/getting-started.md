@@ -68,6 +68,20 @@ The [API reference](api.md) describes each route. The running server lists
 those in its OpenAPI schema at `$API/docs`; the WebSockets and the few routes
 kept out of the schema are only in the reference.
 
+## A tour of the window
+
+The browser suite's tour, `web/tests/e2e/tour.spec.ts`, walks the window's
+main states, from a first visit to a drawn graph and its rings, and attaches a
+screenshot of each to the suite's report:
+
+```bash
+cd web && npx playwright test tour && npx playwright show-report
+```
+
+It starts its own servers, on ports that are not the defaults. The Web workflow
+keeps the same report from each of its runs for seven days, as the artifact
+`browser-suite-report-with-tour-screenshots`.
+
 ## GitHub token
 
 Run `gh auth login` once and the server reads its token; [Services](services.md#github-token)
