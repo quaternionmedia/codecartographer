@@ -406,6 +406,18 @@ test("a project's system view leaves the renderer as it found it for the next pl
     code: { available: false, problem: 'not here', remedy: '' },
     system: { available: true, components: 1 },
   }));
+  // The diagram is derived from a moat clone beside the backend, which CI has
+  // none of (system-monitor.spec.ts skips its moat replay there): answer the
+  // derivation here, one component and no history, as /system/compose and
+  // /system/events would.
+  await page.route('**/system/compose?**', (route) => route.fulfill({
+    json: {
+      system: 'moat', commit: '0000000',
+      components: [{ id: 'app', name: 'app', role: 'application', group: 'apps', version: '1', upstreams: [] }],
+      edges: [],
+    },
+  }));
+  await page.route('**/system/events?**', (route) => route.fulfill({ json: { changes: [], in_flight: [] } }));
   await page.goto('/?show=project:moat&view=system');
   await dismissOnboardingModal(page);
   await expect(page.locator('.sys-title').first()).toBeAttached({ timeout: SETTLED });
