@@ -495,3 +495,27 @@ test.describe('in a small window', () => {
     expect(await namesAsDrawn(page)).toEqual(drawn);
   });
 });
+
+test("the panel's rows are pressed from the keyboard, and its filter and views say what they are", async ({ page }) => {
+  await openOnNothing(page);
+  const row = page.locator('.show__family').first();
+  const family = (await row.getAttribute('data-family'))!;
+  // Mutation: draw the family rows as a div with only a click handler again --
+  // the row takes no focus, Enter opens nothing, and this fails.
+  await row.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(new RegExp(`\\?show=family:${family}$`));
+
+  const project = page.locator('.show__project').first();
+  const name = (await project.getAttribute('data-project'))!;
+  await project.locator('.estate__name').focus();
+  await page.keyboard.press(' ');
+  await expect(page).toHaveURL(new RegExp(`\\?show=project:${name}$`));
+
+  // Mutation: name the filter by its placeholder alone, or leave the views
+  // without aria-pressed -- this fails.
+  await expect(page.getByRole('searchbox', { name: 'filter projects by name or family' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'estate', exact: true, pressed: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'code map', exact: true, pressed: false })).toBeAttached();
+  await expect(page.getByRole('button', { name: 'system', exact: true, pressed: false })).toBeAttached();
+});

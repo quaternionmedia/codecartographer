@@ -36,6 +36,7 @@ import type { EstateMetadata } from '../../features/estate/provenance';
 import type { ShowAddress, ShowView } from '../../features/show/show_address';
 import { VIEWS, crumbLabel, formatShow, trail } from '../../features/show/show_address';
 import type { ShowFamilyRow, ShowProjectRow } from '../../features/show/show_service';
+import { pressable } from '../../components/codecarto/control_panel/pressable';
 import '../../features/estate/estate.css';
 import './show_panel.css';
 
@@ -84,12 +85,24 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
 
   const open = (address: ShowAddress) => void ctx.openShow(address);
 
+  /**
+   * A family row, and a project's name, are pressed as a button is: a place
+   * in the tab order, the button role, and Enter and Space (`pressable`, as
+   * the Files panel's rows are). They were a `div` and a `span` with only a
+   * click handler, reached by a pointer and never from the keyboard. Neither
+   * can be a `<button>`: a row holds paragraphs, which a button may not.
+   */
+  const pressed = (address: ShowAddress) => {
+    const press = () => open(address);
+    return { ...pressable(press), onclick: press };
+  };
+
   const familyRow = (family: ShowFamilyRow, depth: number, current: ShowAddress | null) =>
     m('div.estate__row.is-live.show__family', {
       'data-family': family.name,
       class: same(current, 'family', family.name) ? 'is-current' : '',
       style: { '--show-hue': family.hue ?? 'var(--c-font-muted, #888)', '--show-indent': `${depth}` },
-      onclick: () => open({ kind: 'family', name: family.name, view: 'estate' }),
+      ...pressed({ kind: 'family', name: family.name, view: 'estate' }),
       title: `draw the ${family.name} family`,
     }, [
       m('span.estate__dot.show__hue'),
@@ -110,7 +123,7 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
     }, [
       m('span.estate__dot.show__hue'),
       m('span.estate__name', {
-        onclick: () => open({ kind: 'project', name: project.name, view: 'estate' }),
+        ...pressed({ kind: 'project', name: project.name, view: 'estate' }),
         title: `draw ${project.name}'s place in the estate`,
       }, project.name),
       m('span.estate__actions', m('span.estate-view__rung',
@@ -134,6 +147,8 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
           'data-view': view,
           disabled,
           class: current.view === view ? 'is-current' : '',
+          // Which of the three is drawn, said as well as shown.
+          'aria-pressed': current.view === view ? 'true' : 'false',
           title: disabled ? (state?.problem ?? 'asking which views can be drawn…') : `draw the ${VIEW_LABEL[view]}`,
           onclick: () => open({ kind: 'project', name: current.name, view }),
         }, VIEW_LABEL[view]);
@@ -264,6 +279,8 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
                 m('h4.estate-view__heading', 'Projects'),
                 m('input.show__filter', {
                   type: 'search',
+                  // A placeholder goes as the reader types, and is no label.
+                  'aria-label': 'filter projects by name or family',
                   placeholder: 'filter by name or family',
                   value: filter,
                   oninput: (e: Event) => { filter = (e.target as HTMLInputElement).value; },
