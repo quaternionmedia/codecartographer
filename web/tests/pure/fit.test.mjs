@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { FIT_DEFAULTS, boundsOf, fitTransform } from '../../dist-pure/features/graph/services/fit.js';
+import { FIT_DEFAULTS, boundsOf, fitTransform, framedExtents } from '../../dist-pure/features/graph/services/fit.js';
 
 const VIEW = { width: 1600, height: 600 };
 const EPS = 1e-6;
@@ -85,4 +85,82 @@ test('nothing to frame, or nothing with a place, gives no transform', () => {
   assert.equal(fitTransform([], VIEW), null);
   assert.equal(fitTransform([{ x: NaN, y: 0, r: 4 }], VIEW), null);
   assert.equal(boundsOf([]), null);
+});
+
+/** A node's label as the renderer draws it: centred under the node, `size + 12` below, `width` wide. */
+function labelBox(x, y, size, width, fontSize = 9) {
+  const baseline = y + size + 12;
+  return { minX: x - width / 2, maxX: x + width / 2, minY: baseline - fontSize, maxY: baseline + 0.25 * fontSize };
+}
+
+function assertBoxInside(t, b, view = VIEW, margin = FIT_DEFAULTS.margin) {
+  const left = b.minX * t.k + t.x;
+  const right = b.maxX * t.k + t.x;
+  const top = b.minY * t.k + t.y;
+  const bottom = b.maxY * t.k + t.y;
+  assert.ok(left >= margin - EPS && right <= view.width - margin + EPS,
+    `box ${b.minX}..${b.maxX} spans x ${left}..${right} on a ${view.width} canvas`);
+  assert.ok(top >= margin - EPS && bottom <= view.height - margin + EPS,
+    `box ${b.minY}..${b.maxY} spans y ${top}..${bottom} on a ${view.height} canvas`);
+}
+
+test('a shown label is framed whole, however far it runs past its node', () => {
+  /* Mutation: frame the nodes without their labels -- the long labels at the
+     graph's two ends run off the canvas, and this fails. */
+  const nodes = [
+    { id: 'left', x: -300, y: 0, reach: 6, label: labelBox(-300, 0, 4, 300) },
+    { id: 'right', x: 300, y: 0, reach: 6, label: labelBox(300, 0, 4, 300) },
+  ];
+  const t = fitTransform(framedExtents(nodes, []), VIEW);
+  for (const n of nodes) assertBoxInside(t, n.label);
+  assertInside(t, nodes.map((n) => ({ x: n.x, y: n.y, r: n.reach })));
+});
+
+test('a label that is not shown is not framed', () => {
+  const nodes = [
+    { id: 'a', x: 0, y: 0, reach: 6, label: null },
+    { id: 'b', x: 100, y: 0, reach: 6, label: null },
+  ];
+  assert.deepEqual(boundsOf(framedExtents(nodes, [])), { minX: -6, minY: -6, maxX: 106, maxY: 6 });
+});
+
+test('a hidden node is not framed, nor an outline that holds only hidden nodes', () => {
+  /* Mutation: frame every node the renderer holds, hidden or not -- the
+     hidden file far to the right, its label and its outline widen the frame,
+     and this fails. Hide draws a node at opacity 0 and keeps it, so the fit
+     is what has to leave it out. */
+  const nodes = [
+    { id: 'src', x: 0, y: 0, reach: 18, label: null },
+    { id: 'main.rs', x: 60, y: 0, reach: 11, label: labelBox(60, 0, 7, 40) },
+    { id: 'main', x: 90, y: 0, reach: 6, label: null },
+    { id: 'far.rs', x: 900, y: 0, reach: 11, label: labelBox(900, 0, 7, 40) },
+    { id: 'far', x: 940, y: 0, reach: 6, label: null },
+  ];
+  const outlines = [
+    { nodeId: 'src', x: 0, y: 0, r: 150 },
+    { nodeId: 'main.rs', x: 60, y: 0, r: 50 },
+    { nodeId: 'far.rs', x: 900, y: 0, r: 60 },
+  ];
+  const children = new Map([['src', ['main.rs', 'main']], ['main.rs', ['main']], ['far.rs', ['far']]]);
+  const hidden = new Set(['far.rs', 'far', 'main']);
+  const extents = framedExtents(nodes, outlines, (id) => children.get(id) ?? [], (id) => hidden.has(id));
+  // src's outline holds main.rs, which is shown; far.rs's holds only hidden nodes.
+  assert.deepEqual(boundsOf(extents), { minX: -150, minY: -150, maxX: 150, maxY: 150 });
+});
+
+test("an outline whose own node is hidden is framed while it holds a shown node", () => {
+  const nodes = [
+    { id: 'src', x: 0, y: 0, reach: 18, label: null },
+    { id: 'lib.rs', x: 300, y: 0, reach: 11, label: null },
+  ];
+  const outlines = [{ nodeId: 'src', x: 0, y: 0, r: 330 }];
+  const extents = framedExtents(nodes, outlines, () => ['lib.rs'], (id) => id === 'src');
+  assert.deepEqual(boundsOf(extents), { minX: -330, minY: -330, maxX: 330, maxY: 330 });
+});
+
+test('an outline is framed with the nodes it is drawn around, and not with others', () => {
+  const nodes = [{ id: 'file', x: 0, y: 0, reach: 6, label: null }];
+  const around = { nodeId: 'file', x: 0, y: 0, r: 80 };
+  const elsewhere = { nodeId: 'other', x: 900, y: 0, r: 80 };
+  assert.deepEqual(boundsOf(framedExtents(nodes, [around, elsewhere])), { minX: -80, minY: -80, maxX: 80, maxY: 80 });
 });
