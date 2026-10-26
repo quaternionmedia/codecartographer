@@ -1,0 +1,543 @@
+event: meta
+data: {"nodeCount": 90, "edgeCount": 89, "layout": "Compound", "from_cache": true}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos", "label": "quaternionmedia/carlos", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": -1115.9075305511396, "y": 1006.8775890831871, "size": 310}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/.github", "label": ".github", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": 1901.941505982786, "y": 787.517503598763, "size": 90}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/.github/ISSUE_TEMPLATE", "label": "ISSUE_TEMPLATE", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": 112.71554852724965, "y": 1227.4833897255007, "size": 70}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/.github/workflows", "label": "workflows", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": 1821.8406708682803, "y": -80.64000378869562, "size": 50}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/.vscode", "label": ".vscode", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": 866.5350064697789, "y": 773.2152552305843, "size": 50}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/catalogue", "label": "catalogue", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": 1317.7074138075359, "y": -216.6515850919169, "size": 70}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/catalogue/devices", "label": "devices", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": 901.2191093980446, "y": -711.1446559800313, "size": 50}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/catalogue/examples", "label": "examples", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": 1843.6767672728517, "y": 256.89912195387967, "size": 50}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/docs", "label": "docs", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": -1961.2856580461478, "y": 1944.908989421158, "size": 100}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/governance", "label": "governance", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": 1402.4796687327787, "y": -471.9663839446838, "size": 50}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/src", "label": "src", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": 4559.736532334111, "y": 1545.3168007170368, "size": 120}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/static", "label": "static", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": -5067.880038546951, "y": -80.40181390141512, "size": 130}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/templates", "label": "templates", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": -1792.4646541360098, "y": 439.96757691672383, "size": 60}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/tests", "label": "tests", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": -441.23704052319147, "y": -2517.4276876538497, "size": 230}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/tests/browser", "label": "browser", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": -57.624268782993305, "y": -1779.7600457446922, "size": 100}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/tools", "label": "tools", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": -1580.3956281634291, "y": 895.9074247235368, "size": 70}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/vendor", "label": "vendor", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": -1423.9889205003633, "y": -392.69376110871906, "size": 60}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/vendor/rad", "label": "rad", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": -1363.975221620396, "y": -468.622385144573, "size": 50}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/walkthrough", "label": "walkthrough", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": -2573.9068906412986, "y": -1483.8093919021742, "size": 120}
+
+event: node
+data: {"id": "dir::quaternionmedia/carlos/walkthrough/media", "label": "media", "depth": 0, "language": "unknown", "kind": "directory", "file": "", "line": 0, "meta": {}, "x": -1236.720732120976, "y": -630.9562001007389, "size": 50}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/.github/ISSUE_TEMPLATE/bug_report.md", "label": "bug_report.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/.github/ISSUE_TEMPLATE/bug_report.md", "line": 0, "meta": {}, "x": 307.57126437874837, "y": 1339.9833897255007, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/.github/ISSUE_TEMPLATE/feature_request.md", "label": "feature_request.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/.github/ISSUE_TEMPLATE/feature_request.md", "line": 0, "meta": {}, "x": -82.14016732424909, "y": 1114.9833897255007, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/.github/copilot-instructions.md", "label": "copilot-instructions.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/.github/copilot-instructions.md", "line": 0, "meta": {}, "x": 2096.7972218342848, "y": 900.0175035987629, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/.github/pull_request_template.md", "label": "pull_request_template.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/.github/pull_request_template.md", "line": 0, "meta": {}, "x": 1707.0857901312872, "y": 675.0175035987631, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/AGENTS.md", "label": "AGENTS.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/AGENTS.md", "line": 0, "meta": {}, "x": -775.0672104183684, "y": 1203.6618396625208, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/CLAUDE.md", "label": "CLAUDE.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/CLAUDE.md", "line": 0, "meta": {}, "x": -884.5737698032218, "y": 1325.2811949712254, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/CODE_OF_CONDUCT.md", "label": "CODE_OF_CONDUCT.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/CODE_OF_CONDUCT.md", "line": 0, "meta": {}, "x": -1034.0800380226299, "y": 1391.8456742159378, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/CONTRIBUTING.md", "label": "CONTRIBUTING.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/CONTRIBUTING.md", "line": 0, "meta": {}, "x": -1197.7350230796494, "y": 1391.8456742159378, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/DEPLOYING.md", "label": "DEPLOYING.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/DEPLOYING.md", "line": 0, "meta": {}, "x": -1347.2412912990576, "y": 1325.2811949712254, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/GOVERNANCE.md", "label": "GOVERNANCE.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/GOVERNANCE.md", "line": 0, "meta": {}, "x": -1456.747850683911, "y": 1203.661839662521, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/HANDOFF.md", "label": "HANDOFF.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/HANDOFF.md", "line": 0, "meta": {}, "x": -1507.3200222807084, "y": 1048.0166996998564, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/README.md", "label": "README.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/README.md", "line": 0, "meta": {}, "x": -1490.2134181866072, "y": 885.2582337744827, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/RELEASING.md", "label": "RELEASING.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/RELEASING.md", "line": 0, "meta": {}, "x": -1408.3859256580974, "y": 743.5288592591411, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/RETROSPECTIVE.md", "label": "RETROSPECTIVE.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/RETROSPECTIVE.md", "line": 0, "meta": {}, "x": -1275.9862615327902, "y": 647.3348725784797, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/REUSE.toml", "label": "REUSE.toml", "depth": 1, "language": "toml", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/REUSE.toml", "line": 0, "meta": {}, "x": -823.4291354441821, "y": 743.5288592591409, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/REVIEW.md", "label": "REVIEW.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/REVIEW.md", "line": 0, "meta": {}, "x": -1115.9075305511396, "y": 613.3090879245195, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/SECURITY.md", "label": "SECURITY.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/SECURITY.md", "line": 0, "meta": {}, "x": -955.8287995694893, "y": 647.3348725784796, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/conftest.py", "label": "conftest.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/conftest.py", "line": 0, "meta": {}, "x": -724.4950388215711, "y": 1048.0166996998564, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/docs/catalogue.md", "label": "catalogue.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/docs/catalogue.md", "line": 0, "meta": {}, "x": -1748.0302642965144, "y": 2068.0320484086483, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/docs/interop.md", "label": "interop.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/docs/interop.md", "line": 0, "meta": {}, "x": -2012.4831047916355, "y": 2185.7740389083992, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/docs/midi-and-display.md", "label": "midi-and-display.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/docs/midi-and-display.md", "line": 0, "meta": {}, "x": -2206.182814021706, "y": 1970.6487177187078, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/docs/patch-format.md", "label": "patch-format.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/docs/patch-format.md", "line": 0, "meta": {}, "x": -2061.442977441739, "y": 1719.9519668829896, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/docs/rad-integration.md", "label": "rad-integration.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/docs/rad-integration.md", "line": 0, "meta": {}, "x": -1778.2891296791447, "y": 1780.1381751870438, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/pyproject.toml", "label": "pyproject.toml", "depth": 1, "language": "toml", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/pyproject.toml", "line": 0, "meta": {}, "x": -741.6016429156722, "y": 885.258233774483, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/src/cadence.py", "label": "cadence.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/src/cadence.py", "line": 0, "meta": {}, "x": 4804.923581777423, "y": 1686.8756097149437, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/src/catalogue.py", "label": "catalogue.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/src/catalogue.py", "line": 0, "meta": {}, "x": 4601.933023714607, "y": 1825.2722288387272, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/src/db.py", "label": "db.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/src/db.py", "line": 0, "meta": {}, "x": 4367.167646990718, "y": 1752.8567005368695, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/src/interop.py", "label": "interop.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/src/interop.py", "line": 0, "meta": {}, "x": 4277.4105686197945, "y": 1524.1593946282442, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/src/main.py", "label": "main.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/src/main.py", "line": 0, "meta": {}, "x": 4400.250699325875, "y": 1311.394047036912, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/src/midi.py", "label": "midi.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/src/midi.py", "line": 0, "meta": {}, "x": 4643.186915205266, "y": 1274.777304121289, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/src/patch_format.py", "label": "patch_format.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/src/patch_format.py", "line": 0, "meta": {}, "x": 4823.2832907050915, "y": 1441.8823201422729, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/static/anime-shim.js", "label": "anime-shim.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/static/anime-shim.js", "line": 0, "meta": {}, "x": -4808.454818526166, "y": 69.37740671216343, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/static/demo.css", "label": "demo.css", "depth": 1, "language": "css", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/static/demo.css", "line": 0, "meta": {}, "x": -4778.528803682744, "y": -157.9332436122275, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/static/main.js", "label": "main.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/static/main.js", "line": 0, "meta": {}, "x": -4990.348608836139, "y": 208.94942096279198, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/static/menus.js", "label": "menus.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/static/menus.js", "line": 0, "meta": {}, "x": -5217.6592591605295, "y": 179.02340611937072, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/static/midi.js", "label": "midi.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/static/midi.js", "line": 0, "meta": {}, "x": -5357.231273411158, "y": -2.8703841906026373, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/static/models.js", "label": "models.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/static/models.js", "line": 0, "meta": {}, "x": -5327.305258567738, "y": -230.1810345149936, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/static/rad-core.js", "label": "rad-core.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/static/rad-core.js", "line": 0, "meta": {}, "x": -5145.411468257764, "y": -369.75304876562217, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/static/rad-menu.js", "label": "rad-menu.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/static/rad-menu.js", "line": 0, "meta": {}, "x": -4918.100817933373, "y": -339.8270339222009, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/templates/demo.html", "label": "demo.html", "depth": 1, "language": "html", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/templates/demo.html", "line": 0, "meta": {}, "x": -1597.608938284511, "y": 552.4675769167238, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/__init__.py", "label": "__init__.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/__init__.py", "line": 0, "meta": {}, "x": -80.9016180684634, "y": -2309.3879345010555, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/browser/__init__.py", "label": "__init__.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/browser/__init__.py", "line": 0, "meta": {}, "x": 155.63112496664027, "y": -1656.6369867572018, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/browser/conftest.py", "label": "conftest.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/browser/conftest.py", "line": 0, "meta": {}, "x": -108.82171552848101, "y": -1538.8949962574507, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/browser/test_arrival.py", "label": "test_arrival.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/browser/test_arrival.py", "line": 0, "meta": {}, "x": -302.521424758551, "y": -1754.0203174471421, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/browser/test_the_rack.py", "label": "test_the_rack.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/browser/test_the_rack.py", "line": 0, "meta": {}, "x": -157.7815881785846, "y": -2004.7170682828603, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/browser/test_without_a_pointer.py", "label": "test_without_a_pointer.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/browser/test_without_a_pointer.py", "line": 0, "meta": {}, "x": 125.37225958400988, "y": -1944.5308599788063, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/cable_tracing.js", "label": "cable_tracing.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/cable_tracing.js", "line": 0, "meta": {}, "x": -638.0815740878738, "y": -2883.998806501483, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/click_layers.js", "label": "click_layers.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/click_layers.js", "line": 0, "meta": {}, "x": -492.3683398337038, "y": -2930.3535233656908, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/dom.js", "label": "dom.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/dom.js", "line": 0, "meta": {}, "x": -339.7495402793382, "y": -2920.94031801597, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/midi_diagnose.js", "label": "midi_diagnose.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/midi_diagnose.js", "line": 0, "meta": {}, "x": -200.8371899945572, "y": -2857.030495995173, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/rack_behaviour.js", "label": "rack_behaviour.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/rack_behaviour.js", "line": 0, "meta": {}, "x": -94.39217162522633, "y": -2747.255432903758, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/refusal_probe.js", "label": "refusal_probe.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/refusal_probe.js", "line": 0, "meta": {}, "x": -34.790474734331234, "y": -2606.4408592968425, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/test_app.py", "label": "test_app.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/test_app.py", "line": 0, "meta": {}, "x": -180.38689287555042, "y": -2193.268226832934, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/test_cadence.py", "label": "test_cadence.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/test_cadence.py", "line": 0, "meta": {}, "x": -315.10142554301706, "y": -2120.928050578258, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/test_catalogue.py", "label": "test_catalogue.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/test_catalogue.py", "line": 0, "meta": {}, "x": -466.85127195512706, "y": -2102.1373473909753, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/test_cli.py", "label": "test_cli.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/test_cli.py", "line": 0, "meta": {}, "x": -615.1417744789983, "y": -2139.4339058594096, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/test_interop.py", "label": "test_interop.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/test_interop.py", "line": 0, "meta": {}, "x": -739.9454790427408, "y": -2227.7806190950337, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/test_midi_and_modes.py", "label": "test_midi_and_modes.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/test_midi_and_modes.py", "line": 0, "meta": {}, "x": -824.4069537838209, "y": -2355.2457739293386, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/test_rad.py", "label": "test_rad.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/test_rad.py", "line": 0, "meta": {}, "x": -857.1192085212678, "y": -2504.6144948931465, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/test_sides_and_groups.py", "label": "test_sides_and_groups.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/test_sides_and_groups.py", "line": 0, "meta": {}, "x": -833.6642719879281, "y": -2655.71370853964, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/test_walkthrough.py", "label": "test_walkthrough.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/test_walkthrough.py", "line": 0, "meta": {}, "x": -757.2098633309193, "y": -2788.136628796213, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tests/view_toggle.js", "label": "view_toggle.js", "depth": 1, "language": "javascript", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tests/view_toggle.js", "line": 0, "meta": {}, "x": -30.08163875139127, "y": -2453.604563620529, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tools/__init__.py", "label": "__init__.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tools/__init__.py", "line": 0, "meta": {}, "x": -1385.5399123119305, "y": 1008.4074247235368, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/tools/cli.py", "label": "cli.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/tools/cli.py", "line": 0, "meta": {}, "x": -1775.251344014928, "y": 783.4074247235368, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/walkthrough/01-onboarding.md", "label": "01-onboarding.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/walkthrough/01-onboarding.md", "line": 0, "meta": {}, "x": -2344.016916550631, "y": -1351.082353476931, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/walkthrough/02-the-catalogue.md", "label": "02-the-catalogue.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/walkthrough/02-the-catalogue.md", "line": 0, "meta": {}, "x": -2573.9068906412986, "y": -1218.355315051688, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/walkthrough/03-a-modular-drum-rig.md", "label": "03-a-modular-drum-rig.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/walkthrough/03-a-modular-drum-rig.md", "line": 0, "meta": {}, "x": -2803.7968647319663, "y": -1351.082353476931, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/walkthrough/04-cookbook.md", "label": "04-cookbook.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/walkthrough/04-cookbook.md", "line": 0, "meta": {}, "x": -2803.7968647319663, "y": -1616.536430327417, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/walkthrough/05-in-the-browser.md", "label": "05-in-the-browser.md", "depth": 1, "language": "markdown", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/walkthrough/05-in-the-browser.md", "line": 0, "meta": {}, "x": -2573.9068906412986, "y": -1749.2634687526604, "size": 30}
+
+event: node
+data: {"id": "file::quaternionmedia/carlos/walkthrough/support.py", "label": "support.py", "depth": 1, "language": "python", "kind": "file", "file": "https://raw.githubusercontent.com/quaternionmedia/carlos/they/walkthrough/support.py", "line": 0, "meta": {}, "x": -2344.016916550631, "y": -1616.536430327417, "size": 30}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/AGENTS.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/CLAUDE.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/CODE_OF_CONDUCT.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/CONTRIBUTING.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/DEPLOYING.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/GOVERNANCE.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/HANDOFF.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/README.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/RELEASING.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/RETROSPECTIVE.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/REVIEW.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/SECURITY.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/REUSE.toml", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/pyproject.toml", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "file::quaternionmedia/carlos/conftest.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/.github", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/.vscode", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/catalogue", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/docs", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/governance", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/src", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/static", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/templates", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/tests", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/tools", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/vendor", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos", "target": "dir::quaternionmedia/carlos/walkthrough", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/.github", "target": "file::quaternionmedia/carlos/.github/copilot-instructions.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/.github", "target": "file::quaternionmedia/carlos/.github/pull_request_template.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/.github", "target": "dir::quaternionmedia/carlos/.github/ISSUE_TEMPLATE", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/.github", "target": "dir::quaternionmedia/carlos/.github/workflows", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/.github/ISSUE_TEMPLATE", "target": "file::quaternionmedia/carlos/.github/ISSUE_TEMPLATE/bug_report.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/.github/ISSUE_TEMPLATE", "target": "file::quaternionmedia/carlos/.github/ISSUE_TEMPLATE/feature_request.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/catalogue", "target": "dir::quaternionmedia/carlos/catalogue/devices", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/catalogue", "target": "dir::quaternionmedia/carlos/catalogue/examples", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/docs", "target": "file::quaternionmedia/carlos/docs/catalogue.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/docs", "target": "file::quaternionmedia/carlos/docs/interop.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/docs", "target": "file::quaternionmedia/carlos/docs/midi-and-display.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/docs", "target": "file::quaternionmedia/carlos/docs/patch-format.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/docs", "target": "file::quaternionmedia/carlos/docs/rad-integration.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/src", "target": "file::quaternionmedia/carlos/src/cadence.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/src", "target": "file::quaternionmedia/carlos/src/catalogue.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/src", "target": "file::quaternionmedia/carlos/src/db.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/src", "target": "file::quaternionmedia/carlos/src/interop.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/src", "target": "file::quaternionmedia/carlos/src/main.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/src", "target": "file::quaternionmedia/carlos/src/midi.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/src", "target": "file::quaternionmedia/carlos/src/patch_format.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/static", "target": "file::quaternionmedia/carlos/static/anime-shim.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/static", "target": "file::quaternionmedia/carlos/static/main.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/static", "target": "file::quaternionmedia/carlos/static/menus.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/static", "target": "file::quaternionmedia/carlos/static/midi.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/static", "target": "file::quaternionmedia/carlos/static/models.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/static", "target": "file::quaternionmedia/carlos/static/rad-core.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/static", "target": "file::quaternionmedia/carlos/static/rad-menu.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/static", "target": "file::quaternionmedia/carlos/static/demo.css", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/templates", "target": "file::quaternionmedia/carlos/templates/demo.html", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/__init__.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/test_app.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/test_cadence.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/test_catalogue.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/test_cli.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/test_interop.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/test_midi_and_modes.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/test_rad.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/test_sides_and_groups.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/test_walkthrough.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/cable_tracing.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/click_layers.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/dom.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/midi_diagnose.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/rack_behaviour.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/refusal_probe.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "file::quaternionmedia/carlos/tests/view_toggle.js", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests", "target": "dir::quaternionmedia/carlos/tests/browser", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests/browser", "target": "file::quaternionmedia/carlos/tests/browser/__init__.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests/browser", "target": "file::quaternionmedia/carlos/tests/browser/conftest.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests/browser", "target": "file::quaternionmedia/carlos/tests/browser/test_arrival.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests/browser", "target": "file::quaternionmedia/carlos/tests/browser/test_the_rack.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tests/browser", "target": "file::quaternionmedia/carlos/tests/browser/test_without_a_pointer.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tools", "target": "file::quaternionmedia/carlos/tools/__init__.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/tools", "target": "file::quaternionmedia/carlos/tools/cli.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/vendor", "target": "dir::quaternionmedia/carlos/vendor/rad", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/walkthrough", "target": "file::quaternionmedia/carlos/walkthrough/01-onboarding.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/walkthrough", "target": "file::quaternionmedia/carlos/walkthrough/02-the-catalogue.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/walkthrough", "target": "file::quaternionmedia/carlos/walkthrough/03-a-modular-drum-rig.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/walkthrough", "target": "file::quaternionmedia/carlos/walkthrough/04-cookbook.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/walkthrough", "target": "file::quaternionmedia/carlos/walkthrough/05-in-the-browser.md", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/walkthrough", "target": "file::quaternionmedia/carlos/walkthrough/support.py", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: edge
+data: {"source": "dir::quaternionmedia/carlos/walkthrough", "target": "dir::quaternionmedia/carlos/walkthrough/media", "metadata": {"kind": "contains", "weight": 1.0}}
+
+event: done
+data: {"elapsed_ms": 0, "from_cache": true}
+

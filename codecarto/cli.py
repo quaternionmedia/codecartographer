@@ -910,5 +910,88 @@ def _print_tree(folder, prefix: str = "", depth: int = 3, current_depth: int = 0
             click.echo(f"{prefix}{connector}{item.name} ({size})")
 
 
+# ============================================================================
+# Showgraph Commands
+# ============================================================================
+
+@cli.group()
+def show():
+    """
+    The triplet's graph leg: every family and project the corpus names.
+
+    \b
+        codecarto show export --corpus ../qm --out ../qm/docs/show
+    """
+    pass
+
+
+@show.command("export")
+@click.option("--corpus", type=click.Path(exists=True, file_okay=False), required=True,
+              help="A checkout of the governance corpus, whose families.json names the subjects")
+@click.option("--subject", default="all", show_default=True,
+              help="all, or index, family:<name> and project:<name>, comma-separated")
+@click.option("--out", type=click.Path(file_okay=False), required=True,
+              help="Where each subject's folder is written")
+def show_export(corpus: str, subject: str, out: str):
+    """
+    Draw each subject's showgraph in the window, and write its pictures and show document.
+
+    \b
+    Each subject gets a folder under OUT -- index/, family/<name>/,
+    project/<name>/ -- holding show.json and a picture of each view the
+    window draws: estate.svg, code.svg and system.png. A view it cannot draw
+    is stated in show.json with the reason. The pictures come from the real
+    renderer, run headlessly by web/playwright.export.config.ts; a document
+    naming a place on this machine fails the export.
+    """
+    import json
+    import tempfile
+
+    from codecarto.services import show_export as exporter, show_service
+
+    corpus_path = Path(corpus).resolve()
+    reading = show_service.read(corpus_path)
+    if not reading.ok:
+        _fail(reading.reason)
+    try:
+        chosen = exporter.subjects(reading, subject)
+        identity = exporter.corpus_identity(corpus_path)
+    except (ValueError, subprocess.CalledProcessError) as error:
+        _fail(str(error))
+    out_path = Path(out).resolve()
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    sources = {}
+    for s in chosen:
+        if s.kind == "project" and reading.org and s.name in reading.inventory:
+            sources[s.name] = {"repo": f"{reading.org}/{s.name}",
+                               "commit": exporter.default_branch_head(reading.org, s.name)}
+    plan = exporter.manifest(reading, chosen, out_path, identity, exporter.drawn_by(REPO_ROOT), sources)
+    click.echo(f"Drawing {len(chosen)} subject(s) from {identity['repo']}@{identity['commit'][:7]}")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        manifest_path = Path(tmp) / "manifest.json"
+        manifest_path.write_text(json.dumps(plan), encoding="utf-8")
+        env = {**os.environ, "SHOW_EXPORT_MANIFEST": str(manifest_path),
+               "CODECARTO_CORPUS": str(corpus_path)}
+        drawn = subprocess.run(["npx", "playwright", "test", "--config", "playwright.export.config.ts"],
+                               cwd=WEB_DIR, env=env, shell=True)
+
+    problems = []
+    for s in chosen:
+        document = out_path / s.folder / "show.json"
+        if document.is_file():
+            try:
+                exporter.scrub(json.loads(document.read_text(encoding="utf-8")))
+            except ValueError as error:
+                problems.append(f"{s.folder}: {error}")
+    problems += [f"{path} was not written" for path in exporter.missing(out_path, chosen)]
+    if drawn.returncode or problems:
+        for problem in problems:
+            click.secho(f"  ✗ {problem}", fg="red", err=True)
+        _fail(f"the export is not whole (the harness exited {drawn.returncode})")
+    click.secho(f"✓ {len(chosen)} subject(s) written to {out}", fg="green")
+
+
 if __name__ == "__main__":
     cli()

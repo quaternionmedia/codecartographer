@@ -1399,7 +1399,10 @@ export class LayoutContext {
   /**
    * Stream directly from a GitHub URL via /parse/stream-url, at the Open
    * panel's depth; or, given `show`, as a showgraph's code view: at the
-   * view's depth, keeping the address (`_mountAndStream`'s `forShow`).
+   * view's depth, keeping the address (`_mountAndStream`'s `forShow`), and
+   * drawn as a map, as the estate views are. At the fit that frames a whole
+   * repository a code graph's names are a pixel high; a map holds each at a
+   * readable size and hides the ones that would overlap.
    */
   private _startStreamFromUrl(githubUrl: string, show?: { depth: number }): void {
     const opts = this.appState.state.parserOptions;
@@ -1412,8 +1415,9 @@ export class LayoutContext {
     const notes: string[] = [];
     let nodeCount = 0;
 
-    this._mountAndStream((renderer) =>
-      PlotService.streamFromUrl(
+    this._mountAndStream((renderer) => {
+      if (show) renderer.presentAsMap();
+      return PlotService.streamFromUrl(
         this.appState.api.parse,
         githubUrl,
         { depth, extensions: exts, layout, annotateLexicon: opts.annotateLexicon },
@@ -1482,7 +1486,8 @@ export class LayoutContext {
             this.updatePanelState({ isLoading: false, statusMessage: `Error: ${msg}`, progress: null });
           },
         },
-      ),
+      );
+    },
       'Connecting to GitHub\u2026',
       !!show,
     );

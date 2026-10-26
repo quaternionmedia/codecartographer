@@ -503,6 +503,10 @@ def test_every_page_the_code_names_exists():
     fails naming it."""
     seen, missing = 0, []
     for path in _code_files():
+        # A fixture is another project's data as it arrives -- carlos's parse
+        # names carlos's own docs/ -- not a page this code sends a reader to.
+        if "fixtures" in path.relative_to(ROOT).parts:
+            continue
         try:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
