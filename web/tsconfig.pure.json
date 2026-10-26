@@ -52,6 +52,7 @@
     "src/features/repository/plot_target.ts",
     "src/state/latest_plot.ts",
     "src/components/qm_comp_lib/directory/stub_read.ts",
+    "src/components/qm_comp_lib/directory/tree_rows.ts",
     "src/layout/new_panel_stack.ts",
     "src/layout/components/menu_dismissal.ts",
     "src/components/codecarto/control_panel/pressable.ts"

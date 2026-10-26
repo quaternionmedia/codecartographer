@@ -14,15 +14,15 @@ import { GraphNode, GraphEdge } from './graph_types';
 import { canvasPath } from './node_shapes';
 import { drawnFill } from '../extensions/legend_marks';
 import { GraphStylingOptions } from '../../../state/types';
-import { CompoundLayoutManager } from './compound_layout';
-import type { GroupBounds } from './compound_layout';
+import { CompoundLayoutManager, outlinesAfterRemoval } from './compound_layout';
+import type { GroupBounds, OutlineSpacing } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
 import { fitBadgeText, sourceTarget, type SourceTarget } from './node_info';
 import { BADGE_MARGIN, badgePlace } from './source_badge';
-import { fitTransform } from './fit';
+import { fitTransform, framedExtents } from './fit';
 import { placeOutlineLabels } from './outline_labels';
-import type { Circle } from './fit';
+import type { Box, FramedNode, FramedOutline } from './fit';
 
 /**
  * The event a showgraph's node sends when it is double-clicked: its `show`
@@ -113,6 +113,9 @@ export class StreamingGraphRenderer {
   // The group outlines as last drawn, so a fit frames them; empty while
   // Group Outlines is off.
   private _groupBounds: GroupBounds[] = [];
+  // Which nodes the host's view state hides (`setHiddenTest`), so a fit
+  // leaves them out; none until it says.
+  private _isHidden: (id: string) => boolean = () => false;
   // O(1) lookup for child drag propagation — populated in _renderNode, avoids CSS selector per-frame
   private _nodeGroupEl = new Map<string, SVGGElement>();
 
@@ -622,6 +625,16 @@ export class StreamingGraphRenderer {
     };
   }
 
+  /**
+   * How to tell a hidden node, so a fit leaves it out. Hide is view state the
+   * host keeps and paints (rad's `applyViewState` draws the node at opacity
+   * 0); the node stays here, in `nodeById`, and a fit that framed it would be
+   * centred off what is drawn.
+   */
+  setHiddenTest(isHidden: (id: string) => boolean): void {
+    this._isHidden = isHidden;
+  }
+
   /** Public so an intent can ask for a fit without reaching into the DOM. */
   fitView(): void {
     this._fitView();
@@ -658,6 +671,14 @@ export class StreamingGraphRenderer {
       .selectAll<SVGLineElement, GraphEdge>('line.stream-edge')
       .filter((d) => !!d && (gone.has(String(d.source)) || gone.has(String(d.target))))
       .remove();
+    // The outlines are drawn around what remains: a collapsed file's goes,
+    // and one that lost nodes shrinks to the rest. The fit frames the
+    // outlines kept here, so one left as it was framed an empty circle.
+    const drawn = this._groupBounds;
+    this._groupBounds = outlinesAfterRemoval(
+      this._compoundManager, drawn, Array.from(this.nodeById.values()), this._allEdges, this._outlineSpacing(),
+    );
+    if (drawn.length > 0) this._paintOutlines(this._groupBounds, false);
   }
 
   /** Ids of nodes whose parent is `id`, per the accumulated containment edges. */
@@ -681,20 +702,27 @@ export class StreamingGraphRenderer {
   }
 
   /**
-   * Fit the viewport to a subset of nodes: each node's extent, and the group
-   * outline drawn around any of them, framed whole (fit.ts).
+   * Fit the viewport to a subset of nodes: each node's extent, its label
+   * while labels are shown, and the group outline drawn around any of them,
+   * framed whole (fit.ts). A hidden node is left out, and so is an outline
+   * holding only hidden nodes.
    *
    * Split out of `_fitView` so `focus-group` can frame one subtree. A verb
    * that says "focus" and fits the whole graph is the kind of near-miss the
    * legacy menu was full of.
    */
   private _fitNodes(nodes: GraphNode[]): void {
-    const ids = new Set(nodes.map((n) => n.id));
-    const circles: Circle[] = nodes.map((n) => ({ x: n.x ?? 0, y: n.y ?? 0, r: this._extentOf(n) }));
-    for (const b of this._groupBounds) {
-      if (ids.has(b.nodeId)) circles.push({ x: b.cx, y: b.cy, r: b.radius });
-    }
-    const t = fitTransform(circles, { width: this.width, height: this.height });
+    const labels = this._shownLabelBoxes();
+    const framed: FramedNode[] = nodes.map((n) => ({
+      id: n.id,
+      x: n.x ?? 0,
+      y: n.y ?? 0,
+      reach: this._extentOf(n),
+      label: labels.get(n.id) ?? null,
+    }));
+    const outlines: FramedOutline[] = this._groupBounds.map((b) => ({ nodeId: b.nodeId, x: b.cx, y: b.cy, r: b.radius }));
+    const extents = framedExtents(framed, outlines, (id) => this._childrenMap.get(id) ?? [], this._isHidden);
+    const t = fitTransform(extents, { width: this.width, height: this.height });
     if (!t) return;
 
     this.svg
@@ -706,6 +734,31 @@ export class StreamingGraphRenderer {
       );
   }
 
+  /**
+   * The box each shown node label is drawn in, by node id, in graph
+   * coordinates. A label is drawn `size + 12` under its node, centred, as
+   * wide as its text, so a long one at the graph's edge reaches well past its
+   * node; with outlines off, nothing else frames it. A label the label
+   * settings hide is not drawn and has no box, and neither has one on a canvas
+   * not yet laid out (a hidden tab), which measures as nothing.
+   */
+  private _shownLabelBoxes(): Map<string, Box> {
+    const boxes = new Map<string, Box>();
+    this.labelGroup.selectAll<SVGTextElement, unknown>('text').each(function () {
+      const id = this.getAttribute('data-node-id');
+      if (!id || this.style.display === 'none') return;
+      let drawn: DOMRect;
+      try {
+        drawn = this.getBBox();
+      } catch {
+        return;
+      }
+      if (drawn.width === 0 && drawn.height === 0) return;
+      boxes.set(id, { minX: drawn.x, minY: drawn.y, maxX: drawn.x + drawn.width, maxY: drawn.y + drawn.height });
+    });
+    return boxes;
+  }
+
   // ── Private helpers ────────────────────────────────────────────────────────
 
   /** How far a node's shape reaches from its centre: a shape drawn at `size`
@@ -714,17 +767,28 @@ export class StreamingGraphRenderer {
     return 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n);
   }
 
+  /** How far an outline is drawn past what it encloses, and the node size it reckons with. */
+  private _outlineSpacing(): OutlineSpacing {
+    return { padding: 40, baseNodeSize: this.styling.nodeSize! * 3.0 };
+  }
+
   private _drawCompoundBackgrounds(): void {
     const nodes = Array.from(this.nodeById.values());
+    const { padding, baseNodeSize } = this._outlineSpacing();
     const bounds = this._compoundManager.computeGroupBounds(
-      nodes,
-      this._allEdges,
-      40,
-      this.styling.nodeSize! * 3.0,
-      (n) => this._extentOf(n),
+      nodes, this._allEdges, padding, baseNodeSize, (n) => this._extentOf(n),
     );
     this._childrenMap = this._compoundManager.computeChildrenMap(nodes, this._allEdges);
     this._groupBounds = bounds;
+    this._paintOutlines(bounds, true);
+  }
+
+  /**
+   * Draw `bounds` in place of the outlines drawn before. A fresh drawing
+   * fades them in; a redraw after a removal sets them at once, as the others
+   * were already on screen.
+   */
+  private _paintOutlines(bounds: readonly GroupBounds[], fadeIn: boolean): void {
     this._backgroundGroup.selectAll('*').remove();
     const labels: SVGTextElement[] = [];
     for (const b of bounds) {
@@ -737,19 +801,15 @@ export class StreamingGraphRenderer {
       const dash   = isDir ? '8,4' : '4,2';
       const sw     = isDir ? 1.5 : 1.0;
       const grp = this._backgroundGroup.append('g').attr('class', `compound-group depth-${b.depth}`);
-      grp.append('circle')
+      const circle = grp.append('circle')
         .attr('cx', b.cx)
         .attr('cy', b.cy)
         .attr('r', b.radius)
         .attr('fill', fill)
         .attr('stroke', stroke)
         .attr('stroke-width', sw)
-        .attr('stroke-dasharray', dash)
-        .style('opacity', 0)
-        .transition()
-        .delay(300)
-        .duration(500)
-        .style('opacity', 1);
+        .attr('stroke-dasharray', dash);
+      if (fadeIn) circle.style('opacity', 0).transition().delay(300).duration(500).style('opacity', 1);
       labels.push(grp.append('text')
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'central')
@@ -757,12 +817,13 @@ export class StreamingGraphRenderer {
         .attr('font-size', this._map ? this._nameSize(isDir ? 11 : 9, MAP_OUTLINE_PX) : isDir ? 11 : 9)
         .attr('fill', hue ? tint(0.9) : isDir ? 'rgba(127,140,141,0.70)' : 'rgba(155,89,182,0.70)')
         .style('pointer-events', 'none')
-        .style('opacity', 0)
+        .style('opacity', fadeIn ? 0 : 1)
         .text(b.label)
         .node()!);
     }
     // Each label inside its outline where it covers no other label and no
-    // node (outline_labels.ts), measured as drawn.
+    // node (outline_labels.ts), measured as drawn, after a removal too.
+    const nodes = Array.from(this.nodeById.values());
     const places = placeOutlineLabels(
       bounds.map((b, i) => {
         const size = labels[i].getBBox();
@@ -771,13 +832,8 @@ export class StreamingGraphRenderer {
       nodes.map((n) => ({ x: n.x ?? 0, y: n.y ?? 0, r: this._extentOf(n) })),
     );
     labels.forEach((label, i) => {
-      d3.select(label)
-        .attr('x', places[i].x)
-        .attr('y', places[i].y)
-        .transition()
-        .delay(300)
-        .duration(500)
-        .style('opacity', 1);
+      const placed = d3.select(label).attr('x', places[i].x).attr('y', places[i].y);
+      if (fadeIn) placed.transition().delay(300).duration(500).style('opacity', 1);
     });
   }
 

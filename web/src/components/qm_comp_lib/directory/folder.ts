@@ -4,6 +4,7 @@ import { FileList } from './files';
 import { animations } from '../../../core/animations';
 import { readStub } from './stub_read';
 import type { StubState } from './stub_read';
+import { folderRow } from './tree_rows';
 
 /**
  * Called when a stub folder (no children) is opened, to read it. Resolves true
@@ -37,53 +38,57 @@ export const Folder: m.Component<FolderAttrs> = {
     const isEmpty = folders.length === 0 && files.length === 0;
     const isStub = isEmpty && !!onFolderExpand;  // empty AND can be lazy-loaded
 
+    // Opens or closes the folder, from a click or a key. The folder's element
+    // holds its row first and its contents, when open, after it.
+    const toggle = () => {
+      const button = (vnode as m.VnodeDOM<FolderAttrs, FolderState>).dom.firstElementChild as HTMLElement;
+      const folderContent = button.nextElementSibling as HTMLElement | null;
+
+      // Animate button press
+      animations.buttonPress(button);
+
+      if (state.isOpen) {
+        // Closing: animate out first, then let Mithril hide via state
+        const close = () => {
+          state.isOpen = false;
+          m.redraw();
+        };
+        if (folderContent) {
+          const anim = animations.fadeOut(folderContent, { duration: 150 });
+          // animejs v4's JSAnimation is itself thenable (resolves on
+          // completion) -- v3's separate `.finished` promise property
+          // no longer exists, so awaiting that always resolved
+          // immediately with undefined instead of waiting for the
+          // animation to actually finish.
+          Promise.resolve(anim).then(close);
+        } else {
+          close();
+        }
+      } else if (isStub && onFolderExpand && !state.isLoading) {
+        // Opening an unread folder reads it; the spinner ends when the
+        // read does, and a read that failed leaves it unread to click
+        // again (`stub_read.ts`).
+        void readStub(state, () => onFolderExpand(folderPath), () => m.redraw());
+      } else {
+        // Opening: set state so Mithril renders the content (oncreate animates it in)
+        state.isOpen = true;
+        m.redraw();
+      }
+    };
+
     return m(`div.folder.folder__${folderName}`, [
       m(
         'div.folder_button',
         {
+          ...folderRow(folderName, state.isOpen, isEmpty && !isStub ? null : toggle),
           class: [
             isStub ? 'folder_button--stub' : '',
             isEmpty && !isStub ? 'folder_button--empty' : '',
             state.isOpen ? 'active' : '',
           ].filter(Boolean).join(' '),
-          onclick: isEmpty && !isStub ? undefined : function (e: MouseEvent) {
-            const button = e.currentTarget as HTMLElement;
-            const folderContent = button.nextElementSibling as HTMLElement;
-
-            // Animate button press
-            animations.buttonPress(button);
-
-            if (state.isOpen) {
-              // Closing: animate out first, then let Mithril hide via state
-              const close = () => {
-                state.isOpen = false;
-                m.redraw();
-              };
-              if (folderContent) {
-                const anim = animations.fadeOut(folderContent, { duration: 150 });
-                // animejs v4's JSAnimation is itself thenable (resolves on
-                // completion) -- v3's separate `.finished` promise property
-                // no longer exists, so awaiting that always resolved
-                // immediately with undefined instead of waiting for the
-                // animation to actually finish.
-                Promise.resolve(anim).then(close);
-              } else {
-                close();
-              }
-            } else if (isStub && onFolderExpand && !state.isLoading) {
-              // Opening an unread folder reads it; the spinner ends when the
-              // read does, and a read that failed leaves it unread to click
-              // again (`stub_read.ts`).
-              void readStub(state, () => onFolderExpand(folderPath), () => m.redraw());
-            } else {
-              // Opening: set state so Mithril renders the content (oncreate animates it in)
-              state.isOpen = true;
-              m.redraw();
-            }
-          },
         },
         [
-          folderName,
+          m('span.folder_name', folderName),
           isStub && !state.isLoading ? m('span.folder_stub_indicator', ' …') : null,
           state.isLoading ? m('span.folder_loading_indicator', ' ↻') : null,
         ]
@@ -95,7 +100,7 @@ export const Folder: m.Component<FolderAttrs> = {
             },
           }, [
             foldersParse(folders, onUrlFileClicked, onFolderExpand, folderPath, allowedExtensions),
-            m(FileList, { folderName, files: files, onUrlFileClicked, allowedExtensions }),
+            m(FileList, { folderName, folderPath, files: files, onUrlFileClicked, allowedExtensions }),
           ])
         : null,
     ]);

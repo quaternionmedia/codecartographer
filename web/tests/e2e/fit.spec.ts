@@ -5,12 +5,13 @@
  * What only a browser shows is what the renderer hands it: that the group
  * outlines are drawn before the fit and framed with the nodes, after a stream
  * and on the canvas ring's Fit, and that the census's show frames the nodes it
- * selects.
+ * selects; and that Collapse redraws the outlines around what remains, as
+ * outlines-after-removal.test.mjs computes them.
  */
 
 import { expect, test, type Page } from '@playwright/test';
 
-import { dismissOnboardingModal } from './helpers';
+import { dismissOnboardingModal, pointOn } from './helpers';
 
 const SETTLED = 30_000;
 
@@ -119,4 +120,28 @@ test('no outline label covers another, or a node, in the bundled example or the 
   await expect(page.locator('.graph-node[data-node-id*="region::FLASH"]')).toHaveCount(0, { timeout: SETTLED });
   await expect(page.locator('.compound-group text').first()).toBeAttached({ timeout: SETTLED });
   await expect.poll(() => crowdedLabels(page), { timeout: 5_000 }).toEqual([]);
+});
+
+test("Collapse takes a file's outline away with its symbols", async ({ page }) => {
+  await drawBundledExample(page);
+  const outline = page.locator('.compound-group', { hasText: /^main\.rs$/ });
+  await expect(outline).toHaveCount(1);
+  const nodes = page.locator('.graph-node');
+  const drawn = await nodes.count();
+  const file = page.locator('.graph-node[data-node-id^="file::"][data-node-id$="blinky/src/main.rs"]').first();
+  await file.evaluate((el) => (el.closest('[tabindex]') as HTMLElement | null)?.focus());
+  const at = await pointOn(file);
+  await page.mouse.click(at.x, at.y, { button: 'right' });
+  const ring = page.locator('.rad-root');
+  await expect(ring).toHaveAttribute('aria-label', 'node');
+  await expect(ring.locator('[role="menuitem"][aria-label="Collapse"]')).not.toHaveAttribute('aria-disabled', 'true');
+  // Collapse is the node ring's second wedge, after Expand.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(ring).toHaveCount(0);
+  await expect.poll(() => nodes.count()).toBeLessThan(drawn);
+  // Mutation: leave the outlines as drawn after a removal -- main.rs keeps
+  // its outline around nothing, and this fails.
+  await expect(outline).toHaveCount(0);
 });
