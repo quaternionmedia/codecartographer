@@ -16,11 +16,16 @@ import { dismissOnboardingModal } from './helpers';
 
 const SETTLED = 30_000;
 
-/** The smallest name drawn on screen, in pixels, and each pair of names that overlap. */
-async function names(page: Page): Promise<{ count: number; smallest: number; overlaps: string[] }> {
+/**
+ * The names a map draws, how many of them are hidden until a zoom gives them
+ * room, the smallest shown on screen in pixels, and each pair shown that
+ * overlap.
+ */
+async function names(page: Page): Promise<{ drawn: number; hidden: number; count: number; smallest: number; overlaps: string[] }> {
   return page.locator('.graphRenderer svg').first().evaluate((svg) => {
-    const shown = [...svg.querySelectorAll<SVGTextElement>('.labels text')]
-      .filter((t) => getComputedStyle(t).display !== 'none' && t.getAttribute('visibility') !== 'hidden');
+    const drawn = [...svg.querySelectorAll<SVGTextElement>('.labels text')]
+      .filter((t) => getComputedStyle(t).display !== 'none');
+    const shown = drawn.filter((t) => t.getAttribute('visibility') !== 'hidden');
     const boxes = shown.map((t) => ({ name: t.textContent ?? '', box: t.getBoundingClientRect() }));
     const overlaps: string[] = [];
     boxes.forEach((a, i) => boxes.slice(i + 1).forEach((b) => {
@@ -28,8 +33,17 @@ async function names(page: Page): Promise<{ count: number; smallest: number; ove
         && a.box.top < b.box.bottom && b.box.top < a.box.bottom) overlaps.push(`${a.name} / ${b.name}`);
     }));
     const onScreen = shown.map((t) => Number(t.getAttribute('font-size')) * (t.getScreenCTM()?.a ?? 1));
-    return { count: shown.length, smallest: Math.min(...onScreen), overlaps };
+    return {
+      drawn: drawn.length, hidden: drawn.length - shown.length,
+      count: shown.length, smallest: Math.min(...onScreen), overlaps,
+    };
   });
+}
+
+/** The ids of the nodes on the canvas now, sorted (`drawnIds` waits for them to land). */
+async function idsNow(page: Page): Promise<string[]> {
+  return page.locator('.graphRenderer svg .graph-node[data-node-id]').evaluateAll(
+    (els) => els.map((el) => el.getAttribute('data-node-id') as string).sort());
 }
 
 /**
@@ -70,26 +84,54 @@ test('every family opens with each name readable at the fit, and none over anoth
   page.on('request', (request) => {
     if (request.url().includes('/show/index/gjgf')) asked.push(request.url());
   });
+  // Every family answers late, so the Show panel has read the corpus, and
+  // would draw its default, before the page's own drawing is on the canvas.
+  await page.route('**/show/index/gjgf*', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await route.continue();
+  });
   await drawEveryFamily(page);
   // The fit is a transition, and the names are sorted once it settles.
   await expect.poll(async () => {
     const drawn = await names(page);
     return drawn.count > 0 && drawn.smallest >= 9.9 && drawn.overlaps.length === 0;
   }, { timeout: SETTLED }).toBe(true);
+  // An overlap is removed by hiding a name, so none overlapping is no proof
+  // the names are readable: here 4 of 38 are hidden at the fit.
+  // Mutation: hide every name but the first -- none overlaps, and this fails.
+  const drawn = await names(page);
+  expect(drawn.hidden, `${drawn.hidden} of ${drawn.drawn} names hidden`).toBeLessThanOrEqual(drawn.drawn / 4);
   // The page's address and the Show panel's default both open the index at
-  // boot; it is asked for once.
+  // boot; it is asked for once. **NOT BY `openShow`'s GUARD**, which merges
+  // a second ask for a drawing still opening: `_openShow` sets the address
+  // before it opens the panel, and the panel draws its default only with no
+  // address, so at boot nothing asks twice. The guard is held by "a drawing
+  // asked for again while it is opening is asked for once".
+  // Mutation: drop both the address `_openShow` sets first and the guard --
+  // the panel, its corpus read before every family answers, asks again, and
+  // this fails. Either alone keeps it green.
   expect(asked).toHaveLength(1);
   await expect(page.locator('.show__crumb.is-current')).toHaveText('every family');
 });
 
+/** Wait for a drawing other than `before` to land on the canvas, and give its ids. */
+async function nextDrawing(page: Page, before: string[]): Promise<string[]> {
+  await expect.poll(() => idsNow(page), { timeout: SETTLED }).not.toEqual(before);
+  return drawnIds(page);
+}
+
 test('a double-click opens a family and then a project, and Back walks out again', async ({ page }) => {
+  // The address and the trail are both set before any drawing is asked for,
+  // so each step is held to the nodes on the canvas as well.
   await drawEveryFamily(page);
+  const index = await drawnIds(page);
   const family = page.locator('.graph-node[data-node-id^="family::"]').first();
   const name = (await family.getAttribute('data-node-id'))!.slice('family::'.length);
   await family.dblclick();
   await expect(page).toHaveURL(new RegExp(`\\?show=family:${name}$`));
   await expect(page.locator('.show__crumb.is-current')).toHaveText(name);
   await expect(page.locator('a.show__crumb')).toHaveText('every family');
+  const familyIds = await nextDrawing(page, index);
 
   // A project of that family: any public member, not a private one.
   const member = page.locator(`.graph-node[data-node-id^="repo::"]:not([data-node-id^="repo::private-"])`).first();
@@ -99,13 +141,18 @@ test('a double-click opens a family and then a project, and Back walks out again
   await expect(page).toHaveURL(new RegExp(`\\?show=project:${project}$`));
   await expect(page.locator('.show__crumb.is-current')).toHaveText(project);
   await expect(page.locator('.show__view[data-view="estate"]')).toHaveClass(/is-current/);
+  await nextDrawing(page, familyIds);
 
+  // Mutation: let a popstate set the address and the trail and draw nothing
+  // -- the project stays on the canvas, and this fails.
   await page.goBack();
   await expect(page).toHaveURL(new RegExp(`\\?show=family:${name}$`));
   await expect(page.locator('.show__crumb.is-current')).toHaveText(name);
+  await expect.poll(() => idsNow(page), { timeout: SETTLED }).toEqual(familyIds);
   await page.goBack();
   await expect(page).toHaveURL(/\?show=index$/);
   await expect(page.locator('.show__crumb.is-current')).toHaveText('every family');
+  await expect.poll(() => idsNow(page), { timeout: SETTLED }).toEqual(index);
 });
 
 test('a drawing asked for again while it is opening is asked for once', async ({ page }) => {
@@ -126,14 +173,19 @@ test('a drawing asked for again while it is opening is asked for once', async ({
 
 test('a step of the trail opens what it names', async ({ page }) => {
   await drawEveryFamily(page);
+  const index = await drawnIds(page);
   const family = page.locator('.graph-node[data-node-id^="family::"]').first();
   await family.dblclick();
   await expect(page).toHaveURL(/\?show=family:/);
+  await nextDrawing(page, index);
   // In this page, not by loading another: the link's address is for a new tab.
   await page.evaluate(() => { (window as unknown as { stayed: boolean }).stayed = true; });
   await page.locator('a.show__crumb', { hasText: 'every family' }).click();
   await expect(page).toHaveURL(/\?show=index$/);
   await expect(page.locator('.show__crumb.is-current')).toHaveText('every family');
+  // Mutation: let a crumb's click set the address and the trail and draw
+  // nothing -- the family stays on the canvas, and this fails.
+  await expect.poll(() => idsNow(page), { timeout: SETTLED }).toEqual(index);
   expect(await page.evaluate(() => (window as unknown as { stayed?: boolean }).stayed)).toBe(true);
 });
 
