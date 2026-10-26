@@ -129,14 +129,15 @@ def corpus(tmp_path: Path) -> Path:
 @pytest.fixture()
 def clones(tmp_path: Path) -> Path:
     """alpha's manifests: one URL to a declared seam, one to an undeclared one,
-    and one bare name that resolves to nothing."""
+    a shorthand to another host's repository, and `delta`, an estate
+    repository named only as a package."""
     where = tmp_path / "clones"
     alpha = where / "alpha"
     alpha.mkdir(parents=True)
     (alpha / "pyproject.toml").write_text(
         'dependencies = ["beta @ git+https://github.com/example/beta.git"]\n', encoding="utf-8")
     (alpha / "package.json").write_text(
-        '{"dependencies": {"g": "github:x/y", "gamma": "^1.0.0", '
+        '{"dependencies": {"g": "github:x/y", "gamma": "^1.0.0", "delta": "^1.0.0", '
         '"gg": "git+https://github.com/example/gamma.git"}}\n', encoding="utf-8")
     _commit_all(alpha)
     return where
@@ -374,10 +375,16 @@ def test_a_measured_link_is_dashed_and_never_places_a_member(client, clones, mon
 
 
 def test_a_name_that_only_matches_is_not_a_link(client, clones, monkeypatch):
+    # `delta` is an estate repository that alpha's package.json names only as
+    # a package. gamma is named so too, and also by its URL, so it cannot
+    # tell the two readings apart. Broken by also reading a quoted package
+    # name as a link, delta is drawn.
     monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(clones))
     reading = show_service.read()
     links, _ = show_service.measured_links(reading, ["alpha"], [clones])
-    assert sorted(link["target"] for link in links) == ["beta", "gamma"]
+    targets = sorted(link["target"] for link in links)
+    assert "delta" not in targets, "a package that shares a repository's name was drawn as a link"
+    assert targets == ["beta", "gamma"]
     assert all(link["file"] in ("pyproject.toml", "package.json") for link in links)
 
 
