@@ -64,13 +64,23 @@ async function openStubbedTree(
   await page.locator('.panel-source__url-input button.primary').click();
 }
 
-/** Each listed file's entry height over its name's: 1 when the entry is one line. */
+/**
+ * How many lines each listed file's entry takes: its height over the height
+ * of one line of its name, which is a range over the name's first character.
+ * A raw link pushed under the name, or a name wrapped, makes it more than 1.
+ * (Over the name's own height it was 1 however the name wrapped, as a name
+ * that wraps grows with its entry.)
+ */
 async function entryLines(page: Page): Promise<number[]> {
   const entries = page.locator('.gl-panel--file-tree .file_container');
   await expect(entries.first()).toBeVisible();
-  return entries.evaluateAll((els) => els.map((el) =>
-    Math.round(el.getBoundingClientRect().height / (el.querySelector('.file') as HTMLElement).getBoundingClientRect().height),
-  ));
+  return entries.evaluateAll((els) => els.map((el) => {
+    const text = (el.querySelector('.file') as HTMLElement).firstChild as Text;
+    const line = document.createRange();
+    line.setStart(text, 0);
+    line.setEnd(text, 1);
+    return Math.round(el.getBoundingClientRect().height / line.getBoundingClientRect().height);
+  }));
 }
 
 test("a GitHub file's raw link sits on its name's line", async ({ page }) => {
@@ -87,16 +97,23 @@ test("a GitHub file's raw link sits on its name's line", async ({ page }) => {
   expect(await entryLines(page)).toEqual([1, 1]);
 });
 
-test('a file read from disk is listed by its name alone', async ({ page }) => {
+test('a file read from disk is listed by its name alone, on one line however long', async ({ page }) => {
+  // Not run with the change that made it measure a wrapped name: the browser
+  // suites bind fixed ports this workstation shares.
+  const LONG = 'notes on why the streaming renderer fits again after a relayout.md';
   await openStubbedTree(page, '/work/small', [
     { name: 'Cargo.toml', url: '/work/small/Cargo.toml' },
-    { name: 'README.md', url: '/work/small/README.md' },
+    { name: LONG, url: `/work/small/${LONG}` },
   ]);
   const tree = page.locator('.gl-panel--file-tree');
-  await expect(tree.locator('.file')).toHaveText(['Cargo.toml', 'README.md']);
+  await expect(tree.locator('.file')).toHaveText(['Cargo.toml', LONG]);
   // A disk path is no address a browser page can open.
   // Mutation: draw the raw link for every file again -- this fails.
   await expect(tree.locator('.file_raw_btn')).toHaveCount(0);
+  // A tree narrower than the long name, which has spaces to wrap at.
+  await tree.locator('.gl-file-tree__tree').evaluate((el) => { (el as HTMLElement).style.width = '12em'; });
+  // Mutation: let a name wrap (drop .file's white-space: nowrap) -- the long
+  // one takes several lines, and this fails.
   expect(await entryLines(page)).toEqual([1, 1]);
 });
 
