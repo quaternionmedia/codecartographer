@@ -162,10 +162,20 @@ function streamed(body: string): { nodes: Record<string, unknown>; edges: unknow
   return { nodes, edges };
 }
 
-/** The show route's metadata, with the corpus named by its file rather than its place on this disk. */
+/**
+ * The show route's metadata, with the corpus named by its file rather than its
+ * place on this disk, and the caveat's clones said of the export: the window
+ * says a member "had no clone beside this one", which is true of one machine.
+ * The Python side refuses a document that still says it, so a change in the
+ * window's wording fails the export rather than reaching a page.
+ */
 function placeless(metadata: Record<string, any>): Record<string, any> {
   const out: Record<string, any> = { ...metadata, source: 'families.json' };
   if (out.provenance) out.provenance = { ...out.provenance, source: 'families.json' };
+  if (typeof out.caveat === 'string') {
+    out.caveat = out.caveat.replace(
+      /had no clone beside this one, or one git could not read,/g, 'had no clone this export could read,');
+  }
   return out;
 }
 

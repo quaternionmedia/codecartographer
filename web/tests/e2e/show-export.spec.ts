@@ -62,6 +62,11 @@ test('a subject is written as its pictures and one show document naming where ea
   // corpus by where the backend found it, and this fails.
   expect(shown.views.estate.metadata.source).toBe('families.json');
   expect(shown.views.estate.metadata.provenance.source).toBe('families.json');
+  // No member has a clone beside this checkout, so the caveat says nothing was
+  // measured for them. Mutation: keep the window's wording -- it says
+  // "beside this one", and this fails.
+  expect(shown.views.estate.metadata.caveat).toContain('had no clone this export could read');
+  expect(shown.views.estate.metadata.caveat).not.toMatch(/beside this|this checkout|this disk/);
   expect(shown.files).toEqual({ estate: 'estate.svg' });
 
   // The picture draws on its own: a namespaced svg, the size it was drawn at,

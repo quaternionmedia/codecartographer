@@ -41,6 +41,9 @@ NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 # A home folder or a drive, at the start of a value or after a space, quote or
 # bracket: `~/`, `C:\` or `c:/`, `/home/`, `/Users/`.
 MACHINE = re.compile(r"(?:^|[\s\"'(])(?:~[/\\]|[A-Za-z]:[\\/]|/home/|/Users/)")
+# The window's words for the machine it runs on, true where it runs and of no
+# other reader: a clone "beside this one" or "beside this checkout", "this disk".
+MACHINE_WORDS = re.compile(r"\bbeside this (?:one|checkout)\b|\bthis disk\b|\bthis machine\b", re.I)
 
 
 @dataclass(frozen=True)
@@ -118,14 +121,15 @@ def claims_digest(reading: show_service.Reading, subject: Subject) -> str:
 
 
 def scrub(document: Any, where: str = "") -> None:
-    """Refuse a home or drive path anywhere in `document`, naming where it is."""
+    """Refuse a home or drive path, or the window's words for this machine,
+    anywhere in `document`, naming where it is."""
     if isinstance(document, dict):
         for key, value in document.items():
             scrub(value, f"{where}.{key}" if where else str(key))
     elif isinstance(document, list):
         for i, value in enumerate(document):
             scrub(value, f"{where}[{i}]")
-    elif isinstance(document, str) and MACHINE.search(document):
+    elif isinstance(document, str) and (MACHINE.search(document) or MACHINE_WORDS.search(document)):
         raise ValueError(f"{where} names a place on this machine: {document!r}")
 
 

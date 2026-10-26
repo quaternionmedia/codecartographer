@@ -102,6 +102,11 @@ def test_a_familys_digest_covers_its_nesting_and_the_indexs_covers_every_family(
     "c:/users/someone/repos",
     "/home/someone/qm",
     "/Users/someone/qm",
+    # The window's own words for this machine, which a document read on every
+    # machine cannot say.
+    "3 member(s) had no clone beside this one, or one git could not read",
+    "no clone of carlos beside this checkout",
+    "the clone of alfred on this disk is at 4073abf",
 ])
 def test_a_document_naming_a_place_on_a_disk_is_refused(where: str) -> None:
     document = {"provenance": {"claims": {"repo": "quaternionmedia/qm"}},
