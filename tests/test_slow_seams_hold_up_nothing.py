@@ -3,7 +3,8 @@
 The estate and topology routes ask other servers -- the harness, the corpus's
 neighbours -- and wait up to a timeout when nobody answers. The plotter routes
 parse this project's own source or render a figure, and the capability and
-overview routes read a file and lay it out, which takes seconds. FastAPI
+overview routes read a file and lay it out, which takes seconds. The show
+routes read the corpus, ask git and read members' clones. FastAPI
 runs an `async def` route on the event loop, so a blocking call inside one
 stalls every other request until it returns. These tests make the slow part
 slow and check that a cheap route answers in the meantime.
@@ -28,7 +29,7 @@ import pytest
 from codecarto.main import app
 from codecarto.routers import plotter_router
 from codecarto.services import (capability_service, estate_service, overview_service,
-                                 qmcp_client)
+                                 qmcp_client, show_service)
 from codecarto.services.unified_parser_service import UnifiedParserService
 
 SLOW = 0.8
@@ -131,6 +132,13 @@ _RENDER = {"graph_data": {"graph": {"nodes": {}, "edges": []}}, "options": {}}
     ("/capabilities/data", None, [(capability_service, "read", _slow_reading)]),
     ("/overview/gjgf", None, [(overview_service, "read", _slow_reading)]),
     ("/overview/data", None, [(overview_service, "read", _slow_reading)]),
+    # Each reads the corpus's documents and asks git; the index and a family
+    # also read every member's clone, and a project its records' branch.
+    ("/show/subjects", None, [(show_service, "read", _slow_reading)]),
+    ("/show/index/gjgf", None, [(show_service, "read", _slow_reading)]),
+    ("/show/family/core/gjgf", None, [(show_service, "read", _slow_reading)]),
+    ("/show/project/alpha/gjgf", None, [(show_service, "read", _slow_reading)]),
+    ("/show/project/alpha/views", None, [(show_service, "read", _slow_reading)]),
 ])
 def test_slow_work_does_not_hold_up_a_cheap_route(monkeypatch, slow_path, body, patches):
     for target, name, stand_in in patches:
