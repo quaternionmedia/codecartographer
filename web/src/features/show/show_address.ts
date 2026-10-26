@@ -2,6 +2,7 @@
  * The address of a showgraph, in a page's query string.
  *
  *   ?show  or  ?show=index             every family at once: the default
+ *   ?show=index&view=code              every family with each project's code: the whole corpus
  *   ?show=family:performing            one family
  *   ?show=project:carlos               one project's estate view
  *   ?show=project:carlos&view=code     the same project's code map
@@ -26,7 +27,8 @@ export interface ShowAddress {
   kind: ShowKind;
   /** Empty for the index. */
   name: string;
-  /** Only a project has more than one view; the others are always `estate`. */
+  /** A project has three views and the index two (its code view is the whole
+   *  corpus); a family's is always `estate`. */
   view: ShowView;
 }
 
@@ -59,8 +61,11 @@ export function parseShow(search: string): ShowAddress | null {
   const params = parameters(search);
   if (!params.has('show')) return null;
   const raw = params.get('show');
-  // A showgraph named by nothing more is every family at once.
-  if (!raw || raw === 'index') return { kind: 'index', name: '', view: 'estate' };
+  // A showgraph named by nothing more is every family at once, and with
+  // `view=code` every family with each project's code in it.
+  if (!raw || raw === 'index') {
+    return { kind: 'index', name: '', view: params.get('view') === 'code' ? 'code' : 'estate' };
+  }
 
   const colon = raw.indexOf(':');
   if (colon < 0) return null;
@@ -77,7 +82,7 @@ export function parseShow(search: string): ShowAddress | null {
 
 /** The query string for an address, with the view left out when it is `estate`. */
 export function formatShow(address: ShowAddress): string {
-  if (address.kind === 'index') return '?show=index';
+  if (address.kind === 'index') return address.view === 'code' ? '?show=index&view=code' : '?show=index';
   const view = address.kind === 'project' && address.view !== 'estate' ? `&view=${address.view}` : '';
   return `?show=${address.kind}:${encodeURIComponent(address.name)}${view}`;
 }
@@ -108,7 +113,7 @@ export interface TrailSubjects {
  */
 export function trail(address: ShowAddress, subjects: TrailSubjects | null): ShowAddress[][] {
   const index: ShowAddress = { kind: 'index', name: '', view: 'estate' };
-  if (address.kind === 'index') return [[index]];
+  if (address.kind === 'index') return address.view === 'code' ? [[index], [address]] : [[index]];
   const within = new Map((subjects?.families ?? []).map((f) => [f.name, f.within]));
   const family = (name: string): ShowAddress => ({ kind: 'family', name, view: 'estate' });
 
@@ -135,5 +140,6 @@ export function trail(address: ShowAddress, subjects: TrailSubjects | null): Sho
 
 /** How a step of the trail is named. */
 export function crumbLabel(address: ShowAddress): string {
-  return address.kind === 'index' ? 'every family' : address.name;
+  if (address.kind === 'index') return address.view === 'code' ? 'the whole corpus' : 'every family';
+  return address.name;
 }

@@ -35,6 +35,12 @@ marker for each other family that claims it.
 **A PRIVATE MEMBER IS COUNTED AND NEVER NAMED.** The corpus refers to one as
 `private-NN`; this draws it as "a private member" with nothing to open.
 
+**THE WHOLE CORPUS IS THE INDEX WITH EACH PROJECT'S CODE IN IT.** Its code is
+the code map the corpus's own show document for it holds
+(`docs/show/project/<name>/show.json`, written by `codecarto show export`), read
+as data: nothing is parsed or fetched to draw it, and a project with no such
+document is drawn alone and counted in the caveat.
+
 **AN ABSENCE IS A SENTENCE.** A corpus with no `families.json`, or one at a
 schema this window does not read, is a `reason`, never an empty estate. A
 roster, an inventory or a registry that is missing is a note in the metadata:
@@ -50,6 +56,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -63,6 +70,7 @@ ROSTER_FILE = Path("ci") / "workspace.yaml"
 INVENTORY_FILE = Path("status") / "inventory.yaml"
 INTEROP_FILE = Path("ci") / "interop-registry.yaml"
 PALETTE_FILE = Path("ci") / "palette.py"
+SHOW_DOCS = Path("docs") / "show"
 
 KNOWN_SCHEMAS = (1, 2)
 """The `families.json` schemas this window draws. Schema 1 is flat; schema 2
@@ -71,6 +79,9 @@ adds `within`, `subfamilies` and `all_members`."""
 PRIVATE = re.compile(r"^private-\d+$")
 
 CLAIM, DECLARED, MEASURED = "claim", "declared", "measured"
+# A project's code, as its show document's code map holds it: no claim, no
+# seam, and nothing measured between repositories.
+PARSED = "parsed"
 
 # How each basis is drawn. The renderer reads `style`, `color` and `size` off an
 # edge's metadata, so the legend can say what each look means.
@@ -78,6 +89,7 @@ LOOK = {
     CLAIM: {"style": "solid", "color": "#8a93a6", "size": 1.5},
     DECLARED: {"style": "solid", "color": "#e0a526", "size": 2.5},
     MEASURED: {"style": "dashed", "color": "#4fb3ad", "size": 1.5},
+    PARSED: {"style": "solid", "color": "#56688f", "size": 0.75},
 }
 
 # Files a member's own dependencies are measured from, read at the clone's
@@ -112,6 +124,7 @@ class Reading:
 
     source: str = ""
     reason: str = ""
+    root: Path | None = None
     schema: int | None = None
     commit: str | None = None
     generated_at: str = ""
@@ -228,7 +241,7 @@ def read(corpus: Path | str | None = None) -> Reading:
     root = Path(corpus) if corpus else corpus_root.root()
     path = root / FAMILIES_FILE
     where = corpus_root.shown(path)
-    reading = Reading(source=where)
+    reading = Reading(source=where, root=root)
     if not path.is_file():
         reading.reason = (f"no families document at {where}. The "
                           f"governance pin may predate it.")
@@ -677,6 +690,79 @@ def index_graph(reading: Reading, among: list[Path] | None = None):
     return graph
 
 
+def _code_map(reading: Reading, name: str) -> dict[str, Any] | None:
+    """`name`'s code map as the corpus's show document for it holds it, and
+    the commit it was drawn from, or None when there is none to read."""
+    # An export reads the code maps it has just written, wherever it writes them.
+    docs = os.environ.get("CODECARTO_SHOW_DOCS")
+    if docs:
+        path = Path(docs) / "project" / name / "show.json"
+    elif reading.root is not None:
+        path = reading.root / SHOW_DOCS / "project" / name / "show.json"
+    else:
+        return None
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(document, dict):
+        return None
+    code = ((document.get("views") or {}).get("code") or {})
+    graph = code.get("graph") if isinstance(code, dict) else None
+    if not isinstance(graph, dict) or not isinstance(graph.get("nodes"), dict):
+        return None
+    source = (document.get("provenance") or {}).get("source") or {}
+    return {"nodes": graph["nodes"], "edges": [e for e in _rows(graph.get("edges")) if isinstance(e, dict)],
+            "commit": source.get("commit") if isinstance(source, dict) else None}
+
+
+def corpus_graph(reading: Reading, among: list[Path] | None = None):
+    """Every family, each member drawn once, and inside each project its code.
+
+    The index (`index_graph`), with each project's code map from the corpus's
+    show document for it. A code node is `code::<project>::<id>`, one depth
+    below its project for each depth it had in the map, marked `code` so the
+    layout packs it as a disc round the project. A private member has no
+    document and is drawn as the index draws it.
+    """
+    graph = index_graph(reading, among)
+    graph.graph["subject"] = "corpus"
+    drawn: dict[str, str | None] = {}
+    missing: list[str] = []
+    for repo, attrs in list(graph.nodes(data=True)):
+        if not repo.startswith("repo::") or attrs.get("kind") == "private":
+            continue
+        name = repo.removeprefix("repo::")
+        code = _code_map(reading, name)
+        if code is None:
+            missing.append(name)
+            continue
+        base = (attrs["depth"] if isinstance(attrs.get("depth"), int) else 1) + 1
+        ids = {}
+        for node_id, node in code["nodes"].items():
+            if not isinstance(node, dict):
+                continue
+            depth = node.get("depth") if isinstance(node.get("depth"), int) else 1
+            ids[node_id] = f"code::{name}::{node_id}"
+            path = str(node_id).split("::", 1)[-1]
+            graph.add_node(ids[node_id], label=str(node.get("label") or path.rsplit("/", 1)[-1]),
+                           kind=str(node.get("kind") or "file"), depth=base + depth, code=True,
+                           hover=f"{name}: {path}")
+        held = set()
+        for edge in code["edges"]:
+            kind = (edge.get("metadata") or {}).get("kind") or edge.get("kind")
+            source, target = ids.get(edge.get("source")), ids.get(edge.get("target"))
+            if kind == "contains" and source and target:
+                _edge(graph, source, target, PARSED, "contains", "holds")
+                held.add(target)
+        for code_id in ids.values():
+            if code_id not in held:
+                _edge(graph, repo, code_id, PARSED, "contains", "its code")
+        drawn[name] = code["commit"]
+    graph.graph.update(code_drawn=drawn, code_missing=missing)
+    return graph
+
+
 def _records(root: Path, name: str) -> list[dict[str, str]] | None:
     """The records on `project/<name>`: each one's title and status, or `None`."""
     for ref in (f"refs/remotes/origin/project/{name}", f"refs/heads/project/{name}"):
@@ -798,6 +884,14 @@ def caveat(reading: Reading, graph) -> str:
         parts.append(f"{len(unread)} member(s) had no clone beside this one, or "
                      f"one git could not read, so nothing was measured for them: "
                      f"{', '.join(unread)}.")
+    if graph.graph.get("subject") == "corpus":
+        drawn = graph.graph.get("code_drawn") or {}
+        missing = graph.graph.get("code_missing") or []
+        parts.append(f"Each project's code is the code map its show document in "
+                     f"the corpus holds, drawn from its default branch: "
+                     f"{len(drawn)} project(s)"
+                     + (f"; {len(missing)} with no code map drawn yet are drawn "
+                        f"alone: {', '.join(missing)}." if missing else "."))
     undeclared = graph.graph.get("undeclared") or []
     if undeclared:
         parts.append(f"{len(undeclared)} measured link(s) have no declared seam: "
@@ -818,13 +912,17 @@ def metadata(reading: Reading, graph, options: Any = None) -> dict[str, Any]:
         "layout": getattr(options, "layout", "Kamada Kawai"),
         "type": getattr(options, "type", None),
         "palette_id": getattr(options, "palette_id", "0"),
-        "bases": {basis: dict(LOOK[basis]) for basis in (CLAIM, DECLARED, MEASURED)},
+        "bases": {basis: dict(LOOK[basis]) for basis in (CLAIM, DECLARED, MEASURED)
+                  + ((PARSED,) if graph.graph.get("subject") == "corpus" else ())},
         "declared": graph.graph.get("declared"),
         "measured": graph.graph.get("measured"),
         "unread": graph.graph.get("unread") or [],
         "undeclared": graph.graph.get("undeclared") or [],
         "unstated": len(reading.unstated),
         "notes": list(reading.notes),
+        # The whole corpus: each project whose code is drawn, and the commit
+        # of its default branch its code map was drawn from.
+        **({"code": graph.graph.get("code_drawn") or {}} if graph.graph.get("subject") == "corpus" else {}),
         "caveat": caveat(reading, graph),
     }
 

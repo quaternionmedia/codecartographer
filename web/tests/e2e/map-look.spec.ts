@@ -83,3 +83,44 @@ test('a code map draws every node it is sent, and names none its zoom draws too 
   // Its directories are still named, by their outlines.
   await expect(page.locator('.graphRenderer svg .compound-backgrounds text', { hasText: /^d0$/ })).toHaveCount(1);
 });
+
+test("the whole corpus is the index's code view, a switch away from every family", async ({ page }) => {
+  // The pinned corpus holds no code maps, so it is the index's families with
+  // the caveat saying so; what is held here is the address, the route asked
+  // and the way back. Mutation: ask the index's route for its code view --
+  // every family is drawn again for the whole corpus, and this fails.
+  const asked: string[] = [];
+  page.on('request', (request) => {
+    const url = request.url();
+    if (url.includes('/show/corpus/gjgf') || url.includes('/show/index/gjgf')) asked.push(new URL(url).pathname);
+  });
+  await page.goto('/?show=index&view=code');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.compound-group circle').first()).toBeAttached({ timeout: SETTLED });
+  expect(asked).toEqual(['/show/corpus/gjgf']);
+  await expect(page.locator('.show__crumb.is-current')).toHaveText('the whole corpus');
+  const switches = page.locator('.show__now .show__view');
+  await expect(switches.filter({ hasText: "with each project's code" })).toHaveAttribute('aria-pressed', 'true');
+  await switches.filter({ hasText: 'every family' }).click();
+  await expect(page).toHaveURL(/\?show=index$/);
+  await expect.poll(() => asked[asked.length - 1]).toBe('/show/index/gjgf');
+  await expect(page.locator('.show__crumb.is-current')).toHaveText('every family');
+});
+
+test('a showgraph of thousands of nodes is drawn in seconds, not a minute', async ({ page }) => {
+  // Two thousand members on a grid, answered for every family at once.
+  // Mutation: hand the canvas the graph without its total -- it draws one node
+  // a frame, about a minute for these, and this fails.
+  const nodes: Record<string, unknown> = {};
+  for (let i = 0; i < 2000; i++) {
+    nodes[`repo::m${i}`] = { label: `m${i}`, metadata: { label: `m${i}`, kind: 'repository', depth: 1,
+      x: (i % 50) * 80, y: Math.floor(i / 50) * 80 } };
+  }
+  await page.route('**/show/index/gjgf*', (route) => route.fulfill({ json: { status: 200, results: {
+    graph: { nodes, edges: [] },
+    metadata: { kind: 'show', subject: 'index', bases: {}, caveat: '', notes: [], provenance: {} },
+  } } }));
+  await page.goto('/?show');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.graphRenderer svg g.graph-node')).toHaveCount(2000, { timeout: 10_000 });
+});

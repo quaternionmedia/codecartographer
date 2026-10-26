@@ -347,7 +347,11 @@ and `field_of` edges:
    as wide as it is tall.
 
 Each file's `label_at` is the side facing away from its directory, and a
-directory, which its outline names, is given `none`. A map draws its nodes
+directory, which its outline names, is given `none`. The same disc
+(`show_layout._disc`) packs each project's code inside the whole corpus
+(`/show/corpus/gjgf`): `show_layout.pack` lays a project's code round it and
+puts the disc on its family's ring as one item as wide as itself, and a member
+two families claim carries its disc outside every outline. A map draws its nodes
 `MAP_NODE_SCALE` times a code graph's size (`streaming_renderer.ts`), and
 `show_layout.py` spaces for that size; a test holds the two equal.
 

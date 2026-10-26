@@ -207,15 +207,27 @@ function placeless(metadata: Record<string, any>): Record<string, any> {
 
 async function drawEstate(page: Page, subject: ManifestSubject, dir: string) {
   const route = subject.kind === 'index' ? '/show/index/gjgf' : `/show/${subject.kind}/${subject.name}/gjgf`;
+  return drawShowgraph(page, route, `./?show=${subject.address}`, join(dir, 'estate.svg'));
+}
+
+/**
+ * The index's code view, the whole corpus: every family, each project's code
+ * map in it, from the code maps this export has written (`CODECARTO_SHOW_DOCS`).
+ */
+async function drawCorpus(page: Page, dir: string) {
+  return drawShowgraph(page, '/show/corpus/gjgf', './?show=index&view=code', join(dir, 'code.svg'));
+}
+
+async function drawShowgraph(page: Page, route: string, address: string, file: string) {
   const answered = page.waitForResponse((r: Response) => r.url().includes(route), { timeout: SETTLED });
-  await page.goto(`./?show=${subject.address}`);
+  await page.goto(address);
   const results = (await (await answered).json()).results;
   await expect(page.locator('.graph-node').first()).toBeAttached({ timeout: SETTLED });
   await readStep(page);
   await drawnAll(page, Object.keys(results.graph?.nodes ?? {}).length);
   await settle(page);
   await faded(page);
-  writeFileSync(join(dir, 'estate.svg'), await svgOf(page));
+  writeFileSync(file, await svgOf(page));
   return { graph: results.graph, metadata: placeless(results.metadata ?? {}) };
 }
 
@@ -299,6 +311,9 @@ export async function exportSubject(page: Page, subject: ManifestSubject, manife
     if (view === 'estate') {
       views.estate = await drawEstate(page, subject, dir);
       files.estate = 'estate.svg';
+    } else if (subject.kind === 'index' && view === 'code') {
+      views.code = await drawCorpus(page, dir);
+      files.code = 'code.svg';
     } else if (!answers[view]?.available) {
       views[view] = absence(subject, view, answers[view]);
     } else if (view === 'code') {

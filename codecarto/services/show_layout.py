@@ -44,10 +44,18 @@ import networkx as nx
 # How much larger a map draws its nodes than a code graph does: the canvas's
 # `MAP_NODE_SCALE` in `streaming_renderer.ts`, which a test holds equal.
 MAP_NODE_SCALE = 2.5
-# A node's drawn radius on a map at the canvas's default node size, by depth:
-# `web/src/features/graph/services/depth_scale.ts`'s, times `MAP_NODE_SCALE`.
-NODE_R = {depth: r * MAP_NODE_SCALE for depth, r in {0: 12.0, 1: 7.2, 2: 4.0}.items()}
-LEAF_R = 4.0 * MAP_NODE_SCALE
+
+
+def _drawn_r(depth: Any) -> float:
+    """A node's drawn radius on a map at the canvas's default node size, 4:
+    `web/src/features/graph/services/depth_scale.ts`'s multiplier for its
+    depth, times `MAP_NODE_SCALE`."""
+    multiplier = {0: 3.0, 1: 1.8, 3: 0.6}.get(depth, 1.0) if isinstance(depth, int) else 1.0
+    return 4.0 * multiplier * MAP_NODE_SCALE
+
+
+NODE_R = {depth: _drawn_r(depth) for depth in (0, 1, 2)}
+LEAF_R = _drawn_r(2)
 # An outline's padding beyond what it encloses, by depth, as
 # `compound_layout.ts`'s `computeGroupBounds` draws it.
 PAD = {0: 40.0, 1: 20.0}
@@ -75,15 +83,21 @@ def _depth(node: dict[str, Any]) -> int | None:
     return int(depth) if isinstance(depth, (int, float)) else None
 
 
+def _is_code(node: dict[str, Any]) -> bool:
+    """A node of a project's code, drawn inside the estate (`corpus_graph`)."""
+    return bool(node["metadata"].get("code"))
+
+
 def _children(gjgf: dict[str, Any]) -> dict[str, list[str]]:
-    """What each node holds: `contains` edges one depth down, in edge order."""
+    """What each node holds: `contains` edges one depth down, in edge order.
+    A project's code is not one of the estate's groups, and is left out."""
     nodes = gjgf["nodes"]
     held: dict[str, list[str]] = {}
     for edge in gjgf["edges"]:
         if (edge.get("metadata") or {}).get("kind") != "contains":
             continue
         source, target = edge["source"], edge["target"]
-        if source not in nodes or target not in nodes:
+        if source not in nodes or target not in nodes or _is_code(nodes[target]):
             continue
         above, below = _depth(nodes[source]), _depth(nodes[target])
         if above is None or below != above + 1:
@@ -106,6 +120,19 @@ class _Packer:
         self.nodes = gjgf["nodes"]
         self.held = _children(gjgf)
         self.label_at: dict[str, str] = {}
+        # A project's code, laid out as a disc round the project, which is then
+        # one item on its family's ring, as wide as the disc.
+        code: dict[str, list[str]] = {}
+        for edge in gjgf["edges"]:
+            source, target = edge["source"], edge["target"]
+            if ((edge.get("metadata") or {}).get("kind") == "contains" and source in self.nodes
+                    and target in self.nodes and _is_code(self.nodes[target])):
+                code.setdefault(source, []).append(target)
+        label = lambda n: str(self.nodes[n]["metadata"].get("label", n))  # noqa: E731
+        for members in code.values():
+            members.sort(key=label)
+        self.discs = {hub: _disc(hub, code, lambda n: _drawn_r(_depth(self.nodes[n])), self.label_at)
+                      for hub in code if not _is_code(self.nodes[hub])}
 
     def node_r(self, node_id: str) -> float:
         depth = _depth(self.nodes[node_id])
@@ -130,6 +157,9 @@ class _Packer:
         for child in self.held.get(hub, []):
             if self.held.get(child):
                 inner[child] = self.group(child)
+                items.append((child, inner[child][1]))
+            elif child in self.discs:
+                inner[child] = self.discs[child]
                 items.append((child, inner[child][1]))
             else:
                 items.append((child, self.node_r(child)))
@@ -206,8 +236,11 @@ def _rows(circles: list[tuple[str, float]]) -> dict[str, tuple[float, float]]:
 
 
 def _push_out(free: dict[str, tuple[float, float]],
-              outlines: list[tuple[float, float, float]]) -> None:
-    """Move each free node out of every outline, and apart from the others."""
+              outlines: list[tuple[float, float, float]],
+              reach: dict[str, float] | None = None) -> None:
+    """Move each free node out of every outline, and apart from the others,
+    each as wide as `reach` gives it: a member carrying its code is its disc."""
+    reach = reach or {}
     names = sorted(free)
     for _ in range(12):
         moved = False
@@ -216,7 +249,7 @@ def _push_out(free: dict[str, tuple[float, float]],
             for cx, cy, r in outlines:
                 dx, dy = x - cx, y - cy
                 gap = math.hypot(dx, dy)
-                need = r + FREE_CLEAR
+                need = r + FREE_CLEAR + reach.get(name, 0.0)
                 if gap < need:
                     if gap < 1e-6:
                         dx, dy, gap = math.cos(i), math.sin(i), 1.0
@@ -226,10 +259,11 @@ def _push_out(free: dict[str, tuple[float, float]],
                 ox, oy = free[other]
                 dx, dy = x - ox, y - oy
                 gap = math.hypot(dx, dy)
-                if gap < FREE_APART:
+                apart = FREE_APART + reach.get(name, 0.0) + reach.get(other, 0.0)
+                if gap < apart:
                     if gap < 1e-6:
                         dx, dy, gap = 1.0, 0.0, 1.0
-                    x, y = ox + dx / gap * FREE_APART, oy + dy / gap * FREE_APART
+                    x, y = ox + dx / gap * apart, oy + dy / gap * apart
                     moved = True
             free[name] = (x, y)
         if not moved:
@@ -267,7 +301,8 @@ def pack(gjgf: dict[str, Any], subject: str) -> dict[str, Any]:
         for top, (cx, cy) in centres.items():
             for node_id, (dx, dy) in laid[top][0].items():
                 placed[node_id] = (cx + dx, cy + dy)
-        free_ids = [n for n in nodes if n not in placed]
+        in_discs = {n for disc in packer.discs.values() for n in disc[0]}
+        free_ids = [n for n in nodes if n not in placed and (n not in in_discs or n in packer.discs)]
         joined: dict[str, list[str]] = {n: [] for n in free_ids}
         for edge in gjgf["edges"]:
             for here, there in ((edge["source"], edge["target"]), (edge["target"], edge["source"])):
@@ -285,8 +320,10 @@ def pack(gjgf: dict[str, Any], subject: str) -> dict[str, Any]:
                 free[name] = (unjoined * FREE_APART, bottom)
                 unjoined += 1
         outlines = [(centres[t][0], centres[t][1], laid[t][1]) for t in centres]
-        _push_out(free, outlines)
-        placed.update(free)
+        _push_out(free, outlines, {n: packer.discs[n][1] for n in free if n in packer.discs})
+        for name, (x, y) in free.items():
+            for node_id, (dx, dy) in packer.discs.get(name, ({name: (0.0, 0.0)}, 0.0))[0].items():
+                placed[node_id] = (x + dx, y + dy)
         for name in free:
             packer.label_at.setdefault(name, "below")
 
@@ -386,24 +423,52 @@ def _turned(places: dict[str, tuple[float, float]], aspect: float) -> dict[str, 
     return best
 
 
+def _disc(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, str],
+          seen: frozenset[str] = frozenset()) -> tuple[dict[str, tuple[float, float]], float]:
+    """`hub` laid out at the centre of a disc of what it holds that holds
+    nothing, what it holds that holds others packed around the disc, each laid
+    out the same way; and the radius of the circle round it all, with the
+    canvas's outline padding. Places are relative to that circle's centre.
+    Sets each member's `label_at` outward from its hub, and the hub's `none`."""
+    seen = seen | {hub}
+    leaves = [c for c in held.get(hub, []) if not held.get(c) or c in seen]
+    inner = {c: _disc(c, held, radius_of, label_at, seen) for c in held.get(hub, []) if c not in leaves}
+    local: dict[str, tuple[float, float]] = {hub: (0.0, 0.0)}
+    core = radius_of(hub)
+    if leaves:
+        items = [(leaf, radius_of(leaf)) for leaf in leaves]
+        placed, radius = _sunflower(radius_of(hub), items, FILE_GAP)
+        for item, x, y, angle in placed:
+            local[item] = (x, y)
+            label_at[item] = _side(angle)
+        core = radius + max(r for _, r in items)
+    places = _pack_around(core, [(c, inner[c][1]) for c in inner], CODE_GROUP_GAP)
+    for child, (x, y) in places.items():
+        for node_id, (dx, dy) in inner[child][0].items():
+            local[node_id] = (x + dx, y + dy)
+    label_at[hub] = "none"
+    # The canvas draws a group's outline around what it holds, wherever its
+    # own node sits, so the group is measured and placed by that circle: one
+    # centred on the node grew twice as wide at each level a directory held a
+    # single large one beside its files.
+    discs = [(0.0, 0.0, core)] + [(x, y, inner[c][1]) for c, (x, y) in places.items()]
+    cx = (min(x - r for x, _, r in discs) + max(x + r for x, _, r in discs)) / 2
+    cy = (min(y - r for _, y, r in discs) + max(y + r for _, y, r in discs)) / 2
+    reach = max(math.hypot(x - cx, y - cy) + r for x, y, r in discs)
+    return {node_id: (x - cx, y - cy) for node_id, (x, y) in local.items()}, reach + CODE_PAD
+
+
 def code_map(graph: nx.DiGraph) -> dict[str, tuple[float, float]]:
     """A parse laid out as a map, in the canvas's units, and each node's `label_at`.
 
     A node that `contains` others sits at the centre of a disc of what it
     holds that holds nothing, its files; what it holds that holds others, its
-    subdirectories, are packed around that disc, each laid out the same way.
-    What nothing holds is packed in rows, and the whole is turned to the
-    canvas's shape. A file's name goes outward from its directory, and a node
-    its outline names is given `none`. Sets `label_at` on the graph's nodes
-    and returns each node's place.
+    subdirectories, are packed around that disc, each laid out the same way
+    (`_disc`). What nothing holds is packed in rows, and the whole is turned to
+    the canvas's shape. A file's name goes outward from its directory, and a
+    node its outline names is given `none`. Sets `label_at` on the graph's
+    nodes and returns each node's place.
     """
-    def depth(node: str) -> int:
-        value = graph.nodes[node].get("depth", 1)
-        return int(value) if isinstance(value, (int, float)) else 1
-
-    def node_r(node: str) -> float:
-        return NODE_R.get(depth(node), LEAF_R * 0.6 if depth(node) > 2 else LEAF_R)
-
     held: dict[str, list[str]] = {}
     parent: dict[str, str] = {}
     for source, target, data in graph.edges(data=True):
@@ -414,38 +479,10 @@ def code_map(graph: nx.DiGraph) -> dict[str, tuple[float, float]]:
         members.sort(key=lambda n: str(graph.nodes[n].get("label", n)))
 
     label_at: dict[str, str] = {}
-
-    def group(hub: str, seen: frozenset[str]) -> tuple[dict[str, tuple[float, float]], float]:
-        leaves = [c for c in held.get(hub, []) if not held.get(c) or c in seen]
-        inner = {c: group(c, seen | {c}) for c in held.get(hub, []) if c not in leaves}
-        local: dict[str, tuple[float, float]] = {hub: (0.0, 0.0)}
-        core = node_r(hub)
-        if leaves:
-            items = [(leaf, node_r(leaf)) for leaf in leaves]
-            placed, radius = _sunflower(node_r(hub), items, FILE_GAP)
-            for item, x, y, angle in placed:
-                local[item] = (x, y)
-                label_at[item] = _side(angle)
-            core = radius + max(r for _, r in items)
-        places = _pack_around(core, [(c, inner[c][1]) for c in inner], CODE_GROUP_GAP)
-        for child, (x, y) in places.items():
-            for node_id, (dx, dy) in inner[child][0].items():
-                local[node_id] = (x + dx, y + dy)
-        label_at[hub] = "none"
-        # The canvas draws a group's outline around what it holds, wherever its
-        # own node sits, so the group is measured and placed by that circle:
-        # one centred on the node grew twice as wide at each level a
-        # directory held a single large one beside its files.
-        discs = [(0.0, 0.0, core)] + [(x, y, inner[c][1]) for c, (x, y) in places.items()]
-        cx = (min(x - r for x, _, r in discs) + max(x + r for x, _, r in discs)) / 2
-        cy = (min(y - r for _, y, r in discs) + max(y + r for _, y, r in discs)) / 2
-        reach = max(math.hypot(x - cx, y - cy) + r for x, y, r in discs)
-        local = {node_id: (x - cx, y - cy) for node_id, (x, y) in local.items()}
-        return local, reach + CODE_PAD
-
+    radius_of = lambda n: _drawn_r(graph.nodes[n].get("depth", 1))  # noqa: E731
     tops = [n for n in graph.nodes if n not in parent]
-    laid = {top: group(top, frozenset({top})) for top in tops if held.get(top)}
-    circles = [(top, laid[top][1]) if top in laid else (top, node_r(top)) for top in tops]
+    laid = {top: _disc(top, held, radius_of, label_at) for top in tops if held.get(top)}
+    circles = [(top, laid[top][1]) if top in laid else (top, radius_of(top)) for top in tops]
     placed: dict[str, tuple[float, float]] = {}
     for top, (cx, cy) in _rows(circles).items():
         if top in laid:

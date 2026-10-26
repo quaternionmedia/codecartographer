@@ -80,8 +80,10 @@ export class ShowService {
   /** The estate graph for an address: the index, a family, or a project. */
   public static graph(showUrl: string, address: ShowAddress,
                       request: { layout?: string; paletteId?: string } = {}): Promise<SeamOutcome> {
+    // The index's code view is the whole corpus: every family, each
+    // project's code in it.
     const path = address.kind === 'index'
-      ? 'index'
+      ? (address.view === 'code' ? 'corpus' : 'index')
       : `${address.kind}/${encodeURIComponent(address.name)}`;
     return read(get, `${showUrl}/${path}/gjgf${query({ layout: request.layout, palette_id: request.paletteId })}`);
   }

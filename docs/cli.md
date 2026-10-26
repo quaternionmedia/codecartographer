@@ -382,13 +382,16 @@ uv run codecarto show export --corpus ../qm --subject project:carlos,family:perf
 | Option | Meaning |
 |---|---|
 | `--corpus` | A checkout of the governance corpus; its `families.json` names the subjects |
-| `--subject` | `all` (the default): the index, every family and every public project. Or `index`, `family:<name>` and `project:<name>`, comma-separated |
+| `--subject` | `all` (the default): every family, every public project and the index, in that order. Or `index`, `family:<name>` and `project:<name>`, comma-separated |
 | `--out` | Where each subject's folder is written |
 
 Each subject's folder -- `index/`, `family/<name>/`, `project/<name>/` --
 holds `show.json` and a picture of each view the window draws: `estate.svg`,
 `code.svg` (a project's code map) and `system.png` (a project's system view,
-which draws in HTML). A view the window cannot draw here is stated in
+which draws in HTML). The index's `code.svg` is the whole corpus: every family
+with each project's code map in it, drawn last, from the code maps this export
+has just written under `--out` (the server reads them through
+`CODECARTO_SHOW_DOCS`). A view the window cannot draw here is stated in
 `show.json` with the window's reason, and has no picture. A system view is
 composed from the project's clone on this disk, so it is drawn only when that
 clone is at its default branch's head; otherwise the document says the clone
@@ -552,6 +555,7 @@ reads one this table does not name, or this table names one nothing reads.
 | `CODECARTO_API` | `web/vite.config.js` | The backend the dev server proxies API paths to; `codecarto.cli.DEFAULT_PORT` on 127.0.0.1 |
 | `CODECARTO_FORGE` | `/topology` | The forge a topology box's repository link points at; `https://github.com` |
 | `CODECARTO_CORPUS` | `/capabilities`, `/show`, `/estate` | The governance corpus checkout read in place of the pin; the `governance/qm` submodule |
+| `CODECARTO_SHOW_DOCS` | `/show/corpus/gjgf` | The folder of show documents the whole corpus reads each project's code map from, which `show export` sets to the folder it writes; the corpus's own docs/show folder |
 | `CODECARTO_REPO_ROOTS` | `/system`, `/show` | Directories searched for a named repository, separated by the OS path separator; the checkout's parent and grandparent |
 | `CC_CACHE_TTL` | the caches | Seconds a cached repository tree, parsed graph or extracted C source stays fresh; 86400 |
 | `CC_GITHUB_TOKEN` | GitHub reads | A GitHub token, read first; the full order is in `docs/services.md`, *GitHub Token* |

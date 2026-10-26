@@ -939,7 +939,8 @@ def show_export(corpus: str, subject: str, out: str):
     \b
     Each subject gets a folder under OUT -- index/, family/<name>/,
     project/<name>/ -- holding show.json and a picture of each view the
-    window draws: estate.svg, code.svg and system.png. A view it cannot draw
+    window draws: estate.svg, code.svg and system.png. The index's code.svg
+    is the whole corpus, drawn last from the projects' code maps under OUT. A view it cannot draw
     is stated in show.json with the reason. The pictures come from the real
     renderer, run headlessly by web/playwright.export.config.ts; a document
     naming a place on this machine fails the export.
@@ -972,8 +973,9 @@ def show_export(corpus: str, subject: str, out: str):
     with tempfile.TemporaryDirectory() as tmp:
         manifest_path = Path(tmp) / "manifest.json"
         manifest_path.write_text(json.dumps(plan), encoding="utf-8")
+        # The index's code view is drawn from the code maps this export writes.
         env = {**os.environ, "SHOW_EXPORT_MANIFEST": str(manifest_path),
-               "CODECARTO_CORPUS": str(corpus_path)}
+               "CODECARTO_CORPUS": str(corpus_path), "CODECARTO_SHOW_DOCS": str(out_path)}
         drawn = subprocess.run(["npx", "playwright", "test", "--config", "playwright.export.config.ts"],
                                cwd=WEB_DIR, env=env, shell=True)
 

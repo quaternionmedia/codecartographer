@@ -97,6 +97,18 @@ def show_index(layout: str = Query("Kamada Kawai"),
                  f"/show/index/gjgf?layout={layout}")
 
 
+@ShowRouter.get("/corpus/gjgf")
+def show_corpus(layout: str = Query("Kamada Kawai"),
+                palette_id: str = Query("0")) -> dict[str, Any]:
+    """Every family, each member drawn once, and inside each project its code:
+    the index's code view, the whole corpus in one graph."""
+    reading = show_service.read()
+    if not reading.ok:
+        return _unreadable(reading)
+    return _draw(reading, show_service.corpus_graph(reading), layout, palette_id,
+                 f"/show/corpus/gjgf?layout={layout}")
+
+
 @ShowRouter.get("/family/{name}/gjgf")
 def show_family(name: str, layout: str = Query("Kamada Kawai"),
                 palette_id: str = Query("0")) -> dict[str, Any]:

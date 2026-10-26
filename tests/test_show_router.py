@@ -709,3 +709,108 @@ def test_a_project_s_view_is_a_ring_around_the_project(client):
     assert _xy(nodes["repo::alpha"]) == (0.0, 0.0)
     others = [_distance(_xy(a), (0.0, 0.0)) for n, a in nodes.items() if n != "repo::alpha"]
     assert min(others) > 30, "something was packed onto the project itself"
+
+
+# --- the whole corpus: the index with each project's code in it --------------
+#
+# A project's code is the code map its show document in the corpus holds,
+# read as data (`docs/show/project/<name>/show.json`); nothing is parsed or
+# fetched to draw it.
+
+def _code_document(where: Path, name: str, files: int = 3, commit: str = "c" * 40) -> None:
+    """A show document for `name` holding a code map: its root, one
+    subdirectory, and `files` files in each."""
+    root = f"dir::example/{name}"
+    sub = f"{root}/src"
+    nodes = {root: {"id": root, "label": f"example/{name}", "depth": 0, "kind": "directory"},
+             sub: {"id": sub, "label": "src", "depth": 0, "kind": "directory"}}
+    edges = [{"source": root, "target": sub, "metadata": {"kind": "contains"}}]
+    for holder in (root, sub):
+        for i in range(files):
+            leaf = f"file::{holder.removeprefix('dir::')}/f{i}.py"
+            nodes[leaf] = {"id": leaf, "label": f"f{i}.py", "depth": 1, "kind": "file"}
+            edges.append({"source": holder, "target": leaf, "metadata": {"kind": "contains"}})
+    folder = where / "project" / name
+    folder.mkdir(parents=True)
+    (folder / "show.json").write_text(json.dumps({
+        "schema": 1, "subject": {"kind": "project", "name": name},
+        "provenance": {"source": {"repo": f"example/{name}", "commit": commit}},
+        "views": {"code": {"graph": {"nodes": nodes, "edges": edges}}}, "files": {}}), encoding="utf-8")
+
+
+def test_the_whole_corpus_draws_each_project_s_code_inside_it(corpus, client):
+    _code_document(corpus / "docs" / "show", "alpha")
+    results = _results(client, "/show/corpus/gjgf")
+    nodes, edges = _nodes(results), _edges(results)
+    code = {n: a for n, a in nodes.items() if n.startswith("code::alpha::")}
+    assert len(code) == 8
+    assert all(a.get("code") is True for a in code.values())
+    # One depth below the project for each depth it had in its map.
+    assert nodes["code::alpha::dir::example/alpha"]["depth"] == nodes["repo::alpha"]["depth"] + 1
+    assert nodes["code::alpha::file::example/alpha/src/f0.py"]["depth"] == nodes["repo::alpha"]["depth"] + 2
+    holds = {(e["source"], e["target"]) for e in edges if e.get("basis") == "parsed"}
+    assert ("repo::alpha", "code::alpha::dir::example/alpha") in holds
+    assert ("code::alpha::dir::example/alpha", "code::alpha::dir::example/alpha/src") in holds
+    # Every family is still drawn, and the reader is told which projects have no code.
+    assert {"family::core", "family::sound"} <= set(nodes)
+    assert results["metadata"]["code"] == {"alpha": "c" * 40}
+    assert "parsed" in results["metadata"]["bases"]
+    assert "1 project(s)" in results["metadata"]["caveat"] and "gamma" in results["metadata"]["caveat"]
+
+
+def test_a_private_member_s_code_is_never_drawn(corpus, client):
+    # Mutation: read a document for every member the index draws -- the
+    # private member's code is drawn, with its own path, and this fails.
+    _code_document(corpus / "docs" / "show", "private-07")
+    nodes = _nodes(_results(client, "/show/corpus/gjgf"))
+    assert not [n for n in nodes if n.startswith("code::private-07::")]
+    assert not [a for a in nodes.values() if a.get("code") and "private-07" in str(a.get("hover"))]
+
+
+def test_the_whole_corpus_reads_the_code_maps_an_export_writes(corpus, client, tmp_path, monkeypatch):
+    # The export writes every project's code map, then draws the index from
+    # them, wherever it writes. Mutation: read the corpus's own docs/show
+    # alone -- the export's fresh code maps are not drawn, and this fails.
+    written = tmp_path / "out"
+    _code_document(written, "alpha")
+    monkeypatch.setenv("CODECARTO_SHOW_DOCS", str(written))
+    nodes = _nodes(_results(client, "/show/corpus/gjgf"))
+    assert "code::alpha::dir::example/alpha" in nodes
+
+
+def test_a_project_s_code_is_packed_round_it_inside_its_family_s_outline(corpus, client):
+    # Mutation: pack a project as a single node -- its code keeps the compound
+    # layout's places, out across the estate, and this fails.
+    _code_document(corpus / "docs" / "show", "alpha", files=12)
+    _code_document(corpus / "docs" / "show", "gamma", files=6)
+    results = _results(client, "/show/corpus/gjgf?layout=Compound")
+    nodes, edges = _nodes(results), _edges(results)
+    tops = [n for n, a in nodes.items() if a.get("depth") == 0 and not a.get("code")]
+    circles = {n: _outline(nodes, edges, n) for n in tops}
+    for project, family in (("alpha", "family::core"), ("gamma", "family::performing")):
+        cx, cy, r = circles[family]
+        for node_id in (n for n in nodes if n.startswith(f"code::{project}::")):
+            assert _distance(_xy(nodes[node_id]), (cx, cy)) < r, \
+                f"{node_id} was drawn outside {family}'s outline"
+    for i, a in enumerate(tops):
+        for b in tops[i + 1:]:
+            ax, ay, ar = circles[a]
+            bx, by, br = circles[b]
+            assert _distance((ax, ay), (bx, by)) >= ar + br, f"{a}'s outline overlapped {b}'s"
+
+
+def test_a_shared_member_carries_its_code_outside_every_outline(corpus, client):
+    # delta is claimed by sound and by irl, so it sits outside both; its code
+    # goes with it. Mutation: place a shared member alone -- its code keeps the
+    # compound layout's places, and this fails.
+    _code_document(corpus / "docs" / "show", "delta", files=8)
+    results = _results(client, "/show/corpus/gjgf?layout=Compound")
+    nodes, edges = _nodes(results), _edges(results)
+    delta = _xy(nodes["repo::delta"])
+    code = [_xy(a) for n, a in nodes.items() if n.startswith("code::delta::")]
+    reach = max(_distance(delta, xy) for xy in code)
+    for top in (n for n, a in nodes.items() if a.get("depth") == 0 and not a.get("code")):
+        cx, cy, r = _outline(nodes, edges, top)
+        for xy in code:
+            assert _distance(xy, (cx, cy)) > r, f"delta's code was drawn inside {top}'s outline"
+    assert reach < 600, f"delta's code reached {reach:.0f} from it"

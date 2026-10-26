@@ -65,6 +65,10 @@ export class D3GraphRenderer implements IGraphRenderer {
     const nodes = flattenNodes(graphData.graph?.nodes);
     const edges = (graphData.graph?.edges ?? []) as GraphEdge[];
 
+    // Drawn a share of the whole each frame, as a stream is once it says how
+    // many: told nothing, the canvas drew one node a frame, and the whole
+    // corpus's four thousand took over a minute.
+    renderer.setTotal(nodes.length);
     renderer.mergeGraph(nodes, edges);
     this.renderer = renderer;
 
