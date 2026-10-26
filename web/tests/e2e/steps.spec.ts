@@ -443,3 +443,70 @@ test("a draw brings the canvas into view over a stack maximised with Golden Layo
   await expect(page.locator('.lm_maximised')).toHaveCount(0);
   await expect.poll(() => windowsInView(page)).toContain('graph');
 });
+
+/**
+ * The header's shape: its height, how many lines its title takes, whether what
+ * the rail paints ends before the controls at the header's right end, and
+ * whether Next is whole inside the rail. A rail that clips paints no further
+ * than its own box; one that does not paints as far as its last button.
+ */
+async function headerShape(page: Page) {
+  return page.evaluate(() => {
+    const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect() ?? null;
+    const header = box('.gl-app-header')!;
+    const title = box('.gl-app-header__title')!;
+    const nav = document.querySelector('nav.gl-steps')!;
+    const rail = nav.getBoundingClientRect();
+    const clips = getComputedStyle(nav).overflowX !== 'visible';
+    const painted = Math.max(...[...nav.querySelectorAll('button')].map((b) => {
+      const right = b.getBoundingClientRect().right;
+      return clips ? Math.min(right, rail.right) : right;
+    }));
+    const controls = box('.gl-app-header__gh-auth') ?? box('.gl-app-header__help-btn')!;
+    const next = box('.gl-steps__next');
+    return {
+      height: Math.round(header.height),
+      titleLines: Math.round(title.height / 18),
+      railClearOfControls: painted <= controls.left,
+      nextWhole: next ? next.left >= rail.left && next.right <= rail.right : null,
+    };
+  });
+}
+
+test('the header is one line, of one height on every step, in a narrow window too', async ({ page }) => {
+  /**
+   * At 700 pixels the rail and Next left the title too little room, and it
+   * wrapped onto a second line while Next was shown: the header was 50 pixels
+   * tall on steps 1 to 3 and 45 on Read, so the dock under it moved with the
+   * step, and the rail ran on under the controls at the header's right end.
+   * The title keeps its line, and the steps the reader is not on give their
+   * names to their numbers; narrower still, the rail scrolls rather than run
+   * under the controls.
+   */
+  await page.setViewportSize({ width: 700, height: 600 });
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const oneLine = { height: 45, titleLines: 1, railClearOfControls: true };
+  for (const id of ['open', 'browse', 'tune', 'read']) {
+    await rail(page).locator(`.gl-steps__step[data-step="${id}"]`).click();
+    await expect(current(page)).toHaveAttribute('data-step', id);
+    // Mutation: keep every step's name in a narrow window -- Next runs past
+    // the rail's end, and this fails.
+    expect(await headerShape(page), `on ${id}`).toEqual({ ...oneLine, nextWhole: id === 'read' ? null : true });
+  }
+  // The step's name is still the button's, to a screen reader and a test.
+  // Mutation: hide it with `display: none` -- the button is named "2", and
+  // this fails.
+  await expect(step(page, 'Browse')).toHaveAccessibleName(/Browse/);
+
+  // Narrower than the rail can fit. Mutations: let the rail overflow its box
+  // -- it runs under the controls -- or let the title wrap, giving it the
+  // room -- the header is 50 pixels tall -- and this fails.
+  await page.setViewportSize({ width: 560, height: 600 });
+  await rail(page).locator('.gl-steps__step[data-step="open"]').click();
+  // Next comes back with the redraw that moves the rail; measured before it,
+  // the rail is short enough to fit, and nothing here is tested.
+  await expect(current(page)).toHaveAttribute('data-step', 'open');
+  await expect(next(page)).toBeVisible();
+  expect(await headerShape(page)).toMatchObject(oneLine);
+});
