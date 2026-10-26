@@ -152,8 +152,9 @@ in which languages, and names what the vocabulary could not place, each as what
 it is (a file the walk drew, a kind that is no construct and why); it is read
 again whenever a new graph is drawn, and never kept for one that has gone -- a
 construct drawn from the vocabulary is not code and has no census. A construct's name sets it in the table
-below; **show** frames its nodes and selects them for the
-[selection ring](#selection-ring). *Construct* picks one construct and sets it
+below; **show** frames its nodes and selects them, so a key opens the
+[selection ring](#selection-ring) on them, or the [node ring](#node-ring) when
+the construct is one node. *Construct* picks one construct and sets it
 beside itself in every language: how each spells it, with the abstraction layer
 of each token, what its parser calls it, and a note. Every language
 `constructs.yaml` lists -- C, Rust, Python, assembly and the linker script -- is
