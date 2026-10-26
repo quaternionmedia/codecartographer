@@ -113,6 +113,9 @@ export class StreamingGraphRenderer {
   // The group outlines as last drawn, so a fit frames them; empty while
   // Group Outlines is off.
   private _groupBounds: GroupBounds[] = [];
+  // The box each outline's label was set in, by the outline's node id, so a
+  // fit frames the label with its outline.
+  private _outlineLabelBoxes = new Map<string, Box>();
   // Which nodes the host's view state hides (`setHiddenTest`), so a fit
   // leaves them out; none until it says.
   private _isHidden: (id: string) => boolean = () => false;
@@ -301,6 +304,7 @@ export class StreamingGraphRenderer {
       } else {
         this._backgroundGroup.selectAll('*').remove();
         this._groupBounds = [];
+        this._outlineLabelBoxes = new Map();
       }
     }
   }
@@ -720,7 +724,9 @@ export class StreamingGraphRenderer {
       reach: this._extentOf(n),
       label: labels.get(n.id) ?? null,
     }));
-    const outlines: FramedOutline[] = this._groupBounds.map((b) => ({ nodeId: b.nodeId, x: b.cx, y: b.cy, r: b.radius }));
+    const outlines: FramedOutline[] = this._groupBounds.map((b) => ({
+      nodeId: b.nodeId, x: b.cx, y: b.cy, r: b.radius, label: this._outlineLabelBoxes.get(b.nodeId) ?? null,
+    }));
     const extents = framedExtents(framed, outlines, (id) => this._childrenMap.get(id) ?? [], this._isHidden);
     const t = fitTransform(extents, { width: this.width, height: this.height });
     if (!t) return;
@@ -767,17 +773,15 @@ export class StreamingGraphRenderer {
     return 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n);
   }
 
-  /** How far an outline is drawn past what it encloses, and the node size it reckons with. */
+  /** How far an outline is drawn past what it encloses, and how far each node in it reaches. */
   private _outlineSpacing(): OutlineSpacing {
-    return { padding: 40, baseNodeSize: this.styling.nodeSize! * 3.0 };
+    return { padding: 40, baseNodeSize: this.styling.nodeSize! * 3.0, radiusOf: (n) => this._extentOf(n) };
   }
 
   private _drawCompoundBackgrounds(): void {
     const nodes = Array.from(this.nodeById.values());
-    const { padding, baseNodeSize } = this._outlineSpacing();
-    const bounds = this._compoundManager.computeGroupBounds(
-      nodes, this._allEdges, padding, baseNodeSize, (n) => this._extentOf(n),
-    );
+    const { padding, baseNodeSize, radiusOf } = this._outlineSpacing();
+    const bounds = this._compoundManager.computeGroupBounds(nodes, this._allEdges, padding, baseNodeSize, radiusOf);
     this._childrenMap = this._compoundManager.computeChildrenMap(nodes, this._allEdges);
     this._groupBounds = bounds;
     this._paintOutlines(bounds, true);
@@ -821,19 +825,27 @@ export class StreamingGraphRenderer {
         .text(b.label)
         .node()!);
     }
-    // Each label inside its outline where it covers no other label and no
-    // node (outline_labels.ts), measured as drawn, after a removal too.
+    // Each label where it covers no other label and no node, inside its
+    // outline when it fits there (outline_labels.ts), measured as drawn,
+    // after a removal too.
     const nodes = Array.from(this.nodeById.values());
+    const sizes = labels.map((label) => label.getBBox());
     const places = placeOutlineLabels(
-      bounds.map((b, i) => {
-        const size = labels[i].getBBox();
-        return { cx: b.cx, cy: b.cy, r: b.radius, w: size.width, h: size.height };
-      }),
+      bounds.map((b, i) => ({ cx: b.cx, cy: b.cy, r: b.radius, w: sizes[i].width, h: sizes[i].height })),
       nodes.map((n) => ({ x: n.x ?? 0, y: n.y ?? 0, r: this._extentOf(n) })),
     );
+    // Each label's box as placed, which the fit frames with its outline.
+    this._outlineLabelBoxes = new Map();
     labels.forEach((label, i) => {
       const placed = d3.select(label).attr('x', places[i].x).attr('y', places[i].y);
       if (fadeIn) placed.transition().delay(300).duration(500).style('opacity', 1);
+      const { width, height } = sizes[i];
+      this._outlineLabelBoxes.set(bounds[i].nodeId, {
+        minX: places[i].x - width / 2,
+        minY: places[i].y - height / 2,
+        maxX: places[i].x + width / 2,
+        maxY: places[i].y + height / 2,
+      });
     });
   }
 
