@@ -9,8 +9,8 @@
  *
  *   cd web && npx playwright test tour && npx playwright show-report
  *
- * It fails on any page error or console error on the way, but the graphbase
- * reads demo-graph.spec.ts excuses, and otherwise asserts only what it needs
+ * It fails on any page error or console error on the way, but Graphbase's
+ * reads with no database behind them, and otherwise asserts only what it needs
  * to reach each state. Whether a state looks right is for the reader of the
  * screenshots; the other specs check behaviour.
  */
@@ -26,15 +26,16 @@ const SAVED_LAYOUT_KEY = 'cc:gl-layout:default';
 test.use({ viewport: { width: 1600, height: 1000 } });
 
 /**
- * The page reads Graphbase's /db/bookmarks and /db/snapshots as it boots.
- * With `MONGODB_URI` set and no database listening, each fails, and the
- * browser reports the failed request as a console error whose source is that
- * request -- the gap demo-graph.spec.ts excuses, and the only one excused
- * here. Matched on the request the error comes from, not on its text, so an
- * error any script logs, or a failure of any other request, still fails the
- * tour.
+ * The page reads Graphbase's /db/bookmarks and /db/snapshots as it boots, and
+ * /db/history/<hash> for a repository it draws, as the bundled example is.
+ * With `MONGODB_URI` set and no database listening, Graphbase answers each
+ * with a 503, and the browser reports the failed request as a console error
+ * whose source is that request -- the gap demo-graph.spec.ts excuses for the
+ * first two, and the only one excused here. Matched on the request the error
+ * comes from, not on its text, so an error any script logs, or a failure of
+ * any other request, still fails the tour.
  */
-const isKnownGraphbaseGap = (url: string) => /\/db\/(bookmarks|snapshots)/.test(url);
+const isKnownGraphbaseGap = (url: string) => /\/db\/(bookmarks|snapshots|history)\b/.test(url);
 
 let errors: string[] = [];
 
