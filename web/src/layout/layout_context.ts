@@ -558,26 +558,36 @@ export class LayoutContext {
   private _opening: { address: ShowAddress; done: Promise<void> } | null = null;
 
   private async _openShow(address: ShowAddress, history: 'push' | 'replace' | 'keep'): Promise<void> {
+    // **THE LATEST DRAWING ASKED FOR IS THE ONE DRAWN.** Its place is taken
+    // here, before anything is read: an answer still out for another drawing,
+    // or for the Open panel, is dropped from now, and so is this one if a plot
+    // is asked for while it reads a project's views.
+    const current = this.actions.plot.takePlot();
     // Before the panel mounts: a Show panel opening onto nothing drawn draws
     // every family, and this address is what it is about to draw instead.
     this.appState.update({ showAddress: address, showProblem: null });
     this._setShowAddress(address, history);
     this.openPanel('show-panel');
 
-    if (address.kind === 'project') {
-      await this.actions.plot.loadShowViews(address.name);
-    } else {
-      this.appState.update({ showViews: null });
-    }
+    // An estate view does not wait for them: they say which views the panel
+    // offers, not what this one draws.
+    const viewsRead = address.kind === 'project'
+      ? this.actions.plot.loadShowViews(address.name)
+      : Promise.resolve(this.appState.update({ showViews: null }));
 
     if (address.view === 'estate') {
       this._leaveSystemRenderer();
       this._compoundLayout();
-      const drawn = await this.plotWith(() => this.actions.plot.drawShow(address));
+      // A layout change draws it again, from a place of its own.
+      this._lastPlotAction = async () => { await this.actions.plot.drawShow(address); };
+      const drawn = await this.actions.plot.drawShow(address, {}, current);
       if (drawn) this.focusDockPanel('graph');
       return;
     }
 
+    await viewsRead;
+    // Another drawing, or another plot, was asked for while they were read.
+    if (!current()) return;
     const views = this.appState.state.showViews;
     const view = views ? views[address.view] : null;
     if (!view || !view.available) {

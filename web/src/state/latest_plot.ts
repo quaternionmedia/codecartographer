@@ -18,6 +18,9 @@
 // `.js`, so the build `node --test` reads resolves it as the bundler does.
 import { Latest } from '../features/cartography/cartography_actions.js';
 
+/** A plot's place in the order asked: true while no plot has been asked for since. */
+export type PlotTicket = () => boolean;
+
 export class LatestPlot {
   private readonly latest = new Latest();
 
@@ -30,12 +33,27 @@ export class LatestPlot {
   }
 
   /**
+   * The latest place, taken now, for a drawing that asks for something else
+   * before it plots -- a project's showgraph reads its views first. An answer
+   * still out is dropped from here, and `plot` handed this draws only while no
+   * plot has been asked for since. True while it is still the latest.
+   */
+  ticket(): PlotTicket {
+    return this.latest.take();
+  }
+
+  /**
    * Clear the canvas, ask, and `show` the answer unless another plot was asked
    * for since. Resolves true when it was shown, false when it was dropped; a
-   * failure is thrown only while this plot is still the latest.
+   * failure is thrown only while this plot is still the latest. Handed a
+   * `current` overtaken already, it neither clears nor asks.
    */
-  async plot<T>(ask: () => Promise<T>, show: (answer: T) => void): Promise<boolean> {
-    const current = this.latest.take();
+  async plot<T>(
+    ask: () => Promise<T>,
+    show: (answer: T) => void,
+    current: PlotTicket = this.latest.take(),
+  ): Promise<boolean> {
+    if (!current()) return false;
     this.clear();
     let answer: T;
     try {

@@ -24,6 +24,7 @@ import { logger } from '../core/logger';
 import { backendLayoutName } from '../features/graph/services/layout_names';
 import { parseNotes } from '../features/graph/services/parse_notes';
 import { LatestPlot } from './latest_plot';
+import type { PlotTicket } from './latest_plot';
 
 // The menu's registry name, as the backend spells it. One rule in
 // `layout_names.ts`; this used to be a private table here that fell back to
@@ -637,10 +638,18 @@ export class PlotActions {
 
   private _subjectsAsked: Promise<void> | null = null;
 
-  /** Which of a project's views can be drawn here. Draws nothing. */
+  /**
+   * Which of a project's views can be drawn here. Draws nothing. An answer
+   * for a project other than the drawing asked for by then is dropped: open
+   * one project and then another, and the first's views, answering last, were
+   * shown under the second's trail.
+   */
   async loadShowViews(project: string): Promise<void> {
     this.stateController.update({ showViews: null });
     const found = await ShowService.views(this.stateController.api.show, project);
+    const named = isProblem(found) ? project : String(found.document.name ?? project);
+    const asked = this.stateController.state.showAddress;
+    if (asked?.kind !== 'project' || asked.name !== named) return;
     this._settle(found, 'showViews', 'showProblem');
   }
 
@@ -648,13 +657,33 @@ export class PlotActions {
    * A showgraph's estate view -- the index, a family or a project -- on the
    * canvas. Resolves whether it drew, as the other estate draws do, so the
    * canvas is brought forward only over a graph and never over the problem.
+   *
+   * **THROUGH THE LATEST-PLOT TICKET**, as the Open panel's plots are: click
+   * every family, cold and two seconds slow, then a family, and the family was
+   * drawn and then every family over it. `current` is the place the drawing
+   * took when it was asked for (`openShow`); the address is set only when the
+   * answer is shown.
    */
-  async drawShow(address: ShowAddress, request: DrawRequest = {}): Promise<boolean> {
-    this.stateController.clear();
-    const found = await ShowService.graph(this.stateController.api.show, address,
-      { ...request, layout: request.layout ?? this._layout() });
-    this.stateController.update({ showAddress: address });
-    return this._draw(found, 'showProblem');
+  async drawShow(address: ShowAddress, request: DrawRequest = {}, current?: PlotTicket): Promise<boolean> {
+    let drew = false;
+    const shown = await this.plots.plot(
+      () => ShowService.graph(this.stateController.api.show, address,
+        { ...request, layout: request.layout ?? this._layout() }),
+      (found) => {
+        this.stateController.update({ showAddress: address });
+        drew = this._draw(found, 'showProblem');
+      },
+      current,
+    );
+    return shown && drew;
+  }
+
+  /**
+   * The latest place, taken now by a drawing that reads something before it
+   * plots (`LatestPlot.ticket`). Every answer still out is dropped from here.
+   */
+  takePlot(): PlotTicket {
+    return this.plots.ticket();
   }
 
   /** dossier's sections, for the panel's list. Draws nothing. */

@@ -28,7 +28,7 @@ function methodBody(name) {
   return found ? found[1] : null;
 }
 
-for (const name of ['plotUploads', 'loadDemo', 'loadLexicon']) {
+for (const name of ['plotUploads', 'loadDemo', 'loadLexicon', 'drawShow']) {
   test(`${name} asks and draws through the one latest-plot ticket`, () => {
     /** Mutation: ask /parse/unified and draw its answer directly in plotUploads -- this fails. */
     const body = methodBody(name);

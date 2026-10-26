@@ -32,6 +32,32 @@ async function names(page: Page): Promise<{ count: number; smallest: number; ove
   });
 }
 
+/**
+ * The ids of the nodes on the canvas, sorted, once they have stopped
+ * arriving: a drawing streams its nodes in over animation frames, so the
+ * same ids read twice 400 ms apart is a drawing that has landed.
+ */
+async function drawnIds(page: Page): Promise<string[]> {
+  let last = '';
+  let ids: string[] = [];
+  await expect.poll(async () => {
+    ids = await page.locator('.graphRenderer svg .graph-node[data-node-id]').evaluateAll(
+      (els) => els.map((el) => el.getAttribute('data-node-id') as string).sort());
+    const now = ids.join('\n');
+    const still = ids.length > 0 && now === last;
+    last = now;
+    return still;
+  }, { intervals: [400], timeout: SETTLED }).toBe(true);
+  return ids;
+}
+
+/** Open a page at a family no corpus declares: the Show panel lists everything, and nothing is drawn. */
+async function openOnNothing(page: Page): Promise<void> {
+  await page.goto('/?show=family:nowhere');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.show__family').first()).toBeVisible({ timeout: SETTLED });
+}
+
 async function drawEveryFamily(page: Page): Promise<void> {
   await page.goto('/?show');
   await dismissOnboardingModal(page);
@@ -109,4 +135,64 @@ test('a step of the trail opens what it names', async ({ page }) => {
   await expect(page).toHaveURL(/\?show=index$/);
   await expect(page.locator('.show__crumb.is-current')).toHaveText('every family');
   expect(await page.evaluate(() => (window as unknown as { stayed?: boolean }).stayed)).toBe(true);
+});
+
+test('a drawing asked for after another is the one drawn, however late the first answers', async ({ page }) => {
+  await openOnNothing(page);
+  const family = (await page.locator('.show__family').first().getAttribute('data-family'))!;
+
+  // Every family answers 1.5 s late: a cold index, which takes about 2 s.
+  await page.route('**/show/index/gjgf*', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    await route.continue();
+  });
+  const index = page.waitForResponse((r) => r.url().includes('/show/index/gjgf'));
+  await page.locator('button.estate-view__draw', { hasText: 'draw every family' }).click();
+  await page.locator(`.show__family[data-family="${family}"]`).click();
+  await expect(page).toHaveURL(new RegExp(`\\?show=family:${family}$`));
+  await (await index).finished();
+  // Time for an answer that was not dropped to be drawn.
+  await page.waitForTimeout(1_000);
+  const raced = await drawnIds(page);
+
+  await page.goto(`/?show=family:${family}`);
+  const direct = await drawnIds(page);
+  // Mutation: draw a show without the latest-plot ticket, and set its address
+  // when it answers -- every family, answering last, is drawn over the
+  // family, and this fails.
+  expect(raced).toEqual(direct);
+  await expect(page.locator('.show__crumb.is-current')).toHaveText(family);
+});
+
+test("a project's views are the panel's only while it is the drawing asked for", async ({ page }) => {
+  await openOnNothing(page);
+  const rows = page.locator('.show__project');
+  const [first, second] = [
+    (await rows.nth(0).getAttribute('data-project'))!,
+    (await rows.nth(1).getAttribute('data-project'))!,
+  ];
+  // Each project's views, the first answering 1.5 s late, each saying whose they are.
+  await page.route('**/show/project/*/views', async (route) => {
+    const name = decodeURIComponent(route.request().url().split('/project/')[1].split('/')[0]);
+    if (name === first) await new Promise((resolve) => setTimeout(resolve, 1_500));
+    const closed = { available: false, problem: `${name} has no such view here`, remedy: '' };
+    await route.fulfill({ json: { status: 200, message: 'stubbed', results: {
+      name, estate: { available: true }, code: closed, system: closed,
+    } } });
+  });
+  const late = page.waitForResponse((r) => r.url().includes(`/show/project/${first}/views`));
+  await rows.nth(0).locator('.estate__name').click();
+  await rows.nth(1).locator('.estate__name').click();
+  await expect(page).toHaveURL(new RegExp(`\\?show=project:${second}$`));
+  await (await late).finished();
+  await page.waitForTimeout(1_000);
+  // Mutation: settle a views answer whichever project is asked for since --
+  // the first project's views, answering last, are shown under the second's
+  // trail, and this fails.
+  await expect(page.locator('.show__now')).toContainText(`${second} has no such view here`);
+  await expect(page.locator('.show__now')).not.toContainText(`${first} has no such view here`);
+  await expect(page.locator('.show__crumb.is-current')).toHaveText(second);
+  const raced = await drawnIds(page);
+  await page.goto(`/?show=project:${second}`);
+  expect(raced).toEqual(await drawnIds(page));
 });
