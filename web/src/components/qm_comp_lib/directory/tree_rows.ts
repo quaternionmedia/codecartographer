@@ -37,3 +37,16 @@ export function fileRow(
     onclick: disabled ? undefined : open,
   };
 }
+
+/** The attributes a folder's row is drawn with, beside its click. */
+export interface FolderRowAttrs {
+  title: string;
+}
+
+/**
+ * The row for the folder `name`. It is one line, its name cut short when long,
+ * as a file's is, and titled with the whole name for the same reason.
+ */
+export function folderRow(name: string): FolderRowAttrs {
+  return { title: name };
+}

@@ -22,8 +22,24 @@ import { dismissOnboardingModal } from './helpers';
 
 const REPO = 'https://github.com/example/large';
 
-/** Open `url` with its tree stubbed as `files` at the root, and the graph's stream ended at once. */
-async function openStubbedTree(page: Page, url: string, files: { name: string; url: string }[]): Promise<void> {
+/** A folder in a stubbed tree, as the server sends it. */
+interface StubFolder {
+  name: string;
+  size: number;
+  files: { name: string; size: number; raw: string; url: string }[];
+  folders: StubFolder[];
+}
+
+/**
+ * Open `url` with its tree stubbed as `files` and `folders` at the root, and
+ * the graph's stream ended at once.
+ */
+async function openStubbedTree(
+  page: Page,
+  url: string,
+  files: { name: string; url: string }[],
+  folders: StubFolder[] = [],
+): Promise<void> {
   await page.route('**/repo/tree?**', (route) => route.fulfill({
     json: {
       status: 200,
@@ -31,7 +47,7 @@ async function openStubbedTree(page: Page, url: string, files: { name: string; u
       results: {
         info: { owner: 'example', name: 'small', url },
         size: files.length,
-        root: { name: '', size: 0, folders: [], files: files.map((f) => ({ ...f, size: 1, raw: '' })) },
+        root: { name: '', size: 0, folders, files: files.map((f) => ({ ...f, size: 1, raw: '' })) },
         is_partial: false,
       },
     },
@@ -95,6 +111,43 @@ test('a name cut short is titled whole', async ({ page }) => {
   for (const [i, name] of names.entries()) {
     await expect(files.nth(i)).toHaveAttribute('title', name);
   }
+});
+
+test("each folder's contents sit a step in from its name", async ({ page }) => {
+  // Not run with the change that added it: the browser suites bind fixed
+  // ports this workstation shares. tree-indent.test.mjs reads the step from
+  // the stylesheet.
+  const RAW = 'https://raw.githubusercontent.com/example/small/main';
+  const crate = (name: string): StubFolder => ({
+    name, size: 1, files: [], folders: [{
+      name: 'src', size: 1, folders: [],
+      files: [{ name: 'lib.rs', size: 1, raw: '', url: `${RAW}/crates/${name}/src/lib.rs` }],
+    }],
+  });
+  await openStubbedTree(page, 'https://github.com/example/small',
+    [{ name: 'Cargo.toml', url: `${RAW}/Cargo.toml` }],
+    [{ name: 'crates', size: 2, files: [], folders: [crate('a'), crate('b')] }]);
+  const tree = page.locator('.gl-panel--file-tree');
+  await tree.locator('.folder__crates > .folder_button').click();
+  for (const name of ['a', 'b']) {
+    await tree.locator(`.folder__${name} > .folder_button`).click();
+    await tree.locator(`.folder__${name} .folder__src > .folder_button`).click();
+  }
+  await expect(tree.locator('.file', { hasText: 'lib.rs' })).toHaveCount(2);
+  // offsetLeft, as the press's scale and the entries' slide-in transform the
+  // rows' boxes while they run.
+  const left = (selector: string) => tree.locator(selector).first()
+    .evaluate((el) => (el as HTMLElement).offsetLeft);
+  const root = await left('.folder__crates > .folder_button');
+  const crateRow = await left('.folder__a > .folder_button');
+  const srcRow = await left('.folder__a .folder__src > .folder_button');
+  const libA = await left('.folder__a .file');
+  // Mutation: drop .folder_content's step -- every level is at one x, and this fails.
+  expect(await left('.directory_content > .files .file')).toBe(root); // Cargo.toml
+  expect(crateRow).toBeGreaterThan(root);
+  expect(srcRow).toBeGreaterThan(crateRow);
+  expect(libA).toBeGreaterThan(srcRow);
+  expect(await left('.folder__b .file')).toBe(libA);
 });
 
 test('an unread folder in a partial tree reads itself on click', async ({ page }) => {

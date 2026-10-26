@@ -15,7 +15,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { fileRow } from '../../dist-pure/components/qm_comp_lib/directory/tree_rows.js';
+import { fileRow, folderRow } from '../../dist-pure/components/qm_comp_lib/directory/tree_rows.js';
 
 const STREAM = 'test_streaming_renderer_fit_after_stream.ts';
 const RELAYOUT = 'test_streaming_renderer_fit_after_relayout.ts';
@@ -32,6 +32,12 @@ test('a disabled file is titled too, and opens nothing', () => {
   assert.equal(row.title, 'notes.txt');
   assert.match(row.class, /\bdisabled\b/);
   assert.equal(row.onclick, undefined);
+});
+
+test("a folder's row is titled with its whole name, as it is cut short too", () => {
+  /** Mutation: drop the folder's title -- this fails. */
+  const name = 'a_folder_whose_name_runs_past_a_narrow_panel';
+  assert.equal(folderRow(name).title, name);
 });
 
 test('a file whose extension is allowed opens on a click', () => {

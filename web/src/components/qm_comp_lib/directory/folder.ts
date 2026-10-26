@@ -4,6 +4,7 @@ import { FileList } from './files';
 import { animations } from '../../../core/animations';
 import { readStub } from './stub_read';
 import type { StubState } from './stub_read';
+import { folderRow } from './tree_rows';
 
 /**
  * Called when a stub folder (no children) is opened, to read it. Resolves true
@@ -41,6 +42,7 @@ export const Folder: m.Component<FolderAttrs> = {
       m(
         'div.folder_button',
         {
+          ...folderRow(folderName),
           class: [
             isStub ? 'folder_button--stub' : '',
             isEmpty && !isStub ? 'folder_button--empty' : '',
@@ -83,7 +85,7 @@ export const Folder: m.Component<FolderAttrs> = {
           },
         },
         [
-          folderName,
+          m('span.folder_name', folderName),
           isStub && !state.isLoading ? m('span.folder_stub_indicator', ' …') : null,
           state.isLoading ? m('span.folder_loading_indicator', ' ↻') : null,
         ]
