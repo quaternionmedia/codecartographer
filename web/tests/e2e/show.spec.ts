@@ -366,3 +366,42 @@ test("a project's system view leaves the renderer as it found it for the next pl
   await expect(page.locator('.graphRenderer svg .graph-node[data-node-id]').first()).toBeAttached({ timeout: SETTLED });
   await expect(page.locator('.sys-title')).toHaveCount(0);
 });
+
+test("a code map drawn again in another layout is drawn at its own depth, under its own address", async ({ page }) => {
+  await stubViews(page, () => ({
+    estate: { available: true },
+    code: { available: true, url: '/work/small', depth: 1 },
+    system: { available: false, problem: 'not here', remedy: '' },
+  }));
+  const bodies: Array<Record<string, unknown>> = [];
+  const frame = (event: string, data: unknown) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  await page.route('**/parse/stream-url', (route) => {
+    bodies.push(route.request().postDataJSON());
+    return route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body: [
+        frame('meta', { nodeCount: 1, edgeCount: 0, layout: 'spring' }),
+        frame('node', { id: 'dir::src', label: 'src', kind: 'directory', depth: 0, x: 0, y: 0, file: '', line: 0 }),
+        frame('done', { elapsed_ms: 1 }),
+      ].join(''),
+    });
+  });
+  await page.goto('/?show=project:moat&view=code');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.graph-node[data-node-id="dir::src"]')).toBeAttached({ timeout: SETTLED });
+  expect(bodies).toHaveLength(1);
+
+  await page.locator('.lm_tab', { hasText: /Graph Settings/ }).click();
+  const select = page.locator('.panel-settings__group', { hasText: 'Algorithm' }).locator('select');
+  await select.selectOption('circular_layout');
+  await expect.poll(() => bodies.length, { timeout: SETTLED }).toBe(2);
+  // Mutation: store the code view's stream without its depth, so a layout
+  // change streams it at the Open panel's -- the second asks for 2, and this
+  // fails.
+  expect(bodies.map((body) => body.depth)).toEqual([1, 1]);
+  // Mutation: stream the code view as any other stream -- it leaves the
+  // address it was opened at, and this fails.
+  await expect(page).toHaveURL(/\?show=project:moat&view=code$/);
+  await expect(page.locator('.show__crumb.is-current')).toHaveText('moat');
+});

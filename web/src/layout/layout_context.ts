@@ -649,15 +649,13 @@ export class LayoutContext {
     if (address.view === 'code' && view.url) {
       this._leaveSystemRenderer();
       this._compoundLayout();
-      // The coarse map: files, not symbols. The depth is read when the stream
-      // starts, so the reader's own setting is put back straight after.
-      const depth = this.panelState.parseDepth;
-      this.panelState.parseDepth = view.depth ?? 1;
+      // The coarse map: files, not symbols, at the view's depth whenever it
+      // is drawn. The depth was set around the first stream only, so a
+      // layout change drew it again at the Open panel's, symbols and all.
+      const show = { depth: view.depth ?? 1 };
       const url = view.url;
-      // A showgraph's own stream: it keeps the address.
-      this._lastPlotAction = () => { this._startStreamFromUrl(url, true); };
-      this._startStreamFromUrl(url, true);
-      this.panelState.parseDepth = depth;
+      this._lastPlotAction = () => { this._startStreamFromUrl(url, show); };
+      this._startStreamFromUrl(url, show);
     } else if (address.view === 'system') {
       if (!SystemDefinitionRegistry.get(address.name)) {
         SystemDefinitionRegistry.register(new DerivedSystemDefinition(address.name));
@@ -1244,12 +1242,16 @@ export class LayoutContext {
     );
   }
 
-  /** Stream directly from a GitHub URL via /parse/stream-url; `forShow` as `_mountAndStream` takes it. */
-  private _startStreamFromUrl(githubUrl: string, forShow = false): void {
+  /**
+   * Stream directly from a GitHub URL via /parse/stream-url, at the Open
+   * panel's depth; or, given `show`, as a showgraph's code view: at the
+   * view's depth, keeping the address (`_mountAndStream`'s `forShow`).
+   */
+  private _startStreamFromUrl(githubUrl: string, show?: { depth: number }): void {
     const opts = this.appState.state.parserOptions;
     const layout = convertLayout(this.appState.state.graphStyling.layout);
     const exts = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
-    const depth = this.panelState.parseDepth;
+    const depth = show?.depth ?? this.panelState.parseDepth;
 
     const accNodes: { id: string; [k: string]: unknown }[] = [];
     const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
@@ -1328,7 +1330,7 @@ export class LayoutContext {
         },
       ),
       'Connecting to GitHub\u2026',
-      forShow,
+      !!show,
     );
   }
 
