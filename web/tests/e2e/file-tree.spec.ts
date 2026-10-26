@@ -83,32 +83,11 @@ async function entryLines(page: Page): Promise<number[]> {
   }));
 }
 
-test('a folder is told from a file, open from closed, and its contents sit inside it', async ({ page }) => {
-  await page.route('**/repo/tree?**', (route) => route.fulfill({
-    json: {
-      status: 200,
-      message: 'stubbed',
-      results: {
-        info: { owner: 'example', name: 'small', url: '/work/small' },
-        size: 2,
-        root: {
-          name: '', size: 0,
-          folders: [{ name: 'src', size: 1, folders: [], files: [{ name: 'main.rs', size: 1, raw: '', url: '/work/small/src/main.rs' }] }],
-          files: [{ name: 'README.md', size: 1, raw: '', url: '/work/small/README.md' }],
-        },
-        is_partial: false,
-      },
-    },
-  }));
-  await page.route('**/parse/stream-url', (route) => route.fulfill({
-    status: 200, contentType: 'text/event-stream', body: 'event: error\ndata: {"message": "stubbed"}\n\n',
-  }));
-  await page.goto('/');
-  await dismissOnboardingModal(page);
-  await page.locator('.lm_tab', { hasText: 'Open' }).click();
-  await page.locator('.panel-source__url-input input').fill('/work/small');
-  await page.locator('.panel-source__url-input button.primary').click();
-
+test('a folder is told from a file, and open from closed', async ({ page }) => {
+  // The indent is main's "each folder's contents sit a step in from its name".
+  await openStubbedTree(page, '/work/small', [{ name: 'README.md', url: '/work/small/README.md' }], [
+    { name: 'src', size: 1, folders: [], files: [{ name: 'main.rs', size: 1, raw: '', url: '/work/small/src/main.rs' }] },
+  ]);
   const tree = page.locator('.gl-panel--file-tree');
   const folder = tree.locator('.folder_button', { hasText: 'src' });
   const readme = tree.locator('.file', { hasText: 'README.md' });
@@ -124,16 +103,52 @@ test('a folder is told from a file, open from closed, and its contents sit insid
   expect(closed, 'a folder and a file are marked apart').not.toBe(file);
 
   await folder.click();
-  const main = tree.locator('.file', { hasText: 'main.rs' });
-  await expect(main).toBeVisible();
+  await expect(tree.locator('.file', { hasText: 'main.rs' })).toBeVisible();
   const opened = await folder.evaluate(marker);
   expect(opened, 'an open folder is marked apart from a closed one').not.toBe(closed);
   expect(opened).not.toBe(file);
-  // Mutation: drop the open folder's indent -- main.rs lines up with
-  // README.md, and this fails.
-  const inside = (await main.boundingBox())!.x;
-  const atTheRoot = (await readme.boundingBox())!.x;
-  expect(inside).toBeGreaterThan(atTheRoot + 4);
+});
+
+test('a row is named by its name alone, not by its marker', async ({ page }) => {
+  // A row's name comes from its content, and a ::before's text is content: a
+  // screen reader read "▸ src" and "· main.rs".
+  await openStubbedTree(page, '/work/small', [{ name: 'README.md', url: '/work/small/README.md' }], [
+    { name: 'src', size: 1, folders: [], files: [{ name: 'main.rs', size: 1, raw: '', url: '/work/small/src/main.rs' }] },
+  ]);
+  const tree = page.locator('.gl-panel--file-tree');
+  const folder = tree.locator('.folder_button', { hasText: 'src' });
+  // Mutation: drop the markers' empty alternative text (`/ ''`) -- the
+  // names start with ▸ and ·, and this fails.
+  await expect(folder).toHaveAccessibleName('src');
+  await expect(tree.locator('.file', { hasText: 'README.md' })).toHaveAccessibleName('README.md');
+  await folder.click();
+  await expect(folder).toHaveAccessibleName('src');
+  await expect(tree.locator('.file', { hasText: 'main.rs' })).toHaveAccessibleName('main.rs');
+});
+
+test("a folder's name too long for the tree leaves its marker whole, and starts where a file's does", async ({ page }) => {
+  const LONG = 'a_folder_whose_name_is_far_longer_than_the_files_panel_is_wide';
+  await openStubbedTree(page, '/work/small', [{ name: 'README.md', url: '/work/small/README.md' }], [
+    { name: LONG, size: 1, folders: [], files: [{ name: 'main.rs', size: 1, raw: '', url: `/work/small/${LONG}/main.rs` }] },
+  ]);
+  const tree = page.locator('.gl-panel--file-tree');
+  const name = tree.locator('.folder_name');
+  await expect(name).toHaveText(LONG);
+  await tree.locator('.gl-file-tree__tree').evaluate((el) => { (el as HTMLElement).style.width = '12em'; });
+  expect(await name.evaluate((el) => el.scrollWidth > el.clientWidth), 'the name is cut short').toBe(true);
+  // How far in from its row's left each name starts: the width its marker takes.
+  const folderInset = await tree.locator('.folder_button').evaluate((row) =>
+    row.querySelector('.folder_name')!.getBoundingClientRect().left - row.getBoundingClientRect().left);
+  const fileInset = await tree.locator('.file', { hasText: 'README.md' }).evaluate((row) => {
+    const first = document.createRange();
+    first.setStart(row.firstChild!, 0);
+    first.setEnd(row.firstChild!, 1);
+    return first.getBoundingClientRect().left - row.getBoundingClientRect().left;
+  });
+  // Mutation: let the folder's marker shrink (drop its flex: none) -- the
+  // long name squeezes ▸ and starts left of README.md, and this fails.
+  expect(folderInset).toBeGreaterThan(0);
+  expect(folderInset).toBeCloseTo(fileInset, 0);
 });
 
 test("a GitHub file's raw link sits on its name's line", async ({ page }) => {
