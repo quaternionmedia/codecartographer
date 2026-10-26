@@ -118,6 +118,7 @@ it.
 |-------|-------------|
 | `spring_layout` | Force-directed (default) |
 | `compound_layout` | Hierarchical: dirs → files → symbols in nested orbits |
+| `map_layout` | Each directory a disc of its files, its subdirectories packed around it; nodes carry `label_at` |
 | `circular_layout` | Nodes on a circle |
 | `kamada_kawai_layout` | Energy-minimized spring |
 | `spectral_layout` | Graph Laplacian eigenvectors |

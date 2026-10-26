@@ -89,7 +89,7 @@ export class LayoutContext {
   // Reactive UI-only state shared by the docked panels.
   public panelState: ControlPanelState = {
     repoUrl: '',
-    currentTheme: 'forest',
+    currentTheme: 'qm',
     isLoading: false,
     statusMessage: 'Ready',
     progress: null,
@@ -802,7 +802,7 @@ export class LayoutContext {
 
     if (address.view === 'code' && view.url) {
       this._leaveSystemRenderer();
-      this._compoundLayout();
+      this._mapLayout();
       // The coarse map: files, not symbols, at the view's depth whenever it
       // is drawn. The depth was set around the first stream only, so a
       // layout change drew it again at the Open panel's, symbols and all.
@@ -864,6 +864,19 @@ export class LayoutContext {
     const styling = this.appState.state.graphStyling;
     if (styling.layout !== 'compound_layout') {
       this.appState.update({ graphStyling: { ...styling, layout: 'compound_layout' } });
+    }
+  }
+
+  /**
+   * The Map layout, the one a showgraph's code view opens in: each directory a
+   * ring of what it holds. The compound layout spreads a repository's
+   * directories by a spring layout, and a code map framed whole came out at a
+   * scale of a twentieth, every node under a pixel.
+   */
+  private _mapLayout(): void {
+    const styling = this.appState.state.graphStyling;
+    if (styling.layout !== 'map_layout') {
+      this.appState.update({ graphStyling: { ...styling, layout: 'map_layout' } });
     }
   }
 

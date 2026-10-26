@@ -75,9 +75,11 @@ class Positions:
         """Add all custom layouts to the list of available layouts"""
         from codecarto.models.custom_layouts.sorted_square_layout import sorted_square_layout
         from codecarto.models.custom_layouts.compound_layout import compound_layout
+        from codecarto.models.custom_layouts.map_layout import map_layout
 
         self.add_layout("sorted_square_layout", sorted_square_layout, ["graph"])
         self.add_layout("compound_layout", compound_layout, ["graph"])
+        self.add_layout("map_layout", map_layout, ["graph"])
 
     def get_layout_names(self) -> list:
         """Get all layout names from the list of available layouts

@@ -105,6 +105,7 @@ export interface ControlPanelRenderOptions {
 const LAYOUT_OPTIONS = [
   { value: 'spring_layout', label: 'Spring' },
   { value: 'compound_layout', label: 'Compound' },
+  { value: 'map_layout', label: 'Map' },
   { value: 'spectral_layout', label: 'Spectral' },
   { value: 'kamada_kawai_layout', label: 'Kamada-Kawai' },
   { value: 'circular_layout', label: 'Circular' },
@@ -115,6 +116,7 @@ const LAYOUT_OPTIONS = [
 ];
 
 const THEMES = [
+  { id: 'qm',        label: 'QM',        preview: '#f2aa4c' },
   { id: 'terminal',  label: 'Terminal',  preview: '#00ff41' },
   { id: 'light',     label: 'Light',     preview: '#2196f3' },
   { id: 'cyberpunk', label: 'Cyberpunk', preview: '#ff00ff' },

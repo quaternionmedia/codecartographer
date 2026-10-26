@@ -18,6 +18,7 @@ import { CompoundLayoutManager, outlinesAfterRemoval } from './compound_layout';
 import type { GroupBounds, OutlineSpacing } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
+import { labelColorOf } from './label_color';
 import { fitBadgeText, sourceTarget, type SourceTarget } from './node_info';
 import { BADGE_MARGIN, badgePlace } from './source_badge';
 import { fitTransform, framedExtents } from './fit';
@@ -38,6 +39,27 @@ const MAP_NAME_PX = 10;
 const MAP_OUTLINE_PX = 12;
 /** The longest a map's name is drawn, in characters. */
 const MAP_NAME_CHARS = 32;
+/**
+ * How much larger a map draws each node than a code graph does. A map has a
+ * few dozen nodes, each a family, a project or a directory, and at the canvas's
+ * default size they were specks beside their names. `show_layout.py`'s
+ * `MAP_NODE_SCALE` spaces its rings for nodes this size, and a test holds the
+ * two equal.
+ */
+export const MAP_NODE_SCALE = 2.5;
+/**
+ * The smallest a map's node is drawn on screen, as a radius in pixels, and
+ * still named. A code map framed whole draws its files a couple of pixels
+ * across and had their names written over the whole picture; its directories'
+ * outlines name it there, and a file's name comes in as zooming in draws the
+ * file large enough to be read as one.
+ */
+export const MAP_NAMED_PX = 4;
+
+/** The theme's font colour, which the canvas's names take unless the reader chose one. */
+function themeFont(): string {
+  return getComputedStyle(document.documentElement).getPropertyValue('--c-font');
+}
 
 // Nodes rendered per animation frame. Scales with total so large repos
 // finish in ~2s while small repos show clearly progressive animation.
@@ -148,7 +170,7 @@ export class StreamingGraphRenderer {
       showNodeLabels: styling?.showNodeLabels ?? false,
       showEdgeLabels: styling?.showEdgeLabels ?? false,
       labelSize: styling?.labelSize ?? 9,
-      labelColor: styling?.labelColor ?? '#aaaaaa',
+      labelColor: labelColorOf(styling?.labelColor, themeFont()),
       interactionProfile: styling?.interactionProfile ?? 'default',
       colorBy: styling?.colorBy ?? 'auto',
     };
@@ -296,7 +318,7 @@ export class StreamingGraphRenderer {
       if (this._map) this._keepNamesReadable();
     }
     if (options.labelColor !== undefined) {
-      this.labelGroup.selectAll('text').attr('fill', options.labelColor);
+      this.labelGroup.selectAll('text').attr('fill', labelColorOf(options.labelColor, themeFont()));
     }
     if (options.colorBy !== undefined) {
       // Recolour in place: the drawn graph is the same graph, read by a
@@ -397,7 +419,7 @@ export class StreamingGraphRenderer {
    */
   private _resolveCollision(node: GraphNode, x: number, y: number): [number, number] {
     if (this.nodeById.size > 300) return [x, y];
-    const gap = (n: GraphNode) => this.styling.nodeSize! * depthSizeMultiplier(n) * 1.3;
+    const gap = (n: GraphNode) => this._nodeSize(n) * 1.3;
     const nodeGap = gap(node);
     let px = x;
     let py = y;
@@ -434,7 +456,7 @@ export class StreamingGraphRenderer {
     [x, y] = this._resolveCollision(node, x, y);
     node.x = x;
     node.y = y;
-    const size = this.styling.nodeSize! * depthSizeMultiplier(node);
+    const size = this._nodeSize(node);
 
     const group = this.nodeGroup
       .append('g')
@@ -543,7 +565,7 @@ export class StreamingGraphRenderer {
               const childEl = this._nodeGroupEl.get(childId);
               if (childEl) childEl.setAttribute('transform', `translate(${child.x},${child.y})`);
               this._updateEdgesForNode(childId, child.x, child.y);
-              this._updateLabelForNode(childId, child.x, child.y, this.styling.nodeSize! * depthSizeMultiplier(child));
+              this._updateLabelForNode(childId, child.x, child.y, this._nodeSize(child));
             }
           }
         })
@@ -835,15 +857,24 @@ export class StreamingGraphRenderer {
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
+  /** The size a node is drawn at: the canvas's node size by its depth, larger on a map. */
+  private _nodeSize(n: GraphNode): number {
+    return this.styling.nodeSize! * depthSizeMultiplier(n) * (this._map ? MAP_NODE_SCALE : 1);
+  }
+
   /** How far a node's shape reaches from its centre: a shape drawn at `size`
    *  reaches 1.5 × size at most (a triangle's apex). */
   private _extentOf(n: GraphNode): number {
-    return 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n);
+    return 1.5 * this._nodeSize(n);
   }
 
   /** How far an outline is drawn past what it encloses, and how far each node in it reaches. */
   private _outlineSpacing(): OutlineSpacing {
-    return { padding: 40, baseNodeSize: this.styling.nodeSize! * 3.0, radiusOf: (n) => this._extentOf(n) };
+    return {
+      padding: 40,
+      baseNodeSize: this.styling.nodeSize! * 3.0 * (this._map ? MAP_NODE_SCALE : 1),
+      radiusOf: (n) => this._extentOf(n),
+    };
   }
 
   private _drawCompoundBackgrounds(): void {
@@ -1098,8 +1129,10 @@ export class StreamingGraphRenderer {
       })
       .sort((a, b) => a.rank - b.rank || a.length - b.length);
     for (const { t } of texts) {
+      const node = this.nodeById.get(t.getAttribute('data-node-id') ?? '');
+      const small = !!node && this._nodeSize(node) * this._zoomK < MAP_NAMED_PX;
       const box = t.getBBox();
-      const hidden = taken.some((other) => meets(box, other));
+      const hidden = small || taken.some((other) => meets(box, other));
       t.setAttribute('visibility', hidden ? 'hidden' : 'visible');
       if (!hidden) taken.push(box);
     }

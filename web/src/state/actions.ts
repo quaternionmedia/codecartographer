@@ -22,6 +22,7 @@ import { GraphRendererRegistry } from '../features/graph/services/renderers';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
 import { logger } from '../core/logger';
 import { backendLayoutName } from '../features/graph/services/layout_names';
+import { THEME_LABEL_COLOR } from '../features/graph/services/label_color';
 import { parseNotes } from '../features/graph/services/parse_notes';
 import { LatestPlot } from './latest_plot';
 import type { PlotTicket } from './latest_plot';
@@ -335,7 +336,7 @@ export class PlotActions {
       const themed = this.cloneGraphData(graphData);
       const palette = this.getThemePalette(styling);
       const nodeColorOverride = styling.nodeColorOverride;
-      const defaultLabelColor = '#00ff41';
+      const defaultLabelColor = THEME_LABEL_COLOR;
       const defaultEdgeColor = '#666666';
       const normalizeColor = (value?: string): string => (value || '').trim().toLowerCase();
       const resolveThemeColor = (value: string | undefined, fallback: string, defaultValue?: string): string => {

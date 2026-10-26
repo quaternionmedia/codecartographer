@@ -35,6 +35,7 @@
     "src/features/estate/seam_client.ts",
     "src/features/estate/provenance_shown.ts",
     "src/features/graph/services/layout_names.ts",
+    "src/features/graph/services/label_color.ts",
     "src/features/graph/services/node_info.ts",
     "src/features/graph/services/renderer_controls.ts",
     "src/features/graph/services/fit.ts",
