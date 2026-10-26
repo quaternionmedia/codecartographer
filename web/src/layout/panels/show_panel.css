@@ -11,6 +11,17 @@
   margin-left: calc(var(--show-indent, 0) * 14px);
 }
 
+/* Pressed from the keyboard as from a pointer: where the focus is, in the row's hue. */
+.show__family:focus-visible,
+.show__project .estate__name:focus-visible {
+  outline: 2px solid var(--show-hue);
+  outline-offset: 1px;
+}
+
+.show__project .estate__name {
+  cursor: pointer;
+}
+
 .show__hue {
   background: var(--show-hue) !important;
 }

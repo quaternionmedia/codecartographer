@@ -144,33 +144,52 @@ reading was made. **draw the overview** draws it.
 Id `show-panel`. Opens from the `+` menu, from the Estate panel's families row,
 or by itself when the page is opened at a `?show=` address.
 
-Every family and project the corpus names. The default is every family at once:
-opened onto an empty canvas, or at a bare `?show`, the panel draws the index,
+Every family and project the corpus names. *Families* lists each top-level
+family and, indented under it, the families directly within it; a family nested
+deeper is not listed, and is opened from its parent's drawing.
+*Projects* lists every public project, and its field filters them by name or
+family. The default is every family at once: opened with nothing on the canvas
+and nothing being drawn there, or at a bare `?show`, the panel draws the index,
 and **draw every family** draws it again over anything else. A family row
-draws that family, and a project's name draws its place in the estate.
+draws that family, and a project's name draws its place in the estate. A row
+and a project's name are tab stops, and Enter or Space presses them as a click
+does.
 
 The panel opens on what is drawn. A trail runs from *every family* down to it
 -- `every family › performing › instruments › carlos` -- and each step is a
 link back. A project two families claim is reached from both
 (`instruments · irl`). For a project, its three views follow: **estate**,
-**code map** and **system**. A view that cannot be drawn here is disabled, with
-its reason under it. Then the legend: which edges are claims, which are
-declared seams and which are measured. *What this drawing can say* holds the
-caveat and the corpus it was read from, folded. Its line counts the seams
-nobody has declared and the members nothing measured.
+**code map** and **system**; the one drawn is pressed. A view that cannot be
+drawn here is disabled, with its reason under it. Then the legend: which edges
+are claims, which are declared seams and which are measured. *What this drawing
+can say* holds the caveat and the corpus it was read from, folded. Its line
+counts the seams nobody has declared and the members nothing measured.
 
 On the canvas a showgraph is a map. Every name is drawn, outward from the ring
 its group is packed on, and at least ten pixels high however far out the fit
-frames it. A name that would overlap another is hidden until a zoom gives it
-room, and a node's hover always holds it. Names are ranked: families first,
-then projects, then other repositories. Each outline takes its family's hue.
+frames it; an outline's name at least twelve, set inside or outside its outline
+at the size it is drawn, and placed again when a zoom resizes it. The fit
+frames the names at the size its own zoom draws them, so Fit again keeps the
+frame. A name that would overlap another is hidden until a zoom gives it room,
+and a node's hover always holds it. Names are ranked: families first, then
+projects, then other repositories. Each outline takes its family's hue.
 **Double-click** a family to open it, and a project to open its estate view.
 
 Each drawing rewrites the page's address, so `?show=family:performing` or
 `?show=project:moat&view=system` reopens it. A drawing opened by a click adds
 an entry to the browser's history, so **Back** and **Forward** walk the
-drawings. The address the page opened with, and the default, do not add an
-entry.
+drawings, each drawn again. The address the page opened with, and the default,
+do not add an entry. Back to an entry from before the first showgraph clears
+the trail, and leaves the canvas as it is.
+
+Only the latest drawing asked for is drawn: one whose answer comes after
+another drawing, or another plot, was asked for is dropped, and a stream in
+flight is ended when a showgraph opens. Another plot drawn over a showgraph --
+a stream, the demo, a lexicon, added files, another panel's draw, or the system
+monitor chosen in Graph Settings -- takes the address back to the bare page,
+and the trail with it. A project's system view puts the system monitor on the
+canvas, and the next draw that is not a system view puts back the renderer it
+replaced.
 
 To serve showgraphs from a corpus checkout other than the pin, set
 `CODECARTO_CORPUS` before the server starts. Measured links and the system
@@ -292,8 +311,9 @@ Id `graph-settings-panel`. In the default arrangement.
   time ([Compound layout](architecture.md#compound-layout)).
 - **Hover** a node for its tooltip.
 - **Double-click a node** that names a file to open its source, as
-  [A node's source](#a-nodes-source) says. A double-click anywhere else zooms
-  in.
+  [A node's source](#a-nodes-source) says. On a showgraph, a family or a
+  project node opens its own showgraph instead ([Show](#show)). A double-click
+  anywhere else zooms in.
 - When a stream finishes, the view fits the whole graph: every node, its label
   while labels are shown, and every group outline with its label, inside a
   margin, centred on what is drawn. A hidden node is left out, and so is an
@@ -328,7 +348,7 @@ the same place, by one rule: `node_info.sourceTarget` decides where, and
 |---|---|
 | A file or a symbol from a GitHub repository | The file's page on GitHub in a new tab, at the node's line. A file, and a Python symbol, whose parser records no line, open at the top |
 | A file or a symbol from a local checkout or an upload, which the browser cannot open | A badge beside the node for a few seconds, naming the node, the file's path and the line, on one line and kept inside the canvas, never over the point it was opened from. A path too long for the canvas is shortened in its middle, and a name that leaves no room for the file's own name is shortened first, so the file and the line stay; the badge's tooltip has the text whole |
-| A node that names no file, such as a directory | Nothing: Source is greyed, and a double-click zooms in, as it does off the nodes |
+| A node that names no file, such as a directory | Nothing: Source is greyed, and a double-click zooms in, as it does off the nodes; on a showgraph, a family's or a project's double-click opens its showgraph |
 
 A C symbol names its file only by the file's stem, and a Python symbol by
 `module.py`; both open where the file node they are drawn inside says the file
