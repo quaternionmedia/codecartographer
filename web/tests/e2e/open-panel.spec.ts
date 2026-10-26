@@ -56,6 +56,14 @@ test('Plot draws every added file, not the first', async ({ page }) => {
 });
 
 test('local files are added from the keyboard: Enter on the box opens the file chooser', async ({ page }) => {
+  // Chromium intercepts the chooser only once Playwright has asked it to, and
+  // Playwright asks when the first 'filechooser' listener is added, without
+  // waiting for the answer. Added just before the key, it lost: Chromium
+  // answered the Enter before the request to intercept in 2 runs of 8, the
+  // chooser opened unintercepted, and no event came. A click hides that gap
+  // behind its actionability checks; a key press does not. So a listener is
+  // added before the page loads, and the one awaited below only listens.
+  page.on('filechooser', () => undefined);
   await page.goto('/');
   await dismissOnboardingModal(page);
   const open = page.locator('.gl-panel--open');
