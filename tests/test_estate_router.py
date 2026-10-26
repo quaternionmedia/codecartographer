@@ -175,9 +175,7 @@ def test_fetch_404_remedy_can_be_the_callers(monkeypatch):
 
 def _all_down(monkeypatch, tmp_path):
     monkeypatch.setattr(qmcp_client, "fetch", _down)
-    monkeypatch.setattr(estate_service.capability_service, "CORPUS",
-                        tmp_path / "nowhere")
-    # The families seam reads the corpus through the resolver's own default.
+    # The capability and families seams both read the resolver's default.
     monkeypatch.setattr(corpus, "SUBMODULE", tmp_path / "nowhere")
     monkeypatch.setenv(estate_service.overview_service.SEAM_ENV,
                        str(tmp_path / "no-overview.json"))
@@ -233,12 +231,11 @@ def test_route_counts_the_live_ones(monkeypatch, tmp_path):
     registry = tmp_path / "corpus" / "ci" / "capability-registry.yaml"
     registry.parent.mkdir(parents=True)
     registry.write_text("schema: 1\ncapabilities: []\n", encoding="utf-8")
-    monkeypatch.setattr(estate_service.capability_service, "CORPUS",
-                        tmp_path / "corpus")
+    monkeypatch.setattr(corpus, "SUBMODULE", tmp_path / "corpus")
     from codecarto.main import app
 
     results = TestClient(app).get("/estate/seams").json()["results"]
     assert results["live"] == 1
-    corpus = next(r for r in results["seams"] if r["name"] == "corpus")
-    assert corpus["ok"] and corpus["detail"].startswith("0 capability")
+    row = next(r for r in results["seams"] if r["name"] == "corpus")
+    assert row["ok"] and row["detail"].startswith("0 capability")
     assert "1 of" in results["caveat"]
