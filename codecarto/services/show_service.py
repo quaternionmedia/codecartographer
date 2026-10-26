@@ -737,7 +737,11 @@ def corpus_graph(reading: Reading, among: list[Path] | None = None):
         if code is None:
             missing.append(name)
             continue
-        base = (attrs["depth"] if isinstance(attrs.get("depth"), int) else 1) + 1
+        # A member two families claim has no depth, so no outline holds it,
+        # and its code none either: given one, the canvas, finding no parent
+        # at the depth above, set each node in the nearest outline instead.
+        shared = not isinstance(attrs.get("depth"), int)
+        base = 0 if shared else attrs["depth"] + 1
         ids = {}
         for node_id, node in code["nodes"].items():
             if not isinstance(node, dict):
@@ -746,8 +750,8 @@ def corpus_graph(reading: Reading, among: list[Path] | None = None):
             ids[node_id] = f"code::{name}::{node_id}"
             path = str(node_id).split("::", 1)[-1]
             graph.add_node(ids[node_id], label=str(node.get("label") or path.rsplit("/", 1)[-1]),
-                           kind=str(node.get("kind") or "file"), depth=base + depth, code=True,
-                           hover=f"{name}: {path}")
+                           kind=str(node.get("kind") or "file"), code=True, hover=f"{name}: {path}",
+                           **({} if shared else {"depth": base + depth}))
         held = set()
         for edge in code["edges"]:
             kind = (edge.get("metadata") or {}).get("kind") or edge.get("kind")

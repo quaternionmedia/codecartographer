@@ -808,6 +808,11 @@ def test_a_shared_member_carries_its_code_outside_every_outline(corpus, client):
     nodes, edges = _nodes(results), _edges(results)
     delta = _xy(nodes["repo::delta"])
     code = [_xy(a) for n, a in nodes.items() if n.startswith("code::delta::")]
+    # No depth, as delta has none: the canvas groups a node into an outline by
+    # its depth, and one with a depth and no parent at the depth above went
+    # into the nearest outline. Mutation: give its code a depth below delta's
+    # -- and this fails.
+    assert all("depth" not in a for n, a in nodes.items() if n.startswith("code::delta::"))
     reach = max(_distance(delta, xy) for xy in code)
     for top in (n for n, a in nodes.items() if a.get("depth") == 0 and not a.get("code")):
         cx, cy, r = _outline(nodes, edges, top)
