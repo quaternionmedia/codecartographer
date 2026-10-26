@@ -7,6 +7,7 @@ import { SystemDefinitionRegistry } from '../../../features/graph/services/syste
 import { rendererControls } from '../../../features/graph/services/renderer_controls';
 import { hasTree } from '../../../features/repository/repo_tree';
 import { plotTarget } from '../../../features/repository/plot_target';
+import { pressable } from './pressable';
 import { GraphStylingOptions, ParserOptions, GraphRendererType } from '../../../state/types';
 import './control_panel.css';
 
@@ -264,16 +265,21 @@ export function ControlPanel(
   /** Local files, added to what Plot draws; each is listed in the Files panel. */
   const renderLocalFiles = () => {
     const activeExts = content.parserOptions.fileExtensions;
+    const browse = () => document.getElementById('file-upload-input')?.click();
 
     return m('div.panel-source__upload', [
       m('span.panel-settings__label-compact', 'Local files'),
+      // A drop target that holds its hidden file input, so not a <button>:
+      // `pressable` gives it a button's place in the tab order, its role, and
+      // Enter and Space, so files are added from the keyboard too.
       m('div.panel-upload__dropzone', {
         ondrop: handleDrop,
         ondragover: handleDragOver,
         ondragleave: handleDragLeave,
-        onclick: () => document.getElementById('file-upload-input')?.click(),
+        onclick: browse,
+        ...pressable(browse),
       }, [
-        m('span.panel-upload__icon', '📁'),
+        m('span.panel-upload__icon', { 'aria-hidden': 'true' }, '📁'),
         m('span.panel-upload__text', 'Drop source files here or click to browse'),
         m('input#file-upload-input[type=file][multiple]', {
           style: { display: 'none' },
@@ -502,14 +508,18 @@ export function ControlPanel(
     ]);
   };
 
+  // The quick starts lead the left column and the examples close it: in the
+  // default dock the Open panel is a short stack under the canvas, and the
+  // empty canvas sends a first-time reader to ⚡ Load Demo, so the URL, the
+  // local files and the demo are drawn above the column's fold.
   const renderOpenTab = () =>
     m('div.panel-section.panel-source.panel-open.panel-section--active', [
       m('div.panel-source__2col', [
         m('div.panel-source__left', [
           renderUrlSection(),
-          renderExamples(),
           renderLocalFiles(),
           renderQuickStart(),
+          renderExamples(),
         ]),
         m('div.panel-source__right', [
           renderRecent(),
