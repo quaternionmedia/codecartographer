@@ -134,17 +134,33 @@ class Reading:
         return [f.name for f in self.families.values() if repo in f.members]
 
 
-def _yaml(path: Path, notes: list[str], what: str) -> Any:
+def _rows(value: Any) -> list[Any]:
+    """The list a document holds where a list belongs, or none.
+
+    A number or a mapping there is read as nothing rather than iterated.
+    """
+    return value if isinstance(value, list) else []
+
+
+def _yaml(path: Path, notes: list[str], what: str) -> dict[str, Any]:
+    """A mapping the corpus keeps, or `{}` with a note saying why not."""
     import yaml
 
     if not path.is_file():
         notes.append(f"no {what} at {path.as_posix()}")
-        return None
+        return {}
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8"))
+        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except UnicodeDecodeError:
+        notes.append(f"{path.as_posix()} is not UTF-8, so no {what} was read")
+        return {}
     except yaml.YAMLError as error:
         notes.append(f"{path.as_posix()} did not parse: {error}")
-        return None
+        return {}
+    if value is not None and not isinstance(value, dict):
+        notes.append(f"{path.as_posix()} is not a mapping, so no {what} was read")
+        return {}
+    return value or {}
 
 
 def _hues(path: Path, notes: list[str]) -> dict[str, tuple[str, str]]:
@@ -154,6 +170,9 @@ def _hues(path: Path, notes: list[str]) -> dict[str, tuple[str, str]]:
         return {}
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
+    except UnicodeDecodeError:
+        notes.append(f"{path.as_posix()} is not UTF-8; families draw uncoloured")
+        return {}
     except SyntaxError as error:
         notes.append(f"{path.as_posix()} did not parse: {error}")
         return {}
@@ -163,11 +182,14 @@ def _hues(path: Path, notes: list[str]) -> dict[str, tuple[str, str]]:
                 and node.targets[0].id == "FAMILY"):
             try:
                 value = ast.literal_eval(node.value)
-            except ValueError:
+            except (ValueError, TypeError):
+                break
+            if not isinstance(value, dict):
                 break
             return {str(k): (str(v[0]), str(v[1])) for k, v in value.items()
                     if isinstance(v, (tuple, list)) and len(v) == 2}
-    notes.append(f"{path.as_posix()} declares no FAMILY literal; families draw uncoloured")
+    notes.append(f"{path.as_posix()} declares no FAMILY mapping literal; families "
+                 f"draw uncoloured")
     return {}
 
 
@@ -210,8 +232,14 @@ def read(corpus: Path | str | None = None) -> Reading:
         return reading
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
+    except UnicodeDecodeError:
+        reading.reason = f"{path.as_posix()} is not UTF-8"
+        return reading
     except json.JSONDecodeError as error:
         reading.reason = f"{path.as_posix()} did not parse: {error}"
+        return reading
+    if not isinstance(document, dict):
+        reading.reason = f"{path.as_posix()} is not a JSON object"
         return reading
 
     schema = document.get("schema")
@@ -220,32 +248,38 @@ def read(corpus: Path | str | None = None) -> Reading:
         reading.reason = (f"{path.as_posix()} is at schema {schema!r}; this window "
                           f"draws schemas {', '.join(map(str, KNOWN_SCHEMAS))}")
         return reading
+    if document.get("families") is not None and not isinstance(document["families"], list):
+        reading.reason = f"{path.as_posix()}: `families` is not a list"
+        return reading
 
-    for entry in document.get("families") or []:
+    for entry in _rows(document.get("families")):
         if not isinstance(entry, dict) or not entry.get("name"):
             continue
-        members = [str(m) for m in entry.get("members") or []]
+        members = [str(m) for m in _rows(entry.get("members"))]
+        within = entry.get("within")
         reading.families[str(entry["name"])] = Family(
             name=str(entry["name"]),
             drives=str(entry.get("drives") or ""),
-            within=entry.get("within") or None,
-            subfamilies=[str(s) for s in entry.get("subfamilies") or []],
+            within=within if isinstance(within, str) and within else None,
+            subfamilies=[str(s) for s in _rows(entry.get("subfamilies"))],
             members=members,
-            all_members=[str(m) for m in entry.get("all_members") or members],
+            all_members=[str(m) for m in _rows(entry.get("all_members")) or members],
         )
-    reading.unstated = [str(u) for u in document.get("unstated") or []]
+    reading.unstated = [str(u) for u in _rows(document.get("unstated"))]
     reading.generated_at = str(document.get("generated_at") or "")
     reading.commit = corpus_root.commit(root)
 
     notes = reading.notes
-    roster = _yaml(root / ROSTER_FILE, notes, "roster") or {}
-    for row in roster.get("repositories") or []:
+    roster = _yaml(root / ROSTER_FILE, notes, "roster")
+    for row in _rows(roster.get("repositories")):
         if isinstance(row, dict) and (row.get("name") or row.get("ref")):
             reading.roster[str(row.get("name") or row.get("ref"))] = row
 
-    inventory = _yaml(root / INVENTORY_FILE, notes, "inventory") or {}
-    reading.org = ((inventory.get("generator") or {}).get("org")) or None
-    for row in inventory.get("repositories") or []:
+    inventory = _yaml(root / INVENTORY_FILE, notes, "inventory")
+    generator = inventory.get("generator")
+    org = generator.get("org") if isinstance(generator, dict) else None
+    reading.org = org if isinstance(org, str) and org else None
+    for row in _rows(inventory.get("repositories")):
         if isinstance(row, dict) and row.get("name") and not row.get("private"):
             reading.inventory[str(row["name"])] = row
     if not reading.org:
@@ -254,8 +288,8 @@ def read(corpus: Path | str | None = None) -> Reading:
                      f"repository by its URL on the host, and a URL is matched by "
                      f"the organisation")
 
-    interop = _yaml(root / INTEROP_FILE, notes, "interop registry") or {}
-    reading.surfaces = [s for s in interop.get("surfaces") or []
+    interop = _yaml(root / INTEROP_FILE, notes, "interop registry")
+    reading.surfaces = [s for s in _rows(interop.get("surfaces"))
                         if isinstance(s, dict) and s.get("id")]
 
     reading.hues = _hues(root / PALETTE_FILE, notes)
@@ -411,14 +445,19 @@ def _edge(graph, source: str, target: str, basis: str, kind: str, label: str,
                    **LOOK[basis], **extra)
 
 
+def _end(value: Any) -> str:
+    """The repository at one end of a surface, `{repo: ...}`, or none."""
+    return str(value.get("repo") or "") if isinstance(value, dict) else ""
+
+
 def _declared(graph, reading: Reading, drawn: set[str]) -> int:
     """Every surface with an end among `drawn`, as implementation -> publisher."""
     count = 0
     for surface in reading.surfaces:
-        publisher = str((surface.get("publisher") or {}).get("repo") or "")
+        publisher = _end(surface.get("publisher"))
         protocol = str(surface.get("protocol") or surface["id"])
-        for implementation in surface.get("implementations") or []:
-            implementer = str((implementation or {}).get("repo") or "")
+        for implementation in _rows(surface.get("implementations")):
+            implementer = _end(implementation)
             if not publisher or not implementer:
                 continue
             if publisher not in drawn and implementer not in drawn:
@@ -656,7 +695,11 @@ def _records(root: Path, name: str) -> list[dict[str, str]] | None:
             if text.startswith("# ") and row["title"] == Path(path).stem:
                 row["title"] = text[2:].strip()
             elif "**Status**" in text:
-                row["status"] = text.split("|")[2].strip().strip("*") or "unstated"
+                # `| **Status** | Proposed |`; a line with no cell after it
+                # states nothing.
+                cells = text.split("|")
+                status = cells[2].strip().strip("*") if len(cells) > 2 else ""
+                row["status"] = status or "unstated"
         return list(found.values())
     return None
 

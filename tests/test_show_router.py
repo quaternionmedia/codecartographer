@@ -187,6 +187,74 @@ def test_a_schema_this_window_does_not_read_draws_nothing(corpus, monkeypatch):
     assert "schema 3" in results["problem"]
 
 
+_FAMILY_OF_OTHER_SHAPES = {"schema": 2, "families": [
+    {"name": "core", "drives": "x", "within": ["y"], "members": 5, "subfamilies": 5,
+     "all_members": 5}], "unstated": 5}
+
+
+@pytest.mark.parametrize(("name", "content", "answer"), [
+    ("families.json", b"[]", "unreadable"),
+    ("families.json", b"\xff\xfe{}", "unreadable"),
+    ("families.json", b'{"schema": 2, "families": 5}', "unreadable"),
+    ("families.json", json.dumps(_FAMILY_OF_OTHER_SHAPES).encode(), "drawn"),
+    ("ci/workspace.yaml", b"- a list\n", "noted"),
+    ("ci/workspace.yaml", b"\xff\n", "noted"),
+    ("ci/workspace.yaml", b"repositories: 5\n", "drawn"),
+    ("status/inventory.yaml", b"- a list\n", "noted"),
+    ("status/inventory.yaml", b'{"generator": ["example"], "repositories": 5}', "noted"),
+    ("ci/interop-registry.yaml", b"- a list\n", "noted"),
+    ("ci/interop-registry.yaml",
+     b"surfaces:\n  - {id: s, publisher: beta, implementations: [alpha, 5]}\n", "drawn"),
+    ("ci/palette.py", b"FAMILY = []\n", "noted"),
+    ("ci/palette.py", b"\xff\n", "noted"),
+    ("ci/capability-registry.yaml", b"- a list\n", "drawn"),
+    ("ci/capability-registry.yaml", b"\xff\n", "drawn"),
+], ids=["families a list", "families not utf-8", "families' families a number",
+        "a family's fields", "roster a list", "roster not utf-8", "roster's rows a number",
+        "inventory a list", "inventory's generator a list", "registry a list",
+        "a surface's ends", "palette a list", "palette not utf-8",
+        "capabilities a list", "capabilities not utf-8"])
+def test_a_document_of_another_shape_answers_rather_than_failing(corpus, monkeypatch,
+                                                                 name, content, answer):
+    # Each read called `.get` on whatever parsed, iterated whatever a key
+    # held, and decoded as UTF-8 with nothing to catch it, so a list where a
+    # mapping belongs, a number where a list does, or a file that is not
+    # UTF-8 raised, and the route answered 500. Broken by taking any one of
+    # the shape checks out, its case raises again.
+    (corpus / name).write_bytes(content)
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(corpus.parent / "no-clones"))
+    client = TestClient(app)
+    for url in ("/show/subjects", "/show/index/gjgf", "/show/family/core/gjgf",
+                "/show/project/alpha/gjgf", "/show/project/alpha/views"):
+        results = _results(client, url)
+        if answer == "unreadable":
+            assert results.get("unreadable") is True, url
+            assert "families.json" in results["problem"], url
+        else:
+            assert not results.get("unreadable"), f"{url}: {results.get('problem')}"
+    if answer == "noted":
+        notes = _results(client, "/show/subjects")["notes"]
+        assert any(name in note for note in notes), notes
+
+
+def test_a_status_line_with_no_cell_is_unstated(corpus, monkeypatch):
+    # `| **Status**` with nothing after it split into two parts, and the
+    # third was read: an IndexError, and a 500. Broken by reading the cell
+    # unguarded again, it raises.
+    _commit_all(corpus)
+    _git(corpus, "switch", "-q", "-c", "project/alpha")
+    adr = corpus / "adr"
+    adr.mkdir()
+    (adr / "DRAFT-bare.md").write_text("# Bare\n\n| **Status**\n", encoding="utf-8")
+    _git(corpus, "add", "-A")
+    _git(corpus, "commit", "-q", "-m", "record")
+    _git(corpus, "switch", "-q", "main")
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    nodes = _nodes(_results(TestClient(app), "/show/project/alpha/gjgf"))
+    assert nodes["record::adr/DRAFT-bare.md"]["status"] == "unstated"
+
+
 def test_a_family_the_corpus_does_not_declare_is_named_with_the_ones_it_does(client):
     results = _results(client, "/show/family/nowhere/gjgf")
     assert results["unreadable"] is True

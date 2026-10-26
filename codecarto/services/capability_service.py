@@ -115,9 +115,13 @@ def read(corpus: Path | str | None = None) -> Reading:
             f"may predate it."))
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except UnicodeDecodeError:
+        return Reading(source=str(path), reason=f"{path.as_posix()} is not UTF-8")
     except yaml.YAMLError as error:
         return Reading(source=str(path),
                        reason=f"{path.as_posix()} did not parse: {error}")
+    if not isinstance(data, dict):
+        return Reading(source=str(path), reason=f"{path.as_posix()} is not a mapping")
 
     declared = data.get("capabilities")
     if not isinstance(declared, list):

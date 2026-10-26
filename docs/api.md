@@ -962,8 +962,10 @@ components). A view that cannot be drawn carries `available: false`, a
 `problem` and a `remedy`.
 
 The corpus is read from `CODECARTO_CORPUS` when it is set, else the
-`governance/qm` submodule. A families document that is missing, or at a schema
-this window does not draw, answers `unreadable` rather than an empty estate.
+`governance/qm` submodule. A families document that is missing, not UTF-8, not a
+JSON object, or at a schema this window does not draw, answers `unreadable`
+rather than an empty estate. A roster, inventory, interop registry or palette
+that is missing, not UTF-8 or not a mapping is left out with a note.
 
 At `layout=Compound`, the layout the Show panel opens in, the three drawing
 routes re-place their nodes after the layout runs
