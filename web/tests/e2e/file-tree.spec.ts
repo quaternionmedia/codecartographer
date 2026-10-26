@@ -84,6 +84,19 @@ test('a file read from disk is listed by its name alone', async ({ page }) => {
   expect(await entryLines(page)).toEqual([1, 1]);
 });
 
+test('a name cut short is titled whole', async ({ page }) => {
+  // Not run with the change that added it: the browser suites bind fixed
+  // ports this workstation shares. tree-rows.test.mjs holds the title.
+  const names = ['test_streaming_renderer_fit_after_stream.ts', 'test_streaming_renderer_fit_after_relayout.ts'];
+  await openStubbedTree(page, '/work/small', names.map((name) => ({ name, url: `/work/small/${name}` })));
+  const files = page.locator('.gl-panel--file-tree .file');
+  await expect(files).toHaveCount(2);
+  // Mutation: drop the row's title -- both read alike once cut, and this fails.
+  for (const [i, name] of names.entries()) {
+    await expect(files.nth(i)).toHaveAttribute('title', name);
+  }
+});
+
 test('an unread folder in a partial tree reads itself on click', async ({ page }) => {
   await page.route('**/repo/tree?**', (route) => route.fulfill({
     json: {

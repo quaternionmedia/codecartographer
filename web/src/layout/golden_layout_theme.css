@@ -207,7 +207,8 @@
 }
 
 /* One line per file (qm_comp_lib/directory/files.ts): its name, then its raw
-   link when it has one. A long name is cut short rather than wrapped. */
+   link when it has one. A long name is cut short rather than wrapped, and the
+   row's title holds it whole (tree_rows.ts). */
 .gl-file-tree__tree .file_container {
   display: flex;
   align-items: baseline;
