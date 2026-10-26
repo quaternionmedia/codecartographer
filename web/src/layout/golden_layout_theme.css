@@ -232,9 +232,12 @@
   color: var(--c-secondary, #00ff41);
 }
 
+/* A folder's row is a flex line, so its marker is a flex item that a long
+   name would squeeze; it keeps its width, as a file's does in its line. */
 .gl-file-tree__tree .folder_button::before,
 .gl-file-tree__tree .file::before {
   display: inline-block;
+  flex: none;
   width: 1.2em;
 }
 
