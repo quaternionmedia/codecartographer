@@ -14,7 +14,7 @@ name: Tests
 #
 # Not a seed file. The governance workflows beside this one are copied verbatim
 # from governance/qm/project-seed/ci/ at the pinned submodule, and
-# tests/test_seed_workflows.py holds them to it wherever the submodule is
+# tests/test_seed_copies.py holds them to it wherever the submodule is
 # checked out -- not here, where it is not. This one is the project's own and
 # is free to change.
 

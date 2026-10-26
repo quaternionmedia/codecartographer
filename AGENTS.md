@@ -124,8 +124,10 @@ copying. The checks they run come out of the submodule, so a fix in the corpus
 reaches this project at its next pin bump. The seed's `signature-check.yml`,
 `tag-claims.yml` and `timeless-check.yml` are not copied: they check out with
 `submodules: true`, and `graphbase` is a submodule the runner cannot fetch, so
-their checkout fails before they run. `tests/test_seed_workflows.py` holds both
-lists to the seed at the pin. Do not hand-port a check into this repository —
+their checkout fails before they run. `.vscode/settings.json` and
+`.vscode/extensions.json` are the seed's copies too, from `project-seed/ide/`.
+`tests/test_seed_copies.py` holds all of it to the seed at the pin. Do not
+hand-port a check into this repository —
 a copy that reimplements a rule is a second definition of it, and this project
 carried exactly that for a while: a workflow that grepped for banned words
 itself, implementing one of the lint's four checks and matching prose the real
