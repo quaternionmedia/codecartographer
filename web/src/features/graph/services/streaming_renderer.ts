@@ -14,8 +14,8 @@ import { GraphNode, GraphEdge } from './graph_types';
 import { canvasPath } from './node_shapes';
 import { drawnFill } from '../extensions/legend_marks';
 import { GraphStylingOptions } from '../../../state/types';
-import { CompoundLayoutManager } from './compound_layout';
-import type { GroupBounds } from './compound_layout';
+import { CompoundLayoutManager, outlinesAfterRemoval } from './compound_layout';
+import type { GroupBounds, OutlineSpacing } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
 import { sourceTarget, type SourceTarget } from './node_info';
@@ -608,6 +608,14 @@ export class StreamingGraphRenderer {
       .selectAll<SVGLineElement, GraphEdge>('line.stream-edge')
       .filter((d) => !!d && (gone.has(String(d.source)) || gone.has(String(d.target))))
       .remove();
+    // The outlines are drawn around what remains: a collapsed file's goes,
+    // and one that lost nodes shrinks to the rest. The fit frames the
+    // outlines kept here, so one left as it was framed an empty circle.
+    const drawn = this._groupBounds;
+    this._groupBounds = outlinesAfterRemoval(
+      this._compoundManager, drawn, Array.from(this.nodeById.values()), this._allEdges, this._outlineSpacing(),
+    );
+    if (drawn.length > 0) this._paintOutlines(this._groupBounds, false);
   }
 
   /** Ids of nodes whose parent is `id`, per the accumulated containment edges. */
@@ -689,16 +697,26 @@ export class StreamingGraphRenderer {
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
+  /** How far an outline is drawn past what it encloses, and the node size it reckons with. */
+  private _outlineSpacing(): OutlineSpacing {
+    return { padding: 40, baseNodeSize: this.styling.nodeSize! * 3.0 };
+  }
+
   private _drawCompoundBackgrounds(): void {
     const nodes = Array.from(this.nodeById.values());
-    const bounds = this._compoundManager.computeGroupBounds(
-      nodes,
-      this._allEdges,
-      40,
-      this.styling.nodeSize! * 3.0,
-    );
+    const { padding, baseNodeSize } = this._outlineSpacing();
+    const bounds = this._compoundManager.computeGroupBounds(nodes, this._allEdges, padding, baseNodeSize);
     this._childrenMap = this._compoundManager.computeChildrenMap(nodes, this._allEdges);
     this._groupBounds = bounds;
+    this._paintOutlines(bounds, true);
+  }
+
+  /**
+   * Draw `bounds` in place of the outlines drawn before. A fresh drawing
+   * fades them in; a redraw after a removal sets them at once, as the others
+   * were already on screen.
+   */
+  private _paintOutlines(bounds: readonly GroupBounds[], fadeIn: boolean): void {
     this._backgroundGroup.selectAll('*').remove();
     for (const b of bounds) {
       const isDir = b.depth === 0;
@@ -707,32 +725,26 @@ export class StreamingGraphRenderer {
       const dash   = isDir ? '8,4' : '4,2';
       const sw     = isDir ? 1.5 : 1.0;
       const grp = this._backgroundGroup.append('g').attr('class', `compound-group depth-${b.depth}`);
-      grp.append('circle')
+      const circle = grp.append('circle')
         .attr('cx', b.cx)
         .attr('cy', b.cy)
         .attr('r', b.radius)
         .attr('fill', fill)
         .attr('stroke', stroke)
         .attr('stroke-width', sw)
-        .attr('stroke-dasharray', dash)
-        .style('opacity', 0)
-        .transition()
-        .delay(300)
-        .duration(500)
-        .style('opacity', 1);
-      grp.append('text')
+        .attr('stroke-dasharray', dash);
+      const label = grp.append('text')
         .attr('x', b.cx)
         .attr('y', b.cy - b.radius + 16)
         .attr('text-anchor', 'middle')
         .attr('font-size', isDir ? 11 : 9)
         .attr('fill', isDir ? 'rgba(127,140,141,0.70)' : 'rgba(155,89,182,0.70)')
         .style('pointer-events', 'none')
-        .style('opacity', 0)
-        .text(b.label)
-        .transition()
-        .delay(300)
-        .duration(500)
-        .style('opacity', 1);
+        .text(b.label);
+      if (fadeIn) {
+        circle.style('opacity', 0).transition().delay(300).duration(500).style('opacity', 1);
+        label.style('opacity', 0).transition().delay(300).duration(500).style('opacity', 1);
+      }
     }
   }
 
