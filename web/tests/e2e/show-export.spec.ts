@@ -117,8 +117,11 @@ test("a system view is drawn only from the default branch's head the document na
   await exportSubject(page, carlos, manifest(out));
   const elsewhere = JSON.parse(read(join(out, 'project', 'carlos', 'show.json')));
   expect(elsewhere.views.system.absent).toBe(true);
-  expect(elsewhere.views.system.problem).toContain('bbbbbbb');
+  // The default branch's head, and not the clone's commit, which may be one
+  // only that clone holds.
   expect(elsewhere.views.system.problem).toContain('aaaaaaa');
+  expect(elsewhere.views.system.problem).not.toContain('bbbbbbb');
+  expect(elsewhere.views.system.problem).not.toContain('this disk');
   expect(existsSync(join(out, 'project', 'carlos', 'system.png'))).toBe(false);
 
   composedAt = 'aaaaaaa';

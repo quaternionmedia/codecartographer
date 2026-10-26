@@ -213,7 +213,8 @@ async function drawSystem(page: Page, subject: ManifestSubject, dir: string, ans
  * default branch's head the document names, or null when it is. The view is
  * composed from the project's clone on this disk, which may be on another
  * branch or hold commits nobody else has; published, its picture would
- * describe a state no reader can see.
+ * describe a state no reader can see. The sentence names neither the disk nor
+ * the clone's commit, which may be one only that clone holds.
  */
 async function notAtHead(page: Page, subject: ManifestSubject, manifest: Manifest) {
   const where = `/system/compose?repo=${encodeURIComponent(subject.name)}`;
@@ -223,10 +224,9 @@ async function notAtHead(page: Page, subject: ManifestSubject, manifest: Manifes
   if (at && head.startsWith(at)) return null;
   return {
     absent: true,
-    problem: `the clone of ${subject.name} on this disk is at ${at.slice(0, 7) || 'an unknown commit'}, `
-      + `not at its default branch's head ${head.slice(0, 7) || 'unknown'}, so its system view would `
-      + `show a state the default branch does not hold`,
-    remedy: `check out the default branch in the clone of ${subject.name} and export again`,
+    problem: `${subject.name}'s system view is composed from a clone of it, and the clone this export `
+      + `read was not at its default branch's head, ${head.slice(0, 7) || 'unknown'}`,
+    remedy: `export from a clone of ${subject.name} at its default branch's head`,
     where,
   };
 }

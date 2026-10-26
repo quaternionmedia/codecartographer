@@ -391,8 +391,10 @@ holds `show.json` and a picture of each view the window draws: `estate.svg`,
 which draws in HTML). A view the window cannot draw here is stated in
 `show.json` with the window's reason, and has no picture. A system view is
 composed from the project's clone on this disk, so it is drawn only when that
-clone is at its default branch's head; otherwise the document says which
-commit the clone is at.
+clone is at its default branch's head; otherwise the document says the clone
+was not, naming the head. A document never names the disk, a clone's place on
+it, or a commit only a clone holds: where the window says a clone is not
+"beside this checkout", the document says the export read none.
 
 The pictures come from the real renderer, run headlessly by
 `web/playwright.export.config.ts` on ports of its own: each subject's address
