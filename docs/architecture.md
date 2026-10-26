@@ -372,7 +372,10 @@ inside the rim when it fits there and outside when not, over whatever is
 there. The fit frames each label with its circle. A spot is checked only
 against the node and label boxes filed in the cells of a 64-unit grid that it
 covers, as the labels are placed again at every drag's end and after a Delete
-or Collapse.
+or Collapse. On a map (a showgraph), whose names are drawn at least a fixed
+size on screen and so grow in the graph as it is framed further out, they are
+placed again whenever a zoom resizes them, and the fit sizes them for each zoom
+it tries, from zoom 1, until the zoom it finds holds.
 
 `computeChildrenMap` covers all four tiers, so dragging a node moves its whole
 subtree, and the circles are redrawn when the drag ends. The map is computed

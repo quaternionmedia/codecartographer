@@ -116,6 +116,9 @@ export class StreamingGraphRenderer {
   // The box each outline's label was set in, by the outline's node id, so a
   // fit frames the label with its outline.
   private _outlineLabelBoxes = new Map<string, Box>();
+  // Each outline's label as drawn, with the outline it names, so a map can set
+  // it again when a zoom resizes it.
+  private _outlineNames: { el: SVGTextElement; bound: GroupBounds }[] = [];
   // Which nodes the host's view state hides (`setHiddenTest`), so a fit
   // leaves them out; none until it says.
   private _isHidden: (id: string) => boolean = () => false;
@@ -305,6 +308,7 @@ export class StreamingGraphRenderer {
         this._backgroundGroup.selectAll('*').remove();
         this._groupBounds = [];
         this._outlineLabelBoxes = new Map();
+        this._outlineNames = [];
       }
     }
   }
@@ -716,6 +720,20 @@ export class StreamingGraphRenderer {
    * legacy menu was full of.
    */
   private _fitNodes(nodes: GraphNode[]): void {
+    const t = this._map ? this._fitMap(nodes) : this._fitAsDrawn(nodes);
+    if (!t) return;
+
+    this.svg
+      .transition()
+      .duration(700)
+      .call(
+        this.zoom.transform as any,
+        d3.zoomIdentity.translate(t.x, t.y).scale(t.k)
+      );
+  }
+
+  /** The transform that frames `nodes` with their labels and outlines as they are drawn now. */
+  private _fitAsDrawn(nodes: GraphNode[]): ReturnType<typeof fitTransform> {
     const labels = this._shownLabelBoxes();
     const framed: FramedNode[] = nodes.map((n) => ({
       id: n.id,
@@ -728,16 +746,38 @@ export class StreamingGraphRenderer {
       nodeId: b.nodeId, x: b.cx, y: b.cy, r: b.radius, label: this._outlineLabelBoxes.get(b.nodeId) ?? null,
     }));
     const extents = framedExtents(framed, outlines, (id) => this._childrenMap.get(id) ?? [], this._isHidden);
-    const t = fitTransform(extents, { width: this.width, height: this.height });
-    if (!t) return;
+    return fitTransform(extents, { width: this.width, height: this.height });
+  }
 
-    this.svg
-      .transition()
-      .duration(700)
-      .call(
-        this.zoom.transform as any,
-        d3.zoomIdentity.translate(t.x, t.y).scale(t.k)
-      );
+  /**
+   * The fit of a map: framed with its names at the size they are drawn at the
+   * zoom it lands on.
+   *
+   * **A MAP'S NAMES ARE SIZED BY THE ZOOM, SO THE FIT CANNOT MEASURE THEM
+   * FIRST.** A name is drawn at least `MAP_NAME_PX` on screen, so the further
+   * out the fit frames, the more of the graph it takes. The fit measured the
+   * names as they were drawn before it moved -- at zoom 1, a third of their
+   * size at the index's fit -- framed those, and the names then grew past what
+   * was framed and across their outlines' rims; a second Fit measured them
+   * grown and chose another frame. Here the names are sized for a zoom, the
+   * fit for that size is found, and the names sized for its zoom, until the
+   * zoom holds. It starts from zoom 1 every time, so a second Fit over the same
+   * graph lands where the first did.
+   */
+  private _fitMap(nodes: GraphNode[]): ReturnType<typeof fitTransform> {
+    let k = 1;
+    let t: ReturnType<typeof fitTransform> = null;
+    for (let tries = 0; tries < 8; tries++) {
+      this._sizeNames(k);
+      t = this._fitAsDrawn(nodes);
+      if (!t) break;
+      const held = Math.abs(t.k - k) <= k * 1e-3;
+      k = t.k;
+      if (held) break;
+    }
+    // Drawn for the zoom on screen until the fit's transition moves it.
+    this._sizeNames(this._zoomK);
+    return t;
   }
 
   /**
@@ -825,22 +865,34 @@ export class StreamingGraphRenderer {
         .text(b.label)
         .node()!);
     }
-    // Each label where it covers no other label and no node, inside its
-    // outline when it fits there (outline_labels.ts), measured as drawn,
-    // after a removal too.
+    this._outlineNames = labels.map((el, i) => ({ el, bound: bounds[i] }));
+    this._placeOutlineNames();
+    if (fadeIn) {
+      for (const label of labels) d3.select(label).transition().delay(300).duration(500).style('opacity', 1);
+    }
+  }
+
+  /**
+   * Each outline's label where it covers no other label and no node, inside
+   * its outline when it fits there (outline_labels.ts), measured at the size
+   * it is drawn: after a removal too, and on a map whenever a zoom resizes
+   * the names. Each label's box as placed is what the fit frames with its
+   * outline.
+   */
+  private _placeOutlineNames(): void {
+    const names = this._outlineNames;
     const nodes = Array.from(this.nodeById.values());
-    const sizes = labels.map((label) => label.getBBox());
+    const sizes = names.map(({ el }) => el.getBBox());
     const places = placeOutlineLabels(
-      bounds.map((b, i) => ({ cx: b.cx, cy: b.cy, r: b.radius, w: sizes[i].width, h: sizes[i].height })),
+      names.map(({ bound: b }, i) => ({ cx: b.cx, cy: b.cy, r: b.radius, w: sizes[i].width, h: sizes[i].height })),
       nodes.map((n) => ({ x: n.x ?? 0, y: n.y ?? 0, r: this._extentOf(n) })),
     );
-    // Each label's box as placed, which the fit frames with its outline.
     this._outlineLabelBoxes = new Map();
-    labels.forEach((label, i) => {
-      const placed = d3.select(label).attr('x', places[i].x).attr('y', places[i].y);
-      if (fadeIn) placed.transition().delay(300).duration(500).style('opacity', 1);
+    names.forEach(({ el, bound }, i) => {
+      el.setAttribute('x', String(places[i].x));
+      el.setAttribute('y', String(places[i].y));
       const { width, height } = sizes[i];
-      this._outlineLabelBoxes.set(bounds[i].nodeId, {
+      this._outlineLabelBoxes.set(bound.nodeId, {
         minX: places[i].x - width / 2,
         minY: places[i].y - height / 2,
         maxX: places[i].x + width / 2,
@@ -960,18 +1012,33 @@ export class StreamingGraphRenderer {
     return this._shouldShowLabel((node.depth as number) ?? 2);
   }
 
-  /** A font size, in the graph's units, that is at least `floorPx` on screen at this zoom. */
-  private _nameSize(base: number, floorPx: number): number {
-    return Math.max(base, floorPx / (this._zoomK || 1));
+  /** A font size, in the graph's units, that is at least `floorPx` on screen at zoom `k`. */
+  private _nameSize(base: number, floorPx: number, k = this._zoomK): number {
+    return Math.max(base, floorPx / (k || 1));
   }
 
   /** On a map, every name at least its floor on screen, at the zoom just set. */
   private _keepNamesReadable(): void {
+    this._sizeNames(this._zoomK);
+  }
+
+  /**
+   * Every name at least its floor on screen at zoom `k`, and the outline names
+   * set again for that size when it changed theirs: placed for a name a third
+   * the size, each was drawn across its outline's rim and over its
+   * neighbours'.
+   */
+  private _sizeNames(k: number): void {
     this.labelGroup.selectAll<SVGTextElement, unknown>('text')
-      .attr('font-size', this._nameSize(this.styling.labelSize!, MAP_NAME_PX));
-    this._backgroundGroup.selectAll<SVGTextElement, unknown>('text[data-base-size]')
-      .attr('font-size', (_, i, els) =>
-        this._nameSize(Number(els[i].getAttribute('data-base-size')), MAP_OUTLINE_PX));
+      .attr('font-size', this._nameSize(this.styling.labelSize!, MAP_NAME_PX, k));
+    let resized = false;
+    for (const { el } of this._outlineNames) {
+      const size = String(this._nameSize(Number(el.getAttribute('data-base-size')), MAP_OUTLINE_PX, k));
+      if (el.getAttribute('font-size') === size) continue;
+      el.setAttribute('font-size', size);
+      resized = true;
+    }
+    if (resized) this._placeOutlineNames();
   }
 
   /**

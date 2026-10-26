@@ -405,3 +405,93 @@ test("a code map drawn again in another layout is drawn at its own depth, under 
   await expect(page).toHaveURL(/\?show=project:moat&view=code$/);
   await expect(page.locator('.show__crumb.is-current')).toHaveText('moat');
 });
+
+/** The canvas's zoom transform, once it has stopped moving: the fit is a 700 ms transition. */
+async function settledTransform(page: Page): Promise<{ x: number; y: number; k: number }> {
+  const view = page.locator('.graphRenderer svg').first();
+  let last: string | null = null;
+  let now = '';
+  await expect.poll(async () => {
+    now = await view.evaluate((svg) => svg.querySelector('g')?.getAttribute('transform') ?? '');
+    const still = now === last;
+    last = now;
+    return still;
+  }, { intervals: [400], timeout: SETTLED }).toBe(true);
+  const [x, y, k] = (/translate\(([-\d.e]+),\s*([-\d.e]+)\)\s*scale\(([-\d.e]+)\)/.exec(now) ?? []).slice(1).map(Number);
+  return { x, y, k };
+}
+
+/**
+ * What a map's names do wrong where they are drawn: an outline's name across
+ * its rim, outline names over each other, and any name off the canvas.
+ */
+async function namesAsDrawn(page: Page): Promise<{ outlines: number; acrossRims: string[]; overlapping: string[]; outside: string[] }> {
+  return page.locator('.graphRenderer svg').first().evaluate((svg) => {
+    const canvas = svg.getBoundingClientRect();
+    const shown = (t: Element) => getComputedStyle(t).display !== 'none'
+      && t.getAttribute('visibility') !== 'hidden' && Number(getComputedStyle(t).opacity) > 0;
+    const groups = [...svg.querySelectorAll('.compound-group')];
+    const acrossRims: string[] = [];
+    for (const g of groups) {
+      const c = g.querySelector('circle')!.getBoundingClientRect();
+      const l = g.querySelector('text')!.getBoundingClientRect();
+      const [cx, cy, r] = [c.left + c.width / 2, c.top + c.height / 2, c.width / 2];
+      const corners = [[l.left, l.top], [l.right, l.top], [l.left, l.bottom], [l.right, l.bottom]];
+      const inside = corners.every(([x, y]) => Math.hypot(x - cx, y - cy) <= r + 0.5);
+      // The box's nearest point to the centre is outside the circle.
+      const near = Math.hypot(Math.max(l.left - cx, 0, cx - l.right), Math.max(l.top - cy, 0, cy - l.bottom));
+      if (!inside && near < r - 0.5) acrossRims.push(g.querySelector('text')!.textContent ?? '');
+    }
+    const outlines = groups.map((g) => ({ name: g.querySelector('text')!.textContent ?? '', box: g.querySelector('text')!.getBoundingClientRect() }));
+    const overlapping: string[] = [];
+    outlines.forEach((a, i) => outlines.slice(i + 1).forEach((b) => {
+      if (a.box.left < b.box.right && b.box.left < a.box.right
+        && a.box.top < b.box.bottom && b.box.top < a.box.bottom) overlapping.push(`${a.name} / ${b.name}`);
+    }));
+    const outside = [...svg.querySelectorAll('.compound-group text, .labels text')].filter(shown)
+      .filter((t) => {
+        const b = t.getBoundingClientRect();
+        return b.left < canvas.left - 0.5 || b.right > canvas.right + 0.5 || b.top < canvas.top - 0.5 || b.bottom > canvas.bottom + 0.5;
+      })
+      .map((t) => t.textContent ?? '');
+    return { outlines: outlines.length, acrossRims, overlapping, outside };
+  });
+}
+
+test.describe('in a small window', () => {
+  test.use({ viewport: { width: 700, height: 450 } });
+
+  test("a map's names are placed and framed at the size they are drawn, and a second fit keeps the frame", async ({ page }) => {
+    await drawEveryFamily(page);
+    await page.locator('.lm_tab', { hasText: 'Graph' }).first().click();
+    const fitted = await settledTransform(page);
+    const drawn = await namesAsDrawn(page);
+    expect(drawn.outlines).toBeGreaterThan(1);
+    // Mutation: place the outline names once, at the size they have at zoom 1,
+    // and leave them where they are when a zoom resizes them -- each is set
+    // for a name a third the size, inside its rim, and drawn across it, and
+    // this fails.
+    expect(drawn.acrossRims).toEqual([]);
+    expect(drawn.overlapping).toEqual([]);
+    expect(drawn.outside).toEqual([]);
+
+    // Fit again, from the canvas ring: the frame it lands on is the one it left.
+    const svg = page.locator('.graphRenderer svg').first();
+    await svg.evaluate((el) => (el.closest('[tabindex]') as HTMLElement | null)?.focus());
+    await svg.click({ button: 'right', position: { x: 4, y: 4 } });
+    const ring = page.locator('.rad-root');
+    await expect(ring).toHaveAttribute('aria-label', 'canvas');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Enter');
+    await expect(ring).toHaveCount(0);
+    await page.waitForTimeout(300);
+    const again = await settledTransform(page);
+    // Mutation: fit with the names as they are drawn now rather than sized for
+    // the fit's own zoom -- the second fit measures larger names than the
+    // first did, frames further out, and this fails.
+    expect(Math.abs(again.k - fitted.k) / fitted.k, `zoom ${fitted.k} then ${again.k}`).toBeLessThan(0.005);
+    expect(Math.abs(again.x - fitted.x), `x ${fitted.x} then ${again.x}`).toBeLessThan(2);
+    expect(Math.abs(again.y - fitted.y), `y ${fitted.y} then ${again.y}`).toBeLessThan(2);
+    expect(await namesAsDrawn(page)).toEqual(drawn);
+  });
+});
