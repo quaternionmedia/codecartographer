@@ -116,10 +116,16 @@ Runs the workflows' real steps. It reproduces no `uses:` steps, no runner
 image and no secrets, so say that when reporting rather than letting a local
 pass stand for a remote one.
 
-The three governance workflows are **copied verbatim from the seed** and must
-stay that way: `adr-lint.yml`, `submodule-check.yml`, `reuse-lint.yml`. The
-lint they run comes out of the submodule, so a fix in the corpus reaches this
-project at its next pin bump. Do not hand-port a check into this repository —
+The five governance workflows are **copied verbatim from the seed**
+(`governance/qm/project-seed/ci/`) and must stay that way: `adr-lint.yml`,
+`submodule-check.yml`, `reuse-lint.yml`, `one-pr-check.yml` and
+`leak-check.yml`. A pin bump re-copies whichever of them changed; diff before
+copying. The checks they run come out of the submodule, so a fix in the corpus
+reaches this project at its next pin bump. The seed's `signature-check.yml`,
+`tag-claims.yml` and `timeless-check.yml` are not copied: they check out with
+`submodules: true`, and `graphbase` is a submodule the runner cannot fetch, so
+their checkout fails before they run. `tests/test_seed_workflows.py` holds both
+lists to the seed at the pin. Do not hand-port a check into this repository —
 a copy that reimplements a rule is a second definition of it, and this project
 carried exactly that for a while: a workflow that grepped for banned words
 itself, implementing one of the lint's four checks and matching prose the real

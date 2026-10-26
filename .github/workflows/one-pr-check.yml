@@ -46,13 +46,11 @@ jobs:
   slot:
     runs-on: ubuntu-latest
     steps:
+      # Only the governance submodule: `submodules: true` is all-or-nothing, and
+      # a project with a private submodule the runner has no credential for
+      # fails the checkout before the check runs.
       - uses: actions/checkout@v4
         with:
-          # **ONLY THE GOVERNANCE SUBMODULE, INITIALISED BELOW** -- the one
-          # departure from the seed's copy. `submodules: true` is all-or-nothing
-          # and this project also has a private submodule the runner has no
-          # credentials for, so the seed's checkout aborted with
-          # `remote: Repository not found` before the check ran a line.
           submodules: false
 
       - name: Check out the governance submodule only
