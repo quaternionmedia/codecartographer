@@ -913,7 +913,9 @@ with what `cargo metadata` says rather than only drawable.
 
 What the show seam can draw, read from the corpus's `families.json`, roster,
 inventory, interop registry and palette: `families` (each with `name`,
-`drives`, `within`, `subfamilies`, `members`, `all_members` and its `hue`),
+`drives`, `within`, `subfamilies`, its `hue`, and `members` and `all_members`,
+which are counts: of the members it names itself, and of those with its
+subfamilies' members),
 `projects` (each public repository a family or the roster names, with its
 `families`, `governed` -- `null` when git could not say, or when the corpus
 checkout has no `project/codecartographer` branch and so holds too few project
@@ -932,7 +934,9 @@ claim drawn once, outside both outlines, with a `member_of` edge to each. Every
 edge carries `basis` -- `claim` (the families document), `declared` (the
 interop registry, labelled with the surface's protocol) or `measured` (a
 member's manifests at its default branch name another estate repository by its
-host URL; drawn dashed, and never used to place a member). `metadata.kind` is
+host URL; drawn dashed, and never used to place a member). A clone's default
+branch is its `origin/HEAD`, or the checked-out `HEAD` when it has no
+`origin/HEAD`. `metadata.kind` is
 `"show"`; `metadata.undeclared` lists measured links no surface declares, and
 `metadata.unread` the members nothing was measured for: each with no clone
 beside this one or one git could not read, or every member when the inventory
