@@ -473,40 +473,49 @@ async function headerShape(page: Page) {
   });
 }
 
-test('the header is one line, of one height on every step, in a narrow window too', async ({ page }) => {
-  /**
-   * At 700 pixels the rail and Next left the title too little room, and it
-   * wrapped onto a second line while Next was shown: the header was 50 pixels
-   * tall on steps 1 to 3 and 45 on Read, so the dock under it moved with the
-   * step, and the rail ran on under the controls at the header's right end.
-   * The title keeps its line, and the steps the reader is not on give their
-   * names to their numbers; narrower still, the rail scrolls rather than run
-   * under the controls.
-   */
-  await page.setViewportSize({ width: 700, height: 600 });
-  await page.goto('/');
-  await dismissOnboardingModal(page);
-  const oneLine = { height: 45, titleLines: 1, railClearOfControls: true };
-  for (const id of ['open', 'browse', 'tune', 'read']) {
-    await rail(page).locator(`.gl-steps__step[data-step="${id}"]`).click();
-    await expect(current(page)).toHaveAttribute('data-step', id);
-    // Mutation: keep every step's name in a narrow window -- Next runs past
-    // the rail's end, and this fails.
-    expect(await headerShape(page), `on ${id}`).toEqual({ ...oneLine, nextWhole: id === 'read' ? null : true });
-  }
-  // The step's name is still the button's, to a screen reader and a test.
-  // Mutation: hide it with `display: none` -- the button is named "2", and
-  // this fails.
-  await expect(step(page, 'Browse')).toHaveAccessibleName(/Browse/);
+/**
+ * The header in its own font, Consolas, and in a wider one. A machine with no
+ * Consolas draws the header in its own monospace: the CI runner's is wider,
+ * and Next, which fitted at 700 pixels here, ran past the rail's end there.
+ */
+for (const [inFont, font] of [['its own font', null], ['a wider font', "'Lucida Console', 'DejaVu Sans Mono', monospace"]]) {
+  test(`the header is one line, of one height on every step, in a narrow window, in ${inFont}`, async ({ page }) => {
+    /**
+     * At 700 pixels the rail and Next left the title too little room, and it
+     * wrapped onto a second line while Next was shown: the header was 50
+     * pixels tall on steps 1 to 3 and 45 on Read, so the dock under it moved
+     * with the step, and the rail ran on under the controls at the header's
+     * right end. The title keeps its line, and the steps the reader is not on,
+     * and Next, give their names to their numbers; narrower still, the rail
+     * scrolls rather than run under the controls.
+     */
+    await page.setViewportSize({ width: 700, height: 600 });
+    await page.goto('/');
+    if (font) await page.addStyleTag({ content: `* { font-family: ${font} !important; }` });
+    await dismissOnboardingModal(page);
+    const oneLine = { height: 45, titleLines: 1, railClearOfControls: true };
+    for (const id of ['open', 'browse', 'tune', 'read']) {
+      await rail(page).locator(`.gl-steps__step[data-step="${id}"]`).click();
+      await expect(current(page)).toHaveAttribute('data-step', id);
+      // Mutations: keep every step's name in a narrow window, or Next's (in
+      // the wider font) -- Next runs past the rail's end, and this fails.
+      expect(await headerShape(page), `on ${id}`).toEqual({ ...oneLine, nextWhole: id === 'read' ? null : true });
+    }
+    // The names are still the buttons', to a screen reader and a test.
+    // Mutation: hide them with `display: none` -- the Browse button is named
+    // "2", and this fails.
+    await expect(step(page, 'Browse')).toHaveAccessibleName(/Browse/);
 
-  // Narrower than the rail can fit. Mutations: let the rail overflow its box
-  // -- it runs under the controls -- or let the title wrap, giving it the
-  // room -- the header is 50 pixels tall -- and this fails.
-  await page.setViewportSize({ width: 560, height: 600 });
-  await rail(page).locator('.gl-steps__step[data-step="open"]').click();
-  // Next comes back with the redraw that moves the rail; measured before it,
-  // the rail is short enough to fit, and nothing here is tested.
-  await expect(current(page)).toHaveAttribute('data-step', 'open');
-  await expect(next(page)).toBeVisible();
-  expect(await headerShape(page)).toMatchObject(oneLine);
-});
+    // Narrower than the rail can fit. Mutations: let the rail overflow its
+    // box -- it runs under the controls -- or let the title wrap, giving it
+    // the room -- the header is 50 pixels tall -- and this fails.
+    await page.setViewportSize({ width: 560, height: 600 });
+    await rail(page).locator('.gl-steps__step[data-step="open"]').click();
+    // Next comes back with the redraw that moves the rail; measured before
+    // it, the rail is short enough to fit, and nothing here is tested.
+    await expect(current(page)).toHaveAttribute('data-step', 'open');
+    await expect(next(page)).toBeVisible();
+    await expect(next(page)).toHaveAccessibleName(/Next 2 Browse/);
+    expect(await headerShape(page)).toMatchObject(oneLine);
+  });
+}
