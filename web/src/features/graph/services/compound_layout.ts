@@ -1,4 +1,4 @@
-import { GraphNode, GraphEdge } from './graph_types';
+import type { GraphNode, GraphEdge } from './graph_types';
 
 export interface GroupBounds {
   nodeId: string;
@@ -237,4 +237,32 @@ export class CompoundLayoutManager {
 
     return result;
   }
+}
+
+/** How far an outline is drawn past what it encloses, and the size it reckons a node at. */
+export interface OutlineSpacing {
+  readonly padding: number;
+  readonly baseNodeSize: number;
+}
+
+/**
+ * The outlines drawn once nodes leave the canvas (Delete, Collapse), given
+ * those drawn before and the nodes and edges that remain.
+ *
+ * Recomputed around what remains, so an outline with nothing left inside it
+ * -- a collapsed file's, or one whose node was deleted -- is dropped, and one
+ * that lost some of what it enclosed is drawn around the rest. A fit frames
+ * the outlines drawn, so one left at its old radius framed an empty circle.
+ * None are drawn after a removal when none were before: Group Outlines is
+ * off, or the stream has not finished.
+ */
+export function outlinesAfterRemoval(
+  manager: CompoundLayoutManager,
+  drawn: readonly GroupBounds[],
+  remaining: GraphNode[],
+  edges: GraphEdge[],
+  spacing: OutlineSpacing,
+): GroupBounds[] {
+  if (drawn.length === 0) return [];
+  return manager.computeGroupBounds(remaining, edges, spacing.padding, spacing.baseNodeSize);
 }

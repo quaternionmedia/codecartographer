@@ -20,6 +20,10 @@ has not been handed one legitimately has no seam. That answers 200 with
 `unreadable` and draws no canvas -- an empty graph would look like an estate of
 nothing, which is a different and much worse claim.
 
+**EVERY ROUTE IS A PLAIN `def`**, as in `capability_router` and for the same
+reason: reading the seam, parsing its JSON and laying it out all block, so
+FastAPI runs them in its threadpool rather than on the event loop.
+
 Every route answers in `generate_return`'s envelope, like every other router
 here.
 """
@@ -60,7 +64,7 @@ def _unreadable(reading) -> dict[str, Any]:
 
 
 @OverviewRouter.get("/gjgf")
-async def overview_gjgf(
+def overview_gjgf(
     seam: str | None = Query(None),
     layout: str = Query("Kamada Kawai"),
     palette_id: str = Query("0"),
@@ -88,7 +92,7 @@ async def overview_gjgf(
 
 
 @OverviewRouter.get("/data")
-async def overview_data(seam: str | None = Query(None)) -> dict[str, Any]:
+def overview_data(seam: str | None = Query(None)) -> dict[str, Any]:
     """The sections themselves, without a layout -- the reading the terminal
     prints as tables, handed over as data so the two windows can be compared."""
     reading = overview_service.read(seam)

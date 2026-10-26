@@ -34,11 +34,21 @@
     "src/features/graph/services/node_info.ts",
     "src/features/graph/services/renderer_controls.ts",
     "src/features/graph/services/fit.ts",
+    "src/features/graph/services/compound_layout.ts",
+    "src/features/graph/services/source_badge.ts",
     "src/features/examples/examples.ts",
     "src/features/cartography/chrestomathy_rows.ts",
     "src/layout/saved_layout.ts",
     "src/features/graph/services/parse_notes.ts",
     "src/features/cartography/cartography_actions.ts",
-    "src/features/cartography/followed_draft.ts"
+    "src/features/cartography/followed_draft.ts",
+    "src/features/repository/repo_tree.ts",
+    "src/features/repository/plot_target.ts",
+    "src/state/latest_plot.ts",
+    "src/components/qm_comp_lib/directory/stub_read.ts",
+    "src/components/qm_comp_lib/directory/tree_rows.ts",
+    "src/layout/new_panel_stack.ts",
+    "src/layout/components/menu_dismissal.ts",
+    "src/components/codecarto/control_panel/pressable.ts"
   ]
 }

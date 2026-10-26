@@ -39,9 +39,10 @@ test('after a window is added, the next + click opens the menu', async ({ page }
   await expect(menu).toHaveCount(0);
   await expect(page.locator('.gl-panel--cargo')).toBeVisible();
 
-  // Mutation: leave the closed menu's outside-click listener on `document`
-  // -- it fires on this click, after the + has opened the menu, and closes
-  // it again, and this fails.
+  // Mutation: drop the disarm from add_panel_menu.ts's `onremove` -- Cargo's
+  // click stopped at the menu and left its outside-click listener on
+  // `document`, it fires on this click after the + has opened the menu, and
+  // closes it again, and this fails.
   await add.click();
   await expect(menu).toBeVisible();
   // And it opens with the one click alone: still open a moment later.
@@ -83,4 +84,63 @@ test('a window added from the + menu leaves the canvas in view', async ({ page }
   // Files column, and this fails.
   const stack = page.locator('.lm_stack', { has: page.locator('.lm_tab', { hasText: 'Cargo' }) });
   await expect(stack.locator('.lm_tab', { hasText: 'Graph Settings' })).toHaveCount(1);
+});
+
+test('a window joins the stack whose tab was clicked last, and never the canvas\'s', async ({ page }) => {
+  // Not run with the change that added it: the browser suites bind fixed
+  // ports this workstation shares. new-panel-stack.test.mjs holds the choice.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const stackOf = (title: string) =>
+    page.locator('.lm_stack', { has: page.locator('.lm_tab', { hasText: title }) });
+
+  // Mutation: ignore the tab clicked -- Cargo lands in the dock's tabs, and
+  // this fails.
+  await page.locator('.lm_tab', { hasText: /Files$/ }).click();
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Cargo$/ }).click();
+  await expect(stackOf('Cargo').locator('.lm_tab', { hasText: /Files$/ })).toHaveCount(1);
+
+  // Mutation: drop the guard that keeps the canvas's stack out -- Overview
+  // lands on the Graph tab's stack, and this fails.
+  await page.locator('.lm_tab', { hasText: /◈ Graph$/ }).click();
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Overview$/ }).click();
+  await expect(stackOf('Overview').locator('.lm_tab', { hasText: /◈ Graph$/ })).toHaveCount(0);
+});
+
+test('the + menu closed with Escape opens again on the next click', async ({ page }) => {
+  // Not run with the change that added it: the browser suites bind fixed
+  // ports this workstation shares. menu-dismissal.test.mjs holds the order.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const menu = page.locator('.gl-add-panel-menu');
+
+  await page.locator('.gl-app-header__add-btn').click();
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  // Mutation: leave the outside-click listener armed after Escape -- this
+  // click opens the menu and closes it at once, and this fails.
+  await page.locator('.gl-app-header__add-btn').click();
+  await expect(menu).toBeVisible();
+});
+
+test('the + menu takes the focus when it opens, and gives it back to + when it closes', async ({ page }) => {
+  // Not run with the change that added it: the browser suites bind fixed
+  // ports this workstation shares.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const add = page.locator('.gl-app-header__add-btn');
+
+  await add.focus();
+  await page.keyboard.press('Enter');
+  // Mutation: leave the focus on + -- a keyboard reader Tabs through the
+  // dock to reach the list, and this fails.
+  await expect(page.locator('.gl-add-panel-menu__item').first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.gl-add-panel-menu')).toHaveCount(0);
+  // Mutation: leave the focus where the menu was -- it falls to the page,
+  // and this fails.
+  await expect(add).toBeFocused();
 });

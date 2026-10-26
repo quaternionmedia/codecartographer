@@ -49,9 +49,34 @@
 /* The ✕ is drawn absolutely, 11px wide and 6px in from the tab's right edge
    (goldenlayout-dark-theme.css), so the right padding is its room: 17px, and
    a 7px gap before the title. A tab in the overflow list hides its ✕ and
-   keeps the 10px. */
+   keeps the 10px.
+
+   A tab in the strip also keeps its width. Golden Layout fits the strip by
+   measuring each tab while every tab is in it, and a flex item shrinks to
+   fit, so it read the tabs narrower than they are, kept one too many, and the
+   last ran its ✕ under the header's controls. */
 .lm_tabs > .lm_tab {
   padding-right: 24px !important;
+  flex-shrink: 0;
+}
+
+/* Golden Layout always shows the active tab, even in a stack narrower than
+   it. The strip stops short of the controls -- at most four, 18px each, 3px
+   in from the edge -- and a tab alone in it shrinks to fit, its title cut
+   short, so its ✕ stays clear of them. A stack too narrow for a tab's padding
+   and the controls together still overlaps them. */
+.lm_header .lm_tabs {
+  max-width: calc(100% - 75px);
+}
+
+.lm_tabs > .lm_tab:only-child {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.lm_tabs > .lm_tab:only-child .lm_title {
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 .lm_tab.lm_active {
@@ -182,7 +207,8 @@
 }
 
 /* One line per file (qm_comp_lib/directory/files.ts): its name, then its raw
-   link when it has one. A long name is cut short rather than wrapped. */
+   link when it has one. A long name is cut short rather than wrapped, and the
+   row's title holds it whole (tree_rows.ts). */
 .gl-file-tree__tree .file_container {
   display: flex;
   align-items: baseline;
@@ -250,6 +276,36 @@
   font-size: 0.8em;
   color: var(--c-font-muted, #00aa2a);
   text-decoration: underline dotted;
+}
+
+/* A folder's contents sit one step in from its name (qm_comp_lib/directory/
+   folder.ts), and the steps add up level by level, so crates/a/src/lib.rs
+   reads as inside crates/a/src and not beside crates/b/src/lib.rs. The
+   dashed rule down the step marks which folder an entry is in. */
+.gl-file-tree__tree .folder_content {
+  margin-left: 0.4em;
+  padding-left: 0.8em;
+  border-left: 1px dashed var(--c-border, #00ff4140);
+}
+
+/* A folder's row is one line, as a file's is: its name, cut short when long
+   and titled whole (tree_rows.ts), then its … or ↻, which keep their space. */
+.gl-file-tree__tree .folder_button {
+  display: flex;
+  align-items: baseline;
+}
+
+.gl-file-tree__tree .folder_name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gl-file-tree__tree .folder_stub_indicator,
+.gl-file-tree__tree .folder_loading_indicator {
+  flex: none;
+  white-space: pre;
 }
 
 .gl-file-tree__actions {
