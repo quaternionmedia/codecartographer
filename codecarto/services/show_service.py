@@ -248,6 +248,11 @@ def read(corpus: Path | str | None = None) -> Reading:
     for row in inventory.get("repositories") or []:
         if isinstance(row, dict) and row.get("name") and not row.get("private"):
             reading.inventory[str(row["name"])] = row
+    if not reading.org:
+        notes.append(f"no organisation is known ({INVENTORY_FILE.as_posix()}'s "
+                     f"generator.org), so nothing is measured: a manifest names a "
+                     f"repository by its URL on the host, and a URL is matched by "
+                     f"the organisation")
 
     interop = _yaml(root / INTEROP_FILE, notes, "interop registry") or {}
     reading.surfaces = [s for s in interop.get("surfaces") or []
@@ -467,7 +472,8 @@ def measured_links(reading: Reading, repos: list[str],
                    among: list[Path] | None = None) -> tuple[list[dict[str, str]], list[str]]:
     """Each estate repository a member's manifests name by its host URL.
 
-    Returns the links and the members that had no clone to read. Only a URL on
+    Returns the links and the members nothing was measured for: each that had
+    no clone to read, or every one when no organisation is known. Only a URL on
     the host naming this organisation resolves; a package that merely shares a
     repository's name is not a link, because drawing a guess would be the
     measurement asserting a claim.
@@ -711,7 +717,7 @@ def provenance(reading: Reading) -> dict[str, Any]:
     }
 
 
-def caveat(graph) -> str:
+def caveat(reading: Reading, graph) -> str:
     """The sentences a reader needs before believing the shape."""
     parts = ["Membership is a claim a person made in the roster; this draws it "
              "and cannot tell whether a repository drives what its family "
@@ -719,7 +725,14 @@ def caveat(graph) -> str:
              "declared in the interop registry, and dashed edges are measured "
              "from a member's own manifests and never place it."]
     unread = graph.graph.get("unread") or []
-    if unread:
+    if unread and not reading.org:
+        # Every member is unread then, clone or no clone, and the clone is
+        # not the reason.
+        parts.append(f"No organisation is known, so nothing was measured for "
+                     f"{len(unread)} member(s): {', '.join(unread)}. A manifest "
+                     f"names a repository by its URL on the host, and a URL is "
+                     f"matched by the inventory's organisation.")
+    elif unread:
         parts.append(f"{len(unread)} member(s) had no clone beside this one, so "
                      f"nothing was measured for them: {', '.join(unread)}.")
     undeclared = graph.graph.get("undeclared") or []
@@ -749,7 +762,7 @@ def metadata(reading: Reading, graph, options: Any = None) -> dict[str, Any]:
         "undeclared": graph.graph.get("undeclared") or [],
         "unstated": len(reading.unstated),
         "notes": list(reading.notes),
-        "caveat": caveat(graph),
+        "caveat": caveat(reading, graph),
     }
 
 

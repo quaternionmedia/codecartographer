@@ -304,6 +304,27 @@ def test_a_member_with_no_clone_is_named_as_unmeasured(client):
     assert "alpha" in metadata["unread"] and "beta" in metadata["unread"]
 
 
+@pytest.mark.parametrize("inventory", ["absent", "no organisation"])
+def test_an_unknown_organisation_is_not_blamed_on_a_missing_clone(corpus, clones, monkeypatch,
+                                                                  inventory):
+    # With no organisation no host URL can be matched, so nothing is measured
+    # for any member. The caveat said each "had no clone beside this one",
+    # alpha among them, whose clone is right there. Broken by giving the clone
+    # as the reason whatever the organisation, alpha is blamed again.
+    path = corpus / "status" / "inventory.yaml"
+    if inventory == "absent":
+        path.unlink()
+    else:
+        path.write_text(json.dumps(dict(INVENTORY, generator={})), encoding="utf-8")
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(clones))
+    metadata = _results(TestClient(app), "/show/family/core/gjgf")["metadata"]
+    assert "alpha" in metadata["unread"], "a member nothing was measured for was not named"
+    assert "no clone" not in metadata["caveat"], "a member with a clone was blamed on a missing one"
+    assert "organisation" in metadata["caveat"]
+    assert any("organisation" in note for note in metadata["notes"])
+
+
 # --- a project's views ------------------------------------------------------
 
 def test_a_project_says_which_views_it_can_draw(client):
