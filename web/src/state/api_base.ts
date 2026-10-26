@@ -10,6 +10,7 @@ export class API {
   private _capabilities: string = 'capabilities';
   private _overview: string = 'overview';
   private _estate: string = 'estate';
+  private _show: string = 'show';
   private _cargo: string = 'cargo';
 
   constructor(base: string) {
@@ -54,6 +55,10 @@ export class API {
 
   get estate(): string {
     return `${this._base}/${this._estate}`;
+  }
+
+  get show(): string {
+    return `${this._base}/${this._show}`;
   }
 
   get cargo(): string {

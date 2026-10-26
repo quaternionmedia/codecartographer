@@ -3,14 +3,17 @@
 This page says where everything in the browser window is and how to reach it:
 the panels, the canvas, the radial menu and the header. Where it and the code
 disagree, the code is right and this page is repaired; `tests/test_docs_routes.py`
-reads the panel ids, the ring items and the menu keys against the code.
+reads the panel ids, each ring's items in order and the menu keys against the
+code.
 
 ## The window
 
 A header runs across the top, and under it a dock of panels
 ([Golden Layout](https://golden-layout.github.io/golden-layout/)). Each panel is
 a tab: drag a tab to move it or stack it with others, drag a divider to resize,
-and click a tab's ✕ to close it.
+and click a tab's ✕ to close it. The dock has no menu of its own: a right-click
+on the canvas opens the [radial menu](#the-radial-menu), and anywhere else it is
+the browser's.
 
 **The default arrangement** (`web/src/layout/default_layout.ts`) is the Graph
 panel across the top and, below it, Files on the left beside a stack of Open (in
@@ -26,11 +29,12 @@ keyboard reader is on its first item; closed with the focus inside it --
 Escape, or one of its items -- it gives the focus back to `+`, and a click
 outside it leaves the focus where that click put it.
 
-A panel also comes forward when something loads data for it:
+A panel also opens, or comes forward, when something loads data for it:
 
 - a live row in the Estate panel opens the panel that draws its seam;
 - View ▸ Compare in the [node ring](#node-ring) opens Chrestomathy;
 - a bundled Cargo example in the [Open panel](#open) opens Cargo;
+- a `?show=` address opens [Show](#show);
 - the Topology, Capabilities, Overview, Cargo and Chrestomathy panels bring the
   Graph panel to the front when they have drawn.
 
@@ -93,10 +97,14 @@ view:
   replay it without parsing; ☆ saves it in Graphbase when Graphbase is
   connected, and ★ marks one already saved; ✕ removes it from the cache.
 
-Across the foot, the plot bar: **▶ Plot** draws the loaded repository; with
-none, every added file; with neither, the URL in the field, as `→ Fetch` does.
-**⏹ Cancel** stops a stream in flight. Beside them, the status line and the
-progress of a stream.
+Across the foot, the plot bar: **▶ Plot** draws the loaded repository -- the
+one the Files panel shows, from the URL its tree was read from, whatever the
+field holds since; with none, every added file; with neither, the URL in the
+field, as `→ Fetch` does. Plot's tooltip names what it will draw. **⏹ Cancel**
+stops a stream in flight. Beside them, the status line and the progress of a
+stream. Added files, the demo and a lexicon are drawn only while they are the
+latest plot asked for: one whose answer arrives after another plot, or a
+stream, was asked for is dropped (`web/src/state/latest_plot.ts`).
 
 ### Estate
 
@@ -130,6 +138,70 @@ Id `overview-panel`. Opens from the `+` menu or the Estate panel's overview row.
 
 dossier's reading of the estate: its masthead figures, its sections, and when the
 reading was made. **draw the overview** draws it.
+
+### Show
+
+Id `show-panel`. Opens from the `+` menu, from the Estate panel's families row,
+or by itself when the page is opened at a `?show=` address.
+
+Every family and project the corpus names. *Families* lists each top-level
+family and, indented under it, the families directly within it; a family nested
+deeper is not listed, and is opened from its parent's drawing.
+*Projects* lists every public project, and its field filters them by name or
+family. The default is every family at once: opened with nothing on the canvas
+and nothing being drawn there, or at a bare `?show`, the panel draws the index,
+and **draw every family** draws it again over anything else. A family row
+draws that family, and a project's name draws its place in the estate. A row
+and a project's name are tab stops, and Enter or Space presses them as a click
+does.
+
+The panel opens on what is drawn. A trail runs from *every family* down to it
+-- `every family › performing › instruments › carlos` -- and each step is a
+link back. A project two families claim is reached from both
+(`instruments · irl`). For a project, its three views follow: **estate**,
+**code map** and **system**; the one drawn is pressed. A view that cannot be
+drawn here is disabled, with its reason under it. Then the legend: which edges
+are claims, which are declared seams and which are measured. *What this drawing
+can say* holds the caveat and the corpus it was read from, folded. Its line
+counts the seams nobody has declared and the members nothing measured.
+
+On the canvas a showgraph is a map. Every name is drawn, outward from the ring
+its group is packed on, and at least ten pixels high however far out the fit
+frames it; an outline's name at least twelve, set inside or outside its outline
+at the size it is drawn, and placed again when a zoom resizes it. The fit
+frames the names at the size its own zoom draws them, so Fit again keeps the
+frame. A name that would overlap another is hidden until a zoom gives it room,
+and a node's hover always holds it. Names are ranked: families first, then
+projects, then other repositories. Each outline takes its family's hue.
+**Double-click** a family to open it, and a project to open its estate view.
+
+Each drawing rewrites the page's address, so `?show=family:performing` or
+`?show=project:moat&view=system` reopens it. A drawing opened by a click adds
+an entry to the browser's history, so **Back** and **Forward** walk the
+drawings, each drawn again. The address the page opened with, and the default,
+do not add an entry. Back to an entry from before the first showgraph clears
+the trail, and leaves the canvas as it is.
+
+Only the latest drawing asked for is drawn: one whose answer comes after
+another drawing, or another plot, was asked for is dropped, and a stream in
+flight is ended when a showgraph opens. Another plot drawn over a showgraph --
+a stream, the demo, a lexicon, added files, another panel's draw, or the system
+monitor chosen in Graph Settings -- takes the address back to the bare page,
+and the trail with it. A project's system view puts the system monitor on the
+canvas, and the next draw that is not a system view puts back the renderer it
+replaced.
+
+To serve showgraphs from a corpus checkout other than the pin, set
+`CODECARTO_CORPUS` before the server starts. Measured links and the system
+view read clones beside this checkout, or under `CODECARTO_REPO_ROOTS`:
+
+```sh
+cd web && npm run build && cd ..
+CODECARTO_CORPUS=../qm uv run codecarto serve --port 27190
+```
+
+Then open `http://localhost:27190/app?show`. The index is measured once per
+commit of each clone, so a second drawing asks git nothing.
 
 ### Cargo
 
@@ -232,12 +304,16 @@ Id `graph-settings-panel`. In the default arrangement.
 ## The canvas
 
 - **Zoom** with the scroll wheel; **pan** by dragging the background.
-- **Drag a node** to move it; what is drawn inside it (a directory's files, a
-  file's symbols) moves with it.
+- **Drag a node** to move it. Once a graph's group outlines have been drawn,
+  what is drawn inside the node (a directory's files, a file's symbols) moves
+  with it, and the outlines are drawn again where the drag ends, even after
+  Group Outlines is turned off; a graph drawn with it off moves one node at a
+  time ([Compound layout](architecture.md#compound-layout)).
 - **Hover** a node for its tooltip.
 - **Double-click a node** that names a file to open its source, as
-  [A node's source](#a-nodes-source) says. A double-click anywhere else zooms
-  in.
+  [A node's source](#a-nodes-source) says. On a showgraph, a family or a
+  project node opens its own showgraph instead ([Show](#show)). A double-click
+  anywhere else zooms in.
 - When a stream finishes, the view fits the whole graph: every node, its label
   while labels are shown, and every group outline with its label, inside a
   margin, centred on what is drawn. A hidden node is left out, and so is an
@@ -272,7 +348,7 @@ the same place, by one rule: `node_info.sourceTarget` decides where, and
 |---|---|
 | A file or a symbol from a GitHub repository | The file's page on GitHub in a new tab, at the node's line. A file, and a Python symbol, whose parser records no line, open at the top |
 | A file or a symbol from a local checkout or an upload, which the browser cannot open | A badge beside the node for a few seconds, naming the node, the file's path and the line, on one line and kept inside the canvas, never over the point it was opened from. A path too long for the canvas is shortened in its middle, and a name that leaves no room for the file's own name is shortened first, so the file and the line stay; the badge's tooltip has the text whole |
-| A node that names no file, such as a directory | Nothing: Source is greyed, and a double-click zooms in, as it does off the nodes |
+| A node that names no file, such as a directory | Nothing: Source is greyed, and a double-click zooms in, as it does off the nodes; on a showgraph, a family's or a project's double-click opens its showgraph |
 
 A C symbol names its file only by the file's stem, and a Python symbol by
 `module.py`; both open where the file node they are drawn inside says the file
@@ -319,7 +395,7 @@ selection, as Deselect does, and every item is reachable without a pointer.
 
 | | Item | Does |
 |---|---|---|
-| 1 | **Expand** | Asks the server for what lies under the node, using the directory the last parse read, and adds it. Greyed on a sub-symbol, which has nothing under it |
+| 1 | **Expand** | Asks the server (`POST /parse/expand`) for what lies under the node, using the directory the last parse read, and adds it. Greyed on a sub-symbol, which has nothing under it |
 | 2 | **Collapse** | Removes what is drawn under the node. Greyed when nothing is |
 | 3 | **Neighbors** | Selects the node and every node one edge away |
 | 4 | **Pin** / **Unpin** | Marks the node with a gold outline |
@@ -383,8 +459,9 @@ the chosen nodes.
 
 ## What the window does not have
 
-There are no deep links or URL parameters, no menu on a right-click in the dock,
-and no ring for an edge: a press on an edge opens the canvas ring. There are no
-chords: the ring's chord words are defined in
+The page's address holds nothing but a Show drawing (`?show=`, under
+[Show](#show)). There is no menu on a right-click in the dock, and no ring for
+an edge: a press on an edge opens the canvas ring. There are no chords: the
+ring's chord words are defined in
 `web/src/features/graph/rad/host/vocabulary.ts` and nothing listens for them,
 so no typed word commits a verb.

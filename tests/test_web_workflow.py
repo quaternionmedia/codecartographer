@@ -112,11 +112,11 @@ def _typed_by_the_specs() -> set[str]:
 
 def _read_by_the_backend() -> set[str]:
     """What the backend reads outside its own package for the browser suite."""
-    from codecarto.services import capability_service, examples_service
+    from codecarto.services import corpus, examples_service
 
     found = {
         examples_service.ROOT.relative_to(ROOT).as_posix(),
-        capability_service.CORPUS.as_posix(),
+        corpus.SUBMODULE.as_posix(),
     }
     config = (ROOT / "web" / "playwright.config.ts").read_text(encoding="utf-8")
     found.update(re.findall(r"DOSSIER_OVERVIEW_SEAM:\s*'([^']+)'", config))

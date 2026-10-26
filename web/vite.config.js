@@ -14,7 +14,7 @@ const API = process.env.CODECARTO_API || 'http://127.0.0.1:2718';
 // and fails when a mounted prefix is missing from it -- a prefix absent here is
 // a request the dev server tries to answer itself and cannot.
 const API_PATHS = [
-  '/topology', '/capabilities', '/overview', '/estate',
+  '/topology', '/capabilities', '/overview', '/estate', '/show',
   '/plotter', '/palette', '/repo', '/parse', '/lexicon', '/cargo',
   '/c-parser', '/pam', '/system', '/db', '/auth', '/docs', '/openapi.json',
 ];

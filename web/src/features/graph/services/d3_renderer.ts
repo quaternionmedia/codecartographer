@@ -60,6 +60,8 @@ export class D3GraphRenderer implements IGraphRenderer {
     container.innerHTML = '';
 
     const renderer = new StreamingGraphRenderer(container, styling);
+    // A showgraph says so in its metadata, and is drawn as a map of names.
+    if ((graphData as { metadata?: { kind?: unknown } }).metadata?.kind === 'show') renderer.presentAsMap();
     const nodes = flattenNodes(graphData.graph?.nodes);
     const edges = (graphData.graph?.edges ?? []) as GraphEdge[];
 

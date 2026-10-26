@@ -26,7 +26,7 @@ import {
   CachedEntry,
 } from '../components/codecarto/control_panel';
 import { PlotService } from '../services/plot_service';
-import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
+import { SHOW_OPEN_EVENT, StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
 import { infoLine } from '../features/graph/services/node_info';
 import type { BundledExample } from '../features/examples/examples';
@@ -47,6 +47,10 @@ import type { MenuContext } from '../features/graph/rad/core/types';
 import { DEEPEST_DEPTH } from '../features/graph/rad/host/resolve';
 import type { GraphNode, GraphEdge } from '../features/graph/services/graph_types';
 import { backendLayoutName } from '../features/graph/services/layout_names';
+import { formatShow, fromNode, parseShow, sameShow } from '../features/show/show_address';
+import type { ShowAddress } from '../features/show/show_address';
+import { SystemDefinitionRegistry } from '../features/graph/services/system_core';
+import { DerivedSystemDefinition } from '../features/graph/services/derived_system';
 
 export type { DockPanelId } from './panel_registry';
 
@@ -142,6 +146,26 @@ export class LayoutContext {
       renderer.setHiddenTest((id) => !!this._nodeViewState[id]?.hidden);
       this._mountRad(renderer);
     });
+
+    // A showgraph is a place to move through: a node double-clicked on the
+    // canvas opens its own showgraph, and Back and Forward walk the drawings.
+    if (typeof window !== 'undefined') {
+      window.addEventListener(SHOW_OPEN_EVENT, (event) => {
+        const address = fromNode((event as CustomEvent).detail);
+        if (address) void this.openShow(address);
+      });
+      window.addEventListener('popstate', () => {
+        const address = parseShow(window.location.search);
+        if (address) {
+          void this.openShow(address, 'keep');
+        } else if (this.appState.state.showAddress) {
+          // Back to an entry before any showgraph: the trail names none, and
+          // a drawing still out for the one left is not drawn after it.
+          this.actions.plot.supersedePlots();
+          this._forgetShow();
+        }
+      });
+    }
   }
 
   // ── Public helpers ─────────────────────────────────────────────────────────
@@ -160,8 +184,40 @@ export class LayoutContext {
    * which nobody guesses. Every panel that draws goes through this.
    */
   public async plotWith<T>(action: () => Promise<T>): Promise<T> {
+    this._leaveShow();
     this._lastPlotAction = async () => { await action(); };
     return action();
+  }
+
+  /**
+   * Another plot is asked for: no showgraph is on the canvas, so neither the
+   * Show panel's trail nor the page's address names one.
+   *
+   * **THE ADDRESS IS THE GRAPH ON THE CANVAS**, and nothing cleared it: at
+   * `?show=index` Load Demo drew the demo under an address, and a trail, that
+   * still said every family, and a copied link opened something else. Every
+   * plot that is not a showgraph calls this when it is asked for: a stream
+   * (`_mountAndStream`), `plotWith`, the demo, a lexicon, added files and the
+   * system monitor chosen in Graph Settings. It is a draw that is not a system
+   * view, so the renderer a system view replaced comes back
+   * (`_restoreRenderer`).
+   */
+  private _leaveShow(): void {
+    this._restoreRenderer();
+    this._forgetShow();
+  }
+
+  /** Neither the trail nor the page's address names a showgraph (`_leaveShow`). */
+  private _forgetShow(): void {
+    // `showProblem` is left: it also holds why the corpus could not be read,
+    // which the panel's list waits on.
+    if (this.appState.state.showAddress) this.appState.update({ showAddress: null, showViews: null });
+    if (typeof window === 'undefined' || !parseShow(window.location.search)) return;
+    try {
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch {
+      // A page that cannot rewrite its address still draws.
+    }
   }
 
   public updatePanelState(updates: Partial<ControlPanelState>): void {
@@ -500,6 +556,195 @@ export class LayoutContext {
   }
 
   /** What examples this checkout bundles, for the project selector. */
+  // ── The showgraphs ────────────────────────────────────────────────────────
+
+  /**
+   * Open a showgraph: the index, a family, or one of a project's three views.
+   *
+   * **ONE WAY IN, FROM EVERYWHERE.** The Show panel's rows, a `?show=` address
+   * the page was opened at, and a node's own `show` attribute all call this, so
+   * the address in the location bar is always the graph on the canvas.
+   *
+   * The estate view is the show seam's graph. The code view is the parse of
+   * the project's default branch on the host at file depth -- the same stream
+   * the Open panel starts, so it draws, caches and cancels like any parse. The
+   * system view is the derived system monitor for that repository. A view the
+   * server says cannot be drawn is a problem the panel shows, never a
+   * different view drawn in its place.
+   */
+  /**
+   * Open a showgraph, and write its address.
+   *
+   * `history` says what the location bar does: `push` a new entry, so Back
+   * returns to the drawing before (a click in the panel or on the canvas);
+   * `replace` the entry (an address the page opened with, or the default);
+   * or `keep` it (Back and Forward, which have moved it already).
+   *
+   * **ONE REQUEST PER DRAWING.** At boot the page's address and the Show
+   * panel's default both asked for the index, and a corpus measured twice
+   * at once took more than twice as long. Asked again for the drawing it is
+   * already opening, this returns that one.
+   */
+  public openShow(address: ShowAddress, history: 'push' | 'replace' | 'keep' = 'push'): Promise<void> {
+    if (this._opening && sameShow(this._opening.address, address)) return this._opening.done;
+    const done = this._openShow(address, history).finally(() => {
+      if (this._opening?.done === done) this._opening = null;
+    });
+    this._opening = { address, done };
+    return done;
+  }
+
+  private _opening: { address: ShowAddress; done: Promise<void> } | null = null;
+
+  private async _openShow(address: ShowAddress, history: 'push' | 'replace' | 'keep'): Promise<void> {
+    // **THE LATEST DRAWING ASKED FOR IS THE ONE DRAWN.** Its place is taken
+    // here, before anything is read: an answer still out for another drawing,
+    // or for the Open panel, is dropped from now, and so is this one if a plot
+    // is asked for while it reads a project's views.
+    const current = this.actions.plot.takePlot();
+    // **AND A STREAM IN FLIGHT IS ENDED.** It drew on by another way, and at
+    // its end recorded the repository as the graph drawn and announced its
+    // renderer -- one no longer on the canvas, which rad then bound to.
+    if (this._cancelStream || this.panelState.isLoading) this.cancel();
+    // Before the panel mounts: a Show panel opening onto nothing drawn draws
+    // every family, and this address is what it is about to draw instead.
+    this.appState.update({ showAddress: address, showProblem: null });
+    this._setShowAddress(address, history);
+    this.openPanel('show-panel');
+
+    // An estate view does not wait for them: they say which views the panel
+    // offers, not what this one draws.
+    const viewsRead = address.kind === 'project'
+      ? this.actions.plot.loadShowViews(address.name)
+      : Promise.resolve(this.appState.update({ showViews: null }));
+
+    if (address.view === 'estate') {
+      this._leaveSystemRenderer();
+      this._compoundLayout();
+      // A layout change draws it again, from a place of its own.
+      this._lastPlotAction = async () => { await this.actions.plot.drawShow(address); };
+      const drawn = await this.actions.plot.drawShow(address, {}, current);
+      if (drawn) this.focusDockPanel('graph');
+      return;
+    }
+
+    await viewsRead;
+    // Another drawing, or another plot, was asked for while they were read.
+    if (!current()) return;
+    const views = this.appState.state.showViews;
+    const view = views ? views[address.view] : null;
+    if (!view || !view.available) {
+      this.appState.update({
+        showProblem: {
+          kind: 'unreadable',
+          problem: view?.problem ?? `the ${address.view} view of ${address.name} could not be asked for`,
+          remedy: view?.remedy ?? '',
+          where: `${this.appState.api.show}/project/${address.name}/views`,
+        },
+      });
+      m.redraw();
+      return;
+    }
+
+    if (address.view === 'code' && view.url) {
+      this._leaveSystemRenderer();
+      this._compoundLayout();
+      // The coarse map: files, not symbols, at the view's depth whenever it
+      // is drawn. The depth was set around the first stream only, so a
+      // layout change drew it again at the Open panel's, symbols and all.
+      const show = { depth: view.depth ?? 1 };
+      const url = view.url;
+      this._lastPlotAction = () => { this._startStreamFromUrl(url, show); };
+      this._startStreamFromUrl(url, show);
+    } else if (address.view === 'system') {
+      if (!SystemDefinitionRegistry.get(address.name)) {
+        SystemDefinitionRegistry.register(new DerivedSystemDefinition(address.name));
+      }
+      const styling = this.appState.state.graphStyling;
+      // Put back by the next draw that is not a system view; one system view
+      // after another keeps the first's.
+      const was = this.appState.state.selectedRenderer;
+      if (was !== 'system') this._rendererBeforeSystem = was;
+      this.appState.update({
+        selectedRenderer: 'system',
+        graphStyling: { ...styling, systemId: address.name },
+      });
+      // The frame is replaced in state; nothing repaints it until asked.
+      this.actions.plot.createGraphVnode();
+      m.redraw();
+    }
+    this.focusDockPanel('graph');
+  }
+
+  /** Open whatever showgraph the page's own address names, if it names one. */
+  public async openShowFromLocation(): Promise<void> {
+    const address = parseShow(window.location.search);
+    if (address) await this.openShow(address, 'replace');
+  }
+
+  /** The location bar says which showgraph is drawn, without a new history entry. */
+  private _setShowAddress(address: ShowAddress, how: 'push' | 'replace' | 'keep'): void {
+    if (how === 'keep') return;
+    const search = formatShow(address);
+    try {
+      // The same drawing asked for twice is one entry, not two.
+      if (how === 'push' && window.location.search !== search) {
+        window.history.pushState(null, '', `${window.location.pathname}${search}`);
+      } else {
+        window.history.replaceState(null, '', `${window.location.pathname}${search}`);
+      }
+    } catch {
+      // A page that cannot rewrite its address still draws.
+    }
+  }
+
+  /**
+   * A showgraph is containment all the way down -- a family holds its
+   * subfamilies, a subfamily its members, a folder its files -- so it opens in
+   * the compound layout, which gathers each group around what holds it. Under
+   * a layout that does not, two subfamilies whose members interleave draw two
+   * outlines over one another. The reader's next choice of layout still
+   * applies, as it does to any drawing.
+   */
+  private _compoundLayout(): void {
+    const styling = this.appState.state.graphStyling;
+    if (styling.layout !== 'compound_layout') {
+      this.appState.update({ graphStyling: { ...styling, layout: 'compound_layout' } });
+    }
+  }
+
+  /**
+   * A showgraph's estate and code views draw on the D3 canvas, not the system
+   * monitor: the renderer a system view replaced, and D3 when the reader chose
+   * the system monitor themselves.
+   */
+  private _leaveSystemRenderer(): void {
+    this._restoreRenderer();
+    if (this.appState.state.selectedRenderer === 'system') {
+      this.appState.update({ selectedRenderer: 'd3' });
+    }
+  }
+
+  /**
+   * The renderer chosen before a showgraph's system view put the system
+   * monitor on the canvas; null when no system view did, or the reader has
+   * chosen one since.
+   *
+   * **A SYSTEM VIEW CHOSE THE RENDERER FOR EVERY DRAW AFTER IT.** It set
+   * `selectedRenderer` to `system`, and only the show's estate and code views
+   * set it back, so Load Demo after one drew the system monitor's diagram and
+   * no graph.
+   */
+  private _rendererBeforeSystem: ICellState['selectedRenderer'] | null = null;
+
+  /** Any draw but a system view: the renderer the system view replaced comes back. */
+  private _restoreRenderer(): void {
+    const was = this._rendererBeforeSystem;
+    if (was === null) return;
+    this._rendererBeforeSystem = null;
+    if (this.appState.state.selectedRenderer === 'system') this.appState.update({ selectedRenderer: was });
+  }
+
   public async refreshExamples(): Promise<void> {
     try {
       const resp = await fetch(`${this.appState.api.repoReader}/examples`);
@@ -864,9 +1109,11 @@ export class LayoutContext {
     return ` — ${placed} of ${total} placed without backend positions`;
   }
 
+  /** `forShow`: a showgraph's code view, which keeps the address it was opened at. */
   private _mountAndStream(
     startFn: (renderer: StreamingGraphRenderer) => () => void,
     statusMsg: string,
+    forShow = false,
   ): void {
     if (this._cancelStream) {
       this._cancelStream();
@@ -875,6 +1122,7 @@ export class LayoutContext {
     // The stream is the latest plot: added files, the demo or a lexicon still
     // waiting for an answer are not drawn over it.
     this.actions.plot.supersedePlots();
+    if (!forShow) this._leaveShow();
     this._streamingRenderer = null;
 
     const styling = this.appState.state.graphStyling;
@@ -994,12 +1242,16 @@ export class LayoutContext {
     );
   }
 
-  /** Stream directly from a GitHub URL via /parse/stream-url. */
-  private _startStreamFromUrl(githubUrl: string): void {
+  /**
+   * Stream directly from a GitHub URL via /parse/stream-url, at the Open
+   * panel's depth; or, given `show`, as a showgraph's code view: at the
+   * view's depth, keeping the address (`_mountAndStream`'s `forShow`).
+   */
+  private _startStreamFromUrl(githubUrl: string, show?: { depth: number }): void {
     const opts = this.appState.state.parserOptions;
     const layout = convertLayout(this.appState.state.graphStyling.layout);
     const exts = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
-    const depth = this.panelState.parseDepth;
+    const depth = show?.depth ?? this.panelState.parseDepth;
 
     const accNodes: { id: string; [k: string]: unknown }[] = [];
     const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
@@ -1078,6 +1330,7 @@ export class LayoutContext {
         },
       ),
       'Connecting to GitHub\u2026',
+      !!show,
     );
   }
 
@@ -1089,6 +1342,7 @@ export class LayoutContext {
    */
   private async _plotUploads(files: RawFile[]): Promise<void> {
     const many = files.length === 1 ? files[0].name : `${files.length} files`;
+    this._leaveShow();
     this.updatePanelState({ isLoading: true, statusMessage: `Plotting ${many}\u2026` });
     // What the parse could not read is said as a stream says its `note`
     // events: each in a toast, and all of them after "Ready" (`notesTail`).
@@ -1110,6 +1364,7 @@ export class LayoutContext {
   private _buildCallbacks(): ControlPanelCallbacks {
     return {
       onDemo: async () => {
+        this._leaveShow();
         this.updatePanelState({ isLoading: true, statusMessage: 'Loading demo...' });
         let drawn = true;
         this._lastPlotAction = async () => { drawn = await this.actions.plot.loadDemo(); };
@@ -1123,6 +1378,7 @@ export class LayoutContext {
       },
 
       onLoadLexicon: async (language: string) => {
+        this._leaveShow();
         this.updatePanelState({ isLoading: true, statusMessage: `Loading ${language} lexicon...` });
         let drawn = true;
         this._lastPlotAction = async () => { drawn = await this.actions.plot.loadLexicon(language); };
@@ -1283,11 +1539,12 @@ export class LayoutContext {
       },
 
       // **NEITHER READ TOUCHES THE PANEL'S LOADING STATE.** `isLoading` and
-      // the status line are the stream's: the Open panel's Plot bar shows
-      // Cancel and the progress bar while it is set. These set it and cleared it with
-      // "Ready" when they ended, so a folder opened mid-parse took Cancel and
-      // the progress bar from a stream still running. The folder's ↻ says it
-      // is being read; a toast says Expand All has begun, and either failing.
+      // the status line are the stream's: the Open panel's plot bar shows
+      // Cancel and the progress bar while it is set. These set it and cleared
+      // it with "Ready" when they ended, so a folder opened mid-parse took
+      // Cancel and the progress bar from a stream still running. The folder's
+      // ↻ says it is being read; a toast says Expand All has begun, and either
+      // failing.
       onFolderExpand: async (path: string) => {
         const content = this.appState.repo.content;
         if (!content?.is_partial) return false;
@@ -1346,6 +1603,10 @@ export class LayoutContext {
       onCancel: () => { this.cancel(); },
 
       onRendererChange: (renderer) => {
+        // The system monitor draws its own diagram, not the showgraph.
+        if (renderer === 'system') this._leaveShow();
+        // The reader's choice: no system view's to put back.
+        this._rendererBeforeSystem = null;
         this.appState.update({ selectedRenderer: renderer });
         if (renderer === 'system' || this.appState.state.graphData) {
           this.updatePanelState({ statusMessage: `Switching to ${renderer} renderer...` });

@@ -56,9 +56,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# Where the corpus is mounted in this project. The same submodule path
-# `governance/qm` every QM project uses.
-CORPUS = Path("governance/qm")
+from codecarto.services import corpus as corpus_root
+
+# Where in the corpus the registry is. Which corpus is `corpus.root`'s to
+# decide, when asked: the `governance/qm` pin, unless `CODECARTO_CORPUS` names
+# another checkout.
 REGISTRY = Path("ci") / "capability-registry.yaml"
 
 RUNGS = ("design", "deployment", "execution", "monitoring")
@@ -105,7 +107,7 @@ def read(corpus: Path | str | None = None) -> Reading:
     """
     import yaml
 
-    root = Path(corpus) if corpus else CORPUS
+    root = Path(corpus) if corpus else corpus_root.root()
     path = root / REGISTRY
     if not path.is_file():
         return Reading(source=str(path), reason=(
@@ -113,9 +115,13 @@ def read(corpus: Path | str | None = None) -> Reading:
             f"may predate it."))
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except UnicodeDecodeError:
+        return Reading(source=str(path), reason=f"{path.as_posix()} is not UTF-8")
     except yaml.YAMLError as error:
         return Reading(source=str(path),
                        reason=f"{path.as_posix()} did not parse: {error}")
+    if not isinstance(data, dict):
+        return Reading(source=str(path), reason=f"{path.as_posix()} is not a mapping")
 
     declared = data.get("capabilities")
     if not isinstance(declared, list):

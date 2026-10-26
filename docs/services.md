@@ -340,7 +340,7 @@ one read the same way.
   after it -- a source, a linker script, a manifest; not a README -- the map is
   not used, as a stale `metadata.json` is not, and the row, the caveat and the
   code map's regions say why. Both ask `newest_input`, so both judge it by
-  `link_input`.
+  `link_map_service.link_input`.
 
 What it cannot see: inlined code has no symbol, so its bytes are its caller's;
 and a map is only as current as the link that wrote it. Two of the test maps

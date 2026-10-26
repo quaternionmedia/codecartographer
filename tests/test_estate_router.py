@@ -29,7 +29,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from codecarto.services import estate_service, qmcp_client
+from codecarto.services import corpus, estate_service, qmcp_client
 from codecarto.services.qmcp_client import Reach
 
 
@@ -175,8 +175,8 @@ def test_fetch_404_remedy_can_be_the_callers(monkeypatch):
 
 def _all_down(monkeypatch, tmp_path):
     monkeypatch.setattr(qmcp_client, "fetch", _down)
-    monkeypatch.setattr(estate_service.capability_service, "CORPUS",
-                        tmp_path / "nowhere")
+    # The capability and families seams both read the resolver's default.
+    monkeypatch.setattr(corpus, "SUBMODULE", tmp_path / "nowhere")
     monkeypatch.setenv(estate_service.overview_service.SEAM_ENV,
                        str(tmp_path / "no-overview.json"))
 
@@ -204,7 +204,7 @@ def test_a_seam_with_routes_and_no_panel_is_visible_as_such():
     """The table's reason to exist: the gap between served and drawn."""
     prose = estate_service.BY_NAME["prose"]
     assert prose.panel == ""
-    for name in ("harness", "corpus", "overview"):
+    for name in ("harness", "corpus", "overview", "families"):
         assert estate_service.BY_NAME[name].panel.endswith("-panel")
         assert estate_service.BY_NAME[name].routes
 
@@ -231,12 +231,11 @@ def test_route_counts_the_live_ones(monkeypatch, tmp_path):
     registry = tmp_path / "corpus" / "ci" / "capability-registry.yaml"
     registry.parent.mkdir(parents=True)
     registry.write_text("schema: 1\ncapabilities: []\n", encoding="utf-8")
-    monkeypatch.setattr(estate_service.capability_service, "CORPUS",
-                        tmp_path / "corpus")
+    monkeypatch.setattr(corpus, "SUBMODULE", tmp_path / "corpus")
     from codecarto.main import app
 
     results = TestClient(app).get("/estate/seams").json()["results"]
     assert results["live"] == 1
-    corpus = next(r for r in results["seams"] if r["name"] == "corpus")
-    assert corpus["ok"] and corpus["detail"].startswith("0 capability")
+    row = next(r for r in results["seams"] if r["name"] == "corpus")
+    assert row["ok"] and row["detail"].startswith("0 capability")
     assert "1 of" in results["caveat"]

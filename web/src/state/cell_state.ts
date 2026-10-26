@@ -8,6 +8,8 @@ import { GraphData } from '../features/graph';
 import type { TopologyChoices, TopologyProblem } from '../services/topology_service';
 import type { SeamProblem } from '../features/estate/seam_client';
 import type { CapabilitiesDocument, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
+import type { ShowSubjectsDocument, ShowViewsDocument } from '../features/show/show_service';
+import type { ShowAddress } from '../features/show/show_address';
 import type {
   CargoDocument, CensusDocument, ChrestomathyDocument, ConstructIndex,
 } from '../features/cartography/cartography_service';
@@ -58,6 +60,13 @@ export interface ICellState {
   /** dossier's sections as the panel lists them, or null before asked. */
   overviewReading: OverviewDocument | null;
   overviewProblem: SeamProblem | null;
+  /** Every family and project the corpus names, or null before asked. */
+  showSubjects: ShowSubjectsDocument | null;
+  showProblem: SeamProblem | null;
+  /** Which of one project's three views can be drawn, and how. */
+  showViews: ShowViewsDocument | null;
+  /** The showgraph on the canvas, so the panel can mark it. */
+  showAddress: ShowAddress | null;
   /** The workspace the Cargo panel reads, as typed. */
   cargoPath: string;
   /** What the server read there, or null before anybody asked. */
@@ -102,6 +111,10 @@ export class CellState implements ICellState {
   public capabilitiesProblem: SeamProblem | null = null;
   public overviewReading: OverviewDocument | null = null;
   public overviewProblem: SeamProblem | null = null;
+  public showSubjects: ShowSubjectsDocument | null = null;
+  public showProblem: SeamProblem | null = null;
+  public showViews: ShowViewsDocument | null = null;
+  public showAddress: ShowAddress | null = null;
   public cargoPath: string = '';
   public cargoReading: CargoDocument | null = null;
   public cargoProblem: SeamProblem | null = null;

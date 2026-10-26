@@ -7,6 +7,9 @@ import { TopologyService } from '../services/topology_service';
 import type { TopologyChoices, TopologyProblem, TopologyRequest } from '../services/topology_service';
 import { EstateService } from '../features/estate/estate_service';
 import type { CapabilitiesDocument, DrawRequest, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
+import { ShowService } from '../features/show/show_service';
+import type { ShowSubjectsDocument, ShowViewsDocument } from '../features/show/show_service';
+import type { ShowAddress } from '../features/show/show_address';
 import { isProblem } from '../features/estate/seam_client';
 import { CartographyService } from '../features/cartography/cartography_service';
 import { CartographyActions, settlePatch } from '../features/cartography/cartography_actions';
@@ -21,6 +24,7 @@ import { logger } from '../core/logger';
 import { backendLayoutName } from '../features/graph/services/layout_names';
 import { parseNotes } from '../features/graph/services/parse_notes';
 import { LatestPlot } from './latest_plot';
+import type { PlotTicket } from './latest_plot';
 
 // The menu's registry name, as the backend spells it. One rule in
 // `layout_names.ts`; this used to be a private table here that fell back to
@@ -620,6 +624,68 @@ export class PlotActions {
     return this._draw(found, 'capabilitiesProblem');
   }
 
+  /**
+   * Every family and project the corpus names, for the Show panel. Asked for
+   * again while the first ask is out -- a second panel mounting at boot --
+   * it is the same ask.
+   */
+  loadShowSubjects(): Promise<void> {
+    this._subjectsAsked ??= ShowService.subjects(this.stateController.api.show)
+      .then((found) => this._settle(found, 'showSubjects', 'showProblem'))
+      .finally(() => { this._subjectsAsked = null; });
+    return this._subjectsAsked;
+  }
+
+  private _subjectsAsked: Promise<void> | null = null;
+
+  /**
+   * Which of a project's views can be drawn here. Draws nothing. An answer
+   * for a project other than the drawing asked for by then is dropped: open
+   * one project and then another, and the first's views, answering last, were
+   * shown under the second's trail.
+   */
+  async loadShowViews(project: string): Promise<void> {
+    this.stateController.update({ showViews: null });
+    const found = await ShowService.views(this.stateController.api.show, project);
+    const named = isProblem(found) ? project : String(found.document.name ?? project);
+    const asked = this.stateController.state.showAddress;
+    if (asked?.kind !== 'project' || asked.name !== named) return;
+    this._settle(found, 'showViews', 'showProblem');
+  }
+
+  /**
+   * A showgraph's estate view -- the index, a family or a project -- on the
+   * canvas. Resolves whether it drew, as the other estate draws do, so the
+   * canvas is brought forward only over a graph and never over the problem.
+   *
+   * **THROUGH THE LATEST-PLOT TICKET**, as the Open panel's plots are: click
+   * every family, cold and two seconds slow, then a family, and the family was
+   * drawn and then every family over it. `current` is the place the drawing
+   * took when it was asked for (`openShow`); the address is set only when the
+   * answer is shown.
+   */
+  async drawShow(address: ShowAddress, request: DrawRequest = {}, current?: PlotTicket): Promise<boolean> {
+    let drew = false;
+    const shown = await this.plots.plot(
+      () => ShowService.graph(this.stateController.api.show, address,
+        { ...request, layout: request.layout ?? this._layout() }),
+      (found) => {
+        this.stateController.update({ showAddress: address });
+        drew = this._draw(found, 'showProblem');
+      },
+      current,
+    );
+    return shown && drew;
+  }
+
+  /**
+   * The latest place, taken now by a drawing that reads something before it
+   * plots (`LatestPlot.ticket`). Every answer still out is dropped from here.
+   */
+  takePlot(): PlotTicket {
+    return this.plots.ticket();
+  }
+
   /** dossier's sections, for the panel's list. Draws nothing. */
   async loadOverviewReading(seam?: string): Promise<void> {
     const found = await EstateService.overviewData(this.stateController.api.overview, seam);
@@ -650,8 +716,8 @@ export class PlotActions {
   /** Put a document in one field and clear the other, or the reverse (`settlePatch`). */
   private _settle(
     found: SeamOutcome,
-    readingField: 'capabilitiesReading' | 'overviewReading',
-    problemField: 'capabilitiesProblem' | 'overviewProblem',
+    readingField: 'capabilitiesReading' | 'overviewReading' | 'showSubjects' | 'showViews',
+    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem',
   ): void {
     if (isProblem(found)) logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
     this.stateController.update(settlePatch(found, readingField, problemField) as Patch<ICellState>);
@@ -669,7 +735,7 @@ export class PlotActions {
    * True when it drew, false when it holds the problem: the panel brings the
    * canvas forward only on a draw, or the canvas covers the problem view.
    */
-  private _draw(found: SeamOutcome, problemField: 'capabilitiesProblem' | 'overviewProblem'): boolean {
+  private _draw(found: SeamOutcome, problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem'): boolean {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {
       patch[problemField] = found.problem as SeamProblem;

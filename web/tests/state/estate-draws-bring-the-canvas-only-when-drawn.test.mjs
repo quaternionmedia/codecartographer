@@ -48,6 +48,18 @@ for (const [action, file] of Object.entries(PANELS)) {
   });
 }
 
+test('drawShow resolves whether it drew, and the Show path brings the canvas forward only then', () => {
+  /** Mutation: let drawShow resolve void again, or focus the canvas after it unconditionally -- this fails. */
+  const declared = /\n  async drawShow\([^)]*\): Promise<(\w+)>/.exec(actions);
+  assert.ok(declared, 'drawShow was not found in actions.ts; the pattern is stale');
+  assert.equal(declared[1], 'boolean');
+  const layout = readFileSync('src/layout/layout_context.ts', 'utf8');
+  const call = /(\S.*)await this\.actions\.plot\.drawShow\(address, \{\}, current\);\s*\n\s*(.+)\n/.exec(layout);
+  assert.ok(call, 'the Show path does not call drawShow as this test reads it; the pattern is stale');
+  assert.match(call[1], /const drawn = $/, 'the Show path does not keep whether drawShow drew');
+  assert.match(call[2], /^if \(drawn\) this\.focusDockPanel\('graph'\);/, 'the Show path brings the canvas forward over a problem');
+});
+
 test('a seam\'s draw answers false when it holds a problem, and true when it drew', () => {
   /** Mutation: return true from `_draw` whatever it was answered -- this fails. */
   const found = /\n {2}private _draw\([^)]*\): boolean \{([\s\S]*?)\n {2}\}\n/.exec(actions);

@@ -166,6 +166,21 @@ def probe_prose() -> Identity:
                                                  document.get("status") or ""))
 
 
+def probe_families(corpus: Path | str | None = None) -> Identity:
+    """The families document the showgraphs are drawn from."""
+    from codecarto.services import show_service
+
+    reading = show_service.read(corpus)
+    if not reading.ok:
+        return Identity(False, reading.source, problem=reading.reason,
+                        remedy=("point this window at a corpus checkout that "
+                                "carries it with CODECARTO_CORPUS, or move the "
+                                "governance pin forward"))
+    return Identity(True, reading.source, schema=reading.schema,
+                    detail=(f"{len(reading.families)} families at "
+                            f"{reading.commit or 'an unknown commit'}"))
+
+
 SEAMS: tuple[Seam, ...] = (
     Seam("harness", "the work, and the only source of it", probe_harness,
          routes=("/topology/gjgf", "/topology/available", "/topology/data"),
@@ -177,6 +192,11 @@ SEAMS: tuple[Seam, ...] = (
     Seam("overview", "dossier's reading of the estate, drawn here", probe_overview,
          routes=("/overview/gjgf", "/overview/data"),
          panel="overview-panel"),
+    Seam("families", "every family and project the corpus names, drawn",
+         probe_families,
+         routes=("/show/subjects", "/show/index/gjgf", "/show/family/{name}/gjgf",
+                 "/show/project/{name}/gjgf", "/show/project/{name}/views"),
+         panel="show-panel"),
     Seam("prose", "the archive's conversations, read as topics", probe_prose,
          routes=(), panel=""),
 )

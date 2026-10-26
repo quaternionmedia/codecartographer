@@ -85,8 +85,8 @@ export class RepoTree {
    *
    * **READ FROM THE REPOSITORY THE TREE IS OF.** The URL is the shown tree's
    * own (`info.url`), never one the caller holds: the Files panel passed the
-   * Open panel's URL field, which follows every keystroke, so a folder of A's
-   * tree was asked of whatever had been typed since.
+   * Open panel's URL field, which follows every keystroke, so a folder
+   * of A's tree was asked of whatever had been typed since.
    */
   async expandPath(path: string): Promise<boolean> {
     const shown = this.host.shown;

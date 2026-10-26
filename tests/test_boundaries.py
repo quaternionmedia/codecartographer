@@ -41,7 +41,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from codecarto.models.plot_data import PlotOptions
-from codecarto.services import estate_service, qmcp_client, topology_service
+from codecarto.services import corpus, estate_service, qmcp_client, topology_service
 from codecarto.services.graph_serializer import GraphSerializer
 from codecarto.services.qmcp_client import Reach
 
@@ -142,7 +142,7 @@ def _corpus(tmp_path: Path) -> Path:
 
 
 def test_unknown_layout_on_every_estate_route_is_a_200_with_a_remedy(monkeypatch, tmp_path):
-    monkeypatch.setattr(estate_service.capability_service, "CORPUS", _corpus(tmp_path))
+    monkeypatch.setattr(corpus, "SUBMODULE", _corpus(tmp_path))
     seam = tmp_path / "overview.json"
     seam.write_text('{"schema": 1, "scope": "s", "masthead": [], "sections": [{"title": "T", "rows": [["r"]]}]}',
                     encoding="utf-8")

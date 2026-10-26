@@ -108,3 +108,40 @@ test('a saved layout with Upload, Repository and Actions boots with one Open win
   // Saved back renamed, so the next boot reads it as it is.
   expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toContain('"componentType":"open"');
 });
+
+test('a saved layout holding the Show window loads it, and it draws every family onto the empty canvas', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  const asked: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/show/index/gjgf')) asked.push(request.url());
+  });
+  await page.addInitScript(({ key }) => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem(key, JSON.stringify({
+      root: {
+        type: 'row',
+        content: [
+          { type: 'component', componentType: 'graph', title: '◈ Graph', id: 'graph' },
+          { type: 'component', componentType: 'show-panel', title: '❖ Show', id: 'show-panel' },
+        ],
+      },
+    }));
+  }, { key: KEY });
+
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+
+  // Mutation: register no Show window -- the saved layout is dropped for the
+  // default, which has none, and this fails.
+  await expect(page.locator('.lm_tab', { hasText: 'Show' })).toHaveCount(1);
+  await expect(page.locator('.lm_tab', { hasText: 'Graph Settings' })).toHaveCount(0);
+  // Mounted with the dock, before the page's address is read: with nothing
+  // drawn, it draws its default once, and says so in the address.
+  await expect(page).toHaveURL(/\?show=index$/, { timeout: 30_000 });
+  await expect(page.locator('.compound-group circle').first()).toBeAttached({ timeout: 30_000 });
+  await expect(page.locator('.show__crumb.is-current')).toHaveText('every family');
+  expect(asked).toHaveLength(1);
+  expect(errors).toEqual([]);
+});

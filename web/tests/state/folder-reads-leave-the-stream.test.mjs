@@ -2,7 +2,7 @@
  * Reading a folder into the Files panel's tree leaves the stream's state alone.
  *
  * **THE DEFECT THIS PINS.** `panelState.isLoading` and its status line are the
- * stream's: the Open panel's Plot bar shows Cancel and the progress bar while
+ * stream's: the Open panel's plot bar shows Cancel and the progress bar while
  * it is set. The folder click set it, and when the read ended set it false with
  * "Ready" -- so a folder opened while a repository was still parsing took
  * Cancel and the progress bar away from a stream that was still running.

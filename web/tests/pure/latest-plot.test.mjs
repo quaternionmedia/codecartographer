@@ -78,3 +78,29 @@ test("a superseded plot's failure is dropped with it, and the latest's is thrown
   await assert.rejects(demoPlotted, /plotter\/demo failed/);
   assert.deepEqual(h.shown, []);
 });
+
+test('a ticket taken when a drawing is asked for is the drawing\'s place, though it draws later', async () => {
+  /**
+   * A project's showgraph reads which views it has before it draws. Its place
+   * is taken when it is asked for, so a plot asked for while it reads is the
+   * latest, and the project's draw, handed the overtaken ticket, neither
+   * clears that plot's canvas nor asks. Mutation: clear and ask before
+   * checking the ticket handed in -- this fails.
+   */
+  const h = harness();
+  const project = h.plots.ticket();
+  const demo = h.pending();
+  demo.answer('demo');
+  assert.equal(await h.plot(demo), true);
+  let asked = 0;
+  const drawn = await h.plots.plot(async () => { asked++; return 'project'; }, (a) => h.shown.push(a), project);
+  assert.equal(drawn, false);
+  assert.equal(asked, 0, 'an overtaken drawing asks for nothing');
+  assert.equal(h.cleared, 1, "an overtaken drawing leaves the latest plot's canvas alone");
+  assert.deepEqual(h.shown, ['demo']);
+
+  // Still the latest when it draws: drawn, with the place it was given.
+  const current = h.plots.ticket();
+  assert.equal(await h.plots.plot(async () => 'family', (a) => h.shown.push(a), current), true);
+  assert.deepEqual(h.shown, ['demo', 'family']);
+});
