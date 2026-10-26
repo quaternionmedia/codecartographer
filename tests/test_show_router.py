@@ -314,6 +314,17 @@ def test_a_project_says_which_views_it_can_draw(client):
     assert "no clone" in views["system"]["problem"]
 
 
+def test_the_code_view_is_offered_only_for_a_repository_the_host_lists(client):
+    # beta is in a family and the roster and has no inventory row: the host
+    # lists no public repository by that name. Offering its code map whenever
+    # the organisation is known, as the route did, sends the panel to stream
+    # an address that is not there.
+    code = _results(client, "/show/project/beta/views")["code"]
+    assert code["available"] is False, "a repository the host does not list offered its code map"
+    assert "beta" in code["problem"] and "inventory" in code["problem"]
+    assert "url" not in code
+
+
 def test_a_project_s_claims_and_measurement_sit_side_by_side(client):
     edges = _edges(_results(client, "/show/project/alpha/gjgf"))
     by_label = {e["label"]: e["basis"] for e in edges if e["source"] == "repo::alpha"}

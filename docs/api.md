@@ -953,7 +953,8 @@ or a name no family or roster entry gives, answers `unreadable`.
 
 Which of the project's three views can be drawn here: `estate` (the graph
 above), `code` (the parse of its default branch on the host, with the `url` and
-`depth` the Show panel streams through `/parse/stream-url`) and `system` (the
+`depth` the Show panel streams through `/parse/stream-url`, available when the
+inventory lists the repository among the host's public ones) and `system` (the
 derived system monitor, available when a clone beside this one declares
 components). A view that cannot be drawn carries `available: false`, a
 `problem` and a `remedy`.
