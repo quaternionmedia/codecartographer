@@ -16,7 +16,7 @@
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { dismissOnboardingModal } from './helpers';
+import { dismissOnboardingModal, pointOn } from './helpers';
 
 const SETTLED = 30_000;
 const FLASH = '.graph-node[data-node-id*="region::FLASH"]';
@@ -85,6 +85,18 @@ async function focusCanvas(page: Page): Promise<void> {
     .evaluate((el) => (el.closest('[tabindex]') as HTMLElement | null)?.focus());
 }
 
+/**
+ * Right-click a node where a pointer reaches it, and wait for its ring. Its
+ * centre can be under another node or its own label, and Playwright's click
+ * waits for the centre to come clear (`pointOn` in helpers.ts says why).
+ */
+async function openNodeRing(page: Page, node: Locator): Promise<void> {
+  await focusCanvas(page);
+  const at = await pointOn(node);
+  await page.mouse.click(at.x, at.y, { button: 'right' });
+  await expect(page.locator('.rad-root')).toHaveAttribute('aria-label', 'node');
+}
+
 async function closeRing(page: Page): Promise<void> {
   const ring = page.locator('.rad-root');
   for (let i = 0; i < 3 && (await ring.count()) > 0; i++) await page.keyboard.press('Escape');
@@ -140,8 +152,7 @@ test('a first visit, the Open panel, and the bundled example', async ({ page }) 
   });
 
   await test.step('07 the node ring', async () => {
-    await focusCanvas(page);
-    await page.locator(FLASH).click({ button: 'right' });
+    await openNodeRing(page, page.locator(FLASH));
     await expect(wedge(page, 'View')).toBeAttached();
     await shot('07 node ring', page);
   });
@@ -173,8 +184,7 @@ test('a first visit, the Open panel, and the bundled example', async ({ page }) 
 
   await test.step('11 View ▸ Source on a file read from disk', async () => {
     const file = page.locator('.graph-node[data-node-id^="file::"][data-node-id$=".rs"]').first();
-    await focusCanvas(page);
-    await file.click({ button: 'right' });
+    await openNodeRing(page, file);
     await pickWedge(page, 'View');
     await expect(wedge(page, 'Source')).toBeAttached();
     await pickWedge(page, 'Source');
