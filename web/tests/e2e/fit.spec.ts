@@ -6,7 +6,8 @@
  * outlines are drawn before the fit and framed with the nodes, after a stream
  * and on the canvas ring's Fit, and that the census's show frames the nodes it
  * selects; and that Collapse redraws the outlines around what remains, as
- * outlines-after-removal.test.mjs computes them.
+ * outlines-after-removal.test.mjs computes them, each label placed again
+ * where it covers nothing.
  */
 
 import { expect, test, type Page } from '@playwright/test';
@@ -122,10 +123,11 @@ test('no outline label covers another, or a node, in the bundled example or the 
   await expect.poll(() => crowdedLabels(page), { timeout: 5_000 }).toEqual([]);
 });
 
-test("Collapse takes a file's outline away with its symbols", async ({ page }) => {
-  await drawBundledExample(page);
-  const outline = page.locator('.compound-group', { hasText: /^main\.rs$/ });
-  await expect(outline).toHaveCount(1);
+/**
+ * Collapse the bundled example's blinky/src/main.rs from its node ring, and
+ * resolve once its symbols are off the canvas.
+ */
+async function collapseMainRs(page: Page): Promise<void> {
   const nodes = page.locator('.graph-node');
   const drawn = await nodes.count();
   const file = page.locator('.graph-node[data-node-id^="file::"][data-node-id$="blinky/src/main.rs"]').first();
@@ -141,7 +143,25 @@ test("Collapse takes a file's outline away with its symbols", async ({ page }) =
   await page.keyboard.press('Enter');
   await expect(ring).toHaveCount(0);
   await expect.poll(() => nodes.count()).toBeLessThan(drawn);
+}
+
+test("Collapse takes a file's outline away with its symbols", async ({ page }) => {
+  await drawBundledExample(page);
+  const outline = page.locator('.compound-group', { hasText: /^main\.rs$/ });
+  await expect(outline).toHaveCount(1);
+  await collapseMainRs(page);
   // Mutation: leave the outlines as drawn after a removal -- main.rs keeps
   // its outline around nothing, and this fails.
   await expect(outline).toHaveCount(0);
+});
+
+test('after a Collapse, no outline label covers another, or a node', async ({ page }) => {
+  await drawBundledExample(page);
+  await expect.poll(() => crowdedLabels(page), { timeout: 5_000 }).toEqual([]);
+  await collapseMainRs(page);
+  await expect(page.locator('.compound-group', { hasText: /^main\.rs$/ })).toHaveCount(0);
+  // Mutation: place the labels on a fresh drawing only -- the redraw after
+  // the removal sets each at the top of its outline, the nearly concentric
+  // directories' labels are written over one another, and this fails.
+  await expect.poll(() => crowdedLabels(page), { timeout: 5_000 }).toEqual([]);
 });
