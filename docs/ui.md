@@ -82,15 +82,16 @@ Demo and the lexicons are in view without scrolling. The panel is a share of
 the window's height, so in a shorter window the column's fold rises, and the
 lexicons are the first to fall below it.
 
-On the right:
+On the right, the parse options first, so a long Recent list leaves them in
+view:
 
-- **Recent**: the graphs the server's cache holds, newest first. Click one to
-  replay it without parsing; ☆ saves it in Graphbase when Graphbase is
-  connected, and ★ marks one already saved; ✕ removes it from the cache.
 - **Parse options**, folded to one line that says what they are; click it to
   open them. *Extensions* (a chip per language, or a comma-separated list;
   empty means every language), *Parse Depth* (Files, Symbols, Deep) and
   *Annotate Lexicon*. Every parse of a repository or of files uses them.
+- **Recent**: the graphs the server's cache holds, newest first. Click one to
+  replay it without parsing; ☆ saves it in Graphbase when Graphbase is
+  connected, and ★ marks one already saved; ✕ removes it from the cache.
 
 Across the foot, the plot bar: **▶ Plot** draws the loaded repository; with
 none, every added file; with neither, the URL in the field, as `→ Fetch` does.

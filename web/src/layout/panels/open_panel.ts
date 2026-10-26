@@ -1,10 +1,10 @@
 /**
  * Open Panel
  *
- * Where a graph starts: a GitHub URL or a local path, local files, the demo
- * and the lexicons, and the examples, and the recent graphs; the parse
- * options; and the one Plot / Cancel bar. Browsing what was opened is the Files
- * panel's (file_tree_panel.ts).
+ * Where a graph starts: on the left a GitHub URL or a local path, local
+ * files, the demo and the lexicons, and the examples; on the right the parse
+ * options and the recent graphs; and the one Plot / Cancel bar. Browsing what
+ * was opened is the Files panel's (file_tree_panel.ts).
  */
 
 import m from 'mithril';

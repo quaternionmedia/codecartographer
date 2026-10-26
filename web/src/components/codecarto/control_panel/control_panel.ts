@@ -521,9 +521,12 @@ export function ControlPanel(
           renderQuickStart(),
           renderExamples(),
         ]),
+        // The parse options lead the right column, folded to one line: under a
+        // full Recent list they would sit below the fold of the default dock's
+        // short Open panel. Opened, they push Recent down.
         m('div.panel-source__right', [
-          renderRecent(),
           renderParseOptions(),
+          renderRecent(),
         ]),
       ]),
       renderPlotBar(),
