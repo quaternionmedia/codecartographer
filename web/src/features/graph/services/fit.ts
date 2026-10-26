@@ -5,9 +5,9 @@
  * View ▸ Focus and on the Chrestomathy census's show. Each hands this the
  * extents that enclose what it wants framed, in graph coordinates: a node's
  * circle, the box of its label while labels are shown, and a group outline's
- * circle (`framedExtents`). The answer is the zoom transform that sets their
- * bounding box in the middle of the viewport, as large as fits inside a
- * margin.
+ * circle and its label's box (`framedExtents`). The answer is the zoom
+ * transform that sets their bounding box in the middle of the viewport, as
+ * large as fits inside a margin.
  *
  * The box, not the nodes' average: a graph with more nodes on one side has its
  * average off the middle of what is drawn, and a frame centred there runs the
@@ -122,11 +122,16 @@ export interface FramedNode {
 /** A group outline as a fit sees it: its circle, drawn around the node `nodeId`. */
 export interface FramedOutline extends Circle {
   readonly nodeId: string;
+  /**
+   * The box its label is drawn in, when it has one. A label too wide for a
+   * small outline is set outside it (`outline_labels.ts`), past the circle.
+   */
+  readonly label?: Box | null;
 }
 
 /**
  * What a fit of `nodes` frames: each node's extent and its label's box while
- * it is shown, and the outline drawn around any of them.
+ * it is shown, and the outline drawn around any of them with its label.
  *
  * A hidden node is left out, label and all, and so is an outline that holds
  * only hidden nodes: its own node and every node `holds` names inside it.
@@ -150,6 +155,7 @@ export function framedExtents(
     if (!ids.has(o.nodeId)) continue;
     if (hidden(o.nodeId) && holds(o.nodeId).every(hidden)) continue;
     extents.push({ x: o.x, y: o.y, r: o.r });
+    if (o.label) extents.push(o.label);
   }
   return extents;
 }

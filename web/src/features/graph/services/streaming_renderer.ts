@@ -21,6 +21,7 @@ import { depthSizeMultiplier } from './depth_scale';
 import { fitBadgeText, sourceTarget, type SourceTarget } from './node_info';
 import { BADGE_MARGIN, badgePlace } from './source_badge';
 import { fitTransform, framedExtents } from './fit';
+import { placeOutlineLabels } from './outline_labels';
 import type { Box, FramedNode, FramedOutline } from './fit';
 
 // Nodes rendered per animation frame. Scales with total so large repos
@@ -82,6 +83,9 @@ export class StreamingGraphRenderer {
   // The group outlines as last drawn, so a fit frames them; empty while
   // Group Outlines is off.
   private _groupBounds: GroupBounds[] = [];
+  // The box each outline's label was set in, by the outline's node id, so a
+  // fit frames the label with its outline.
+  private _outlineLabelBoxes = new Map<string, Box>();
   // Which nodes the host's view state hides (`setHiddenTest`), so a fit
   // leaves them out; none until it says.
   private _isHidden: (id: string) => boolean = () => false;
@@ -262,6 +266,7 @@ export class StreamingGraphRenderer {
       } else {
         this._backgroundGroup.selectAll('*').remove();
         this._groupBounds = [];
+        this._outlineLabelBoxes = new Map();
       }
     }
   }
@@ -667,11 +672,12 @@ export class StreamingGraphRenderer {
       id: n.id,
       x: n.x ?? 0,
       y: n.y ?? 0,
-      // A shape drawn at `size` reaches 1.5 × size at most (a triangle's apex).
-      reach: 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n),
+      reach: this._extentOf(n),
       label: labels.get(n.id) ?? null,
     }));
-    const outlines: FramedOutline[] = this._groupBounds.map((b) => ({ nodeId: b.nodeId, x: b.cx, y: b.cy, r: b.radius }));
+    const outlines: FramedOutline[] = this._groupBounds.map((b) => ({
+      nodeId: b.nodeId, x: b.cx, y: b.cy, r: b.radius, label: this._outlineLabelBoxes.get(b.nodeId) ?? null,
+    }));
     const extents = framedExtents(framed, outlines, (id) => this._childrenMap.get(id) ?? [], this._isHidden);
     const t = fitTransform(extents, { width: this.width, height: this.height });
     if (!t) return;
@@ -712,15 +718,21 @@ export class StreamingGraphRenderer {
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
-  /** How far an outline is drawn past what it encloses, and the node size it reckons with. */
+  /** How far a node's shape reaches from its centre: a shape drawn at `size`
+   *  reaches 1.5 × size at most (a triangle's apex). */
+  private _extentOf(n: GraphNode): number {
+    return 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n);
+  }
+
+  /** How far an outline is drawn past what it encloses, and how far each node in it reaches. */
   private _outlineSpacing(): OutlineSpacing {
-    return { padding: 40, baseNodeSize: this.styling.nodeSize! * 3.0 };
+    return { padding: 40, baseNodeSize: this.styling.nodeSize! * 3.0, radiusOf: (n) => this._extentOf(n) };
   }
 
   private _drawCompoundBackgrounds(): void {
     const nodes = Array.from(this.nodeById.values());
-    const { padding, baseNodeSize } = this._outlineSpacing();
-    const bounds = this._compoundManager.computeGroupBounds(nodes, this._allEdges, padding, baseNodeSize);
+    const { padding, baseNodeSize, radiusOf } = this._outlineSpacing();
+    const bounds = this._compoundManager.computeGroupBounds(nodes, this._allEdges, padding, baseNodeSize, radiusOf);
     this._childrenMap = this._compoundManager.computeChildrenMap(nodes, this._allEdges);
     this._groupBounds = bounds;
     this._paintOutlines(bounds, true);
@@ -733,6 +745,7 @@ export class StreamingGraphRenderer {
    */
   private _paintOutlines(bounds: readonly GroupBounds[], fadeIn: boolean): void {
     this._backgroundGroup.selectAll('*').remove();
+    const labels: SVGTextElement[] = [];
     for (const b of bounds) {
       const isDir = b.depth === 0;
       const fill   = isDir ? 'rgba(127,140,141,0.06)' : 'rgba(155,89,182,0.09)';
@@ -748,19 +761,39 @@ export class StreamingGraphRenderer {
         .attr('stroke', stroke)
         .attr('stroke-width', sw)
         .attr('stroke-dasharray', dash);
-      const label = grp.append('text')
-        .attr('x', b.cx)
-        .attr('y', b.cy - b.radius + 16)
+      if (fadeIn) circle.style('opacity', 0).transition().delay(300).duration(500).style('opacity', 1);
+      labels.push(grp.append('text')
         .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
         .attr('font-size', isDir ? 11 : 9)
         .attr('fill', isDir ? 'rgba(127,140,141,0.70)' : 'rgba(155,89,182,0.70)')
         .style('pointer-events', 'none')
-        .text(b.label);
-      if (fadeIn) {
-        circle.style('opacity', 0).transition().delay(300).duration(500).style('opacity', 1);
-        label.style('opacity', 0).transition().delay(300).duration(500).style('opacity', 1);
-      }
+        .style('opacity', fadeIn ? 0 : 1)
+        .text(b.label)
+        .node()!);
     }
+    // Each label where it covers no other label and no node, inside its
+    // outline when it fits there (outline_labels.ts), measured as drawn,
+    // after a removal too.
+    const nodes = Array.from(this.nodeById.values());
+    const sizes = labels.map((label) => label.getBBox());
+    const places = placeOutlineLabels(
+      bounds.map((b, i) => ({ cx: b.cx, cy: b.cy, r: b.radius, w: sizes[i].width, h: sizes[i].height })),
+      nodes.map((n) => ({ x: n.x ?? 0, y: n.y ?? 0, r: this._extentOf(n) })),
+    );
+    // Each label's box as placed, which the fit frames with its outline.
+    this._outlineLabelBoxes = new Map();
+    labels.forEach((label, i) => {
+      const placed = d3.select(label).attr('x', places[i].x).attr('y', places[i].y);
+      if (fadeIn) placed.transition().delay(300).duration(500).style('opacity', 1);
+      const { width, height } = sizes[i];
+      this._outlineLabelBoxes.set(bounds[i].nodeId, {
+        minX: places[i].x - width / 2,
+        minY: places[i].y - height / 2,
+        maxX: places[i].x + width / 2,
+        maxY: places[i].y + height / 2,
+      });
+    });
   }
 
   /**
