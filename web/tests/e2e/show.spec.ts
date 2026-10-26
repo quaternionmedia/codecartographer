@@ -198,11 +198,11 @@ test("a project's views are the panel's only while it is the drawing asked for",
 });
 
 /**
- * Start streaming a one-file repository whose stream the test holds open
- * until it calls the function this resolves to; the stream then answers,
- * unless the page has ended it.
+ * Serve a one-file repository whose stream is held open until the test calls
+ * the function this resolves to; the stream then answers, unless the page has
+ * ended it.
  */
-async function holdAStream(page: Page): Promise<() => Promise<void>> {
+async function stubAStream(page: Page): Promise<() => Promise<void>> {
   await page.route('**/repo/tree?**', (route) => route.fulfill({
     json: {
       status: 200,
@@ -233,15 +233,26 @@ async function holdAStream(page: Page): Promise<() => Promise<void>> {
     }).catch(() => undefined); // Ended by the page: there is no one to answer.
     answered();
   });
+  return async () => { release(); await done; };
+}
+
+/** Fetch the stubbed repository from the Open panel, and wait for its stream to be asked for. */
+async function fetchTheRepository(page: Page): Promise<void> {
   const asked = page.waitForRequest((r) => r.url().includes('/parse/stream-url'));
-  await page.goto('/');
-  await dismissOnboardingModal(page);
   await page.locator('.lm_tab', { hasText: 'Open' }).click();
   await page.locator('.panel-source__url-input input').fill('/work/small');
   await page.locator('.panel-source__url-input button.primary').click();
   await asked;
+}
+
+/** Start streaming the stubbed repository on a fresh page, held open (`stubAStream`). */
+async function holdAStream(page: Page): Promise<() => Promise<void>> {
+  const release = await stubAStream(page);
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await fetchTheRepository(page);
   await expect(page.locator('button.panel-plotbar__cancel')).toBeEnabled();
-  return async () => { release(); await done; };
+  return release;
 }
 
 test('the Show panel opened while a repository streams draws nothing over it', async ({ page }) => {
@@ -282,4 +293,49 @@ test('a showgraph opened while a repository streams ends the stream', async ({ p
   // And the radial menu is on the canvas drawn.
   await page.locator('.graphRenderer svg').first().click({ button: 'right', position: { x: 8, y: 8 } });
   await expect(page.locator('.rad-root')).toHaveAttribute('aria-label', 'canvas');
+});
+
+test('another plot drawn over a showgraph takes its address and its trail with it', async ({ page }) => {
+  await drawEveryFamily(page);
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
+  await page.getByRole('button', { name: /Load Demo/i }).first().click();
+  await expect(page.locator('.graph-node[data-node-id]').first()).toBeAttached({ timeout: SETTLED });
+  // Mutation: leave the address and the trail as they are when another plot
+  // is drawn -- the page still says ?show=index over the demo, and this fails.
+  await expect(page).not.toHaveURL(/[?&]show/);
+  await expect(page.locator('.show__crumb.is-current')).toHaveCount(0);
+  await expect(page.locator('.show__now')).toHaveCount(0);
+});
+
+test('a repository streamed over a showgraph takes its address with it', async ({ page }) => {
+  const release = await stubAStream(page);
+  await drawEveryFamily(page);
+  await fetchTheRepository(page);
+  await release();
+  // Mutation: begin a stream without leaving the showgraph -- this fails.
+  await expect(page).not.toHaveURL(/[?&]show/);
+  await expect(page.locator('.show__crumb.is-current')).toHaveCount(0);
+});
+
+test('Back to an entry before any showgraph clears the trail', async ({ page }) => {
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.getByRole('button', { name: /Load Demo/i }).first().click();
+  await expect(page.locator('.graph-node[data-node-id]').first()).toBeAttached({ timeout: SETTLED });
+  // Opened over the demo, the panel draws nothing of its own.
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Show$/ }).click();
+  const row = page.locator('.show__family').first();
+  await expect(row).toBeVisible({ timeout: SETTLED });
+  await expect(page).not.toHaveURL(/[?&]show/);
+  await row.click();
+  await expect(page).toHaveURL(/\?show=family:/);
+  await expect(page.locator('.show__crumb.is-current')).toHaveCount(1);
+  await drawnIds(page);
+
+  await page.goBack();
+  await expect(page).not.toHaveURL(/[?&]show/);
+  // Mutation: do nothing on a popstate to an entry with no ?show -- the
+  // trail still names the family, and this fails.
+  await expect(page.locator('.show__crumb.is-current')).toHaveCount(0);
 });

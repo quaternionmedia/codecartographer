@@ -156,7 +156,14 @@ export class LayoutContext {
       });
       window.addEventListener('popstate', () => {
         const address = parseShow(window.location.search);
-        if (address) void this.openShow(address, 'keep');
+        if (address) {
+          void this.openShow(address, 'keep');
+        } else if (this.appState.state.showAddress) {
+          // Back to an entry before any showgraph: the trail names none, and
+          // a drawing still out for the one left is not drawn after it.
+          this.actions.plot.supersedePlots();
+          this._leaveShow();
+        }
       });
     }
   }
@@ -177,8 +184,32 @@ export class LayoutContext {
    * which nobody guesses. Every panel that draws goes through this.
    */
   public async plotWith<T>(action: () => Promise<T>): Promise<T> {
+    this._leaveShow();
     this._lastPlotAction = async () => { await action(); };
     return action();
+  }
+
+  /**
+   * Another plot is asked for: no showgraph is on the canvas, so neither the
+   * Show panel's trail nor the page's address names one.
+   *
+   * **THE ADDRESS IS THE GRAPH ON THE CANVAS**, and nothing cleared it: at
+   * `?show=index` Load Demo drew the demo under an address, and a trail, that
+   * still said every family, and a copied link opened something else. Every
+   * plot that is not a showgraph calls this when it is asked for: a stream
+   * (`_mountAndStream`), `plotWith`, the demo, a lexicon, added files and the
+   * system monitor chosen in Graph Settings.
+   */
+  private _leaveShow(): void {
+    // `showProblem` is left: it also holds why the corpus could not be read,
+    // which the panel's list waits on.
+    if (this.appState.state.showAddress) this.appState.update({ showAddress: null, showViews: null });
+    if (typeof window === 'undefined' || !parseShow(window.location.search)) return;
+    try {
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch {
+      // A page that cannot rewrite its address still draws.
+    }
   }
 
   public updatePanelState(updates: Partial<ControlPanelState>): void {
@@ -615,7 +646,9 @@ export class LayoutContext {
       const depth = this.panelState.parseDepth;
       this.panelState.parseDepth = view.depth ?? 1;
       const url = view.url;
-      await this.plotWith(async () => this._startStreamFromUrl(url));
+      // A showgraph's own stream: it keeps the address.
+      this._lastPlotAction = () => { this._startStreamFromUrl(url, true); };
+      this._startStreamFromUrl(url, true);
       this.panelState.parseDepth = depth;
     } else if (address.view === 'system') {
       if (!SystemDefinitionRegistry.get(address.name)) {
@@ -1041,9 +1074,11 @@ export class LayoutContext {
     return ` — ${placed} of ${total} placed without backend positions`;
   }
 
+  /** `forShow`: a showgraph's code view, which keeps the address it was opened at. */
   private _mountAndStream(
     startFn: (renderer: StreamingGraphRenderer) => () => void,
     statusMsg: string,
+    forShow = false,
   ): void {
     if (this._cancelStream) {
       this._cancelStream();
@@ -1052,6 +1087,7 @@ export class LayoutContext {
     // The stream is the latest plot: added files, the demo or a lexicon still
     // waiting for an answer are not drawn over it.
     this.actions.plot.supersedePlots();
+    if (!forShow) this._leaveShow();
     this._streamingRenderer = null;
 
     const styling = this.appState.state.graphStyling;
@@ -1171,8 +1207,8 @@ export class LayoutContext {
     );
   }
 
-  /** Stream directly from a GitHub URL via /parse/stream-url. */
-  private _startStreamFromUrl(githubUrl: string): void {
+  /** Stream directly from a GitHub URL via /parse/stream-url; `forShow` as `_mountAndStream` takes it. */
+  private _startStreamFromUrl(githubUrl: string, forShow = false): void {
     const opts = this.appState.state.parserOptions;
     const layout = convertLayout(this.appState.state.graphStyling.layout);
     const exts = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
@@ -1255,6 +1291,7 @@ export class LayoutContext {
         },
       ),
       'Connecting to GitHub\u2026',
+      forShow,
     );
   }
 
@@ -1266,6 +1303,7 @@ export class LayoutContext {
    */
   private async _plotUploads(files: RawFile[]): Promise<void> {
     const many = files.length === 1 ? files[0].name : `${files.length} files`;
+    this._leaveShow();
     this.updatePanelState({ isLoading: true, statusMessage: `Plotting ${many}\u2026` });
     // What the parse could not read is said as a stream says its `note`
     // events: each in a toast, and all of them after "Ready" (`notesTail`).
@@ -1287,6 +1325,7 @@ export class LayoutContext {
   private _buildCallbacks(): ControlPanelCallbacks {
     return {
       onDemo: async () => {
+        this._leaveShow();
         this.updatePanelState({ isLoading: true, statusMessage: 'Loading demo...' });
         let drawn = true;
         this._lastPlotAction = async () => { drawn = await this.actions.plot.loadDemo(); };
@@ -1300,6 +1339,7 @@ export class LayoutContext {
       },
 
       onLoadLexicon: async (language: string) => {
+        this._leaveShow();
         this.updatePanelState({ isLoading: true, statusMessage: `Loading ${language} lexicon...` });
         let drawn = true;
         this._lastPlotAction = async () => { drawn = await this.actions.plot.loadLexicon(language); };
@@ -1524,6 +1564,8 @@ export class LayoutContext {
       onCancel: () => { this.cancel(); },
 
       onRendererChange: (renderer) => {
+        // The system monitor draws its own diagram, not the showgraph.
+        if (renderer === 'system') this._leaveShow();
         this.appState.update({ selectedRenderer: renderer });
         if (renderer === 'system' || this.appState.state.graphData) {
           this.updatePanelState({ statusMessage: `Switching to ${renderer} renderer...` });
