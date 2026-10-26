@@ -386,8 +386,9 @@ about 100 px in the browser (`GraphSerializer`'s `spread`).
 
 On the canvas, `CompoundLayoutManager` (`web/src/features/graph/services/compound_layout.ts`)
 draws a translucent circle round each directory's and each file's group,
-assigning children by the same containment edges and by nearest position only
-for an orphan. A circle is the smallest one enclosing the group -- its own
+assigning children by the same containment edges: a node nested deeper than
+one level is traced up what holds it to its nearest ancestor of the level
+above, and nearest position is left for an orphan with none. A circle is the smallest one enclosing the group -- its own
 node and what it holds, a file's symbols or a directory's files by their own
 circles -- plus padding, so it is centred on the group, wherever the layout put
 the group's node. The circles are drawn whatever the layout, when a draw
