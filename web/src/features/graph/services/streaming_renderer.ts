@@ -718,17 +718,15 @@ export class StreamingGraphRenderer {
     return 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n);
   }
 
-  /** How far an outline is drawn past what it encloses, and the node size it reckons with. */
+  /** How far an outline is drawn past what it encloses, and how far each node in it reaches. */
   private _outlineSpacing(): OutlineSpacing {
-    return { padding: 40, baseNodeSize: this.styling.nodeSize! * 3.0 };
+    return { padding: 40, baseNodeSize: this.styling.nodeSize! * 3.0, radiusOf: (n) => this._extentOf(n) };
   }
 
   private _drawCompoundBackgrounds(): void {
     const nodes = Array.from(this.nodeById.values());
-    const { padding, baseNodeSize } = this._outlineSpacing();
-    const bounds = this._compoundManager.computeGroupBounds(
-      nodes, this._allEdges, padding, baseNodeSize, (n) => this._extentOf(n),
-    );
+    const { padding, baseNodeSize, radiusOf } = this._outlineSpacing();
+    const bounds = this._compoundManager.computeGroupBounds(nodes, this._allEdges, padding, baseNodeSize, radiusOf);
     this._childrenMap = this._compoundManager.computeChildrenMap(nodes, this._allEdges);
     this._groupBounds = bounds;
     this._paintOutlines(bounds, true);
