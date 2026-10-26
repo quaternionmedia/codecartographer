@@ -94,6 +94,32 @@ async function settle(page: Page): Promise<void> {
   }, { intervals: [500], timeout: SETTLED }).toBe(true);
 }
 
+/**
+ * Every node the window was sent, drawn. The canvas draws a few each frame
+ * after the stream has ended, and fits the drawing again and tidies its names
+ * once the last is drawn; a picture taken as the zoom first stopped moving held
+ * four nodes in five of a code map, with a hundred of its files' names over it.
+ */
+async function drawnAll(page: Page, count: number): Promise<void> {
+  await expect(page.locator('.graphRenderer > svg').first().locator('g.graph-node'))
+    .toHaveCount(count, { timeout: SETTLED });
+}
+
+/**
+ * Every node and name at the opacity it ends at. The canvas fades each in as
+ * it is drawn, and a name the declutter hides or shows again once a zoom
+ * settles fades too; a picture taken as the transform stopped moving held a
+ * dozen names part-way, written into the file at the opacity they were caught at.
+ */
+export async function faded(page: Page): Promise<void> {
+  const view = page.locator('.graphRenderer > svg').first();
+  await expect.poll(() => view.evaluate((svg) =>
+    [...svg.querySelectorAll('g.graph-node, text')].filter((el) => {
+      const opacity = Number(getComputedStyle(el).opacity);
+      return opacity > 0.001 && opacity < 0.999;
+    }).length), { intervals: [250, 250, 500], timeout: SETTLED }).toBe(0);
+}
+
 /** Step 4, Read: the canvas alone, the drawing framed in it once its resize lands. */
 async function readStep(page: Page): Promise<void> {
   await page.locator('.gl-steps__step[data-step="read"]').click();
@@ -186,7 +212,9 @@ async function drawEstate(page: Page, subject: ManifestSubject, dir: string) {
   const results = (await (await answered).json()).results;
   await expect(page.locator('.graph-node').first()).toBeAttached({ timeout: SETTLED });
   await readStep(page);
+  await drawnAll(page, Object.keys(results.graph?.nodes ?? {}).length);
   await settle(page);
+  await faded(page);
   writeFileSync(join(dir, 'estate.svg'), await svgOf(page));
   return { graph: results.graph, metadata: placeless(results.metadata ?? {}) };
 }
@@ -195,11 +223,14 @@ async function drawCode(page: Page, subject: ManifestSubject, dir: string, answe
   const answered = page.waitForResponse((r: Response) => r.url().includes('/parse/stream-url'), { timeout: SETTLED });
   await page.goto(`./?show=${subject.address}&view=code`);
   const body = await (await answered).text();
+  const graph = streamed(body);
   await expect(page.locator('.graph-node').first()).toBeAttached({ timeout: SETTLED });
   await readStep(page);
+  await drawnAll(page, Object.keys(graph.nodes).length);
   await settle(page);
+  await faded(page);
   writeFileSync(join(dir, 'code.svg'), await svgOf(page));
-  return { graph: streamed(body), metadata: { url: answer.url, depth: answer.depth ?? 1, truncated: 0 } };
+  return { graph, metadata: { url: answer.url, depth: answer.depth ?? 1, truncated: 0 } };
 }
 
 async function drawSystem(page: Page, subject: ManifestSubject, dir: string, answer: ViewAnswer) {

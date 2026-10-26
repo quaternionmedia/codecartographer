@@ -397,9 +397,11 @@ it, or a commit only a clone holds: where the window says a clone is not
 "beside this checkout", the document says the export read none.
 
 The pictures come from the real renderer, run headlessly by
-`web/playwright.export.config.ts` on ports of its own: each subject's address
-is opened, the canvas maximised (step 4, Read), and the picture taken once
-the fit has settled. `show.json` holds the graph each view drew, and names
+`web/playwright.export.config.ts` on ports of its own, in the window's default
+theme, QM: a deep blue ground and light yellow names, on the docs site's
+palette. Each subject's address is opened, the canvas maximised (step 4,
+Read), and the picture taken once every node the window was sent is drawn,
+the fit has settled and nothing is fading in or out. `show.json` holds the graph each view drew, and names
 where its claims and its source came from by repository and commit: the
 corpus, a project's default branch, and the codecartographer commit that drew
 it, marked `+changes` when that checkout had uncommitted changes.
