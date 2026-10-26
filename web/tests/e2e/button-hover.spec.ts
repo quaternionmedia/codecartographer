@@ -113,6 +113,11 @@ async function unreadableOnHover(page: Page, scope: Locator): Promise<string[]> 
 }
 
 test('every button in the default dock keeps its label readable on hover', async ({ page }) => {
+  // Playwright's 30s is for the whole test: two waits here allow SETTLED each,
+  // and each hover waits for its colour to fade in, which took 18-22s for the
+  // dock's buttons and once ran past 30s on a loaded workstation. Those two
+  // waits, and a minute for the hovers.
+  test.setTimeout(2 * SETTLED + 60_000);
   await page.goto('/');
   // The walkthrough a first visit opens with: Next, then Back beside it.
   const walkthrough = page.locator('.cc-modal-backdrop');
@@ -141,6 +146,8 @@ test('every button in the default dock keeps its label readable on hover', async
 });
 
 test('every button a drawn graph brings keeps its label readable on hover', async ({ page }) => {
+  // As the dock's case: its three SETTLED waits, and a minute for the hovers.
+  test.setTimeout(3 * SETTLED + 60_000);
   await page.goto('/');
   await dismissOnboardingModal(page);
   const open = page.locator('.gl-panel--open');
