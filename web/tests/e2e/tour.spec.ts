@@ -104,6 +104,11 @@ async function closeRing(page: Page): Promise<void> {
 }
 
 test('a first visit, the Open panel, and the bundled example', async ({ page }) => {
+  // Playwright's 30s timeout is for the whole test, and five of these steps'
+  // waits allow SETTLED each: a slow stream would end the test before its own
+  // wait did. Those five, and a minute for the other waits, the presses and
+  // the screenshots.
+  test.setTimeout(5 * SETTLED + 60_000);
   await page.goto('/');
   const open = page.locator('.gl-panel--open');
 
@@ -209,6 +214,9 @@ test('a first visit, the Open panel, and the bundled example', async ({ page }) 
 });
 
 test('the demo graph', async ({ page }) => {
+  // Its one SETTLED wait, and half a minute for the page, the walkthrough and
+  // the settle around it.
+  test.setTimeout(SETTLED + 30_000);
   await page.goto('/');
   await dismissOnboardingModal(page);
 
