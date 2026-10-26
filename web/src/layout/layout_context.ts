@@ -137,6 +137,9 @@ export class LayoutContext {
     // sees. Both announce the finished canvas, so both get the same fittings.
     GraphSurface.subscribe((renderer) => {
       this._streamingRenderer = renderer;
+      // Hide is view state kept here; the renderer reads it so a fit leaves
+      // hidden nodes out, as they are drawn at opacity 0 and still held.
+      renderer.setHiddenTest((id) => !!this._nodeViewState[id]?.hidden);
       this._mountRad(renderer);
     });
   }

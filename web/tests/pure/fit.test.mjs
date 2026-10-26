@@ -124,6 +124,40 @@ test('a label that is not shown is not framed', () => {
   assert.deepEqual(boundsOf(framedExtents(nodes, [])), { minX: -6, minY: -6, maxX: 106, maxY: 6 });
 });
 
+test('a hidden node is not framed, nor an outline that holds only hidden nodes', () => {
+  /* Mutation: frame every node the renderer holds, hidden or not -- the
+     hidden file far to the right, its label and its outline widen the frame,
+     and this fails. Hide draws a node at opacity 0 and keeps it, so the fit
+     is what has to leave it out. */
+  const nodes = [
+    { id: 'src', x: 0, y: 0, reach: 18, label: null },
+    { id: 'main.rs', x: 60, y: 0, reach: 11, label: labelBox(60, 0, 7, 40) },
+    { id: 'main', x: 90, y: 0, reach: 6, label: null },
+    { id: 'far.rs', x: 900, y: 0, reach: 11, label: labelBox(900, 0, 7, 40) },
+    { id: 'far', x: 940, y: 0, reach: 6, label: null },
+  ];
+  const outlines = [
+    { nodeId: 'src', x: 0, y: 0, r: 150 },
+    { nodeId: 'main.rs', x: 60, y: 0, r: 50 },
+    { nodeId: 'far.rs', x: 900, y: 0, r: 60 },
+  ];
+  const children = new Map([['src', ['main.rs', 'main']], ['main.rs', ['main']], ['far.rs', ['far']]]);
+  const hidden = new Set(['far.rs', 'far', 'main']);
+  const extents = framedExtents(nodes, outlines, (id) => children.get(id) ?? [], (id) => hidden.has(id));
+  // src's outline holds main.rs, which is shown; far.rs's holds only hidden nodes.
+  assert.deepEqual(boundsOf(extents), { minX: -150, minY: -150, maxX: 150, maxY: 150 });
+});
+
+test("an outline whose own node is hidden is framed while it holds a shown node", () => {
+  const nodes = [
+    { id: 'src', x: 0, y: 0, reach: 18, label: null },
+    { id: 'lib.rs', x: 300, y: 0, reach: 11, label: null },
+  ];
+  const outlines = [{ nodeId: 'src', x: 0, y: 0, r: 330 }];
+  const extents = framedExtents(nodes, outlines, () => ['lib.rs'], (id) => id === 'src');
+  assert.deepEqual(boundsOf(extents), { minX: -330, minY: -330, maxX: 330, maxY: 330 });
+});
+
 test('an outline is framed with the nodes it is drawn around, and not with others', () => {
   const nodes = [{ id: 'file', x: 0, y: 0, reach: 6, label: null }];
   const around = { nodeId: 'file', x: 0, y: 0, r: 80 };

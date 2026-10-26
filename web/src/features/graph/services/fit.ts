@@ -127,19 +127,29 @@ export interface FramedOutline extends Circle {
 /**
  * What a fit of `nodes` frames: each node's extent and its label's box while
  * it is shown, and the outline drawn around any of them.
+ *
+ * A hidden node is left out, label and all, and so is an outline that holds
+ * only hidden nodes: its own node and every node `holds` names inside it.
+ * Hide draws a node at opacity 0 and keeps it, so the renderer still holds
+ * it, and a frame that counted it would be centred off what is drawn.
  */
 export function framedExtents(
   nodes: readonly FramedNode[],
   outlines: readonly FramedOutline[],
+  holds: (nodeId: string) => readonly string[] = () => [],
+  hidden: (nodeId: string) => boolean = () => false,
 ): Extent[] {
   const ids = new Set(nodes.map((n) => n.id));
   const extents: Extent[] = [];
   for (const n of nodes) {
+    if (hidden(n.id)) continue;
     extents.push({ x: n.x, y: n.y, r: n.reach });
     if (n.label) extents.push(n.label);
   }
   for (const o of outlines) {
-    if (ids.has(o.nodeId)) extents.push({ x: o.x, y: o.y, r: o.r });
+    if (!ids.has(o.nodeId)) continue;
+    if (hidden(o.nodeId) && holds(o.nodeId).every(hidden)) continue;
+    extents.push({ x: o.x, y: o.y, r: o.r });
   }
   return extents;
 }

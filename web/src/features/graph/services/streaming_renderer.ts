@@ -82,6 +82,9 @@ export class StreamingGraphRenderer {
   // The group outlines as last drawn, so a fit frames them; empty while
   // Group Outlines is off.
   private _groupBounds: GroupBounds[] = [];
+  // Which nodes the host's view state hides (`setHiddenTest`), so a fit
+  // leaves them out; none until it says.
+  private _isHidden: (id: string) => boolean = () => false;
   // O(1) lookup for child drag propagation — populated in _renderNode, avoids CSS selector per-frame
   private _nodeGroupEl = new Map<string, SVGGElement>();
 
@@ -572,6 +575,16 @@ export class StreamingGraphRenderer {
     };
   }
 
+  /**
+   * How to tell a hidden node, so a fit leaves it out. Hide is view state the
+   * host keeps and paints (rad's `applyViewState` draws the node at opacity
+   * 0); the node stays here, in `nodeById`, and a fit that framed it would be
+   * centred off what is drawn.
+   */
+  setHiddenTest(isHidden: (id: string) => boolean): void {
+    this._isHidden = isHidden;
+  }
+
   /** Public so an intent can ask for a fit without reaching into the DOM. */
   fitView(): void {
     this._fitView();
@@ -641,7 +654,8 @@ export class StreamingGraphRenderer {
   /**
    * Fit the viewport to a subset of nodes: each node's extent, its label
    * while labels are shown, and the group outline drawn around any of them,
-   * framed whole (fit.ts).
+   * framed whole (fit.ts). A hidden node is left out, and so is an outline
+   * holding only hidden nodes.
    *
    * Split out of `_fitView` so `focus-group` can frame one subtree. A verb
    * that says "focus" and fits the whole graph is the kind of near-miss the
@@ -658,7 +672,8 @@ export class StreamingGraphRenderer {
       label: labels.get(n.id) ?? null,
     }));
     const outlines: FramedOutline[] = this._groupBounds.map((b) => ({ nodeId: b.nodeId, x: b.cx, y: b.cy, r: b.radius }));
-    const t = fitTransform(framedExtents(framed, outlines), { width: this.width, height: this.height });
+    const extents = framedExtents(framed, outlines, (id) => this._childrenMap.get(id) ?? [], this._isHidden);
+    const t = fitTransform(extents, { width: this.width, height: this.height });
     if (!t) return;
 
     this.svg
