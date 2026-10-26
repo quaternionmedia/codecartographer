@@ -26,11 +26,17 @@ test.use({ viewport: { width: 1600, height: 1000 } });
 
 /** The least contrast between any label text in `button` and what is behind it. */
 function labelContrast(button: Element): number {
+  // Chromium reports rgb() and rgba() with channels to 255, and a
+  // color-mix() as color(srgb r g b / a) with channels to 1. A colour in any
+  // other notation is named, not read as transparent and skipped.
   const parse = (c: string): number[] => {
-    const m = c.match(/rgba?\(([^)]+)\)/);
-    if (!m) return [0, 0, 0, 0];
+    const rgb = c.match(/^rgba?\(([^)]+)\)$/);
+    const srgb = c.match(/^color\(srgb ([^)]+)\)$/);
+    const m = rgb ?? srgb;
+    if (!m) throw new Error(`labelContrast cannot read the colour ${c}`);
     const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
-    return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
+    const to255 = rgb ? 1 : 255;
+    return [p[0] * to255, p[1] * to255, p[2] * to255, p.length > 3 ? p[3] : 1];
   };
   const over = (top: number[], under: number[]): number[] =>
     [0, 1, 2].map((i) => top[i] * top[3] + under[i] * (1 - top[3])).concat(1);
@@ -187,4 +193,25 @@ test('a selected parse-option chip keeps its label and its fill in the Light the
   expect.soft(await chip.evaluate(labelContrast), 'under the pointer').toBeGreaterThanOrEqual(READABLE);
   expect.soft(await chip.evaluate((e) => getComputedStyle(e).backgroundColor), 'its fill under the pointer')
     .not.toBe('rgba(0, 0, 0, 0)');
+});
+
+test('the contrast measure reads a color-mix() fill, and names a colour it cannot read', async ({ page }) => {
+  // Every translucent fill above is a color-mix(), and Chromium reports one
+  // as color(srgb r g b / a). Read as transparent, a fill drops out of the
+  // composite and its label is measured against the panel behind it.
+  await page.setContent(`
+    <div style="background: #000">
+      <button id="mixed" style="border: 0; color: #fff;
+        background: color-mix(in srgb, #fff 90%, transparent)">Label</button>
+      <button id="oklch" style="border: 0; color: #fff;
+        background: oklch(0.9 0 0)">Label</button>
+    </div>`);
+  const mixed = page.locator('#mixed');
+  expect(await mixed.evaluate((e) => getComputedStyle(e).backgroundColor)).toMatch(/^color\(srgb /);
+  // Mutation: read color(srgb ...) as transparent, as a parse of rgb() and
+  // rgba() alone did -- the near-white fill drops out, the white label
+  // measures 21:1 against the black, and this fails.
+  expect(await mixed.evaluate(labelContrast)).toBeLessThan(READABLE);
+  // Mutation: read a colour in another notation as transparent -- this fails.
+  await expect(page.locator('#oklch').evaluate(labelContrast)).rejects.toThrow(/oklch/);
 });
