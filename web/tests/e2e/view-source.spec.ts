@@ -75,6 +75,11 @@ test('the badge stays inside the canvas, its path shortened and whole in its tit
   expect(b.x + b.width).toBeLessThanOrEqual(area.x + area.width);
   expect(b.y).toBeGreaterThanOrEqual(area.y);
   expect(b.y + b.height).toBeLessThanOrEqual(area.y + area.height);
+  // Placed by badgePlace over the canvas, so BADGE_MARGIN (8px) in from the
+  // edges it is moved off. Mutation: clamp it 4px in, as a second rule of
+  // its own -- this fails.
+  expect(area.x + area.width - (b.x + b.width)).toBeCloseTo(8, 0);
+  expect(b.y - area.y).toBeCloseTo(8, 0);
   // Shortened from the middle: the name and the file and line stay.
   const shown = (await badge.textContent()) ?? '';
   expect(shown.length).toBeLessThan(title.length);

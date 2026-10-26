@@ -19,6 +19,7 @@ import type { GroupBounds, OutlineSpacing } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
 import { fitBadgeText, sourceTarget, type SourceTarget } from './node_info';
+import { BADGE_MARGIN, badgePlace } from './source_badge';
 import { fitTransform, framedExtents } from './fit';
 import type { Box, FramedNode, FramedOutline } from './fit';
 
@@ -789,15 +790,29 @@ export class StreamingGraphRenderer {
 
     const point = at ?? this._screenCentreOf(id);
     document.querySelectorAll('.source-badge').forEach((old) => old.remove());
-    // The badge stays inside the canvas: a path from a deep checkout is wider
-    // than the space to the pointer's right, and often than the canvas.
+    // The badge stays inside the canvas, and so inside the window: a path from
+    // a deep checkout is wider than the space to the pointer's right, and
+    // often than the canvas. `area` is the part of the window the canvas
+    // covers, in viewport coordinates.
     const canvas = this.getContainer().getBoundingClientRect();
-    const inset = 4;
-    const room = Math.max(0, canvas.width - 2 * inset);
+    const view = {
+      width: document.documentElement.clientWidth || window.innerWidth,
+      height: document.documentElement.clientHeight || window.innerHeight,
+    };
+    const areaLeft = Math.max(0, canvas.left);
+    const areaTop = Math.max(0, canvas.top);
+    const area = {
+      left: areaLeft,
+      top: areaTop,
+      width: Math.max(0, Math.min(canvas.right, view.width) - areaLeft),
+      height: Math.max(0, Math.min(canvas.bottom, view.height) - areaTop),
+    };
+    const room = Math.max(0, area.width - 2 * BADGE_MARGIN);
     const badge = document.createElement('div');
     badge.className = 'source-badge';
     // Measured at the window's top left, where its whole width is free, on one
-    // line; shortened to `room` when it is wider, then placed inside the canvas.
+    // line; shortened to `room` when it is wider, then placed by `badgePlace`
+    // so that none of it is outside `area`.
     badge.style.cssText = [
       'position:fixed',
       'left:0',
@@ -830,9 +845,14 @@ export class StreamingGraphRenderer {
       const perChar = textWidth / target.text.length;
       badge.textContent = fitBadgeText(target.text, Math.floor((room - chrome) / perChar));
     }
-    const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
-    badge.style.left = `${clamp(point.x + 8, canvas.left + inset, canvas.right - inset - badge.offsetWidth)}px`;
-    badge.style.top = `${clamp(point.y - 28, canvas.top + inset, canvas.bottom - inset - badge.offsetHeight)}px`;
+    const drawn = badge.getBoundingClientRect();
+    const place = badgePlace(
+      { x: point.x - area.left, y: point.y - area.top },
+      { width: drawn.width, height: drawn.height },
+      area,
+    );
+    badge.style.left = `${area.left + place.left}px`;
+    badge.style.top = `${area.top + place.top}px`;
     setTimeout(() => badge.remove(), 3500);
     return true;
   }
