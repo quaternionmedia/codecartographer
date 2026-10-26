@@ -71,8 +71,10 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
       // THE DEFAULT IS EVERY FAMILY AT ONCE. A panel opened onto an empty
       // canvas draws the whole estate; one opened over a graph somebody drew
       // leaves it, and **draw every family** is the first thing it offers.
+      // A graph still being drawn is one: a stream records its graph only
+      // when it ends, and the index was drawn over it.
       const state = ctx.appState.state;
-      if (state.showSubjects && !state.showAddress && !state.graphData) {
+      if (state.showSubjects && !state.showAddress && !state.graphData && !ctx.panelState.isLoading) {
         void ctx.openShow({ kind: 'index', name: '', view: 'estate' }, 'replace');
       }
     }).catch(() => {

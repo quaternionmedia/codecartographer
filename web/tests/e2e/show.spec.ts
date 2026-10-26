@@ -196,3 +196,90 @@ test("a project's views are the panel's only while it is the drawing asked for",
   await page.goto(`/?show=project:${second}`);
   expect(raced).toEqual(await drawnIds(page));
 });
+
+/**
+ * Start streaming a one-file repository whose stream the test holds open
+ * until it calls the function this resolves to; the stream then answers,
+ * unless the page has ended it.
+ */
+async function holdAStream(page: Page): Promise<() => Promise<void>> {
+  await page.route('**/repo/tree?**', (route) => route.fulfill({
+    json: {
+      status: 200,
+      message: 'stubbed',
+      results: {
+        info: { owner: 'example', name: 'small', url: '/work/small' },
+        size: 1,
+        root: { name: '', size: 0, folders: [], files: [{ name: 'a.rs', size: 1, raw: '', url: '/work/small/a.rs' }] },
+        is_partial: false,
+      },
+    },
+  }));
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  let answered!: () => void;
+  const done = new Promise<void>((resolve) => { answered = resolve; });
+  const frame = (event: string, data: unknown) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  await page.route('**/parse/stream-url', async (route) => {
+    await held;
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body: [
+        frame('meta', { nodeCount: 1, edgeCount: 0, layout: 'spring' }),
+        frame('node', { id: 'dir::src', label: 'src', kind: 'directory', depth: 0, x: 0, y: 0, file: '', line: 0 }),
+        frame('done', { elapsed_ms: 1 }),
+      ].join(''),
+    }).catch(() => undefined); // Ended by the page: there is no one to answer.
+    answered();
+  });
+  const asked = page.waitForRequest((r) => r.url().includes('/parse/stream-url'));
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
+  await page.locator('.panel-source__url-input input').fill('/work/small');
+  await page.locator('.panel-source__url-input button.primary').click();
+  await asked;
+  await expect(page.locator('button.panel-plotbar__cancel')).toBeEnabled();
+  return async () => { release(); await done; };
+}
+
+test('the Show panel opened while a repository streams draws nothing over it', async ({ page }) => {
+  const asked: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/show/index/gjgf')) asked.push(request.url());
+  });
+  const release = await holdAStream(page);
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Show$/ }).click();
+  await expect(page.locator('.show__family').first()).toBeVisible({ timeout: SETTLED });
+  await page.waitForTimeout(1_000);
+  // Mutation: draw every family whenever no graph is recorded, as the panel
+  // did -- a stream records its graph only when it ends, so every family is
+  // drawn over it, and this fails.
+  expect(asked).toEqual([]);
+  await expect(page.locator('button.panel-plotbar__cancel')).toBeEnabled();
+  await release();
+});
+
+test('a showgraph opened while a repository streams ends the stream', async ({ page }) => {
+  const release = await holdAStream(page);
+  const ended = page.waitForEvent('requestfailed', (r) => r.url().includes('/parse/stream-url'));
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Show$/ }).click();
+  await page.locator('button.estate-view__draw', { hasText: 'draw every family' }).click({ timeout: SETTLED });
+  // Mutation: open a showgraph without cancelling the stream -- it runs on,
+  // its end records the repository as the graph drawn and gives rad its
+  // renderer, one no longer on the canvas, and this fails.
+  await ended;
+  await expect(page.locator('button.panel-plotbar__cancel')).toBeDisabled();
+  const drawn = await drawnIds(page);
+  await release();
+  await page.waitForTimeout(1_000);
+  expect(await drawnIds(page)).toEqual(drawn);
+  // The panel reads the drawing's own caveat, which the stream did not replace.
+  await expect(page.locator('.show__about')).toBeVisible();
+  // And the radial menu is on the canvas drawn.
+  await page.locator('.graphRenderer svg').first().click({ button: 'right', position: { x: 8, y: 8 } });
+  await expect(page.locator('.rad-root')).toHaveAttribute('aria-label', 'canvas');
+});

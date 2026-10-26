@@ -563,6 +563,10 @@ export class LayoutContext {
     // or for the Open panel, is dropped from now, and so is this one if a plot
     // is asked for while it reads a project's views.
     const current = this.actions.plot.takePlot();
+    // **AND A STREAM IN FLIGHT IS ENDED.** It drew on by another way, and at
+    // its end recorded the repository as the graph drawn and announced its
+    // renderer -- one no longer on the canvas, which rad then bound to.
+    if (this._cancelStream || this.panelState.isLoading) this.cancel();
     // Before the panel mounts: a Show panel opening onto nothing drawn draws
     // every family, and this address is what it is about to draw instead.
     this.appState.update({ showAddress: address, showProblem: null });
