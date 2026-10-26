@@ -11,9 +11,11 @@ order and the menu keys against the code.
 A header runs across the top, and under it a dock of panels
 ([Golden Layout](https://golden-layout.github.io/golden-layout/)). Each panel is
 a tab: drag a tab to move it or stack it with others, drag a divider to resize,
-and click a tab's ✕ to close it. The dock has no menu of its own: a right-click
-on the canvas opens the [radial menu](#the-radial-menu), and anywhere else it is
-the browser's.
+and click a tab's ✕ to close it. The dock fills the window under the header and
+follows it as the window is resized, a maximised stack and the drawing on the
+canvas with it. The dock has no menu of its own: a right-click on the canvas
+opens the [radial menu](#the-radial-menu), and anywhere else it is the
+browser's.
 
 **The default arrangement** (`web/src/layout/default_layout.ts`) is the Graph
 panel across the top and, below it, Files on the left beside a stack of Open (in

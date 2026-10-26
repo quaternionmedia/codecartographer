@@ -52,6 +52,13 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
   /** Mount GL panels after the host element exists in the DOM. */
   function initGoldenLayout(hostElement: HTMLElement): void {
     glInstance = new GoldenLayout(hostElement);
+    // **THE DOCK FOLLOWS THE WINDOW.** Golden Layout sizes every stack in
+    // pixels, and resizes with its container by itself only when that is the
+    // page's body; this host is the shell's own element. Without this a
+    // narrowed window cut off the dock's right side, stacks' controls and all,
+    // and a widened one left a band of nothing beside it. Golden Layout
+    // observes the host either way, and acts on a resize when this is set.
+    glInstance.resizeWithContainerAutomatically = true;
     ctx.attachLayoutManager(glInstance);
     // The stack whose tab the reader last clicked is where the "+" menu adds a
     // window. Heard in the capture phase, so before Golden Layout's own tab
