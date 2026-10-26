@@ -166,7 +166,13 @@ none. **draw the construct** draws it.
 Id `file-tree`. In the default arrangement.
 
 The loaded repository's tree, and the added files. Click a file to draw that
-file alone. With nothing loaded, it points at the Open panel.
+file alone. A file from GitHub has a *raw* link beside its name that opens its
+contents in a new tab; a file read from disk has none, since the browser cannot
+open it. With nothing loaded, it points at the Open panel.
+
+Each file and folder is a tab stop, and Enter or Space presses it as a click
+does; a folder says whether it is open. A raw link is named for the file it
+opens, "raw contents of" its path.
 
 In a large repository a folder marked … has not been read; click it to read
 it. It shows ↻ while it is read. A read that fails ends the ↻, leaves the folder
