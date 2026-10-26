@@ -438,12 +438,13 @@ def _declared(graph, reading: Reading, drawn: set[str]) -> int:
 _MANIFESTS_READ: dict[tuple[str, str], dict[str, str]] = {}
 
 
-def _manifests(clone: Path) -> dict[str, str]:
+def _manifests(clone: Path) -> dict[str, str] | None:
     """Every manifest at the clone's default branch, by name, in one git call.
 
     Kept per commit, so a second drawing reads nothing and a clone that moved
     is read again: the key is the commit the default branch is at, not the
-    clone's path.
+    clone's path. `None` when git could not read the clone, which is kept for
+    nothing: the next drawing asks again.
     """
     commit = clones.default_commit(clone)
     if commit is None:
@@ -459,7 +460,10 @@ def _manifests(clone: Path) -> dict[str, str]:
                               input=request.encode("utf-8"), capture_output=True,
                               timeout=15)
     except (OSError, subprocess.TimeoutExpired):
-        return {}
+        return None
+    if done.returncode != 0:
+        # Raises nothing, and its empty answer is not "no manifests".
+        return None
     found: dict[str, str] = {}
     data, at = done.stdout, 0
     for name in MANIFESTS:
@@ -480,11 +484,11 @@ def measured_links(reading: Reading, repos: list[str],
                    among: list[Path] | None = None) -> tuple[list[dict[str, str]], list[str]]:
     """Each estate repository a member's manifests name by its host URL.
 
-    Returns the links and the members nothing was measured for: each that had
-    no clone to read, or every one when no organisation is known. Only a URL on
-    the host naming this organisation resolves; a package that merely shares a
-    repository's name is not a link, because drawing a guess would be the
-    measurement asserting a claim.
+    Returns the links and the members nothing was measured for: each with no
+    clone, or one git could not read, or every one when no organisation is
+    known. Only a URL on the host naming this organisation resolves; a package
+    that merely shares a repository's name is not a link, because drawing a
+    guess would be the measurement asserting a claim.
     """
     estate = set(projects(reading))
     if not reading.org:
@@ -501,11 +505,12 @@ def measured_links(reading: Reading, repos: list[str],
         if PRIVATE.match(repo):
             continue
         clone = clones.find(repo, among)
-        if clone is None:
+        manifests = None if clone is None else _manifests(clone)
+        if manifests is None:
             unread.append(repo)
             continue
         seen: set[str] = set()
-        for manifest, text in _manifests(clone).items():
+        for manifest, text in manifests.items():
             for target in url.findall(text):
                 if target in estate and target not in (repo, CORPUS_NAME) and target not in seen:
                     seen.add(target)
@@ -744,8 +749,9 @@ def caveat(reading: Reading, graph) -> str:
                      f"names a repository by its URL on the host, and a URL is "
                      f"matched by the inventory's organisation.")
     elif unread:
-        parts.append(f"{len(unread)} member(s) had no clone beside this one, so "
-                     f"nothing was measured for them: {', '.join(unread)}.")
+        parts.append(f"{len(unread)} member(s) had no clone beside this one, or "
+                     f"one git could not read, so nothing was measured for them: "
+                     f"{', '.join(unread)}.")
     undeclared = graph.graph.get("undeclared") or []
     if undeclared:
         parts.append(f"{len(undeclared)} measured link(s) have no declared seam: "

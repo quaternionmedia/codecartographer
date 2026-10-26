@@ -334,6 +334,31 @@ def test_a_host_url_names_its_repository_whatever_follows_it(corpus, tmp_path, m
     assert [link["target"] for link in links] == ["beta"], f"{line.strip()} lost its link"
 
 
+def test_a_clone_git_could_not_read_is_unread_and_read_again(corpus, clones, monkeypatch):
+    # `git cat-file` exiting non-zero raises nothing, so its empty answer was
+    # kept for the clone's commit as "no manifests" until a restart, and the
+    # member counted as measured. Broken by taking a failure for no
+    # manifests, alpha is not unread; by keeping the failure for the commit,
+    # the second call is unread too.
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    reading = show_service.read()
+    real, failed = subprocess.run, []
+
+    def fails_once(args, *rest, **kwargs):
+        if "cat-file" in args and not failed:
+            failed.append(args)
+            return subprocess.CompletedProcess(args, 128, b"", b"fatal: a test")
+        return real(args, *rest, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", fails_once)
+    links, unread = show_service.measured_links(reading, ["alpha"], [clones])
+    assert failed, "the manifests were not read with git cat-file"
+    assert (links, unread) == ([], ["alpha"]), "a clone git could not read was measured"
+    links, unread = show_service.measured_links(reading, ["alpha"], [clones])
+    assert unread == [], "a failed read was kept"
+    assert sorted(link["target"] for link in links) == ["beta", "gamma"]
+
+
 def test_only_a_measured_link_with_no_declared_seam_is_reported(client, clones, monkeypatch):
     monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(clones))
     metadata = _results(client, "/show/family/core/gjgf")["metadata"]

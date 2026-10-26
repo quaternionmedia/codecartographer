@@ -934,8 +934,8 @@ member's manifests at its default branch name another estate repository by its
 host URL; drawn dashed, and never used to place a member). `metadata.kind` is
 `"show"`; `metadata.undeclared` lists measured links no surface declares, and
 `metadata.unread` the members nothing was measured for: each with no clone
-beside this one, or every member when the inventory names no organisation to
-match a URL by, which a note and the caveat say.
+beside this one or one git could not read, or every member when the inventory
+names no organisation to match a URL by, which a note and the caveat say.
 
 ### GET `/show/family/{name}/gjgf?layout=&palette_id=`
 
