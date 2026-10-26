@@ -21,7 +21,7 @@
  * name, and the Python side refuses any document that still carries a path.
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { expect, type Page, type Response } from '@playwright/test';
@@ -221,6 +221,9 @@ async function notAtHead(page: Page, subject: ManifestSubject, manifest: Manifes
 /** Draw every view of `subject` and write its pictures and its show document under `manifest.out`. */
 export async function exportSubject(page: Page, subject: ManifestSubject, manifest: Manifest): Promise<void> {
   const dir = join(manifest.out, ...subject.folder.split('/'));
+  // The folder holds what this export writes and nothing older: a picture a
+  // view no longer has would sit beside a document that does not name it.
+  rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   await page.setViewportSize(VIEWPORT);
   await page.goto('./');

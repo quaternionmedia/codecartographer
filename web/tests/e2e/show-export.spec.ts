@@ -128,4 +128,13 @@ test("a system view is drawn only from the default branch's head the document na
   expect(atHead.views.system.composed.commit).toBe('aaaaaaa');
   expect(atHead.files.system).toBe('system.png');
   expect(existsSync(join(again, 'project', 'carlos', 'system.png'))).toBe(true);
+
+  // Drawn again into the same folder, with the clone moved off the head: the
+  // folder holds what this export wrote and nothing older. Mutation: write
+  // into the folder as it is -- the last export's system.png stays beside a
+  // document that no longer names it, and this fails.
+  composedAt = 'bbbbbbb';
+  await exportSubject(page, carlos, manifest(again));
+  expect(JSON.parse(read(join(again, 'project', 'carlos', 'show.json'))).views.system.absent).toBe(true);
+  expect(existsSync(join(again, 'project', 'carlos', 'system.png'))).toBe(false);
 });
