@@ -313,6 +313,27 @@ def test_a_name_that_only_matches_is_not_a_link(client, clones, monkeypatch):
     assert all(link["file"] in ("pyproject.toml", "package.json") for link in links)
 
 
+@pytest.mark.parametrize("line", [
+    'dependencies = ["beta @ git+https://github.com/example/beta.git@v0.1.0"]\n',
+    'dependencies = ["beta @ git+https://github.com/example/beta.git?rev=1"]\n',
+    'dependencies = ["beta @ git+https://github.com/Example/beta"]\n',
+], ids=["a tag after it", "a query after it", "the organisation's case"])
+def test_a_host_url_names_its_repository_whatever_follows_it(corpus, tmp_path, monkeypatch, line):
+    # The pattern ended a name only at a quote, a space, `/`, `#` or `)`, and
+    # matched the organisation's case exactly, so a pinned tag, a query or
+    # `github.com/Example` lost the link. Broken back to that ending, the
+    # first two are lost; with the organisation's case matched, the third.
+    alpha = tmp_path / "clones" / "alpha"
+    alpha.mkdir(parents=True)
+    (alpha / "pyproject.toml").write_text(line, encoding="utf-8")
+    _commit_all(alpha)
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    links, unread = show_service.measured_links(show_service.read(), ["alpha"],
+                                                [tmp_path / "clones"])
+    assert unread == []
+    assert [link["target"] for link in links] == ["beta"], f"{line.strip()} lost its link"
+
+
 def test_only_a_measured_link_with_no_declared_seam_is_reported(client, clones, monkeypatch):
     monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(clones))
     metadata = _results(client, "/show/family/core/gjgf")["metadata"]

@@ -489,7 +489,11 @@ def measured_links(reading: Reading, repos: list[str],
     estate = set(projects(reading))
     if not reading.org:
         return [], [r for r in repos if not PRIVATE.match(r)]
-    url = re.compile(rf"github\.com[/:]{re.escape(reading.org)}/([A-Za-z0-9._-]+?)(?:\.git)?(?=[\"'\s/#)]|$)",
+    # A name ends at anything a name cannot hold: a quote, `/`, `#`, a tag's
+    # `@` or a query's `?`. The host and the organisation match in any case,
+    # as the host reads them.
+    url = re.compile(rf"(?i:github\.com[/:]{re.escape(reading.org)})/"
+                     rf"([A-Za-z0-9._-]+?)(?:\.git)?(?=[^A-Za-z0-9._-]|$)",
                      re.MULTILINE)
     links: list[dict[str, str]] = []
     unread: list[str] = []
