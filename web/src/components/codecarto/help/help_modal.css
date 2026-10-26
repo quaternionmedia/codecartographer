@@ -116,7 +116,7 @@
   color: var(--c-font-muted, #aaa);
   border: 1px solid var(--c-border, #444);
 }
-.cc-modal__btn--secondary:hover { color: var(--c-font, #fff); border-color: var(--c-font-muted, #888); }
+.cc-modal__btn--secondary:hover { background: transparent; color: var(--c-font, #fff); border-color: var(--c-font-muted, #888); }
 
 /* ── Toasts ──────────────────────────────────────────────────────────────────── */
 .cc-toasts {
@@ -158,7 +158,7 @@
   line-height: 1;
   flex-shrink: 0;
 }
-.cc-toast__close:hover { color: var(--c-font, #fff); }
+.cc-toast__close:hover { background: none; color: var(--c-font, #fff); }
 
 /* ── Help button ─────────────────────────────────────────────────────────────── */
 .cc-help-btn {

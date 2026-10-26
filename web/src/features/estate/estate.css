@@ -157,7 +157,7 @@
   cursor: pointer;
 }
 
-.estate__open:hover { color: var(--c-font); border-color: var(--c-border-active); }
+.estate__open:hover { background: var(--c-transparent-full); color: var(--c-font); border-color: var(--c-border-active); }
 
 .estate__open[disabled] {
   cursor: default;

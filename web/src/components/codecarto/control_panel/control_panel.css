@@ -201,7 +201,7 @@
 
 .panel-source__example-chip:hover {
   background: var(--c-secondary);
-  color: var(--c-bg);
+  color: var(--c-font-inverse);
 }
 
 /* ── Cached graphs panel ──────────────────────────────────────────────────── */
@@ -236,8 +236,12 @@
   text-align: left;
   transition: border-color 0.15s, color 0.15s;
 }
+/* Each hover below sets its own background: the global button:hover fill is
+   more specific than these buttons' own `transparent`, and under its
+   secondary fill this text would not read. */
 .panel-source__cached-chip:hover {
   border-color: var(--c-accent, #00ff41);
+  background: color-mix(in srgb, var(--c-secondary) 8%, transparent);
   color: var(--c-font);
 }
 .panel-source__cached-label {
@@ -262,7 +266,7 @@
   opacity: 0.5;
   flex-shrink: 0;
 }
-.panel-source__cached-evict:hover { opacity: 1; color: var(--c-error); }
+.panel-source__cached-evict:hover { opacity: 1; color: var(--c-error); background: none; box-shadow: none; }
 
 /* Loaded repo: header + tree fills remaining space */
 .panel-source__repo-loaded {
@@ -302,6 +306,7 @@
 
 .panel-source__repo-clear:hover {
   border-color: var(--c-error, #e74c3c);
+  background: transparent;
   color: var(--c-error, #e74c3c);
 }
 
@@ -372,14 +377,14 @@
   letter-spacing: 1px;
   text-transform: uppercase;
   transition: all var(--t-transition-fast);
-  box-shadow: 0 0 8px rgba(var(--c-secondary-rgb), 0.3);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--c-secondary) 30%, transparent);
   flex-shrink: 0;
   margin: 0;
   height: auto;
 }
 .panel-source__plot-primary:hover {
   background-color: var(--c-font);
-  box-shadow: 0 0 16px rgba(var(--c-secondary-rgb), 0.5);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--c-secondary) 50%, transparent);
   transform: scale(1.02);
 }
 
@@ -585,7 +590,7 @@
 .panel-settings__select:focus {
   outline: none;
   border-color: var(--c-secondary);
-  box-shadow: 0 0 0 2px rgba(var(--c-secondary-rgb), 0.1);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-secondary) 10%, transparent);
 }
 
 /* Help/hint text */
@@ -703,16 +708,19 @@
   margin: 0;
   height: auto;
 }
+/* The label keeps a colour of its own: without one, the global button:hover
+   sets the inverse colour, meant for its secondary fill, over this faint one. */
 .panel-settings__button-option:hover {
   border-color: var(--c-secondary);
-  background-color: rgba(var(--c-secondary-rgb), 0.1);
+  background-color: color-mix(in srgb, var(--c-secondary) 10%, transparent);
+  color: var(--c-secondary);
   box-shadow: none;
 }
 .panel-settings__button-option--active {
   border-color: var(--c-secondary);
-  background-color: rgba(var(--c-secondary-rgb), 0.2);
+  background-color: color-mix(in srgb, var(--c-secondary) 20%, transparent);
   color: var(--c-secondary);
-  box-shadow: 0 0 4px rgba(var(--c-secondary-rgb), 0.3);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--c-secondary) 30%, transparent);
 }
 
 /* Compact text input */
@@ -765,14 +773,17 @@
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.panel-settings__chip:hover {
+/* Not the selected chip: its fill is what says it is selected, and under the
+   pointer it takes the global button:hover fill and label instead. */
+.panel-settings__chip:hover:not(.panel-settings__chip--active) {
   border-color: var(--c-accent);
+  background: transparent;
   color: var(--c-accent);
 }
 
 .panel-settings__chip--active {
   background: var(--c-accent);
-  color: var(--c-bg);
+  color: var(--c-font-on-accent);
   border-color: var(--c-accent);
 }
 
@@ -798,7 +809,7 @@
   flex-shrink: 0;
 }
 .panel-source__cached-save { cursor: pointer; opacity: 0.6; }
-.panel-source__cached-save:hover { opacity: 1; color: var(--c-secondary); }
+.panel-source__cached-save:hover { opacity: 1; color: var(--c-secondary); background: none; box-shadow: none; }
 .panel-source__cached-saved { color: var(--c-secondary); }
 
 .panel-open__parse-summary {
@@ -841,7 +852,8 @@
   transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 .panel-plotbar__plot:hover:not(:disabled) {
-  background: rgba(0, 255, 65, 0.1);
+  background: color-mix(in srgb, var(--c-secondary) 10%, transparent);
+  color: var(--c-secondary, #00ff41);
   box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
 }
 .panel-plotbar__cancel {
@@ -850,6 +862,7 @@
 }
 .panel-plotbar__cancel:hover:not(:disabled) {
   background: rgba(231, 76, 60, 0.1);
+  color: var(--c-error, #e74c3c);
 }
 .panel-plotbar__plot:disabled,
 .panel-plotbar__cancel:disabled {
