@@ -104,7 +104,7 @@ export function createChrestomathyPanel(ctx: LayoutContext): m.Component {
             ? [
                 lines.length
                   ? m('table.cartography__table.cartography__census', [
-                      m('thead', m('tr', [m('th', 'is'), m('th', 'written in'), m('th', 'nodes'), m('th', '')])),
+                      m('thead', m('tr', [m('th', 'is'), m('th', 'written in'), m('th', 'nodes'), m('th', 'frame and select')])),
                       m('tbody', lines.map((line) =>
                         m('tr', {
                           'data-construct': line.id,

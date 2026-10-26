@@ -84,7 +84,7 @@ function nodeRing(f: MenuFacts): MenuItem[] {
   return [
     { id: 'expand', label: 'Expand', action: 'expand', enabled: canExpand },
     { id: 'collapse', label: 'Collapse', action: 'collapse', enabled: !!f.hasRenderedChildren },
-    { id: 'neighbors', label: 'Neighbours', action: 'select-neighbors' },
+    { id: 'neighbors', label: 'Neighbors', action: 'select-neighbors' },
     { id: 'pin', label: f.pinned ? 'Unpin' : 'Pin', action: 'pin' },
     { id: 'colour', label: 'Color', children: COLOUR_RING },
     {
@@ -132,7 +132,7 @@ function canvasRing(f: MenuFacts): MenuItem[] {
 function selectionRing(f: MenuFacts): MenuItem[] {
   return [
     { id: 'expand', label: 'Expand', action: 'expand' },
-    { id: 'neighbors', label: 'Neighbours', action: 'select-neighbors' },
+    { id: 'neighbors', label: 'Neighbors', action: 'select-neighbors' },
     { id: 'spread', label: 'Spread', action: 'spread', enabled: !!f.layoutAvailable },
     { id: 'cluster', label: 'Cluster', action: 'cluster', enabled: !!f.layoutAvailable },
     { id: 'colour', label: 'Color', children: COLOUR_RING },

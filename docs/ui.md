@@ -152,8 +152,9 @@ in which languages, and names what the vocabulary could not place, each as what
 it is (a file the walk drew, a kind that is no construct and why); it is read
 again whenever a new graph is drawn, and never kept for one that has gone -- a
 construct drawn from the vocabulary is not code and has no census. A construct's name sets it in the table
-below; **show** frames its nodes and selects them for the
-[selection ring](#selection-ring). *Construct* picks one construct and sets it
+below; **show** frames its nodes and selects them, so a key opens the
+[selection ring](#selection-ring) on them, or the [node ring](#node-ring) when
+the construct is one node. *Construct* picks one construct and sets it
 beside itself in every language: how each spells it, with the abstraction layer
 of each token, what its parser calls it, and a note. Every language
 `constructs.yaml` lists -- C, Rust, Python, assembly and the linker script -- is
@@ -308,7 +309,7 @@ selection, as Deselect does, and every item is reachable without a pointer.
 |---|---|---|
 | 1 | **Expand** | Asks the server for what lies under the node, using the directory the last parse read, and adds it. Greyed on a sub-symbol, which has nothing under it |
 | 2 | **Collapse** | Removes what is drawn under the node. Greyed when nothing is |
-| 3 | **Neighbours** | Selects the node and every node one edge away |
+| 3 | **Neighbors** | Selects the node and every node one edge away |
 | 4 | **Pin** / **Unpin** | Marks the node with a gold outline |
 | 5 | **Color** ▸ | The [Color submenu](#color-submenu) |
 | 6 | **View** ▸ | **Source** opens the node's source, as a double-click does (see [A node's source](#a-nodes-source)); greyed on a node that names no file. **Info** shows the node's name, what its parser called it, its construct and where it is. **Compare** opens the Chrestomathy panel at the node's construct; greyed when the vocabulary did not place it. **Focus** frames the node and everything inside it; greyed below files |
@@ -320,7 +321,7 @@ selection, as Deselect does, and every item is reachable without a pointer.
 | | Item | Does |
 |---|---|---|
 | 1 | **Expand** | Expands every selected node |
-| 2 | **Neighbours** | Adds every node one edge away |
+| 2 | **Neighbors** | Adds every node one edge away |
 | 3 | **Spread** | Greyed: positions come from the server's layout |
 | 4 | **Cluster** | Greyed, as Spread |
 | 5 | **Color** ▸ | The [Color submenu](#color-submenu) |

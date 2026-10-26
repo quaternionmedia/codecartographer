@@ -164,6 +164,25 @@ test('the same verbs come back enabled on a host that does have them', () => {
   assert.equal(byId.physics.enabled, true);
 });
 
+test('every label a ring offers is spelled the American way, as Color is', () => {
+  /* Mutation: label the select-neighbors item 'Neighbours' again -- it sits
+     beside 'Color' in the node ring, and this fails. */
+  const BRITISH = /neighbour|colour|centre|grey|behaviour|favour/i;
+  const labels = [];
+  const walk = (items) => {
+    for (const item of items) {
+      labels.push(item.label);
+      if (item.children) walk(item.children);
+    }
+  };
+  const facts = { depth: 1, hasRenderedChildren: true, selectionCount: 2 };
+  for (const type of ['node', 'canvas', 'selection']) {
+    walk(resolveGraphMenu({ type, targetIds: ['a', 'b'], position: { x: 0, y: 0 } }, facts).items);
+  }
+  assert.ok(labels.includes('Color'), `expected the node ring's Color among ${labels}`);
+  assert.deepEqual(labels.filter((label) => BRITISH.test(label)), []);
+});
+
 test('the canvas ring offers no verb that needs a target', () => {
   /* Mutation: put Color back on the canvas ring -- it commits with no target
      ids and colours nothing, and this fails. */
