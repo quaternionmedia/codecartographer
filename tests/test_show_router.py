@@ -557,6 +557,37 @@ def test_a_flat_schema_draws_as_families_with_no_nesting(corpus, monkeypatch):
     assert nodes["repo::alpha"]["depth"] == 1
 
 
+def test_a_corpus_named_by_the_override_is_named_without_the_home_directory(
+        corpus, tmp_path, monkeypatch):
+    # CODECARTO_CORPUS names a checkout by its absolute path, and every
+    # drawing's `metadata.source` and `provenance.source`, every note and
+    # every `unreadable` answer carried it, the account's home directory in
+    # it. Broken by printing the path as it was given, the home is back.
+    home = tmp_path.as_posix()
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    (corpus / "ci" / "palette.py").unlink()  # a note that names a path
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    client = TestClient(app)
+    drawn = _results(client, "/show/index/gjgf")["metadata"]
+    subjects = _results(client, "/show/subjects")
+    assert drawn["source"] == "~/qm/families.json", "the home directory was printed"
+    assert drawn["provenance"]["source"] == "~/qm/families.json"
+    assert subjects["provenance"]["source"] == "~/qm/families.json"
+    assert any("~/qm/ci/palette.py" in note for note in subjects["notes"])
+    assert not any(home in note for note in drawn["notes"] + subjects["notes"])
+    monkeypatch.setenv("CODECARTO_CORPUS", str(tmp_path / "empty"))
+    absent = _results(client, "/show/index/gjgf")
+    assert absent["where"] == "~/empty/families.json"
+    assert home not in absent["problem"]
+
+
+def test_the_pin_is_named_as_it_is_mounted(corpus, monkeypatch):
+    monkeypatch.chdir(corpus.parent)
+    monkeypatch.setattr(show_service.corpus_root, "SUBMODULE", Path("qm"))
+    assert show_service.read().source == "qm/families.json"
+
+
 def test_the_seam_is_in_the_liveness_table(client):
     rows = _results(client, "/estate/seams")["seams"]
     families = next(r for r in rows if r["name"] == "families")

@@ -919,9 +919,10 @@ inventory, interop registry and palette: `families` (each with `name`,
 checkout has no `project/codecartographer` branch and so holds too few project
 branches to say, as a shallow or single-branch checkout does -- `phase`,
 `description` and `views`), `unstated` and `private` (counted, never named),
-`provenance` (the families document's path, the corpus `commit`, its `schema`,
-and whether `CODECARTO_CORPUS` replaced the pin) and `notes` for any input it
-could not read.
+`provenance` (the families document's path, printed from `~` when a
+`CODECARTO_CORPUS` checkout is under the home directory, the corpus `commit`,
+its `schema`, and whether `CODECARTO_CORPUS` replaced the pin) and `notes` for
+any input it could not read.
 
 ### GET `/show/index/gjgf?layout=&palette_id=`
 

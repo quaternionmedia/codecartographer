@@ -146,35 +146,37 @@ def _yaml(path: Path, notes: list[str], what: str) -> dict[str, Any]:
     """A mapping the corpus keeps, or `{}` with a note saying why not."""
     import yaml
 
+    where = corpus_root.shown(path)
     if not path.is_file():
-        notes.append(f"no {what} at {path.as_posix()}")
+        notes.append(f"no {what} at {where}")
         return {}
     try:
         value = yaml.safe_load(path.read_text(encoding="utf-8"))
     except UnicodeDecodeError:
-        notes.append(f"{path.as_posix()} is not UTF-8, so no {what} was read")
+        notes.append(f"{where} is not UTF-8, so no {what} was read")
         return {}
     except yaml.YAMLError as error:
-        notes.append(f"{path.as_posix()} did not parse: {error}")
+        notes.append(f"{where} did not parse: {error}")
         return {}
     if value is not None and not isinstance(value, dict):
-        notes.append(f"{path.as_posix()} is not a mapping, so no {what} was read")
+        notes.append(f"{where} is not a mapping, so no {what} was read")
         return {}
     return value or {}
 
 
 def _hues(path: Path, notes: list[str]) -> dict[str, tuple[str, str]]:
     """`FAMILY` from the corpus's palette, read as a literal and never executed."""
+    where = corpus_root.shown(path)
     if not path.is_file():
-        notes.append(f"no palette at {path.as_posix()}; families draw uncoloured")
+        notes.append(f"no palette at {where}; families draw uncoloured")
         return {}
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
     except UnicodeDecodeError:
-        notes.append(f"{path.as_posix()} is not UTF-8; families draw uncoloured")
+        notes.append(f"{where} is not UTF-8; families draw uncoloured")
         return {}
     except SyntaxError as error:
-        notes.append(f"{path.as_posix()} did not parse: {error}")
+        notes.append(f"{where} did not parse: {error}")
         return {}
     for node in tree.body:
         if (isinstance(node, ast.Assign) and len(node.targets) == 1
@@ -188,7 +190,7 @@ def _hues(path: Path, notes: list[str]) -> dict[str, tuple[str, str]]:
                 break
             return {str(k): (str(v[0]), str(v[1])) for k, v in value.items()
                     if isinstance(v, (tuple, list)) and len(v) == 2}
-    notes.append(f"{path.as_posix()} declares no FAMILY mapping literal; families "
+    notes.append(f"{where} declares no FAMILY mapping literal; families "
                  f"draw uncoloured")
     return {}
 
@@ -225,31 +227,32 @@ def read(corpus: Path | str | None = None) -> Reading:
     """Everything the showgraphs are drawn from. **Runs nothing but read-only git.**"""
     root = Path(corpus) if corpus else corpus_root.root()
     path = root / FAMILIES_FILE
-    reading = Reading(source=path.as_posix())
+    where = corpus_root.shown(path)
+    reading = Reading(source=where)
     if not path.is_file():
-        reading.reason = (f"no families document at {path.as_posix()}. The "
+        reading.reason = (f"no families document at {where}. The "
                           f"governance pin may predate it.")
         return reading
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
     except UnicodeDecodeError:
-        reading.reason = f"{path.as_posix()} is not UTF-8"
+        reading.reason = f"{where} is not UTF-8"
         return reading
     except json.JSONDecodeError as error:
-        reading.reason = f"{path.as_posix()} did not parse: {error}"
+        reading.reason = f"{where} did not parse: {error}"
         return reading
     if not isinstance(document, dict):
-        reading.reason = f"{path.as_posix()} is not a JSON object"
+        reading.reason = f"{where} is not a JSON object"
         return reading
 
     schema = document.get("schema")
     reading.schema = schema if isinstance(schema, int) else None
     if reading.schema not in KNOWN_SCHEMAS:
-        reading.reason = (f"{path.as_posix()} is at schema {schema!r}; this window "
+        reading.reason = (f"{where} is at schema {schema!r}; this window "
                           f"draws schemas {', '.join(map(str, KNOWN_SCHEMAS))}")
         return reading
     if document.get("families") is not None and not isinstance(document["families"], list):
-        reading.reason = f"{path.as_posix()}: `families` is not a list"
+        reading.reason = f"{where}: `families` is not a list"
         return reading
 
     for entry in _rows(document.get("families")):
