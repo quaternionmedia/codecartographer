@@ -94,6 +94,36 @@ async function settle(page: Page): Promise<void> {
   }, { intervals: [500], timeout: SETTLED }).toBe(true);
 }
 
+/**
+ * Every node the window was sent, drawn, and the drawing done. The canvas
+ * draws a few nodes each frame after the stream has ended, then its edges,
+ * then its outlines, tidies its names and fits again, and marks its svg
+ * `data-drawn`. A picture taken as the zoom first stopped moving held four
+ * nodes in five of a code map, with a hundred of its files' names over it; one
+ * taken once every node was in held the whole corpus with its four thousand
+ * edges still coming, no outline drawn, and two thousand names over it.
+ */
+async function drawnAll(page: Page, count: number): Promise<void> {
+  const view = page.locator('.graphRenderer > svg').first();
+  await expect(view.locator('g.graph-node')).toHaveCount(count, { timeout: SETTLED });
+  await expect(view).toHaveAttribute('data-drawn', 'true', { timeout: SETTLED });
+}
+
+/**
+ * Every node and name at the opacity it ends at. The canvas fades each in as
+ * it is drawn, and a name the declutter hides or shows again once a zoom
+ * settles fades too; a picture taken as the transform stopped moving held a
+ * dozen names part-way, written into the file at the opacity they were caught at.
+ */
+export async function faded(page: Page): Promise<void> {
+  const view = page.locator('.graphRenderer > svg').first();
+  await expect.poll(() => view.evaluate((svg) =>
+    [...svg.querySelectorAll('g.graph-node, text')].filter((el) => {
+      const opacity = Number(getComputedStyle(el).opacity);
+      return opacity > 0.001 && opacity < 0.999;
+    }).length), { intervals: [250, 250, 500], timeout: SETTLED }).toBe(0);
+}
+
 /** Step 4, Read: the canvas alone, the drawing framed in it once its resize lands. */
 async function readStep(page: Page): Promise<void> {
   await page.locator('.gl-steps__step[data-step="read"]').click();
@@ -181,13 +211,27 @@ function placeless(metadata: Record<string, any>): Record<string, any> {
 
 async function drawEstate(page: Page, subject: ManifestSubject, dir: string) {
   const route = subject.kind === 'index' ? '/show/index/gjgf' : `/show/${subject.kind}/${subject.name}/gjgf`;
+  return drawShowgraph(page, route, `./?show=${subject.address}`, join(dir, 'estate.svg'));
+}
+
+/**
+ * The index's code view, the whole corpus: every family, each project's code
+ * map in it, from the code maps this export has written (`CODECARTO_SHOW_DOCS`).
+ */
+async function drawCorpus(page: Page, dir: string) {
+  return drawShowgraph(page, '/show/corpus/gjgf', './?show=index&view=code', join(dir, 'code.svg'));
+}
+
+async function drawShowgraph(page: Page, route: string, address: string, file: string) {
   const answered = page.waitForResponse((r: Response) => r.url().includes(route), { timeout: SETTLED });
-  await page.goto(`./?show=${subject.address}`);
+  await page.goto(address);
   const results = (await (await answered).json()).results;
   await expect(page.locator('.graph-node').first()).toBeAttached({ timeout: SETTLED });
   await readStep(page);
+  await drawnAll(page, Object.keys(results.graph?.nodes ?? {}).length);
   await settle(page);
-  writeFileSync(join(dir, 'estate.svg'), await svgOf(page));
+  await faded(page);
+  writeFileSync(file, await svgOf(page));
   return { graph: results.graph, metadata: placeless(results.metadata ?? {}) };
 }
 
@@ -195,11 +239,14 @@ async function drawCode(page: Page, subject: ManifestSubject, dir: string, answe
   const answered = page.waitForResponse((r: Response) => r.url().includes('/parse/stream-url'), { timeout: SETTLED });
   await page.goto(`./?show=${subject.address}&view=code`);
   const body = await (await answered).text();
+  const graph = streamed(body);
   await expect(page.locator('.graph-node').first()).toBeAttached({ timeout: SETTLED });
   await readStep(page);
+  await drawnAll(page, Object.keys(graph.nodes).length);
   await settle(page);
+  await faded(page);
   writeFileSync(join(dir, 'code.svg'), await svgOf(page));
-  return { graph: streamed(body), metadata: { url: answer.url, depth: answer.depth ?? 1, truncated: 0 } };
+  return { graph, metadata: { url: answer.url, depth: answer.depth ?? 1, truncated: 0 } };
 }
 
 async function drawSystem(page: Page, subject: ManifestSubject, dir: string, answer: ViewAnswer) {
@@ -268,6 +315,9 @@ export async function exportSubject(page: Page, subject: ManifestSubject, manife
     if (view === 'estate') {
       views.estate = await drawEstate(page, subject, dir);
       files.estate = 'estate.svg';
+    } else if (subject.kind === 'index' && view === 'code') {
+      views.code = await drawCorpus(page, dir);
+      files.code = 'code.svg';
     } else if (!answers[view]?.available) {
       views[view] = absence(subject, view, answers[view]);
     } else if (view === 'code') {

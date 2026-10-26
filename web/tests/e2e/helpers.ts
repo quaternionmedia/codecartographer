@@ -77,3 +77,58 @@ export async function dismissOnboardingModal(page: Page): Promise<void> {
   await backdrop.locator('button', { hasText: '×' }).first().click({ force: true });
   await backdrop.waitFor({ state: 'detached', timeout: 5_000 });
 }
+
+/**
+ * A parse of `dirs` directories of `files` files each under one root, spread
+ * wide enough that the fit framing it draws each file under a pixel.
+ */
+export function wideStream(dirs: number, files: number, imports = 0): string {
+  const lines: string[] = [];
+  const event = (name: string, data: unknown) => lines.push(`event: ${name}\ndata: ${JSON.stringify(data)}\n`);
+  const nodes: unknown[] = [];
+  const edges: unknown[] = [];
+  const root = 'dir::example/wide';
+  nodes.push({ id: root, label: 'example/wide', depth: 0, kind: 'directory', file: '', line: 0, meta: {}, x: 0, y: 0, size: 80 });
+  for (let d = 0; d < dirs; d++) {
+    const dir = `${root}/d${d}`;
+    const cx = (d % 6) * 6000 - 15000;
+    const cy = Math.floor(d / 6) * 6000 - 9000;
+    nodes.push({ id: dir, label: `d${d}`, depth: 0, kind: 'directory', file: '', line: 0, meta: {}, x: cx, y: cy, size: 80 });
+    edges.push({ source: root, target: dir, metadata: { kind: 'contains', weight: 1 } });
+    for (let f = 0; f < files; f++) {
+      const a = (2 * Math.PI * f) / files;
+      nodes.push({
+        id: `file::example/wide/d${d}/module_${f}.py`, label: `module_${f}.py`, depth: 1, kind: 'file',
+        file: `module_${f}.py`, line: 0, meta: {}, x: cx + 900 * Math.cos(a), y: cy + 900 * Math.sin(a), size: 10,
+      });
+      edges.push({ source: dir, target: `file::example/wide/d${d}/module_${f}.py`, metadata: { kind: 'contains', weight: 1 } });
+    }
+  }
+  // `imports` edges between files, each from one file to another a stride on:
+  // drawn after every node, so a drawing with them is long from done once its
+  // last node is in.
+  const leaves = nodes.filter((n) => String((n as { id: string }).id).startsWith('file::')) as { id: string }[];
+  for (let i = 0; i < imports && leaves.length > 1; i++) {
+    edges.push({ source: leaves[i % leaves.length].id, target: leaves[(i * 7 + 3) % leaves.length].id,
+      metadata: { kind: 'imports', weight: 1 } });
+  }
+  event('meta', { nodeCount: nodes.length, edgeCount: edges.length, layout: 'Map', from_cache: true });
+  for (const n of nodes) event('node', n);
+  for (const e of edges) event('edge', e);
+  event('done', { elapsed_ms: 0, from_cache: true });
+  return `${lines.join('\n')}\n`;
+}
+
+/** carlos's views stubbed so that its code view is the wide stream above. Returns its node count. */
+export async function stubWideCodeMap(page: Page, dirs: number, files: number, imports = 0): Promise<number> {
+  await page.route('**/show/project/*/views', (route) => route.fulfill({ json: { status: 200, results: {
+    name: 'carlos',
+    estate: { available: true },
+    code: { available: true, url: 'https://github.com/example/wide', depth: 1 },
+    system: { available: false, problem: 'carlos declares no system this window reads', remedy: '' },
+  } } }));
+  await page.route('**/parse/stream-url', (route) => route.fulfill({
+    status: 200, contentType: 'text/event-stream', body: wideStream(dirs, files, imports),
+  }));
+  return 1 + dirs * (1 + files);
+}

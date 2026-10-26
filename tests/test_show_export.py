@@ -52,9 +52,13 @@ def test_a_subject_is_the_index_a_family_or_a_project_by_a_name_the_address_take
             show_export.parse_subject(bad)
 
 
-def test_all_is_the_index_then_every_family_then_every_public_project() -> None:
+def test_all_is_every_family_then_every_public_project_then_the_index() -> None:
     chosen = show_export.subjects(_reading(), "all")
-    assert chosen[0] == Subject("index")
+    # The index's code view, the whole corpus, is drawn from the projects'
+    # code maps this export writes, so it is drawn after them. Mutation: draw
+    # the index first -- its code view reads code maps not yet written, and
+    # this fails.
+    assert chosen[-1] == Subject("index")
     assert [s.name for s in chosen if s.kind == "family"] == ["infrastructure", "instruments", "performing"]
     assert [s.name for s in chosen if s.kind == "project"] == ["carlos", "moat", "qm", "stomp"]
     # Mutation: let `show_service.projects` list private members -- this fails.
@@ -72,10 +76,12 @@ def test_with_an_inventory_a_project_is_one_the_host_lists() -> None:
     assert [s.name for s in show_export.subjects(reading, "all") if s.kind == "project"] == ["carlos", "moat", "qm"]
 
 
-def test_a_project_has_three_views_and_every_other_subject_one() -> None:
+def test_a_project_has_three_views_the_index_two_and_a_family_one() -> None:
     assert Subject("project", "carlos").views == ("estate", "code", "system")
     assert Subject("family", "performing").views == ("estate",)
-    assert Subject("index").views == ("estate",)
+    # Its code view is the whole corpus. Mutation: give the index its estate
+    # alone -- the whole corpus is never drawn, and this fails.
+    assert Subject("index").views == ("estate", "code")
     assert Subject("project", "carlos").folder == "project/carlos"
     assert Subject("index").folder == "index"
 

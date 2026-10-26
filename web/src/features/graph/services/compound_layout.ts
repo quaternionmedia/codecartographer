@@ -91,13 +91,31 @@ export class CompoundLayoutManager {
     const childIds = new Set(children.map(c => c.id));
     const result = new Map<string, GraphNode>();
 
+    // What holds each node, by its containment edge, the first one seen.
+    const holder = new Map<string, string>();
     for (const e of edges) {
       if (!this._isContainsEdge(e)) continue;
       const sourceId = typeof e.source === 'string' ? e.source : (e.source as GraphNode).id;
       const targetId = typeof e.target === 'string' ? e.target : (e.target as GraphNode).id;
+      if (!holder.has(targetId)) holder.set(targetId, sourceId);
       if (!childIds.has(targetId)) continue;
       const parent = parentById.get(sourceId);
       if (parent) result.set(targetId, parent);
+    }
+
+    // A node nested deeper than one level -- a member of a member, a project's
+    // file under a directory under its root -- has no edge from a parent. It
+    // is traced up what holds it to the nearest one, as compound_layout.py
+    // traces it: grouped by position, a project's code in the whole corpus was
+    // drawn in the outline of whichever neighbour's root it was nearest.
+    for (const c of children) {
+      if (result.has(c.id)) continue;
+      const seen = new Set<string>([c.id]);
+      for (let up = holder.get(c.id); up && !seen.has(up); up = holder.get(up)) {
+        const parent = parentById.get(up);
+        if (parent) { result.set(c.id, parent); break; }
+        seen.add(up);
+      }
     }
 
     for (const c of children) {

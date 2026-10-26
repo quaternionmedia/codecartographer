@@ -325,6 +325,43 @@ Its collections:
 `web/src/services/graphbase_service.ts` is the client; the Graphbase panel is
 in the [UI reference](ui.md#graphbase). The routes are in [the API reference](api.md).
 
+## Map layout
+
+`map_layout` (`codecarto/models/custom_layouts/map_layout.py`, registered in
+`position_service.py`) is the layout a showgraph's code map opens in. Its
+places are `show_layout.code_map`'s, which lays the graph out by its `contains`
+and `field_of` edges:
+
+1. **A directory's files fill a disc round it**, the k-th at a radius growing
+   with the square root of k and a golden angle on from the one before, each a
+   few units clear of its neighbours: room for itself, not for its name.
+2. **Its subdirectories are packed around the disc**, largest first, each laid
+   out the same way and placed where it is nearest the centre and clear of the
+   rest by the canvas's outline padding.
+3. **A group is measured by the circle round what it holds**, as the canvas
+   draws an outline, not by one centred on its own node: centred on the node, a
+   directory holding one large subdirectory beside its files was twice that
+   subdirectory's size, and each level of nesting doubled the map again.
+4. **What nothing holds is packed in rows**, and the whole is turned, in steps
+   of five degrees, to the angle that frames it largest in a canvas half again
+   as wide as it is tall.
+
+Each file's `label_at` is the side facing away from its directory, and a
+directory, which its outline names, is given `none`. The same disc
+(`show_layout._disc`) packs each project's code inside the whole corpus
+(`/show/corpus/gjgf`): `show_layout.pack` lays a project's code round it and
+puts the disc on its family's ring as one item as wide as itself, and a member
+two families claim carries its disc outside every outline. A map draws its nodes
+`MAP_NODE_SCALE` times a code graph's size (`streaming_renderer.ts`), and
+`show_layout.py` spaces for that size; a test holds the two equal.
+
+A parse of this repository, about five hundred nodes, was laid out by the
+compound layout about 40,000 units by 17,000, so framed whole it was drawn at a
+twentieth of its size and every node under a pixel. The Map layout lays it out
+about 8,700 by 6,100, and framed whole in an exported picture, 1,400 by 900
+pixels with its outlines, its files are drawn about four pixels across and its
+directories seven.
+
 ## Compound layout
 
 `compound_layout` (`codecarto/models/custom_layouts/compound_layout.py`,
@@ -349,8 +386,9 @@ about 100 px in the browser (`GraphSerializer`'s `spread`).
 
 On the canvas, `CompoundLayoutManager` (`web/src/features/graph/services/compound_layout.ts`)
 draws a translucent circle round each directory's and each file's group,
-assigning children by the same containment edges and by nearest position only
-for an orphan. A circle is the smallest one enclosing the group -- its own
+assigning children by the same containment edges: a node nested deeper than
+one level is traced up what holds it to its nearest ancestor of the level
+above, and nearest position is left for an orphan with none. A circle is the smallest one enclosing the group -- its own
 node and what it holds, a file's symbols or a directory's files by their own
 circles -- plus padding, so it is centred on the group, wherever the layout put
 the group's node. The circles are drawn whatever the layout, when a draw

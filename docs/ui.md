@@ -202,14 +202,20 @@ does.
 The panel opens on what is drawn. A trail runs from *every family* down to it
 -- `every family › performing › instruments › carlos` -- and each step is a
 link back. A project two families claim is reached from both
-(`instruments · irl`). For a project, its three views follow: **estate**,
+(`instruments · irl`). For every family, two buttons follow: **every family**
+and **with each project's code**, the whole corpus in one graph: each family's
+outline holding its projects, and each project its code map, from the show
+document the corpus holds for it (`?show=index&view=code`, trail `every family ›
+the whole corpus`). A project with no code map drawn yet is drawn alone, and
+*What this drawing can say* names it. For a project, its three views follow: **estate**,
 **code map** and **system**; the one drawn is pressed. A view that cannot be
 drawn here is disabled, with its reason under it. Then the legend: which edges
 are claims, which are declared seams and which are measured. *What this drawing
 can say* holds the caveat and the corpus it was read from, folded. Its line
 counts the seams nobody has declared and the members nothing measured.
 
-On the canvas a showgraph is a map. Every name is drawn, outward from the ring
+On the canvas a showgraph is a map. Its nodes are drawn two and a half times
+the size a code graph's are. Every name is drawn, outward from the ring
 its group is packed on, and at least ten pixels high however far out the fit
 frames it; an outline's name at least twelve, set inside or outside its outline
 at the size it is drawn, and placed again when a zoom resizes it. The fit
@@ -218,9 +224,13 @@ frame. A name that would overlap another is hidden until a zoom gives it room,
 and a node's hover always holds it. Names are ranked: families first, then
 projects, then other repositories. Each outline takes its family's hue.
 **Double-click** a family to open it, and a project to open its estate view.
-A project's **code map** is drawn as a map too: at the fit that frames a whole
-repository each directory's outline name and each file's name keep that size,
-where a code graph opened from the Open panel draws them a pixel high.
+A project's **code map** is drawn as a map too, in the Map layout: each
+directory a disc of its files, its subdirectories packed around it. At the fit
+that frames a whole repository each directory's outline name keeps its size,
+where a code graph opened from the Open panel draws it a pixel high. A node is
+named only while it is drawn at least four pixels across its middle on screen,
+so a repository of hundreds of files is named by its directories' outlines,
+and a file's name comes in as zooming in draws the file large enough to read.
 
 Each drawing rewrites the page's address, so `?show=family:performing` or
 `?show=project:moat&view=system` reopens it. A drawing opened by a click adds
@@ -334,7 +344,10 @@ Id `graph-settings-panel`. In the default arrangement.
   *Live* mode.
 - **Layout**, open by default. *Algorithm* (D3 only) re-draws whatever is on the
   canvas with the chosen layout; *Compound* nests symbols around their files and
-  files around their directories. *Physics*, *Repulsion* and *Link Distance*
+  files around their directories; *Map* draws each directory as a disc of its
+  files with its subdirectories packed around it, small enough to frame a
+  whole repository ([Map layout](architecture.md#map-layout)), and a
+  showgraph's code map opens in it. *Physics*, *Repulsion* and *Link Distance*
   drive vis-network's simulation and are offered on Gravis only, the one
   renderer that runs one; *Repulsion* and *Link Distance* show while *Physics*
   is on. `renderer_controls.rendererControls` says which controls each renderer
@@ -345,8 +358,11 @@ Id `graph-settings-panel`. In the default arrangement.
   languages), *Node Opacity*, *Border Width*, *Edge Labels*, *Edge Width*, *Edge
   Opacity*, *Label Size* and *Label Color*. Notebook and System Monitor take
   *Label Color* only.
-- **Theme**, folded: Terminal, Light, Cyberpunk, Ocean, Sunset, Forest, Noir and
-  Candy, which recolour the window and the canvas.
+- **Theme**, folded: QM, the default, Terminal, Light, Cyberpunk, Ocean, Sunset,
+  Forest, Noir and Candy, which recolour the window and the canvas. QM is the
+  organisation's docs site's: a deep blue ground, its amber accent, and names in
+  a light yellow. The canvas's names take the theme's font colour until *Label
+  Color* is set to another.
 
 ## The canvas
 

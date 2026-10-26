@@ -50,7 +50,9 @@ export interface FitOptions {
   readonly maxScale: number;
 }
 
-export const FIT_DEFAULTS: FitOptions = { margin: 24, minScale: 0.05, maxScale: 4 };
+// The whole corpus, every project's code in its family, is framed at about a
+// thirtieth: at a twentieth, the zoom limit was, it was framed cut off.
+export const FIT_DEFAULTS: FitOptions = { margin: 24, minScale: 0.01, maxScale: 4 };
 
 /** The box an extent covers; null when it has no finite place. */
 function boxOf(extent: Extent): Box | null {

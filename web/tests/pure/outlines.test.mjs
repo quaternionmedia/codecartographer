@@ -135,3 +135,24 @@ test('a lone label sits at the top of its outline, inside the rim', () => {
   assert.ok(Math.abs(p.x - 10) < EPS, `at x=${p.x}`);
   assert.ok(Math.abs(p.y - (20 - 100 + 6 + 5)) < EPS, `at y=${p.y}`);
 });
+
+test("a node nested deeper than a symbol is held by its own file's outline, not the nearest one", () => {
+  /* Two files, each with a symbol holding a member that holds another: the
+     deepest is drawn nearer the other file's symbol than its own, as a
+     project's code in the whole corpus is near its neighbour's. Mutation:
+     group a node with no edge from a symbol by the nearest symbol -- `a`'s
+     deepest sits in `b`'s outline, and this fails. */
+  const nodes = [
+    { id: 'a', label: 'a', depth: 1, x: 0, y: 0 },
+    { id: 'b', label: 'b', depth: 1, x: 400, y: 0 },
+    { id: 'a1', label: 'a1', depth: 2, x: 0, y: 40 },
+    { id: 'b1', label: 'b1', depth: 2, x: 400, y: 40 },
+    { id: 'a11', label: 'a11', depth: 3, x: 120, y: 40 },
+    { id: 'a111', label: 'a111', depth: 3, x: 300, y: 40 },
+  ];
+  const edges = [contains('a', 'a1'), contains('b', 'b1'), contains('a1', 'a11'), contains('a11', 'a111')];
+  const bounds = new CompoundLayoutManager().computeGroupBounds(nodes, edges, PADDING, R, () => R);
+  const byId = Object.fromEntries(bounds.map((b) => [b.nodeId, b]));
+  assert.ok(inside(byId.a, 300, 40, R), "a's deepest is inside a's outline");
+  assert.ok(!inside(byId.b, 300, 40, R), "a's deepest was drawn inside b's outline");
+});

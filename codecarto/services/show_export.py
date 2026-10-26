@@ -63,7 +63,9 @@ class Subject:
 
     @property
     def views(self) -> tuple[str, ...]:
-        return ("estate", "code", "system") if self.kind == "project" else ("estate",)
+        # The index's code view is the whole corpus: every family, each
+        # project's code map in it.
+        return {"project": ("estate", "code", "system"), "index": ("estate", "code")}.get(self.kind, ("estate",))
 
 
 def parse_subject(text: str) -> Subject:
@@ -79,7 +81,9 @@ def parse_subject(text: str) -> Subject:
 
 
 def subjects(reading: show_service.Reading, which: str) -> list[Subject]:
-    """`all`: the index, then every family, then every public project, each by name.
+    """`all`: every family, then every public project, each by name, then the
+    index, whose code view is drawn from the projects' code maps this export
+    has just written.
 
     With an inventory, a public project is one the host lists: the site has a
     page for each of those, and a project's showgraph sits on its page. A name
@@ -91,7 +95,7 @@ def subjects(reading: show_service.Reading, which: str) -> list[Subject]:
     named = [name for name in show_service.projects(reading)
              if not reading.inventory or name in reading.inventory]
     projects = [Subject("project", name) for name in sorted(named, key=str.lower)]
-    return [Subject("index"), *families, *projects]
+    return [*families, *projects, Subject("index")]
 
 
 def _family_row(family: show_service.Family) -> dict[str, Any]:

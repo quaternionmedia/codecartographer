@@ -5,6 +5,7 @@ import { DirectoryNavController } from '../components/codecarto/directory/direct
 import { ConfigManager, DebugManager } from './config_manager';
 import { GraphStylingOptions, ParserOptions, GraphRendererType } from './types';
 import { GraphData } from '../features/graph';
+import { THEME_LABEL_COLOR } from '../features/graph/services/label_color';
 import type { TopologyChoices, TopologyProblem } from '../services/topology_service';
 import type { SeamProblem } from '../features/estate/seam_client';
 import type { CapabilitiesDocument, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
@@ -141,7 +142,7 @@ export class CellState implements ICellState {
     showNodeLabels: false,
     showEdgeLabels: false,
     labelSize: 9,
-    labelColor: '#00ff41',
+    labelColor: THEME_LABEL_COLOR,
     backgroundColor: 'transparent',
     interactionProfile: 'default',
   };

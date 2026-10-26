@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { exportSubject, type Manifest, type ManifestSubject } from '../export/exporter';
+import { stubWideCodeMap } from './helpers';
 
 const index: ManifestSubject = {
   kind: 'index', name: '', address: 'index', folder: 'index', views: ['estate'], digest: 'sha256:index',
@@ -169,4 +170,31 @@ test('a view with no clone to read says so of the export, not of the disk it ran
   expect(system.problem).toBe("carlos's system view is composed from a clone of it, and this export read none");
   expect(system.remedy).toBe("export from a clone of carlos at its default branch's head");
   expect(JSON.stringify(system)).not.toMatch(/this checkout|CODECARTO_REPO_ROOTS/);
+});
+
+test('a code map is pictured once every node it was sent is drawn, with none of its files named', async ({ page }) => {
+  /**
+   * The canvas draws a few nodes each frame after the stream has ended, then
+   * fits the drawing again and tidies its names. A picture taken as the zoom
+   * first stopped moving held four nodes in five of a code map, with a hundred
+   * of its files' names written over it.
+   */
+  test.setTimeout(120_000);
+  const out = test.info().outputPath('show');
+  // Eight thousand imports among the files, which the canvas draws after the
+  // last node and before the outlines.
+  const count = await stubWideCodeMap(page, 30, 29, 8000);
+  const codeOnly: ManifestSubject = { ...carlos, views: ['code'] };
+  await exportSubject(page, codeOnly, manifest(out));
+  const picture = read(join(out, 'project', 'carlos', 'code.svg'));
+  // Mutation: take the picture once the zoom stops moving -- some of the
+  // nodes are not in it, and this fails.
+  expect(picture.match(/<g class="graph-node"/g) ?? []).toHaveLength(count);
+  // And the drawing done: each directory's outline drawn round its files,
+  // which the canvas draws once its edges are in. Mutation: take the picture
+  // once every node is drawn -- its outlines are not in it, and this fails.
+  expect((picture.match(/class="compound-group/g) ?? []).length).toBeGreaterThanOrEqual(30);
+  const named = [...picture.matchAll(/<text[^>]*data-node-id="file::[^"]*"[^>]*>/g)]
+    .filter(([tag]) => !/visibility:\s*hidden|display:\s*none/.test(tag));
+  expect(named).toHaveLength(0);
 });

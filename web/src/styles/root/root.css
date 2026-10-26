@@ -170,6 +170,29 @@
   --c-error: #dc2f02;
 }
 
+/* Theme: QM, the default: the organisation's docs site's deep blue, its
+   amber accent and core blue (governance/qm/ci/palette.py), and names in a
+   light yellow. A showgraph exported for the site is drawn in it. */
+[data-theme="qm"] {
+  --c-primary: #0b1a3d;
+  --c-primary-light: #13254f;
+  --c-primary-dark: #071230;
+  --c-secondary: #f2aa4c;
+  --c-secondary-light: #f6c27a;
+  --c-secondary-dark: #d98f2e;
+  --c-accent: #74a8f6;
+  --c-accent-light: #9cc2fa;
+  --c-font: #fbf1c7;
+  --c-font-muted: #d9cc96;
+  --c-font-inverse: #0b1a3d;
+  --c-disabled: #24365e;
+  --c-border: #f2aa4c40;
+  --c-border-active: #f2aa4c;
+  --c-focus-color: #74a8f6;
+  --c-warning: #f6c453;
+  --c-error: #f0708f;
+}
+
 /* Theme: Noir */
 [data-theme="noir"] {
   --c-primary: #0d0d0d;

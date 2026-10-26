@@ -33,6 +33,19 @@ test('no address, or a malformed one, opens nothing', () => {
   }
 });
 
+test("the index's code view is the whole corpus", () => {
+  // Mutation: read a view for a project alone -- the whole corpus opens as
+  // every family, and this fails.
+  assert.deepEqual(parseShow('?show=index&view=code'), { kind: 'index', name: '', view: 'code' });
+  assert.deepEqual(parseShow('?show&view=code'), { kind: 'index', name: '', view: 'code' });
+  assert.equal(parseShow('?show=index&view=system').view, 'estate');
+  assert.equal(formatShow({ kind: 'index', name: '', view: 'code' }), '?show=index&view=code');
+  assert.equal(crumbLabel({ kind: 'index', name: '', view: 'code' }), 'the whole corpus');
+  // Its trail steps back to every family alone.
+  assert.deepEqual(trail({ kind: 'index', name: '', view: 'code' }, null).map((level) => level.map(crumbLabel)),
+    [['every family'], ['the whole corpus']]);
+});
+
 test('only a project has views, and an unknown view is its estate', () => {
   assert.equal(parseShow('?show=family:core&view=code').view, 'estate');
   assert.equal(parseShow('?show=project:carlos&view=nonsense').view, 'estate');
@@ -40,7 +53,7 @@ test('only a project has views, and an unknown view is its estate', () => {
 });
 
 test('formatting and parsing agree, and the estate view is left out', () => {
-  for (const search of ['?show=index', '?show=family:show-control',
+  for (const search of ['?show=index', '?show=index&view=code', '?show=family:show-control',
     '?show=project:Cuelist-python', '?show=project:moat&view=system']) {
     assert.equal(formatShow(parseShow(search)), search);
   }

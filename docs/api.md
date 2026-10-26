@@ -118,6 +118,7 @@ it.
 |-------|-------------|
 | `spring_layout` | Force-directed (default) |
 | `compound_layout` | Hierarchical: dirs → files → symbols in nested orbits |
+| `map_layout` | Each directory a disc of its files, its subdirectories packed around it; nodes carry `label_at` |
 | `circular_layout` | Nodes on a circle |
 | `kamada_kawai_layout` | Energy-minimized spring |
 | `spectral_layout` | Graph Laplacian eigenvectors |
@@ -941,6 +942,20 @@ branch is its `origin/HEAD`, or the checked-out `HEAD` when it has no
 `metadata.unread` the members nothing was measured for: each with no clone
 beside this one or one git could not read, or every member when the inventory
 names no organisation to match a URL by, which a note and the caveat say.
+
+### GET `/show/corpus/gjgf?layout=&palette_id=`
+
+The whole corpus as `GraphData`: the index above, and inside each project its
+code map as the corpus's show document for it holds it
+(`docs/show/project/<name>/show.json`, or under `CODECARTO_SHOW_DOCS` when it is
+set, as `codecarto show export` sets it to the folder it writes). Nothing is
+parsed or fetched. A code node is `code::<project>::<id>`, marked `code`, one
+depth below its project for each depth it had in its map, and joined by
+`contains` edges whose `basis` is `parsed`. In the compound layout each
+project's code is packed as a disc round it, the way the Map layout packs a
+code map. A private member's code is never read. `metadata.code` names each
+project whose code is drawn and the commit its map was drawn from, and the
+caveat names the projects with none.
 
 ### GET `/show/family/{name}/gjgf?layout=&palette_id=`
 
