@@ -30,6 +30,8 @@ it describes, and each check here fails on a document that disagrees with it:
   open and move a ring, as the code binds them;
 - the default layout and the source tree agree with the registry and the dev
   proxy;
+- every fenced Python example parses, and every `async def` in one awaits
+  something;
 - every statement of the graph cache key names the schema version
   `cache_service._make_key` hashes with the url, mode, layout and extensions;
 - the caches section says what evicting a GitHub repository from either cache
@@ -53,9 +55,11 @@ where the submodule is checked out, which CI does not do.
 
 from __future__ import annotations
 
+import ast
 import functools
 import re
 import subprocess
+import textwrap
 from pathlib import Path
 
 import click
@@ -1033,6 +1037,30 @@ def test_ui_reference_names_the_keys_and_the_hold_that_work_a_ring():
         f"geometry.ts holds for {hold.group(1)} ms; '### Opening a ring' does not say so")
 
 
+def test_the_open_section_names_the_window_its_quick_starts_are_measured_in():
+    """The Open panel is a share of the window's height, so what its left
+    column shows without scrolling depends on the window: the quick starts
+    are measured in view in the window `open-panel.spec.ts` sets, and a
+    shorter one leaves the last of them below the column's fold. The section
+    said they were in view in the default arrangement, in any window. Each of
+    its paragraphs that says what is in view without scrolling names the
+    window the spec measures. Mutation: drop the size from `docs/ui.md`, or
+    measure at another height in the spec -- this fails."""
+    spec = (ROOT / "web" / "tests" / "e2e" / "open-panel.spec.ts").read_text(encoding="utf-8")
+    measured = re.search(r"viewport: \{ width: (\d+), height: (\d+) \}[^\n]*\n\s*"
+                         r"test\('[^']*without scrolling", spec)
+    assert measured, ("open-panel.spec.ts measures nothing in view without scrolling, "
+                      "or the viewport pattern is stale")
+    size = f"{measured[1]}×{measured[2]}"
+    paragraphs = [" ".join(p.split()) for p in re.split(r"\n\s*\n", _ui_sections()["Open"])]
+    claims = [p for p in paragraphs if "without scrolling" in p]
+    assert claims, "docs/ui.md's Open section no longer says what is in view without scrolling"
+    unsized = [p for p in claims if size not in p]
+    assert not unsized, (
+        f"open-panel.spec.ts measures the quick starts in a {size} window; "
+        f"these say they are in view without naming it: {unsized}")
+
+
 def test_no_source_directory_is_shadowed_by_the_dev_proxy(prefixes):
     """A top-level `web/src/<name>/` named like an API prefix never loads.
 
@@ -1081,6 +1109,54 @@ def test_the_api_reference_says_the_errors_the_envelope_does_not_carry():
     assert invalid.status_code == 422 and isinstance(invalid.json().get("detail"), list)
     assert '{"detail": "Not Found"}' in reference, "api.md does not show an unknown route's 404"
     assert re.search(r"^\| 422 \|", reference, re.M), "api.md's error table has no 422 row"
+
+
+# ── Examples ─────────────────────────────────────────────────────────────────
+
+
+def _python_examples(path: Path):
+    """(first line number, source) for each fenced Python block of a document."""
+    language, lines, start = None, [], 0
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        fence = line.lstrip()
+        if language is None and fence.startswith("```"):
+            language, lines, start = fence[3:].strip().lower(), [], number + 1
+        elif language is not None and fence.startswith("```"):
+            if language in ("python", "py"):
+                yield start, textwrap.dedent("\n".join(lines))
+            language = None
+        elif language is not None:
+            lines.append(line)
+
+
+def test_no_example_async_def_awaits_nothing():
+    """FastAPI runs an `async def` route on the event loop, so one whose body
+    awaits nothing runs all of it there and holds up every other request until
+    it returns. A template is what a new route is copied from, and the route
+    and service templates showed exactly that. Every `async def` in a fenced
+    Python example awaits something. Mutation: put `async` back on
+    `my_endpoint` in `docs/extending.md` -- this fails naming it."""
+    functions, wrong = 0, []
+    for path in DOCUMENTS:
+        for start, source in _python_examples(path):
+            try:
+                tree = ast.parse(source)
+            except SyntaxError as error:
+                wrong.append(f"{_rel(path)}:{start}: does not parse ({error.msg})")
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                functions += 1
+                awaits = any(isinstance(inner, (ast.Await, ast.AsyncFor, ast.AsyncWith))
+                             for inner in ast.walk(node))
+                if isinstance(node, ast.AsyncFunctionDef) and not awaits:
+                    wrong.append(f"{_rel(path)}:{start + node.lineno - 1}: "
+                                 f"async def {node.name} awaits nothing")
+    assert functions, "the reader found no function in a Python example; its pattern is stale"
+    assert not wrong, (
+        f"these examples run their whole body on the event loop; write a plain "
+        f"`def`, or await the slow call through `run_in_threadpool`: {wrong}")
 
 
 # ── Statements the code can hold ─────────────────────────────────────────────

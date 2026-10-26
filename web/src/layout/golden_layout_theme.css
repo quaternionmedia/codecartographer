@@ -49,9 +49,34 @@
 /* The ✕ is drawn absolutely, 11px wide and 6px in from the tab's right edge
    (goldenlayout-dark-theme.css), so the right padding is its room: 17px, and
    a 7px gap before the title. A tab in the overflow list hides its ✕ and
-   keeps the 10px. */
+   keeps the 10px.
+
+   A tab in the strip also keeps its width. Golden Layout fits the strip by
+   measuring each tab while every tab is in it, and a flex item shrinks to
+   fit, so it read the tabs narrower than they are, kept one too many, and the
+   last ran its ✕ under the header's controls. */
 .lm_tabs > .lm_tab {
   padding-right: 24px !important;
+  flex-shrink: 0;
+}
+
+/* Golden Layout always shows the active tab, even in a stack narrower than
+   it. The strip stops short of the controls -- at most four, 18px each, 3px
+   in from the edge -- and a tab alone in it shrinks to fit, its title cut
+   short, so its ✕ stays clear of them. A stack too narrow for a tab's padding
+   and the controls together still overlaps them. */
+.lm_header .lm_tabs {
+  max-width: calc(100% - 75px);
+}
+
+.lm_tabs > .lm_tab:only-child {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.lm_tabs > .lm_tab:only-child .lm_title {
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 .lm_tab.lm_active {

@@ -506,7 +506,7 @@ whatever is there, and `/topology/available` lists the result.
 class MyService:
     
     @staticmethod
-    async def my_operation(param: str) -> dict:
+    def my_operation(param: str) -> dict:
         """
         Description of operation.
         
@@ -536,9 +536,20 @@ from codecarto.services.my_service import MyService
 MyRouter = APIRouter()
 
 @MyRouter.get("/operation")
-async def my_endpoint(param: str):
-    return await MyService.my_operation(param)
+def my_endpoint(param: str):
+    return MyService.my_operation(param)
 ```
+
+**A SYNCHRONOUS SERVICE, CALLED FROM A PLAIN `def`.** A service that reads,
+parses or lays out awaits nothing, and most services here do only that. FastAPI
+runs a plain `def` route in its threadpool, where that work holds up no other
+request. An `async def` route runs on the event loop, so a blocking call in it
+stalls the whole server until it returns. Marking such a service `async def`
+does not help: its body still blocks, and awaiting it blocks the loop all the
+same. `async def` is for a service that awaits its I/O, as `github_service`
+awaits GitHub's API. A route that awaits one hands any blocking call beside it
+to `run_in_threadpool`, as `topology_router._fetch` does. `docs/extending.md`
+has the same rule for a new endpoint.
 
 ---
 
