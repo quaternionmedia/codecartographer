@@ -6,7 +6,8 @@ existing graph-visualization pipeline.
     GET /lexicon/                -> list available languages
     GET /lexicon/{language}      -> full lexicon (validated JSON)
     GET /lexicon/{language}/graph-> gJGF graph for the plotter
-    GET /lexicon/{language}/index-> token -> [layer/group contexts] (Option B)
+    GET /lexicon/{language}/index-> token -> [layer/group contexts], the index
+                                    the join to parsed code reads (Option B)
     GET /lexicon/constructs      -> the construct vocabulary, as an index
     GET /lexicon/chrestomathy/{construct}       -> one construct across languages
     GET /lexicon/chrestomathy/{construct}/gjgf  -> the same, as GraphData
@@ -143,7 +144,8 @@ async def get_lexicon_graph(language: str) -> dict:
 
 @LexiconRouter.get("/{language}/index")
 async def get_lexicon_index(language: str) -> dict:
-    """Token-spelling -> contexts lookup, for parser enrichment (Option B)."""
+    """Token-spelling -> contexts lookup, the index the join to parsed code
+    (Option B, lexicon_bridge) reads."""
     try:
         lex = LexiconService.load(language)
     except FileNotFoundError as exc:
