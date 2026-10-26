@@ -26,11 +26,17 @@ test.use({ viewport: { width: 1600, height: 1000 } });
 
 /** The least contrast between any label text in `button` and what is behind it. */
 function labelContrast(button: Element): number {
+  // Chromium reports rgb() and rgba() with channels to 255, and a
+  // color-mix() as color(srgb r g b / a) with channels to 1. A colour in any
+  // other notation is named, not read as transparent and skipped.
   const parse = (c: string): number[] => {
-    const m = c.match(/rgba?\(([^)]+)\)/);
-    if (!m) return [0, 0, 0, 0];
+    const rgb = c.match(/^rgba?\(([^)]+)\)$/);
+    const srgb = c.match(/^color\(srgb ([^)]+)\)$/);
+    const m = rgb ?? srgb;
+    if (!m) throw new Error(`labelContrast cannot read the colour ${c}`);
     const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
-    return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
+    const to255 = rgb ? 1 : 255;
+    return [p[0] * to255, p[1] * to255, p[2] * to255, p.length > 3 ? p[3] : 1];
   };
   const over = (top: number[], under: number[]): number[] =>
     [0, 1, 2].map((i) => top[i] * top[3] + under[i] * (1 - top[3])).concat(1);
@@ -54,12 +60,15 @@ function labelContrast(button: Element): number {
     const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
     return (hi + 0.05) / (lo + 0.05);
   };
-  // Every element that holds a label character. A pictograph (⚡, 📖) draws
-  // in its own colours whatever the text colour is, so it is not one.
+  // Every element that holds a label character. An emoji (⚡, 📖, or a
+  // symbol a variation selector asks to be one) draws in its own colours
+  // whatever the text colour is, so it is not one. A symbol drawn as text
+  // by default (▶, ★, ☰) is drawn in the text colour, and is one.
+  const emoji = /\p{Extended_Pictographic}\uFE0F|\p{Emoji_Presentation}|\uFE0F/gu;
   const holders = new Set<Element>();
   const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    if (/[^\s\p{Extended_Pictographic}️]/u.test(n.textContent ?? '') && n.parentElement) {
+    if (/\S/.test((n.textContent ?? '').replace(emoji, '')) && n.parentElement) {
       holders.add(n.parentElement);
     }
   }
@@ -104,6 +113,11 @@ async function unreadableOnHover(page: Page, scope: Locator): Promise<string[]> 
 }
 
 test('every button in the default dock keeps its label readable on hover', async ({ page }) => {
+  // Playwright's 30s is for the whole test: two waits here allow SETTLED each,
+  // and each hover waits for its colour to fade in, which took 18-22s for the
+  // dock's buttons and once ran past 30s on a loaded workstation. Those two
+  // waits, and a minute for the hovers.
+  test.setTimeout(2 * SETTLED + 60_000);
   await page.goto('/');
   // The walkthrough a first visit opens with: Next, then Back beside it.
   const walkthrough = page.locator('.cc-modal-backdrop');
@@ -132,6 +146,8 @@ test('every button in the default dock keeps its label readable on hover', async
 });
 
 test('every button a drawn graph brings keeps its label readable on hover', async ({ page }) => {
+  // As the dock's case: its three SETTLED waits, and a minute for the hovers.
+  test.setTimeout(3 * SETTLED + 60_000);
   await page.goto('/');
   await dismissOnboardingModal(page);
   const open = page.locator('.gl-panel--open');
@@ -161,4 +177,95 @@ test('every button a drawn graph brings keeps its label readable on hover', asyn
   const chrestomathy = page.locator('.gl-panel--chrestomathy');
   await expect(chrestomathy.locator('tr[data-construct]').first()).toBeVisible({ timeout: SETTLED });
   expect.soft(await unreadableOnHover(page, chrestomathy)).toEqual([]);
+});
+
+test('every button in Topology and Graphbase keeps its label readable on hover', async ({ page }) => {
+  // Neither panel shows its buttons without a service this suite does not
+  // start: Topology's flows come from the harness, Graphbase's entries from
+  // its database. Each is stubbed with what it answers when it is up.
+  const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+  await page.route('**/topology/available*', (route) => route.fulfill(json({
+    status: 200,
+    message: 'Success',
+    results: {
+      topologies: [
+        { topology: 'pair', caption: 'two boxes', status: 'runs', boxes: 2, arrows: 2 },
+        { topology: 'chain', caption: 'three boxes', status: 'runs', boxes: 3, arrows: 2 },
+      ],
+      layouts: ['Spring'],
+      encoding: [],
+    },
+  })));
+  await page.route(/\/db\/$/, (route) => route.fulfill(json({ available: true })));
+  await page.route(/\/db\/bookmarks$/, (route) => route.fulfill(json([
+    { name: 'kept', url: 'https://github.com/octocat/hello-world', layout: 'Spring', depth: 1, extensions: [], saved_at: 0 },
+  ])));
+  await page.route(/\/db\/snapshots$/, (route) => route.fulfill(json([
+    { name: 'drawn', saved_at: 0, meta: { nodeCount: 3 } },
+  ])));
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Topology$/ }).click();
+  const topology = page.locator('.gl-panel--topology');
+  await expect(topology.locator('.topology__chip')).toHaveCount(2, { timeout: SETTLED });
+  // Mutation: drop the background from the Topology chips' hover -- the
+  // global secondary fill comes back under their label, and this fails.
+  expect.soft(await unreadableOnHover(page, topology)).toEqual([]);
+
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Graphbase$/ }).click();
+  const graphbase = page.locator('.gl-graphbase-panel');
+  await expect(graphbase.locator('.gl-graphbase-panel__load-btn')).toHaveCount(2, { timeout: SETTLED });
+  // Mutation: drop the background from Graphbase's ▶ hover -- its secondary
+  // label is drawn on the secondary fill, and this fails.
+  expect.soft(await unreadableOnHover(page, graphbase)).toEqual([]);
+});
+
+test('a selected parse-option chip keeps its label and its fill in the Light theme', async ({ page }) => {
+  // The dark themes' accent is light, and their inverse colour reads on it.
+  // Light's accent is a mid orange, and its inverse colour is white.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+  const open = page.locator('.gl-panel--open');
+  await open.locator('.panel-open__parse-toggle').click();
+  const chip = open.locator('.panel-settings__chip--active').first();
+  await expect(chip).toBeVisible();
+
+  await page.mouse.move(1, 999);
+  await transitionsDone(page);
+  // Mutation: give Light's text on accent its inverse colour, #fff on
+  // #ff9800 -- this fails at 2.16:1.
+  expect.soft(await chip.evaluate(labelContrast), 'at rest').toBeGreaterThanOrEqual(READABLE);
+
+  await chip.hover();
+  await transitionsDone(page);
+  // Mutation: let the chips' transparent hover reach the selected one -- its
+  // fill goes, its accent label is left on the panel, and both of these fail.
+  expect.soft(await chip.evaluate(labelContrast), 'under the pointer').toBeGreaterThanOrEqual(READABLE);
+  expect.soft(await chip.evaluate((e) => getComputedStyle(e).backgroundColor), 'its fill under the pointer')
+    .not.toBe('rgba(0, 0, 0, 0)');
+});
+
+test('the contrast measure reads a color-mix() fill, and names a colour it cannot read', async ({ page }) => {
+  // Every translucent fill above is a color-mix(), and Chromium reports one
+  // as color(srgb r g b / a). Read as transparent, a fill drops out of the
+  // composite and its label is measured against the panel behind it.
+  await page.setContent(`
+    <div style="background: #000">
+      <button id="mixed" style="border: 0; color: #fff;
+        background: color-mix(in srgb, #fff 90%, transparent)">Label</button>
+      <button id="oklch" style="border: 0; color: #fff;
+        background: oklch(0.9 0 0)">Label</button>
+    </div>`);
+  const mixed = page.locator('#mixed');
+  expect(await mixed.evaluate((e) => getComputedStyle(e).backgroundColor)).toMatch(/^color\(srgb /);
+  // Mutation: read color(srgb ...) as transparent, as a parse of rgb() and
+  // rgba() alone did -- the near-white fill drops out, the white label
+  // measures 21:1 against the black, and this fails.
+  expect(await mixed.evaluate(labelContrast)).toBeLessThan(READABLE);
+  // Mutation: read a colour in another notation as transparent -- this fails.
+  await expect(page.locator('#oklch').evaluate(labelContrast)).rejects.toThrow(/oklch/);
 });
