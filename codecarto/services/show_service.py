@@ -88,6 +88,11 @@ MANIFESTS = (".gitmodules", "pyproject.toml", "package.json", "Cargo.toml")
 # add one spoke per member and say nothing the governed mark does not.
 CORPUS_NAME = "qm"
 
+# This project, as the corpus names it: its pin is `project/codecartographer`
+# (`.gitmodules`), so a listing of the corpus's project branches without that
+# one was not fetched in full.
+THIS_PROJECT = "codecartographer"
+
 VIEWS = ("estate", "code", "system")
 
 
@@ -166,17 +171,30 @@ def _hues(path: Path, notes: list[str]) -> dict[str, tuple[str, str]]:
     return {}
 
 
-def _governed(root: Path, roster: dict[str, dict[str, Any]]) -> set[str] | None:
+def _governed(root: Path, roster: dict[str, dict[str, Any]],
+              notes: list[str]) -> set[str] | None:
     """Repositories governance reaches: a `project/<name>` branch, or the corpus.
 
-    The same reading `ci/cookbook.py`'s `adopted_names` makes. `None` when git
-    could not answer, which is unknown and is never drawn as "not adopted".
+    The same reading `ci/cookbook.py`'s `adopted_names` makes. `None` when that
+    is unknown, which is never drawn as "not adopted": git could not answer, or
+    its answer is short. A checkout of the pin's commit alone, as CI's
+    `--depth 1` makes, lists no project branch and git exits 0; a single-branch
+    clone lists one at most. Either lacks `project/<THIS_PROJECT>`, the branch
+    this project's own pin is on, and so says nothing about anyone else's.
     """
     out = corpus_root.git(root, "for-each-ref", "--format=%(refname)",
                           "refs/remotes/origin/project", "refs/heads/project")
     if out is None:
+        notes.append("git could not list the corpus's project branches, so "
+                     "whether a member is governed is unknown")
         return None
     names = {line.rsplit("project/", 1)[-1] for line in out.splitlines() if line}
+    if THIS_PROJECT not in names:
+        notes.append(f"the corpus checkout has no project/{THIS_PROJECT} branch, "
+                     f"this project's own, so it holds few project branches or "
+                     f"none (a shallow or single-branch checkout) and whether a "
+                     f"member is governed is unknown")
+        return None
     names |= {name for name, row in roster.items() if row.get("role") == "corpus"}
     return names
 
@@ -236,10 +254,7 @@ def read(corpus: Path | str | None = None) -> Reading:
                         if isinstance(s, dict) and s.get("id")]
 
     reading.hues = _hues(root / PALETTE_FILE, notes)
-    reading.governed = _governed(root, reading.roster)
-    if reading.governed is None:
-        notes.append("git could not list the corpus's project branches, so "
-                      "whether a member is governed is unknown")
+    reading.governed = _governed(root, reading.roster, notes)
     return reading
 
 

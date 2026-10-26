@@ -915,7 +915,9 @@ What the show seam can draw, read from the corpus's `families.json`, roster,
 inventory, interop registry and palette: `families` (each with `name`,
 `drives`, `within`, `subfamilies`, `members`, `all_members` and its `hue`),
 `projects` (each public repository a family or the roster names, with its
-`families`, `governed` -- `null` when git could not say -- `phase`,
+`families`, `governed` -- `null` when git could not say, or when the corpus
+checkout has no `project/codecartographer` branch and so holds too few project
+branches to say, as a shallow or single-branch checkout does -- `phase`,
 `description` and `views`), `unstated` and `private` (counted, never named),
 `provenance` (the families document's path, the corpus `commit`, its `schema`,
 and whether `CODECARTO_CORPUS` replaced the pin) and `notes` for any input it

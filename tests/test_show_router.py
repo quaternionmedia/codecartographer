@@ -334,6 +334,8 @@ def test_records_on_a_project_branch_are_drawn_with_their_status(corpus, monkeyp
     _git(corpus, "add", "-A")
     _git(corpus, "commit", "-q", "-m", "record")
     _git(corpus, "switch", "-q", "main")
+    # This project's own branch, without which the listing is a short one.
+    _git(corpus, "branch", f"project/{show_service.THIS_PROJECT}")
     monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
     nodes = _nodes(_results(TestClient(app), "/show/project/alpha/gjgf"))
     record = nodes["record::adr/DRAFT-one-thing.md"]
@@ -350,6 +352,24 @@ def test_governance_is_unknown_without_git_and_not_drawn_as_not_adopted(client):
     subjects = _results(client, "/show/subjects")
     assert {p["governed"] for p in subjects["projects"]} == {None}
     assert any("git" in note for note in subjects["notes"])
+
+
+@pytest.mark.parametrize("branches", [[], ["project/alpha"]], ids=["none", "another"])
+def test_governance_is_unknown_when_the_listing_lacks_this_project_s_branch(
+        corpus, monkeypatch, branches):
+    # A checkout of the pin's commit alone, as CI's `--depth 1` makes, holds no
+    # `project/*` ref: `git for-each-ref` lists nothing and exits 0. A
+    # single-branch clone lists one branch at most. Reading either listing as
+    # the whole answer, as `_governed` did, gives beta `False`: "not adopted".
+    _commit_all(corpus)
+    for branch in branches:
+        _git(corpus, "branch", branch)
+    monkeypatch.setenv("CODECARTO_CORPUS", str(corpus))
+    subjects = _results(TestClient(app), "/show/subjects")
+    governed = {p["name"]: p["governed"] for p in subjects["projects"]}
+    assert governed["beta"] is None, "a short listing drew a member as not adopted"
+    assert governed["alpha"] is None
+    assert any("shallow or single-branch" in note for note in subjects["notes"])
 
 
 def test_a_flat_schema_draws_as_families_with_no_nesting(corpus, monkeypatch):
