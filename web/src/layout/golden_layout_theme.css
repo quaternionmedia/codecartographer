@@ -411,6 +411,9 @@
   color: var(--c-secondary, #00ff41);
   text-shadow: 0 0 12px var(--c-secondary, #00ff41);
   margin: 0;
+  /* The header is one line: the title keeps it, and the rail gives way. */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .gl-app-header__icon {
@@ -469,6 +472,100 @@
   background: var(--c-primary-light, #1a1a1a);
   color: var(--c-secondary, #00ff41);
   box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+}
+
+/* ── Step rail (step_rail.ts) ────────────────────────────────────────────── */
+/* The step the reader is on is the only one with a fill, so where they are
+   in the flow reads at a glance without a legend. */
+
+/* Narrower than the rail, the rail scrolls rather than run on under the
+   header's controls; the padding keeps a focused button's ring inside it. */
+.gl-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: calc(var(--spacing-md, 16px) - 3px);
+  padding: 3px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.gl-steps::-webkit-scrollbar {
+  display: none;
+}
+
+/* In a narrow window the steps the reader is not on, and Next, give their
+   names to their numbers; the name stays the button's, for a screen reader,
+   and its tooltip says the step. The header holds its height on every step. */
+@media (max-width: 900px) {
+  .gl-steps__step:not(.gl-steps__step--current) .gl-steps__label,
+  .gl-steps__next .gl-steps__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.gl-steps__list {
+  display: flex;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gl-steps__step,
+.gl-steps__next {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 10px 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--c-font-muted, #00aa2a);
+  font-size: 0.8em;
+  text-transform: none;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.gl-steps__step:hover,
+.gl-steps__next:hover {
+  background: var(--c-primary-light, #1a1a1a);
+  color: var(--c-font, #00ff41);
+  border-color: var(--c-secondary, #00ff41);
+  box-shadow: none;
+}
+
+.gl-steps__step--current,
+.gl-steps__step--current:hover {
+  background: var(--c-secondary, #00ff41);
+  border-color: var(--c-secondary, #00ff41);
+  color: var(--c-font-inverse, #0a0a0a);
+}
+
+/* What comes next: drawn as a way on, not as a fifth step. */
+.gl-steps__next {
+  border-style: dashed;
+  border-color: var(--c-border, #00ff4140);
+  padding-left: 10px;
+}
+
+.gl-steps__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 0.85em;
 }
 
 /* ── Add-window / layout menu ────────────────────────────────────────────── */

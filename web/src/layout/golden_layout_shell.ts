@@ -5,9 +5,10 @@
  * dock under it.
  *
  * Every panel in `panel_registry.ts` is registered here as a Golden Layout
- * component, and the saved layout (or `default_layout.ts`) is loaded. The
- * header holds the "+" add-window menu, the GitHub auth indicator and the
- * help button.
+ * component, and the saved layout (or `default_layout.ts`) is loaded, on
+ * step 1 of the flow (`steps.ts`). The header holds the "+" add-window menu,
+ * the step rail, the GitHub auth indicator and the help button, whose
+ * walkthrough is a page per step.
  */
 
 import m from 'mithril';
@@ -17,7 +18,9 @@ import type { ICell } from '../state/cell_state';
 import { LayoutContext } from './layout_context';
 import { PanelRegistry } from './panel_registry';
 import { AddPanelMenu } from './components/add_panel_menu';
+import { StepRail } from './components/step_rail';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
+import { FIRST_STEP } from './steps';
 
 import { HelpModal, HelpModalComponent } from '../components/codecarto/help/help_modal';
 import { ToastContainer } from '../components/codecarto/help/toast';
@@ -81,6 +84,10 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
       glInstance.loadLayout(DEFAULT_LAYOUT_CONFIG);
     }
 
+    // The rail says step 1, so the dock shows it: a saved layout may have
+    // been kept with another tab in front, or with a stack maximised.
+    ctx.enterStep(FIRST_STEP);
+
     // A `?show=` address opens its showgraph, once the dock exists to open
     // the Show panel in and the canvas has its size to fit the graph to.
     // Not awaited: nothing else at boot waits on a family being measured.
@@ -137,6 +144,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
             m('span.gl-app-header__icon', '◈'),
             'Code Cartographer',
           ]),
+          m(StepRail, { ctx }),
           m('span.gl-app-header__spacer'),
           // ── GitHub auth indicator ───────────────────────────────────────
           ctx.githubAuthStatus
@@ -184,7 +192,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
 
         // ── Overlays (modals / toasts — rendered above GL chrome) ─────────
         m('div.gl-overlays', [
-          m(HelpModalComponent),
+          m(HelpModalComponent, { step: ctx.step, onStep: (id) => ctx.enterStep(id) }),
           m(ToastContainer),
         ]),
       ]);

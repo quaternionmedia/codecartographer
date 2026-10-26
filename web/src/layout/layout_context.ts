@@ -4,6 +4,8 @@
  * Central state-management hub for the Golden Layout integration.
  * Shared state hub for the Golden Layout panels so they can use the same
  * actions, streaming state, and callbacks without duplicating business logic.
+ * It also holds the step of the flow the reader is on, and enters a step
+ * against the dock (`steps.ts`).
  *
  * Usage:
  *   const ctx = new LayoutContext(initialCell);
@@ -36,6 +38,8 @@ import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { readSavedLayout } from './saved_layout';
 import { stackForNewPanel, stackOfTabClicked } from './new_panel_stack';
+import { FIRST_STEP, enterStep, stepOfPanel } from './steps';
+import type { StepDock, StepId } from './steps';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
 import { GraphSurface } from '../features/graph/services/graph_surface';
@@ -103,6 +107,16 @@ export class LayoutContext {
 
   /** GitHub auth status from the backend's /auth/github endpoint. */
   public githubAuthStatus: { source: string; authenticated: boolean; token_prefix?: string } | null = null;
+
+  /**
+   * The step of the flow the reader is on (`steps.ts`): what the header's
+   * rail fills and the walkthrough card shows. The one copy -- the rail and
+   * the card read it on each draw. A page opens on the first step: a reload
+   * has nothing drawn.
+   */
+  public step: StepId = FIRST_STEP;
+  /** The step before Read, which the canvas restored from Read goes back to. */
+  private _stepBeforeRead: StepId = FIRST_STEP;
 
   /** Graphbase availability, saved bookmarks, snapshots, and history. */
   public graphbaseAvailable = false;
@@ -228,6 +242,9 @@ export class LayoutContext {
   /** Attach the live Golden Layout manager that panels are opened in. */
   public attachLayoutManager(layoutManager: LayoutManager | null): void {
     this._layoutManager = layoutManager;
+    // A stack maximised or restored moves the rail (`_followMaximised`).
+    // Golden Layout says so at once, before the canvas's resize lands.
+    layoutManager?.on('stateChanged', () => this._followMaximised());
   }
 
   /**
@@ -235,9 +252,11 @@ export class LayoutContext {
    *
    * A panel that draws calls this with 'graph' once it has drawn, so the
    * drawing is in view even when the reader has stacked the panel with the
-   * canvas. A panel that is not in a stack has nothing to focus and is left.
+   * canvas, or maximised the panel's stack. A panel that is not in a stack
+   * has nothing to focus and is left. `focus` false brings it forward without
+   * Golden Layout's focus, as a step does with the canvas beside its window.
    */
-  public focusDockPanel(panelId: DockPanelId): void {
+  public focusDockPanel(panelId: DockPanelId, focus = true): void {
     const item = this._layoutManager?.findFirstComponentItemById(panelId);
     if (!item) return;
     // `ComponentItem.focus()` marks the item focused and leaves the stack's
@@ -245,8 +264,22 @@ export class LayoutContext {
     // behind. The stack is what shows one tab and hides the rest.
     const stack = item.parent as { setActiveComponentItem?: (i: typeof item, focus: boolean) => void } | null;
     if (stack && typeof stack.setActiveComponentItem === 'function') {
-      stack.setActiveComponentItem(item, true);
+      stack.setActiveComponentItem(item, focus);
     }
+    this._restoreAllBut(stack);
+  }
+
+  /**
+   * Restore a maximised stack other than `stack`. A maximised stack hides
+   * every other, so a window brought to the front of one of those -- by a
+   * step, a draw bringing the canvas, View ▸ Compare -- is still out of
+   * sight. Step 4 maximises the canvas, and Golden Layout's own ▢ maximises
+   * any stack. (A window `openPanel` adds needs none of this: Golden Layout
+   * restores a maximised stack itself before it adds an item.)
+   */
+  private _restoreAllBut(stack: unknown): void {
+    const maximised = this._layoutManager?.maximisedStack;
+    if (maximised && maximised !== stack) maximised.minimise();
   }
 
   /**
@@ -278,17 +311,137 @@ export class LayoutContext {
     layout.updateRootSize(true);
   }
 
+  /**
+   * Open a window the reader chose from the "+" menu: as `openPanel`, and
+   * the step follows it, as choosing its tab does.
+   */
+  public chooseWindow(panelId: DockPanelId): void {
+    this.openPanel(panelId);
+    this._followWindow(panelId);
+  }
+
+  // ── The steps ──────────────────────────────────────────────────────────────
+
+  /**
+   * Enter step `id`: bring its windows forward, opening any that were closed,
+   * and on step 4 maximise the canvas (`steps.ts` says which, and why in that
+   * order). The rail, Next and the walkthrough card all come here -- the step
+   * already on included, since one of its windows may have been closed or put
+   * behind another since.
+   *
+   * A step that changes the canvas's size -- into Read, or out of it --
+   * frames the drawing in the new size; one that keeps it leaves the
+   * reader's zoom.
+   */
+  public enterStep(id: StepId): void {
+    this._setStep(id);
+    if (this._layoutManager) {
+      enterStep(id, this._stepDock());
+      this._streamingRenderer?.fitWhenResized();
+    }
+    m.redraw();
+  }
+
+  /** Move the rail to `id`, keeping the step it leaves for Read. */
+  private _setStep(id: StepId): void {
+    if (id === 'read' && this.step !== 'read') this._stepBeforeRead = this.step;
+    this.step = id;
+  }
+
+  /** The stack maximised when `_followMaximised` last looked. */
+  private _maximisedSeen: Stack | undefined = undefined;
+
+  /**
+   * Follow a stack the reader maximised or restored with Golden Layout's own
+   * control, or by dragging a tab out of a maximised stack.
+   *
+   * **READ IS THE CANVAS ALONE, HOWEVER IT CAME TO BE.** The canvas maximised
+   * is Read, and restored from Read it is the step the reader came from:
+   * before, the rail said Tune, with Next pointing at Read, over a canvas
+   * hiding every window, and Read over every window back in view. Either way
+   * the canvas changes size, and the drawing is framed in it, as a step frames
+   * it. Another stack maximised is the window in front of it chosen, as its
+   * tab is, and stays chosen when it is restored.
+   *
+   * A step's own maximise and restore come through here too, and land where
+   * the step put the rail: it is set before the dock moves.
+   */
+  private _followMaximised(): void {
+    const layout = this._layoutManager;
+    if (!layout) return;
+    const maximised = layout.maximisedStack;
+    const was = this._maximisedSeen;
+    if (maximised === was) return;
+    this._maximisedSeen = maximised;
+    const canvas = layout.findFirstComponentItemById('graph')?.parent;
+    if (maximised) {
+      const front = maximised.getActiveComponentItem();
+      const step = front ? stepOfPanel(front.id) : null;
+      if (step) this._setStep(step);
+    } else if (was === canvas && this.step === 'read') {
+      this._setStep(this._stepBeforeRead);
+    }
+    if (canvas && (maximised === canvas || was === canvas)) this._streamingRenderer?.fitWhenResized();
+    m.redraw();
+  }
+
+  /** The dock as `steps.enterStep` reaches it. */
+  private _stepDock(): StepDock {
+    const stackOf = (panelId: string) =>
+      this._layoutManager?.findFirstComponentItemById(panelId)?.parent as Stack | undefined;
+    return {
+      show: (panelId, focus) => {
+        if (!PanelRegistry.get(panelId as DockPanelId)) return;
+        if (stackOf(panelId)) this.focusDockPanel(panelId as DockPanelId, focus);
+        else this.openPanel(panelId as DockPanelId);
+      },
+      maximise: (panelId) => {
+        const stack = stackOf(panelId);
+        if (stack?.isStack && !stack.isMaximised) stack.maximise();
+        // **THE DOCK IS LAID OUT UNSCROLLED.** Its host clips and does not
+        // scroll, but a focus or a scrollIntoView inside it still scrolls it,
+        // and Golden Layout pins a maximised stack to the top of the host's
+        // content: scrolled 8 pixels by a click on Load Demo, the canvas was
+        // drawn 344 pixels up -- Chrome's scroll anchoring kept the focused
+        // button in place as the stack moved -- with Files and Open showing
+        // under it. At no scroll there is nothing to anchor.
+        const host = this._layoutManager?.container;
+        if (host) host.scrollTop = host.scrollLeft = 0;
+      },
+      restore: () => this._restoreAllBut(null),
+    };
+  }
+
+  /**
+   * A window the reader chose says which step they are on; nothing else
+   * moves. A window that comes forward by itself -- a draw bringing the
+   * canvas, a `?show=` address, View ▸ Compare -- does not.
+   */
+  private _followWindow(panelId: string): void {
+    const step = stepOfPanel(panelId);
+    if (!step || step === this.step) return;
+    this._setStep(step);
+    m.redraw();
+  }
+
   /** The `.lm_stack` element of the tab the reader last clicked; see `noteClick`. */
   private _tabStackClicked: unknown = null;
 
   /**
    * Hear a click in the dock, before Golden Layout does. A click on a tab
-   * records that tab's stack, which is where `openPanel` adds a window next;
-   * any other click records nothing.
+   * records that tab's stack, which is where `openPanel` adds a window next,
+   * and moves the step to the one that owns the tab's window; any other
+   * click, and a click on a tab's ✕, does neither.
    */
   public noteClick(target: EventTarget | null): void {
     const clicked = stackOfTabClicked(target);
-    if (clicked) this._tabStackClicked = clicked;
+    if (!clicked) return;
+    this._tabStackClicked = clicked;
+    const tab = (target as Element).closest('.lm_tab');
+    const panelId = this.openPanelIds().find(
+      (id) => this._layoutManager?.findFirstComponentItemById(id)?.tab?.element === tab,
+    );
+    if (panelId) this._followWindow(panelId);
   }
 
   /** Ids of every registered panel currently present in the live layout. */
@@ -362,10 +515,11 @@ export class LayoutContext {
     }
   }
 
-  /** Drop the saved default and reload the built-in layout. */
+  /** Drop the saved default and reload the built-in layout, on step 1, as a page opens. */
   public resetLayoutToBuiltinDefault(): void {
     localStorage.removeItem(SAVED_LAYOUT_KEY);
     this._layoutManager?.loadLayout(DEFAULT_LAYOUT_CONFIG);
+    this.enterStep(FIRST_STEP);
     ToastManager.show('Layout reset to built-in default');
   }
 
