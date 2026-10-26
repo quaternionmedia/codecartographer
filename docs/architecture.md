@@ -352,14 +352,27 @@ assigning children by the same containment edges and by nearest position only
 for an orphan. A circle is the smallest one enclosing the group -- its own
 node and what it holds, a file's symbols or a directory's files by their own
 circles -- plus padding, so it is centred on the group, wherever the layout put
-the group's node. Each circle's label sits inside it, against the rim, where it
-covers no other label and no node (`outline_labels.ts`). The circles are drawn
-whatever the layout, when a draw finishes, unless Group Outlines
-(`showCompoundGroups`) is off: `StreamingGraphRenderer` checks only that
-setting, and the toggle is offered with the D3 renderer for every layout. They
-are in a `<g class="compound-backgrounds">` that is the transform group's first
-child, so they sit behind links and nodes. Where the layout and its outline
-toggle are chosen is in the [UI reference](ui.md#graph-settings).
+the group's node. The circles are drawn whatever the layout, when a draw
+finishes, unless Group Outlines (`showCompoundGroups`) is off:
+`StreamingGraphRenderer` checks only that setting, and the toggle is offered
+with the D3 renderer for every layout. They are in a
+`<g class="compound-backgrounds">` that is the transform group's first child,
+so they sit behind links and nodes. Where the layout and its outline toggle
+are chosen is in the [UI reference](ui.md#graph-settings).
+
+`outline_labels.ts` places each circle's label, the largest circle's first, at
+the first spot it tries that covers no label already placed and no node. It
+tries the top of the circle inside the rim, then round the rim every 15° and
+further in, with the label's corners inside the rim; then just outside the
+rim, within the circles' extent first and then anywhere round it. A label too
+wide to sit inside its circle tries only the spots outside it. When every spot
+clear of the other labels covers a node, the label takes the one of those that
+covers the fewest; when every spot covers another label, it is set at the top,
+inside the rim when it fits there and outside when not, over whatever is
+there. The fit frames each label with its circle. A spot is checked only
+against the node and label boxes filed in the cells of a 64-unit grid that it
+covers, as the labels are placed again at every drag's end and after a Delete
+or Collapse.
 
 `computeChildrenMap` covers all four tiers, so dragging a node moves its whole
 subtree, and the circles are redrawn when the drag ends. The map is computed
