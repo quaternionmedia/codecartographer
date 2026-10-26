@@ -97,6 +97,27 @@ test('labels of nearly concentric outlines are not written over one another', ()
   });
 });
 
+test('a label wider than its outline is set wholly inside it or wholly outside, never across the rim', () => {
+  /* Mutation: set the inside spot by the label's top edge alone, as for a
+     large outline -- a label 100 wide hangs across the rim of an outline of
+     radius 60 or 30 at its corners, and this fails. */
+  const corners = (p, o) => {
+    const l = p.x - o.w / 2, r = p.x + o.w / 2, t = p.y - o.h / 2, b = p.y + o.h / 2;
+    return { all: [[l, t], [r, t], [l, b], [r, b]], nearest: [Math.max(l, Math.min(o.cx, r)), Math.max(t, Math.min(o.cy, b))] };
+  };
+  // Half its diagonal is 50.3: it fits inside radius 60, sized to its corners.
+  const wide = { cx: 0, cy: 0, r: 60, w: 100, h: 11 };
+  const [inWide] = placeOutlineLabels([wide]);
+  for (const [x, y] of corners(inWide, wide).all) {
+    assert.ok(Math.hypot(x, y) <= wide.r + EPS, `a corner at (${x}, ${y}) is ${Math.hypot(x, y)} from the centre of r=60`);
+  }
+  // It cannot fit inside radius 30, so it is set outside, clear of the rim.
+  const small = { cx: 0, cy: 0, r: 30, w: 100, h: 11 };
+  const [inSmall] = placeOutlineLabels([small]);
+  const [nx, ny] = corners(inSmall, small).nearest;
+  assert.ok(Math.hypot(nx, ny) >= small.r - EPS, `the label at (${inSmall.x}, ${inSmall.y}) reaches ${Math.hypot(nx, ny)} from the centre of r=30`);
+});
+
 test('a label moves off a node that sits at the top of its outline', () => {
   /* Mutation: place labels without regard to the nodes -- the label covers
      the node at the top, and this fails. */

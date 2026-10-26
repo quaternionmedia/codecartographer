@@ -5,6 +5,9 @@ import { animations } from '../../../core/animations';
 import { Directory, RawFile } from '../../models/source';
 import { SystemDefinitionRegistry } from '../../../features/graph/services/system_renderer';
 import { rendererControls } from '../../../features/graph/services/renderer_controls';
+import { hasTree } from '../../../features/repository/repo_tree';
+import { plotTarget } from '../../../features/repository/plot_target';
+import { pressable } from './pressable';
 import { GraphStylingOptions, ParserOptions, GraphRendererType } from '../../../state/types';
 import './control_panel.css';
 
@@ -41,7 +44,8 @@ export interface ControlPanelCallbacks {
   onGraphStylingChange: (options: Partial<GraphStylingOptions>) => void;
   onParserOptionsChange: (options: Partial<ParserOptions>) => void;
   onRendererChange: (renderer: GraphRendererType) => void;
-  onFolderExpand: (path: string) => void;
+  /** Read an unread folder; true when its contents reached the tree. */
+  onFolderExpand: (path: string) => Promise<boolean>;
   onExpandAll?: () => Promise<void>;
   onCancel?: () => void;
   onLoadFromCache?: (key: string) => void;
@@ -199,7 +203,9 @@ export function ControlPanel(
 
   /** A GitHub URL or a local path, and what is loaded from one. */
   const renderUrlSection = () => {
-    const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
+    // Loaded when the Files panel shows the tree, as it asks: an Expand All
+    // tree's size is its root's own file count, 0 with only folders there.
+    const hasRepo = hasTree(content.repoDirectory);
     const repoInfo = content.repoDirectory?.info;
 
     return m('div.panel-source__repo', [
@@ -259,16 +265,21 @@ export function ControlPanel(
   /** Local files, added to what Plot draws; each is listed in the Files panel. */
   const renderLocalFiles = () => {
     const activeExts = content.parserOptions.fileExtensions;
+    const browse = () => document.getElementById('file-upload-input')?.click();
 
     return m('div.panel-source__upload', [
       m('span.panel-settings__label-compact', 'Local files'),
+      // A drop target that holds its hidden file input, so not a <button>:
+      // `pressable` gives it a button's place in the tab order, its role, and
+      // Enter and Space, so files are added from the keyboard too.
       m('div.panel-upload__dropzone', {
         ondrop: handleDrop,
         ondragover: handleDragOver,
         ondragleave: handleDragLeave,
-        onclick: () => document.getElementById('file-upload-input')?.click(),
+        onclick: browse,
+        ...pressable(browse),
       }, [
-        m('span.panel-upload__icon', '📁'),
+        m('span.panel-upload__icon', { 'aria-hidden': 'true' }, '📁'),
         m('span.panel-upload__text', 'Drop source files here or click to browse'),
         m('input#file-upload-input[type=file][multiple]', {
           style: { display: 'none' },
@@ -295,8 +306,8 @@ export function ControlPanel(
       }, [m('span', '⚡'), m('span', 'Load Demo')]),
 
       // Lexicon: one button per language with an abstraction-layer ontology
-      // (see docs/roadmap/lexicon.md); a language gains one when it gains
-      // a lexicon YAML.
+      // (see docs/architecture.md, Lexicons and the construct vocabulary); a
+      // language gains one when it gains a lexicon YAML.
       content.availableLexiconLanguages.length > 0 && callbacks.onLoadLexicon
         ? m('div.panel-source__lexicon-picker', { style: 'display: flex; gap: 4px; margin-top: 4px;' },
             content.availableLexiconLanguages.map((lang) =>
@@ -424,8 +435,8 @@ export function ControlPanel(
         ]),
 
         // Lexicon annotation stamps abstraction-layer data onto parsed nodes
-        // whose language has a Lexicon (see docs/roadmap/lexicon.md);
-        // Color By: Abstraction Layer shows it.
+        // whose language has a Lexicon (see docs/architecture.md, Lexicons
+        // and the construct vocabulary); Color By: Abstraction Layer shows it.
         m('div.panel-settings__group', [
           m('div.panel-settings__toggle-row', [
             m('span.panel-settings__label-compact', 'Annotate Lexicon'),
@@ -452,13 +463,12 @@ export function ControlPanel(
    * stream in flight.
    */
   const renderPlotBar = () => {
-    const hasRepo = !!(content.repoDirectory && content.repoDirectory.size > 0);
-    const files = content.uploadedFiles.length;
-    const url = state.repoUrl.trim();
-    const target = hasRepo ? 'the loaded repository'
-      : files > 0 ? `the ${files} added file(s)`
-      : url ? url
-      : null;
+    // What Plot draws, decided where `onPlot` decides it.
+    const plotted = plotTarget(content.repoDirectory, content.uploadedFiles.length, state.repoUrl);
+    const target = !plotted ? null
+      : plotted.kind === 'files' ? `the ${plotted.count} added file(s)`
+      : plotted.kind === 'fetch' ? plotted.url
+      : 'the loaded repository';
     const progress = state.progress;
     const pct = progress && progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
 
@@ -755,7 +765,7 @@ export function ControlPanel(
                   m('span.panel-settings__label-compact', 'Color By'),
                   m('select.panel-settings__select', {
                     value: styling.colorBy ?? 'auto',
-                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/roadmap/lexicon.md); Construct mode by what each node is, alike across languages (codecarto/data/constructs.yaml). A node without one keeps its own color.',
+                    title: 'Layer mode colors nodes by Lexicon abstraction layer where present (see docs/architecture.md, Lexicons and the construct vocabulary); Construct mode by what each node is, alike across languages (codecarto/data/constructs.yaml). A node without one keeps its own colour.',
                     onchange: (e: Event) => {
                       callbacks.onGraphStylingChange({ colorBy: (e.target as HTMLSelectElement).value });
                     },

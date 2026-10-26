@@ -55,6 +55,34 @@ test('Plot draws every added file, not the first', async ({ page }) => {
   await expect(page.locator('.graph-node[data-node-id$="second.py"]')).toHaveCount(1);
 });
 
+test('local files are added from the keyboard: Enter on the box opens the file chooser', async ({ page }) => {
+  // Chromium intercepts the chooser only once Playwright has asked it to, and
+  // Playwright asks when the first 'filechooser' listener is added, without
+  // waiting for the answer. Added just before the key, it lost: Chromium
+  // answered the Enter before the request to intercept in 2 runs of 8, the
+  // chooser opened unintercepted, and no event came. A click hides that gap
+  // behind its actionability checks; a key press does not. So a listener is
+  // added before the page loads, and the one awaited below only listens.
+  page.on('filechooser', () => undefined);
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const open = page.locator('.gl-panel--open');
+
+  // Mutation: the box as a div with only a click handler -- no role names it,
+  // it is not in the tab order, and this fails.
+  const box = open.getByRole('button', { name: /browse/i });
+  await expect(box).toHaveAttribute('tabindex', '0');
+  await box.focus();
+  await expect(box).toBeFocused();
+  const chooser = page.waitForEvent('filechooser');
+  await page.keyboard.press('Enter');
+  await (await chooser).setFiles([
+    'tests/e2e/fixtures/uploads/first.py',
+    'tests/e2e/fixtures/uploads/second.py',
+  ]);
+  await expect(open.locator('.panel-source__upload-summary')).toContainText('2 file(s)');
+});
+
 test('the recent graphs are listed in Open, and not in Graphbase', async ({ page }) => {
   await page.goto('/');
   await dismissOnboardingModal(page);

@@ -33,7 +33,8 @@ export class RepoService {
 
   /**
    * Expand all folders in a partial repo tree to the given depth (structure only, no file content).
-   * Returns a full Directory with is_partial=false.
+   * Returns a Directory that is partial when a folder in it was left unlisted:
+   * below `maxDepth`, or refused by GitHub.
    */
   public static async expandAllTree(
     repoUrl: string,
