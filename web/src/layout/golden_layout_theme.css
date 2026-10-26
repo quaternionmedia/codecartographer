@@ -495,11 +495,12 @@
   display: none;
 }
 
-/* In a narrow window the steps the reader is not on give their names to
-   their numbers; the name stays the button's, for a screen reader, and its
-   tooltip says the step. The header holds its height on every step. */
-@media (max-width: 820px) {
-  .gl-steps__step:not(.gl-steps__step--current) .gl-steps__label {
+/* In a narrow window the steps the reader is not on, and Next, give their
+   names to their numbers; the name stays the button's, for a screen reader,
+   and its tooltip says the step. The header holds its height on every step. */
+@media (max-width: 900px) {
+  .gl-steps__step:not(.gl-steps__step--current) .gl-steps__label,
+  .gl-steps__next .gl-steps__label {
     position: absolute;
     width: 1px;
     height: 1px;

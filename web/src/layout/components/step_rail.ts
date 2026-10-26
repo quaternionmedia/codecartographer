@@ -42,7 +42,13 @@ export const StepRail: m.Component<Attrs> = {
         ? m('button.gl-steps__next', {
             title: `Step ${stepNumber(next.id)}: ${next.hint}`,
             onclick: () => ctx.enterStep(next.id),
-          }, ['Next ', m('span.gl-steps__num', String(stepNumber(next.id))), ` ${next.label} →`])
+          }, [
+            'Next ',
+            m('span.gl-steps__num', String(stepNumber(next.id))),
+            // Its own span, so a narrow window can show the number alone.
+            m('span.gl-steps__label', ` ${next.label}`),
+            ' →',
+          ])
         : null,
     ]);
   },
