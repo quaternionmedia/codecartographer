@@ -21,6 +21,7 @@ export const DirectoryContent: m.Component<DirectoryAttrs> = {
       foldersParse(folders, onUrlFileClicked, onFolderExpand, '', allowedExtensions),
       m(FileList, {
         folderName: folderName,
+        folderPath: '',
         files: files,
         onUrlFileClicked: onUrlFileClicked,
         allowedExtensions: allowedExtensions,
