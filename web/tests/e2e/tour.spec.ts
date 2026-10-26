@@ -238,8 +238,15 @@ test('a layout saved before the Open panel', async ({ page }) => {
   await dismissOnboardingModal(page);
 
   await test.step('15 migrated to one Open window', async () => {
+    // Mutation: drop the renames -- the layout is dropped for the default,
+    // which has an Open window too, the toast says the saved layout was not
+    // loaded, a Graph Settings tab appears, and this fails.
+    await expect(page.locator('.cc-toast__msg', { hasText: 'are the Open window in this version' })).toHaveText(
+      "The saved layout's 'upload-panel', 'repo-panel', 'plotbar' window(s) are the Open window in this version.",
+    );
+    await expect(page.locator('.lm_tab', { hasText: 'Open' })).toHaveCount(1);
+    await expect(page.locator('.lm_tab', { hasText: 'Graph Settings' })).toHaveCount(0);
     await expect(page.locator('.gl-panel--open')).toBeVisible();
-    await expect(page.locator('.cc-toast').first()).toBeVisible();
     await shot('15 old saved layout migrated', page);
   });
 });
