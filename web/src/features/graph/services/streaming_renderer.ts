@@ -20,8 +20,8 @@ import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
 import { sourceTarget, type SourceTarget } from './node_info';
 import { BADGE_MARGIN, badgePlace } from './source_badge';
-import { fitTransform } from './fit';
-import type { Circle } from './fit';
+import { fitTransform, framedExtents } from './fit';
+import type { Box, FramedNode, FramedOutline } from './fit';
 
 // Nodes rendered per animation frame. Scales with total so large repos
 // finish in ~2s while small repos show clearly progressive animation.
@@ -631,25 +631,26 @@ export class StreamingGraphRenderer {
   }
 
   /**
-   * Fit the viewport to a subset of nodes: each node's extent, and the group
-   * outline drawn around any of them, framed whole (fit.ts).
+   * Fit the viewport to a subset of nodes: each node's extent, its label
+   * while labels are shown, and the group outline drawn around any of them,
+   * framed whole (fit.ts).
    *
    * Split out of `_fitView` so `focus-group` can frame one subtree. A verb
    * that says "focus" and fits the whole graph is the kind of near-miss the
    * legacy menu was full of.
    */
   private _fitNodes(nodes: GraphNode[]): void {
-    const ids = new Set(nodes.map((n) => n.id));
-    // A shape drawn at `size` reaches 1.5 × size at most (a triangle's apex).
-    const circles: Circle[] = nodes.map((n) => ({
+    const labels = this._shownLabelBoxes();
+    const framed: FramedNode[] = nodes.map((n) => ({
+      id: n.id,
       x: n.x ?? 0,
       y: n.y ?? 0,
-      r: 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n),
+      // A shape drawn at `size` reaches 1.5 × size at most (a triangle's apex).
+      reach: 1.5 * this.styling.nodeSize! * depthSizeMultiplier(n),
+      label: labels.get(n.id) ?? null,
     }));
-    for (const b of this._groupBounds) {
-      if (ids.has(b.nodeId)) circles.push({ x: b.cx, y: b.cy, r: b.radius });
-    }
-    const t = fitTransform(circles, { width: this.width, height: this.height });
+    const outlines: FramedOutline[] = this._groupBounds.map((b) => ({ nodeId: b.nodeId, x: b.cx, y: b.cy, r: b.radius }));
+    const t = fitTransform(framedExtents(framed, outlines), { width: this.width, height: this.height });
     if (!t) return;
 
     this.svg
@@ -659,6 +660,31 @@ export class StreamingGraphRenderer {
         this.zoom.transform as any,
         d3.zoomIdentity.translate(t.x, t.y).scale(t.k)
       );
+  }
+
+  /**
+   * The box each shown node label is drawn in, by node id, in graph
+   * coordinates. A label is drawn `size + 12` under its node, centred, as
+   * wide as its text, so a long one at the graph's edge reaches well past its
+   * node; with outlines off, nothing else frames it. A label the label
+   * settings hide is not drawn and has no box, and neither has one on a canvas
+   * not yet laid out (a hidden tab), which measures as nothing.
+   */
+  private _shownLabelBoxes(): Map<string, Box> {
+    const boxes = new Map<string, Box>();
+    this.labelGroup.selectAll<SVGTextElement, unknown>('text').each(function () {
+      const id = this.getAttribute('data-node-id');
+      if (!id || this.style.display === 'none') return;
+      let drawn: DOMRect;
+      try {
+        drawn = this.getBBox();
+      } catch {
+        return;
+      }
+      if (drawn.width === 0 && drawn.height === 0) return;
+      boxes.set(id, { minX: drawn.x, minY: drawn.y, maxX: drawn.x + drawn.width, maxY: drawn.y + drawn.height });
+    });
+    return boxes;
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────

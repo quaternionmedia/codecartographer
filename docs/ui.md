@@ -235,8 +235,9 @@ Id `graph-settings-panel`. In the default arrangement.
 - **Double-click a node** that names a file to open its source, as
   [A node's source](#a-nodes-source) says. A double-click anywhere else zooms
   in.
-- When a stream finishes, the view fits the whole graph: every node and every
-  group outline, inside a margin, centred on what is drawn.
+- When a stream finishes, the view fits the whole graph: every node, its label
+  while labels are shown, and every group outline, inside a margin, centred on
+  what is drawn.
 - **The legend** sits at the bottom left. Its header gives the totals; click it
   to list the node and edge kinds actually drawn, each with its swatch and
   count: a kind absent from the picture has no row, and every node is in exactly
