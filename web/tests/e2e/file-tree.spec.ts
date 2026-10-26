@@ -150,6 +150,36 @@ test("each folder's contents sit a step in from its name", async ({ page }) => {
   expect(await left('.folder__b .file')).toBe(libA);
 });
 
+test('the tree is pressed from the keyboard, and a raw link says which file it opens', async ({ page }) => {
+  // Not run with the change that added it: the browser suites bind fixed
+  // ports this workstation shares. tree-rows.test.mjs holds the rows' roles,
+  // keys and names.
+  const RAW = 'https://raw.githubusercontent.com/example/small/main';
+  const fetched: string[] = [];
+  await page.route(`${RAW}/**`, (route) => {
+    fetched.push(route.request().url());
+    return route.fulfill({ headers: { 'access-control-allow-origin': '*' }, body: 'pub fn f() {}\n' });
+  });
+  await openStubbedTree(page, 'https://github.com/example/small', [], [
+    { name: 'src', size: 1, folders: [], files: [{ name: 'lib.rs', size: 1, raw: '', url: `${RAW}/src/lib.rs` }] },
+  ]);
+  const tree = page.locator('.gl-panel--file-tree');
+  const folder = tree.getByRole('button', { name: 'src' });
+  await expect(folder).toHaveAttribute('aria-expanded', 'false');
+  // Mutation: drop the rows' role, tabindex or key handler -- this fails.
+  await folder.focus();
+  await page.keyboard.press('Enter');
+  await expect(folder).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Tab');
+  await expect(tree.getByRole('button', { name: 'lib.rs' })).toBeFocused();
+  // Mutation: leave the link named "raw" alone -- this fails.
+  await expect(tree.getByRole('link', { name: 'raw contents of src/lib.rs' }))
+    .toHaveAttribute('href', `${RAW}/src/lib.rs`);
+  // Space draws the file as a click does, which first fetches its contents.
+  await page.keyboard.press('Space');
+  await expect.poll(() => fetched).toEqual([`${RAW}/src/lib.rs`]);
+});
+
 test('an unread folder in a partial tree reads itself on click', async ({ page }) => {
   await page.route('**/repo/tree?**', (route) => route.fulfill({
     json: {
