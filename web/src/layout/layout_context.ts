@@ -28,12 +28,14 @@ import {
 import { PlotService } from '../services/plot_service';
 import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
-import { infoLine, sourceTarget } from '../features/graph/services/node_info';
+import { infoLine } from '../features/graph/services/node_info';
 import type { BundledExample } from '../features/examples/examples';
 import { notesTail } from '../features/graph/services/parse_notes';
+import { plotTarget } from '../features/repository/plot_target';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { readSavedLayout } from './saved_layout';
+import { stackForNewPanel, stackOfTabClicked } from './new_panel_stack';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
 import { GraphSurface } from '../features/graph/services/graph_surface';
@@ -135,6 +137,9 @@ export class LayoutContext {
     // sees. Both announce the finished canvas, so both get the same fittings.
     GraphSurface.subscribe((renderer) => {
       this._streamingRenderer = renderer;
+      // Hide is view state kept here; the renderer reads it so a fit leaves
+      // hidden nodes out, as they are drawn at opacity 0 and still held.
+      renderer.setHiddenTest((id) => !!this._nodeViewState[id]?.hidden);
       this._mountRad(renderer);
     });
   }
@@ -208,28 +213,26 @@ export class LayoutContext {
       return;
     }
 
-    const stack = this._stackForNewPanel(layout);
+    // Where: `new_panel_stack.ts`, which says why it is not Golden Layout's
+    // focus. Null leaves it to Golden Layout's own placement.
+    const canvas = layout.findFirstComponentItemById('graph')?.parent ?? null;
+    const stack = stackForNewPanel<ContentItem>(layout.rootItem, canvas, this._tabStackClicked) as Stack | null;
     if (stack) stack.newItem(def.config);
     else layout.newItemAtLocation(def.config, LayoutManager.defaultLocationSelectors);
     layout.updateRootSize(true);
   }
 
-  /** Where `openPanel` adds a panel; null leaves it to Golden Layout. */
-  private _stackForNewPanel(layout: LayoutManager): Stack | null {
-    const canvas = layout.findFirstComponentItemById('graph')?.parent ?? null;
-    const focused = layout.focusedComponentItem?.parent ?? null;
-    if (focused && focused.isStack && focused !== canvas) return focused as Stack;
-    let fullest: Stack | null = null;
-    const visit = (item: ContentItem | undefined): void => {
-      if (!item) return;
-      if (item.isStack && item !== canvas
-          && item.contentItems.length > (fullest?.contentItems.length ?? 0)) {
-        fullest = item as Stack;
-      }
-      item.contentItems.forEach(visit);
-    };
-    visit(layout.rootItem);
-    return fullest;
+  /** The `.lm_stack` element of the tab the reader last clicked; see `noteClick`. */
+  private _tabStackClicked: unknown = null;
+
+  /**
+   * Hear a click in the dock, before Golden Layout does. A click on a tab
+   * records that tab's stack, which is where `openPanel` adds a window next;
+   * any other click records nothing.
+   */
+  public noteClick(target: EventTarget | null): void {
+    const clicked = stackOfTabClicked(target);
+    if (clicked) this._tabStackClicked = clicked;
   }
 
   /** Ids of every registered panel currently present in the live layout. */
@@ -589,7 +592,8 @@ export class LayoutContext {
       kind: node?.kind as string | undefined,
       hasRenderedChildren: id ? (r?.childIdsOf(id).length ?? 0) > 0 : false,
       pinned: !!(id && this._nodeViewState[id]?.pinned),
-      hasSource: !!node && sourceTarget(node) !== null,
+      // Asked of the renderer that opens it, so offering and opening read one graph.
+      hasSource: !!(id && r?.sourceTargetOf(id)),
       hasGroup: (node?.depth as number | undefined) !== undefined && (node!.depth as number) < 2,
       hasConstruct: typeof node?.construct === 'string',
       selectionCount: this._radSelection.size,
@@ -868,6 +872,9 @@ export class LayoutContext {
       this._cancelStream();
       this._cancelStream = null;
     }
+    // The stream is the latest plot: added files, the demo or a lexicon still
+    // waiting for an answer are not drawn over it.
+    this.actions.plot.supersedePlots();
     this._streamingRenderer = null;
 
     const styling = this.appState.state.graphStyling;
@@ -1077,21 +1084,22 @@ export class LayoutContext {
   /**
    * Plot added files, every one given, at the parse depth the Open panel
    * shows; one file clicked in the Files panel and Plot over all of them both
-   * come here.
+   * come here. A plot asked for before these answered owns the status line,
+   * and their answer is dropped (`latest_plot.ts`).
    */
   private async _plotUploads(files: RawFile[]): Promise<void> {
     const many = files.length === 1 ? files[0].name : `${files.length} files`;
     this.updatePanelState({ isLoading: true, statusMessage: `Plotting ${many}\u2026` });
     // What the parse could not read is said as a stream says its `note`
     // events: each in a toast, and all of them after "Ready" (`notesTail`).
-    let notes: string[] = [];
+    let notes: string[] | null = [];
     this._lastPlotAction = async () => {
       notes = await this.actions.plot.plotUploads(files, this.panelState.parseDepth);
-      for (const note of notes) ToastManager.show(note, 15_000);
+      for (const note of notes ?? []) ToastManager.show(note, 15_000);
     };
     try {
       await this._lastPlotAction();
-      this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
+      if (notes) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
     } catch {
       this.updatePanelState({ isLoading: false, statusMessage: `Error plotting ${many}` });
     }
@@ -1103,10 +1111,12 @@ export class LayoutContext {
     return {
       onDemo: async () => {
         this.updatePanelState({ isLoading: true, statusMessage: 'Loading demo...' });
-        this._lastPlotAction = async () => { await this.actions.plot.loadDemo(); };
+        let drawn = true;
+        this._lastPlotAction = async () => { drawn = await this.actions.plot.loadDemo(); };
         try {
           await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          // Not drawn: a plot asked for since owns the status line.
+          if (drawn) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: 'Error loading demo' });
         }
@@ -1114,10 +1124,11 @@ export class LayoutContext {
 
       onLoadLexicon: async (language: string) => {
         this.updatePanelState({ isLoading: true, statusMessage: `Loading ${language} lexicon...` });
-        this._lastPlotAction = async () => { await this.actions.plot.loadLexicon(language); };
+        let drawn = true;
+        this._lastPlotAction = async () => { drawn = await this.actions.plot.loadLexicon(language); };
         try {
           await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          if (drawn) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: `Error loading ${language} lexicon` });
         }
@@ -1170,24 +1181,26 @@ export class LayoutContext {
       },
 
       /**
-       * The Open panel's Plot: the loaded repository, by its URL when it has
-       * one; else every added file; else the URL in the field, fetched and
-       * drawn as → Fetch does.
+       * The Open panel's Plot: the loaded repository, by the URL its tree was
+       * read from when it has one; else every added file; else the URL in the
+       * field, fetched and drawn as → Fetch does (`plot_target.ts`). What was
+       * drawn is what a layout change or Relayout draws again.
        */
       onPlot: () => {
         const repo = this.appState.repo.content;
-        const url = this.panelState.repoUrl.trim();
-        if (repo && repo.size > 0) {
-          this._lastPlotAction = () => { this.panelCallbacks.onPlot(); };
-          if (url) this._startStreamFromUrl(url);
-          else this._startStream(repo, 'Streaming graph\u2026');
-          return;
-        }
-        if (this.uploadedFiles.length > 0) {
+        const target = plotTarget(repo, this.uploadedFiles.length, this.panelState.repoUrl);
+        if (target?.kind === 'repository') {
+          const { url } = target;
+          this._lastPlotAction = () => { this._startStreamFromUrl(url); };
+          this._startStreamFromUrl(url);
+        } else if (target?.kind === 'tree' && repo) {
+          this._lastPlotAction = () => { this._startStream(repo, 'Streaming graph\u2026'); };
+          this._startStream(repo, 'Streaming graph\u2026');
+        } else if (target?.kind === 'files') {
           void this._plotUploads([...this.uploadedFiles]);
-          return;
+        } else if (target?.kind === 'fetch') {
+          this.panelCallbacks.onRepoSubmit(target.url);
         }
-        if (url) this.panelCallbacks.onRepoSubmit(url);
       },
 
       onFileUpload: (files: FileList) => {
@@ -1269,27 +1282,34 @@ export class LayoutContext {
         this.appState.update({ parserOptions: { ...current.parserOptions, ...options } });
       },
 
+      // **NEITHER READ TOUCHES THE PANEL'S LOADING STATE.** `isLoading` and
+      // the status line are the stream's: the Open panel's Plot bar shows
+      // Cancel and the progress bar while it is set. These set it and cleared it with
+      // "Ready" when they ended, so a folder opened mid-parse took Cancel and
+      // the progress bar from a stream still running. The folder's ↻ says it
+      // is being read; a toast says Expand All has begun, and either failing.
       onFolderExpand: async (path: string) => {
         const content = this.appState.repo.content;
-        if (!content?.is_partial) return;
-        this.updatePanelState({ isLoading: true, statusMessage: `Loading ${path}...` });
+        if (!content?.is_partial) return false;
         try {
-          await this.actions.repo.expandPath(this.panelState.repoUrl, path);
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          // The tree's own repository, not the URL field's: that follows every
+          // keystroke, and need not name the repository shown.
+          return await this.actions.repo.expandPath(path);
         } catch {
-          this.updatePanelState({ isLoading: false, statusMessage: `Error expanding ${path}` });
+          // The folder is left unread, so a click reads it again.
+          ToastManager.show(`Could not read ${path}; click it to try again`);
+          return false;
         }
       },
 
       onExpandAll: async () => {
         const content = this.appState.repo.content;
         if (!content?.is_partial) return;
-        this.updatePanelState({ isLoading: true, statusMessage: 'Expanding all folders...' });
+        ToastManager.show('Expanding all folders…');
         try {
-          await this.actions.repo.expandAll(this.panelState.repoUrl);
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          await this.actions.repo.expandAll();
         } catch {
-          this.updatePanelState({ isLoading: false, statusMessage: 'Error expanding tree' });
+          ToastManager.show('Could not expand the tree');
         }
       },
 

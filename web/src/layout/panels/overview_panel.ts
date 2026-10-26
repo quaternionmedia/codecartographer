@@ -114,7 +114,7 @@ export function createOverviewPanel(ctx: LayoutContext): m.Component {
                     ? `, generated ${reading.generated_at}`
                     : reading.written_at ? `, file written ${reading.written_at}` : '']),
                 m('button.estate-view__draw', {
-                  onclick: () => void ctx.plotWith(() => ctx.actions.plot.drawOverview()).then(() => ctx.focusDockPanel('graph')),
+                  onclick: () => void ctx.plotWith(() => ctx.actions.plot.drawOverview()).then((drawn) => { if (drawn) ctx.focusDockPanel('graph'); }),
                 }, 'draw the overview'),
               ]
             : null,
