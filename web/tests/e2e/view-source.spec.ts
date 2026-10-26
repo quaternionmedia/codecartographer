@@ -53,6 +53,64 @@ test('a double-click and View ▸ Source name the same file and line', async ({ 
   await expect(badge).toBeInViewport({ ratio: 1 });
 });
 
+test('the badge stays inside the canvas, its path shortened and whole in its title', async ({ page }) => {
+  // A canvas narrower than the badge's path, wherever this checkout is.
+  await page.setViewportSize({ width: 560, height: 720 });
+  await drawWorkspace(page);
+  const canvas = page.locator('.graphRenderer svg').first();
+  const area = (await canvas.boundingBox())!;
+  const delay = page.locator('.graph-node[data-node-id*="function::delay"]').first();
+  await expect(delay).toBeAttached();
+  // The double-click lands at the canvas's top right corner.
+  await delay.dispatchEvent('dblclick', { clientX: area.x + area.width - 2, clientY: area.y + 2 });
+
+  const badge = page.locator('.source-badge');
+  await expect(badge).toBeVisible();
+  const title = (await badge.getAttribute('title')) ?? '';
+  expect(title).toMatch(/^delay\s+.*main\.rs:21$/);
+  // Mutation: place the badge at the pointer, unclamped and whole -- it runs
+  // off the canvas's right edge, and this fails.
+  const b = (await badge.boundingBox())!;
+  expect(b.x).toBeGreaterThanOrEqual(area.x);
+  expect(b.x + b.width).toBeLessThanOrEqual(area.x + area.width);
+  expect(b.y).toBeGreaterThanOrEqual(area.y);
+  expect(b.y + b.height).toBeLessThanOrEqual(area.y + area.height);
+  // Placed by badgePlace over the canvas, so BADGE_MARGIN (8px) in from the
+  // edges it is moved off. Mutation: clamp it 4px in, as a second rule of
+  // its own -- this fails.
+  expect(area.x + area.width - (b.x + b.width)).toBeCloseTo(8, 0);
+  expect(b.y - area.y).toBeCloseTo(8, 0);
+  // Shortened from the middle: the name and the file and line stay.
+  const shown = (await badge.textContent()) ?? '';
+  expect(shown.length).toBeLessThan(title.length);
+  expect(shown).toMatch(/^delay\s+….*main\.rs:21$/);
+  // Nothing of it is cut off unseen.
+  expect(await badge.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+});
+
+test('the badge is not drawn under the point it was opened from', async ({ page }) => {
+  // It takes the pointer, so its title shows: drawn over the point, it would
+  // take the wheel and the clicks meant for the canvas until it goes.
+  await drawWorkspace(page);
+  const area = (await page.locator('.graphRenderer svg').first().boundingBox())!;
+  const delay = page.locator('.graph-node[data-node-id*="function::delay"]').first();
+  await expect(delay).toBeAttached();
+  // Near the top right, with no room above the point and too little right
+  // of it for a badge 100px or wider: it is moved left and down.
+  const at = { x: area.x + area.width - 100, y: area.y + 15 };
+  await delay.dispatchEvent('dblclick', { clientX: at.x, clientY: at.y });
+
+  const badge = page.locator('.source-badge');
+  await expect(badge).toBeVisible();
+  const b = (await badge.boundingBox())!;
+  expect(b.width).toBeGreaterThanOrEqual(100);
+  // Mutation: leave the badge where moving it down puts it, over the point --
+  // this fails.
+  const under = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('.source-badge') != null, at);
+  expect(under, 'the badge is what the point hits').toBe(false);
+  expect(b.y + b.height).toBeLessThanOrEqual(area.y + area.height);
+});
+
 test('a file opens from a double-click at the top, as a symbol opens at its line', async ({ page }) => {
   await drawWorkspace(page);
   const file = page.locator('.graph-node[data-node-id^="file::"][data-node-id$="blinky/src/main.rs"]').first();

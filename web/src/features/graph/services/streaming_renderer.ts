@@ -18,7 +18,7 @@ import { CompoundLayoutManager, outlinesAfterRemoval } from './compound_layout';
 import type { GroupBounds, OutlineSpacing } from './compound_layout';
 import type { ExtensionContext } from '../extensions/base';
 import { depthSizeMultiplier } from './depth_scale';
-import { sourceTarget, type SourceTarget } from './node_info';
+import { fitBadgeText, sourceTarget, type SourceTarget } from './node_info';
 import { BADGE_MARGIN, badgePlace } from './source_badge';
 import { fitTransform, framedExtents } from './fit';
 import type { Box, FramedNode, FramedOutline } from './fit';
@@ -776,9 +776,9 @@ export class StreamingGraphRenderer {
   /**
    * Open a node's source: its forge page in a new tab, or for a file with no
    * page (read from disk, or uploaded) a badge naming the file and line beside
-   * `at` (the node's own place on screen when not given), wholly inside the
-   * window. View → Source and a double-click both call this. False for a node
-   * from no file, which opens nothing.
+   * `at` (the node's own place on screen when not given), on one line and
+   * wholly inside the canvas. View → Source and a double-click both call
+   * this. False for a node from no file, which opens nothing.
    */
   openSource(id: string, at?: { x: number; y: number }): boolean {
     const target = this.sourceTargetOf(id);
@@ -790,21 +790,36 @@ export class StreamingGraphRenderer {
 
     const point = at ?? this._screenCentreOf(id);
     document.querySelectorAll('.source-badge').forEach((old) => old.remove());
+    // The badge stays inside the canvas, and so inside the window: a path from
+    // a deep checkout is wider than the space to the pointer's right, and
+    // often than the canvas. `area` is the part of the window the canvas
+    // covers, in viewport coordinates.
+    const canvas = this.getContainer().getBoundingClientRect();
     const view = {
       width: document.documentElement.clientWidth || window.innerWidth,
       height: document.documentElement.clientHeight || window.innerHeight,
     };
+    const areaLeft = Math.max(0, canvas.left);
+    const areaTop = Math.max(0, canvas.top);
+    const area = {
+      left: areaLeft,
+      top: areaTop,
+      width: Math.max(0, Math.min(canvas.right, view.width) - areaLeft),
+      height: Math.max(0, Math.min(canvas.bottom, view.height) - areaTop),
+    };
+    const room = Math.max(0, area.width - 2 * BADGE_MARGIN);
     const badge = document.createElement('div');
     badge.className = 'source-badge';
-    // Measured at the window's top left, where its whole width is free, then
-    // placed by `badgePlace` so that none of it is outside the window; a path
-    // longer than the window is wide wraps rather than running off it.
+    // Measured at the window's top left, where its whole width is free, on one
+    // line; shortened to `room` when it is wider, then placed by `badgePlace`
+    // so that none of it is outside `area`.
     badge.style.cssText = [
       'position:fixed',
       'left:0',
       'top:0',
+      `max-width:${room}px`,
       'box-sizing:border-box',
-      `max-width:${Math.max(0, view.width - 2 * BADGE_MARGIN)}px`,
+      'overflow:hidden',
       'z-index:9999',
       'background:#1a1a1a',
       'border:1px solid #00ff4140',
@@ -813,16 +828,31 @@ export class StreamingGraphRenderer {
       'font-size:11px',
       'font-family:monospace',
       'border-radius:4px',
-      'pointer-events:none',
-      'white-space:pre-wrap',
-      'overflow-wrap:anywhere',
+      // It takes the pointer, so its title shows the whole path when the
+      // text is shortened; it sits beside the pointer, never under it.
+      'cursor:default',
+      'white-space:nowrap',
     ].join(';');
+    badge.title = target.text;
     badge.textContent = target.text;
     document.body.appendChild(badge);
+    // Shortened from the middle when it does not fit (node_info.ts). The font
+    // is monospace, so a character's width is the measured mean.
+    const padding = 16;
+    const textWidth = badge.scrollWidth - padding;
+    const chrome = badge.offsetWidth - badge.clientWidth + padding; // border and padding
+    if (textWidth + chrome > room && target.text.length > 0) {
+      const perChar = textWidth / target.text.length;
+      badge.textContent = fitBadgeText(target.text, Math.floor((room - chrome) / perChar));
+    }
     const drawn = badge.getBoundingClientRect();
-    const place = badgePlace(point, { width: drawn.width, height: drawn.height }, view);
-    badge.style.left = `${place.left}px`;
-    badge.style.top = `${place.top}px`;
+    const place = badgePlace(
+      { x: point.x - area.left, y: point.y - area.top },
+      { width: drawn.width, height: drawn.height },
+      area,
+    );
+    badge.style.left = `${area.left + place.left}px`;
+    badge.style.top = `${area.top + place.top}px`;
     setTimeout(() => badge.remove(), 3500);
     return true;
   }
