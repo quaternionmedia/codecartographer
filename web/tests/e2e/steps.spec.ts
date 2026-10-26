@@ -5,10 +5,12 @@
  * the one the reader is on and says what comes next, and the walkthrough card
  * is a page per step. Entering a step brings its windows forward and leaves
  * the canvas in view; step 4 maximises the canvas and hides every other
- * window. A window the reader chooses says which step they are on; a window
- * that comes forward by itself does not. `web/src/layout/steps.ts` decides
- * what each step owns and brings forward, and `tests/pure/steps.test.mjs`
- * asserts it without a browser; this sees it in one.
+ * window, and the canvas alone is Read however it was maximised. A step that
+ * resizes the canvas frames the drawing in it. A window the reader chooses
+ * says which step they are on; a window that comes forward by itself does
+ * not. `web/src/layout/steps.ts` decides what each step owns and brings
+ * forward, and `tests/pure/steps.test.mjs` asserts it without a browser; this
+ * sees it in one.
  */
 
 import { expect, test, type Page } from '@playwright/test';
@@ -251,6 +253,80 @@ test('Read frames the drawing in the canvas it fills once the canvas has its siz
   // Longer than the held resize and the fit's 0.7 s transition together.
   await page.waitForTimeout(2_500);
   expect(await zoomOf(page)).toBe(zoomed);
+
+  // Into Read and out again within one frame: the canvas is back at its size
+  // before its observer saw it change, so the observer does not fire, and no
+  // fit may be left waiting for the next resize -- here the reader's own,
+  // dragging the splitter under the canvas. Mutation: leave the fit asked
+  // for when the canvas comes back to its size -- the drag undoes the zoom,
+  // and this fails.
+  await page.evaluate(() => {
+    for (const id of ['read', 'open']) {
+      document.querySelector<HTMLButtonElement>(`.gl-steps__step[data-step="${id}"]`)!.click();
+    }
+  });
+  const room = page.locator('.graphRenderer');
+  const tall = (await room.boundingBox())!.height;
+  const splitter = (await page.locator('.lm_splitter.lm_vertical').first().boundingBox())!;
+  await page.mouse.move(splitter.x + splitter.width / 2, splitter.y + splitter.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(splitter.x + splitter.width / 2, splitter.y - 80, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => (await room.boundingBox())!.height).toBeLessThan(tall - 40);
+  await page.waitForTimeout(2_500);
+  expect(await zoomOf(page)).toBe(zoomed);
+});
+
+test("the canvas maximised by Golden Layout's own control is Read, and restored it is the step the reader came from", async ({ page }) => {
+  /**
+   * Read is the canvas alone, and the canvas's stack has Golden Layout's own
+   * maximise control as well as the rail. Maximised with it, the rail still
+   * said Tune, and Next pointed at Read, over a canvas hiding every window;
+   * restored after the rail's Read, the rail said Read over every window back
+   * in view.
+   */
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.getByRole('button', { name: /Load Demo/i }).first().click();
+  await expect(page.locator('.graph-node[data-node-id]').first()).toBeVisible({ timeout: SETTLED });
+  await expect.poll(() => framing(page), { timeout: SETTLED }).toBe('framed');
+  const stackOf = (tab: string) => page.locator('.lm_stack', { has: page.locator('.lm_tab', { hasText: tab }) });
+  const canvasControl = stackOf('◈ Graph').locator('.lm_maximise');
+
+  // Mutation: stop the rail following the stack the dock maximises -- it
+  // stays on Tune, and this fails.
+  await step(page, 'Tune').click();
+  await canvasControl.click();
+  await expect.poll(() => windowsInView(page)).toEqual(['graph']);
+  await expect(current(page)).toHaveText('4Read');
+  await expect(next(page)).toHaveCount(0);
+  // Read as the rail's Read is: the drawing framed in the canvas it fills.
+  await expect.poll(() => framing(page), { timeout: 10_000 }).toBe('framed');
+
+  // The same control restores it. Mutation: leave the rail where it is when
+  // the canvas is restored -- it says Read over every window, and this fails.
+  await canvasControl.click();
+  await expect(current(page)).toHaveText('3Tune');
+  await expect.poll(() => windowsInView(page)).toEqual(['controls-graph-settings', 'file-tree', 'graph']);
+  await expect.poll(() => framing(page), { timeout: 10_000 }).toBe('framed');
+
+  // Read entered from the rail is left the same way, for the step before it.
+  await step(page, 'Browse').click();
+  await step(page, 'Read').click();
+  await expect(page.locator('.lm_maximised')).toHaveCount(1);
+  await canvasControl.click();
+  await expect(page.locator('.lm_maximised')).toHaveCount(0);
+  await expect(current(page)).toHaveText('2Browse');
+
+  // Another stack maximised is the window in front of it chosen -- Graph
+  // Settings, in front since Tune -- and stays chosen when it is restored.
+  const settingsStack = stackOf('Graph Settings');
+  await settingsStack.locator('.lm_maximise').click();
+  await expect.poll(() => windowsInView(page)).toEqual(['controls-graph-settings']);
+  await expect(current(page)).toHaveText('3Tune');
+  await settingsStack.locator('.lm_maximise').click();
+  await expect.poll(() => windowsInView(page)).toEqual(['controls-graph-settings', 'file-tree', 'graph']);
+  await expect(current(page)).toHaveText('3Tune');
 });
 
 test("a step opens its window again when it was closed, and a stack maximised by Golden Layout's own control gives way", async ({ page }) => {

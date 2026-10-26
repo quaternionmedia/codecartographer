@@ -7,8 +7,9 @@
  * shell's, and the shell passes `ctx.step`. And a step is the reader's: a
  * draw brings the canvas forward (`focusDockPanel('graph')`) after every
  * plot, and if that moved the step, the rail would jump to Read under a
- * reader who never chose it. Only entering a step, and a window the reader
- * chose, assign it.
+ * reader who never chose it. Only entering a step, a window the reader
+ * chose, and a stack the reader maximised or restored move it, and all three
+ * through `_setStep`, which keeps the step before Read.
  *
  * Read as text: the card, the shell and `layout_context.ts` are application
  * code no test build compiles. `steps.test.mjs` asserts what entering a step
@@ -40,13 +41,15 @@ test('the card keeps no step of its own, and shows the one the shell passes', ()
     'the shell does not pass the card the step the rail shows, or does not enter the step the card asks for');
 });
 
-test('only entering a step and a window the reader chose move it', () => {
-  /** Mutation: `this.step = 'read';` in focusDockPanel, as if a draw chose Read -- this fails. */
-  const assigned = [...context.matchAll(/\n  (?:public |private )?(\w+)\([^)]*\)[^{]*\{\n([\s\S]*?)\n  \}\n/g)]
-    .filter(([, , body]) => /\bthis\.step = /.test(body))
-    .map(([, name]) => name)
-    .sort();
-  assert.deepEqual(assigned, ['_followWindow', 'enterStep']);
+test('only entering a step, a window the reader chose and a stack the reader maximised move it', () => {
+  /**
+   * Mutation: `this.step = 'read';` in focusDockPanel, as if a draw chose
+   * Read -- this fails; and so does `this._setStep('read')` there.
+   */
+  const methods = [...context.matchAll(/\n  (?:public |private )?(\w+)\([^)]*\)[^{]*\{\n([\s\S]*?)\n  \}\n/g)];
+  const doing = (pattern) => methods.filter(([, , body]) => pattern.test(body)).map(([, name]) => name).sort();
+  assert.deepEqual(doing(/\bthis\.step = /), ['_setStep']);
+  assert.deepEqual(doing(/\bthis\._setStep\(/), ['_followMaximised', '_followWindow', 'enterStep']);
 });
 
 test('a window the reader chose follows its step, and a window brought forward by a draw does not', () => {

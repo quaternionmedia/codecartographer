@@ -115,6 +115,8 @@ export class LayoutContext {
    * has nothing drawn.
    */
   public step: StepId = FIRST_STEP;
+  /** The step before Read, which the canvas restored from Read goes back to. */
+  private _stepBeforeRead: StepId = FIRST_STEP;
 
   /** Graphbase availability, saved bookmarks, snapshots, and history. */
   public graphbaseAvailable = false;
@@ -240,6 +242,9 @@ export class LayoutContext {
   /** Attach the live Golden Layout manager that panels are opened in. */
   public attachLayoutManager(layoutManager: LayoutManager | null): void {
     this._layoutManager = layoutManager;
+    // A stack maximised or restored moves the rail (`_followMaximised`).
+    // Golden Layout says so at once, before the canvas's resize lands.
+    layoutManager?.on('stateChanged', () => this._followMaximised());
   }
 
   /**
@@ -329,11 +334,54 @@ export class LayoutContext {
    * reader's zoom.
    */
   public enterStep(id: StepId): void {
-    this.step = id;
+    this._setStep(id);
     if (this._layoutManager) {
       enterStep(id, this._stepDock());
       this._streamingRenderer?.fitWhenResized();
     }
+    m.redraw();
+  }
+
+  /** Move the rail to `id`, keeping the step it leaves for Read. */
+  private _setStep(id: StepId): void {
+    if (id === 'read' && this.step !== 'read') this._stepBeforeRead = this.step;
+    this.step = id;
+  }
+
+  /** The stack maximised when `_followMaximised` last looked. */
+  private _maximisedSeen: Stack | undefined = undefined;
+
+  /**
+   * Follow a stack the reader maximised or restored with Golden Layout's own
+   * control, or by dragging a tab out of a maximised stack.
+   *
+   * **READ IS THE CANVAS ALONE, HOWEVER IT CAME TO BE.** The canvas maximised
+   * is Read, and restored from Read it is the step the reader came from:
+   * before, the rail said Tune, with Next pointing at Read, over a canvas
+   * hiding every window, and Read over every window back in view. Either way
+   * the canvas changes size, and the drawing is framed in it, as a step frames
+   * it. Another stack maximised is the window in front of it chosen, as its
+   * tab is, and stays chosen when it is restored.
+   *
+   * A step's own maximise and restore come through here too, and land where
+   * the step put the rail: it is set before the dock moves.
+   */
+  private _followMaximised(): void {
+    const layout = this._layoutManager;
+    if (!layout) return;
+    const maximised = layout.maximisedStack;
+    const was = this._maximisedSeen;
+    if (maximised === was) return;
+    this._maximisedSeen = maximised;
+    const canvas = layout.findFirstComponentItemById('graph')?.parent;
+    if (maximised) {
+      const front = maximised.getActiveComponentItem();
+      const step = front ? stepOfPanel(front.id) : null;
+      if (step) this._setStep(step);
+    } else if (was === canvas && this.step === 'read') {
+      this._setStep(this._stepBeforeRead);
+    }
+    if (canvas && (maximised === canvas || was === canvas)) this._streamingRenderer?.fitWhenResized();
     m.redraw();
   }
 
@@ -372,7 +420,7 @@ export class LayoutContext {
   private _followWindow(panelId: string): void {
     const step = stepOfPanel(panelId);
     if (!step || step === this.step) return;
-    this.step = step;
+    this._setStep(step);
     m.redraw();
   }
 

@@ -4,8 +4,9 @@
  * Open -> Browse -> Tune -> Read. They are numbered on a rail in the header,
  * the walkthrough card is a page per step, and each step owns a group of the
  * dock's windows: entering it brings that group forward, and a window the
- * reader chooses -- by its tab, or from the "+" menu -- says which step they
- * are on.
+ * reader chooses -- by its tab, from the "+" menu, or by maximising its stack
+ * -- says which step they are on. The canvas alone is Read however it was
+ * maximised, and restored from Read it is the step before (`layout_context.ts`).
  *
  * The shape is alfred's stage flow (Source -> Edit -> Render -> Deliver, in
  * `website/src/Stages.js` and `website/src/layout/registry.js` there): a

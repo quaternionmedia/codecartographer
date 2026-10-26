@@ -665,12 +665,15 @@ export class StreamingGraphRenderer {
    * fit frames into (`width`, `height`) follow only when the observer fires.
    * A fit before then frames the drawing in the size the canvas had, and the
    * observer's frame comes when it comes, so no delay is the right one.
+   *
+   * A canvas back at its size before the observer saw it go -- into Read and
+   * out within a frame -- clears the fit asked for: the observer will not
+   * fire, and the fit would wait for the next resize, a reader's own.
    */
   fitWhenResized(): void {
     const w = this._container.clientWidth;
     const h = this._container.clientHeight;
-    if (!w || !h || (w === this.width && h === this.height)) return;
-    this._fitOnResize = true;
+    this._fitOnResize = !!w && !!h && (w !== this.width || h !== this.height);
   }
 
   /** Fit the viewport to these nodes only. Unknown ids are ignored. */

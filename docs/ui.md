@@ -69,17 +69,20 @@ which names the step after it; the last step has no Next.
 - **A step on the rail enters it**, the step already on included. Its windows
   come to the front of their stacks and a closed one opens again; where two
   share a stack, the first one named is in front. A maximised stack is restored
-  first, so any step after Read brings the windows back, as the stack's own
-  restore button does.
+  first, so any step after Read brings the windows back.
+- **The canvas alone is Read, however it got that way.** Maximising the Graph
+  panel's stack with its ▢ moves the rail to Read, and
+  restoring the canvas from Read moves it back to the step the reader was on
+  before. Either way the drawing is framed in the canvas's new size.
 - **A step that resizes the canvas frames the drawing in it again**, as the
   ring's **Fit** does: entering Read, and leaving it. The fit waits until the
   canvas has its new size, not a fixed time. A step that leaves the canvas
   its size leaves the reader's zoom where it was.
-- **Choosing a window moves the rail** to the step that owns it -- its tab, or
-  the `+` menu -- and moves nothing else: the Graph panel's tab says Read
-  without maximising the canvas. A window that comes forward by itself, as the
-  canvas does after a draw, leaves the step where it is, and so does closing a
-  tab.
+- **Choosing a window moves the rail** to the step that owns it -- its tab, the
+  `+` menu, or maximising another stack, which chooses the window in front of
+  it -- and moves nothing else: the Graph panel's tab says Read without
+  maximising the canvas. A window that comes forward by itself, as the canvas
+  does after a draw, leaves the step where it is, and so does closing a tab.
 - **A page opens on step 1**, and *Reset to built-in default* returns to it. The
   step is not kept anywhere: a reload has nothing drawn.
 - **The walkthrough** (the header's `?`) is a page per step and shows the step
