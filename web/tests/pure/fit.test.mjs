@@ -76,6 +76,15 @@ test('one small node is framed at the most a fit zooms in, centred', () => {
   assert.ok(Math.abs(-12 * t.k + t.y - VIEW.height / 2) < EPS);
 });
 
+test('the whole corpus is framed whole in the canvas a picture is drawn in', () => {
+  // Every family with each project's code in it was laid out about 28,600 by
+  // 24,700 units. Mutation: hold the zoom at a twentieth, as its limit was --
+  // the corpus is framed cut off, and this fails.
+  const canvas = { width: 1400, height: 900 };
+  const t = fitTransform([{ x: -14300, y: -12350, r: 30 }, { x: 14300, y: 12350, r: 30 }], canvas);
+  assert.ok(t.k * 24760 <= canvas.height, `framed at ${t.k}, ${Math.round(t.k * 24760)} px tall in ${canvas.height}`);
+});
+
 test('a graph too large for the canvas is held at the zoom limit', () => {
   const t = fitTransform([{ x: -1e6, y: 0, r: 1 }, { x: 1e6, y: 0, r: 1 }], VIEW);
   assert.equal(t.k, FIT_DEFAULTS.minScale);

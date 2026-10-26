@@ -21,7 +21,7 @@ import { depthSizeMultiplier } from './depth_scale';
 import { labelColorOf } from './label_color';
 import { fitBadgeText, sourceTarget, type SourceTarget } from './node_info';
 import { BADGE_MARGIN, badgePlace } from './source_badge';
-import { fitTransform, framedExtents } from './fit';
+import { FIT_DEFAULTS, fitTransform, framedExtents } from './fit';
 import { placeOutlineLabels } from './outline_labels';
 import type { Box, FramedNode, FramedOutline } from './fit';
 
@@ -196,7 +196,7 @@ export class StreamingGraphRenderer {
 
     this.zoom = d3
       .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.05, 10])
+      .scaleExtent([FIT_DEFAULTS.minScale, 10])
       .on('zoom', (event) => {
         this.g.attr('transform', event.transform);
         this._zoomK = event.transform.k;
@@ -380,6 +380,11 @@ export class StreamingGraphRenderer {
       if (this.styling.showCompoundGroups !== false) {
         this._drawCompoundBackgrounds();
       }
+      // A map's names are tidied when a zoom ends, and the names drawn since
+      // the last one were not. Drawn already framed, as a picture is, the fit
+      // after the last node changes nothing, and until its transition ended
+      // the whole corpus's two thousand file names showed over it.
+      if (this._map) this._declutterNames();
       this._fitView();
     }
     // else: queues empty but stream not done yet — wait for more addNode calls

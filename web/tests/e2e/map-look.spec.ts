@@ -124,3 +124,32 @@ test('a showgraph of thousands of nodes is drawn in seconds, not a minute', asyn
   await dismissOnboardingModal(page);
   await expect(page.locator('.graphRenderer svg g.graph-node')).toHaveCount(2000, { timeout: 10_000 });
 });
+
+test('a map drawn already framed names none of its small nodes as its last is drawn', async ({ page }) => {
+  // Two thousand files spread further than the canvas can frame, so every
+  // fit lands at the zoom limit, and Read pressed while they are drawn, as
+  // an export presses it: the fit after the last node changes nothing. The
+  // names drawn since the last zoom ended are tidied as the last node is
+  // drawn. Mutation: tidy them only when a zoom ends -- every file drawn
+  // after Read is named until the last fit's transition has run, and this
+  // fails.
+  const nodes: Record<string, unknown> = {};
+  for (let i = 0; i < 2000; i++) {
+    nodes[`code::wide::file::f${i}`] = { label: `f${i}.py`, metadata: { label: `f${i}.py`, kind: 'file', depth: 3,
+      code: true, x: (i % 50) * 20000, y: Math.floor(i / 50) * 20000 } };
+  }
+  await page.route('**/show/index/gjgf*', (route) => route.fulfill({ json: { status: 200, results: {
+    graph: { nodes, edges: [] },
+    metadata: { kind: 'show', subject: 'index', bases: {}, caveat: '', notes: [], provenance: {} },
+  } } }));
+  await page.goto('/?show');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.graphRenderer svg g.graph-node').first()).toBeAttached({ timeout: SETTLED });
+  await page.locator('.gl-steps__step[data-step="read"]').click();
+  await page.waitForFunction(
+    () => document.querySelectorAll('.graphRenderer svg g.graph-node').length === 2000,
+    undefined, { polling: 'raf', timeout: SETTLED });
+  const named = await page.locator('.graphRenderer svg .labels text').evaluateAll((texts) => texts
+    .filter((t) => getComputedStyle(t).display !== 'none' && t.getAttribute('visibility') !== 'hidden').length);
+  expect(named).toBe(0);
+});
