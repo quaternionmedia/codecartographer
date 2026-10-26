@@ -339,3 +339,30 @@ test('Back to an entry before any showgraph clears the trail', async ({ page }) 
   // trail still names the family, and this fails.
   await expect(page.locator('.show__crumb.is-current')).toHaveCount(0);
 });
+
+/** Answer every project's views as `views` says, in place of what this checkout can draw. */
+async function stubViews(page: Page, views: (name: string) => Record<string, unknown>): Promise<void> {
+  await page.route('**/show/project/*/views', (route) => {
+    const name = decodeURIComponent(route.request().url().split('/project/')[1].split('/')[0]);
+    return route.fulfill({ json: { status: 200, message: 'stubbed', results: { name, ...views(name) } } });
+  });
+}
+
+test("a project's system view leaves the renderer as it found it for the next plot", async ({ page }) => {
+  await stubViews(page, () => ({
+    estate: { available: true },
+    code: { available: false, problem: 'not here', remedy: '' },
+    system: { available: true, components: 1 },
+  }));
+  await page.goto('/?show=project:moat&view=system');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.sys-title').first()).toBeAttached({ timeout: SETTLED });
+
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
+  await page.getByRole('button', { name: /Load Demo/i }).first().click();
+  // Mutation: leave the system monitor chosen after the system view -- the
+  // demo is drawn as the system monitor's diagram, with no graph node, and
+  // this fails.
+  await expect(page.locator('.graphRenderer svg .graph-node[data-node-id]').first()).toBeAttached({ timeout: SETTLED });
+  await expect(page.locator('.sys-title')).toHaveCount(0);
+});

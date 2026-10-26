@@ -162,7 +162,7 @@ export class LayoutContext {
           // Back to an entry before any showgraph: the trail names none, and
           // a drawing still out for the one left is not drawn after it.
           this.actions.plot.supersedePlots();
-          this._leaveShow();
+          this._forgetShow();
         }
       });
     }
@@ -198,9 +198,17 @@ export class LayoutContext {
    * still said every family, and a copied link opened something else. Every
    * plot that is not a showgraph calls this when it is asked for: a stream
    * (`_mountAndStream`), `plotWith`, the demo, a lexicon, added files and the
-   * system monitor chosen in Graph Settings.
+   * system monitor chosen in Graph Settings. It is a draw that is not a system
+   * view, so the renderer a system view replaced comes back
+   * (`_restoreRenderer`).
    */
   private _leaveShow(): void {
+    this._restoreRenderer();
+    this._forgetShow();
+  }
+
+  /** Neither the trail nor the page's address names a showgraph (`_leaveShow`). */
+  private _forgetShow(): void {
     // `showProblem` is left: it also holds why the corpus could not be read,
     // which the panel's list waits on.
     if (this.appState.state.showAddress) this.appState.update({ showAddress: null, showViews: null });
@@ -655,6 +663,10 @@ export class LayoutContext {
         SystemDefinitionRegistry.register(new DerivedSystemDefinition(address.name));
       }
       const styling = this.appState.state.graphStyling;
+      // Put back by the next draw that is not a system view; one system view
+      // after another keeps the first's.
+      const was = this.appState.state.selectedRenderer;
+      if (was !== 'system') this._rendererBeforeSystem = was;
       this.appState.update({
         selectedRenderer: 'system',
         graphStyling: { ...styling, systemId: address.name },
@@ -703,11 +715,36 @@ export class LayoutContext {
     }
   }
 
-  /** A showgraph's estate and code views draw on the D3 canvas, not the system monitor. */
+  /**
+   * A showgraph's estate and code views draw on the D3 canvas, not the system
+   * monitor: the renderer a system view replaced, and D3 when the reader chose
+   * the system monitor themselves.
+   */
   private _leaveSystemRenderer(): void {
+    this._restoreRenderer();
     if (this.appState.state.selectedRenderer === 'system') {
       this.appState.update({ selectedRenderer: 'd3' });
     }
+  }
+
+  /**
+   * The renderer chosen before a showgraph's system view put the system
+   * monitor on the canvas; null when no system view did, or the reader has
+   * chosen one since.
+   *
+   * **A SYSTEM VIEW CHOSE THE RENDERER FOR EVERY DRAW AFTER IT.** It set
+   * `selectedRenderer` to `system`, and only the show's estate and code views
+   * set it back, so Load Demo after one drew the system monitor's diagram and
+   * no graph.
+   */
+  private _rendererBeforeSystem: ICellState['selectedRenderer'] | null = null;
+
+  /** Any draw but a system view: the renderer the system view replaced comes back. */
+  private _restoreRenderer(): void {
+    const was = this._rendererBeforeSystem;
+    if (was === null) return;
+    this._rendererBeforeSystem = null;
+    if (this.appState.state.selectedRenderer === 'system') this.appState.update({ selectedRenderer: was });
   }
 
   public async refreshExamples(): Promise<void> {
@@ -1566,6 +1603,8 @@ export class LayoutContext {
       onRendererChange: (renderer) => {
         // The system monitor draws its own diagram, not the showgraph.
         if (renderer === 'system') this._leaveShow();
+        // The reader's choice: no system view's to put back.
+        this._rendererBeforeSystem = null;
         this.appState.update({ selectedRenderer: renderer });
         if (renderer === 'system' || this.appState.state.graphData) {
           this.updatePanelState({ statusMessage: `Switching to ${renderer} renderer...` });
