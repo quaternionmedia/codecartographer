@@ -126,6 +126,14 @@ export class StreamingGraphRenderer {
   private _allEdges: GraphEdge[] = [];
   private _rafId: number | null = null;
   private _streamDone = false;
+  /**
+   * Whether the drawing is done: every node and edge drawn, the outlines
+   * drawn round them, and the fit started. Said on the svg as `data-drawn`,
+   * for a reader that must not take the picture sooner: the nodes are drawn
+   * first and the edges after them, so a drawing with every node in it may
+   * still be thousands of edges, its outlines and its names from done.
+   */
+  private _drawn = false;
   private _batchSize = 1;           // updated when total is known via setTotal()
   private _totalNodes = 0;
   private _nodeCountByDepth = new Map<number, number>();
@@ -269,6 +277,7 @@ export class StreamingGraphRenderer {
 
   /** Enqueue a node — rendered progressively by the rAF loop. */
   addNode(node: GraphNode): void {
+    this._undrawn();
     this._assignVisuals(node);
     // Store position immediately so edges added later can reference it
     this.nodeById.set(node.id, node);
@@ -386,6 +395,8 @@ export class StreamingGraphRenderer {
       // the whole corpus's two thousand file names showed over it.
       if (this._map) this._declutterNames();
       this._fitView();
+      this._drawn = true;
+      this.svg.attr('data-drawn', 'true');
     }
     // else: queues empty but stream not done yet — wait for more addNode calls
   }
@@ -750,8 +761,16 @@ export class StreamingGraphRenderer {
     return this._childrenMap.get(id) ?? [];
   }
 
+  /** The drawing is not done: more is on its way. */
+  private _undrawn(): void {
+    if (!this._drawn) return;
+    this._drawn = false;
+    this.svg.attr('data-drawn', null);
+  }
+
   /** Merge freshly parsed nodes/edges into the live scene, then settle. */
   mergeGraph(nodes: GraphNode[], edges: GraphEdge[]): void {
+    this._undrawn();
     for (const n of nodes) {
       if (this.nodeById.has(n.id)) continue;
       this.addNode(n);

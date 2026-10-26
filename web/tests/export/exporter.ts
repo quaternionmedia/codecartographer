@@ -95,14 +95,18 @@ async function settle(page: Page): Promise<void> {
 }
 
 /**
- * Every node the window was sent, drawn. The canvas draws a few each frame
- * after the stream has ended, and fits the drawing again and tidies its names
- * once the last is drawn; a picture taken as the zoom first stopped moving held
- * four nodes in five of a code map, with a hundred of its files' names over it.
+ * Every node the window was sent, drawn, and the drawing done. The canvas
+ * draws a few nodes each frame after the stream has ended, then its edges,
+ * then its outlines, tidies its names and fits again, and marks its svg
+ * `data-drawn`. A picture taken as the zoom first stopped moving held four
+ * nodes in five of a code map, with a hundred of its files' names over it; one
+ * taken once every node was in held the whole corpus with its four thousand
+ * edges still coming, no outline drawn, and two thousand names over it.
  */
 async function drawnAll(page: Page, count: number): Promise<void> {
-  await expect(page.locator('.graphRenderer > svg').first().locator('g.graph-node'))
-    .toHaveCount(count, { timeout: SETTLED });
+  const view = page.locator('.graphRenderer > svg').first();
+  await expect(view.locator('g.graph-node')).toHaveCount(count, { timeout: SETTLED });
+  await expect(view).toHaveAttribute('data-drawn', 'true', { timeout: SETTLED });
 }
 
 /**

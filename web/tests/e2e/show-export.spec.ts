@@ -181,13 +181,19 @@ test('a code map is pictured once every node it was sent is drawn, with none of 
    */
   test.setTimeout(120_000);
   const out = test.info().outputPath('show');
-  const count = await stubWideCodeMap(page, 30, 29);
+  // Eight thousand imports among the files, which the canvas draws after the
+  // last node and before the outlines.
+  const count = await stubWideCodeMap(page, 30, 29, 8000);
   const codeOnly: ManifestSubject = { ...carlos, views: ['code'] };
   await exportSubject(page, codeOnly, manifest(out));
   const picture = read(join(out, 'project', 'carlos', 'code.svg'));
   // Mutation: take the picture once the zoom stops moving -- some of the
   // nodes are not in it, and this fails.
   expect(picture.match(/<g class="graph-node"/g) ?? []).toHaveLength(count);
+  // And the drawing done: each directory's outline drawn round its files,
+  // which the canvas draws once its edges are in. Mutation: take the picture
+  // once every node is drawn -- its outlines are not in it, and this fails.
+  expect((picture.match(/class="compound-group/g) ?? []).length).toBeGreaterThanOrEqual(30);
   const named = [...picture.matchAll(/<text[^>]*data-node-id="file::[^"]*"[^>]*>/g)]
     .filter(([tag]) => !/visibility:\s*hidden|display:\s*none/.test(tag));
   expect(named).toHaveLength(0);

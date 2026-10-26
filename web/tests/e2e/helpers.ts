@@ -82,7 +82,7 @@ export async function dismissOnboardingModal(page: Page): Promise<void> {
  * A parse of `dirs` directories of `files` files each under one root, spread
  * wide enough that the fit framing it draws each file under a pixel.
  */
-export function wideStream(dirs: number, files: number): string {
+export function wideStream(dirs: number, files: number, imports = 0): string {
   const lines: string[] = [];
   const event = (name: string, data: unknown) => lines.push(`event: ${name}\ndata: ${JSON.stringify(data)}\n`);
   const nodes: unknown[] = [];
@@ -104,6 +104,14 @@ export function wideStream(dirs: number, files: number): string {
       edges.push({ source: dir, target: `file::example/wide/d${d}/module_${f}.py`, metadata: { kind: 'contains', weight: 1 } });
     }
   }
+  // `imports` edges between files, each from one file to another a stride on:
+  // drawn after every node, so a drawing with them is long from done once its
+  // last node is in.
+  const leaves = nodes.filter((n) => String((n as { id: string }).id).startsWith('file::')) as { id: string }[];
+  for (let i = 0; i < imports && leaves.length > 1; i++) {
+    edges.push({ source: leaves[i % leaves.length].id, target: leaves[(i * 7 + 3) % leaves.length].id,
+      metadata: { kind: 'imports', weight: 1 } });
+  }
   event('meta', { nodeCount: nodes.length, edgeCount: edges.length, layout: 'Map', from_cache: true });
   for (const n of nodes) event('node', n);
   for (const e of edges) event('edge', e);
@@ -112,7 +120,7 @@ export function wideStream(dirs: number, files: number): string {
 }
 
 /** carlos's views stubbed so that its code view is the wide stream above. Returns its node count. */
-export async function stubWideCodeMap(page: Page, dirs: number, files: number): Promise<number> {
+export async function stubWideCodeMap(page: Page, dirs: number, files: number, imports = 0): Promise<number> {
   await page.route('**/show/project/*/views', (route) => route.fulfill({ json: { status: 200, results: {
     name: 'carlos',
     estate: { available: true },
@@ -120,7 +128,7 @@ export async function stubWideCodeMap(page: Page, dirs: number, files: number): 
     system: { available: false, problem: 'carlos declares no system this window reads', remedy: '' },
   } } }));
   await page.route('**/parse/stream-url', (route) => route.fulfill({
-    status: 200, contentType: 'text/event-stream', body: wideStream(dirs, files),
+    status: 200, contentType: 'text/event-stream', body: wideStream(dirs, files, imports),
   }));
   return 1 + dirs * (1 + files);
 }
