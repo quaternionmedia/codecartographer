@@ -4,6 +4,8 @@
  * Central state-management hub for the Golden Layout integration.
  * Shared state hub for the Golden Layout panels so they can use the same
  * actions, streaming state, and callbacks without duplicating business logic.
+ * It also holds the step of the flow the reader is on, and enters a step
+ * against the dock (`steps.ts`).
  *
  * Usage:
  *   const ctx = new LayoutContext(initialCell);
@@ -12,7 +14,7 @@
 
 import m from 'mithril';
 import { LayoutManager } from 'golden-layout';
-import type { LayoutConfig } from 'golden-layout';
+import type { ContentItem, LayoutConfig, Stack } from 'golden-layout';
 
 import { ICell, ICellState } from '../state/cell_state';
 import { StateController } from '../state/state_controller';
@@ -26,10 +28,18 @@ import {
   CachedEntry,
 } from '../components/codecarto/control_panel';
 import { PlotService } from '../services/plot_service';
-import { StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
+import { SHOW_OPEN_EVENT, StreamingGraphRenderer } from '../features/graph/services/streaming_renderer';
 import { ToastManager } from '../components/codecarto/help/toast';
+import { infoLine } from '../features/graph/services/node_info';
+import type { BundledExample } from '../features/examples/examples';
+import { notesTail } from '../features/graph/services/parse_notes';
+import { plotTarget } from '../features/repository/plot_target';
 import { DockPanelId, PanelRegistry } from './panel_registry';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
+import { readSavedLayout } from './saved_layout';
+import { stackForNewPanel, stackOfTabClicked } from './new_panel_stack';
+import { FIRST_STEP, enterStep, stepOfPanel } from './steps';
+import type { StepDock, StepId } from './steps';
 import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHistoryMeta } from '../services/graphbase_service';
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
 import { GraphSurface } from '../features/graph/services/graph_surface';
@@ -38,8 +48,13 @@ import { viewActions, EMPTY_VIEW_STATE, anyHidden } from '../features/graph/rad/
 import type { NodeViewState } from '../features/graph/rad/host/view_state';
 import type { GraphOps } from '../features/graph/rad/host/graph_intents';
 import type { MenuContext } from '../features/graph/rad/core/types';
+import { DEEPEST_DEPTH } from '../features/graph/rad/host/resolve';
 import type { GraphNode, GraphEdge } from '../features/graph/services/graph_types';
 import { backendLayoutName } from '../features/graph/services/layout_names';
+import { formatShow, fromNode, parseShow, sameShow } from '../features/show/show_address';
+import type { ShowAddress } from '../features/show/show_address';
+import { SystemDefinitionRegistry } from '../features/graph/services/system_core';
+import { DerivedSystemDefinition } from '../features/graph/services/derived_system';
 
 export type { DockPanelId } from './panel_registry';
 
@@ -73,17 +88,14 @@ export class LayoutContext {
 
   // Reactive UI-only state shared by the docked panels.
   public panelState: ControlPanelState = {
-    isOpen: true,
-    activeTab: 'source',
-    codeSourceMode: 'upload',
     repoUrl: '',
     currentTheme: 'forest',
     isLoading: false,
     statusMessage: 'Ready',
     progress: null,
-    panelHeight: 380,
     graphSections: { layout: true, visual: false, theme: false },
     parseDepth: 2,
+    parseOptionsOpen: false,
   };
 
   /** Files uploaded via the local file picker (not stored in Meiosis state). */
@@ -91,9 +103,20 @@ export class LayoutContext {
 
   /** Cached graph entries fetched from the backend cache endpoint. */
   public cachedGraphs: CachedEntry[] | null = null;
+  public bundledExamples: BundledExample[] = [];
 
   /** GitHub auth status from the backend's /auth/github endpoint. */
   public githubAuthStatus: { source: string; authenticated: boolean; token_prefix?: string } | null = null;
+
+  /**
+   * The step of the flow the reader is on (`steps.ts`): what the header's
+   * rail fills and the walkthrough card shows. The one copy -- the rail and
+   * the card read it on each draw. A page opens on the first step: a reload
+   * has nothing drawn.
+   */
+  public step: StepId = FIRST_STEP;
+  /** The step before Read, which the canvas restored from Read goes back to. */
+  private _stepBeforeRead: StepId = FIRST_STEP;
 
   /** Graphbase availability, saved bookmarks, snapshots, and history. */
   public graphbaseAvailable = false;
@@ -102,9 +125,6 @@ export class LayoutContext {
   public graphbaseHistory: GraphbaseHistoryMeta[] = [];
   /** When true, every completed render appends an entry to the history collection. */
   public graphbaseTrackHistory = false;
-
-  /** Dock panels that have been closed and can be restored. */
-  public hiddenDockPanels: DockPanelId[] = [];
 
   // Streaming lifecycle refs
   private _cancelStream: (() => void) | null = null;
@@ -135,8 +155,31 @@ export class LayoutContext {
     // sees. Both announce the finished canvas, so both get the same fittings.
     GraphSurface.subscribe((renderer) => {
       this._streamingRenderer = renderer;
+      // Hide is view state kept here; the renderer reads it so a fit leaves
+      // hidden nodes out, as they are drawn at opacity 0 and still held.
+      renderer.setHiddenTest((id) => !!this._nodeViewState[id]?.hidden);
       this._mountRad(renderer);
     });
+
+    // A showgraph is a place to move through: a node double-clicked on the
+    // canvas opens its own showgraph, and Back and Forward walk the drawings.
+    if (typeof window !== 'undefined') {
+      window.addEventListener(SHOW_OPEN_EVENT, (event) => {
+        const address = fromNode((event as CustomEvent).detail);
+        if (address) void this.openShow(address);
+      });
+      window.addEventListener('popstate', () => {
+        const address = parseShow(window.location.search);
+        if (address) {
+          void this.openShow(address, 'keep');
+        } else if (this.appState.state.showAddress) {
+          // Back to an entry before any showgraph: the trail names none, and
+          // a drawing still out for the one left is not drawn after it.
+          this.actions.plot.supersedePlots();
+          this._forgetShow();
+        }
+      });
+    }
   }
 
   // ── Public helpers ─────────────────────────────────────────────────────────
@@ -154,9 +197,41 @@ export class LayoutContext {
    * the selection was kept and not applied until somebody pressed draw again,
    * which nobody guesses. Every panel that draws goes through this.
    */
-  public async plotWith(action: () => Promise<void>): Promise<void> {
-    this._lastPlotAction = action;
-    await action();
+  public async plotWith<T>(action: () => Promise<T>): Promise<T> {
+    this._leaveShow();
+    this._lastPlotAction = async () => { await action(); };
+    return action();
+  }
+
+  /**
+   * Another plot is asked for: no showgraph is on the canvas, so neither the
+   * Show panel's trail nor the page's address names one.
+   *
+   * **THE ADDRESS IS THE GRAPH ON THE CANVAS**, and nothing cleared it: at
+   * `?show=index` Load Demo drew the demo under an address, and a trail, that
+   * still said every family, and a copied link opened something else. Every
+   * plot that is not a showgraph calls this when it is asked for: a stream
+   * (`_mountAndStream`), `plotWith`, the demo, a lexicon, added files and the
+   * system monitor chosen in Graph Settings. It is a draw that is not a system
+   * view, so the renderer a system view replaced comes back
+   * (`_restoreRenderer`).
+   */
+  private _leaveShow(): void {
+    this._restoreRenderer();
+    this._forgetShow();
+  }
+
+  /** Neither the trail nor the page's address names a showgraph (`_leaveShow`). */
+  private _forgetShow(): void {
+    // `showProblem` is left: it also holds why the corpus could not be read,
+    // which the panel's list waits on.
+    if (this.appState.state.showAddress) this.appState.update({ showAddress: null, showViews: null });
+    if (typeof window === 'undefined' || !parseShow(window.location.search)) return;
+    try {
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch {
+      // A page that cannot rewrite its address still draws.
+    }
   }
 
   public updatePanelState(updates: Partial<ControlPanelState>): void {
@@ -164,35 +239,24 @@ export class LayoutContext {
     m.redraw();
   }
 
-  /** Attach the live Golden Layout manager for add/restore operations. */
+  /** Attach the live Golden Layout manager that panels are opened in. */
   public attachLayoutManager(layoutManager: LayoutManager | null): void {
     this._layoutManager = layoutManager;
-  }
-
-  public hideDockPanel(panelId: DockPanelId): void {
-    if (!this.hiddenDockPanels.includes(panelId)) {
-      this.hiddenDockPanels = [...this.hiddenDockPanels, panelId];
-      m.redraw();
-    }
-  }
-
-  public showDockPanel(panelId: DockPanelId): void {
-    if (this.hiddenDockPanels.includes(panelId)) {
-      this.hiddenDockPanels = this.hiddenDockPanels.filter((id) => id !== panelId);
-      m.redraw();
-    }
+    // A stack maximised or restored moves the rail (`_followMaximised`).
+    // Golden Layout says so at once, before the canvas's resize lands.
+    layoutManager?.on('stateChanged', () => this._followMaximised());
   }
 
   /**
    * Bring a panel's tab to the front of its stack.
    *
-   * A panel opened from the "+" menu lands in the main stack beside the Graph
-   * panel, so after a reader presses "draw" the graph is drawn behind the
-   * controls they pressed it from -- which the browser tests measured as every
-   * node present and every node hidden. The drawing goes where the reader can
-   * see it; a panel that is not in a stack has nothing to focus and is left.
+   * A panel that draws calls this with 'graph' once it has drawn, so the
+   * drawing is in view even when the reader has stacked the panel with the
+   * canvas, or maximised the panel's stack. A panel that is not in a stack
+   * has nothing to focus and is left. `focus` false brings it forward without
+   * Golden Layout's focus, as a step does with the canvas beside its window.
    */
-  public focusDockPanel(panelId: DockPanelId): void {
+  public focusDockPanel(panelId: DockPanelId, focus = true): void {
     const item = this._layoutManager?.findFirstComponentItemById(panelId);
     if (!item) return;
     // `ComponentItem.focus()` marks the item focused and leaves the stack's
@@ -200,26 +264,184 @@ export class LayoutContext {
     // behind. The stack is what shows one tab and hides the rest.
     const stack = item.parent as { setActiveComponentItem?: (i: typeof item, focus: boolean) => void } | null;
     if (stack && typeof stack.setActiveComponentItem === 'function') {
-      stack.setActiveComponentItem(item, true);
+      stack.setActiveComponentItem(item, focus);
     }
+    this._restoreAllBut(stack);
   }
 
-  /** Re-open a closed dock panel, or add it fresh if it isn't in the layout at all. */
-  public restoreDockPanel(panelId: DockPanelId): void {
-    if (!this._layoutManager) return;
+  /**
+   * Restore a maximised stack other than `stack`. A maximised stack hides
+   * every other, so a window brought to the front of one of those -- by a
+   * step, a draw bringing the canvas, View ▸ Compare -- is still out of
+   * sight. Step 4 maximises the canvas, and Golden Layout's own ▢ maximises
+   * any stack. (A window `openPanel` adds needs none of this: Golden Layout
+   * restores a maximised stack itself before it adds an item.)
+   */
+  private _restoreAllBut(stack: unknown): void {
+    const maximised = this._layoutManager?.maximisedStack;
+    if (maximised && maximised !== stack) maximised.minimise();
+  }
+
+  /**
+   * Open a panel: bring it to the front when it is in the layout, add it when
+   * it is not. The one way a window opens: the "+" menu, an Estate row, View ▸
+   * Compare and a source that loads data for a panel all call this.
+   *
+   * An added panel joins the stack whose tab the reader last clicked, or else
+   * the stack holding the most panels, and not the Graph panel's own stack
+   * while another stack exists, so the canvas stays in view.
+   */
+  public openPanel(panelId: DockPanelId): void {
+    const layout = this._layoutManager;
+    if (!layout) return;
     const def = PanelRegistry.get(panelId);
     if (!def) return;
 
-    if (this._layoutManager.findFirstComponentItemById(panelId)) {
-      this.showDockPanel(panelId);
-      // Present but behind another tab is not "shown" to anybody.
+    if (layout.findFirstComponentItemById(panelId)) {
       this.focusDockPanel(panelId);
       return;
     }
 
-    this._layoutManager.newItemAtLocation(def.config, LayoutManager.defaultLocationSelectors);
-    this.showDockPanel(panelId);
-    this._layoutManager.updateRootSize(true);
+    // Where: `new_panel_stack.ts`, which says why it is not Golden Layout's
+    // focus. Null leaves it to Golden Layout's own placement.
+    const canvas = layout.findFirstComponentItemById('graph')?.parent ?? null;
+    const stack = stackForNewPanel<ContentItem>(layout.rootItem, canvas, this._tabStackClicked) as Stack | null;
+    if (stack) stack.newItem(def.config);
+    else layout.newItemAtLocation(def.config, LayoutManager.defaultLocationSelectors);
+    layout.updateRootSize(true);
+  }
+
+  /**
+   * Open a window the reader chose from the "+" menu: as `openPanel`, and
+   * the step follows it, as choosing its tab does.
+   */
+  public chooseWindow(panelId: DockPanelId): void {
+    this.openPanel(panelId);
+    this._followWindow(panelId);
+  }
+
+  // ── The steps ──────────────────────────────────────────────────────────────
+
+  /**
+   * Enter step `id`: bring its windows forward, opening any that were closed,
+   * and on step 4 maximise the canvas (`steps.ts` says which, and why in that
+   * order). The rail, Next and the walkthrough card all come here -- the step
+   * already on included, since one of its windows may have been closed or put
+   * behind another since.
+   *
+   * A step that changes the canvas's size -- into Read, or out of it --
+   * frames the drawing in the new size; one that keeps it leaves the
+   * reader's zoom.
+   */
+  public enterStep(id: StepId): void {
+    this._setStep(id);
+    if (this._layoutManager) {
+      enterStep(id, this._stepDock());
+      this._streamingRenderer?.fitWhenResized();
+    }
+    m.redraw();
+  }
+
+  /** Move the rail to `id`, keeping the step it leaves for Read. */
+  private _setStep(id: StepId): void {
+    if (id === 'read' && this.step !== 'read') this._stepBeforeRead = this.step;
+    this.step = id;
+  }
+
+  /** The stack maximised when `_followMaximised` last looked. */
+  private _maximisedSeen: Stack | undefined = undefined;
+
+  /**
+   * Follow a stack the reader maximised or restored with Golden Layout's own
+   * control, or by dragging a tab out of a maximised stack.
+   *
+   * **READ IS THE CANVAS ALONE, HOWEVER IT CAME TO BE.** The canvas maximised
+   * is Read, and restored from Read it is the step the reader came from:
+   * before, the rail said Tune, with Next pointing at Read, over a canvas
+   * hiding every window, and Read over every window back in view. Either way
+   * the canvas changes size, and the drawing is framed in it, as a step frames
+   * it. Another stack maximised is the window in front of it chosen, as its
+   * tab is, and stays chosen when it is restored.
+   *
+   * A step's own maximise and restore come through here too, and land where
+   * the step put the rail: it is set before the dock moves.
+   */
+  private _followMaximised(): void {
+    const layout = this._layoutManager;
+    if (!layout) return;
+    const maximised = layout.maximisedStack;
+    const was = this._maximisedSeen;
+    if (maximised === was) return;
+    this._maximisedSeen = maximised;
+    const canvas = layout.findFirstComponentItemById('graph')?.parent;
+    if (maximised) {
+      const front = maximised.getActiveComponentItem();
+      const step = front ? stepOfPanel(front.id) : null;
+      if (step) this._setStep(step);
+    } else if (was === canvas && this.step === 'read') {
+      this._setStep(this._stepBeforeRead);
+    }
+    if (canvas && (maximised === canvas || was === canvas)) this._streamingRenderer?.fitWhenResized();
+    m.redraw();
+  }
+
+  /** The dock as `steps.enterStep` reaches it. */
+  private _stepDock(): StepDock {
+    const stackOf = (panelId: string) =>
+      this._layoutManager?.findFirstComponentItemById(panelId)?.parent as Stack | undefined;
+    return {
+      show: (panelId, focus) => {
+        if (!PanelRegistry.get(panelId as DockPanelId)) return;
+        if (stackOf(panelId)) this.focusDockPanel(panelId as DockPanelId, focus);
+        else this.openPanel(panelId as DockPanelId);
+      },
+      maximise: (panelId) => {
+        const stack = stackOf(panelId);
+        if (stack?.isStack && !stack.isMaximised) stack.maximise();
+        // **THE DOCK IS LAID OUT UNSCROLLED.** Its host clips and does not
+        // scroll, but a focus or a scrollIntoView inside it still scrolls it,
+        // and Golden Layout pins a maximised stack to the top of the host's
+        // content: scrolled 8 pixels by a click on Load Demo, the canvas was
+        // drawn 344 pixels up -- Chrome's scroll anchoring kept the focused
+        // button in place as the stack moved -- with Files and Open showing
+        // under it. At no scroll there is nothing to anchor.
+        const host = this._layoutManager?.container;
+        if (host) host.scrollTop = host.scrollLeft = 0;
+      },
+      restore: () => this._restoreAllBut(null),
+    };
+  }
+
+  /**
+   * A window the reader chose says which step they are on; nothing else
+   * moves. A window that comes forward by itself -- a draw bringing the
+   * canvas, a `?show=` address, View ▸ Compare -- does not.
+   */
+  private _followWindow(panelId: string): void {
+    const step = stepOfPanel(panelId);
+    if (!step || step === this.step) return;
+    this._setStep(step);
+    m.redraw();
+  }
+
+  /** The `.lm_stack` element of the tab the reader last clicked; see `noteClick`. */
+  private _tabStackClicked: unknown = null;
+
+  /**
+   * Hear a click in the dock, before Golden Layout does. A click on a tab
+   * records that tab's stack, which is where `openPanel` adds a window next,
+   * and moves the step to the one that owns the tab's window; any other
+   * click, and a click on a tab's ✕, does neither.
+   */
+  public noteClick(target: EventTarget | null): void {
+    const clicked = stackOfTabClicked(target);
+    if (!clicked) return;
+    this._tabStackClicked = clicked;
+    const tab = (target as Element).closest('.lm_tab');
+    const panelId = this.openPanelIds().find(
+      (id) => this._layoutManager?.findFirstComponentItemById(id)?.tab?.element === tab,
+    );
+    if (panelId) this._followWindow(panelId);
   }
 
   /** Ids of every registered panel currently present in the live layout. */
@@ -230,7 +452,7 @@ export class LayoutContext {
       .filter((id) => !!this._layoutManager!.findFirstComponentItemById(id));
   }
 
-  /** Registered panels not currently in the layout — what the add-window menu offers. */
+  /** Registered panels not in the layout, closed ones included — what the "+" menu offers. */
   public addablePanels() {
     const open = new Set(this.openPanelIds());
     return PanelRegistry.all().filter((def) => !open.has(def.id));
@@ -238,15 +460,48 @@ export class LayoutContext {
 
   // ── Layout persistence ─────────────────────────────────────────────────────
 
-  /** The saved layout if one exists and parses cleanly, else the built-in default. */
+  /**
+   * The saved layout if it can be loaded, else the built-in default.
+   *
+   * A saved layout that names a window this version does not register is
+   * dropped here, before Golden Layout reads it: Golden Layout throws on an
+   * unregistered component type, and the page would boot with no windows.
+   */
   public loadInitialLayoutConfig(): LayoutConfig {
+    let raw: string | null = null;
     try {
-      const raw = localStorage.getItem(SAVED_LAYOUT_KEY);
-      if (raw) return JSON.parse(raw) as LayoutConfig;
+      raw = localStorage.getItem(SAVED_LAYOUT_KEY);
     } catch {
-      /* corrupt/old-format entry — fall through to built-in default */
+      /* storage blocked: nothing saved to read */
     }
+    const saved = readSavedLayout(raw, PanelRegistry.all().map((def) => def.id));
+    if (saved.kind === 'usable') {
+      if (saved.renamed.length) this._keepRenamedLayout(saved.config, saved.renamed);
+      return saved.config as LayoutConfig;
+    }
+    if (saved.kind === 'unusable') this.dropSavedLayout(saved.why);
     return DEFAULT_LAYOUT_CONFIG;
+  }
+
+  /** Save a layout whose merged windows were renamed, and say so once. */
+  private _keepRenamedLayout(config: object, renamed: string[]): void {
+    try {
+      localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(config));
+    } catch {
+      /* storage blocked: the renamed layout still loads this time */
+    }
+    const names = renamed.map((id) => `'${id}'`).join(', ');
+    ToastManager.show(`The saved layout's ${names} window(s) are the Open window in this version.`, 8_000);
+  }
+
+  /** Forget the saved layout, and say why the default is showing instead. */
+  public dropSavedLayout(why: string): void {
+    try {
+      localStorage.removeItem(SAVED_LAYOUT_KEY);
+    } catch {
+      /* storage blocked: there is nothing to remove */
+    }
+    ToastManager.show(`The saved layout was not loaded: ${why}. Showing the default.`, 8_000);
   }
 
   /** Persist the live layout (panel arrangement + sizes) as the local default. */
@@ -260,11 +515,11 @@ export class LayoutContext {
     }
   }
 
-  /** Drop the saved default and reload the built-in layout. */
+  /** Drop the saved default and reload the built-in layout, on step 1, as a page opens. */
   public resetLayoutToBuiltinDefault(): void {
     localStorage.removeItem(SAVED_LAYOUT_KEY);
     this._layoutManager?.loadLayout(DEFAULT_LAYOUT_CONFIG);
-    this.hiddenDockPanels = [];
+    this.enterStep(FIRST_STEP);
     ToastManager.show('Layout reset to built-in default');
   }
 
@@ -280,6 +535,9 @@ export class LayoutContext {
       availableLanguages: s.availableLanguages ?? null,
       availableLexiconLanguages: s.availableLexiconLanguages ?? [],
       cachedGraphs: this.cachedGraphs,
+      bundledExamples: this.bundledExamples,
+      graphbaseAvailable: this.graphbaseAvailable,
+      savedUrls: this.graphbaseBookmarks.map((b) => b.url),
     };
   }
 
@@ -358,7 +616,7 @@ export class LayoutContext {
 
   /** Load a graphbase bookmark: stream the URL with the saved settings. */
   public loadGraphbaseBookmark(bookmark: GraphbaseBookmark): void {
-    this.updatePanelState({ repoUrl: bookmark.url, codeSourceMode: 'repo' });
+    this.updatePanelState({ repoUrl: bookmark.url });
     this._startStreamFromUrl(bookmark.url);
     this.actions.repo.fetchRepository(bookmark.url)
       .then(() => m.redraw())
@@ -413,7 +671,7 @@ export class LayoutContext {
 
     // If the snapshot has a URL, also populate the file tree
     if (snap.meta?.url) {
-      this.updatePanelState({ repoUrl: snap.meta.url, codeSourceMode: 'repo' });
+      this.updatePanelState({ repoUrl: snap.meta.url });
       this.actions.repo.fetchRepository(snap.meta.url)
         .then(() => m.redraw())
         .catch(() => {});
@@ -449,6 +707,209 @@ export class LayoutContext {
   public async deleteGraphbaseHistoryEntry(urlHash: string, capturedAt: number): Promise<void> {
     const ok = await GraphbaseService.deleteHistoryEntry(this.appState.api.db, urlHash, capturedAt);
     if (ok) await this.refreshGraphbase();
+  }
+
+  /** What examples this checkout bundles, for the project selector. */
+  // ── The showgraphs ────────────────────────────────────────────────────────
+
+  /**
+   * Open a showgraph: the index, a family, or one of a project's three views.
+   *
+   * **ONE WAY IN, FROM EVERYWHERE.** The Show panel's rows, a `?show=` address
+   * the page was opened at, and a node's own `show` attribute all call this, so
+   * the address in the location bar is always the graph on the canvas.
+   *
+   * The estate view is the show seam's graph. The code view is the parse of
+   * the project's default branch on the host at file depth -- the same stream
+   * the Open panel starts, so it draws, caches and cancels like any parse. The
+   * system view is the derived system monitor for that repository. A view the
+   * server says cannot be drawn is a problem the panel shows, never a
+   * different view drawn in its place.
+   */
+  /**
+   * Open a showgraph, and write its address.
+   *
+   * `history` says what the location bar does: `push` a new entry, so Back
+   * returns to the drawing before (a click in the panel or on the canvas);
+   * `replace` the entry (an address the page opened with, or the default);
+   * or `keep` it (Back and Forward, which have moved it already).
+   *
+   * **ONE REQUEST PER DRAWING.** At boot the page's address and the Show
+   * panel's default both asked for the index, and a corpus measured twice
+   * at once took more than twice as long. Asked again for the drawing it is
+   * already opening, this returns that one.
+   */
+  public openShow(address: ShowAddress, history: 'push' | 'replace' | 'keep' = 'push'): Promise<void> {
+    if (this._opening && sameShow(this._opening.address, address)) return this._opening.done;
+    const done = this._openShow(address, history).finally(() => {
+      if (this._opening?.done === done) this._opening = null;
+    });
+    this._opening = { address, done };
+    return done;
+  }
+
+  private _opening: { address: ShowAddress; done: Promise<void> } | null = null;
+
+  private async _openShow(address: ShowAddress, history: 'push' | 'replace' | 'keep'): Promise<void> {
+    // **THE LATEST DRAWING ASKED FOR IS THE ONE DRAWN.** Its place is taken
+    // here, before anything is read: an answer still out for another drawing,
+    // or for the Open panel, is dropped from now, and so is this one if a plot
+    // is asked for while it reads a project's views.
+    const current = this.actions.plot.takePlot();
+    // **AND A STREAM IN FLIGHT IS ENDED.** It drew on by another way, and at
+    // its end recorded the repository as the graph drawn and announced its
+    // renderer -- one no longer on the canvas, which rad then bound to.
+    if (this._cancelStream || this.panelState.isLoading) this.cancel();
+    // Before the panel mounts: a Show panel opening onto nothing drawn draws
+    // every family, and this address is what it is about to draw instead.
+    this.appState.update({ showAddress: address, showProblem: null });
+    this._setShowAddress(address, history);
+    this.openPanel('show-panel');
+
+    // An estate view does not wait for them: they say which views the panel
+    // offers, not what this one draws.
+    const viewsRead = address.kind === 'project'
+      ? this.actions.plot.loadShowViews(address.name)
+      : Promise.resolve(this.appState.update({ showViews: null }));
+
+    if (address.view === 'estate') {
+      this._leaveSystemRenderer();
+      this._compoundLayout();
+      // A layout change draws it again, from a place of its own.
+      this._lastPlotAction = async () => { await this.actions.plot.drawShow(address); };
+      const drawn = await this.actions.plot.drawShow(address, {}, current);
+      if (drawn) this.focusDockPanel('graph');
+      return;
+    }
+
+    await viewsRead;
+    // Another drawing, or another plot, was asked for while they were read.
+    if (!current()) return;
+    const views = this.appState.state.showViews;
+    const view = views ? views[address.view] : null;
+    if (!view || !view.available) {
+      this.appState.update({
+        showProblem: {
+          kind: 'unreadable',
+          problem: view?.problem ?? `the ${address.view} view of ${address.name} could not be asked for`,
+          remedy: view?.remedy ?? '',
+          where: `${this.appState.api.show}/project/${address.name}/views`,
+        },
+      });
+      m.redraw();
+      return;
+    }
+
+    if (address.view === 'code' && view.url) {
+      this._leaveSystemRenderer();
+      this._compoundLayout();
+      // The coarse map: files, not symbols, at the view's depth whenever it
+      // is drawn. The depth was set around the first stream only, so a
+      // layout change drew it again at the Open panel's, symbols and all.
+      const show = { depth: view.depth ?? 1 };
+      const url = view.url;
+      this._lastPlotAction = () => { this._startStreamFromUrl(url, show); };
+      this._startStreamFromUrl(url, show);
+    } else if (address.view === 'system') {
+      if (!SystemDefinitionRegistry.get(address.name)) {
+        SystemDefinitionRegistry.register(new DerivedSystemDefinition(address.name));
+      }
+      const styling = this.appState.state.graphStyling;
+      // Put back by the next draw that is not a system view; one system view
+      // after another keeps the first's.
+      const was = this.appState.state.selectedRenderer;
+      if (was !== 'system') this._rendererBeforeSystem = was;
+      this.appState.update({
+        selectedRenderer: 'system',
+        graphStyling: { ...styling, systemId: address.name },
+      });
+      // The frame is replaced in state; nothing repaints it until asked.
+      this.actions.plot.createGraphVnode();
+      m.redraw();
+    }
+    this.focusDockPanel('graph');
+  }
+
+  /** Open whatever showgraph the page's own address names, if it names one. */
+  public async openShowFromLocation(): Promise<void> {
+    const address = parseShow(window.location.search);
+    if (address) await this.openShow(address, 'replace');
+  }
+
+  /** The location bar says which showgraph is drawn, without a new history entry. */
+  private _setShowAddress(address: ShowAddress, how: 'push' | 'replace' | 'keep'): void {
+    if (how === 'keep') return;
+    const search = formatShow(address);
+    try {
+      // The same drawing asked for twice is one entry, not two.
+      if (how === 'push' && window.location.search !== search) {
+        window.history.pushState(null, '', `${window.location.pathname}${search}`);
+      } else {
+        window.history.replaceState(null, '', `${window.location.pathname}${search}`);
+      }
+    } catch {
+      // A page that cannot rewrite its address still draws.
+    }
+  }
+
+  /**
+   * A showgraph is containment all the way down -- a family holds its
+   * subfamilies, a subfamily its members, a folder its files -- so it opens in
+   * the compound layout, which gathers each group around what holds it. Under
+   * a layout that does not, two subfamilies whose members interleave draw two
+   * outlines over one another. The reader's next choice of layout still
+   * applies, as it does to any drawing.
+   */
+  private _compoundLayout(): void {
+    const styling = this.appState.state.graphStyling;
+    if (styling.layout !== 'compound_layout') {
+      this.appState.update({ graphStyling: { ...styling, layout: 'compound_layout' } });
+    }
+  }
+
+  /**
+   * A showgraph's estate and code views draw on the D3 canvas, not the system
+   * monitor: the renderer a system view replaced, and D3 when the reader chose
+   * the system monitor themselves.
+   */
+  private _leaveSystemRenderer(): void {
+    this._restoreRenderer();
+    if (this.appState.state.selectedRenderer === 'system') {
+      this.appState.update({ selectedRenderer: 'd3' });
+    }
+  }
+
+  /**
+   * The renderer chosen before a showgraph's system view put the system
+   * monitor on the canvas; null when no system view did, or the reader has
+   * chosen one since.
+   *
+   * **A SYSTEM VIEW CHOSE THE RENDERER FOR EVERY DRAW AFTER IT.** It set
+   * `selectedRenderer` to `system`, and only the show's estate and code views
+   * set it back, so Load Demo after one drew the system monitor's diagram and
+   * no graph.
+   */
+  private _rendererBeforeSystem: ICellState['selectedRenderer'] | null = null;
+
+  /** Any draw but a system view: the renderer the system view replaced comes back. */
+  private _restoreRenderer(): void {
+    const was = this._rendererBeforeSystem;
+    if (was === null) return;
+    this._rendererBeforeSystem = null;
+    if (this.appState.state.selectedRenderer === 'system') this.appState.update({ selectedRenderer: was });
+  }
+
+  public async refreshExamples(): Promise<void> {
+    try {
+      const resp = await fetch(`${this.appState.api.repoReader}/examples`);
+      if (resp.ok) {
+        const data = await resp.json();
+        this.bundledExamples = (data?.results?.examples as BundledExample[]) ?? [];
+        m.redraw();
+      }
+    } catch {
+      /* non-fatal: the GitHub examples are still offered */
+    }
   }
 
   /** Fetch and refresh the backend graph-cache list. */
@@ -530,8 +991,10 @@ export class LayoutContext {
       kind: node?.kind as string | undefined,
       hasRenderedChildren: id ? (r?.childIdsOf(id).length ?? 0) > 0 : false,
       pinned: !!(id && this._nodeViewState[id]?.pinned),
-      hasSource: !!node?.file,
+      // Asked of the renderer that opens it, so offering and opening read one graph.
+      hasSource: !!(id && r?.sourceTargetOf(id)),
       hasGroup: (node?.depth as number | undefined) !== undefined && (node!.depth as number) < 2,
+      hasConstruct: typeof node?.construct === 'string',
       selectionCount: this._radSelection.size,
       anyHidden: anyHidden(this._nodeViewState),
       // The streaming renderer has no force simulation; positions come from
@@ -558,6 +1021,34 @@ export class LayoutContext {
   private _replaceSelection(nodes: GraphNode[]): void {
     this._radSelection.clear();
     for (const n of nodes) this._radSelection.add(n);
+  }
+
+  /**
+   * The nodes on the canvas now, whichever panel or parse drew them: the
+   * graph of record first, complete by the time it is set, and the renderer's
+   * own when nothing is recorded.
+   */
+  public canvasNodes(): GraphNode[] {
+    const recorded = this._normaliseGraph(this.appState.state.graphData).nodes;
+    return recorded.length ? recorded : this._streamingRenderer?.getNodes() ?? [];
+  }
+
+  /**
+   * Frame these nodes and make them the selection the radial menu's selection
+   * ring acts on -- how the chrestomathy points back at the graph it read.
+   * Returns how many were on the canvas; with none, the selection is left as
+   * it was rather than emptied.
+   */
+  public showOnCanvas(ids: readonly string[]): number {
+    const r = this._streamingRenderer;
+    if (!r) return 0;
+    const wanted = new Set(ids);
+    const found = r.getNodes().filter((n) => wanted.has(n.id));
+    if (!found.length) return 0;
+    this._replaceSelection(found);
+    r.fitTo(found.map((n) => n.id));
+    this.focusDockPanel('graph');
+    return found.length;
   }
 
   /** A verb the ring shows disabled, refused out loud if it ever commits. */
@@ -597,7 +1088,7 @@ export class LayoutContext {
         let added = 0;
         try {
           for (const id of ids) {
-            const payload = await PlotService.expandNode(this.appState.api.parse, directory, id, 3);
+            const payload = await PlotService.expandNode(this.appState.api.parse, directory, id, DEEPEST_DEPTH);
             const { nodes, edges } = this._normaliseGraph(payload);
             // The subgraph includes the node that was expanded; mergeGraph
             // skips ids already on the canvas, so this is idempotent.
@@ -689,15 +1180,21 @@ export class LayoutContext {
         r.fitTo(subtree);
       },
 
-      viewSource: (id) => {
-        const node = renderer()?.getNodes().find((n) => n.id === id);
-        if (node?.file) ToastManager.hint('rad-source', String(node.file));
-      },
+      // The opener a double-click on the node uses, so the two cannot differ.
+      viewSource: (id) => { renderer()?.openSource(id); },
+      // `show`, not `hint`: a hint speaks once a session, and Info is a verb
+      // a person uses again (node_info.ts says why that matters).
       showInfo: (id) => {
         const node = renderer()?.getNodes().find((n) => n.id === id);
-        if (node) {
-          ToastManager.hint('rad-info', `${node.label ?? node.id} · ${node.kind ?? 'node'}`);
-        }
+        if (node) ToastManager.show(infoLine(node), 8_000);
+      },
+      // What this node is, beside every language that writes it. The panel
+      // reads `constructChosen`, which loading sets, so it opens on it.
+      compare: (id) => {
+        const node = renderer()?.getNodes().find((n) => n.id === id);
+        if (typeof node?.construct !== 'string') return;
+        void this.actions.plot.cartography.loadChrestomathy(node.construct);
+        this.openPanel('chrestomathy-panel');
       },
     };
   }
@@ -743,7 +1240,7 @@ export class LayoutContext {
     // rather than during the stream, when the counts would be a snapshot
     // of a graph still arriving.
     this._legend?.destroy();
-    const legend = new LegendExtension();
+    const legend = new LegendExtension(() => this.appState.state.graphStyling.colorBy);
     legend.initialize(context);
     legend.apply();
     this._legend = legend;
@@ -766,14 +1263,20 @@ export class LayoutContext {
     return ` — ${placed} of ${total} placed without backend positions`;
   }
 
+  /** `forShow`: a showgraph's code view, which keeps the address it was opened at. */
   private _mountAndStream(
     startFn: (renderer: StreamingGraphRenderer) => () => void,
     statusMsg: string,
+    forShow = false,
   ): void {
     if (this._cancelStream) {
       this._cancelStream();
       this._cancelStream = null;
     }
+    // The stream is the latest plot: added files, the demo or a lexicon still
+    // waiting for an answer are not drawn over it.
+    this.actions.plot.supersedePlots();
+    if (!forShow) this._leaveShow();
     this._streamingRenderer = null;
 
     const styling = this.appState.state.graphStyling;
@@ -812,6 +1315,7 @@ export class LayoutContext {
 
     const accNodes: { id: string; [k: string]: unknown }[] = [];
     const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
+    const notes: string[] = [];
     let nodeCount = 0;
 
     this._mountAndStream((renderer) =>
@@ -839,6 +1343,10 @@ export class LayoutContext {
             accEdges.push(edge as any);
             renderer.addEdge(edge as any);
           },
+          onNote: (message) => {
+            notes.push(message);
+            ToastManager.show(message, 15_000);
+          },
           onDone: (elapsed_ms, from_cache) => {
             this._cancelStream = null;
             renderer.finalize();
@@ -847,14 +1355,15 @@ export class LayoutContext {
             // Announced rather than mounted here, so this path and the
             // registry's converge on the one subscription in the constructor.
             GraphSurface.publish(renderer);
-            this.appState.update({
-              parseDirectory: directory,
-              graphData: this._buildGraphData(accNodes, accEdges, {
-                nodeCount,
-                edgeCount: accEdges.length,
-                layout,
-              }) as any,
-            });
+            this.appState.update({ parseDirectory: directory });
+            // Replaced, never merged: a plain patch is the union of this graph
+            // and every one drawn before it, which the census then read as
+            // the canvas -- a code map after the crate graph listed crates.
+            this.appState.replaceGraphData(this._buildGraphData(accNodes, accEdges, {
+              nodeCount,
+              edgeCount: accEdges.length,
+              layout,
+            }) as any);
             if (this.appState.state.selectedRenderer !== 'd3') {
               this.actions.plot.createGraphVnode();
             }
@@ -863,7 +1372,7 @@ export class LayoutContext {
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
             this.updatePanelState({
               isLoading: false,
-              statusMessage: msg + this._fallbackNote(renderer),
+              statusMessage: msg + this._fallbackNote(renderer) + notesTail(notes),
               progress: null,
             });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
@@ -887,19 +1396,28 @@ export class LayoutContext {
     );
   }
 
-  /** Stream directly from a GitHub URL via /parse/stream-url. */
-  private _startStreamFromUrl(githubUrl: string): void {
+  /**
+   * Stream directly from a GitHub URL via /parse/stream-url, at the Open
+   * panel's depth; or, given `show`, as a showgraph's code view: at the
+   * view's depth, keeping the address (`_mountAndStream`'s `forShow`), and
+   * drawn as a map, as the estate views are. At the fit that frames a whole
+   * repository a code graph's names are a pixel high; a map holds each at a
+   * readable size and hides the ones that would overlap.
+   */
+  private _startStreamFromUrl(githubUrl: string, show?: { depth: number }): void {
     const opts = this.appState.state.parserOptions;
     const layout = convertLayout(this.appState.state.graphStyling.layout);
     const exts = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
-    const depth = this.panelState.parseDepth;
+    const depth = show?.depth ?? this.panelState.parseDepth;
 
     const accNodes: { id: string; [k: string]: unknown }[] = [];
     const accEdges: { source: string; target: string; [k: string]: unknown }[] = [];
+    const notes: string[] = [];
     let nodeCount = 0;
 
-    this._mountAndStream((renderer) =>
-      PlotService.streamFromUrl(
+    this._mountAndStream((renderer) => {
+      if (show) renderer.presentAsMap();
+      return PlotService.streamFromUrl(
         this.appState.api.parse,
         githubUrl,
         { depth, extensions: exts, layout, annotateLexicon: opts.annotateLexicon },
@@ -924,6 +1442,10 @@ export class LayoutContext {
             accEdges.push(edge as any);
             renderer.addEdge(edge as any);
           },
+          onNote: (message) => {
+            notes.push(message);
+            ToastManager.show(message, 15_000);
+          },
           onDone: (elapsed_ms, from_cache) => {
             this._cancelStream = null;
             renderer.finalize();
@@ -932,13 +1454,12 @@ export class LayoutContext {
             // Announced rather than mounted here, so this path and the
             // registry's converge on the one subscription in the constructor.
             GraphSurface.publish(renderer);
-            this.appState.update({
-              graphData: this._buildGraphData(accNodes, accEdges, {
-                nodeCount,
-                edgeCount: accEdges.length,
-                layout,
-              }) as any,
-            });
+            // Replaced, never merged (see `_startStream`).
+            this.appState.replaceGraphData(this._buildGraphData(accNodes, accEdges, {
+              nodeCount,
+              edgeCount: accEdges.length,
+              layout,
+            }) as any);
             if (this.appState.state.selectedRenderer !== 'd3') {
               this.actions.plot.createGraphVnode();
             }
@@ -947,7 +1468,7 @@ export class LayoutContext {
               : `Done in ${elapsed_ms}ms (${nodeCount} nodes)`;
             this.updatePanelState({
               isLoading: false,
-              statusMessage: msg + this._fallbackNote(renderer),
+              statusMessage: msg + this._fallbackNote(renderer) + notesTail(notes),
               progress: null,
             });
             ToastManager.hint('first-graph', 'Scroll to zoom, drag to pan, hover nodes for details');
@@ -965,9 +1486,36 @@ export class LayoutContext {
             this.updatePanelState({ isLoading: false, statusMessage: `Error: ${msg}`, progress: null });
           },
         },
-      ),
+      );
+    },
       'Connecting to GitHub\u2026',
+      !!show,
     );
+  }
+
+  /**
+   * Plot added files, every one given, at the parse depth the Open panel
+   * shows; one file clicked in the Files panel and Plot over all of them both
+   * come here. A plot asked for before these answered owns the status line,
+   * and their answer is dropped (`latest_plot.ts`).
+   */
+  private async _plotUploads(files: RawFile[]): Promise<void> {
+    const many = files.length === 1 ? files[0].name : `${files.length} files`;
+    this._leaveShow();
+    this.updatePanelState({ isLoading: true, statusMessage: `Plotting ${many}\u2026` });
+    // What the parse could not read is said as a stream says its `note`
+    // events: each in a toast, and all of them after "Ready" (`notesTail`).
+    let notes: string[] | null = [];
+    this._lastPlotAction = async () => {
+      notes = await this.actions.plot.plotUploads(files, this.panelState.parseDepth);
+      for (const note of notes ?? []) ToastManager.show(note, 15_000);
+    };
+    try {
+      await this._lastPlotAction();
+      if (notes) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' + notesTail(notes) });
+    } catch {
+      this.updatePanelState({ isLoading: false, statusMessage: `Error plotting ${many}` });
+    }
   }
 
   // ── Callback builder ───────────────────────────────────────────────────────
@@ -975,24 +1523,40 @@ export class LayoutContext {
   private _buildCallbacks(): ControlPanelCallbacks {
     return {
       onDemo: async () => {
+        this._leaveShow();
         this.updatePanelState({ isLoading: true, statusMessage: 'Loading demo...' });
-        this._lastPlotAction = async () => { await this.actions.plot.loadDemo(); };
+        let drawn = true;
+        this._lastPlotAction = async () => { drawn = await this.actions.plot.loadDemo(); };
         try {
           await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          // Not drawn: a plot asked for since owns the status line.
+          if (drawn) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: 'Error loading demo' });
         }
       },
 
       onLoadLexicon: async (language: string) => {
+        this._leaveShow();
         this.updatePanelState({ isLoading: true, statusMessage: `Loading ${language} lexicon...` });
-        this._lastPlotAction = async () => { await this.actions.plot.loadLexicon(language); };
+        let drawn = true;
+        this._lastPlotAction = async () => { drawn = await this.actions.plot.loadLexicon(language); };
         try {
           await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          if (drawn) this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
         } catch {
           this.updatePanelState({ isLoading: false, statusMessage: `Error loading ${language} lexicon` });
+        }
+      },
+
+      onBundledExample: (example) => {
+        this.panelCallbacks.onRepoSubmit(example.url);
+        // Its recorded cargo documents are part of it. A source that loads
+        // data for a panel brings that panel forward, as View ▸ Compare
+        // brings the Chrestomathy panel.
+        if (example.cargo) {
+          void this.actions.plot.cartography.loadCargoReading(example.url);
+          this.openPanel('cargo-panel');
         }
       },
 
@@ -1004,7 +1568,7 @@ export class LayoutContext {
           .then(() => {
             const dir = this.appState.repo.content;
             if (dir?.is_partial)
-              ToastManager.hint('stub-folders', 'Large repo: click a folder ▶ to expand it, or use "Expand All"');
+              ToastManager.hint('stub-folders', 'Large repo: a folder marked … is unread; click it to read it, or use "Expand All" in the Files panel');
             m.redraw();
           })
           .catch(() => { /* sidebar still works */ });
@@ -1031,16 +1595,27 @@ export class LayoutContext {
         this._startStream(singleFileDir, `Plotting ${file.name}\u2026`);
       },
 
-      onPlotWholeRepo: () => {
-        if (this.panelState.codeSourceMode === 'repo' && this.panelState.repoUrl) {
-          this._lastPlotAction = () => { this.panelCallbacks.onPlotWholeRepo(); };
-          this._startStreamFromUrl(this.panelState.repoUrl);
-          return;
+      /**
+       * The Open panel's Plot: the loaded repository, by the URL its tree was
+       * read from when it has one; else every added file; else the URL in the
+       * field, fetched and drawn as → Fetch does (`plot_target.ts`). What was
+       * drawn is what a layout change or Relayout draws again.
+       */
+      onPlot: () => {
+        const repo = this.appState.repo.content;
+        const target = plotTarget(repo, this.uploadedFiles.length, this.panelState.repoUrl);
+        if (target?.kind === 'repository') {
+          const { url } = target;
+          this._lastPlotAction = () => { this._startStreamFromUrl(url); };
+          this._startStreamFromUrl(url);
+        } else if (target?.kind === 'tree' && repo) {
+          this._lastPlotAction = () => { this._startStream(repo, 'Streaming graph\u2026'); };
+          this._startStream(repo, 'Streaming graph\u2026');
+        } else if (target?.kind === 'files') {
+          void this._plotUploads([...this.uploadedFiles]);
+        } else if (target?.kind === 'fetch') {
+          this.panelCallbacks.onRepoSubmit(target.url);
         }
-        const repoContent = this.appState.repo.content;
-        if (!repoContent || repoContent.size === 0) return;
-        this._lastPlotAction = () => { this.panelCallbacks.onPlotWholeRepo(); };
-        this._startStream(repoContent, 'Streaming graph\u2026');
       },
 
       onFileUpload: (files: FileList) => {
@@ -1079,30 +1654,7 @@ export class LayoutContext {
       },
 
       onUploadedFileClick: async (file: RawFile) => {
-        this.updatePanelState({ isLoading: true, statusMessage: 'Plotting file...' });
-        this._lastPlotAction = async () => { await this.actions.plot.plotUploadedFile(file); };
-        try {
-          await this._lastPlotAction();
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
-        } catch {
-          this.updatePanelState({ isLoading: false, statusMessage: 'Error plotting file' });
-        }
-      },
-
-      onPlotAllUploads: async () => {
-        if (this.uploadedFiles.length > 0) {
-          this.updatePanelState({ isLoading: true, statusMessage: 'Plotting all files...' });
-          this._lastPlotAction = async () => {
-            if (this.uploadedFiles.length > 0)
-              await this.actions.plot.plotUploadedFile(this.uploadedFiles[0]);
-          };
-          try {
-            await this._lastPlotAction();
-            this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
-          } catch {
-            this.updatePanelState({ isLoading: false, statusMessage: 'Error plotting files' });
-          }
-        }
+        await this._plotUploads([file]);
       },
 
       onThemeChange: (theme: string) => {
@@ -1118,6 +1670,10 @@ export class LayoutContext {
         if (this._streamingRenderer) {
           this._streamingRenderer.updateStyling(options);
         }
+        // The renderer recolours in place; the key says what the colours now
+        // mean. A streamed plot is not redrawn below, so without this its key
+        // kept describing the colouring it was drawn with.
+        if (options.colorBy !== undefined) this._legend?.apply();
         if (options.layout && options.layout !== oldLayout && this._lastPlotAction) {
           this.updatePanelState({ isLoading: true, statusMessage: 'Applying new layout...' });
           try {
@@ -1141,27 +1697,35 @@ export class LayoutContext {
         this.appState.update({ parserOptions: { ...current.parserOptions, ...options } });
       },
 
+      // **NEITHER READ TOUCHES THE PANEL'S LOADING STATE.** `isLoading` and
+      // the status line are the stream's: the Open panel's plot bar shows
+      // Cancel and the progress bar while it is set. These set it and cleared
+      // it with "Ready" when they ended, so a folder opened mid-parse took
+      // Cancel and the progress bar from a stream still running. The folder's
+      // ↻ says it is being read; a toast says Expand All has begun, and either
+      // failing.
       onFolderExpand: async (path: string) => {
         const content = this.appState.repo.content;
-        if (!content?.is_partial) return;
-        this.updatePanelState({ isLoading: true, statusMessage: `Loading ${path}...` });
+        if (!content?.is_partial) return false;
         try {
-          await this.actions.repo.expandPath(this.panelState.repoUrl, path);
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          // The tree's own repository, not the URL field's: that follows every
+          // keystroke, and need not name the repository shown.
+          return await this.actions.repo.expandPath(path);
         } catch {
-          this.updatePanelState({ isLoading: false, statusMessage: `Error expanding ${path}` });
+          // The folder is left unread, so a click reads it again.
+          ToastManager.show(`Could not read ${path}; click it to try again`);
+          return false;
         }
       },
 
       onExpandAll: async () => {
         const content = this.appState.repo.content;
         if (!content?.is_partial) return;
-        this.updatePanelState({ isLoading: true, statusMessage: 'Expanding all folders...' });
+        ToastManager.show('Expanding all folders…');
         try {
-          await this.actions.repo.expandAll(this.panelState.repoUrl);
-          this.updatePanelState({ isLoading: false, statusMessage: 'Ready' });
+          await this.actions.repo.expandAll();
         } catch {
-          this.updatePanelState({ isLoading: false, statusMessage: 'Error expanding tree' });
+          ToastManager.show('Could not expand the tree');
         }
       },
 
@@ -1169,7 +1733,7 @@ export class LayoutContext {
         const entry = this.cachedGraphs?.find((e) => e.key === key);
         if (!entry) return;
         // Streaming from the URL will hit the backend cache and replay instantly.
-        this.updatePanelState({ repoUrl: entry.url, codeSourceMode: 'repo' });
+        this.updatePanelState({ repoUrl: entry.url });
         this._startStreamFromUrl(entry.url);
         // fetchRepository populates state.repo.content, which the Files panel
         // reads — without this the recalled graph renders but the tree stays empty.
@@ -1181,7 +1745,11 @@ export class LayoutContext {
       onClearRepo: () => {
         this.appState.clearRepoData();
         this.uploadedFiles = [];
-        this.updatePanelState({ repoUrl: '', codeSourceMode: 'repo' });
+        this.updatePanelState({ repoUrl: '' });
+      },
+
+      onSaveRecent: (entry) => {
+        void this.saveGraphbaseBookmark(entry.label || entry.url.replace('https://github.com/', ''), entry.url);
       },
 
       onEvictCache: async (key: string) => {
@@ -1194,6 +1762,10 @@ export class LayoutContext {
       onCancel: () => { this.cancel(); },
 
       onRendererChange: (renderer) => {
+        // The system monitor draws its own diagram, not the showgraph.
+        if (renderer === 'system') this._leaveShow();
+        // The reader's choice: no system view's to put back.
+        this._rendererBeforeSystem = null;
         this.appState.update({ selectedRenderer: renderer });
         if (renderer === 'system' || this.appState.state.graphData) {
           this.updatePanelState({ statusMessage: `Switching to ${renderer} renderer...` });

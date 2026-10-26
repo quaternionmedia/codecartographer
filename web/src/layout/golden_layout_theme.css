@@ -46,6 +46,39 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
+/* The ✕ is drawn absolutely, 11px wide and 6px in from the tab's right edge
+   (goldenlayout-dark-theme.css), so the right padding is its room: 17px, and
+   a 7px gap before the title. A tab in the overflow list hides its ✕ and
+   keeps the 10px.
+
+   A tab in the strip also keeps its width. Golden Layout fits the strip by
+   measuring each tab while every tab is in it, and a flex item shrinks to
+   fit, so it read the tabs narrower than they are, kept one too many, and the
+   last ran its ✕ under the header's controls. */
+.lm_tabs > .lm_tab {
+  padding-right: 24px !important;
+  flex-shrink: 0;
+}
+
+/* Golden Layout always shows the active tab, even in a stack narrower than
+   it. The strip stops short of the controls -- at most four, 18px each, 3px
+   in from the edge -- and a tab alone in it shrinks to fit, its title cut
+   short, so its ✕ stays clear of them. A stack too narrow for a tab's padding
+   and the controls together still overlaps them. */
+.lm_header .lm_tabs {
+  max-width: calc(100% - 75px);
+}
+
+.lm_tabs > .lm_tab:only-child {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.lm_tabs > .lm_tab:only-child .lm_title {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
 .lm_tab.lm_active {
   background: var(--c-primary-light, #1a1a1a);
   color: var(--c-secondary, #00ff41);
@@ -173,6 +206,105 @@
   max-height: 60vh;
 }
 
+/* One line per file (qm_comp_lib/directory/files.ts): its name, then its raw
+   link when it has one. A long name is cut short rather than wrapped, and the
+   row's title holds it whole (tree_rows.ts). */
+.gl-file-tree__tree .file_container {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.gl-file-tree__tree .file {
+  min-width: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A folder is marked ▸, and ▾ while open; a file is marked · in the same
+   width, so names line up. A marker's alternative text is empty, so a row is
+   named by its name alone, not "▸ src". A folder not yet read (…) and an
+   empty one are dimmed. Its contents' step and its one line are below. */
+.gl-file-tree__tree .folder_button {
+  cursor: pointer;
+  color: var(--c-secondary, #00ff41);
+}
+
+/* A folder's row is a flex line, so its marker is a flex item that a long
+   name would squeeze; it keeps its width, as a file's does in its line. */
+.gl-file-tree__tree .folder_button::before,
+.gl-file-tree__tree .file::before {
+  display: inline-block;
+  flex: none;
+  width: 1.2em;
+}
+
+.gl-file-tree__tree .folder_button::before {
+  content: '▸' / '';
+}
+
+.gl-file-tree__tree .folder_button.active::before {
+  content: '▾' / '';
+}
+
+.gl-file-tree__tree .file::before {
+  content: '·' / '';
+  color: var(--c-font-muted, #00aa2a);
+}
+
+.gl-file-tree__tree .folder_button--stub,
+.gl-file-tree__tree .folder_button--empty {
+  opacity: 0.75;
+}
+
+.gl-file-tree__tree .folder_button--empty {
+  cursor: default;
+}
+
+.gl-file-tree__tree .folder_stub_indicator,
+.gl-file-tree__tree .folder_loading_indicator {
+  color: var(--c-font-muted, #00aa2a);
+}
+
+.gl-file-tree__tree .file_raw_btn {
+  flex: none;
+  font-size: 0.8em;
+  color: var(--c-font-muted, #00aa2a);
+  text-decoration: underline dotted;
+}
+
+/* A folder's contents sit one step in from its name (qm_comp_lib/directory/
+   folder.ts), and the steps add up level by level, so crates/a/src/lib.rs
+   reads as inside crates/a/src and not beside crates/b/src/lib.rs. The
+   dashed rule down the step marks which folder an entry is in. */
+.gl-file-tree__tree .folder_content {
+  margin-left: 0.4em;
+  padding-left: 0.8em;
+  border-left: 1px dashed var(--c-border, #00ff4140);
+}
+
+/* A folder's row is one line, as a file's is: its name, cut short when long
+   and titled whole (tree_rows.ts), then its … or ↻, which keep their space. */
+.gl-file-tree__tree .folder_button {
+  display: flex;
+  align-items: baseline;
+}
+
+.gl-file-tree__tree .folder_name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gl-file-tree__tree .folder_stub_indicator,
+.gl-file-tree__tree .folder_loading_indicator {
+  flex: none;
+  white-space: pre;
+}
+
 .gl-file-tree__actions {
   display: flex;
   flex-direction: column;
@@ -196,6 +328,7 @@
 
 .gl-file-tree__action-btn:hover {
   background: var(--c-primary-light, #1a1a1a);
+  color: var(--c-secondary, #00ff41);
   border-color: var(--c-secondary, #00ff41);
 }
 
@@ -278,6 +411,9 @@
   color: var(--c-secondary, #00ff41);
   text-shadow: 0 0 12px var(--c-secondary, #00ff41);
   margin: 0;
+  /* The header is one line: the title keeps it, and the rail gives way. */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .gl-app-header__icon {
@@ -293,29 +429,6 @@
 
 .gl-app-header__spacer {
   flex: 1;
-}
-
-.gl-app-header__restore {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: 8px;
-}
-
-.gl-app-header__restore-btn {
-  padding: 4px 8px;
-  border: 1px solid var(--c-border, #00ff4140);
-  background: transparent;
-  color: var(--c-secondary, #00ff41);
-  font-size: 0.72em;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.gl-app-header__restore-btn:hover {
-  background: var(--c-primary-light, #1a1a1a);
-  border-color: var(--c-secondary, #00ff41);
 }
 
 /* GitHub auth indicator */
@@ -357,7 +470,102 @@
 .gl-app-header__help-btn:hover,
 .gl-app-header__add-btn:hover {
   background: var(--c-primary-light, #1a1a1a);
+  color: var(--c-secondary, #00ff41);
   box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+}
+
+/* ── Step rail (step_rail.ts) ────────────────────────────────────────────── */
+/* The step the reader is on is the only one with a fill, so where they are
+   in the flow reads at a glance without a legend. */
+
+/* Narrower than the rail, the rail scrolls rather than run on under the
+   header's controls; the padding keeps a focused button's ring inside it. */
+.gl-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: calc(var(--spacing-md, 16px) - 3px);
+  padding: 3px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.gl-steps::-webkit-scrollbar {
+  display: none;
+}
+
+/* In a narrow window the steps the reader is not on, and Next, give their
+   names to their numbers; the name stays the button's, for a screen reader,
+   and its tooltip says the step. The header holds its height on every step. */
+@media (max-width: 900px) {
+  .gl-steps__step:not(.gl-steps__step--current) .gl-steps__label,
+  .gl-steps__next .gl-steps__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.gl-steps__list {
+  display: flex;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gl-steps__step,
+.gl-steps__next {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 10px 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--c-font-muted, #00aa2a);
+  font-size: 0.8em;
+  text-transform: none;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.gl-steps__step:hover,
+.gl-steps__next:hover {
+  background: var(--c-primary-light, #1a1a1a);
+  color: var(--c-font, #00ff41);
+  border-color: var(--c-secondary, #00ff41);
+  box-shadow: none;
+}
+
+.gl-steps__step--current,
+.gl-steps__step--current:hover {
+  background: var(--c-secondary, #00ff41);
+  border-color: var(--c-secondary, #00ff41);
+  color: var(--c-font-inverse, #0a0a0a);
+}
+
+/* What comes next: drawn as a way on, not as a fifth step. */
+.gl-steps__next {
+  border-style: dashed;
+  border-color: var(--c-border, #00ff4140);
+  padding-left: 10px;
+}
+
+.gl-steps__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 0.85em;
 }
 
 /* ── Add-window / layout menu ────────────────────────────────────────────── */
@@ -394,6 +602,7 @@
 
 .gl-add-panel-menu__item:hover {
   background: var(--c-primary, #0a0a0a);
+  color: var(--c-secondary, #00ff41);
 }
 
 .gl-add-panel-menu__empty {
@@ -425,104 +634,6 @@
   position: relative;
   min-height: 0;
   overflow: hidden;
-}
-
-/* ── Actions (Plotbar) panel ─────────────────────────────────────────────── */
-
-.gl-actions-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
-  overflow-y: auto;
-}
-
-.gl-actions-panel__plot,
-.gl-actions-panel__cancel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border: 1px solid var(--c-secondary, #00ff41);
-  background: transparent;
-  color: var(--c-secondary, #00ff41);
-  font-family: var(--f-root-font, 'Consolas', monospace);
-  font-size: 0.82em;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  width: 100%;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-}
-
-.gl-actions-panel__plot:hover {
-  background: rgba(0, 255, 65, 0.1);
-  box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
-}
-
-.gl-actions-panel__cancel {
-  border-color: var(--c-error, #e74c3c);
-  color: var(--c-error, #e74c3c);
-}
-
-.gl-actions-panel__cancel:hover {
-  background: rgba(231, 76, 60, 0.1);
-}
-
-.gl-actions-panel__status {
-  font-size: 0.78em;
-  color: var(--c-font-muted, #00aa2a);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.gl-actions-panel__progress-bar-wrap {
-  width: 100%;
-  height: 2px;
-  background: var(--c-primary-light, #1a1a1a);
-  overflow: hidden;
-}
-
-.gl-actions-panel__progress-bar {
-  height: 100%;
-  background: var(--c-secondary, #00ff41);
-  transition: width 0.2s ease;
-}
-
-.gl-actions-panel__progress-bar--indeterminate {
-  width: 40%;
-  animation: actions-progress-indeterminate 1.4s infinite ease-in-out;
-}
-
-@keyframes actions-progress-indeterminate {
-  0%   { transform: translateX(-150%); }
-  100% { transform: translateX(350%); }
-}
-
-.gl-actions-panel__status-text {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.gl-actions-panel__status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--c-font-muted, #00aa2a);
-  flex-shrink: 0;
-  transition: background 0.2s ease;
-}
-
-.gl-actions-panel__status-dot--active {
-  background: var(--c-secondary, #00ff41);
-  box-shadow: 0 0 6px var(--c-secondary, #00ff41);
-  animation: pulse-dot 1s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
 }
 
 /* ── Graphbase panel ─────────────────────────────────────────────────────── */
@@ -629,8 +740,8 @@
   border-radius: var(--border-radius, 4px);
   display: flex; align-items: center; justify-content: center;
 }
-.gl-graphbase-panel__load-btn:hover    { border-color: var(--c-secondary, #00ff41); color: var(--c-secondary, #00ff41); }
-.gl-graphbase-panel__delete-btn:hover  { border-color: #e74c3c; color: #e74c3c; }
+.gl-graphbase-panel__load-btn:hover    { background: transparent; border-color: var(--c-secondary, #00ff41); color: var(--c-secondary, #00ff41); }
+.gl-graphbase-panel__delete-btn:hover  { background: transparent; border-color: #e74c3c; color: #e74c3c; }
 .gl-graphbase-panel__promote-btn {
   width: 22px; height: 22px;
   border: 1px solid var(--c-border, #333);
@@ -641,7 +752,7 @@
   border-radius: var(--border-radius, 4px);
   display: flex; align-items: center; justify-content: center;
 }
-.gl-graphbase-panel__promote-btn:hover { border-color: #f39c12; color: #f39c12; }
+.gl-graphbase-panel__promote-btn:hover { background: transparent; border-color: #f39c12; color: #f39c12; }
 .gl-graphbase-panel__saved-badge {
   width: 22px; height: 22px;
   display: flex; align-items: center; justify-content: center;

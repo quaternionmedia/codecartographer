@@ -7,12 +7,12 @@ dependencies beyond the standard library.
 Each ``RegexLanguageParser`` instance is configured for a single language and
 registered with ``ParserRegistry`` at import time.  Patterns match stripped
 lines anchored at ``^`` to minimise false positives.  Only depth-2 nodes
-(top-level symbol definitions) are emitted; depth-3 sub-symbol extraction is
-deferred to the tree-sitter phase (Phase 2).
+(top-level symbol definitions) are emitted; these parsers produce no depth-3
+sub-symbols.
 
 Supported languages
 -------------------
-JavaScript (.js .jsx .mjs), TypeScript (.ts .tsx), Rust (.rs), Go (.go),
+JavaScript (.js .jsx .mjs), TypeScript (.ts .tsx), Go (.go),
 Java (.java), C# (.cs), Kotlin (.kt .kts), Swift (.swift), Ruby (.rb),
 PHP (.php), Scala (.scala), Shell (.sh .bash)
 
@@ -62,19 +62,6 @@ _TS: list[_Pattern] = _JS + [
     (2, "type",      re.compile(r"^(?:export\s+)?type\s+(\w+)\s*(?:<[^=]+>)?\s*=")),
     (2, "enum",      re.compile(r"^(?:export\s+)?(?:const\s+)?enum\s+(\w+)")),
     (2, "decorator", re.compile(r"^@(\w+)\s*(?:\(|$)")),
-]
-
-_RUST: list[_Pattern] = [
-    (2, "function",    re.compile(
-        r"^(?:pub\s+(?:\(\w+\)\s+)?)?(?:async\s+)?fn\s+(\w+)\s*[\(<]"
-    )),
-    (2, "struct",      re.compile(r"^(?:pub\s+)?struct\s+(\w+)")),
-    (2, "enum",        re.compile(r"^(?:pub\s+)?enum\s+(\w+)")),
-    (2, "trait",       re.compile(r"^(?:pub\s+)?trait\s+(\w+)")),
-    (2, "impl",        re.compile(r"^impl(?:\s*<[^>]*>)?\s+(?:\w+\s+for\s+)?(\w+)")),
-    (2, "module",      re.compile(r"^(?:pub\s+)?mod\s+(\w+)\s*\{")),
-    (2, "type",        re.compile(r"^(?:pub\s+)?type\s+(\w+)\s*=")),
-    (2, "macro",       re.compile(r"^(?:pub\s+)?macro_rules!\s*(\w+)")),
 ]
 
 _GO: list[_Pattern] = [
@@ -283,6 +270,12 @@ class RegexLanguageParser:
     def extensions(self) -> list[str]:  # type: ignore[override]
         return self._extensions
 
+    @property
+    def kinds(self) -> tuple[str, ...]:
+        """Every `kind` this language's patterns can emit -- what
+        `constructs.yaml` is held to for a language it lists."""
+        return tuple(sorted({kind for _, kind, _ in self._patterns}))
+
     def parse_files(self, files: list[File], depth: int = 2) -> nx.DiGraph:
         """
         Scan each file line-by-line and emit depth-2 symbol nodes.
@@ -347,7 +340,6 @@ _LANGUAGES: list[tuple[str, list[str], list[_Pattern]]] = [
     # ── Existing symbol-bearing languages ─────────────────────────────────────
     ("javascript", [".js", ".jsx", ".mjs", ".cjs"],    _JS),
     ("typescript", [".ts", ".tsx", ".cts", ".mts"],    _TS),
-    ("rust",       [".rs"],                            _RUST),
     ("go",         [".go"],                            _GO),
     ("java",       [".java"],                          _JAVA),
     ("csharp",     [".cs"],                            _CSHARP),

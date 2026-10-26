@@ -35,8 +35,9 @@ export interface GraphStylingOptions {
   nodeOpacity: number;         // 0.0 to 1.0
   nodeBorderWidth: number;     // in pixels
   nodeColorOverride?: string;  // Optional override for automatic node coloring
-  // 'auto' (default depth/kind heuristic) | 'layer' (Lexicon Option B
-  // abstraction layer, when present on a node) | 'type' | 'degree' | ...
+  // 'auto' (default depth/kind heuristic) | 'layer' (the abstraction layer
+  // the lexicon join, Option B, stamps on a node, when present) | 'construct' (what the node
+  // is, from the construct vocabulary, alike across languages)
   colorBy?: string;
 
   // Edge Appearance

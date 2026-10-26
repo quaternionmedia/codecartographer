@@ -1,0 +1,139 @@
+/**
+ * The address of a showgraph, in a page's query string.
+ *
+ *   ?show  or  ?show=index             every family at once: the default
+ *   ?show=family:performing            one family
+ *   ?show=project:carlos               one project's estate view
+ *   ?show=project:carlos&view=code     the same project's code map
+ *
+ * **THE WINDOW HAD NO ADDRESS.** Nothing could link to a graph: the page ignored
+ * its query string, and every drawing started from a click in a panel. A
+ * family page in the corpus's docs site that wants to open its own showgraph
+ * needs a URL that means "this family", and this is that URL's grammar.
+ *
+ * PURE ON PURPOSE. Parsing and formatting touch no DOM and no state, so
+ * `web/tests/pure/show-address.test.mjs` exercises both under node.
+ *
+ * A name is a repository or family name as the corpus writes it. The grammar
+ * refuses anything else rather than passing it to a route, the same rule the
+ * server's clone lookup keeps: one path segment, nothing hidden.
+ */
+
+export type ShowKind = 'index' | 'family' | 'project';
+export type ShowView = 'estate' | 'code' | 'system';
+
+export interface ShowAddress {
+  kind: ShowKind;
+  /** Empty for the index. */
+  name: string;
+  /** Only a project has more than one view; the others are always `estate`. */
+  view: ShowView;
+}
+
+export const VIEWS: readonly ShowView[] = ['estate', 'code', 'system'];
+
+const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/**
+ * The query string's parameters. Written out rather than `URLSearchParams`,
+ * which the DOM-free build this is tested in does not have.
+ */
+function parameters(search: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const pair of (search.startsWith('?') ? search.slice(1) : search).split('&')) {
+    if (!pair) continue;
+    const at = pair.indexOf('=');
+    const key = at < 0 ? pair : pair.slice(0, at);
+    const value = at < 0 ? '' : pair.slice(at + 1);
+    try {
+      out.set(decodeURIComponent(key), decodeURIComponent(value.replace(/\+/g, ' ')));
+    } catch {
+      // A malformed escape names nothing.
+    }
+  }
+  return out;
+}
+
+/** The address a query string names, or `null` when it names none or a bad one. */
+export function parseShow(search: string): ShowAddress | null {
+  const params = parameters(search);
+  if (!params.has('show')) return null;
+  const raw = params.get('show');
+  // A showgraph named by nothing more is every family at once.
+  if (!raw || raw === 'index') return { kind: 'index', name: '', view: 'estate' };
+
+  const colon = raw.indexOf(':');
+  if (colon < 0) return null;
+  const kind = raw.slice(0, colon);
+  const name = raw.slice(colon + 1);
+  if ((kind !== 'family' && kind !== 'project') || !NAME.test(name)) return null;
+
+  const asked = params.get('view');
+  const view: ShowView = kind === 'project' && asked && (VIEWS as readonly string[]).includes(asked)
+    ? asked as ShowView
+    : 'estate';
+  return { kind, name, view };
+}
+
+/** The query string for an address, with the view left out when it is `estate`. */
+export function formatShow(address: ShowAddress): string {
+  if (address.kind === 'index') return '?show=index';
+  const view = address.kind === 'project' && address.view !== 'estate' ? `&view=${address.view}` : '';
+  return `?show=${address.kind}:${encodeURIComponent(address.name)}${view}`;
+}
+
+/** The address a node's `show` attribute names (`family:core`), or `null`. */
+export function fromNode(show: unknown): ShowAddress | null {
+  return typeof show === 'string' ? parseShow(`show=${show}`) : null;
+}
+
+/** Whether two addresses name the same drawing. */
+export function sameShow(a: ShowAddress | null | undefined, b: ShowAddress | null | undefined): boolean {
+  return !!a && !!b && a.kind === b.kind && a.name === b.name && a.view === b.view;
+}
+
+/** What a breadcrumb needs to know of the corpus: which family sits within which, and who claims a project. */
+export interface TrailSubjects {
+  families: readonly { name: string; within: string | null }[];
+  projects: readonly { name: string; families: readonly string[] }[];
+}
+
+/**
+ * The way from every family down to `address`, one level per step.
+ *
+ * Each level is the addresses a reader can step back to at that depth --
+ * usually one. A project two families claim ends its families' level with
+ * both, so the trail asserts no single home for it any more than the index
+ * does. The last level is `address` itself.
+ */
+export function trail(address: ShowAddress, subjects: TrailSubjects | null): ShowAddress[][] {
+  const index: ShowAddress = { kind: 'index', name: '', view: 'estate' };
+  if (address.kind === 'index') return [[index]];
+  const within = new Map((subjects?.families ?? []).map((f) => [f.name, f.within]));
+  const family = (name: string): ShowAddress => ({ kind: 'family', name, view: 'estate' });
+
+  /** `name`'s enclosing families, outermost first, `name` last. */
+  const chain = (name: string): string[] => {
+    const out = [name];
+    const seen = new Set(out);
+    for (let up = within.get(name); up && within.has(up) && !seen.has(up); up = within.get(up)) {
+      out.unshift(up);
+      seen.add(up);
+    }
+    return out;
+  };
+
+  if (address.kind === 'family') {
+    return [[index], ...chain(address.name).map((name) => [family(name)])];
+  }
+  const claims = subjects?.projects.find((p) => p.name === address.name)?.families ?? [];
+  if (!claims.length) return [[index], [address]];
+  const levels = chain(claims[0]).map((name) => [family(name)]);
+  levels[levels.length - 1].push(...claims.slice(1).map(family));
+  return [[index], ...levels, [address]];
+}
+
+/** How a step of the trail is named. */
+export function crumbLabel(address: ShowAddress): string {
+  return address.kind === 'index' ? 'every family' : address.name;
+}

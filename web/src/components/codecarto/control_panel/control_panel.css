@@ -1,28 +1,12 @@
-/* Control Panel - Slide-up tabbed panel */
+/* Control Panel — the body of the Upload, Repository and Graph Settings panels */
 
 .control-panel {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-}
-
-.control-panel--embedded {
   position: relative;
-  inset: auto;
   width: 100%;
   height: 100%;
   min-height: 0;
-}
-
-.control-panel--embedded .control-panel__resize,
-.control-panel--embedded .control-panel__handle,
-.control-panel--embedded .control-panel__tabs,
-.control-panel--embedded .control-panel__status {
-  display: none;
+  display: flex;
+  flex-direction: column;
 }
 
 .control-panel--embedded .control-panel__body {
@@ -49,124 +33,6 @@
 .control-panel--embedded .panel-graph {
   min-height: 0;
   height: 100%;
-}
-
-/* Resize handle at top edge */
-.control-panel__resize {
-  position: absolute;
-  top: -4px;
-  left: 0;
-  right: 0;
-  height: 8px;
-  cursor: ns-resize;
-  background: transparent;
-  transition: background-color var(--t-transition-fast);
-  z-index: 101;
-}
-.control-panel__resize:hover,
-.control-panel__resize--dragging {
-  background-color: var(--c-secondary);
-  opacity: 0.5;
-}
-.control-panel__resize::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 40px;
-  height: 4px;
-  background-color: var(--c-border);
-  border-radius: 2px;
-  transition: background-color var(--t-transition-fast);
-}
-.control-panel__resize:hover::after,
-.control-panel__resize--dragging::after {
-  background-color: var(--c-secondary);
-}
-
-/* Toggle handle — icon only, compact */
-.control-panel__handle {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 4px var(--spacing-md);
-  background-color: var(--c-primary-light);
-  border-top: var(--border-size-thin) solid var(--c-border);
-  cursor: pointer;
-  transition: background-color var(--t-transition-fast);
-  min-height: 20px;
-}
-.control-panel__handle:hover {
-  background-color: var(--c-primary);
-}
-
-.control-panel__handle-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  color: var(--c-font-muted);
-  font-size: 0.7em;
-  transition: transform var(--t-transition-time), color var(--t-transition-fast);
-}
-.control-panel__handle-icon--open {
-  transform: rotate(180deg);
-}
-.control-panel__handle:hover .control-panel__handle-icon {
-  color: var(--c-font);
-}
-
-/* Tab bar */
-.control-panel__tabs {
-  display: flex;
-  gap: 0;
-  background-color: var(--c-primary);
-  border-bottom: var(--border-size-thin) solid var(--c-border);
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  flex-wrap: nowrap;
-}
-.control-panel__tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.control-panel__tab {
-  flex: 1;
-  min-width: fit-content;
-  flex-shrink: 0;
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background-color: transparent;
-  color: var(--c-font-muted);
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  cursor: pointer;
-  transition: all var(--t-transition-fast);
-  text-transform: uppercase;
-  font-size: 0.8em;
-  letter-spacing: 1px;
-  margin: 0;
-  height: auto;
-  box-shadow: none;
-  white-space: nowrap;
-}
-.control-panel__tab:hover {
-  color: var(--c-font);
-  background-color: var(--c-primary-light);
-  box-shadow: none;
-  border-color: transparent;
-}
-.control-panel__tab--active {
-  color: var(--c-secondary);
-  border-bottom-color: var(--c-secondary);
-  background-color: transparent;
-}
-.control-panel__tab--active:hover {
-  background-color: var(--c-primary-light);
-  color: var(--c-secondary);
 }
 
 /* Content area */
@@ -241,14 +107,15 @@
   padding-left: var(--spacing-md);
 }
 
-/* Upload dropzone */
+/* Upload dropzone: one line, icon beside the text, so the demo and the
+   lexicons below it are in view in the default dock's short Open panel. */
 .panel-upload__dropzone {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
   border: 2px dashed var(--c-border);
   border-radius: var(--border-radius-lg);
   background-color: var(--c-primary-light);
@@ -256,6 +123,7 @@
   transition: all var(--t-transition-fast);
 }
 .panel-upload__dropzone:hover,
+.panel-upload__dropzone:focus-visible,
 .panel-upload__dropzone--active {
   border-color: var(--c-secondary);
   background-color: rgba(0, 255, 65, 0.05);
@@ -325,9 +193,15 @@
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
+/* Bundled: read from disk with its recorded documents, no network needed. */
+.panel-source__example-chip--bundled {
+  background: color-mix(in srgb, var(--c-secondary) 18%, transparent);
+  font-weight: 600;
+}
+
 .panel-source__example-chip:hover {
   background: var(--c-secondary);
-  color: var(--c-bg);
+  color: var(--c-font-inverse);
 }
 
 /* ── Cached graphs panel ──────────────────────────────────────────────────── */
@@ -362,8 +236,12 @@
   text-align: left;
   transition: border-color 0.15s, color 0.15s;
 }
+/* Each hover below sets its own background: the global button:hover fill is
+   more specific than these buttons' own `transparent`, and under its
+   secondary fill this text would not read. */
 .panel-source__cached-chip:hover {
   border-color: var(--c-accent, #00ff41);
+  background: color-mix(in srgb, var(--c-secondary) 8%, transparent);
   color: var(--c-font);
 }
 .panel-source__cached-label {
@@ -388,7 +266,7 @@
   opacity: 0.5;
   flex-shrink: 0;
 }
-.panel-source__cached-evict:hover { opacity: 1; color: var(--c-error); }
+.panel-source__cached-evict:hover { opacity: 1; color: var(--c-error); background: none; box-shadow: none; }
 
 /* Loaded repo: header + tree fills remaining space */
 .panel-source__repo-loaded {
@@ -428,6 +306,7 @@
 
 .panel-source__repo-clear:hover {
   border-color: var(--c-error, #e74c3c);
+  background: transparent;
   color: var(--c-error, #e74c3c);
 }
 
@@ -498,14 +377,14 @@
   letter-spacing: 1px;
   text-transform: uppercase;
   transition: all var(--t-transition-fast);
-  box-shadow: 0 0 8px rgba(var(--c-secondary-rgb), 0.3);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--c-secondary) 30%, transparent);
   flex-shrink: 0;
   margin: 0;
   height: auto;
 }
 .panel-source__plot-primary:hover {
   background-color: var(--c-font);
-  box-shadow: 0 0 16px rgba(var(--c-secondary-rgb), 0.5);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--c-secondary) 50%, transparent);
   transform: scale(1.02);
 }
 
@@ -711,7 +590,7 @@
 .panel-settings__select:focus {
   outline: none;
   border-color: var(--c-secondary);
-  box-shadow: 0 0 0 2px rgba(var(--c-secondary-rgb), 0.1);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-secondary) 10%, transparent);
 }
 
 /* Help/hint text */
@@ -829,16 +708,19 @@
   margin: 0;
   height: auto;
 }
+/* The label keeps a colour of its own: without one, the global button:hover
+   sets the inverse colour, meant for its secondary fill, over this faint one. */
 .panel-settings__button-option:hover {
   border-color: var(--c-secondary);
-  background-color: rgba(var(--c-secondary-rgb), 0.1);
+  background-color: color-mix(in srgb, var(--c-secondary) 10%, transparent);
+  color: var(--c-secondary);
   box-shadow: none;
 }
 .panel-settings__button-option--active {
   border-color: var(--c-secondary);
-  background-color: rgba(var(--c-secondary-rgb), 0.2);
+  background-color: color-mix(in srgb, var(--c-secondary) 20%, transparent);
   color: var(--c-secondary);
-  box-shadow: 0 0 4px rgba(var(--c-secondary-rgb), 0.3);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--c-secondary) 30%, transparent);
 }
 
 /* Compact text input */
@@ -870,79 +752,6 @@
   gap: var(--spacing-sm);
 }
 
-/* ── Status bar ──────────────────────────────────────────────────────────── */
-
-.control-panel__status {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-xs) var(--spacing-md);
-  background-color: var(--c-primary-dark);
-  font-size: 0.7em;
-  color: var(--c-font-muted);
-  border-top: var(--border-size-thin) solid var(--c-border);
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Progress bar — sits at the very top of the status bar */
-.control-panel__progress-bar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 2px;
-  background-color: var(--c-accent, #00ff41);
-  transition: width 0.3s ease;
-  min-width: 4px;
-}
-
-@keyframes progress-indeterminate {
-  0%   { left: -40%; width: 40%; }
-  100% { left: 100%; width: 40%; }
-}
-
-.control-panel__progress-bar--indeterminate {
-  width: 40% !important;
-  animation: progress-indeterminate 1.2s ease-in-out infinite;
-}
-
-.control-panel__cancel-btn {
-  background: none;
-  border: none;
-  color: var(--c-font-muted);
-  cursor: pointer;
-  padding: 0 4px;
-  font-size: 0.9em;
-  line-height: 1;
-  opacity: 0.7;
-  flex-shrink: 0;
-}
-.control-panel__cancel-btn:hover {
-  opacity: 1;
-  color: var(--c-error);
-}
-.control-panel__status-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-.control-panel__status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--c-secondary);
-}
-.control-panel__status-dot--warning { background-color: var(--c-warning); }
-.control-panel__status-dot--error   { background-color: var(--c-error); }
-
-.control-panel__status-context {
-  color: var(--c-font-muted);
-  opacity: 0.75;
-  text-transform: capitalize;
-  letter-spacing: 0.3px;
-}
-
 /* ─── Language chips ──────────────────────────────────────────────────────── */
 
 .panel-settings__chips {
@@ -964,13 +773,152 @@
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.panel-settings__chip:hover {
+/* Not the selected chip: its fill is what says it is selected, and under the
+   pointer it takes the global button:hover fill and label instead. */
+.panel-settings__chip:hover:not(.panel-settings__chip--active) {
   border-color: var(--c-accent);
+  background: transparent;
   color: var(--c-accent);
 }
 
 .panel-settings__chip--active {
   background: var(--c-accent);
-  color: var(--c-bg);
+  color: var(--c-font-on-accent);
   border-color: var(--c-accent);
+}
+
+/* ── Open panel ───────────────────────────────────────────────────────────── */
+
+/* Each column scrolls; its sections keep their height rather than shrinking
+   under one another. */
+.panel-open .panel-source__left {
+  overflow-y: auto;
+}
+.panel-open .panel-source__left > *,
+.panel-open .panel-source__right > * {
+  flex: none;
+}
+
+.panel-source__cached-save,
+.panel-source__cached-saved {
+  background: none;
+  border: none;
+  color: var(--c-font-muted);
+  padding: 0 3px;
+  font-size: 0.8em;
+  flex-shrink: 0;
+}
+.panel-source__cached-save { cursor: pointer; opacity: 0.6; }
+.panel-source__cached-save:hover { opacity: 1; color: var(--c-secondary); background: none; box-shadow: none; }
+.panel-source__cached-saved { color: var(--c-secondary); }
+
+.panel-open__parse-summary {
+  flex: 1;
+  min-width: 0;
+  margin: 0 var(--spacing-sm);
+  font-size: 0.72em;
+  color: var(--c-font-muted);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Plot bar: the one Plot / Cancel, at the foot of the Open panel ────────── */
+
+.panel-plotbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: var(--border-size-thin) solid var(--c-border);
+}
+
+.panel-plotbar__plot,
+.panel-plotbar__cancel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  margin: 0;
+  border: 1px solid var(--c-secondary, #00ff41);
+  background: transparent;
+  color: var(--c-secondary, #00ff41);
+  font-size: 0.82em;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.panel-plotbar__plot:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--c-secondary) 10%, transparent);
+  color: var(--c-secondary, #00ff41);
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+}
+.panel-plotbar__cancel {
+  border-color: var(--c-error, #e74c3c);
+  color: var(--c-error, #e74c3c);
+}
+.panel-plotbar__cancel:hover:not(:disabled) {
+  background: rgba(231, 76, 60, 0.1);
+  color: var(--c-error, #e74c3c);
+}
+.panel-plotbar__plot:disabled,
+.panel-plotbar__cancel:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.panel-plotbar__status {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78em;
+  color: var(--c-font-muted, #00aa2a);
+}
+.panel-plotbar__progress-wrap {
+  width: 100%;
+  height: 2px;
+  background: var(--c-primary-light, #1a1a1a);
+  overflow: hidden;
+}
+.panel-plotbar__progress {
+  height: 100%;
+  background: var(--c-secondary, #00ff41);
+  transition: width 0.2s ease;
+}
+.panel-plotbar__progress--indeterminate {
+  width: 40%;
+  animation: plotbar-progress-indeterminate 1.4s infinite ease-in-out;
+}
+@keyframes plotbar-progress-indeterminate {
+  0%   { transform: translateX(-150%); }
+  100% { transform: translateX(350%); }
+}
+.panel-plotbar__status-text {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.panel-plotbar__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-font-muted, #00aa2a);
+  flex-shrink: 0;
+}
+.panel-plotbar__status-dot--active {
+  background: var(--c-secondary, #00ff41);
+  box-shadow: 0 0 6px var(--c-secondary, #00ff41);
+  animation: plotbar-pulse-dot 1s ease-in-out infinite;
+}
+@keyframes plotbar-pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
 }

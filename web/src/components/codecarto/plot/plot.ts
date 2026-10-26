@@ -17,8 +17,10 @@ export const PlotComponent: m.Component<PlotAttrs> = {
         ? m('div.graph', graphs)
         : m('div.plot--empty', [
             m('span.plot__empty-icon', '◇'),
-            m('p.plot__empty-text', 
-              'No visualization loaded. Use the control panel below to load a demo, fetch a GitHub repository, or upload Python files.'
+            // Step 1 by its number on the rail: on step 4 the canvas fills the
+            // window, and the Open panel is out of sight.
+            m('p.plot__empty-text',
+              'No graph drawn yet. Step 1, Open, is where one starts: open a repository, add files or press ⚡ Load Demo.'
             ),
           ])
     ]);

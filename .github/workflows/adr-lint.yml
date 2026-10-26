@@ -23,12 +23,6 @@ name: ADR lint
 #                   `governance/qm` is the documented default. A project that
 #                   mounts it somewhere else sets the path once here rather
 #                   than repeating it in every step.
-#
-#                   This used to name a project and where it mounted, which
-#                   was a claim with an expiry date: the project moved to the
-#                   default and the sentence stayed, describing a state that
-#                   had ended and referring to a pull request that had merged.
-#                   The knob is documented by what it does.
 #   RECORDS_DIR  -- leave empty for the branch-per-project model. Set it to a
 #                   local path (adr) only if this project keeps adr/ in its
 #                   own working tree instead of on its governance branch.
@@ -38,16 +32,13 @@ on:
     branches: [main]
   pull_request:
 
-# One run per branch per workflow. A second push supersedes the first: nobody
-# reads the result of a run whose commit has already been replaced, and the
-# minutes are real -- 55 of this repository's 129 runs on 2026-08-11 came from
-# five iterative pushes to two pull request branches, where only the last
-# mattered.
+# One run per branch per workflow. A second push supersedes the first: the
+# result of a run whose commit has been replaced is not read, and its minutes
+# are billed.
 #
-# Cancellation is scoped to pull requests deliberately. On the default branch
-# and on a project branch the run IS the record of what that commit reported,
-# and cancelling it to start a newer one destroys the only evidence that the
-# earlier commit was ever checked.
+# Cancellation applies to pull requests only. On the default branch and on a
+# project branch the run is the record of what that commit reported, and
+# cancelling it would remove the only evidence that the commit was checked.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -65,22 +56,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # **ONLY THE GOVERNANCE SUBMODULE, INITIALISED BELOW** -- the one
-          # departure from the seed's copy. `submodules: true` is all-or-nothing
-          # and this project also has a private submodule the runner has no
-          # credentials for, so the seed's checkout aborted with
-          # `remote: Repository not found` before the check ran a line.
+          # Only the governance submodule, initialised below. `submodules: true`
+          # is all-or-nothing: a project with a private submodule the runner
+          # has no credential for fails the checkout before the lint runs.
           submodules: false
           # Full history: the append-only check diffs against the base.
           fetch-depth: 0
 
-      # **NOT `--depth 1`, AND THE REASON ONLY APPEARS WHEN THE PIN MOVES.**
-      # The append-only check below diffs `adr/` between the base commit's pin
-      # and this one's. A depth-1 submodule clone holds only the pin it was
-      # given, so the base pin is not an object it has, and the check failed
-      # with `fatal: bad object <base pin>` -- on the first pull request that
-      # moved this project's governance pin. Every run before that passed
-      # because both sides resolved to the same commit.
+      # Not `--depth 1`: the append-only check diffs `adr/` between the base
+      # commit's pin and this one's, and a depth-1 clone holds only this pin.
+      # The first pull request that moves a pin would fail with `bad object`.
       - name: Check out the governance submodule only
         run: git submodule update --init "$QM_SUBMODULE"
 

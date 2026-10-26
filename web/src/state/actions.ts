@@ -1,19 +1,30 @@
 import m from 'mithril';
+import type { Patch } from 'meiosis-setup/types';
 import { StateController } from '../state/state_controller';
+import type { ICellState } from './cell_state';
 import { PlotService } from '../services/plot_service';
 import { TopologyService } from '../services/topology_service';
 import type { TopologyChoices, TopologyProblem, TopologyRequest } from '../services/topology_service';
 import { EstateService } from '../features/estate/estate_service';
 import type { CapabilitiesDocument, DrawRequest, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
+import { ShowService } from '../features/show/show_service';
+import type { ShowSubjectsDocument, ShowViewsDocument } from '../features/show/show_service';
+import type { ShowAddress } from '../features/show/show_address';
 import { isProblem } from '../features/estate/seam_client';
+import { CartographyService } from '../features/cartography/cartography_service';
+import { CartographyActions, settlePatch } from '../features/cartography/cartography_actions';
 import type { SeamOutcome, SeamProblem } from '../features/estate/seam_client';
 import { RepoService } from '../features/repository';
+import { RepoTree } from '../features/repository/repo_tree';
 import { GraphData } from '../features/graph';
 import { GraphStylingOptions } from './types';
 import { GraphRendererRegistry } from '../features/graph/services/renderers';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
 import { logger } from '../core/logger';
 import { backendLayoutName } from '../features/graph/services/layout_names';
+import { parseNotes } from '../features/graph/services/parse_notes';
+import { LatestPlot } from './latest_plot';
+import type { PlotTicket } from './latest_plot';
 
 // The menu's registry name, as the backend spells it. One rule in
 // `layout_names.ts`; this used to be a private table here that fell back to
@@ -25,7 +36,34 @@ const convertLayoutToBackend = backendLayoutName;
  * Extracts business logic from components into a dedicated module
  */
 export class PlotActions {
-  constructor(private stateController: StateController) {}
+  /** The Cargo and Chrestomathy panels' reads and draws. */
+  public readonly cartography: CartographyActions;
+  /** The Open panel's plots, each drawn only while it is the latest asked for (`latest_plot.ts`). */
+  private readonly plots: LatestPlot;
+
+  constructor(private stateController: StateController) {
+    const controller = stateController;
+    this.plots = new LatestPlot(() => controller.clear());
+    this.cartography = new CartographyActions(
+      {
+        get state() { return controller.state; },
+        update: (patch) => controller.update(patch as Patch<ICellState>),
+        redraw: () => controller.redraw(),
+        clear: () => controller.clear(),
+        plot: (document) => this.handlePlotData(document),
+        layout: () => this._layout(),
+      },
+      {
+        cargoData: (path) => CartographyService.cargoData(controller.api.cargo, path),
+        cargoGraph: (request) => CartographyService.cargoGraph(controller.api.cargo, request),
+        constructs: () => CartographyService.constructs(controller.api.lexicon),
+        chrestomathy: (construct) => CartographyService.chrestomathy(controller.api.lexicon, construct),
+        chrestomathyGraph: (construct, layout) =>
+          CartographyService.chrestomathyGraph(controller.api.lexicon, construct, layout),
+        census: (nodes) => CartographyService.census(controller.api.lexicon, nodes),
+      },
+    );
+  }
 
   /**
    * Process plot data from backend and update state
@@ -428,14 +466,17 @@ export class PlotActions {
 
   /**
    * Load and display a language's standalone Lexicon graph (Option A —
-   * see docs/llm/roadmap/lexicon.md). Switchable: grows automatically as
-   * more languages get a lexicon YAML, no frontend change needed.
+   * see docs/architecture.md, Lexicons and the construct vocabulary).
+   * Switchable: grows automatically as more languages get a lexicon YAML,
+   * no frontend change needed. Resolves true when it was drawn, false when
+   * another plot was asked for before it answered.
    */
-  async loadLexicon(language: string): Promise<void> {
-    this.stateController.clear();
+  async loadLexicon(language: string): Promise<boolean> {
     try {
-      const data = await PlotService.plotLexicon(this.stateController.api.lexicon, language);
-      this.handlePlotData(data);
+      return await this.plots.plot(
+        () => PlotService.plotLexicon(this.stateController.api.lexicon, language),
+        (data) => this.handlePlotData(data),
+      );
     } catch (error) {
       console.error(`Failed to load ${language} lexicon:`, error);
       throw error;
@@ -443,17 +484,16 @@ export class PlotActions {
   }
 
   /**
-   * Load and display demo visualization
+   * Load and display demo visualization. Resolves true when it was drawn,
+   * false when another plot was asked for before it answered.
    */
-  async loadDemo(): Promise<void> {
-    this.stateController.clear();
+  async loadDemo(): Promise<boolean> {
     try {
       const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
-      const data = await PlotService.loadDemo(
-        this.stateController.api.plotter,
-        layout
+      return await this.plots.plot(
+        () => PlotService.loadDemo(this.stateController.api.plotter, layout),
+        (data) => this.handlePlotData(data),
       );
-      this.handlePlotData(data);
     } catch (error) {
       console.error('Failed to load demo:', error);
       throw error;
@@ -467,9 +507,10 @@ export class PlotActions {
    * graph data; the only thing that makes it unusual is that some of its edges
    * were never measured, and that travels in the graph metadata. Giving it its
    * own render path would have meant a second renderer, second styling and a
-   * second set of extensions to keep in step.
+   * second set of extensions to keep in step. Resolves true when it drew,
+   * false when the harness answered a problem, which the panel shows.
    */
-  async loadTopology(request: TopologyRequest = {}): Promise<void> {
+  async loadTopology(request: TopologyRequest = {}): Promise<boolean> {
     this.stateController.clear();
     try {
       const layout = convertLayoutToBackend(
@@ -492,12 +533,13 @@ export class PlotActions {
         // "asking the harness..." after the answer had already arrived.
         this.stateController.redraw();
         logger.warn('PlotActions.loadTopology - ' + (found as TopologyProblem).problem);
-        return;
+        return false;
       }
 
       this.stateController.update({ topologyProblem: null });
       this.handlePlotData(found);
       this.stateController.redraw();
+      return true;
     } catch (error) {
       logger.error('Failed to load topology:', error);
       throw error;
@@ -572,14 +614,76 @@ export class PlotActions {
     this._settle(found, 'capabilitiesReading', 'capabilitiesProblem');
   }
 
-  /** The registry as a graph, on the canvas. */
-  async drawCapabilities(request: DrawRequest = {}): Promise<void> {
+  /** The registry as a graph, on the canvas. Resolves whether it drew (`_draw`). */
+  async drawCapabilities(request: DrawRequest = {}): Promise<boolean> {
     this.stateController.clear();
     const found = await EstateService.capabilitiesGraph(
       this.stateController.api.capabilities,
       { ...request, layout: request.layout ?? this._layout() },
     );
-    this._draw(found, 'capabilitiesProblem');
+    return this._draw(found, 'capabilitiesProblem');
+  }
+
+  /**
+   * Every family and project the corpus names, for the Show panel. Asked for
+   * again while the first ask is out -- a second panel mounting at boot --
+   * it is the same ask.
+   */
+  loadShowSubjects(): Promise<void> {
+    this._subjectsAsked ??= ShowService.subjects(this.stateController.api.show)
+      .then((found) => this._settle(found, 'showSubjects', 'showProblem'))
+      .finally(() => { this._subjectsAsked = null; });
+    return this._subjectsAsked;
+  }
+
+  private _subjectsAsked: Promise<void> | null = null;
+
+  /**
+   * Which of a project's views can be drawn here. Draws nothing. An answer
+   * for a project other than the drawing asked for by then is dropped: open
+   * one project and then another, and the first's views, answering last, were
+   * shown under the second's trail.
+   */
+  async loadShowViews(project: string): Promise<void> {
+    this.stateController.update({ showViews: null });
+    const found = await ShowService.views(this.stateController.api.show, project);
+    const named = isProblem(found) ? project : String(found.document.name ?? project);
+    const asked = this.stateController.state.showAddress;
+    if (asked?.kind !== 'project' || asked.name !== named) return;
+    this._settle(found, 'showViews', 'showProblem');
+  }
+
+  /**
+   * A showgraph's estate view -- the index, a family or a project -- on the
+   * canvas. Resolves whether it drew, as the other estate draws do, so the
+   * canvas is brought forward only over a graph and never over the problem.
+   *
+   * **THROUGH THE LATEST-PLOT TICKET**, as the Open panel's plots are: click
+   * every family, cold and two seconds slow, then a family, and the family was
+   * drawn and then every family over it. `current` is the place the drawing
+   * took when it was asked for (`openShow`); the address is set only when the
+   * answer is shown.
+   */
+  async drawShow(address: ShowAddress, request: DrawRequest = {}, current?: PlotTicket): Promise<boolean> {
+    let drew = false;
+    const shown = await this.plots.plot(
+      () => ShowService.graph(this.stateController.api.show, address,
+        { ...request, layout: request.layout ?? this._layout() }),
+      (found) => {
+        this.stateController.update({ showAddress: address });
+        drew = this._draw(found, 'showProblem');
+      },
+      current,
+    );
+    return shown && drew;
+  }
+
+  /**
+   * The latest place, taken now by a drawing that reads something before it
+   * plots (`LatestPlot.ticket`). Every answer still out is dropped from here.
+   */
+  takePlot(): PlotTicket {
+    return this.plots.ticket();
   }
 
   /** dossier's sections, for the panel's list. Draws nothing. */
@@ -588,36 +692,35 @@ export class PlotActions {
     this._settle(found, 'overviewReading', 'overviewProblem');
   }
 
-  /** dossier's reading as a graph, on the canvas. */
-  async drawOverview(request: DrawRequest = {}): Promise<void> {
+  /** dossier's reading as a graph, on the canvas. Resolves whether it drew (`_draw`). */
+  async drawOverview(request: DrawRequest = {}): Promise<boolean> {
     this.stateController.clear();
     const found = await EstateService.overviewGraph(
       this.stateController.api.overview,
       { ...request, layout: request.layout ?? this._layout() },
     );
-    this._draw(found, 'overviewProblem');
+    return this._draw(found, 'overviewProblem');
   }
+
+  // --- code cartography: a Cargo workspace, and the chrestomathy ------------
+  //
+  // The same four outcomes and the same two fields per reading as the estate
+  // above, sequenced in `cartography_actions.ts` -- pure, and tested under
+  // `node --test` -- through `this.cartography`, which the constructor hands
+  // the state, the canvas and the routes -- the census of the canvas too.
 
   private _layout(): string {
     return convertLayoutToBackend(this.stateController.state.graphStyling.layout);
   }
 
-  /** Put a document in one field and clear the other, or the reverse. */
+  /** Put a document in one field and clear the other, or the reverse (`settlePatch`). */
   private _settle(
     found: SeamOutcome,
-    readingField: 'capabilitiesReading' | 'overviewReading',
-    problemField: 'capabilitiesProblem' | 'overviewProblem',
+    readingField: 'capabilitiesReading' | 'overviewReading' | 'showSubjects' | 'showViews',
+    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem',
   ): void {
-    const patch: Record<string, unknown> = {};
-    if (isProblem(found)) {
-      patch[readingField] = null;
-      patch[problemField] = found.problem;
-      logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
-    } else {
-      patch[readingField] = found.document as unknown as CapabilitiesDocument | OverviewDocument;
-      patch[problemField] = null;
-    }
-    this.stateController.update(patch);
+    if (isProblem(found)) logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
+    this.stateController.update(settlePatch(found, readingField, problemField) as Patch<ICellState>);
     this.stateController.redraw();
   }
 
@@ -628,70 +731,87 @@ export class PlotActions {
    * empty canvas would state that the estate holds nothing -- a different
    * claim, and a false one. **AND REDRAW**: `update` changes state without
    * repainting, and this resolves outside any DOM handler.
+   *
+   * True when it drew, false when it holds the problem: the panel brings the
+   * canvas forward only on a draw, or the canvas covers the problem view.
    */
-  private _draw(found: SeamOutcome, problemField: 'capabilitiesProblem' | 'overviewProblem'): void {
+  private _draw(found: SeamOutcome, problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem'): boolean {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {
       patch[problemField] = found.problem as SeamProblem;
       this.stateController.update(patch);
       this.stateController.redraw();
       logger.warn(`PlotActions.${problemField} - ${found.problem.problem}`);
-      return;
+      return false;
     }
     patch[problemField] = null;
     this.stateController.update(patch);
     this.handlePlotData(found.document);
     this.stateController.redraw();
+    return true;
   }
 
   /**
-   * Plot a single uploaded file via /parse/unified
+   * Plot added files as one directory, every file given, at `depth`, via
+   * /parse/unified. Resolves to what the parse said it could not read
+   * (`parse_notes.ts`), for the caller to say; null when another plot was
+   * asked for before it answered, and its answer was dropped.
    */
-  async plotUploadedFile(file: RawFile): Promise<void> {
-    this.stateController.clear();
+  async plotUploads(files: RawFile[], depth: number): Promise<string[] | null> {
     try {
       const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
       const opts   = this.stateController.state.parserOptions;
       const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
-      const dir    = new Directory(new RepoInfo(), 1, new RawFolder('upload', file.size, [file]));
-      const data   = await PlotService.plotUnified(
-        this.stateController.api.parse, dir, 2, exts, layout, undefined, opts.annotateLexicon
+      const size   = files.reduce((total, f) => total + f.size, 0);
+      const dir    = new Directory(new RepoInfo(), files.length, new RawFolder('upload', size, files));
+      let notes: string[] = [];
+      const drawn = await this.plots.plot(
+        async () => {
+          const data = await PlotService.plotUnified(
+            this.stateController.api.parse, dir, depth, exts, layout, undefined, opts.annotateLexicon
+          );
+          if (!data) throw new Error('No data returned from parse/unified');
+          return data;
+        },
+        (data) => {
+          this.stateController.update({ parseDirectory: dir });
+          this.handlePlotData(data);
+          notes = parseNotes(data);
+        },
       );
-      if (!data) throw new Error('No data returned from parse/unified');
-      this.stateController.update({ parseDirectory: dir });
-      this.handlePlotData(data);
+      return drawn ? notes : null;
     } catch (error) {
-      console.error('Failed to plot uploaded file:', error);
+      console.error('Failed to plot uploaded files:', error);
       throw error;
     }
   }
-}
 
-/**
- * Recursively merge an expanded folder into the directory tree at the given path.
- */
-function mergeFolderAtPath(
-  root: RawFolder,
-  pathParts: string[],
-  expanded: RawFolder
-): RawFolder {
-  if (pathParts.length === 0) return expanded;
-  const [head, ...rest] = pathParts;
-  return new RawFolder(
-    root.name,
-    root.size,
-    root.files,
-    root.folders.map(f =>
-      f.name === head ? mergeFolderAtPath(f, rest, expanded) : f
-    )
-  );
+  /** A stream has begun on the canvas: an answer the Open panel still waits for is dropped. */
+  supersedePlots(): void {
+    this.plots.supersede();
+  }
 }
 
 /**
  * Repository Actions - handles GitHub repository operations
  */
 export class RepoActions {
-  constructor(private stateController: StateController) {}
+  /** Folder reads and Expand All, merged in the order they answer (`repo_tree.ts`). */
+  private readonly tree: RepoTree;
+
+  constructor(private stateController: StateController) {
+    const controller = stateController;
+    this.tree = new RepoTree(
+      {
+        get shown() { return controller.repo.content; },
+        show: (tree) => controller.updateRepoContent(tree),
+      },
+      {
+        subtree: (url, path) => RepoService.getSubtree(url, path, controller.api.repoReader),
+        expandAll: (url, maxDepth) => RepoService.expandAllTree(url, controller.api.repoReader, maxDepth),
+      },
+    );
+  }
 
   /**
    * Fetch and load a GitHub repository
@@ -714,28 +834,14 @@ export class RepoActions {
   }
 
   /**
-   * Lazily expand a stub folder in the current repo tree.
-   * Fetches one level of content for the given path and merges it into the tree.
+   * Lazily expand a stub folder in the current repo tree: one level of the
+   * folder at `path` of the repository the tree is of, merged into the tree
+   * shown when it answers. Resolves false when the tree it was asked from has
+   * gone.
    */
-  async expandPath(repoUrl: string, path: string): Promise<void> {
-    const current = this.stateController.repo.content;
-    if (!current) return;
+  async expandPath(path: string): Promise<boolean> {
     try {
-      const folder = await RepoService.getSubtree(
-        repoUrl,
-        path,
-        this.stateController.api.repoReader
-      );
-      const pathParts = path.split('/').filter(p => p.length > 0);
-      const newRoot = mergeFolderAtPath(current.root, pathParts, folder);
-      // Constructed via `new Directory(...)`, not a `{...current}` spread --
-      // isEmpty is a computed getter on the class prototype, which a plain
-      // object spread silently drops (spread only copies own enumerable
-      // properties), producing an object that type-checks as a Directory
-      // but isn't really one at runtime.
-      this.stateController.setRepoContent(
-        new Directory(current.info, current.size, newRoot, current.is_partial)
-      );
+      return await this.tree.expandPath(path);
     } catch (error) {
       console.error('Failed to expand path:', path, error);
       throw error;
@@ -744,18 +850,12 @@ export class RepoActions {
 
   /**
    * Expand all stub folders in the current repo tree to the given depth.
-   * Replaces the entire directory with a fully-expanded version (no file content).
+   * Replaces the entire directory with a fully-expanded version (no file
+   * content), unless another repository is shown by the time it answers.
    */
-  async expandAll(repoUrl: string, maxDepth = 3): Promise<void> {
+  async expandAll(maxDepth = 3): Promise<boolean> {
     try {
-      const result = await RepoService.expandAllTree(
-        repoUrl,
-        this.stateController.api.repoReader,
-        maxDepth
-      );
-      if (result) {
-        this.stateController.updateRepoContent(result);
-      }
+      return await this.tree.expandAll(maxDepth);
     } catch (error) {
       console.error('Failed to expand all folders:', error);
       throw error;

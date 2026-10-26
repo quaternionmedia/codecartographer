@@ -29,19 +29,18 @@ different source with different credentials, deliberately not started here.
 from __future__ import annotations
 
 import asyncio
-import re
 from pathlib import Path
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
-from codecarto.services import system_composer
+from codecarto.services import clones, system_composer
 
 SystemRouter = APIRouter()
 
 # One path segment, nothing hidden, nothing traversal-shaped.
-NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+NAME = clones.NAME
 
 # Seconds between replayed changes. Slow enough to watch, fast enough that
 # thirty changes finish inside a coffee.
@@ -49,34 +48,12 @@ REPLAY_PACE = 1.2
 
 
 def _roots() -> list[Path]:
-    """Where sibling clones live: beside this repository, and one level up.
-
-    `CODECARTO_REPO_ROOTS` (os.pathsep-separated directories) overrides the
-    convention entirely when set. It exists because a git worktree is not
-    beside anything — its parents are wherever the worktree was made — and a
-    session working from one would otherwise find no repositories at all.
-    An override that *adds* roots was considered and rejected: two sources of
-    truth for "which repositories can this read" is how an allowlist stops
-    being one.
-    """
-    import os
-
-    override = os.environ.get("CODECARTO_REPO_ROOTS", "")
-    if override.strip():
-        return [Path(part) for part in override.split(os.pathsep)
-                if part.strip()]
-    here = Path(__file__).resolve().parents[2]
-    return [here.parent, here.parent.parent]
+    """Where sibling clones live; `clones.roots` says how and why."""
+    return clones.roots()
 
 
 def find_repo(name: str) -> Path | None:
-    if not NAME.match(name) or name.startswith("."):
-        return None
-    for root in _roots():
-        candidate = root / name
-        if (candidate / ".git").exists():
-            return candidate
-    return None
+    return clones.find(name, among=_roots())
 
 
 @SystemRouter.get("/repos")

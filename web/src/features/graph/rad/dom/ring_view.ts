@@ -103,6 +103,9 @@ export class RingRenderer {
       const a0 = mid - half;
       const a1 = mid + half;
       const active = view.highlight === i;
+      // A disabled item is greyed whole: its label dims with its wedge, or
+      // the label reads as an item that can be chosen.
+      const opacity = item.enabled ? 1 : 0.35;
 
       const fill = active
         ? item.destructive
@@ -117,7 +120,7 @@ export class RingRenderer {
         fill,
         stroke: theme.stroke,
         'stroke-width': 1,
-        opacity: item.enabled ? 1 : 0.35,
+        opacity,
       });
       wedge.setAttribute('role', 'menuitem');
       wedge.setAttribute('aria-label', item.label);
@@ -136,6 +139,7 @@ export class RingRenderer {
         'font-size': 11,
         'pointer-events': 'none',
         fill: active ? theme.textHi : theme.text,
+        opacity,
       });
       label.textContent = shorten(item.label) + (item.hasChildren ? ' ▸' : '');
       root.appendChild(label);

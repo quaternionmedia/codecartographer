@@ -41,7 +41,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from codecarto.models.plot_data import PlotOptions
-from codecarto.services import estate_service, qmcp_client, topology_service
+from codecarto.services import corpus, estate_service, qmcp_client, topology_service
 from codecarto.services.graph_serializer import GraphSerializer
 from codecarto.services.qmcp_client import Reach
 
@@ -55,12 +55,17 @@ ESTATE_SERVICES = (
     "codecarto/services/capability_service.py",
     "codecarto/services/overview_service.py",
     "codecarto/services/qmcp_client.py",
+    # A Cargo workspace is read the same way a seam is: manifests and the
+    # documents cargo wrote, never a write and never a run.
+    "codecarto/services/cargo_service.py",
+    "codecarto/services/construct_service.py",
 )
 ESTATE_ROUTERS = (
     "codecarto/routers/estate_router.py",
     "codecarto/routers/topology_router.py",
     "codecarto/routers/capability_router.py",
     "codecarto/routers/overview_router.py",
+    "codecarto/routers/cargo_router.py",
 )
 # Controls, not canvases, and not stores.
 ESTATE_PANELS = (
@@ -72,6 +77,11 @@ ESTATE_PANELS = (
     "web/src/features/estate/estate_service.ts",
     "web/src/features/estate/problem_view.ts",
     "web/src/features/estate/provenance.ts",
+    "web/src/layout/panels/cargo_panel.ts",
+    "web/src/layout/panels/chrestomathy_panel.ts",
+    "web/src/features/cartography/cartography_service.ts",
+    "web/src/features/cartography/chrestomathy_rows.ts",
+    "web/src/features/cartography/cartography_actions.ts",
 )
 
 
@@ -132,7 +142,7 @@ def _corpus(tmp_path: Path) -> Path:
 
 
 def test_unknown_layout_on_every_estate_route_is_a_200_with_a_remedy(monkeypatch, tmp_path):
-    monkeypatch.setattr(estate_service.capability_service, "CORPUS", _corpus(tmp_path))
+    monkeypatch.setattr(corpus, "SUBMODULE", _corpus(tmp_path))
     seam = tmp_path / "overview.json"
     seam.write_text('{"schema": 1, "scope": "s", "masthead": [], "sections": [{"title": "T", "rows": [["r"]]}]}',
                     encoding="utf-8")
@@ -172,6 +182,22 @@ def test_estate_modules_store_nothing(path):
     source = (ROOT / path).read_text(encoding="utf-8")
     hits = [m.group(0) for m in WRITES.finditer(source)]
     assert not hits, f"{path} writes or persists: {hits}"
+
+
+RUNS = re.compile(r"""\bsubprocess\b|os\.system|os\.popen|os\.exec|os\.spawn|create_subprocess|\bPopen\b|shutil\.which""")
+
+
+@pytest.mark.parametrize("path", ESTATE_SERVICES + ESTATE_ROUTERS)
+def test_estate_modules_run_nothing(path):
+    """A module that reads a seam, or a workspace, starts no process.
+
+    Running cargo runs a workspace's build scripts and its configured `rustc`,
+    and a route can be reached by anyone who can reach the port; the CLI's
+    `cargo record` is the one place cargo is run, by a person. Mutation: call
+    `subprocess.run` in `cargo_router` before reading -- this fails."""
+    source = (ROOT / path).read_text(encoding="utf-8")
+    hits = [m.group(0) for m in RUNS.finditer(source)]
+    assert not hits, f"{path} starts a process: {hits}"
 
 
 CLIENT_STORES = re.compile(r"localStorage|sessionStorage|indexedDB|document\.cookie")

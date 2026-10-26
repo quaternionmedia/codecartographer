@@ -40,6 +40,7 @@ from fastapi.testclient import TestClient
 
 from codecarto.main import app
 from codecarto.services import capability_service as mod
+from codecarto.services import corpus as corpus_root
 
 
 @pytest.fixture()
@@ -193,6 +194,22 @@ def test_a_registry_that_does_not_parse_says_so(tmp_path: Path):
     assert "did not parse" in reading.reason
 
 
+def test_the_registry_moves_with_the_resolver_s_default(monkeypatch: pytest.MonkeyPatch,
+                                                         tmp_path: Path):
+    """`corpus.root` reads `SUBMODULE` when called, so moving it moves every reader.
+
+    A default bound when this module is imported leaves the registry on the
+    pin while the families seam moves, and a test has to move both. Broken by
+    binding it at import, this reads the pin's registry.
+    """
+    root = corpus(tmp_path, ONE)
+    monkeypatch.setattr(corpus_root, "SUBMODULE", root)
+    reading = mod.read()
+    assert reading.source == str(root / mod.REGISTRY), \
+        "the registry did not move with the resolver's default"
+    assert reading.ok and len(reading.capabilities) == 1
+
+
 def test_a_row_with_no_id_is_dropped_rather_than_named(tmp_path: Path):
     root = corpus(tmp_path, "capabilities:\n  - title: Nameless\n")
 
@@ -214,7 +231,7 @@ def registry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     author's working copy. Both route tests below now carry their own registry.
     """
     root = corpus(tmp_path, ONE)
-    monkeypatch.setattr(mod, "CORPUS", root)
+    monkeypatch.setattr(corpus_root, "SUBMODULE", root)
     return root
 
 
@@ -247,7 +264,7 @@ def test_both_routes_answer_when_no_corpus_is_checked_out_at_all(
     reason on both routes and never a traceback -- and it was found by CI
     failing on tests that had assumed otherwise.
     """
-    monkeypatch.setattr(mod, "CORPUS", tmp_path / "absent")
+    monkeypatch.setattr(corpus_root, "SUBMODULE", tmp_path / "absent")
 
     for path in ("/capabilities/gjgf", "/capabilities/data"):
         response = client.get(path)
@@ -264,7 +281,7 @@ def test_an_unreadable_registry_answers_200_with_the_problem_in_results(
     because `RequestHandler.handleResponse` parses the message in one exact
     shape -- the failure `topology_router._unreachable` documents.
     """
-    monkeypatch.setattr(mod, "CORPUS", tmp_path)
+    monkeypatch.setattr(corpus_root, "SUBMODULE", tmp_path)
 
     response = client.get("/capabilities/gjgf")
 
@@ -278,7 +295,7 @@ def test_an_unreadable_registry_answers_200_with_the_problem_in_results(
 
 def test_this_window_agrees_with_the_corpus_about_the_rungs():
     """Two windows onto one file must not disagree about its vocabulary."""
-    source = Path(mod.CORPUS) / "ci" / "capabilities.py"
+    source = corpus_root.root() / "ci" / "capabilities.py"
     if not source.is_file():
         pytest.skip("no corpus checkout at this pin carries ci/capabilities.py")
 

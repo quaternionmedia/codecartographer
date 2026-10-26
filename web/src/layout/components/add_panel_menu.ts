@@ -1,37 +1,53 @@
 /**
  * AddPanelMenu
  *
- * Small dropdown opened by the header "+" button or a right-click on the
- * dock area. Lists registered panels not currently in the layout (add a
- * window) plus layout save/reset actions. Closes on outside click, on
- * Escape, or after an action is taken.
+ * Small dropdown opened by the header "+" button, which adds any window (a
+ * step opens only its own again). Lists every registered panel not in the
+ * layout, closed ones included, plus layout save/reset actions. A window
+ * chosen here moves the step to the one that owns it (`steps.ts`). Closes on
+ * outside click, on Escape, or after an action is taken.
  */
 
 import m from 'mithril';
 import type { LayoutContext } from '../layout_context';
+import { closeOnOutsideClickOrEscape } from './menu_dismissal';
 
 interface Attrs {
   ctx: LayoutContext;
   x: number;
   y: number;
   onClose: () => void;
+  /** The "+" button that opened the menu, which the focus goes back to. */
+  opener: HTMLElement | null;
 }
 
-export const AddPanelMenu: m.Component<Attrs> = {
-  oncreate: ({ attrs }) => {
-    // Defer listener registration one tick so the click that opened the
-    // menu doesn't immediately close it via the same event.
-    setTimeout(() => {
-      document.addEventListener('click', attrs.onClose, { once: true });
-      document.addEventListener('keydown', onKeydown);
-    }, 0);
+interface MenuState {
+  /** Removes the outside-click and Escape listeners (`menu_dismissal.ts`). */
+  disarm: () => void;
+}
 
-    function onKeydown(e: KeyboardEvent): void {
-      if (e.key === 'Escape') {
-        document.removeEventListener('keydown', onKeydown);
-        attrs.onClose();
-      }
-    }
+export const AddPanelMenu: m.Component<Attrs, MenuState> = {
+  oncreate: (vnode) => {
+    // The outside click is armed a tick later, so the click that opened the
+    // menu does not close it; Escape is heard at once (menu_dismissal.ts).
+    vnode.state.disarm = closeOnOutsideClickOrEscape(
+      document,
+      vnode.attrs.onClose,
+      (fn) => { setTimeout(fn, 0); },
+    );
+    // **THE FOCUS GOES INTO THE MENU.** It stayed on "+", so a keyboard
+    // reader had to Tab through the header and the whole dock to reach the
+    // list, which is drawn last in the page.
+    (vnode.dom as HTMLElement).querySelector<HTMLElement>('button')?.focus();
+  },
+
+  // However the menu closed -- a click outside, Escape, one of its items, or
+  // "+" again -- nothing it listened with outlives it.
+  onremove: (vnode) => {
+    vnode.state.disarm();
+    // Still in the DOM here. Focus inside the menu goes back to "+"; focus a
+    // click outside put elsewhere stays where the reader put it.
+    if ((vnode.dom as HTMLElement).contains(document.activeElement)) vnode.attrs.opener?.focus();
   },
 
   view: ({ attrs }) => {
@@ -46,7 +62,7 @@ export const AddPanelMenu: m.Component<Attrs> = {
       addable.length > 0
         ? addable.map((def) =>
             m('button.gl-add-panel-menu__item', {
-              onclick: () => { ctx.restoreDockPanel(def.id); onClose(); },
+              onclick: () => { ctx.chooseWindow(def.id); onClose(); },
             }, def.menuLabel),
           )
         : m('div.gl-add-panel-menu__empty', 'All panels open'),

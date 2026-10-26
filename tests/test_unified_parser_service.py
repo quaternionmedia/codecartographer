@@ -735,7 +735,7 @@ class TestSplitByBatchMode:
 import importlib.util
 requires_libclang = pytest.mark.skipif(
     importlib.util.find_spec("clang") is None,
-    reason="libclang not installed — install with: uv sync --extra c-parsing",
+    reason="libclang not installed — install with: uv sync --locked --extra dev --extra c-parsing",
 )
 
 
@@ -938,6 +938,23 @@ class TestLexiconAnnotation:
             assert "aggregate" in groups
 
     @requires_libclang
+    def test_a_c_union_has_as_many_sides_as_fields(self):
+        """A union is a polygon of its fields, as a struct is. The walker counted
+        fields for structs only, so every union arrived with no count and was
+        drawn with a default four sides whatever it held. Mutation: count
+        `struct` alone in `c_parser.visit` -- this fails with 4."""
+        import codecarto.services.parsers.c_language_parser  # noqa: F401
+
+        code = "union Word { int i; float f; char c; short s; long l; };\n"
+        d = _simple_dir([File(name="word.c", size=len(code), raw=code, url="")])
+        graph = UnifiedParserService.build_graph(d, depth=3, extensions=None)
+
+        unions = [data for _, data in graph.nodes(data=True) if data.get("kind") == "union"]
+        assert len(unions) == 1
+        assert unions[0]["meta"]["field_count"] == 5
+        assert (unions[0]["shape"], unions[0]["meta"]["sides"]) == ("ngon", 5)
+
+    @requires_libclang
     def test_c_qualifier_reaches_a_different_layer_than_kind_would(self):
         """static is Layer 0 (Storage & memory placement); the function
         kind itself has no direct keyword match - this only works because
@@ -1080,3 +1097,140 @@ class TestLexiconAnnotation:
             event_type, data = _parse_sse_chunk(chunk)
             if event_type == "node":
                 assert "layer_ordinal" not in data
+
+
+# ── Node ids carry the path; a batch parser states facts about files ─────────
+
+
+class _BatchProbe:
+    """A stand-in batch parser: one item per file, and two facts about files.
+
+    The pipeline's handling of a batch -- keys, attribution, file facts -- is
+    tested here against this rather than against a real language, so the test
+    says what the pipeline does and nothing about any parser."""
+
+    language = "probe"
+    extensions = [".probe"]
+    batch_whole_tree = True
+    seen: list = []
+
+    def parse_files(self, files, depth=2):
+        g = nx.DiGraph()
+        keys = [f.url or f.name for f in files]
+        type(self).seen = keys
+        for key in keys:
+            g.add_node(f"probe::{key}", depth=2, language="probe", kind="item",
+                       label=key.split("/")[-3] + ":item", file=key, line=1, meta={})
+        if len(keys) >= 2:
+            g.graph["file_relations"] = [(keys[0], keys[1], {"kind": "depends_on",
+                                                             "resolution": "probe"})]
+        g.graph["file_meta"] = {keys[0]: {"probed": True}}
+        return g
+
+
+@pytest.fixture
+def probe_parser(monkeypatch):
+    from codecarto.services.parsers.language_parser import ParserRegistry
+
+    monkeypatch.setitem(ParserRegistry._parsers, ".probe", _BatchProbe())
+    return _BatchProbe
+
+
+def _two_packages() -> Directory:
+    def package(name: str) -> Folder:
+        return Folder(name=name, folders=[Folder(name="src", files=[
+            File(name="lib.probe", raw="x")])])
+
+    return Directory(info=RepoInfo(name="ws"),
+                     root=Folder(name="ws", folders=[package("alpha"), package("beta")]))
+
+
+ALPHA = "file::ws/alpha/src/lib.probe"
+BETA = "file::ws/beta/src/lib.probe"
+
+
+class TestPathQualifiedIds:
+    """Two folders with one name are two folders. Keyed by name, every
+    package's `src` and `src/lib.*` merged into one node holding all their
+    symbols, and nothing in the picture said so."""
+
+    def test_same_named_folders_and_files_stay_apart(self, probe_parser):
+        """Mutation: build `folder_id` from `folder.name` again -- this fails."""
+        g = UnifiedParserService.build_graph(_two_packages(), depth=2, extensions=None)
+        dirs = {n for n, d in g.nodes(data=True) if d.get("kind") == "directory"}
+        assert {"dir::ws/alpha/src", "dir::ws/beta/src"} <= dirs
+        files = {n for n, d in g.nodes(data=True) if d.get("kind") == "file"}
+        assert files == {ALPHA, BETA}
+
+    def test_a_batch_keys_files_that_share_a_name_by_their_place(self, probe_parser):
+        """No url, one name: each is batched under its place in the tree.
+        Mutation: batch url-less files as they are -- the keys collide and
+        this fails."""
+        g = UnifiedParserService.build_graph(_two_packages(), depth=2, extensions=None)
+        assert sorted(probe_parser.seen) == ["tree://ws/alpha/src/lib.probe",
+                                             "tree://ws/beta/src/lib.probe"]
+        owner = {g.nodes[v]["label"]: u for u, v, d in g.edges(data=True)
+                 if d["kind"] == "contains" and g.nodes[v].get("kind") == "item"}
+        assert owner == {"alpha:item": ALPHA, "beta:item": BETA}
+
+    def test_what_a_batch_parser_says_about_files_reaches_the_file_nodes(self, probe_parser):
+        """Mutation: drop `_apply_file_facts` from `_parse_pending_batches` --
+        this fails."""
+        g = UnifiedParserService.build_graph(_two_packages(), depth=2, extensions=None)
+        assert g.edges[ALPHA, BETA]["kind"] == "depends_on"
+        assert g.edges[ALPHA, BETA]["resolution"] == "probe"
+        assert g.nodes[ALPHA]["meta"]["probed"] is True
+
+
+class TestPathQualifiedIdsWhenStreamedFromGitHub:
+    """The GitHub stream builds ids in two places -- the structure phase walks
+    the tree, the symbol phase collects files to fetch -- and a symbol attached
+    to an id the structure phase never streamed is drawn attached to nothing.
+    The in-memory tests above cannot see that; this streams the same two
+    packages from a stubbed GitHub tree."""
+
+    URLS = {"alpha/src/lib.probe": "https://raw.example/ws/alpha/src/lib.probe",
+            "beta/src/lib.probe": "https://raw.example/ws/beta/src/lib.probe"}
+
+    async def _events(self, monkeypatch) -> list[tuple[str, dict]]:
+        import codecarto.services.github_service as gh_svc
+
+        items = [(path, "blob", url) for path, url in self.URLS.items()]
+
+        async def fake_fetch_tree_fast(owner, repo, headers, url):
+            return items, "main", 1, False
+
+        async def fake_get_raw_from_url(dl_url):
+            return "x"
+
+        monkeypatch.setattr(gh_svc, "fetch_tree_fast", fake_fetch_tree_fast)
+        monkeypatch.setattr(gh_svc, "get_raw_from_url", fake_get_raw_from_url)
+        return [_parse_sse_chunk(chunk) async for chunk in
+                UnifiedParserService.stream_parse_url("https://github.com/test/ws", depth=2)]
+
+    @pytest.mark.asyncio
+    async def test_same_named_folders_stream_apart_and_symbols_attach_to_streamed_files(
+            self, probe_parser, monkeypatch):
+        """Mutations: build `folder_id` from `folder.name` again, or have
+        `_collect_parseable` hand the symbol phase the owning folder's name --
+        either fails this."""
+        events = await self._events(monkeypatch)
+        streamed = {d["id"] for t, d in events if t == "node"}
+        alpha, beta = "file::test/ws/alpha/src/lib.probe", "file::test/ws/beta/src/lib.probe"
+
+        assert {"dir::test/ws/alpha/src", "dir::test/ws/beta/src", alpha, beta} <= streamed
+        contains = [d for t, d in events if t == "edge" and d.get("kind") == "contains"
+                    and str(d.get("target", "")).startswith("probe::")]
+        assert {d["source"] for d in contains} == {alpha, beta}
+        assert {d["source"] for d in contains} <= streamed
+
+    @pytest.mark.asyncio
+    async def test_a_relation_between_files_is_streamed_between_the_streamed_files(
+            self, probe_parser, monkeypatch):
+        """Mutation: drop the `file_relations` loop from `node_events_for` --
+        this fails."""
+        events = await self._events(monkeypatch)
+        relations = [d for t, d in events if t == "edge" and d.get("kind") == "depends_on"]
+        assert relations == [{"source": "file::test/ws/alpha/src/lib.probe",
+                              "target": "file::test/ws/beta/src/lib.probe",
+                              "kind": "depends_on", "resolution": "probe"}]

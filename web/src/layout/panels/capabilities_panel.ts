@@ -19,7 +19,7 @@ import m from 'mithril';
 
 import type { LayoutContext } from '../layout_context';
 import { ProblemView } from '../../features/estate/problem_view';
-import { Provenance } from '../../features/estate/provenance';
+import { Provenance, caveatShown } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import '../../features/estate/estate.css';
 
@@ -87,12 +87,12 @@ export function createCapabilitiesPanel(ctx: LayoutContext): m.Component {
                 reading.capabilities.length === 0
                   ? m('p.estate-view__hint', 'the registry declares no capabilities')
                   : null,
-                m('p.estate-view__hint', reading.caveat),
+                caveatShown(metadata, 'capabilities', reading.caveat) ? null : m('p.estate-view__hint', reading.caveat),
               ]
             : null,
           reading
             ? m('button.estate-view__draw', {
-                onclick: () => void ctx.plotWith(() => ctx.actions.plot.drawCapabilities()).then(() => ctx.focusDockPanel('graph')),
+                onclick: () => void ctx.plotWith(() => ctx.actions.plot.drawCapabilities()).then((drawn) => { if (drawn) ctx.focusDockPanel('graph'); }),
               }, 'draw the registry')
             : null,
         ]),

@@ -15,9 +15,14 @@ union           → 'union'           2
 enum            → 'enum'            2
 typedef         → 'typedef'         2
 macro           → 'macro'           2
-variable        → 'variable'        2
+variable        → 'variable'        2, or 3 for a function's local
 field           → 'field'           3
 enum_constant   → 'enum_constant'   3
+
+A depth-3 node is held by the depth-2 node its id is qualified by: a field
+by its record (FIELD_OF -> 'field_of'), a local by its function (LOCAL_OF
+-> 'contains'), as a method is by its class. The pipeline gives only depth-2
+nodes a file edge.
 """
 
 from __future__ import annotations
@@ -28,6 +33,7 @@ from pathlib import Path
 import networkx as nx
 
 from codecarto.models.source_data import File
+from codecarto.services.construct_service import ngon_sides
 from codecarto.services.parsers.language_parser import (
     LanguageParser,
     ParserRegistry,
@@ -44,6 +50,11 @@ _DEPTH_2_KINDS = {
 _DEPTH_3_KINDS = {
     "field", "enum_constant",
 }
+
+# Every `kind` this adapter can emit: c_parser's cursor map names these and no
+# others. `constructs.yaml` maps each one, and a test holds the two to each
+# other in both directions.
+KINDS = tuple(sorted(_DEPTH_2_KINDS | _DEPTH_3_KINDS))
 
 # ── C visual grammar ──────────────────────────────────────────────────────────
 # Shape and colour per C kind, matching the c-visualizer reference design.
@@ -76,6 +87,7 @@ _C_COLOR: dict[str, str] = {
 # C edge kind → unified edge kind
 _EDGE_KIND_MAP: dict[str, str] = {
     "FIELD_OF":  "field_of",
+    "LOCAL_OF":  "contains",
     "CALLS":     "calls",
     "POINTS_TO": "type_of",
     "ALIASES":   "aliases",
@@ -85,19 +97,21 @@ _EDGE_KIND_MAP: dict[str, str] = {
 class CLangaugeParser:
     """LanguageParser implementation for C/H source files.
 
-    Falls back gracefully when libclang is not installed: parse_files()
-    returns an empty graph rather than raising an ImportError.
+    Without libclang, parse_files() raises the ImportError that says how to
+    install it; the unified pipeline still draws the files and passes the
+    reason on as a note beside the graph.
     """
 
     language: ClassVar[str] = "c"
     extensions: ClassVar[list[str]] = [".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hxx"]
+    kinds: ClassVar[tuple[str, ...]] = KINDS
 
     # Tells the unified pipeline (unified_parser_service.py's build_graph)
     # to collect every C/H file across the WHOLE directory tree and pass
     # them to parse_files() in one batch, instead of dispatching one file
     # at a time like every other language. Cross-file CALLS/type edges only
     # resolve when CParser sees the full file set together — see
-    # docs/llm/ARCHITECTURE.md's "C semantic stream path" / "batch_whole_tree".
+    # docs/architecture.md, "The unified graph" and "C: two pipelines".
     batch_whole_tree: ClassVar[bool] = True
 
     # Shared parent directory assigned to every virtual (no-real-disk-path)
@@ -130,13 +144,12 @@ class CLangaugeParser:
         -------
         nx.DiGraph with unified node schema.
         """
-        try:
-            from codecarto.services.parsers.c_parser import (
-                CParser, default_parse_args, is_platform_specific_path,
-            )
-        except ImportError:
-            # libclang not available; return empty graph
-            return nx.DiGraph()
+        # No `except` here or around the parse below: a backend that cannot be
+        # loaded, or a libclang that is not installed, raises, and the pipeline
+        # says so beside the files it still draws. An empty graph said nothing.
+        from codecarto.services.parsers.c_parser import (
+            CParser, default_parse_args, is_platform_specific_path,
+        )
 
         paths: list[Path] = []
         real_paths: list[Path] = []   # real on-disk paths only (not virtual)
@@ -189,6 +202,8 @@ class CLangaugeParser:
 
         c_nodes: list[dict] = raw.get("nodes", [])
         c_edges: list[dict] = raw.get("edges", [])
+        # A function's locals are its sub-symbols, held by it rather than by the file.
+        local_ids = {e.get("dst") for e in c_edges if e.get("kind") == "LOCAL_OF"}
 
         # ── Pass 1: nodes ─────────────────────────────────────────────────────
         for n in c_nodes:
@@ -198,7 +213,10 @@ class CLangaugeParser:
             file_stem = n.get("file", "")
             line      = n.get("line", 0)
 
-            if c_kind in _DEPTH_2_KINDS:
+            if nid in local_ids:
+                node_depth = 3
+                unified_kind = c_kind
+            elif c_kind in _DEPTH_2_KINDS:
                 node_depth = 2
                 unified_kind = c_kind
             elif c_kind in _DEPTH_3_KINDS:
@@ -220,11 +238,16 @@ class CLangaugeParser:
             if "member_count" in n: meta["member_count"] = n["member_count"]
             if "param_count"  in n: meta["param_count"]  = n["param_count"]
             if "is_definition" in n: meta["is_definition"] = n["is_definition"]
+            for fact in ("automatic", "no_linkage"):
+                if n.get(fact): meta[fact] = True
 
             # For ngon shapes (struct/union), expose sides so the renderer can
-            # draw the correct polygon without knowing it is a C struct.
+            # draw the correct polygon without knowing it is a C struct. The
+            # walker counts a union's fields as it does a struct's.
             if c_kind in ("struct", "union"):
-                meta["sides"] = min(max(int(n.get("field_count", 4)), 3), 10)
+                sides = ngon_sides(n.get("field_count"))
+                if sides is not None:
+                    meta["sides"] = sides
 
             attrs = make_node(
                 nid,

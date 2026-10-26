@@ -6,6 +6,7 @@ from codecarto.routers.topology_router import TopologyRouter
 from codecarto.routers.capability_router import CapabilityRouter
 from codecarto.routers.overview_router import OverviewRouter
 from codecarto.routers.estate_router import EstateRouter
+from codecarto.routers.show_router import ShowRouter
 from codecarto.routers.app_router import AppRouter, DIST, build_present
 from codecarto.routers.palette_router import PaletteRouter
 from codecarto.routers.plotter_router import PlotterRouter
@@ -14,6 +15,7 @@ from codecarto.routers.pam_router import PamRouter
 from codecarto.routers.system_router import SystemRouter
 from codecarto.routers.unified_parser_router import UnifiedParserRouter
 from codecarto.routers.lexicon_router import LexiconRouter
+from codecarto.routers.cargo_router import CargoRouter
 
 
 # Debug
@@ -71,6 +73,9 @@ app.include_router(PamRouter, prefix="/pam", tags=["pam"])
 app.include_router(SystemRouter, prefix="/system", tags=["system"])
 app.include_router(UnifiedParserRouter, prefix="/parse", tags=["parse"])
 app.include_router(LexiconRouter, prefix="/lexicon", tags=["lexicon"])
+# A Cargo workspace's crates, targets, dependencies and last recorded build.
+# Reads manifests and what cargo wrote; never runs cargo -- see cargo_service.
+app.include_router(CargoRouter, prefix="/cargo", tags=["cargo"])
 # The harness's topology, drawn here. `codecarto` is qmcp's front end on
 # the web; the terminal one is `dossier`, and both read the same document.
 app.include_router(TopologyRouter, prefix="/topology", tags=["topology"])
@@ -87,6 +92,10 @@ app.include_router(OverviewRouter, prefix="/overview", tags=["overview"])
 # Every seam above, and whether each one is there: the liveness table a reader
 # opens before any panel, answered without drawing anything.
 app.include_router(EstateRouter, prefix="/estate", tags=["estate"])
+
+# Every family and project the corpus names, drawn from the claims its docs
+# site is generated from: the graph leg of the corpus's `plans/the-triplet.md`.
+app.include_router(ShowRouter, prefix="/show", tags=["show"])
 
 # The built web application, on the same origin as the API it talks to. Mounted
 # after the routers so a route always wins over a static file of the same name.
@@ -121,6 +130,15 @@ else:
               "(note: git-bash does not inherit Windows user-scope env vars "
               "set via PowerShell or the registry; use 'export MONGODB_URI=...' "
               "in the same shell that starts the server)")
+
+    # The front end asks `/db/` whether the store is on. Unmounted, the
+    # answer was a 404, which a browser logs as an error on every page of a
+    # server that is simply not using graphbase -- and an error that is
+    # always there is one nobody reads. Off is an answer, so it is given.
+    @app.get("/db/", include_in_schema=False)
+    async def graphbase_off() -> dict:
+        return {"available": False,
+                "reason": "graphbase is off: set MONGODB_URI to enable /db/*"}
 
 
 @app.get("/", include_in_schema=False)

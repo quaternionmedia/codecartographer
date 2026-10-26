@@ -1,0 +1,273 @@
+{
+ "system": "moat",
+ "commit": "16a595a",
+ "derived_from": "the repository's own declarations; see the module docstring of system_composer.py for each rule",
+ "components": [
+  {
+   "id": "authentik",
+   "name": "authentik",
+   "role": "chart",
+   "group": ".",
+   "version": "0.0.2",
+   "upstreams": [
+    "authentik"
+   ]
+  },
+  {
+   "id": "charts/akri",
+   "name": "akri",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.0.2",
+   "upstreams": [
+    "akri"
+   ]
+  },
+  {
+   "id": "charts/argo-cd",
+   "name": "argo-cd",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.1.7",
+   "upstreams": [
+    "argo-cd"
+   ]
+  },
+  {
+   "id": "charts/cert-manager",
+   "name": "cert-manager",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.1.1",
+   "upstreams": [
+    "cert-manager"
+   ]
+  },
+  {
+   "id": "charts/cilium",
+   "name": "cilium",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.0.2",
+   "upstreams": [
+    "cilium"
+   ]
+  },
+  {
+   "id": "charts/cook",
+   "name": "cook",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.1.2",
+   "upstreams": [
+    "app-template"
+   ]
+  },
+  {
+   "id": "charts/csi",
+   "name": "csi",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.1.5",
+   "upstreams": [
+    "proxmox-csi-plugin"
+   ]
+  },
+  {
+   "id": "charts/frigate",
+   "name": "frigate",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.4.1",
+   "upstreams": [
+    "frigate",
+    "app-template"
+   ]
+  },
+  {
+   "id": "charts/groot",
+   "name": "groot",
+   "role": "deployer",
+   "group": "charts",
+   "version": "0.1.6",
+   "upstreams": []
+  },
+  {
+   "id": "charts/home-assistant",
+   "name": "home-assistant",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.1.3",
+   "upstreams": [
+    "home-assistant"
+   ]
+  },
+  {
+   "id": "charts/jellyfin",
+   "name": "jellyfin",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.1.2",
+   "upstreams": [
+    "jellyfin"
+   ]
+  },
+  {
+   "id": "charts/metallb",
+   "name": "metallb",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.1.1",
+   "upstreams": [
+    "metallb"
+   ]
+  },
+  {
+   "id": "charts/metrics-server",
+   "name": "metrics-server",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.1.0",
+   "upstreams": [
+    "metrics-server"
+   ]
+  },
+  {
+   "id": "charts/monitoring",
+   "name": "monitoring",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.2.0",
+   "upstreams": [
+    "grafana",
+    "prometheus"
+   ]
+  },
+  {
+   "id": "charts/traefik",
+   "name": "traefik",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.1.4",
+   "upstreams": [
+    "traefik"
+   ]
+  },
+  {
+   "id": "charts/whoami",
+   "name": "whoami",
+   "role": "chart",
+   "group": "charts",
+   "version": "0.1.2",
+   "upstreams": [
+    "app-template"
+   ]
+  },
+  {
+   "id": "influxdb",
+   "name": "influxdb",
+   "role": "chart",
+   "group": ".",
+   "version": "0.0.1",
+   "upstreams": [
+    "influxdb2"
+   ]
+  },
+  {
+   "id": "loki",
+   "name": "loki",
+   "role": "chart",
+   "group": ".",
+   "version": "0.0.1",
+   "upstreams": [
+    "loki"
+   ]
+  },
+  {
+   "id": "openebs",
+   "name": "openebs",
+   "role": "chart",
+   "group": ".",
+   "version": "0.0.1",
+   "upstreams": [
+    "openebs"
+   ]
+  },
+  {
+   "id": "technitium",
+   "name": "technitium",
+   "role": "chart",
+   "group": ".",
+   "version": "0.0.2",
+   "upstreams": []
+  },
+  {
+   "id": "tempo",
+   "name": "tempo",
+   "role": "chart",
+   "group": ".",
+   "version": "0.0.2",
+   "upstreams": [
+    "tempo"
+   ]
+  },
+  {
+   "id": "tofu",
+   "name": "tofu",
+   "role": "infrastructure",
+   "group": ".",
+   "version": "",
+   "upstreams": []
+  },
+  {
+   "id": "tower",
+   "name": "tower",
+   "role": "application",
+   "group": ".",
+   "version": "",
+   "upstreams": []
+  },
+  {
+   "id": "victoria-logs",
+   "name": "victoria-logs",
+   "role": "chart",
+   "group": ".",
+   "version": "0.0.1",
+   "upstreams": [
+    "victoria-logs-single"
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "source": "charts/groot",
+   "target": "charts/argo-cd",
+   "kind": "deploys"
+  },
+  {
+   "source": "charts/groot",
+   "target": "charts/home-assistant",
+   "kind": "deploys"
+  },
+  {
+   "source": "charts/groot",
+   "target": "charts/metrics-server",
+   "kind": "deploys"
+  },
+  {
+   "source": "charts/groot",
+   "target": "charts/monitoring",
+   "kind": "deploys"
+  },
+  {
+   "source": "charts/groot",
+   "target": "charts/traefik",
+   "kind": "deploys"
+  },
+  {
+   "source": "charts/groot",
+   "target": "charts/whoami",
+   "kind": "deploys"
+  }
+ ]
+}

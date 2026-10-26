@@ -4,8 +4,8 @@ C Semantic Graph Parser
 Parses C source files using libclang and returns a typed semantic graph
 (nodes + edges + meta) suitable for the C Semantic Renderer.
 
-Requires the optional 'c-parsing' dependency group:
-    uv pip install "codecarto[c-parsing]"
+Requires the optional 'c-parsing' extra, which the one sync installs:
+    uv sync --locked --extra dev --extra c-parsing
 
 libclang native library candidates are probed automatically on Linux.
 """
@@ -93,8 +93,8 @@ def _get_clang():
         import clang.cindex as cindex
     except ImportError as exc:
         raise ImportError(
-            "libclang Python bindings are not installed. "
-            "Install with: uv pip install 'codecarto[c-parsing]'"
+            "libclang is not installed, so C and C++ declarations cannot be read. "
+            "Install it with: uv sync --locked --extra dev --extra c-parsing"
         ) from exc
 
     for candidate in _LIBCLANG_CANDIDATES:
@@ -134,8 +134,45 @@ def _cursor_map(cindex):
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+_TAGS = {'STRUCT_DECL': 'struct', 'UNION_DECL': 'union', 'ENUM_DECL': 'enum'}
+
+
+def _named(cursor) -> bool:
+    return bool(cursor.spelling) and 'unnamed' not in cursor.spelling and 'anonymous' not in cursor.spelling
+
+
+def _record_of(cursor):
+    """The record a field's id is qualified by: its own, or for a member of an
+    anonymous union or struct, the nearest enclosing record with a name. None
+    when no record around it has one (`struct { int u; } v;`)."""
+    scope = cursor.semantic_parent
+    while scope is not None and scope.kind.name in _TAGS and not _named(scope):
+        scope = scope.semantic_parent
+    return scope if scope is not None and scope.kind.name in _TAGS else None
+
+
+def _function_of(cursor):
+    """The function a variable is local to, or None at file scope. A block-scope
+    `extern` names a file-scope variable, and libclang gives it no function."""
+    scope = cursor.semantic_parent
+    return scope if scope is not None and scope.kind.name == 'FUNCTION_DECL' else None
+
+
 def _node_id(cursor) -> str:
+    """A declaration's id: its file's stem and its name, in the namespace and
+    scope C gives the name. A tag is not an ordinary identifier (`struct config
+    config;` declares two things), a field belongs to its record, and a local
+    to its function -- so each is qualified by what C keeps it apart by, and a
+    file-scope name stays `stem::name`. The record or function an id is
+    qualified by is the node its FIELD_OF or LOCAL_OF edge comes from."""
     stem = Path(cursor.location.file.name).stem if cursor.location.file else '__global'
+    kind = cursor.kind.name
+    if kind in _TAGS:
+        return f"{stem}::{_TAGS[kind]} {cursor.spelling}"
+    owner = (_record_of(cursor) if kind == 'FIELD_DECL'
+             else _function_of(cursor) if kind == 'VAR_DECL' else None)
+    if owner is not None:
+        return f"{_node_id(owner)}::{cursor.spelling}"
     return f"{stem}::{cursor.spelling}"
 
 
@@ -154,6 +191,26 @@ def _get_qualifiers(cursor, cindex) -> list:
     except Exception:
         pass
     return quals
+
+
+def _block_scope_facts(cursor, cindex) -> dict:
+    """What a variable declared inside a function is, which its kind alone
+    does not say: without `static` or `extern` it lives for one call
+    (`automatic`), and with or without them it has no linkage of its own --
+    a block-scope `extern` names something else's, which keeps its own."""
+    try:
+        parent = cursor.semantic_parent
+        if parent is None or parent.kind != cindex.CursorKind.FUNCTION_DECL:
+            return {}
+        sc = cursor.storage_class
+    except Exception:
+        return {}
+    if sc == cindex.StorageClass.EXTERN:
+        return {}
+    facts = {'no_linkage': True}
+    if sc != cindex.StorageClass.STATIC:
+        facts['automatic'] = True
+    return facts
 
 
 def _make_in_target(target_stems):
@@ -206,7 +263,7 @@ def _pass1_declarations(tu, in_target, nodes, edges, edge_set, cindex):
                     'type_str':   cursor.type.spelling if cursor.type else '',
                 }
 
-                if kind == 'struct':
+                if kind in ('struct', 'union'):
                     n['field_count'] = sum(
                         1 for c in cursor.get_children()
                         if c.kind == cindex.CursorKind.FIELD_DECL
@@ -222,14 +279,23 @@ def _pass1_declarations(tu, in_target, nodes, edges, edge_set, cindex):
                         if c.kind == cindex.CursorKind.PARM_DECL
                     )
                     n['is_definition'] = cursor.is_definition()
+                elif kind == 'variable':
+                    n.update(_block_scope_facts(cursor, cindex))
 
                 nodes[nid] = n
 
-            if kind == 'field' and parent is not None:
-                pk = CURSOR_MAP.get(parent.kind)
-                if pk and parent.spelling and 'unnamed' not in parent.spelling:
-                    pid = _node_id(parent)
-                    _add_edge(edges, edge_set, pid, nid, 'FIELD_OF')
+            # From the node the id is qualified by: for a member of an
+            # anonymous record, the named record around it, not the anonymous
+            # one it is written in, which is no node.
+            if kind == 'field':
+                record = _record_of(cursor)
+                if record is not None:
+                    _add_edge(edges, edge_set, _node_id(record), nid, 'FIELD_OF')
+
+            if kind == 'variable':
+                function = _function_of(cursor)
+                if function is not None:
+                    _add_edge(edges, edge_set, _node_id(function), nid, 'LOCAL_OF')
 
             if kind == 'enum_constant' and parent is not None:
                 if parent.kind == cindex.CursorKind.ENUM_DECL and parent.spelling:

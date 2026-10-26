@@ -1,192 +1,43 @@
 # Codecarto
 
-**Development tool for mapping and visualizing source code as graphs.**
+Codecarto reads a codebase and draws it as a graph you can explore: folders, files, and the functions and types inside them.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+It reads Python, C and Rust in depth and many other languages at the level of
+their top-level definitions. The graph streams into the browser as each file is
+parsed, laid out as nested clusters: folders around their files, files around
+their symbols. It also draws a Cargo workspace's crates, a linker script's
+memory map, and one programming construct set beside itself across languages.
 
-Codecarto parses source code and generates interactive graph visualizations, helping developers understand code structure, dependencies, and relationships.
+## Start
 
-## Quick Start
-
-### Prerequisites
-
-- Python 3.10+
-- [uv](https://github.com/astral-sh/uv) (recommended) or pip
-- Node.js 18+ (for frontend)
-
-### Installation
+In a clone of this repository, with Python, [uv](https://docs.astral.sh/uv/) and Node.js:
 
 ```bash
-# Clone the repository
-git clone https://github.com/quaternionmedia/codecartographer.git
-cd codecartographer
-git submodule init && git submodule update
-
-# The lockfile is the environment
-uv sync --extra dev
+uv sync --locked --extra dev --extra c-parsing   # install
+uv run codecarto dev                             # run, then open http://localhost:1234
 ```
 
-### Start Development
+[Getting Started](docs/getting-started.md) has the prerequisites, the
+submodules and a first graph.
 
-```bash
-# Start full dev environment (backend + frontend)
-uv run codecarto dev
+## Where to go next
 
-# Or start components separately
-uv run codecarto serve    # Backend only — `serve --help` names the default port
-uv run codecarto web      # Frontend only (http://localhost:1234)
-```
-
-## CLI Commands
-
-```bash
-# Development
-uv run codecarto dev              # Start backend + frontend
-uv run codecarto serve            # Start API server
-uv run codecarto web              # Start frontend
-
-# Local Repository Analysis
-uv run codecarto repo scan .      # Scan repo structure
-uv run codecarto repo tree .      # Display directory tree
-uv run codecarto repo graph .     # Generate code graph
-
-# Utilities
-uv run codecarto parse FILE       # Parse a Python file
-uv run codecarto info             # Show environment info
-uv run codecarto lint             # Run linter
-
-# Docker
-uv run codecarto docker           # Start containers
-uv run codecarto docker-down      # Stop containers
-```
-
-### Local Repo Commands
-
-```bash
-# Scan with different extensions
-uv run codecarto repo scan . -e .py -e .js
-
-# Generate different graph types
-uv run codecarto repo graph . -t ast         # AST graph (default)
-uv run codecarto repo graph . -t directory   # Directory structure
-uv run codecarto repo graph . -t dependency  # Import dependencies
-
-# Output as JSON
-uv run codecarto repo scan . -o json
-```
-
-## API Endpoints
-
-Once the server is running, `/docs` on the backend's own origin lists every
-route it actually registered — that is the authority, and this table is a map
-of the neighbourhoods rather than a copy of it. `codecarto dev` prints both
-addresses on startup; `serve --help` names the backend's default port.
-
-| Endpoint | Description |
-|----------|-------------|
-| `/app` | The web application, served from `web/dist` when a build is present |
-| `/palette` | Color palette management |
-| `/parse` | Source code parsing, every supported language |
-| `/plotter` | Graph visualization |
-| `/repo` | GitHub repository reading |
-| `/c-parser` | C parsing via libclang, plus a standalone visualizer page |
-| `/pam` | PAM session capture, replay, and a standalone visualizer page |
-| `/system` | A system diagram derived from a local clone's own contents, its recent changes, and a paced replay of them |
-| `/lexicon` | Hand-authored language lexicons, as graphs |
-| `/topology` | The harness's flows, as graph data the app plots |
-| `/capabilities` | What each named thing this estate can do has reached |
-| `/overview` | dossier's reading of the estate, drawn here from the seam it produces |
-| `/estate` | Every seam above, and whether each one is there — identified, not just answering |
-| `/auth` | Which GitHub credential source is active |
-| `/db` | Graphbase — mounted only when `MONGODB_URI` is set |
-
-During `npm run dev` the Vite server proxies API prefixes to the backend, so the
-app and its API share an origin exactly as they do in production. `API_PATHS` in
-`web/vite.config.js` is the list that decides which; `tests/test_docs_routes.py`
-fails when a mounted prefix is missing from it, from this table, or from
-`docs/api.md`, because a prefix missing from the proxy is a request the dev
-server tries to answer itself and cannot.
-
-## Project Structure
-
-```
-codecartographer/
-├── codecarto/           # Main Python package
-│   ├── cli.py           # CLI entry point
-│   ├── main.py          # FastAPI application
-│   ├── routers/         # API route handlers; the estate ones serve graphs, never pictures
-│   ├── services/        # Business logic; estate_service.py is the seam registry
-│   ├── models/          # Pydantic models
-│   ├── util/            # Utilities
-│   └── static/          # Standalone visualizer pages served by their routers
-├── web/                 # Frontend (Vite + TypeScript)
-│   └── src/features/estate/  # The seam client, problem view and provenance strip every estate panel shares
-├── tests/               # Python test suite
-├── graphbase/           # Database submodule
-├── governance/qm/       # Governance submodule — decision records live in adr/
-├── docs/                # Documentation
-└── pyproject.toml       # Project configuration
-```
-
-## GitHub Token (Optional)
-
-For parsing public GitHub repositories:
-
-1. Go to [GitHub Settings > Tokens](https://github.com/settings/tokens)
-2. Generate a new token with `public_repo` scope
-3. Create `token.txt` in the project root with your token
-
-## Development
-
-```bash
-# Install dev dependencies
-uv sync --extra dev
-
-# Run linter
-uv run codecarto lint
-uv run codecarto lint --fix   # Auto-fix issues
-
-# Run backend tests (unset MONGODB_URI first, or the suite waits on a database)
-uv run pytest
-
-# Run frontend end-to-end tests. They start their own backend and dev server on
-# non-default ports and refuse to reuse one they did not start -- see
-# web/playwright.config.ts
-cd web && npm run test:e2e
-
-# Type-check the frontend (also runs automatically before `npm run build`)
-cd web && npm run typecheck
-```
-
-## Docker (Optional)
-
-```bash
-# Start database containers
-uv run codecarto docker
-
-# Stop containers
-uv run codecarto docker-down
-```
-
-## Documentation
-
-- [Getting Started](docs/getting-started.md) — install, run, first graph
-- [Architecture](docs/architecture.md) — how the pieces fit
-- [CLI](docs/cli.md) and [API](docs/api.md) — the two command surfaces
-- [Contributing](docs/contributing.md) — working on this project
-- [UI Reference](docs/llm/UI_REFERENCE.md) — the shell, every panel, the one canvas and the radial menu
-
-Decision records live on the `governance/qm` submodule, under `adr/`. The plan
-this window is built to -- the estate frame, the topology designer, and the
-chrestomathy of code -- is `plans/the-web-window.md` in the corpus.
+- [Getting Started](docs/getting-started.md): install, run, and draw a first graph
+- [CLI](docs/cli.md): every `codecarto` command, option and environment variable
+- [API](docs/api.md): the backend's routes, each one described. The running
+  server's `/docs` lists those in its OpenAPI schema, which leaves out the
+  WebSockets and a few others `docs/api.md` names.
+- [Architecture](docs/architecture.md): how the pieces fit
+- [Extending](docs/extending.md): adding a parser, renderer, panel or route
+- [UI reference](docs/ui.md): the panels, the canvas and the menus
+- Planned work is listed in [the roadmap](docs/roadmap/README.md).
+- [Contributing](.github/CONTRIBUTING.md) and [`AGENTS.md`](AGENTS.md): how a
+  change is made here
+- Decision records: `governance/qm/adr/`, in the governance submodule
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions welcome! Please read the development guide before submitting PRs.
+MIT License; see [LICENSE](LICENSE).
