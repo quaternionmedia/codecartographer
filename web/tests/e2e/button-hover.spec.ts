@@ -162,3 +162,29 @@ test('every button a drawn graph brings keeps its label readable on hover', asyn
   await expect(chrestomathy.locator('tr[data-construct]').first()).toBeVisible({ timeout: SETTLED });
   expect.soft(await unreadableOnHover(page, chrestomathy)).toEqual([]);
 });
+
+test('a selected parse-option chip keeps its label and its fill in the Light theme', async ({ page }) => {
+  // The dark themes' accent is light, and their inverse colour reads on it.
+  // Light's accent is a mid orange, and its inverse colour is white.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+  const open = page.locator('.gl-panel--open');
+  await open.locator('.panel-open__parse-toggle').click();
+  const chip = open.locator('.panel-settings__chip--active').first();
+  await expect(chip).toBeVisible();
+
+  await page.mouse.move(1, 999);
+  await transitionsDone(page);
+  // Mutation: give Light's text on accent its inverse colour, #fff on
+  // #ff9800 -- this fails at 2.16:1.
+  expect.soft(await chip.evaluate(labelContrast), 'at rest').toBeGreaterThanOrEqual(READABLE);
+
+  await chip.hover();
+  await transitionsDone(page);
+  // Mutation: let the chips' transparent hover reach the selected one -- its
+  // fill goes, its accent label is left on the panel, and both of these fail.
+  expect.soft(await chip.evaluate(labelContrast), 'under the pointer').toBeGreaterThanOrEqual(READABLE);
+  expect.soft(await chip.evaluate((e) => getComputedStyle(e).backgroundColor), 'its fill under the pointer')
+    .not.toBe('rgba(0, 0, 0, 0)');
+});
