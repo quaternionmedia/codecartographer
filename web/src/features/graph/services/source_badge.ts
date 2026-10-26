@@ -1,9 +1,11 @@
 /**
  * Where the badge naming a node's file is drawn: beside the point it was
- * opened from, and wholly inside the window.
+ * opened from, and wholly inside the canvas, the part of the window the
+ * canvas covers.
  *
  * No DOM types, so this compiles under `tsconfig.pure.json`; the renderer
- * measures the badge and the window and places it by what this returns.
+ * measures the badge and that part of the window and places it by what
+ * this returns.
  */
 
 export interface Size {
@@ -11,7 +13,7 @@ export interface Size {
   height: number;
 }
 
-/** How far the badge keeps from the window's edges, in px. */
+/** How far the badge keeps from the edges of the area it is placed in, in px. */
 export const BADGE_MARGIN = 8;
 
 /** How far below the point a badge put under it starts, in px: clear of a
@@ -22,9 +24,11 @@ export const BADGE_BELOW = 20;
  * The badge's `left` and `top`: 8px right of `at` with its bottom 6px above
  * it, moved left or down as far as it takes to keep `margin` between the
  * badge and every edge of `viewport`; one that moving down puts over `at` is
- * put `BADGE_BELOW` below it instead. One wider than the window less its
+ * put `BADGE_BELOW` below it instead. One wider than `viewport` less its
  * margins is placed at the left margin; the renderer bounds its width to that
- * and lets it wrap.
+ * and shortens its text to fit on one line (`fitBadgeText`, node_info.ts).
+ * The renderer passes the part of the window its canvas covers as `viewport`,
+ * `at` measured from that part's top left, and offsets what this returns.
  *
  * **THE BADGE STAYS IN THE WINDOW.** It was placed at the point plus a fixed
  * offset, on one line. A path read from disk is most of a window wide --

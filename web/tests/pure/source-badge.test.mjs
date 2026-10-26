@@ -63,11 +63,11 @@ test('a badge opened past the bottom or right of the window is moved back into i
 });
 
 test('a badge as wide as the window allows starts at the left margin, wherever it is opened', () => {
-  /* The renderer bounds the badge's width to the window less both margins
-     and lets the path wrap. */
+  /* The renderer bounds the badge's width to its area less both margins
+     and shortens the text to fit on one line (fitBadgeText). */
   const width = WINDOW.width - 2 * BADGE_MARGIN;
   for (const x of [0, 640, 1279]) {
-    const drawn = box({ x, y: 400 }, { width, height: 3 * LINE });
+    const drawn = box({ x, y: 400 }, { width, height: LINE });
     assert.equal(drawn.left, BADGE_MARGIN);
     assert.equal(drawn.right, WINDOW.width - BADGE_MARGIN);
   }
