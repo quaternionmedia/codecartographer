@@ -3,8 +3,8 @@
  *
  * Controls, not a canvas: the graph draws in the Graph panel through the same
  * path every other plot takes. This panel lists what the server read from the
- * corpus -- the families with their nesting and hues, and each public project
- * -- and opens each one. A project opens three ways: its place in the estate,
+ * corpus -- each top-level family with the families directly within it, their
+ * hues, and each public project -- and opens each one. A project opens three ways: its place in the estate,
  * its code map, and its system diagram where it declares one.
  *
  * THE VOCABULARY IS THE CORPUS'S. Family names, what each drives, which sits
@@ -17,8 +17,9 @@
  *
  * Every row goes through `ctx.openShow`, which also writes the page's address,
  * so the location bar can be copied to reopen exactly what is drawn. Opened
- * onto an empty canvas, the panel draws every family at once: the default
- * showgraph is the whole estate, and a family or a project is a step into it.
+ * with nothing on the canvas and nothing being drawn, the panel draws every
+ * family at once: the default showgraph is the whole estate, and a family or a
+ * project is a step into it.
  *
  * **WHERE YOU ARE COMES FIRST.** The panel opens on what is drawn: the trail
  * from every family down to it, each step a link back, a project's three
