@@ -224,8 +224,9 @@
 }
 
 /* A folder is marked ▸, and ▾ while open; a file is marked · in the same
-   width, so names line up. A folder not yet read (…) and an empty one are
-   dimmed. Its contents' step and its one line are below. */
+   width, so names line up. A marker's alternative text is empty, so a row is
+   named by its name alone, not "▸ src". A folder not yet read (…) and an
+   empty one are dimmed. Its contents' step and its one line are below. */
 .gl-file-tree__tree .folder_button {
   cursor: pointer;
   color: var(--c-secondary, #00ff41);
@@ -238,15 +239,15 @@
 }
 
 .gl-file-tree__tree .folder_button::before {
-  content: '▸';
+  content: '▸' / '';
 }
 
 .gl-file-tree__tree .folder_button.active::before {
-  content: '▾';
+  content: '▾' / '';
 }
 
 .gl-file-tree__tree .file::before {
-  content: '·';
+  content: '·' / '';
   color: var(--c-font-muted, #00aa2a);
 }
 

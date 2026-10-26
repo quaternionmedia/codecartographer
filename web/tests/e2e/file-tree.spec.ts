@@ -109,6 +109,23 @@ test('a folder is told from a file, and open from closed', async ({ page }) => {
   expect(opened).not.toBe(file);
 });
 
+test('a row is named by its name alone, not by its marker', async ({ page }) => {
+  // A row's name comes from its content, and a ::before's text is content: a
+  // screen reader read "▸ src" and "· main.rs".
+  await openStubbedTree(page, '/work/small', [{ name: 'README.md', url: '/work/small/README.md' }], [
+    { name: 'src', size: 1, folders: [], files: [{ name: 'main.rs', size: 1, raw: '', url: '/work/small/src/main.rs' }] },
+  ]);
+  const tree = page.locator('.gl-panel--file-tree');
+  const folder = tree.locator('.folder_button', { hasText: 'src' });
+  // Mutation: drop the markers' empty alternative text (`/ ''`) -- the
+  // names start with ▸ and ·, and this fails.
+  await expect(folder).toHaveAccessibleName('src');
+  await expect(tree.locator('.file', { hasText: 'README.md' })).toHaveAccessibleName('README.md');
+  await folder.click();
+  await expect(folder).toHaveAccessibleName('src');
+  await expect(tree.locator('.file', { hasText: 'main.rs' })).toHaveAccessibleName('main.rs');
+});
+
 test("a GitHub file's raw link sits on its name's line", async ({ page }) => {
   await openStubbedTree(page, 'https://github.com/example/small', [
     { name: 'Cargo.toml', url: 'https://raw.githubusercontent.com/example/small/main/Cargo.toml' },
