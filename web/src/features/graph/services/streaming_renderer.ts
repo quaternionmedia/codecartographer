@@ -48,11 +48,12 @@ const MAP_NAME_CHARS = 32;
  */
 export const MAP_NODE_SCALE = 2.5;
 /**
- * The smallest a map's node is drawn on screen, as a radius in pixels, and
- * still named. A code map framed whole draws its files a couple of pixels
- * across and had their names written over the whole picture; its directories'
- * outlines name it there, and a file's name comes in as zooming in draws the
- * file large enough to be read as one.
+ * The smallest a code map's node -- a directory, a file, a symbol -- is drawn
+ * on screen, as a radius in pixels, and still named. A code map framed whole
+ * draws its files a couple of pixels across and had their names written over
+ * the whole picture; its directories' outlines name it there, and a file's
+ * name comes in as zooming in draws the file large enough to be read as one.
+ * An estate map's names are what it is for, and are kept however small.
  */
 export const MAP_NAMED_PX = 4;
 
@@ -1128,9 +1129,11 @@ export class StreamingGraphRenderer {
         return { t, rank: rank[String(node?.kind)] ?? 3, length: (t.textContent ?? '').length };
       })
       .sort((a, b) => a.rank - b.rank || a.length - b.length);
-    for (const { t } of texts) {
+    for (const { t, rank: ranked } of texts) {
       const node = this.nodeById.get(t.getAttribute('data-node-id') ?? '');
-      const small = !!node && this._nodeSize(node) * this._zoomK < MAP_NAMED_PX;
+      // A family's, a project's or a repository's name is what an estate map
+      // is for, and is kept however small its node is drawn.
+      const small = !!node && ranked === 3 && this._nodeSize(node) * this._zoomK < MAP_NAMED_PX;
       const box = t.getBBox();
       const hidden = small || taken.some((other) => meets(box, other));
       t.setAttribute('visibility', hidden ? 'hidden' : 'visible');
