@@ -56,32 +56,6 @@ test('a node from no file offers no source', () => {
   assert.equal(sourceTarget({ id: 'crate::hal' }), null);
 });
 
-test('a badge too long for the canvas keeps the name and the end of the path', () => {
-  /* Mutation: cut the end off instead, as a CSS ellipsis does -- the line
-     number goes, and this fails. */
-  const text = 'delay  /home/runner/work/codecartographer/examples/rust-firmware/crates/blinky/src/main.rs:21';
-  const short = fitBadgeText(text, 40);
-  assert.ok(short.length <= 40, `${short} is ${short.length} long`);
-  assert.ok(short.startsWith('delay  …/'), short);
-  assert.ok(short.endsWith('/src/main.rs:21'), short);
-  // Cut at a separator, so no directory's name is left half there.
-  assert.match(short, /^delay  …\/[^/]+\//);
-});
-
-test('a badge that fits is left whole, and Windows paths are cut at a backslash', () => {
-  assert.equal(fitBadgeText('main.rs  /ws/src/main.rs', 40), 'main.rs  /ws/src/main.rs');
-  const win = fitBadgeText(String.raw`build.rs  D:\ws\examples\rust-firmware\crates\blinky\build.rs`, 36);
-  assert.ok(win.length <= 36, win);
-  assert.match(win, /^build\.rs  …\\.*\\blinky\\build\.rs$/);
-});
-
-test('a canvas too narrow for the name keeps the end of the text', () => {
-  const short = fitBadgeText('a_very_long_function_name  /ws/src/main.rs:21', 12);
-  assert.ok(short.length <= 12, short);
-  assert.ok(short.startsWith('…') && short.endsWith('main.rs:21'), short);
-  assert.equal(fitBadgeText('anything at all', 0), '');
-});
-
 /* A C symbol names its file's stem and a Python symbol `module.py`; where the
    file is, the GitHub URL or the path on disk, is held by the file node the
    symbol is drawn inside. These graphs are what the GitHub stream sends: the
@@ -177,4 +151,42 @@ test('a node that names its own URL keeps it', () => {
   );
   assert.deepEqual(sourceTarget(g.nodes.get('rust::delay'), g),
     { kind: 'forge', href: 'https://github.com/o/fw/blob/main/src/main.rs#L21' });
+});
+
+test('a badge too long for the canvas keeps the name and the end of the path', () => {
+  /* Mutation: cut the end off instead, as a CSS ellipsis does -- the line
+     number goes, and this fails. */
+  const text = 'delay  /home/runner/work/codecartographer/examples/rust-firmware/crates/blinky/src/main.rs:21';
+  const short = fitBadgeText(text, 40);
+  assert.ok(short.length <= 40, `${short} is ${short.length} long`);
+  assert.ok(short.startsWith('delay  …/'), short);
+  assert.ok(short.endsWith('/src/main.rs:21'), short);
+  // Cut at a separator, so no directory's name is left half there.
+  assert.match(short, /^delay  …\/[^/]+\//);
+});
+
+test('a badge that fits is left whole, and Windows paths are cut at a backslash', () => {
+  assert.equal(fitBadgeText('main.rs  /ws/src/main.rs', 40), 'main.rs  /ws/src/main.rs');
+  const win = fitBadgeText(String.raw`build.rs  D:\ws\examples\rust-firmware\crates\blinky\build.rs`, 36);
+  assert.ok(win.length <= 36, win);
+  assert.match(win, /^build\.rs  …\\.*\\blinky\\build\.rs$/);
+});
+
+test('a canvas too narrow for the name keeps the end of the text', () => {
+  const short = fitBadgeText('a_very_long_function_name  /ws/src/main.rs:21', 12);
+  assert.ok(short.length <= 12, short);
+  assert.ok(short.startsWith('…') && short.endsWith('main.rs:21'), short);
+  assert.equal(fitBadgeText('anything at all', 0), '');
+});
+
+test('a name that leaves no room for the file is shortened first, so the file and line stay', () => {
+  /* Mutation: keep the name whole and cut the path to what is left -- at 30
+     `…21` is all of the path that stays, and this fails. */
+  const text = 'a_very_long_function_name  /ws/src/main.rs:21';
+  for (const max of [30, 36]) {
+    const short = fitBadgeText(text, max);
+    assert.ok(short.length <= max, `${short} is ${short.length} long`);
+    assert.ok(short.endsWith('/main.rs:21'), short);
+    assert.ok(short.startsWith('a_very_long_fun'), short);
+  }
 });

@@ -140,17 +140,27 @@ export function sourceTarget(node: InfoNode, graph?: SourceGraph): SourceTarget 
  * A local badge's text in at most `maxChars`: whole when it fits, else the
  * node's name, `…`, and the end of the path from a separator on, so the file
  * and line stay. An ellipsis at the end, which CSS gives, would cut the line.
- * With no room for the name, the end of the text alone.
+ * When the name leaves less room than the file's own segment, the name is
+ * shortened instead, to its start and `…`. With no room for any of the name,
+ * the end of the text alone.
  */
 export function fitBadgeText(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   if (maxChars < 1) return '';
   const split = text.indexOf('  ');
   const name = split > 0 ? text.slice(0, split + 2) : '';
+  const path = text.slice(name.length);
+  // The path's last segment, from its last separator on: the file and line.
+  const file = path.slice(Math.max(0, path.lastIndexOf('/'), path.lastIndexOf('\\')));
   const room = maxChars - name.length - 1;
-  if (room < 1) return `…${text.slice(text.length - (maxChars - 1))}`;
-  let tail = text.slice(text.length - room);
-  const separator = tail.search(/[\\/]/);
-  if (separator > 0) tail = tail.slice(separator);
-  return `${name}…${tail}`;
+  if (room >= file.length) {
+    let tail = text.slice(text.length - room);
+    const separator = tail.search(/[\\/]/);
+    if (separator > 0) tail = tail.slice(separator);
+    return `${name}…${tail}`;
+  }
+  const shownPath = file.length < path.length ? `…${file}` : file;
+  const nameRoom = maxChars - shownPath.length - 3; // the name's `…` and the two spaces
+  if (name && nameRoom >= 1) return `${name.slice(0, nameRoom)}…  ${shownPath}`;
+  return `…${text.slice(text.length - (maxChars - 1))}`;
 }

@@ -45,6 +45,17 @@ test('a badge opened at the top of the window is moved down into it', () => {
   assert.equal(drawn.left, 8);
 });
 
+test('a badge moved down over the point it was opened from is put below the point', () => {
+  /* Mutation: leave it where moving it down puts it -- its box holds the
+     point, and this fails. The badge takes the pointer, for its title. */
+  const at = { x: 1180, y: 15 };
+  const drawn = box(at, { width: 400, height: LINE });
+  const over = at.x >= drawn.left && at.x <= drawn.right && at.y >= drawn.top && at.y <= drawn.bottom;
+  assert.equal(over, false, JSON.stringify(drawn));
+  assert.ok(drawn.top > at.y, JSON.stringify(drawn));
+  assert.equal(drawn.right, WINDOW.width - BADGE_MARGIN);
+});
+
 test('a badge opened past the bottom or right of the window is moved back into it', () => {
   const drawn = box({ x: 2000, y: 2000 }, { width: 400, height: LINE });
   assert.equal(drawn.right, WINDOW.width - BADGE_MARGIN);
@@ -52,8 +63,8 @@ test('a badge opened past the bottom or right of the window is moved back into i
 });
 
 test('a badge as wide as the window allows starts at the left margin, wherever it is opened', () => {
-  /* The renderer bounds the badge's width to the window less both margins
-     and shortens the path to fit on one line (fitBadgeText). */
+  /* The renderer bounds the badge's width to its area less both margins
+     and shortens the text to fit on one line (fitBadgeText). */
   const width = WINDOW.width - 2 * BADGE_MARGIN;
   for (const x of [0, 640, 1279]) {
     const drawn = box({ x, y: 400 }, { width, height: LINE });
