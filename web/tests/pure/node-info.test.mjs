@@ -178,3 +178,15 @@ test('a canvas too narrow for the name keeps the end of the text', () => {
   assert.ok(short.startsWith('…') && short.endsWith('main.rs:21'), short);
   assert.equal(fitBadgeText('anything at all', 0), '');
 });
+
+test('a name that leaves no room for the file is shortened first, so the file and line stay', () => {
+  /* Mutation: keep the name whole and cut the path to what is left -- at 30
+     `…21` is all of the path that stays, and this fails. */
+  const text = 'a_very_long_function_name  /ws/src/main.rs:21';
+  for (const max of [30, 36]) {
+    const short = fitBadgeText(text, max);
+    assert.ok(short.length <= max, `${short} is ${short.length} long`);
+    assert.ok(short.endsWith('/main.rs:21'), short);
+    assert.ok(short.startsWith('a_very_long_fun'), short);
+  }
+});
