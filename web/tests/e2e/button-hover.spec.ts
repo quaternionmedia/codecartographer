@@ -60,12 +60,15 @@ function labelContrast(button: Element): number {
     const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
     return (hi + 0.05) / (lo + 0.05);
   };
-  // Every element that holds a label character. A pictograph (⚡, 📖) draws
-  // in its own colours whatever the text colour is, so it is not one.
+  // Every element that holds a label character. An emoji (⚡, 📖, or a
+  // symbol a variation selector asks to be one) draws in its own colours
+  // whatever the text colour is, so it is not one. A symbol drawn as text
+  // by default (▶, ★, ☰) is drawn in the text colour, and is one.
+  const emoji = /\p{Extended_Pictographic}\uFE0F|\p{Emoji_Presentation}|\uFE0F/gu;
   const holders = new Set<Element>();
   const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    if (/[^\s\p{Extended_Pictographic}️]/u.test(n.textContent ?? '') && n.parentElement) {
+    if (/\S/.test((n.textContent ?? '').replace(emoji, '')) && n.parentElement) {
       holders.add(n.parentElement);
     }
   }
@@ -167,6 +170,50 @@ test('every button a drawn graph brings keeps its label readable on hover', asyn
   const chrestomathy = page.locator('.gl-panel--chrestomathy');
   await expect(chrestomathy.locator('tr[data-construct]').first()).toBeVisible({ timeout: SETTLED });
   expect.soft(await unreadableOnHover(page, chrestomathy)).toEqual([]);
+});
+
+test('every button in Topology and Graphbase keeps its label readable on hover', async ({ page }) => {
+  // Neither panel shows its buttons without a service this suite does not
+  // start: Topology's flows come from the harness, Graphbase's entries from
+  // its database. Each is stubbed with what it answers when it is up.
+  const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+  await page.route('**/topology/available*', (route) => route.fulfill(json({
+    status: 200,
+    message: 'Success',
+    results: {
+      topologies: [
+        { topology: 'pair', caption: 'two boxes', status: 'runs', boxes: 2, arrows: 2 },
+        { topology: 'chain', caption: 'three boxes', status: 'runs', boxes: 3, arrows: 2 },
+      ],
+      layouts: ['Spring'],
+      encoding: [],
+    },
+  })));
+  await page.route(/\/db\/$/, (route) => route.fulfill(json({ available: true })));
+  await page.route(/\/db\/bookmarks$/, (route) => route.fulfill(json([
+    { name: 'kept', url: 'https://github.com/octocat/hello-world', layout: 'Spring', depth: 1, extensions: [], saved_at: 0 },
+  ])));
+  await page.route(/\/db\/snapshots$/, (route) => route.fulfill(json([
+    { name: 'drawn', saved_at: 0, meta: { nodeCount: 3 } },
+  ])));
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Topology$/ }).click();
+  const topology = page.locator('.gl-panel--topology');
+  await expect(topology.locator('.topology__chip')).toHaveCount(2, { timeout: SETTLED });
+  // Mutation: drop the background from the Topology chips' hover -- the
+  // global secondary fill comes back under their label, and this fails.
+  expect.soft(await unreadableOnHover(page, topology)).toEqual([]);
+
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Graphbase$/ }).click();
+  const graphbase = page.locator('.gl-graphbase-panel');
+  await expect(graphbase.locator('.gl-graphbase-panel__load-btn')).toHaveCount(2, { timeout: SETTLED });
+  // Mutation: drop the background from Graphbase's ▶ hover -- its secondary
+  // label is drawn on the secondary fill, and this fails.
+  expect.soft(await unreadableOnHover(page, graphbase)).toEqual([]);
 });
 
 test('a selected parse-option chip keeps its label and its fill in the Light theme', async ({ page }) => {
