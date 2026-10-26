@@ -17,7 +17,7 @@ import { test } from 'node:test';
 import { parseNotes, notesTail } from '../../dist-pure/features/graph/services/parse_notes.js';
 
 const NOTE = '1 c file(s) drawn without their contents: libclang is not installed, so C and C++ '
-  + 'declarations cannot be read. Install it with: uv sync --extra c-parsing';
+  + 'declarations cannot be read. Install it with: uv sync --locked --extra dev --extra c-parsing';
 
 test("a one-shot parse's notes are read from its metadata", () => {
   const results = { graph: { nodes: {}, edges: [] }, metadata: { layout: 'Spring', notes: [NOTE] } };

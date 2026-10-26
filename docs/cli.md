@@ -403,7 +403,9 @@ uv run codecarto parse myfile.py -o json
 
 ### `info`
 
-Show project and environment information.
+Show project and environment information. Each package it lists is one of the
+project's own dependencies; one it cannot import is marked `✗`, and the command
+exits 1.
 
 ```bash
 uv run codecarto info
@@ -431,9 +433,9 @@ uv run codecarto info
 
 ### `lint`
 
-Run `ruff check` over the `codecarto` package. ruff is in the `dev` extra
-(`uv sync --extra dev`); without it the command says so and exits 1, and it
-exits 1 when ruff finds issues.
+Run `ruff check` over the `codecarto` package. ruff is in the `dev` extra,
+which `uv sync --locked --extra dev --extra c-parsing` installs; without it the
+command says so and exits 1, and it exits 1 when ruff finds issues.
 
 ```bash
 uv run codecarto lint [OPTIONS]
