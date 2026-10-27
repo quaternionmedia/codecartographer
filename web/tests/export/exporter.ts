@@ -265,8 +265,8 @@ async function drawCode(page: Page, subject: ManifestSubject, dir: string, answe
   await faded(page);
   writeFileSync(join(dir, 'code.svg'), await svgOf(page));
   // The depth the floor drew it to (`stream_floor.py`): a page says which.
-  return { graph, metadata: { url: answer.url, depth: done.depth ?? answer.depth ?? 1, floor: answer.floor ?? null,
-                              truncated: 0 } };
+  return { graph, metadata: { url: answer.url, depth: done.depth ?? answer.depth ?? 1,
+                              ...(answer.floor ? { floor: answer.floor } : {}), truncated: 0 } };
 }
 
 async function drawSystem(page: Page, subject: ManifestSubject, dir: string, answer: ViewAnswer) {
