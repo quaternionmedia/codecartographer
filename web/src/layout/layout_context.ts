@@ -20,6 +20,8 @@ import { ICell, ICellState } from '../state/cell_state';
 import { StateController } from '../state/state_controller';
 import { createActions, AppActions } from '../state/actions';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
+import { keptLocal, localTree } from '../features/repository/local_tree';
+import type { AddedFile } from '../features/repository/local_drop';
 import {
   ControlPanelState,
   ControlPanelCallbacks,
@@ -1633,39 +1635,26 @@ export class LayoutContext {
         }
       },
 
-      onFileUpload: (files: FileList) => {
-        this.updatePanelState({ isLoading: true, statusMessage: 'Processing files...' });
-        const newFiles: RawFile[] = [];
-        let processed = 0;
-        Array.from(files).forEach((file) => {
-          if (this.uploadedFiles.some((f) => f.name === file.name)) {
-            processed++;
-            if (processed === files.length)
-              this.updatePanelState({ isLoading: false, statusMessage: `${newFiles.length} new file(s) added` });
-            return;
-          }
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const content = e.target?.result as string;
-            const newFile = new RawFile(file.name, file.size, content, file.webkitRelativePath || file.name);
-            newFiles.push(newFile);
-            this.uploadedFiles.push(newFile);
-            processed++;
-            if (processed === files.length) {
-              this.appState.update({
-                local: {
-                  content: new Directory(
-                    new RepoInfo(),
-                    this.uploadedFiles.length,
-                    new RawFolder('uploads', 0, this.uploadedFiles),
-                  ),
-                },
-              });
-              this.updatePanelState({ isLoading: false, statusMessage: `${newFiles.length} file(s) added` });
-            }
-          };
-          reader.readAsText(file);
+      onFileUpload: async (files: AddedFile[]) => {
+        this.updatePanelState({ isLoading: true, statusMessage: 'Reading files...' });
+        // A file is known by its path under what was added, not its name: two
+        // `__init__.py` from two folders are two files. A folder's version
+        // control, dependencies and build output, a file too large, and one of
+        // an extension the parse options leave out, are not read.
+        const extensions = this.appState.state.parserOptions.fileExtensions;
+        const known = new Set(this.uploadedFiles.map((f) => f.url || f.name));
+        const wanted = files.filter(({ file, path }) => !known.has(path) && keptLocal(path, file.size, extensions));
+        const skipped = files.length - wanted.length;
+        const read = await Promise.all(wanted.map(async ({ file, path }) =>
+          new RawFile(file.name, file.size, await file.text(), path)));
+        this.uploadedFiles.push(...read);
+        const tree = localTree(this.uploadedFiles, 'uploads');
+        this.appState.update({
+          local: { content: new Directory(new RepoInfo(), tree.size, tree as RawFolder) },
         });
+        const said = `${read.length} file(s) added`
+          + (skipped ? `, ${skipped} left out (already added, not source, or too large)` : '');
+        this.updatePanelState({ isLoading: false, statusMessage: said });
       },
 
       onUploadedFileClick: async (file: RawFile) => {

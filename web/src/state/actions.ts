@@ -22,6 +22,7 @@ import { GraphRendererRegistry } from '../features/graph/services/renderers';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
 import { logger } from '../core/logger';
 import { backendLayoutName } from '../features/graph/services/layout_names';
+import { localTree } from '../features/repository/local_tree';
 import { THEME_LABEL_COLOR } from '../features/graph/services/label_color';
 import { parseNotes } from '../features/graph/services/parse_notes';
 import { LatestPlot } from './latest_plot';
@@ -765,7 +766,8 @@ export class PlotActions {
       const opts   = this.stateController.state.parserOptions;
       const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
       const size   = files.reduce((total, f) => total + f.size, 0);
-      const dir    = new Directory(new RepoInfo(), files.length, new RawFolder('upload', size, files));
+      // As the folders they were added in: a folder's `src/` stays `src/`.
+      const dir    = new Directory(new RepoInfo(), files.length, localTree(files, 'upload') as RawFolder);
       let notes: string[] = [];
       const drawn = await this.plots.plot(
         async () => {

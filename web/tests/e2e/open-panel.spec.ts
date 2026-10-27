@@ -7,7 +7,7 @@
  * that the recent graphs are listed there and nowhere else.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { dismissOnboardingModal } from './helpers';
 
@@ -37,22 +37,78 @@ test('the bundled example opens from the Open panel, and Plot draws it again', a
   await page.screenshot({ path: test.info().outputPath('open-panel.png'), fullPage: true });
 });
 
+/** The Files panel, brought to the front of its stack. */
+async function filesPanel(page: Page) {
+  await page.locator('.lm_tab', { hasText: 'Files' }).click();
+  const files = page.locator('.gl-panel--file-tree');
+  await expect(files).toBeVisible();
+  return files;
+}
+
+/** The paths the Files panel lists as added. */
+function addedPaths(files: Locator) {
+  return files.locator('.gl-file-tree__file');
+}
+
 test('Plot draws every added file, not the first', async ({ page }) => {
   await page.goto('/');
   await dismissOnboardingModal(page);
-  const open = page.locator('.gl-panel--open');
+  const files = await filesPanel(page);
 
   // Paths resolve from web/, where the browser suite runs.
-  await open.locator('#file-upload-input').setInputFiles([
+  await files.locator('#local-files-input').setInputFiles([
     'tests/e2e/fixtures/uploads/first.py',
     'tests/e2e/fixtures/uploads/second.py',
   ]);
-  await expect(open.locator('.panel-source__upload-summary')).toContainText('2 file(s)');
-  await open.locator('button.panel-plotbar__plot').click();
+  await expect(addedPaths(files)).toHaveText(['first.py', 'second.py']);
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
+  await page.locator('.gl-panel--open button.panel-plotbar__plot').click();
 
   // Mutation: plot only the first added file -- second.py is not drawn, and this fails.
   await expect(page.locator('.graph-node[data-node-id$="first.py"]')).toHaveCount(1, { timeout: SETTLED });
   await expect(page.locator('.graph-node[data-node-id$="second.py"]')).toHaveCount(1);
+});
+
+test('the local files are added in the Files panel, not in Open', async ({ page }) => {
+  // Mutation: keep the box in the Open panel -- and this fails.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.gl-panel--open .panel-upload__dropzone')).toHaveCount(0);
+  const files = await filesPanel(page);
+  await expect(files.locator('.panel-upload__dropzone')).toBeVisible();
+  await expect(files.getByRole('button', { name: /Choose a folder/ })).toBeVisible();
+});
+
+test("a folder is added as its folders, less what is not its source, and Plot draws them", async ({ page }) => {
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const files = await filesPanel(page);
+  // Mutation: read every file a folder holds -- target/'s is added, and this
+  // fails.
+  await files.locator('#local-folder-input').setInputFiles('tests/e2e/fixtures/uploads-folder/proj');
+  await expect(addedPaths(files)).toHaveText([
+    'proj/main.py', 'proj/src/__init__.py', 'proj/src/shapes.py', 'proj/tests/__init__.py',
+  ]);
+  await expect(page.locator('.gl-panel--open .panel-plotbar__status-text'))
+    .toContainText('4 file(s) added, 1 left out');
+  // Plot draws them as the folders they were added in. Mutation: draw the
+  // added files as one flat folder -- no folder src is drawn, and this fails.
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
+  await page.locator('.gl-panel--open button.panel-plotbar__plot').click();
+  await expect(page.locator('.graph-node[data-node-id$="shapes.py"]')).toHaveCount(1, { timeout: SETTLED });
+  await expect(page.locator('.graph-node[data-node-id^="dir::"][data-node-id$="/src"]')).toHaveCount(1);
+});
+
+test('two files of one name from two folders are both added', async ({ page }) => {
+  // Mutation: know an added file by its name -- tests' __init__.py is taken
+  // for src's, left out, and this fails.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const files = await filesPanel(page);
+  await files.locator('#local-folder-input').setInputFiles('tests/e2e/fixtures/uploads-folder/proj/src');
+  await expect(addedPaths(files)).toHaveText(['src/__init__.py', 'src/shapes.py']);
+  await files.locator('#local-folder-input').setInputFiles('tests/e2e/fixtures/uploads-folder/proj/tests');
+  await expect(addedPaths(files)).toHaveText(['src/__init__.py', 'src/shapes.py', 'tests/__init__.py']);
 });
 
 test('local files are added from the keyboard: Enter on the box opens the file chooser', async ({ page }) => {
@@ -66,11 +122,11 @@ test('local files are added from the keyboard: Enter on the box opens the file c
   page.on('filechooser', () => undefined);
   await page.goto('/');
   await dismissOnboardingModal(page);
-  const open = page.locator('.gl-panel--open');
+  const files = await filesPanel(page);
 
   // Mutation: the box as a div with only a click handler -- no role names it,
   // it is not in the tab order, and this fails.
-  const box = open.getByRole('button', { name: /browse/i });
+  const box = files.getByRole('button', { name: /choose files/i });
   await expect(box).toHaveAttribute('tabindex', '0');
   await box.focus();
   await expect(box).toBeFocused();
@@ -80,7 +136,7 @@ test('local files are added from the keyboard: Enter on the box opens the file c
     'tests/e2e/fixtures/uploads/first.py',
     'tests/e2e/fixtures/uploads/second.py',
   ]);
-  await expect(open.locator('.panel-source__upload-summary')).toContainText('2 file(s)');
+  await expect(addedPaths(files)).toHaveText(['first.py', 'second.py']);
 });
 
 test('the recent graphs are listed in Open, and not in Graphbase', async ({ page }) => {
@@ -99,7 +155,7 @@ test('the recent graphs are listed in Open, and not in Graphbase', async ({ page
 test.describe('in the default dock at 1600×1000', () => {
   test.use({ viewport: { width: 1600, height: 1000 } });
 
-  test('the local files, Load Demo and the lexicons are in view without scrolling', async ({ page }) => {
+  test('Load Demo and the lexicons are in view without scrolling', async ({ page }) => {
     await page.goto('/');
     await dismissOnboardingModal(page);
     const open = page.locator('.gl-panel--open');
@@ -113,12 +169,9 @@ test.describe('in the default dock at 1600×1000', () => {
     // In view means unclipped by the column that scrolls, not only inside the
     // window: the intersection Playwright measures is clipped by every
     // scrolling ancestor.
-    // Mutation: put the examples back above Local files -- the dropzone and
-    // Load Demo sit below the column's fold, and this fails.
-    await expect(open.locator('.panel-upload__dropzone')).toBeInViewport({ ratio: 1 });
+    // Mutation: put the examples back above the quick starts -- Load Demo
+    // sits below the column's fold, and this fails.
     await expect(open.getByRole('button', { name: /Load Demo/i })).toBeInViewport({ ratio: 1 });
-    // Mutation: stack the dropzone's icon over its text with its full padding
-    // again -- the first lexicon runs past the fold, and this fails.
     for (const lexicon of await lexicons.all()) {
       await expect(lexicon).toBeInViewport({ ratio: 1 });
     }

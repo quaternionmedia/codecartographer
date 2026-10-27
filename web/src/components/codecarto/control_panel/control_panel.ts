@@ -8,6 +8,7 @@ import { rendererControls } from '../../../features/graph/services/renderer_cont
 import { hasTree } from '../../../features/repository/repo_tree';
 import { plotTarget } from '../../../features/repository/plot_target';
 import { pressable } from './pressable';
+import type { AddedFile } from '../../../features/repository/local_drop';
 import { GraphStylingOptions, ParserOptions, GraphRendererType } from '../../../state/types';
 import './control_panel.css';
 
@@ -38,7 +39,8 @@ export interface ControlPanelCallbacks {
   onRepoFileClick: (url: string) => void;
   /** Plot the loaded repository, else every added file, else the URL in the field. */
   onPlot: () => void;
-  onFileUpload: (files: FileList) => void;
+  /** Files from disk, a folder's included, each with its path under what was added (Files panel). */
+  onFileUpload: (files: AddedFile[]) => void | Promise<void>;
   onUploadedFileClick: (file: RawFile) => void;
   onThemeChange: (theme: string) => void;
   onGraphStylingChange: (options: Partial<GraphStylingOptions>) => void;
@@ -162,34 +164,6 @@ export function ControlPanel(
     callbacks.onThemeChange(themeId);
   };
 
-  const handleDrop = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const dropzone = e.currentTarget as HTMLElement;
-    dropzone.classList.remove('panel-upload__dropzone--active');
-    if (e.dataTransfer?.files.length) {
-      callbacks.onFileUpload(e.dataTransfer.files);
-    }
-  };
-
-  const handleDragOver = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    (e.currentTarget as HTMLElement).classList.add('panel-upload__dropzone--active');
-  };
-
-  const handleDragLeave = (e: DragEvent) => {
-    e.preventDefault();
-    (e.currentTarget as HTMLElement).classList.remove('panel-upload__dropzone--active');
-  };
-
-  const handleFileInput = (e: Event) => {
-    const input = e.target as HTMLInputElement;
-    if (input.files?.length) {
-      callbacks.onFileUpload(input.files);
-    }
-  };
-
   const toggleGraphSection = (section: keyof ControlPanelState['graphSections']) => {
     onStateChange({
       graphSections: {
@@ -263,37 +237,6 @@ export function ControlPanel(
           }, ex.label),
         )),
     ]));
-
-  /** Local files, added to what Plot draws; each is listed in the Files panel. */
-  const renderLocalFiles = () => {
-    const activeExts = content.parserOptions.fileExtensions;
-    const browse = () => document.getElementById('file-upload-input')?.click();
-
-    return m('div.panel-source__upload', [
-      m('span.panel-settings__label-compact', 'Local files'),
-      // A drop target that holds its hidden file input, so not a <button>:
-      // `pressable` gives it a button's place in the tab order, its role, and
-      // Enter and Space, so files are added from the keyboard too.
-      m('div.panel-upload__dropzone', {
-        ondrop: handleDrop,
-        ondragover: handleDragOver,
-        ondragleave: handleDragLeave,
-        onclick: browse,
-        ...pressable(browse),
-      }, [
-        m('span.panel-upload__icon', { 'aria-hidden': 'true' }, '📁'),
-        m('span.panel-upload__text', 'Drop source files here or click to browse'),
-        m('input#file-upload-input[type=file][multiple]', {
-          style: { display: 'none' },
-          attrs: activeExts.length > 0 ? { accept: activeExts.join(',') } : {},
-          onchange: handleFileInput,
-        }),
-      ]),
-      content.uploadedFiles.length > 0
-        ? m('div.panel-source__upload-summary', `${content.uploadedFiles.length} file(s) added — see the Files panel`)
-        : null,
-    ]);
-  };
 
   /** The demo, and one button per language with a Lexicon. */
   const renderQuickStart = () =>
@@ -519,7 +462,6 @@ export function ControlPanel(
       m('div.panel-source__2col', [
         m('div.panel-source__left', [
           renderUrlSection(),
-          renderLocalFiles(),
           renderQuickStart(),
           renderExamples(),
         ]),

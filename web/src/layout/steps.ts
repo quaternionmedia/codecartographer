@@ -56,10 +56,10 @@ export const STEPS: readonly Step[] = [
   {
     id: 'open',
     label: 'Open',
-    hint: 'Choose a repository, files or an example',
+    hint: 'Choose a repository or an example',
     icon: '📁',
     title: 'Open a source',
-    body: 'Everything starts in the Open panel: paste a GitHub URL or a local path and press → Fetch, pick an example, drop files, or press ⚡ Load Demo. ▶ Plot at its foot draws what is open, and Cancel stops it. The Estate panel and the + menu draw the estate instead. Drag a tab to move a window; + adds one.',
+    body: 'Everything starts in the Open panel: paste a GitHub URL or a local path and press → Fetch, pick an example, or press ⚡ Load Demo; files and folders from disk are added in the Files panel. ▶ Plot at its foot draws what is open, and Cancel stops it. The Estate panel and the + menu draw the estate instead. Drag a tab to move a window; + adds one.',
     // Every window that starts a drawing: the code map's sources, the
     // estate's seams, and the graphs kept in Graphbase.
     owns: [
@@ -74,10 +74,10 @@ export const STEPS: readonly Step[] = [
   {
     id: 'browse',
     label: 'Browse',
-    hint: 'Walk the tree, and draw one file alone',
+    hint: 'Add files or a folder, walk the tree, draw one file alone',
     icon: '◉',
     title: 'Browse what was opened',
-    body: 'The Files panel holds the loaded repository\'s tree and the added files. Click a folder to open it and a file to draw that file alone; ⊞ Expand All reads every folder.',
+    body: 'The Files panel adds files or a whole folder from disk, dropped on its box or chosen, and holds the loaded repository\'s tree and the added files. Click a folder to open it and a file to draw that file alone; ⊞ Expand All reads every folder.',
     owns: ['file-tree'],
     forward: ['file-tree', 'graph'],
     alone: false,
