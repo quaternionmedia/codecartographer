@@ -99,7 +99,7 @@ class GraphSerializer:
             # Set color based on type for dependency plot
             if isDependencyPlot:
                 if data.get("type") == "external":
-                    data["color"] = "red"  # External dependencies
+                    data["color"] = "#f59e0b"  # External dependencies
                 else:
                     data["color"] = "blue"  # Internal project files
 

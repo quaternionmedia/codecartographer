@@ -72,7 +72,7 @@ LOOKS: dict[str, tuple[str, str]] = {
     "target": ("square", "#4a9eff"),
     "feature": ("triangle", "#22d3ee"),
     "native_lib": ("rectangle", "#f97316"),
-    "device_target": ("triangle", "#ef4444"),
+    "device_target": ("triangle", "#10b981"),
     "memory_map": ("square", "#d97706"),
 }
 TARGET_LOOKS: dict[str, tuple[str, str]] = {
@@ -80,7 +80,7 @@ TARGET_LOOKS: dict[str, tuple[str, str]] = {
     "staticlib": ("square", "#6ab0e8"), "cdylib": ("square", "#6ab0e8"),
     "bin": ("diamond", "#ff9d3d"),
     "custom-build": ("triangle", "#eab308"),
-    "proc-macro": ("hexagon", "#ec4899"),
+    "proc-macro": ("hexagon", "#14b8a6"),
     "test": ("circle", "#64748b"), "example": ("circle", "#64748b"),
     "bench": ("circle", "#64748b"),
 }

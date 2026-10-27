@@ -356,7 +356,8 @@ export class PlotActions {
         if (combined.includes('function')) return palette.secondary;
         if (combined.includes('class')) return palette.accent;
         if (combined.includes('module') || combined.includes('file')) return palette.accent;
-        if (combined.includes('import') || combined.includes('dependency')) return palette.error;
+        // Red is the theme's error colour, kept for what is to be noticed.
+        if (combined.includes('import') || combined.includes('dependency')) return palette.warning;
         if (combined.includes('call')) return palette.muted;
         if (combined.includes('variable') || combined.includes('literal')) return palette.disabled;
         if (combined.includes('control') || combined.includes('if') || combined.includes('for') || combined.includes('while') || combined.includes('try') || combined.includes('loop')) {

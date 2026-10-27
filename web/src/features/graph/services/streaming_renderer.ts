@@ -1211,7 +1211,7 @@ export class StreamingGraphRenderer {
       else if (kind === 'function' || kind === 'async_function') node.color = this.themeSecondary;
       else if (kind === 'class') node.color = this.themeAccent;
       else if (kind === 'struct' || kind === 'union') node.color = '#4a90d9';
-      else if (kind === 'import') node.color = '#e74c3c';
+      else if (kind === 'import') node.color = '#facc15';
       else if (kind === 'call') node.color = this.themeFontMuted;
       else node.color = '#95a5a6';
     }

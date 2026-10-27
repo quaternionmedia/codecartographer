@@ -283,7 +283,7 @@ constructs:
   - id: firmware.entry
     name: Entry point
     gloss: Where execution starts after reset or load.
-    look: {shape: triangle, color: "#ef4444"}
+    look: {shape: triangle, color: "#f59e0b"}
     spelled:
       linker: {note: "ENTRY(symbol)."}
       rust: {note: "#[entry] from cortex-m-rt, with #![no_main]: the runtime's reset handler calls it."}
