@@ -113,7 +113,7 @@ _PY_SHAPE: dict[str, str] = {
 }
 
 _PY_COLOR: dict[str, str] = {
-    "module":   "#9b59b6",
+    "module":   "#4f9e94",   # a file, drawn as the canvas draws one
     "class":    "#00d4ff",
     "function": "#00ff41",
     "import":   "#facc15",

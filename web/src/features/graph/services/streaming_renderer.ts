@@ -924,8 +924,9 @@ export class StreamingGraphRenderer {
       // A map's outline is its group's: a family drawn in the family's hue.
       const hue = this._map ? d3.color(String(this.nodeById.get(b.nodeId)?.color ?? '')) : null;
       const tint = (opacity: number) => hue!.copy({ opacity }).formatRgb();
-      const fill   = hue ? tint(isDir ? 0.07 : 0.10) : isDir ? 'rgba(127,140,141,0.06)' : 'rgba(155,89,182,0.09)';
-      const stroke = hue ? tint(isDir ? 0.45 : 0.55) : isDir ? 'rgba(127,140,141,0.30)' : 'rgba(155,89,182,0.35)';
+      // Otherwise a directory's outline is grey and a file's teal, as each node is (`_assignVisuals`).
+      const fill   = hue ? tint(isDir ? 0.07 : 0.10) : isDir ? 'rgba(127,140,141,0.06)' : 'rgba(79,158,148,0.09)';
+      const stroke = hue ? tint(isDir ? 0.45 : 0.55) : isDir ? 'rgba(127,140,141,0.30)' : 'rgba(79,158,148,0.35)';
       const dash   = isDir ? '8,4' : '4,2';
       const sw     = isDir ? 1.5 : 1.0;
       const grp = this._backgroundGroup.append('g').attr('class', `compound-group depth-${b.depth}`);
@@ -943,7 +944,7 @@ export class StreamingGraphRenderer {
         .attr('dominant-baseline', 'central')
         .attr('data-base-size', isDir ? 11 : 9)
         .attr('font-size', this._map ? this._nameSize(isDir ? 11 : 9, MAP_OUTLINE_PX) : isDir ? 11 : 9)
-        .attr('fill', hue ? tint(0.9) : isDir ? 'rgba(127,140,141,0.70)' : 'rgba(155,89,182,0.70)')
+        .attr('fill', hue ? tint(0.9) : isDir ? 'rgba(127,140,141,0.70)' : 'rgba(79,158,148,0.70)')
         .style('pointer-events', 'none')
         .style('opacity', fadeIn ? 0 : 1)
         .text(b.label)
@@ -1206,8 +1207,11 @@ export class StreamingGraphRenderer {
     }
 
     if (!node.color || node.color === 'steelblue') {
+      // A file, and a record in an estate, is the commonest node a map draws:
+      // a calm teal. It was #9b59b6, a purple at 283 degrees that read as
+      // pink, and drew a code map nine parts pink.
       if (depth === 0) node.color = '#7f8c8d';
-      else if (depth === 1) node.color = '#9b59b6';
+      else if (depth === 1) node.color = '#4f9e94';
       else if (kind === 'function' || kind === 'async_function') node.color = this.themeSecondary;
       else if (kind === 'class') node.color = this.themeAccent;
       else if (kind === 'struct' || kind === 'union') node.color = '#4a90d9';

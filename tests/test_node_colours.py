@@ -8,9 +8,15 @@ function, an entry point. The abstraction-layer ramp keeps pink for its last,
 seventh layer, used only when a lexicon has that many.
 
 Every place a node is given a colour by its kind is read here: the default
-palette, the layer ramp, the construct vocabulary, the Cargo graph's looks, the
-Python parser's and the canvas's fallback for an import, and the dependency
-plot's external dependency.
+palette, the layer ramp, the construct vocabulary, the Cargo graph's looks,
+every colour the Python parser gives, every colour the canvas falls back on for
+a node that arrives with none, and the dependency plot's external dependency.
+
+A colour saturated enough to read as a hue is pink or red from 280 degrees
+round through red to 12, the bound qm's palette test holds its family hues to.
+The canvas drew every file, and every record in an estate, in #9b59b6 at 283
+degrees, and with the bound at 290 and the canvas's fallback unread this test
+let it through: a code map was nine parts pink.
 """
 
 import colorsys
@@ -43,7 +49,7 @@ def _red_or_pink(colour: str) -> bool:
     r, g, b = (int(hex_[i:i + 2], 16) / 255 for i in (1, 3, 5))
     hue, light, sat = colorsys.rgb_to_hls(r, g, b)
     hue *= 360
-    return sat > 0.3 and 0.15 < light < 0.92 and (hue >= 290 or hue <= 12)
+    return sat > 0.3 and 0.15 < light < 0.92 and (hue >= 280 or hue <= 12)
 
 
 def test_no_ordinary_kind_in_the_default_palette_is_red_or_pink():
@@ -75,11 +81,44 @@ def test_no_cargo_look_is_red_or_pink():
     assert red == {}, f"Cargo nodes drawn red or pink: {red}"
 
 
-def test_an_import_and_an_external_dependency_are_not_red():
-    assert not _red_or_pink(python_language_parser._PY_COLOR["import"])
-    renderer = (ROOT / "web" / "src" / "features" / "graph" / "services" / "streaming_renderer.ts").read_text(encoding="utf-8")
-    fallback = re.search(r"kind === 'import'\) node\.color = '(#[0-9a-fA-F]{6})'", renderer)
-    assert fallback and not _red_or_pink(fallback.group(1)), "the canvas's fallback draws an import red"
+RENDERER = ROOT / "web" / "src" / "features" / "graph" / "services" / "streaming_renderer.ts"
+
+
+def test_no_colour_the_canvas_falls_back_on_is_red_or_pink():
+    # A node that arrives with no colour is given one by its depth and kind
+    # (`_assignVisuals`): a file, and a record in an estate, by its depth.
+    # Mutation: give a file its #9b59b6 back -- and this fails.
+    source = RENDERER.read_text(encoding="utf-8")
+    body = re.search(r"private _assignVisuals\(node: GraphNode\): void \{(.*?)\n  \}\n", source, re.S)
+    assert body, "the canvas's _assignVisuals was not found"
+    fallbacks = re.findall(r"(\w+ === [^)]*?)\) node\.color = '(#[0-9a-fA-F]{6})'", body.group(1))
+    fallbacks += [("any other", c) for c in re.findall(r"else node\.color = '(#[0-9a-fA-F]{6})'", body.group(1))]
+    assert len(fallbacks) >= 5, f"too few of the canvas's fallback colours were read: {fallbacks}"
+    red = {when: c for when, c in fallbacks if _red_or_pink(c)}
+    assert red == {}, f"the canvas falls back on red or pink: {red}"
+
+
+def test_no_outline_the_canvas_draws_round_a_group_is_red_or_pink():
+    # A directory's outline and a file's, where no family's hue colours them
+    # (`_paintOutlines`). Mutation: draw a file's outline in rgba(155,89,182)
+    # again -- and this fails.
+    source = RENDERER.read_text(encoding="utf-8")
+    body = re.search(r"private _paintOutlines\(.*?\n  \}\n", source, re.S)
+    assert body, "the canvas's _paintOutlines was not found"
+    tints = re.findall(r"rgba\((\d+),\s*(\d+),\s*(\d+),", body.group(0))
+    assert len(tints) >= 6, f"too few of the outlines' colours were read: {tints}"
+    colours = {"#%02x%02x%02x" % tuple(int(v) for v in rgb) for rgb in tints}
+    red = sorted(c for c in colours if _red_or_pink(c))
+    assert red == [], f"the canvas outlines a group in red or pink: {red}"
+
+
+def test_no_colour_the_python_parser_gives_is_red_or_pink():
+    # Mutation: give `module` its #9b59b6 back -- and this fails.
+    red = {kind: c for kind, c in python_language_parser._PY_COLOR.items() if _red_or_pink(c)}
+    assert red == {}, f"the Python parser draws red or pink: {red}"
+
+
+def test_an_external_dependency_is_not_red():
     serializer = (ROOT / "codecarto" / "services" / "graph_serializer.py").read_text(encoding="utf-8")
     external = re.search(r'data\["color"\] = "([^"]+)"\s*# External dependencies', serializer)
     assert external and not _red_or_pink(external.group(1)), "an external dependency is drawn red"

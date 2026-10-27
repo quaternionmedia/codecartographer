@@ -374,7 +374,7 @@ Id `graph-settings-panel`. In the default arrangement.
   renderer that runs one; *Repulsion* and *Link Distance* show while *Physics*
   is on. `renderer_controls.rendererControls` says which controls each renderer
   takes. *Group Outlines* (D3 only) circles each group in a translucent dashed
-  outline: grey around a directory's, purple around a file's.
+  outline: grey around a directory's, teal around a file's.
 - **Visual**, folded: *Node Labels* (and per depth: Dir, File, Sym, Sub), *Node
   Size*, *Color By* (depth and kind, abstraction layer, or construct across
   languages), *Node Opacity*, *Border Width*, *Edge Labels*, *Edge Width*, *Edge
