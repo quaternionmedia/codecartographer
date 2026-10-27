@@ -13,8 +13,8 @@
  */
 
 import m from 'mithril';
-import { LayoutManager } from 'golden-layout';
-import type { ContentItem, LayoutConfig, Stack } from 'golden-layout';
+import { LayoutConfig as GLLayoutConfig, LayoutManager } from 'golden-layout';
+import type { ContentItem, LayoutConfig, ResolvedLayoutConfig, Stack } from 'golden-layout';
 
 import { ICell, ICellState } from '../state/cell_state';
 import { StateController } from '../state/state_controller';
@@ -479,7 +479,15 @@ export class LayoutContext {
     const saved = readSavedLayout(raw, PanelRegistry.all().map((def) => def.id));
     if (saved.kind === 'usable') {
       if (saved.renamed.length) this._keepRenamedLayout(saved.config, saved.renamed);
-      return saved.config as LayoutConfig;
+      // **SAVED AS GOLDEN LAYOUT SAVES IT, READ AS IT READS ONE.** "Save
+      // current as default" kept the resolved layout `toConfig` gives, with
+      // its sizes as numbers, and `loadLayout` reads them as strings: every
+      // saved layout was refused on the next visit ("value.trimStart is not a
+      // function") and dropped for the default. One saved that way is read
+      // back through Golden Layout's own conversion.
+      return (saved.config as { resolved?: unknown }).resolved === true
+        ? GLLayoutConfig.fromResolved(saved.config as unknown as ResolvedLayoutConfig)
+        : saved.config as LayoutConfig;
     }
     if (saved.kind === 'unusable') this.dropSavedLayout(saved.why);
     return DEFAULT_LAYOUT_CONFIG;
@@ -510,7 +518,8 @@ export class LayoutContext {
   public saveLayoutAsDefault(): void {
     if (!this._layoutManager) return;
     try {
-      localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(this._layoutManager.toConfig()));
+      // As `loadLayout` reads a layout, not as `toConfig` resolves one.
+      localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(GLLayoutConfig.fromResolved(this._layoutManager.toConfig())));
       ToastManager.show('Layout saved as default');
     } catch {
       ToastManager.show('Could not save layout');

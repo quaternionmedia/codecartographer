@@ -46,7 +46,9 @@ A panel that opens or comes forward while another stack is maximised -- step
 panel is in view.
 
 **A saved layout** is kept in the browser (`localStorage`, key
-`cc:gl-layout:default`). Its windows are read wherever Golden Layout reads
+`cc:gl-layout:default`), saved as Golden Layout loads a layout; one kept as
+Golden Layout resolves it, with its sizes as numbers, is read through Golden
+Layout's own conversion. Its windows are read wherever Golden Layout reads
 them: the layout's root, or a legacy layout's `content[0]`, and every open
 popout's, a popout's own popouts included. One that names a window this version
 does not have is dropped, a toast says which, and the default loads. A layout
