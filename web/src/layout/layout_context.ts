@@ -248,6 +248,11 @@ export class LayoutContext {
     // A stack maximised or restored moves the rail (`_followMaximised`).
     // Golden Layout says so at once, before the canvas's resize lands.
     layoutManager?.on('stateChanged', () => this._followMaximised());
+    // ⧉ follows the canvas's tab: into the stack it is dropped in, and in
+    // sight while it is the tab in front (`syncDuplicateControl`).
+    layoutManager?.on('stateChanged', () => this.syncDuplicateControl());
+    layoutManager?.on('activeContentItemChanged', () => this.syncDuplicateControl());
+    if (!layoutManager) this._duplicateControl?.remove();
   }
 
   /**
@@ -318,10 +323,19 @@ export class LayoutContext {
    * Open a window the reader chose from the "+" menu: as `openPanel`, and
    * the step follows it, as choosing its tab does.
    */
+  public chooseWindow(panelId: DockPanelId): void {
+    this.openPanel(panelId);
+    this._followWindow(panelId);
+  }
+
+  // ── Copies of the graph ────────────────────────────────────────────────────
+
   /** How many copies of the graph have been made, for each copy's name. */
   private _copies = 0;
   /** Each copy's graph, as it was when the copy was made, by the copy's id. */
   private readonly _copySnapshots = new Map<string, GraphData>();
+  /** The Graph window's ⧉, among the controls of the stack the canvas is in. */
+  private _duplicateControl: HTMLButtonElement | null = null;
 
   /**
    * Open a copy of the graph in a window of its own: a tab beside the canvas,
@@ -360,9 +374,45 @@ export class LayoutContext {
     return kept ?? this.appState.state.graphData ?? null;
   }
 
-  public chooseWindow(panelId: DockPanelId): void {
-    this.openPanel(panelId);
-    this._followWindow(panelId);
+  /**
+   * Keep the Graph window's ⧉ among the controls of the stack the canvas is
+   * in, beside its maximise and close: in sight while the canvas's tab is the
+   * one in front, and disabled with nothing drawn. On the canvas it covered a
+   * corner where the wheel then zoomed nothing. Golden Layout calls this when a
+   * tab moves or comes forward, and the canvas when what is drawn changes.
+   */
+  public syncDuplicateControl(): void {
+    const button = this._duplicateControl ??= this._makeDuplicateControl();
+    const graph = this._layoutManager?.findFirstComponentItemById('graph');
+    const stack = graph?.parent as Stack | undefined;
+    if (!graph || !stack?.header) {
+      button.remove();
+      return;
+    }
+    const controls = stack.header.controlsContainerElement;
+    const hidden = stack.getActiveComponentItem() !== graph;
+    if (button.parentElement !== controls || button.hidden !== hidden) {
+      controls.prepend(button);
+      button.hidden = hidden;
+      // Golden Layout gives the tabs the header's width less its controls',
+      // measured when it sizes them; 2.6 leaves that call out of its types.
+      (stack.header as unknown as { updateTabSizes?: () => void }).updateTabSizes?.();
+    }
+    const drawn = !!this.appState.state.graphData;
+    button.disabled = !drawn;
+    button.title = drawn
+      ? 'Duplicate this graph into a window of its own, moved and zoomed apart from this one'
+      : 'Nothing is drawn to duplicate';
+  }
+
+  private _makeDuplicateControl(): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'gl-graph__duplicate';
+    button.textContent = '⧉';
+    button.setAttribute('aria-label', 'Duplicate the graph into a window of its own');
+    button.addEventListener('click', () => this.duplicateGraph());
+    return button;
   }
 
   // ── The steps ──────────────────────────────────────────────────────────────

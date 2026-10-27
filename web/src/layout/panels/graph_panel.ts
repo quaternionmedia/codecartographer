@@ -12,22 +12,16 @@ import { PlotComponent } from '../../components/codecarto/plot/plot';
 
 export function createGraphPanel(ctx: LayoutContext): m.Component {
   return {
+    // The window's ⧉ sits in its stack's header, out of this panel; it is
+    // disabled with nothing drawn, so it follows each redraw.
+    oncreate: () => { setTimeout(() => ctx.syncDuplicateControl(), 0); },
+    onupdate: () => ctx.syncDuplicateControl(),
     view: () => {
       const state = ctx.appState.state;
 
       return m('div.gl-panel.gl-panel--graph', [
         // Main plot area
         m(PlotComponent, { graphs: state.graphContent }),
-        // A copy of the graph in a tab of its own, moved and zoomed apart.
-        m('button.gl-graph__duplicate', {
-          type: 'button',
-          disabled: !state.graphData,
-          title: state.graphData
-            ? 'Duplicate this graph into a window of its own, moved and zoomed apart from this one'
-            : 'Nothing is drawn to duplicate',
-          'aria-label': 'Duplicate the graph into a window of its own',
-          onclick: () => ctx.duplicateGraph(),
-        }, '⧉'),
       ]);
     },
   };

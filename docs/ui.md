@@ -106,7 +106,8 @@ The canvas: every graph draws here, whichever panel asked for it. What it
 does is under [The canvas](#the-canvas). With nothing drawn, it points at step
 1, Open, which the canvas hides on step 4.
 
-**⧉**, at the canvas's top right, duplicates the graph into a window of its own
+**⧉**, among the Graph window's controls beside its maximise, shown while the
+canvas's tab is in front, duplicates the graph into a window of its own
 (`web/src/layout/panels/graph_copy_panel.ts`): a tab, `◈ Graph 2`, `◈ Graph 3`
 and so on, added beside the canvas and dragged anywhere in the dock like any
 other. A copy draws the graph as it was when it was made, pans and zooms apart

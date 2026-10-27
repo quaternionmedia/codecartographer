@@ -90,6 +90,28 @@ test('a copy dragged beside the canvas is drawn there, both in sight at once', a
   await expect(copy.locator('g.graph-node')).toHaveCount(count, { timeout: SETTLED });
 });
 
+test("⧉ is among the Graph window's controls, not over the canvas, and in sight while the canvas is in front", async ({ page }) => {
+  // On the canvas, ⧉ covered a corner where the wheel then zoomed nothing.
+  // Mutation: draw ⧉ on the canvas, as it was -- it is not among the stack's
+  // controls, its box lies on the canvas, and this fails.
+  await loadDemo(page);
+  const duplicate = page.getByRole('button', { name: 'Duplicate the graph into a window of its own' });
+  const graphStack = page.locator('.lm_stack').filter({ has: page.locator('.gl-panel--graph:not(.gl-panel--graph-copy)') });
+  await expect(graphStack.locator('.lm_header .lm_controls').getByRole('button', { name: 'Duplicate the graph into a window of its own' })).toHaveCount(1);
+  const button = (await duplicate.boundingBox())!;
+  const canvas = (await page.locator('.gl-panel--graph:not(.gl-panel--graph-copy)').boundingBox())!;
+  const overlaps = button.x < canvas.x + canvas.width && canvas.x < button.x + button.width
+    && button.y < canvas.y + canvas.height && canvas.y < button.y + button.height;
+  expect(overlaps, '⧉ lies on the canvas').toBe(false);
+
+  // A copy in front of the canvas has no ⧉ of its own; back on the canvas, it is there again.
+  await duplicate.click();
+  await expect(page.locator('.lm_tab', { hasText: '◈ Graph 2' })).toHaveCount(1);
+  await expect(duplicate).toBeHidden();
+  await page.locator('.lm_tab', { hasText: /^◈ Graph$/ }).click();
+  await expect(duplicate).toBeVisible();
+});
+
 test('with nothing drawn, there is nothing to duplicate', async ({ page }) => {
   await page.goto('/');
   await dismissOnboardingModal(page);

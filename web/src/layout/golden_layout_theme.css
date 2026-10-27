@@ -151,32 +151,33 @@
   overflow: hidden;
 }
 
-/* The canvas's ⧉: a copy of the graph in a window of its own. */
-.gl-graph__duplicate {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  z-index: 6;
-  padding: 2px 8px;
-  font-size: 1rem;
-  line-height: 1.4;
-  font-family: var(--f-root-font, 'Consolas', monospace);
-  background: var(--c-transparent-3qurt, rgba(0, 0, 0, 0.75));
-  border: 1px solid var(--c-border, #00ff4140);
-  border-radius: 3px;
-  color: var(--c-font, #00ff41);
-  cursor: pointer;
+/* The Graph window's ⧉, among its stack's controls beside maximise and close:
+   a copy of the graph in a window of its own. Golden Layout sizes each
+   control; this sets the glyph as the others are drawn. */
+.lm_header .lm_controls > .gl-graph__duplicate {
+  min-height: 0;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-font-muted, #00aa2a);
+  font: 15px/18px var(--f-root-font, 'Consolas', monospace);
+  opacity: 0.5;
 }
 
-.gl-graph__duplicate:hover:not(:disabled),
-.gl-graph__duplicate:focus-visible {
-  border-color: var(--c-border-active, #00ff41);
+.lm_header .lm_controls > .gl-graph__duplicate:hover:not(:disabled),
+.lm_header .lm_controls > .gl-graph__duplicate:focus-visible {
   color: var(--c-secondary, #00ff41);
+  opacity: 1;
 }
 
-.gl-graph__duplicate:disabled {
-  opacity: 0.4;
+.lm_header .lm_controls > .gl-graph__duplicate:disabled {
+  opacity: 0.2;
   cursor: default;
+}
+
+.lm_header .lm_controls > .gl-graph__duplicate[hidden] {
+  display: none;
 }
 
 .gl-graph-copy__canvas {
