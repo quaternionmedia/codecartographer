@@ -258,7 +258,7 @@ logic. The two parsers that set them:
 
 | language | kind | shape | color |
 |----------|------|-------|-------|
-| Python | `module` | diamond | `#9b59b6` |
+| Python | `module` | diamond | `#4f9e94` |
 | Python | `class` | square | `#00d4ff` |
 | Python | `function` | hexagon | `#00ff41` |
 | Python | `import` | triangle | `#facc15` |
@@ -277,7 +277,7 @@ pentagon when there is none. The C parser counts a struct's or union's fields,
 and the construct vocabulary does the same for every record.
 
 A node without them is given one on the canvas (`StreamingGraphRenderer`):
-a directory is a grey diamond, a file a purple square, a function a hexagon, a
+a directory is a grey diamond, a file a teal square, a function a hexagon, a
 class or struct a square, an import or call a triangle, and anything else a
 circle. `GraphSerializer` sizes a node by depth (40, 20, 10 and 6 for depths 0
 to 3) plus its degree, unless the node already carries a `size`.
