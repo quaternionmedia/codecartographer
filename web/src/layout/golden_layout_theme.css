@@ -151,6 +151,47 @@
   overflow: hidden;
 }
 
+/* The canvas's ⧉: a copy of the graph in a window of its own. */
+.gl-graph__duplicate {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 6;
+  padding: 2px 8px;
+  font-size: 1rem;
+  line-height: 1.4;
+  font-family: var(--f-root-font, 'Consolas', monospace);
+  background: var(--c-transparent-3qurt, rgba(0, 0, 0, 0.75));
+  border: 1px solid var(--c-border, #00ff4140);
+  border-radius: 3px;
+  color: var(--c-font, #00ff41);
+  cursor: pointer;
+}
+
+.gl-graph__duplicate:hover:not(:disabled),
+.gl-graph__duplicate:focus-visible {
+  border-color: var(--c-border-active, #00ff41);
+  color: var(--c-secondary, #00ff41);
+}
+
+.gl-graph__duplicate:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.gl-graph-copy__canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.gl-graph-copy__empty {
+  margin: 1rem;
+  color: var(--c-font-muted, #00aa2a);
+  font-size: 0.85em;
+}
+
 /* ── Controls panel ─────────────────────────────────────────────────────── */
 
 .gl-panel--controls {

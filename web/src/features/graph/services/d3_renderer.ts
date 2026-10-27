@@ -42,6 +42,22 @@ function flattenNodes(nodes: unknown): GraphNode[] {
   );
 }
 
+/**
+ * A finished graph drawn on a canvas of its own and announced to nobody: a
+ * copy of the graph in a window of its own, which pans and zooms apart from
+ * the canvas. The ring and the menu stay with the canvas `GraphSurface` names;
+ * the copy carries its own key.
+ */
+export function drawCopy(container: HTMLElement, data: GraphData, styling?: GraphStylingOptions): StreamingGraphRenderer {
+  container.innerHTML = '';
+  const renderer = new StreamingGraphRenderer(container, styling);
+  if ((data as { metadata?: { kind?: unknown } }).metadata?.kind === 'show') renderer.presentAsMap();
+  const nodes = flattenNodes(data.graph?.nodes);
+  renderer.setTotal(nodes.length);
+  renderer.mergeGraph(nodes, (data.graph?.edges ?? []) as GraphEdge[]);
+  return renderer;
+}
+
 export class D3GraphRenderer implements IGraphRenderer {
   readonly type = 'd3';
   readonly name = 'D3.js Force-Directed Graph';

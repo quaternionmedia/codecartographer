@@ -16,6 +16,7 @@ import { GoldenLayout } from 'golden-layout';
 
 import type { ICell } from '../state/cell_state';
 import { LayoutContext } from './layout_context';
+import { GRAPH_COPY, createGraphCopyPanel } from './panels/graph_copy_panel';
 import { PanelRegistry } from './panel_registry';
 import { AddPanelMenu } from './components/add_panel_menu';
 import { StepRail } from './components/step_rail';
@@ -75,6 +76,14 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
         def.mount(ctx, container.element);
       });
     }
+
+    // A copy of the graph (`graph_copy_panel.ts`): any number, each by its own
+    // id, drawing the graph kept for it when it was made.
+    glInstance.registerComponentFactoryFunction(GRAPH_COPY, (container) => {
+      container.element.style.cssText = 'width:100%;height:100%;overflow:hidden;';
+      const id = String((container.parent as { id?: unknown } | undefined)?.id ?? '');
+      m.mount(container.element, createGraphCopyPanel(ctx, ctx.copySnapshot(id)));
+    });
 
     // Known limitation: GL 2.x pop-out opens a new window but Mithril component
     // factories are bound to the original window — components never mount in pop-outs.

@@ -21,6 +21,7 @@ import { StateController } from '../state/state_controller';
 import { createActions, AppActions } from '../state/actions';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
 import { keptLocal, localTree } from '../features/repository/local_tree';
+import { GRAPH_COPY } from './panels/graph_copy_panel';
 import type { AddedFile } from '../features/repository/local_drop';
 import {
   ControlPanelState,
@@ -51,7 +52,7 @@ import type { NodeViewState } from '../features/graph/rad/host/view_state';
 import type { GraphOps } from '../features/graph/rad/host/graph_intents';
 import type { MenuContext } from '../features/graph/rad/core/types';
 import { DEEPEST_DEPTH } from '../features/graph/rad/host/resolve';
-import type { GraphNode, GraphEdge } from '../features/graph/services/graph_types';
+import type { GraphData, GraphNode, GraphEdge } from '../features/graph/services/graph_types';
 import { backendLayoutName } from '../features/graph/services/layout_names';
 import { formatShow, fromNode, parseShow, sameShow } from '../features/show/show_address';
 import type { ShowAddress } from '../features/show/show_address';
@@ -317,6 +318,48 @@ export class LayoutContext {
    * Open a window the reader chose from the "+" menu: as `openPanel`, and
    * the step follows it, as choosing its tab does.
    */
+  /** How many copies of the graph have been made, for each copy's name. */
+  private _copies = 0;
+  /** Each copy's graph, as it was when the copy was made, by the copy's id. */
+  private readonly _copySnapshots = new Map<string, GraphData>();
+
+  /**
+   * Open a copy of the graph in a window of its own: a tab beside the canvas,
+   * which can be dragged anywhere and pans and zooms apart from it
+   * (`graph_copy_panel.ts`). Nothing drawn, nothing is copied.
+   */
+  public duplicateGraph(): void {
+    const layout = this._layoutManager;
+    const data = this.appState.state.graphData;
+    if (!layout || !data) return;
+    // Past the copies a saved layout opened with, whose count is not kept.
+    let id: string;
+    do {
+      this._copies += 1;
+      id = `${GRAPH_COPY}-${this._copies}`;
+    } while (layout.findFirstComponentItemById(id));
+    this._copySnapshots.set(id, data);
+    const config = {
+      type: 'component' as const, componentType: GRAPH_COPY, id,
+      title: `◈ Graph ${this._copies + 1}`, isClosable: true,
+    };
+    const stack = layout.findFirstComponentItemById('graph')?.parent as Stack | undefined;
+    if (stack) stack.addItem(config);
+    else layout.newItemAtLocation(config, LayoutManager.defaultLocationSelectors);
+    layout.updateRootSize(true);
+  }
+
+  /**
+   * The graph a copy draws: the one kept for it, handed over once, or, opened
+   * from a saved layout, the canvas's. The copy holds what it drew; a copy
+   * closed takes its graph with it.
+   */
+  public copySnapshot(id: string): GraphData | null {
+    const kept = this._copySnapshots.get(id);
+    this._copySnapshots.delete(id);
+    return kept ?? this.appState.state.graphData ?? null;
+  }
+
   public chooseWindow(panelId: DockPanelId): void {
     this.openPanel(panelId);
     this._followWindow(panelId);
@@ -476,7 +519,7 @@ export class LayoutContext {
     } catch {
       /* storage blocked: nothing saved to read */
     }
-    const saved = readSavedLayout(raw, PanelRegistry.all().map((def) => def.id));
+    const saved = readSavedLayout(raw, [...PanelRegistry.all().map((def) => def.id), GRAPH_COPY]);
     if (saved.kind === 'usable') {
       if (saved.renamed.length) this._keepRenamedLayout(saved.config, saved.renamed);
       // **SAVED AS GOLDEN LAYOUT SAVES IT, READ AS IT READS ONE.** "Save
