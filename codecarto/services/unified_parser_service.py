@@ -382,10 +382,13 @@ class UnifiedParserService:
                 events.append(f"event: edge\ndata: {json.dumps(fe)}\n\n")
 
             # depth=2 nodes get a direct file->symbol contains edge (same
-            # rule as _merge_batch_subgraph); depth=3 nodes already have a
-            # structural edge from their parent (e.g. FIELD_OF).
+            # rule as _merge_batch_subgraph); depth=3 nodes have a structural
+            # edge from their parent (e.g. FIELD_OF) -- all but a module's own,
+            # a constant or a name at its top level, which its file holds.
+            parented = {target for _, target in sub.edges()}
             for nid, ndata in sub.nodes(data=True):
-                if ndata.get("depth") != 2:
+                depth_val = ndata.get("depth")
+                if depth_val != 2 and not (isinstance(depth_val, int) and depth_val > 2 and nid not in parented):
                     continue
                 fid = origin(ndata)
                 if fid:
@@ -425,7 +428,9 @@ class UnifiedParserService:
                 return []
             if annotate_lexicon:
                 annotate_graph_with_lexicon(sub, getattr(parser, "language", ""))
-            return node_events_for(sub, {Path(file_name).stem: file_id}, {dl_url: file_id})
+            # A parser keeps a node's file as its URL, its stem or, as
+            # Python's does, its name: one file, so each names it alone.
+            return node_events_for(sub, {Path(file_name).stem: file_id}, {dl_url: file_id, file_name: file_id})
 
         async def fetch_and_parse_batch(
             parser, entries: list[tuple[str, str, str]]
