@@ -64,8 +64,10 @@ class Subject:
     @property
     def views(self) -> tuple[str, ...]:
         # The index's code view is the whole corpus: every family, each
-        # project's code map in it.
-        return {"project": ("estate", "code", "system"), "index": ("estate", "code")}.get(self.kind, ("estate",))
+        # project's code map in it; its full view the same, every node drawn
+        # and no name.
+        return {"project": ("estate", "code", "system"),
+                "index": ("estate", "code", "full")}.get(self.kind, ("estate",))
 
 
 def parse_subject(text: str) -> Subject:

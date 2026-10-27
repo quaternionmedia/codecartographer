@@ -3,6 +3,7 @@
  *
  *   ?show  or  ?show=index             every family at once: the default
  *   ?show=index&view=code              every family with each project's code: the whole corpus
+ *   ?show=index&view=full              the whole corpus, every node drawn and no name
  *   ?show=family:performing            one family
  *   ?show=project:carlos               one project's estate view
  *   ?show=project:carlos&view=code     the same project's code map
@@ -22,14 +23,17 @@
 
 export type ShowKind = 'index' | 'family' | 'project';
 export type ShowView = 'estate' | 'code' | 'system';
+/** What an address may name: a project's view, or the index's `full`, the whole corpus with no names. */
+export type AddressView = ShowView | 'full';
 
 export interface ShowAddress {
   kind: ShowKind;
   /** Empty for the index. */
   name: string;
-  /** A project has three views and the index two (its code view is the whole
-   *  corpus); a family's is always `estate`. */
-  view: ShowView;
+  /** A project has three views and the index three (its code view is the
+   *  whole corpus, its full view the same with no names); a family's is
+   *  always `estate`. */
+  view: AddressView;
 }
 
 export const VIEWS: readonly ShowView[] = ['estate', 'code', 'system'];
@@ -61,10 +65,12 @@ export function parseShow(search: string): ShowAddress | null {
   const params = parameters(search);
   if (!params.has('show')) return null;
   const raw = params.get('show');
-  // A showgraph named by nothing more is every family at once, and with
-  // `view=code` every family with each project's code in it.
+  // A showgraph named by nothing more is every family at once, with
+  // `view=code` every family with each project's code in it, and with
+  // `view=full` that again, every node drawn and no name.
   if (!raw || raw === 'index') {
-    return { kind: 'index', name: '', view: params.get('view') === 'code' ? 'code' : 'estate' };
+    const asked = params.get('view');
+    return { kind: 'index', name: '', view: asked === 'code' || asked === 'full' ? asked : 'estate' };
   }
 
   const colon = raw.indexOf(':');
@@ -82,7 +88,7 @@ export function parseShow(search: string): ShowAddress | null {
 
 /** The query string for an address, with the view left out when it is `estate`. */
 export function formatShow(address: ShowAddress): string {
-  if (address.kind === 'index') return address.view === 'code' ? '?show=index&view=code' : '?show=index';
+  if (address.kind === 'index') return address.view === 'estate' ? '?show=index' : `?show=index&view=${address.view}`;
   const view = address.kind === 'project' && address.view !== 'estate' ? `&view=${address.view}` : '';
   return `?show=${address.kind}:${encodeURIComponent(address.name)}${view}`;
 }
@@ -113,7 +119,7 @@ export interface TrailSubjects {
  */
 export function trail(address: ShowAddress, subjects: TrailSubjects | null): ShowAddress[][] {
   const index: ShowAddress = { kind: 'index', name: '', view: 'estate' };
-  if (address.kind === 'index') return address.view === 'code' ? [[index], [address]] : [[index]];
+  if (address.kind === 'index') return address.view === 'estate' ? [[index]] : [[index], [address]];
   const within = new Map((subjects?.families ?? []).map((f) => [f.name, f.within]));
   const family = (name: string): ShowAddress => ({ kind: 'family', name, view: 'estate' });
 
@@ -140,6 +146,9 @@ export function trail(address: ShowAddress, subjects: TrailSubjects | null): Sho
 
 /** How a step of the trail is named. */
 export function crumbLabel(address: ShowAddress): string {
-  if (address.kind === 'index') return address.view === 'code' ? 'the whole corpus' : 'every family';
+  if (address.kind === 'index') {
+    return { estate: 'every family', code: 'the whole corpus', full: 'every node, no names' }[address.view as string]
+      ?? 'every family';
+  }
   return address.name;
 }

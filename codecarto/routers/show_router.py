@@ -15,7 +15,8 @@ outlines, palettes and radial menu as a code map.
   `estate` view of its showgraph.
 - `/show/project/{name}/views` -- which of a project's three views can be drawn
   here and how. `estate` is the graph above; `code` is the parse of its
-  default branch on the host, through `/parse/stream-url`; `system` is the
+  default branch on the host, through `/parse/stream-url`, held to the floor
+  `stream_floor.CODE_FLOOR` names; `system` is the
   derived system monitor, through `/system/compose`. A view that cannot be
   drawn says why, rather than being left out.
 
@@ -38,6 +39,7 @@ from fastapi import APIRouter, Query
 
 from codecarto.models.plot_data import PlotOptions
 from codecarto.services import clones, estate_service, show_service, system_composer
+from codecarto.services.stream_floor import CODE_FLOOR
 from codecarto.util.utilities import generate_return
 
 ShowRouter = APIRouter()
@@ -173,8 +175,11 @@ def show_project_views(name: str) -> dict[str, Any]:
                 "remedy": ("regenerate status/inventory.yaml with `uv run qm "
                            "inventory --write` if it is there now")}
     else:
+        # Drawn to its members at most, and no deeper than holds the floor's
+        # nodes: a small project's code map shows its symbols, a large one's
+        # its files (`stream_floor`).
         code = {"available": True, "url": f"https://github.com/{reading.org}/{name}",
-                "depth": 1}
+                "depth": 3, "floor": CODE_FLOOR}
 
     clone = clones.find(name)
     system: dict[str, Any]

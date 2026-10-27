@@ -108,6 +108,8 @@ export class StreamingGraphRenderer {
   private _map = false;
   /** Whether a map's names are on: the Graph Settings toggle still turns them off. */
   private _mapNames = true;
+  /** Whether an outline is named; not on a map drawn with no names (`presentAsMap`). */
+  private _outlinesNamed = true;
   private _zoomK = 1;
   private styling: GraphStylingOptions;
   private width: number;
@@ -939,6 +941,7 @@ export class StreamingGraphRenderer {
         .attr('stroke-width', sw)
         .attr('stroke-dasharray', dash);
       if (fadeIn) circle.style('opacity', 0).transition().delay(300).duration(500).style('opacity', 1);
+      if (!this._outlinesNamed) continue;
       labels.push(grp.append('text')
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'central')
@@ -1086,9 +1089,17 @@ export class StreamingGraphRenderer {
     return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : { x: 0, y: 0 };
   }
 
-  /** Draw this graph as a map (see `_map`). Called before its nodes arrive. */
-  presentAsMap(): void {
+  /**
+   * Draw this graph as a map (see `_map`). Called before its nodes arrive.
+   * With `names` false nothing is written on it, a node's name nor an
+   * outline's: every node of the whole corpus, drawn for itself.
+   */
+  presentAsMap(options: { names?: boolean } = {}): void {
     this._map = true;
+    if (options.names === false) {
+      this._mapNames = false;
+      this._outlinesNamed = false;
+    }
   }
 
   /** Whether a node's name is drawn: on a map, unless an outline already says it. */

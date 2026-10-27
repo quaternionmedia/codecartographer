@@ -213,13 +213,18 @@ does.
 The panel opens on what is drawn. A trail runs from *every family* down to it
 -- `every family › performing › instruments › carlos` -- and each step is a
 link back. A project two families claim is reached from both
-(`instruments · irl`). For every family, two buttons follow: **every family**
-and **with each project's code**, the whole corpus in one graph: each family's
+(`instruments · irl`). For every family, three buttons follow: **every family**;
+**with each project's code**, the whole corpus in one graph: each family's
 outline holding its projects, and each project its code map, from the show
 document the corpus holds for it (`?show=index&view=code`, trail `every family ›
-the whole corpus`). A project with no code map drawn yet is drawn alone, and
+the whole corpus`); and **every node, no names**, the same graph with every node
+drawn and nothing written on it, neither a node's name nor an outline's
+(`?show=index&view=full`). A project with no code map drawn yet is drawn alone, and
 *What this drawing can say* names it. For a project, its three views follow: **estate**,
-**code map** and **system**; the one drawn is pressed. A view that cannot be
+**code map** and **system**; the one drawn is pressed. A project's code map is
+drawn no deeper than holds 100 nodes: a large project's directories and files,
+a small one's symbols too, and its members where even those fall short, each
+file a disc of what it holds. A view that cannot be
 drawn here is disabled, with its reason under it. Then the legend: which edges
 are claims, which are declared seams and which are measured. *What this drawing
 can say* holds the caveat and the corpus it was read from, folded. Its line

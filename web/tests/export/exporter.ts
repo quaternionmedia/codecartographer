@@ -26,7 +26,7 @@ import { join } from 'node:path';
 
 import { expect, type Page, type Response } from '@playwright/test';
 
-export type View = 'estate' | 'code' | 'system';
+export type View = 'estate' | 'code' | 'system' | 'full';
 
 export interface ManifestSubject {
   kind: 'index' | 'family' | 'project';
@@ -56,6 +56,7 @@ interface ViewAnswer {
   remedy?: string;
   url?: string;
   depth?: number;
+  floor?: number;
   components?: number;
 }
 
@@ -157,6 +158,11 @@ async function svgOf(page: Page): Promise<string> {
       if (style) (to[i] as SVGElement).setAttribute('style', style);
       else (to[i] as SVGElement).removeAttribute('style');
     });
+    // A picture holds what is drawn: a name the canvas keeps but does not
+    // draw -- every name on the whole corpus drawn with none -- is left out.
+    from.forEach((el, i) => {
+      if (el !== svg && drawn.get(el)!.display === 'none') to[i].remove();
+    });
     const box = svg.getBoundingClientRect();
     const width = Math.round(box.width);
     const height = Math.round(box.height);
@@ -177,10 +183,11 @@ async function svgOf(page: Page): Promise<string> {
   });
 }
 
-/** The code parse's stream, as the nodes and edges it carried. */
-function streamed(body: string): { nodes: Record<string, unknown>; edges: unknown[] } {
+/** The code parse's stream, as the nodes and edges it carried, and what its end said. */
+function streamed(body: string): { nodes: Record<string, unknown>; edges: unknown[]; done: Record<string, any> } {
   const nodes: Record<string, unknown> = {};
   const edges: unknown[] = [];
+  let done: Record<string, any> = {};
   for (const block of body.split(/\r?\n\r?\n/)) {
     const event = /^event: (\w+)/m.exec(block)?.[1];
     const data = /^data: (.*)$/m.exec(block)?.[1];
@@ -188,8 +195,9 @@ function streamed(body: string): { nodes: Record<string, unknown>; edges: unknow
     const value = JSON.parse(data);
     if (event === 'node') nodes[value.id] = value;
     if (event === 'edge') edges.push(value);
+    if (event === 'done') done = value;
   }
-  return { nodes, edges };
+  return { nodes, edges, done };
 }
 
 /**
@@ -222,6 +230,16 @@ async function drawCorpus(page: Page, dir: string) {
   return drawShowgraph(page, '/show/corpus/gjgf', './?show=index&view=code', join(dir, 'code.svg'));
 }
 
+/**
+ * The index's full view: the whole corpus again, every node drawn and no
+ * name. Its graph is the code view's, so the document keeps its metadata
+ * alone rather than the same graph twice.
+ */
+async function drawFullCorpus(page: Page, dir: string) {
+  const drawn = await drawShowgraph(page, '/show/corpus/gjgf', './?show=index&view=full', join(dir, 'full.svg'));
+  return { graph: 'the code view\'s', metadata: { ...drawn.metadata, names: false } };
+}
+
 async function drawShowgraph(page: Page, route: string, address: string, file: string) {
   const answered = page.waitForResponse((r: Response) => r.url().includes(route), { timeout: SETTLED });
   await page.goto(address);
@@ -239,14 +257,16 @@ async function drawCode(page: Page, subject: ManifestSubject, dir: string, answe
   const answered = page.waitForResponse((r: Response) => r.url().includes('/parse/stream-url'), { timeout: SETTLED });
   await page.goto(`./?show=${subject.address}&view=code`);
   const body = await (await answered).text();
-  const graph = streamed(body);
+  const { done, ...graph } = streamed(body);
   await expect(page.locator('.graph-node').first()).toBeAttached({ timeout: SETTLED });
   await readStep(page);
   await drawnAll(page, Object.keys(graph.nodes).length);
   await settle(page);
   await faded(page);
   writeFileSync(join(dir, 'code.svg'), await svgOf(page));
-  return { graph, metadata: { url: answer.url, depth: answer.depth ?? 1, truncated: 0 } };
+  // The depth the floor drew it to (`stream_floor.py`): a page says which.
+  return { graph, metadata: { url: answer.url, depth: done.depth ?? answer.depth ?? 1,
+                              ...(answer.floor ? { floor: answer.floor } : {}), truncated: 0 } };
 }
 
 async function drawSystem(page: Page, subject: ManifestSubject, dir: string, answer: ViewAnswer) {
@@ -318,6 +338,9 @@ export async function exportSubject(page: Page, subject: ManifestSubject, manife
     } else if (subject.kind === 'index' && view === 'code') {
       views.code = await drawCorpus(page, dir);
       files.code = 'code.svg';
+    } else if (subject.kind === 'index' && view === 'full') {
+      views.full = await drawFullCorpus(page, dir);
+      files.full = 'full.svg';
     } else if (!answers[view]?.available) {
       views[view] = absence(subject, view, answers[view]);
     } else if (view === 'code') {

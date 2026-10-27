@@ -387,11 +387,14 @@ uv run codecarto show export --corpus ../qm --subject project:carlos,family:perf
 
 Each subject's folder -- `index/`, `family/<name>/`, `project/<name>/` --
 holds `show.json` and a picture of each view the window draws: `estate.svg`,
-`code.svg` (a project's code map) and `system.png` (a project's system view,
-which draws in HTML). The index's `code.svg` is the whole corpus: every family
-with each project's code map in it, drawn last, from the code maps this export
-has just written under `--out` (the server reads them through
-`CODECARTO_SHOW_DOCS`). A view the window cannot draw here is stated in
+`code.svg` (a project's code map, held to the window's floor of 100 nodes; the
+document's `metadata.depth` says how deep it was drawn) and `system.png` (a
+project's system view, which draws in HTML). The index's `code.svg` is the
+whole corpus: every family with each project's code map in it, drawn last, from
+the code maps this export has just written under `--out` (the server reads them
+through `CODECARTO_SHOW_DOCS`). Its `full.svg` is the same graph with every node
+drawn and no name on it; the document keeps that view's metadata, not the graph
+again. A view the window cannot draw here is stated in
 `show.json` with the window's reason, and has no picture. A system view is
 composed from the project's clone on this disk, so it is drawn only when that
 clone is at its default branch's head; otherwise the document says the clone

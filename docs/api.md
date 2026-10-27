@@ -211,10 +211,23 @@ streams its parse — no separate `/repo/tree` round-trip first.
 { "url": "https://github.com/owner/repo", "depth": 2, "layout": "Spring" }
 ```
 
+An optional `floor` holds the parse to the shallowest depth, up to `depth`,
+that has at least that many nodes (`codecarto/services/stream_floor.py`): a
+showgraph's code view. A repository whose directories and files reach it is
+streamed to them and ended before any file is fetched. One they do not is
+parsed on, its members let through only if its directories, files and symbols
+fall short, kept whole to the end, laid out once in `layout`, and sent: each id
+once, and only what a directory of the repository holds, so a module a file
+imports from elsewhere is left out. `done` then carries the `depth` drawn (1
+files, 2 symbols, 3 members), the `floor` and the `nodes` sent. A floor is part
+of the cache key.
+
 **Response:** Same SSE event types as `/parse/stream`, plus a `fetching`
 event (`{message}`) emitted during phase 1 (repo tree fetch) before any
 `node`/`edge` events arrive. Phase 2 (symbol parsing) streams nodes as each
 file's content is fetched and parsed, and a `note` where a batch could not be.
+Each symbol is joined to its file by a `contains` edge, as is a member nothing
+else holds, a module's top-level constant or name.
 
 After streaming completes, the full accumulated graph is written to cache
 (GitHub URLs only, and not when the stream carried a `note`) — the next
@@ -974,9 +987,11 @@ or a name no family or roster entry gives, answers `unreadable`.
 ### GET `/show/project/{name}/views`
 
 Which of the project's three views can be drawn here: `estate` (the graph
-above), `code` (the parse of its default branch on the host, with the `url` and
-`depth` the Show panel streams through `/parse/stream-url`, available when the
-inventory lists the repository among the host's public ones) and `system` (the
+above), `code` (the parse of its default branch on the host, with the `url`,
+`depth` and `floor` the Show panel streams through `/parse/stream-url`: drawn
+to its members at most and no deeper than holds 100 nodes, so a small
+project's code map shows its symbols and a large one's its files; available
+when the inventory lists the repository among the host's public ones) and `system` (the
 derived system monitor, available when a clone beside this one declares
 components). A view that cannot be drawn carries `available: false`, a
 `problem` and a `remedy`.

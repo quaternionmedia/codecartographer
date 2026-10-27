@@ -671,7 +671,14 @@ export class PlotActions {
     let drew = false;
     const shown = await this.plots.plot(
       () => ShowService.graph(this.stateController.api.show, address,
-        { ...request, layout: request.layout ?? this._layout() }),
+        { ...request, layout: request.layout ?? this._layout() }).then((found) => {
+        // The whole corpus with no names: every node, and nothing written over them.
+        if (address.kind === 'index' && address.view === 'full' && found.kind === 'ok') {
+          const metadata = (found.document.metadata ?? {}) as Record<string, unknown>;
+          found.document.metadata = { ...metadata, names: false };
+        }
+        return found;
+      }),
       (found) => {
         this.stateController.update({ showAddress: address });
         drew = this._draw(found, 'showProblem');

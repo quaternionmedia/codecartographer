@@ -107,6 +107,48 @@ test("the whole corpus is the index's code view, a switch away from every family
   await expect(page.locator('.show__crumb.is-current')).toHaveText('every family');
 });
 
+test('the whole corpus with no names draws every node and writes nothing on the canvas', async ({ page }) => {
+  // The index's third view: the code view's graph, every node drawn, and no
+  // node's name or outline's. Mutation: draw it as the code view is, named --
+  // the families' and projects' names are written over it, and this fails.
+  const nodes: Record<string, unknown> = {
+    'family::core': { label: 'core', metadata: { label: 'core', kind: 'family', depth: 0, x: 0, y: 0 } },
+  };
+  const edges: unknown[] = [];
+  for (let r = 0; r < 3; r++) {
+    nodes[`repo::r${r}`] = { label: `r${r}`, metadata: { label: `r${r}`, kind: 'repository', depth: 1,
+      x: 300 * r, y: 0 } };
+    edges.push({ source: 'family::core', target: `repo::r${r}`, metadata: { kind: 'contains' } });
+    for (let f = 0; f < 6; f++) {
+      const id = `code::r${r}::file::f${f}.py`;
+      nodes[id] = { label: `f${f}.py`, metadata: { label: `f${f}.py`, kind: 'file', depth: 2, code: true,
+        x: 300 * r + 40 * Math.cos(f), y: 40 * Math.sin(f) } };
+      edges.push({ source: `repo::r${r}`, target: id, metadata: { kind: 'contains' } });
+    }
+  }
+  await page.route('**/show/corpus/gjgf*', (route) => route.fulfill({ json: { status: 200, results: {
+    graph: { nodes, edges },
+    metadata: { kind: 'show', subject: 'corpus', bases: {}, caveat: '', notes: [], provenance: {} },
+  } } }));
+  const written = () => page.locator('.graphRenderer svg').first().evaluate((svg) =>
+    [...svg.querySelectorAll('text')].filter((t) => (t.textContent ?? '').trim()
+      && getComputedStyle(t).display !== 'none' && t.getAttribute('visibility') !== 'hidden').length);
+
+  await page.goto('/?show=index&view=full');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.graphRenderer svg g.graph-node')).toHaveCount(22, { timeout: SETTLED });
+  await expect(page.locator('.graphRenderer svg').first()).toHaveAttribute('data-drawn', 'true', { timeout: SETTLED });
+  expect(await written(), 'a name was written on the whole corpus drawn with none').toBe(0);
+  await expect(page.locator('.show__crumb.is-current')).toHaveText('every node, no names');
+  await expect(page.locator('.show__now .show__view').filter({ hasText: 'every node, no names' }))
+    .toHaveAttribute('aria-pressed', 'true');
+
+  // The code view of the same graph is named.
+  await page.locator('.show__now .show__view').filter({ hasText: "with each project's code" }).click();
+  await expect(page).toHaveURL(/\?show=index&view=code$/);
+  await expect.poll(written, { timeout: SETTLED }).toBeGreaterThan(0);
+});
+
 test('a showgraph of thousands of nodes is drawn in seconds, not a minute', async ({ page }) => {
   // Two thousand members on a grid, answered for every family at once.
   // Mutation: hand the canvas the graph without its total -- it draws one node

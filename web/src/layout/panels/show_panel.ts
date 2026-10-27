@@ -161,16 +161,21 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
     ];
   };
 
-  /** Every family alone, or with each project's code in it: the whole corpus. */
+  /** Every family alone, or with each project's code in it: the whole corpus, named or not. */
+  const indexViews = {
+    estate: { label: 'every family', title: 'draw every family' },
+    code: { label: "with each project's code", title: "draw every family with each project's code in it" },
+    full: { label: 'every node, no names', title: 'draw the whole corpus, every node, with no names' },
+  } as const;
   const indexSwitch = (current: ShowAddress) =>
-    m('div.show__views', (['estate', 'code'] as const).map((view) =>
+    m('div.show__views', (['estate', 'code', 'full'] as const).map((view) =>
       m('button.estate-view__draw.show__view', {
         'data-view': view,
         class: current.view === view ? 'is-current' : '',
         'aria-pressed': current.view === view ? 'true' : 'false',
-        title: view === 'code' ? "draw every family with each project's code in it" : 'draw every family',
+        title: indexViews[view].title,
         onclick: () => open({ kind: 'index', name: '', view }),
-      }, view === 'code' ? "with each project's code" : 'every family')));
+      }, indexViews[view].label)));
 
   /** The way from every family to what is drawn, each step a link back to it. */
   const trailView = (current: ShowAddress, subjects: Parameters<typeof trail>[1]) => {

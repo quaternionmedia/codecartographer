@@ -892,7 +892,8 @@ export class LayoutContext {
     // Another drawing, or another plot, was asked for while they were read.
     if (!current()) return;
     const views = this.appState.state.showViews;
-    const view = views ? views[address.view] : null;
+    // A project's view: `full` is the index's alone, drawn above.
+    const view = views && address.view !== 'full' ? views[address.view] : null;
     if (!view || !view.available) {
       this.appState.update({
         showProblem: {
@@ -909,10 +910,11 @@ export class LayoutContext {
     if (address.view === 'code' && view.url) {
       this._leaveSystemRenderer();
       this._mapLayout();
-      // The coarse map: files, not symbols, at the view's depth whenever it
-      // is drawn. The depth was set around the first stream only, so a
-      // layout change drew it again at the Open panel's, symbols and all.
-      const show = { depth: view.depth ?? 1 };
+      // The view's depth and floor whenever it is drawn: a large project's
+      // files, a small one's symbols too (`stream_floor.py`). The depth was
+      // set around the first stream only, so a layout change drew it again at
+      // the Open panel's, symbols and all.
+      const show = { depth: view.depth ?? 1, floor: view.floor };
       const url = view.url;
       this._lastPlotAction = () => { this._startStreamFromUrl(url, show); };
       this._startStreamFromUrl(url, show);
@@ -1523,7 +1525,7 @@ export class LayoutContext {
    * repository a code graph's names are a pixel high; a map holds each at a
    * readable size and hides the ones that would overlap.
    */
-  private _startStreamFromUrl(githubUrl: string, show?: { depth: number }): void {
+  private _startStreamFromUrl(githubUrl: string, show?: { depth: number; floor?: number }): void {
     const opts = this.appState.state.parserOptions;
     const layout = convertLayout(this.appState.state.graphStyling.layout);
     const exts = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
@@ -1539,7 +1541,7 @@ export class LayoutContext {
       return PlotService.streamFromUrl(
         this.appState.api.parse,
         githubUrl,
-        { depth, extensions: exts, layout, annotateLexicon: opts.annotateLexicon },
+        { depth, extensions: exts, layout, annotateLexicon: opts.annotateLexicon, floor: show?.floor },
         {
           onFetching: (msg) => this.updatePanelState({ statusMessage: msg }),
           onMeta: (meta) => {

@@ -639,6 +639,33 @@ class TestStreamParseUrlDependencyEdges:
         assert len(node_events) == 1, "external node should only be emitted once"
 
     @pytest.mark.asyncio
+    async def test_every_symbol_and_member_streamed_is_held_by_its_file(self, monkeypatch):
+        # Python's parser keeps a node's file by its name, `a.py`, and the
+        # stream looked it up by its URL and its stem: no class, function or
+        # import was held by its file, and each was drawn in a heap at one
+        # point. A module's top-level constant has no parent at all.
+        # Mutation: look the file up by its URL and stem alone -- and this fails.
+        items = [("a.py", "blob", "https://raw.example/held/a.py")]
+        contents = {"https://raw.example/held/a.py": (
+            "import os\n\nLIMIT = 3\n\n\nclass Thing:\n    def go(self):\n        pass\n\n\n"
+            "def run():\n    pass\n")}
+        self._patch_github_fetch(monkeypatch, items, contents)
+
+        events = await self._collect_events("https://github.com/test/held", depth=3)
+
+        nodes = {d["id"]: d for t, d in events if t == "node"}
+        holds = {d["target"]: d["source"] for t, d in events
+                 if t == "edge" and (d.get("kind") or (d.get("metadata") or {}).get("kind")) in ("contains", "field_of")}
+        symbols = [n for n, d in nodes.items() if isinstance(d.get("depth"), int) and d["depth"] >= 2]
+        assert len(symbols) >= 4, f"too few symbols were streamed to judge: {symbols}"
+        for symbol in symbols:
+            assert symbol in holds, f"{symbol} ({nodes[symbol].get('kind')}) is held by nothing"
+            top = symbol
+            while top in holds:
+                top = holds[top]
+            assert top.startswith("dir::"), f"{symbol} is not held within the repository: it climbs to {top}"
+
+    @pytest.mark.asyncio
     async def test_no_depends_on_edges_at_depth1(self, monkeypatch):
         items = [
             ("a.py", "blob", "https://raw.example/streamdeps/a.py"),
