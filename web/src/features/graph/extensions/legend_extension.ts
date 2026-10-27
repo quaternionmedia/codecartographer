@@ -46,6 +46,11 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
   public apply(): void {
     const ctx = this.assertContext();
     this.destroyDom();
+    // **A CANVAS CARRIES ONE KEY.** Each key removed only the one it drew, so
+    // a second mounted on the same canvas -- a second subscriber, in a page
+    // kept open while the demo updated itself -- was drawn exactly over the
+    // first, the same counts twice. Whatever key the canvas holds goes.
+    for (const other of ctx.container.querySelectorAll(':scope > .graph-legend')) other.remove();
     if (!this.enabled) return;
 
     const nodes = ctx.data.nodes ?? [];
