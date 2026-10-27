@@ -6,7 +6,13 @@
  * type nobody registered, so a layout naming a window this version lacks,
  * loaded unchecked, boots a page with no tabs, no canvas and an exception in
  * the console. The page drops such a layout and loads the default.
+ *
+ * "Save current as default" (the + menu) keeps the layout as Golden Layout
+ * loads one, so the next visit opens it; one kept as Golden Layout resolves a
+ * layout, as this page saved them before, is read through its conversion.
  */
+
+import { readFileSync } from 'node:fs';
 
 import { expect, test } from '@playwright/test';
 
@@ -144,4 +150,47 @@ test('a saved layout holding the Show window loads it, and it draws every family
   await expect(page.locator('.show__crumb.is-current')).toHaveText('every family');
   expect(asked).toHaveLength(1);
   expect(errors).toEqual([]);
+});
+
+test('a layout saved as the default is the one the next visit opens', async ({ page }) => {
+  // "Save current as default" kept the layout as Golden Layout resolves it,
+  // which Golden Layout refuses to load: the next visit said "the saved layout
+  // was not loaded" and showed the default. Mutation: save `toConfig()` as it
+  // is -- the Estate window closed here is back after the reload, and this fails.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  const estate = page.locator('.lm_tab', { hasText: 'Estate' });
+  await expect(estate).toHaveCount(1);
+  await estate.locator('.lm_close_tab').click();
+  await expect(estate).toHaveCount(0);
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: 'Save current as default' }).click();
+  // Kept as `loadLayout` reads one, not as `toConfig` resolves it.
+  const kept = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null'), KEY);
+  expect(kept, 'a layout is saved').not.toBeNull();
+  expect(kept.resolved, 'saved as Golden Layout loads a layout').not.toBe(true);
+  await page.reload();
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.lm_tab', { hasText: 'Open' })).toHaveCount(1);
+  await expect(estate).toHaveCount(0);
+  await expect(page.locator('.cc-toast__msg', { hasText: 'was not loaded' })).toHaveCount(0);
+});
+
+test('a layout saved before, as Golden Layout resolves one, is read too', async ({ page }) => {
+  // `fixtures/layout-saved-resolved.json` is what "Save current as default"
+  // kept until it saved as Golden Layout loads one, with Estate closed. It is read through Golden
+  // Layout's own conversion rather than dropped. Mutation: load it as it is --
+  // it is refused, the default shows with Estate in it, and this fails.
+  const saved = readFileSync('tests/e2e/fixtures/layout-saved-resolved.json', 'utf8');
+  await page.addInitScript(({ key, layout }) => {
+    if (!sessionStorage.getItem('seeded')) {
+      localStorage.setItem(key, layout);
+      sessionStorage.setItem('seeded', '1');
+    }
+  }, { key: KEY, layout: saved });
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.lm_tab', { hasText: 'Open' })).toHaveCount(1);
+  await expect(page.locator('.lm_tab', { hasText: 'Estate' })).toHaveCount(0);
+  await expect(page.locator('.cc-toast__msg', { hasText: 'was not loaded' })).toHaveCount(0);
 });

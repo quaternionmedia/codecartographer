@@ -19,6 +19,11 @@ half high, and a showgraph is first of all a map of names.
   is pushed out of any outline it lands in, so the picture still asserts no
   single home.
 - **A project's view is a ring around the project.**
+- **In the whole corpus, a project's code is one evenly full disc round it**
+  (`_patches`), each directory's code a patch of the disc. Laid out as a code
+  map lays out a parse -- a disc of discs, each padded for an outline the
+  corpus does not draw -- the corpus came out about 28,000 units wide, and
+  framed whole each file was drawn under a fifth of a pixel.
 
 Each ring member is given `label_at`, the side its name goes on -- outward
 from its ring -- and a node whose outline already names it is given `none`.
@@ -131,7 +136,7 @@ class _Packer:
         label = lambda n: str(self.nodes[n]["metadata"].get("label", n))  # noqa: E731
         for members in code.values():
             members.sort(key=label)
-        self.discs = {hub: _disc(hub, code, lambda n: _drawn_r(_depth(self.nodes[n])), self.label_at)
+        self.discs = {hub: _patches(hub, code, lambda n: _drawn_r(_depth(self.nodes[n])), self.label_at)
                       for hub in code if not _is_code(self.nodes[hub])}
 
     def node_r(self, node_id: str) -> float:
@@ -404,6 +409,63 @@ def _sunflower(hub_r: float, items: list[tuple[str, float]], gap: float,
         radius, angle = step * math.sqrt(k + first), k * GOLDEN_ANGLE
         placed.append((item, radius * math.cos(angle), radius * math.sin(angle), angle))
     return placed, step * math.sqrt(len(items) - 1 + first)
+
+
+def _hilbert(n: int, x: int, y: int) -> int:
+    """How far along a Hilbert curve filling an `n` by `n` grid, `n` a power
+    of two, the cell `(x, y)` is: cells near along the curve are near in the grid."""
+    d, s = 0, n // 2
+    while s:
+        rx, ry = int((x & s) > 0), int((y & s) > 0)
+        d += s * s * ((3 * rx) ^ ry)
+        if not ry:
+            if rx:
+                x, y = n - 1 - x, n - 1 - y
+            x, y = y, x
+        s //= 2
+    return d
+
+
+def _patches(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, str],
+             ) -> tuple[dict[str, tuple[float, float]], float]:
+    """`hub`'s code as one evenly full disc round it, each directory's code a
+    patch of the disc; and the disc's radius with the canvas's outline padding.
+
+    The places are a sunflower's (`_sunflower`), spaced as a code map spaces a
+    directory's files, taken in the order a Hilbert curve passes them and given
+    to the code depth first, each directory before what it holds: a run along
+    the curve is a compact patch, so what a directory holds lies together. The
+    corpus outlines none of it, so nothing in it is padded for an outline. Sets
+    each one's `label_at` outward from `hub`, and `hub`'s `none`.
+    """
+    order: list[str] = []
+    seen = {hub}
+
+    def walk(node: str) -> None:
+        for child in held.get(node, []):
+            if child not in seen:
+                seen.add(child)
+                order.append(child)
+                walk(child)
+
+    walk(hub)
+    local: dict[str, tuple[float, float]] = {hub: (0.0, 0.0)}
+    label_at[hub] = "none"
+    if not order:
+        return local, radius_of(hub) + CODE_PAD
+    items = [(node, radius_of(node)) for node in order]
+    spots, radius = _sunflower(radius_of(hub), items, FILE_GAP)
+    side, cells = max(radius, 1.0), 1 << 16
+
+    def along(spot: tuple[str, float, float, float]) -> int:
+        _, x, y, _ = spot
+        return _hilbert(cells, int((x + side) / (2 * side) * (cells - 1)),
+                        int((y + side) / (2 * side) * (cells - 1)))
+
+    for node, (_, x, y, _) in zip(order, sorted(spots, key=along)):
+        local[node] = (x, y)
+        label_at[node] = _side(math.atan2(y, x))
+    return local, radius + max(r for _, r in items) + CODE_PAD
 
 
 def _turned(places: dict[str, tuple[float, float]], aspect: float) -> dict[str, tuple[float, float]]:

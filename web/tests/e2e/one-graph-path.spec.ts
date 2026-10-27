@@ -62,6 +62,26 @@ test.describe('the demo renders on the one canvas', () => {
     // this fails — the graph still draws, with nothing attached to it.
   });
 
+  test('a canvas carries one key, however many are mounted on it', async ({ page }) => {
+    // A key was seen twice, one exactly over the other, in a page kept open
+    // while the demo updated itself. Each key removed only the one it had
+    // drawn, so a second one mounted on the same canvas stacked. Here a second
+    // key is mounted on the live canvas, as a second subscriber would mount
+    // it. Mutation: let a key remove only its own -- two are drawn, and this
+    // fails.
+    await expect(page.locator('.graph-legend')).toHaveCount(1);
+    await page.evaluate(async () => {
+      const base = '/features/graph';
+      const { GraphSurface } = await import(/* @vite-ignore */ `${base}/services/graph_surface.ts`);
+      const { LegendExtension } = await import(/* @vite-ignore */ `${base}/extensions/legend_extension.ts`);
+      const renderer = GraphSurface.current();
+      const second = new LegendExtension();
+      second.initialize(renderer.buildExtensionContext(new Set(), () => undefined));
+      second.apply();
+    });
+    await expect(page.locator('.graph-legend')).toHaveCount(1);
+  });
+
   test('the legend opens and its rows account for every node', async ({ page }) => {
     await page.locator('.graph-legend__header').click();
 

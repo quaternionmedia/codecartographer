@@ -37,6 +37,7 @@ The schema check reduced to "is an integer":
 from __future__ import annotations
 
 import json
+import math
 import subprocess
 import textwrap
 from pathlib import Path
@@ -45,7 +46,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from codecarto.main import app
-from codecarto.services import show_service
+from codecarto.services import show_layout, show_service
 
 FAMILIES = {
     "schema": 2,
@@ -717,15 +718,18 @@ def test_a_project_s_view_is_a_ring_around_the_project(client):
 # read as data (`docs/show/project/<name>/show.json`); nothing is parsed or
 # fetched to draw it.
 
-def _code_document(where: Path, name: str, files: int = 3, commit: str = "c" * 40) -> None:
-    """A show document for `name` holding a code map: its root, one
-    subdirectory, and `files` files in each."""
+def _code_document(where: Path, name: str, files: int = 3, commit: str = "c" * 40,
+                   subdirectories: tuple[str, ...] = ("src",)) -> None:
+    """A show document for `name` holding a code map: its root, its
+    subdirectories, and `files` files in each."""
     root = f"dir::example/{name}"
-    sub = f"{root}/src"
-    nodes = {root: {"id": root, "label": f"example/{name}", "depth": 0, "kind": "directory"},
-             sub: {"id": sub, "label": "src", "depth": 0, "kind": "directory"}}
-    edges = [{"source": root, "target": sub, "metadata": {"kind": "contains"}}]
-    for holder in (root, sub):
+    nodes = {root: {"id": root, "label": f"example/{name}", "depth": 0, "kind": "directory"}}
+    edges = []
+    for label in subdirectories:
+        sub = f"{root}/{label}"
+        nodes[sub] = {"id": sub, "label": label, "depth": 0, "kind": "directory"}
+        edges.append({"source": root, "target": sub, "metadata": {"kind": "contains"}})
+    for holder in (root, *(f"{root}/{label}" for label in subdirectories)):
         for i in range(files):
             leaf = f"file::{holder.removeprefix('dir::')}/f{i}.py"
             nodes[leaf] = {"id": leaf, "label": f"f{i}.py", "depth": 1, "kind": "file"}
@@ -819,3 +823,48 @@ def test_a_shared_member_carries_its_code_outside_every_outline(corpus, client):
         for xy in code:
             assert _distance(xy, (cx, cy)) > r, f"delta's code was drawn inside {top}'s outline"
     assert reach < 600, f"delta's code reached {reach:.0f} from it"
+
+
+def test_a_project_s_code_is_one_evenly_full_disc_round_it(corpus, client):
+    # Nested discs, as a code map draws them, are each padded for an outline
+    # the corpus does not draw, and leave gaps at every level: framed whole,
+    # the corpus drew each file under a fifth of a pixel. Mutation: lay a
+    # project's code out as a code map's nested discs -- alpha's disc is
+    # several times as wide as its code needs, and this fails.
+    _code_document(corpus / "docs" / "show", "alpha", files=12)
+    nodes = _nodes(_results(client, "/show/corpus/gjgf?layout=Compound"))
+    alpha = _xy(nodes["repo::alpha"])
+    code = [_xy(a) for n, a in nodes.items() if n.startswith("code::alpha::")]
+    assert len(code) == 26
+    # At least half as full as its nodes laid edge to edge in a grid, each
+    # given a cell as wide as the widest of them and the gap between files.
+    cell = 2 * show_layout.LEAF_R + show_layout.FILE_GAP
+    reach = max(_distance(alpha, xy) for xy in code)
+    assert math.pi * reach ** 2 <= 2 * len(code) * cell ** 2, \
+        f"alpha's 26 code nodes were spread {reach:.0f} from it"
+    for i, a in enumerate(code):
+        for b in code[i + 1:]:
+            assert _distance(a, b) >= 2 * show_layout.LEAF_R, "two of alpha's code nodes were drawn over each other"
+
+
+def test_what_a_directory_holds_lies_together_in_its_project_s_disc(corpus, client):
+    # The disc's places are given out along a Hilbert curve, a directory before
+    # what it holds, so a directory's files are a patch of the disc: a file's
+    # nearest neighbour is, mostly, of its own directory. Mutation: give the
+    # places out in the sunflower's own order -- each directory's files are
+    # scattered round the disc among the others', and this fails.
+    folders = ("api", "lib", "src", "web")
+    _code_document(corpus / "docs" / "show", "alpha", files=8, subdirectories=folders)
+    nodes = _nodes(_results(client, "/show/corpus/gjgf?layout=Compound"))
+    code = {n: _xy(a) for n, a in nodes.items() if n.startswith("code::alpha::")}
+
+    def folder(node_id: str) -> str:
+        path = node_id.split("::", 3)[-1]
+        return path if node_id.startswith("code::alpha::dir::") else path.rsplit("/", 1)[0]
+
+    files = [n for n in code if n.startswith("code::alpha::file::")]
+    assert len(files) == 40
+    kin = sum(folder(min((m for m in code if m != n), key=lambda m: _distance(code[n], code[m]))) == folder(n)
+              for n in files)
+    # Along the curve, 30 of the 40; in the sunflower's order, 1.
+    assert kin > len(files) / 2, f"only {kin} of alpha's {len(files)} files lay nearest one of their own directory"

@@ -46,7 +46,9 @@ A panel that opens or comes forward while another stack is maximised -- step
 panel is in view.
 
 **A saved layout** is kept in the browser (`localStorage`, key
-`cc:gl-layout:default`). Its windows are read wherever Golden Layout reads
+`cc:gl-layout:default`), saved as Golden Layout loads a layout; one kept as
+Golden Layout resolves it, with its sizes as numbers, is read through Golden
+Layout's own conversion. Its windows are read wherever Golden Layout reads
 them: the layout's root, or a legacy layout's `content[0]`, and every open
 popout's, a popout's own popouts included. One that names a window this version
 does not have is dropped, a toast says which, and the default loads. A layout
@@ -100,9 +102,19 @@ one of its entries, in the order the `+` menu lists them.
 
 Id `graph`. In the default arrangement.
 
-The one canvas: every graph draws here, whichever panel asked for it. What it
+The canvas: every graph draws here, whichever panel asked for it. What it
 does is under [The canvas](#the-canvas). With nothing drawn, it points at step
 1, Open, which the canvas hides on step 4.
+
+**⧉**, among the Graph window's controls beside its maximise, shown while the
+canvas's tab is in front, duplicates the graph into a window of its own
+(`web/src/layout/panels/graph_copy_panel.ts`): a tab, `◈ Graph 2`, `◈ Graph 3`
+and so on, added beside the canvas and dragged anywhere in the dock like any
+other. A copy draws the graph as it was when it was made, pans and zooms apart
+from the canvas, and carries its own key. The ring, the selection and the
+panels that read the canvas stay with the canvas. A saved layout keeps its
+copies; opened again, each draws what is on the canvas. With nothing drawn, ⧉
+is disabled.
 
 ### Open
 
@@ -114,8 +126,6 @@ then the examples:
 - **A GitHub URL or a local path**, then `→ Fetch` or Enter: draws it and loads
   its tree into the Files panel. Once loaded, a line names the repository and
   its size, and its ✕ clears the repository and any added files.
-- **Local files**: drop them on the box, or click it or press Enter or Space
-  on it to browse. They are listed in the Files panel.
 - **Demo and lexicons**: ⚡ Load Demo draws a sample graph, CodeCartographer's
   own source, from one `POST /plotter/demo` answer rather than a stream; each
   language with a lexicon has a 📖 button that draws it.
@@ -125,8 +135,9 @@ then the examples:
   Cargo panel, which comes forward. A GitHub example draws the code map only;
   its tooltip says how much of the repository is drawn.
 
-In the default arrangement in a 1600×1000 window, the URL, Local files, Load
-Demo and the lexicons are in view without scrolling. The panel is a share of
+In the default arrangement in a 1600×1000 window, the URL, Load Demo and the
+lexicons are in view without scrolling. Files and folders from disk are added
+in the [Files](#files) panel. The panel is a share of
 the window's height, so in a shorter window the column's fold rises, and the
 lexicons are the first to fall below it.
 
@@ -295,12 +306,23 @@ none. **draw the construct** draws it.
 
 Id `file-tree`. In the default arrangement.
 
+Files and folders from disk are added at its head. Drop files or a folder on
+the box, or click it or press Enter or Space on it to choose files; **📂 Choose
+a folder** chooses a folder, every file in it with its own folders kept. A
+folder's version control, dependencies and build output (`.git`,
+`node_modules`, `__pycache__`, `.venv`, `venv`, `.tox`, `.mypy_cache`,
+`.pytest_cache`, `target`) are not read, nor a file over 2 MB, nor one of an
+extension the parse options leave out when they name any; the status line
+says how many were left out. An added file is known by its path, so two of one
+name from two folders are both kept. The added files are listed by their paths,
+and Plot draws them as the folders they were added in.
+
 The loaded repository's tree, and the added files. A folder is marked ▸, and
 ▾ while open, with what it holds indented under it; a file is marked ·. Click
 a folder to open or close it, and a file to draw that file alone. A file from
 GitHub has a *raw* link beside its name that opens its contents in a new tab;
 a file read from disk has none, since the browser cannot open it. With nothing
-loaded, it points at the Open panel.
+loaded, it points at the Open panel and the box above.
 
 Each file and folder is a tab stop, and Enter or Space presses it as a click
 does; a folder says whether it is open. A raw link is named for the file it

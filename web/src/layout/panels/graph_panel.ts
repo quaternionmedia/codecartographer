@@ -12,6 +12,10 @@ import { PlotComponent } from '../../components/codecarto/plot/plot';
 
 export function createGraphPanel(ctx: LayoutContext): m.Component {
   return {
+    // The window's ⧉ sits in its stack's header, out of this panel; it is
+    // disabled with nothing drawn, so it follows each redraw.
+    oncreate: () => { setTimeout(() => ctx.syncDuplicateControl(), 0); },
+    onupdate: () => ctx.syncDuplicateControl(),
     view: () => {
       const state = ctx.appState.state;
 

@@ -261,7 +261,7 @@ logic. The two parsers that set them:
 | Python | `module` | diamond | `#9b59b6` |
 | Python | `class` | square | `#00d4ff` |
 | Python | `function` | hexagon | `#00ff41` |
-| Python | `import` | triangle | `#e74c3c` |
+| Python | `import` | triangle | `#facc15` |
 | Python | `call` | hexagon | `#00aa2a` |
 | C | `struct`, `union` | ngon, `meta.sides` from the field count | `#4a9eff`, `#6ab0e8` |
 | C | `function` | diamond | `#ff9d3d` |

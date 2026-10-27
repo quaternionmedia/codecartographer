@@ -62,7 +62,9 @@ VOCABULARY = Path(__file__).resolve().parent.parent / "data" / "constructs.yaml"
 # names its layer beside the number (`meta.lexicon_layers`). Carried on nodes
 # as `layer_color` so the canvas draws what it is sent and the ramp has one
 # home.
-LAYER_RAMP = ("#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899")
+# No red, and pink only for a seventh layer: red and pink are kept for what a
+# reader is to notice.
+LAYER_RAMP = ("#f97316", "#eab308", "#22c55e", "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899")
 
 # The shapes the canvas draws are `KNOWN_SHAPES` in
 # web/src/features/graph/services/node_shapes.ts, and only there: the test that

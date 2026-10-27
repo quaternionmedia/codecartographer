@@ -13,13 +13,16 @@
  */
 
 import m from 'mithril';
-import { LayoutManager } from 'golden-layout';
-import type { ContentItem, LayoutConfig, Stack } from 'golden-layout';
+import { LayoutConfig as GLLayoutConfig, LayoutManager } from 'golden-layout';
+import type { ContentItem, LayoutConfig, ResolvedLayoutConfig, Stack } from 'golden-layout';
 
 import { ICell, ICellState } from '../state/cell_state';
 import { StateController } from '../state/state_controller';
 import { createActions, AppActions } from '../state/actions';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
+import { keptLocal, localTree } from '../features/repository/local_tree';
+import { GRAPH_COPY } from './panels/graph_copy_panel';
+import type { AddedFile } from '../features/repository/local_drop';
 import {
   ControlPanelState,
   ControlPanelCallbacks,
@@ -49,7 +52,7 @@ import type { NodeViewState } from '../features/graph/rad/host/view_state';
 import type { GraphOps } from '../features/graph/rad/host/graph_intents';
 import type { MenuContext } from '../features/graph/rad/core/types';
 import { DEEPEST_DEPTH } from '../features/graph/rad/host/resolve';
-import type { GraphNode, GraphEdge } from '../features/graph/services/graph_types';
+import type { GraphData, GraphNode, GraphEdge } from '../features/graph/services/graph_types';
 import { backendLayoutName } from '../features/graph/services/layout_names';
 import { formatShow, fromNode, parseShow, sameShow } from '../features/show/show_address';
 import type { ShowAddress } from '../features/show/show_address';
@@ -245,6 +248,11 @@ export class LayoutContext {
     // A stack maximised or restored moves the rail (`_followMaximised`).
     // Golden Layout says so at once, before the canvas's resize lands.
     layoutManager?.on('stateChanged', () => this._followMaximised());
+    // ⧉ follows the canvas's tab: into the stack it is dropped in, and in
+    // sight while it is the tab in front (`syncDuplicateControl`).
+    layoutManager?.on('stateChanged', () => this.syncDuplicateControl());
+    layoutManager?.on('activeContentItemChanged', () => this.syncDuplicateControl());
+    if (!layoutManager) this._duplicateControl?.remove();
   }
 
   /**
@@ -318,6 +326,93 @@ export class LayoutContext {
   public chooseWindow(panelId: DockPanelId): void {
     this.openPanel(panelId);
     this._followWindow(panelId);
+  }
+
+  // ── Copies of the graph ────────────────────────────────────────────────────
+
+  /** How many copies of the graph have been made, for each copy's name. */
+  private _copies = 0;
+  /** Each copy's graph, as it was when the copy was made, by the copy's id. */
+  private readonly _copySnapshots = new Map<string, GraphData>();
+  /** The Graph window's ⧉, among the controls of the stack the canvas is in. */
+  private _duplicateControl: HTMLButtonElement | null = null;
+
+  /**
+   * Open a copy of the graph in a window of its own: a tab beside the canvas,
+   * which can be dragged anywhere and pans and zooms apart from it
+   * (`graph_copy_panel.ts`). Nothing drawn, nothing is copied.
+   */
+  public duplicateGraph(): void {
+    const layout = this._layoutManager;
+    const data = this.appState.state.graphData;
+    if (!layout || !data) return;
+    // Past the copies a saved layout opened with, whose count is not kept.
+    let id: string;
+    do {
+      this._copies += 1;
+      id = `${GRAPH_COPY}-${this._copies}`;
+    } while (layout.findFirstComponentItemById(id));
+    this._copySnapshots.set(id, data);
+    const config = {
+      type: 'component' as const, componentType: GRAPH_COPY, id,
+      title: `◈ Graph ${this._copies + 1}`, isClosable: true,
+    };
+    const stack = layout.findFirstComponentItemById('graph')?.parent as Stack | undefined;
+    if (stack) stack.addItem(config);
+    else layout.newItemAtLocation(config, LayoutManager.defaultLocationSelectors);
+    layout.updateRootSize(true);
+  }
+
+  /**
+   * The graph a copy draws: the one kept for it, handed over once, or, opened
+   * from a saved layout, the canvas's. The copy holds what it drew; a copy
+   * closed takes its graph with it.
+   */
+  public copySnapshot(id: string): GraphData | null {
+    const kept = this._copySnapshots.get(id);
+    this._copySnapshots.delete(id);
+    return kept ?? this.appState.state.graphData ?? null;
+  }
+
+  /**
+   * Keep the Graph window's ⧉ among the controls of the stack the canvas is
+   * in, beside its maximise and close: in sight while the canvas's tab is the
+   * one in front, and disabled with nothing drawn. On the canvas it covered a
+   * corner where the wheel then zoomed nothing. Golden Layout calls this when a
+   * tab moves or comes forward, and the canvas when what is drawn changes.
+   */
+  public syncDuplicateControl(): void {
+    const button = this._duplicateControl ??= this._makeDuplicateControl();
+    const graph = this._layoutManager?.findFirstComponentItemById('graph');
+    const stack = graph?.parent as Stack | undefined;
+    if (!graph || !stack?.header) {
+      button.remove();
+      return;
+    }
+    const controls = stack.header.controlsContainerElement;
+    const hidden = stack.getActiveComponentItem() !== graph;
+    if (button.parentElement !== controls || button.hidden !== hidden) {
+      controls.prepend(button);
+      button.hidden = hidden;
+      // Golden Layout gives the tabs the header's width less its controls',
+      // measured when it sizes them; 2.6 leaves that call out of its types.
+      (stack.header as unknown as { updateTabSizes?: () => void }).updateTabSizes?.();
+    }
+    const drawn = !!this.appState.state.graphData;
+    button.disabled = !drawn;
+    button.title = drawn
+      ? 'Duplicate this graph into a window of its own, moved and zoomed apart from this one'
+      : 'Nothing is drawn to duplicate';
+  }
+
+  private _makeDuplicateControl(): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'gl-graph__duplicate';
+    button.textContent = '⧉';
+    button.setAttribute('aria-label', 'Duplicate the graph into a window of its own');
+    button.addEventListener('click', () => this.duplicateGraph());
+    return button;
   }
 
   // ── The steps ──────────────────────────────────────────────────────────────
@@ -474,10 +569,18 @@ export class LayoutContext {
     } catch {
       /* storage blocked: nothing saved to read */
     }
-    const saved = readSavedLayout(raw, PanelRegistry.all().map((def) => def.id));
+    const saved = readSavedLayout(raw, [...PanelRegistry.all().map((def) => def.id), GRAPH_COPY]);
     if (saved.kind === 'usable') {
       if (saved.renamed.length) this._keepRenamedLayout(saved.config, saved.renamed);
-      return saved.config as LayoutConfig;
+      // **SAVED AS GOLDEN LAYOUT SAVES IT, READ AS IT READS ONE.** "Save
+      // current as default" kept the resolved layout `toConfig` gives, with
+      // its sizes as numbers, and `loadLayout` reads them as strings: every
+      // saved layout was refused on the next visit ("value.trimStart is not a
+      // function") and dropped for the default. One saved that way is read
+      // back through Golden Layout's own conversion.
+      return (saved.config as { resolved?: unknown }).resolved === true
+        ? GLLayoutConfig.fromResolved(saved.config as unknown as ResolvedLayoutConfig)
+        : saved.config as LayoutConfig;
     }
     if (saved.kind === 'unusable') this.dropSavedLayout(saved.why);
     return DEFAULT_LAYOUT_CONFIG;
@@ -508,7 +611,8 @@ export class LayoutContext {
   public saveLayoutAsDefault(): void {
     if (!this._layoutManager) return;
     try {
-      localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(this._layoutManager.toConfig()));
+      // As `loadLayout` reads a layout, not as `toConfig` resolves one.
+      localStorage.setItem(SAVED_LAYOUT_KEY, JSON.stringify(GLLayoutConfig.fromResolved(this._layoutManager.toConfig())));
       ToastManager.show('Layout saved as default');
     } catch {
       ToastManager.show('Could not save layout');
@@ -1633,39 +1737,26 @@ export class LayoutContext {
         }
       },
 
-      onFileUpload: (files: FileList) => {
-        this.updatePanelState({ isLoading: true, statusMessage: 'Processing files...' });
-        const newFiles: RawFile[] = [];
-        let processed = 0;
-        Array.from(files).forEach((file) => {
-          if (this.uploadedFiles.some((f) => f.name === file.name)) {
-            processed++;
-            if (processed === files.length)
-              this.updatePanelState({ isLoading: false, statusMessage: `${newFiles.length} new file(s) added` });
-            return;
-          }
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const content = e.target?.result as string;
-            const newFile = new RawFile(file.name, file.size, content, file.webkitRelativePath || file.name);
-            newFiles.push(newFile);
-            this.uploadedFiles.push(newFile);
-            processed++;
-            if (processed === files.length) {
-              this.appState.update({
-                local: {
-                  content: new Directory(
-                    new RepoInfo(),
-                    this.uploadedFiles.length,
-                    new RawFolder('uploads', 0, this.uploadedFiles),
-                  ),
-                },
-              });
-              this.updatePanelState({ isLoading: false, statusMessage: `${newFiles.length} file(s) added` });
-            }
-          };
-          reader.readAsText(file);
+      onFileUpload: async (files: AddedFile[]) => {
+        this.updatePanelState({ isLoading: true, statusMessage: 'Reading files...' });
+        // A file is known by its path under what was added, not its name: two
+        // `__init__.py` from two folders are two files. A folder's version
+        // control, dependencies and build output, a file too large, and one of
+        // an extension the parse options leave out, are not read.
+        const extensions = this.appState.state.parserOptions.fileExtensions;
+        const known = new Set(this.uploadedFiles.map((f) => f.url || f.name));
+        const wanted = files.filter(({ file, path }) => !known.has(path) && keptLocal(path, file.size, extensions));
+        const skipped = files.length - wanted.length;
+        const read = await Promise.all(wanted.map(async ({ file, path }) =>
+          new RawFile(file.name, file.size, await file.text(), path)));
+        this.uploadedFiles.push(...read);
+        const tree = localTree(this.uploadedFiles, 'uploads');
+        this.appState.update({
+          local: { content: new Directory(new RepoInfo(), tree.size, tree as RawFolder) },
         });
+        const said = `${read.length} file(s) added`
+          + (skipped ? `, ${skipped} left out (already added, not source, or too large)` : '');
+        this.updatePanelState({ isLoading: false, statusMessage: said });
       },
 
       onUploadedFileClick: async (file: RawFile) => {

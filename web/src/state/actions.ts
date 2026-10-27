@@ -22,6 +22,7 @@ import { GraphRendererRegistry } from '../features/graph/services/renderers';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
 import { logger } from '../core/logger';
 import { backendLayoutName } from '../features/graph/services/layout_names';
+import { localTree } from '../features/repository/local_tree';
 import { THEME_LABEL_COLOR } from '../features/graph/services/label_color';
 import { parseNotes } from '../features/graph/services/parse_notes';
 import { LatestPlot } from './latest_plot';
@@ -356,7 +357,8 @@ export class PlotActions {
         if (combined.includes('function')) return palette.secondary;
         if (combined.includes('class')) return palette.accent;
         if (combined.includes('module') || combined.includes('file')) return palette.accent;
-        if (combined.includes('import') || combined.includes('dependency')) return palette.error;
+        // Red is the theme's error colour, kept for what is to be noticed.
+        if (combined.includes('import') || combined.includes('dependency')) return palette.warning;
         if (combined.includes('call')) return palette.muted;
         if (combined.includes('variable') || combined.includes('literal')) return palette.disabled;
         if (combined.includes('control') || combined.includes('if') || combined.includes('for') || combined.includes('while') || combined.includes('try') || combined.includes('loop')) {
@@ -764,7 +766,8 @@ export class PlotActions {
       const opts   = this.stateController.state.parserOptions;
       const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
       const size   = files.reduce((total, f) => total + f.size, 0);
-      const dir    = new Directory(new RepoInfo(), files.length, new RawFolder('upload', size, files));
+      // As the folders they were added in: a folder's `src/` stays `src/`.
+      const dir    = new Directory(new RepoInfo(), files.length, localTree(files, 'upload') as RawFolder);
       let notes: string[] = [];
       const drawn = await this.plots.plot(
         async () => {

@@ -151,6 +151,48 @@
   overflow: hidden;
 }
 
+/* The Graph window's ⧉, among its stack's controls beside maximise and close:
+   a copy of the graph in a window of its own. Golden Layout sizes each
+   control; this sets the glyph as the others are drawn. */
+.lm_header .lm_controls > .gl-graph__duplicate {
+  min-height: 0;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-font-muted, #00aa2a);
+  font: 15px/18px var(--f-root-font, 'Consolas', monospace);
+  opacity: 0.5;
+}
+
+.lm_header .lm_controls > .gl-graph__duplicate:hover:not(:disabled),
+.lm_header .lm_controls > .gl-graph__duplicate:focus-visible {
+  color: var(--c-secondary, #00ff41);
+  opacity: 1;
+}
+
+.lm_header .lm_controls > .gl-graph__duplicate:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.lm_header .lm_controls > .gl-graph__duplicate[hidden] {
+  display: none;
+}
+
+.gl-graph-copy__canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.gl-graph-copy__empty {
+  margin: 1rem;
+  color: var(--c-font-muted, #00aa2a);
+  font-size: 0.85em;
+}
+
 /* ── Controls panel ─────────────────────────────────────────────────────── */
 
 .gl-panel--controls {

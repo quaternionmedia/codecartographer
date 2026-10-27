@@ -116,7 +116,7 @@ _PY_COLOR: dict[str, str] = {
     "module":   "#9b59b6",
     "class":    "#00d4ff",
     "function": "#00ff41",
-    "import":   "#e74c3c",
+    "import":   "#facc15",
     "call":     "#00aa2a",
 }
 
