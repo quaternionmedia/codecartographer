@@ -347,11 +347,19 @@ and `field_of` edges:
    as wide as it is tall.
 
 Each file's `label_at` is the side facing away from its directory, and a
-directory, which its outline names, is given `none`. The same disc
-(`show_layout._disc`) packs each project's code inside the whole corpus
-(`/show/corpus/gjgf`): `show_layout.pack` lays a project's code round it and
-puts the disc on its family's ring as one item as wide as itself, and a member
-two families claim carries its disc outside every outline. A map draws its nodes
+directory, which its outline names, is given `none`.
+
+Inside the whole corpus (`/show/corpus/gjgf`) a project's code is drawn tighter
+(`show_layout._patches`): the corpus outlines none of a project's directories,
+and the code map's disc of discs, each padded for an outline, came out about
+28,000 units wide, every file framed under a fifth of a pixel. A project's code
+is one evenly full disc round it, the places a sunflower spaces as a directory's
+files are spaced, taken in the order a Hilbert curve passes them and given to
+the code depth first, so each directory's code is a patch of the disc. Framed
+whole, the corpus is drawn about five and a half times larger.
+`show_layout.pack` puts the disc on its family's ring as one item as wide as
+itself, and a member two families claim carries its disc outside every
+outline. A map draws its nodes
 `MAP_NODE_SCALE` times a code graph's size (`streaming_renderer.ts`), and
 `show_layout.py` spaces for that size; a test holds the two equal.
 
