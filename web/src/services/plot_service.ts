@@ -297,15 +297,18 @@ export class PlotService {
       layout?: string;
       mode?: string;
       annotateLexicon?: boolean;
+      /** No deeper than holds this many nodes (`stream_floor.py`): a showgraph's code view. */
+      floor?: number;
     },
     callbacks: StreamCallbacks
   ): () => void {
     const controller = new AbortController();
-    const { depth = 2, extensions = null, layout = 'Spring', mode, annotateLexicon = false } = opts;
+    const { depth = 2, extensions = null, layout = 'Spring', mode, annotateLexicon = false, floor } = opts;
 
     const body: Record<string, unknown> = { url: githubUrl, depth, layout, annotate_lexicon: annotateLexicon };
     if (extensions) body['extensions'] = extensions;
     if (mode)       body['mode'] = mode;
+    if (floor)      body['floor'] = floor;
 
     let nodeIndex = 0;
 

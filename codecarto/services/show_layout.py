@@ -77,7 +77,8 @@ ASPECT = 2.2        # the packed rows' width over their height
 # by the canvas, `compound_layout.ts`'s padding beyond each node's reach, which
 # is half as much again as its drawn radius; `CODE_PAD` keeps two outlines apart.
 FILE_GAP = 6.0          # between two files in a directory's disc: a name is not given room
-CODE_PAD = 40.0 + 0.5 * 4.0 * 1.8 * MAP_NODE_SCALE  # the canvas's padding, and a file's reach past its radius
+CODE_REACH = 0.5 * 4.0 * 1.8 * MAP_NODE_SCALE  # a file's reach past its radius
+CODE_PAD = 40.0 + CODE_REACH  # the canvas's outline padding, and that reach
 CODE_GROUP_GAP = 16.0   # between two directories' outlines
 CANVAS_ASPECT = 1400 / 900  # the canvas an exported picture is drawn in, width over height
 GOLDEN_ANGLE = math.pi * (3 - math.sqrt(5))
@@ -486,15 +487,19 @@ def _turned(places: dict[str, tuple[float, float]], aspect: float) -> dict[str, 
 
 
 def _disc(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, str],
-          seen: frozenset[str] = frozenset()) -> tuple[dict[str, tuple[float, float]], float]:
+          seen: frozenset[str] = frozenset(),
+          outlined=lambda node: True) -> tuple[dict[str, tuple[float, float]], float]:
     """`hub` laid out at the centre of a disc of what it holds that holds
     nothing, what it holds that holds others packed around the disc, each laid
     out the same way; and the radius of the circle round it all, with the
-    canvas's outline padding. Places are relative to that circle's centre.
-    Sets each member's `label_at` outward from its hub, and the hub's `none`."""
+    canvas's outline padding where `outlined` says the canvas draws one round
+    `hub`, and a node's reach alone where it does not. Places are relative to
+    that circle's centre. Sets each member's `label_at` outward from its hub,
+    and the hub's `none`."""
     seen = seen | {hub}
     leaves = [c for c in held.get(hub, []) if not held.get(c) or c in seen]
-    inner = {c: _disc(c, held, radius_of, label_at, seen) for c in held.get(hub, []) if c not in leaves}
+    inner = {c: _disc(c, held, radius_of, label_at, seen, outlined)
+             for c in held.get(hub, []) if c not in leaves}
     local: dict[str, tuple[float, float]] = {hub: (0.0, 0.0)}
     core = radius_of(hub)
     if leaves:
@@ -517,7 +522,8 @@ def _disc(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, s
     cx = (min(x - r for x, _, r in discs) + max(x + r for x, _, r in discs)) / 2
     cy = (min(y - r for _, y, r in discs) + max(y + r for _, y, r in discs)) / 2
     reach = max(math.hypot(x - cx, y - cy) + r for x, y, r in discs)
-    return {node_id: (x - cx, y - cy) for node_id, (x, y) in local.items()}, reach + CODE_PAD
+    pad = CODE_PAD if outlined(hub) else CODE_REACH
+    return {node_id: (x - cx, y - cy) for node_id, (x, y) in local.items()}, reach + pad
 
 
 def code_map(graph: nx.DiGraph) -> dict[str, tuple[float, float]]:
@@ -543,7 +549,11 @@ def code_map(graph: nx.DiGraph) -> dict[str, tuple[float, float]]:
     label_at: dict[str, str] = {}
     radius_of = lambda n: _drawn_r(graph.nodes[n].get("depth", 1))  # noqa: E731
     tops = [n for n in graph.nodes if n not in parent]
-    laid = {top: _disc(top, held, radius_of, label_at) for top in tops if held.get(top)}
+    # The canvas outlines a directory, and a file round its symbols
+    # (`compound_layout.ts`); a symbol holding members it does not, and a
+    # disc padded for one round each class left a file's map mostly empty.
+    outlined = lambda n: graph.nodes[n].get("depth", 1) in (0, 1)  # noqa: E731
+    laid = {top: _disc(top, held, radius_of, label_at, outlined=outlined) for top in tops if held.get(top)}
     circles = [(top, laid[top][1]) if top in laid else (top, radius_of(top)) for top in tops]
     placed: dict[str, tuple[float, float]] = {}
     for top, (cx, cy) in _rows(circles).items():

@@ -161,3 +161,32 @@ def test_the_map_layout_is_registered_and_says_where_each_name_goes():
     drawn = GraphSerializer.serialize_to_gjgf(_tree(REPO), PlotOptions(layout="Map", type="d3"))
     sides = {n["metadata"].get("label_at") for n in drawn["nodes"].values()}
     assert "none" in sides and sides & {"left", "right", "above", "below"}
+
+
+def test_a_class_s_members_are_not_padded_for_an_outline_the_canvas_does_not_draw():
+    # A code map held to its floor is drawn to its members (`stream_floor`):
+    # a class holds its methods as a file holds its symbols. The canvas
+    # outlines a directory and a file, not a class, and a disc padded for an
+    # outline round each class left the file's map mostly empty. Mutation: pad
+    # every disc for an outline -- the file of ten classes is six times as
+    # large as its nodes laid edge to edge, and this fails.
+    graph = nx.DiGraph()
+    graph.add_node("dir::repo", depth=0)
+    graph.add_node("file::repo/a.py", depth=1)
+    graph.add_edge("dir::repo", "file::repo/a.py", kind="contains")
+    for c in range(10):
+        graph.add_node(f"a.C{c}", depth=2)
+        graph.add_edge("file::repo/a.py", f"a.C{c}", kind="contains")
+        for m in range(8):
+            graph.add_node(f"a.C{c}.m{m}", depth=3)
+            graph.add_edge(f"a.C{c}", f"a.C{c}.m{m}", kind="field_of")
+    places = show_layout.code_map(graph)
+    fx, fy = places["file::repo/a.py"]
+    reach = max(math.hypot(x - fx, y - fy) for n, (x, y) in places.items() if n.startswith("a.C"))
+    cell = 2 * show_layout.LEAF_R + show_layout.FILE_GAP
+    assert math.pi * reach ** 2 <= 4 * 90 * cell ** 2, f"the file's ninety symbols and members spread {reach:.0f}"
+    nodes = sorted(places)
+    for i, a in enumerate(nodes):
+        for b in nodes[i + 1:]:
+            touching = show_layout._drawn_r(graph.nodes[a]["depth"]) + show_layout._drawn_r(graph.nodes[b]["depth"])
+            assert math.dist(places[a], places[b]) >= touching - 1e-6, f"{a} and {b} were drawn over each other"

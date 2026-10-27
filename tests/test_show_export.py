@@ -76,12 +76,13 @@ def test_with_an_inventory_a_project_is_one_the_host_lists() -> None:
     assert [s.name for s in show_export.subjects(reading, "all") if s.kind == "project"] == ["carlos", "moat", "qm"]
 
 
-def test_a_project_has_three_views_the_index_two_and_a_family_one() -> None:
+def test_a_project_has_three_views_the_index_three_and_a_family_one() -> None:
     assert Subject("project", "carlos").views == ("estate", "code", "system")
     assert Subject("family", "performing").views == ("estate",)
-    # Its code view is the whole corpus. Mutation: give the index its estate
-    # alone -- the whole corpus is never drawn, and this fails.
-    assert Subject("index").views == ("estate", "code")
+    # Its code view is the whole corpus, and its full view the same with every
+    # node drawn and no name. Mutation: give the index its estate alone -- the
+    # whole corpus is never drawn, and this fails.
+    assert Subject("index").views == ("estate", "code", "full")
     assert Subject("project", "carlos").folder == "project/carlos"
     assert Subject("index").folder == "index"
 

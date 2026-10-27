@@ -196,6 +196,9 @@ class StreamUrlRequest(BaseModel):
     extensions: Optional[list[str]] = None
     layout: str = "Spring"
     annotate_lexicon: bool = False
+    # Drawn to `depth` at most, and no deeper than holds this many nodes
+    # (`stream_floor.floored`): a showgraph's code view.
+    floor: Optional[int] = None
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
@@ -378,12 +381,18 @@ async def stream_from_url(request: StreamUrlRequest):
     from codecarto.services.cache_service import CacheService
     from codecarto.services.github_service import is_github_url
     from codecarto.services.local_repo_service import get_local_repo
+    from codecarto.services.stream_floor import floored
 
     effective_depth = (
         MODE_TO_DEPTH.get(request.mode, request.depth)
         if request.mode else request.depth
     )
     mode_key = request.mode or str(effective_depth)
+    if request.floor:
+        mode_key += f"/floor{request.floor}"
+
+    def held(stream):
+        return floored(stream, request.floor, request.layout) if request.floor else stream
 
     # Check cache first. annotate_lexicon requests bypass the cache
     # entirely, both read and write - same reasoning as /unified (the
@@ -414,13 +423,13 @@ async def stream_from_url(request: StreamUrlRequest):
         async def generate():
             try:
                 async for chunk in _relay_and_keep(
-                    UnifiedParserService.stream_parse_url(
+                    held(UnifiedParserService.stream_parse_url(
                         url=request.url,
                         depth=effective_depth,
                         extensions=request.extensions,
                         layout=request.layout,
                         annotate_lexicon=request.annotate_lexicon,
-                    ),
+                    )),
                     keep if key else None,
                 ):
                     yield chunk
@@ -437,13 +446,13 @@ async def stream_from_url(request: StreamUrlRequest):
     async def generate_local():
         try:
             directory = get_local_repo(request.url, extensions=request.extensions)
-            async for chunk in UnifiedParserService.stream_parse(
+            async for chunk in held(UnifiedParserService.stream_parse(
                 directory=directory,
                 depth=effective_depth,
                 extensions=request.extensions,
                 layout=request.layout,
                 annotate_lexicon=request.annotate_lexicon,
-            ):
+            )):
                 yield chunk
         except Exception as exc:
             yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"

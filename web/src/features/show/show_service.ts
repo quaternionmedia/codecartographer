@@ -58,6 +58,8 @@ export interface ShowViewState {
   remedy?: string;
   url?: string;
   depth?: number;
+  /** The fewest nodes the code view is drawn with, deepening to reach them. */
+  floor?: number;
   components?: number;
 }
 
@@ -81,9 +83,9 @@ export class ShowService {
   public static graph(showUrl: string, address: ShowAddress,
                       request: { layout?: string; paletteId?: string } = {}): Promise<SeamOutcome> {
     // The index's code view is the whole corpus: every family, each
-    // project's code in it.
+    // project's code in it; its full view the same, drawn with no names.
     const path = address.kind === 'index'
-      ? (address.view === 'code' ? 'corpus' : 'index')
+      ? (address.view === 'estate' ? 'index' : 'corpus')
       : `${address.kind}/${encodeURIComponent(address.name)}`;
     return read(get, `${showUrl}/${path}/gjgf${query({ layout: request.layout, palette_id: request.paletteId })}`);
   }

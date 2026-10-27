@@ -33,6 +33,18 @@ test('no address, or a malformed one, opens nothing', () => {
   }
 });
 
+test("the index's full view is the whole corpus with no names", () => {
+  // Mutation: read `full` as no view of the index's -- it opens as every
+  // family, and this fails.
+  assert.deepEqual(parseShow('?show=index&view=full'), { kind: 'index', name: '', view: 'full' });
+  assert.equal(formatShow({ kind: 'index', name: '', view: 'full' }), '?show=index&view=full');
+  assert.equal(crumbLabel({ kind: 'index', name: '', view: 'full' }), 'every node, no names');
+  assert.deepEqual(trail({ kind: 'index', name: '', view: 'full' }, null).map((level) => level.map(crumbLabel)),
+    [['every family'], ['every node, no names']]);
+  // A project has no full view.
+  assert.equal(parseShow('?show=project:carlos&view=full').view, 'estate');
+});
+
 test("the index's code view is the whole corpus", () => {
   // Mutation: read a view for a project alone -- the whole corpus opens as
   // every family, and this fails.
