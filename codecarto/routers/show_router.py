@@ -10,7 +10,11 @@ outlines, palettes and radial menu as a code map.
   public repository a family or the roster names, and where the reading came
   from. The Show panel lists these.
 - `/show/index/gjgf` -- every family at once, its nesting, each member once.
+- `/show/corpus/gjgf` -- every family with each project's code in it: the
+  whole corpus, the index's code view.
 - `/show/family/{name}/gjgf` -- one family.
+- `/show/family/{name}/code/gjgf` -- one family with each of its projects'
+  code in it, its subfamilies' too: the family's code view.
 - `/show/project/{name}/gjgf` -- one repository's place in the estate: the
   `estate` view of its showgraph.
 - `/show/project/{name}/views` -- which of a project's three views can be drawn
@@ -124,6 +128,21 @@ def show_family(name: str, layout: str = Query("Kamada Kawai"),
                        reading.source)
     return _draw(reading, show_service.family_graph(reading, name), layout,
                  palette_id, f"/show/family/{name}/gjgf?layout={layout}")
+
+
+@ShowRouter.get("/family/{name}/code/gjgf")
+def show_family_code(name: str, layout: str = Query("Kamada Kawai"),
+                     palette_id: str = Query("0")) -> dict[str, Any]:
+    """One family with each of its projects' code in it: the family's code view."""
+    reading = show_service.read()
+    if not reading.ok:
+        return _unreadable(reading)
+    if name not in reading.families:
+        return _absent(f"the corpus declares no family named {name!r}",
+                       "choose one of: " + ", ".join(reading.families),
+                       reading.source)
+    return _draw(reading, show_service.family_code_graph(reading, name), layout,
+                 palette_id, f"/show/family/{name}/code/gjgf?layout={layout}")
 
 
 def _project_problem(reading: show_service.Reading, name: str) -> dict[str, Any] | None:

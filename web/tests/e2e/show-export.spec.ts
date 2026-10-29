@@ -97,6 +97,27 @@ test('a subject is written as its pictures and one show document naming where ea
   expect(read(join(out, 'project', 'carlos', 'code.svg'))).toContain('data-node-id="dir::quaternionmedia/carlos/walkthrough"');
 });
 
+test("a family's code view is written as its picture, naming its projects' code maps rather than holding them again", async ({ page }) => {
+  test.setTimeout(120_000);
+  const out = test.info().outputPath('show');
+  const performing: ManifestSubject = {
+    kind: 'family', name: 'performing', address: 'family:performing', folder: 'family/performing',
+    views: ['estate', 'code'], digest: 'sha256:performing',
+  };
+  await exportSubject(page, performing, manifest(out));
+  const shown = JSON.parse(read(join(out, 'family', 'performing', 'show.json')));
+  expect(shown.files).toEqual({ estate: 'estate.svg', code: 'code.svg' });
+  // Each project's code map is its own document's. Mutation: keep the graph
+  // the family's code view drew -- every project's code again, and this fails.
+  expect(shown.views.code.graph).toBe("each project's code view's");
+  // The pinned corpus holds no code maps: the family is drawn, and the
+  // caveat says whose code is not. Mutation: draw the family's estate for
+  // its code view -- no project's code is spoken of, and this fails.
+  expect(shown.views.code.metadata.code).toEqual({});
+  expect(shown.views.code.metadata.caveat).toContain('no code map drawn yet');
+  expect(read(join(out, 'family', 'performing', 'code.svg'))).toContain('data-node-id="family::performing"');
+});
+
 test("a system view is drawn only from the default branch's head the document names", async ({ page }) => {
   /**
    * The system view is composed from the project's clone on this disk, which

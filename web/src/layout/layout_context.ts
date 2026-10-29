@@ -876,9 +876,9 @@ export class LayoutContext {
       ? this.actions.plot.loadShowViews(address.name)
       : Promise.resolve(this.appState.update({ showViews: null }));
 
-    // The index's code view, the whole corpus, is drawn by the show seam as
-    // its estate is, each project's code packed round it.
-    if (address.view === 'estate' || address.kind === 'index') {
+    // The index's code view, the whole corpus, and a family's are drawn by
+    // the show seam as their estates are, each project's code packed round it.
+    if (address.view === 'estate' || address.kind !== 'project') {
       this._leaveSystemRenderer();
       this._compoundLayout();
       // A layout change draws it again, from a place of its own.

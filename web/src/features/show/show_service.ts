@@ -83,10 +83,12 @@ export class ShowService {
   public static graph(showUrl: string, address: ShowAddress,
                       request: { layout?: string; paletteId?: string } = {}): Promise<SeamOutcome> {
     // The index's code view is the whole corpus: every family, each
-    // project's code in it; its full view the same, drawn with no names.
+    // project's code in it; its full view the same, drawn with no names. A
+    // family's code view is the family with each of its projects' code.
     const path = address.kind === 'index'
       ? (address.view === 'estate' ? 'index' : 'corpus')
-      : `${address.kind}/${encodeURIComponent(address.name)}`;
+      : `${address.kind}/${encodeURIComponent(address.name)}`
+        + (address.kind === 'family' && address.view === 'code' ? '/code' : '');
     return read(get, `${showUrl}/${path}/gjgf${query({ layout: request.layout, palette_id: request.paletteId })}`);
   }
 }

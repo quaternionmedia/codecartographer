@@ -762,6 +762,45 @@ def test_the_whole_corpus_draws_each_project_s_code_inside_it(corpus, client):
     assert "1 project(s)" in results["metadata"]["caveat"] and "gamma" in results["metadata"]["caveat"]
 
 
+def test_a_family_s_code_view_draws_each_of_its_projects_code_and_no_other_family_s(corpus, client):
+    # The part of the whole corpus that is core's. Mutation: answer the
+    # family's estate -- its projects carry no code, and this fails.
+    show = corpus / "docs" / "show"
+    _code_document(show, "alpha")
+    _code_document(show, "gamma")
+    results = _results(client, "/show/family/core/code/gjgf")
+    nodes = _nodes(results)
+    assert len([n for n in nodes if n.startswith("code::alpha::")]) == 8
+    assert nodes["code::alpha::dir::example/alpha"]["depth"] == nodes["repo::alpha"]["depth"] + 1
+    # gamma is sound's, within performing. Mutation: draw the whole corpus for
+    # a family -- gamma's code is drawn in core's, and this fails.
+    assert not [n for n in nodes if n.startswith("code::gamma::")]
+    assert "family::performing" not in nodes
+    # Said as the whole corpus says it: whose code is drawn, from which
+    # commit, and who has none yet. Mutation: say it only for the corpus --
+    # a family's code view names no commit, and this fails.
+    assert results["metadata"]["code"] == {"alpha": "c" * 40}
+    assert "parsed" in results["metadata"]["bases"]
+    assert "beta" in results["metadata"]["caveat"]
+
+
+def test_a_family_s_code_view_holds_its_subfamilies_projects_code(corpus, client):
+    # performing holds sound, which holds gamma. Mutation: graft only the
+    # family's own members -- gamma's code is not drawn, and this fails.
+    _code_document(corpus / "docs" / "show", "gamma")
+    _code_document(corpus / "docs" / "show", "private-07")
+    nodes = _nodes(_results(client, "/show/family/performing/code/gjgf"))
+    assert "code::gamma::dir::example/gamma" in nodes
+    assert nodes["code::gamma::dir::example/gamma"]["depth"] == nodes["repo::gamma"]["depth"] + 1
+    assert not [n for n in nodes if n.startswith("code::private-07::")]
+
+
+def test_a_family_the_corpus_does_not_declare_has_no_code_view(client):
+    results = _results(client, "/show/family/nowhere/code/gjgf")
+    assert results["unreadable"] is True
+    assert "core" in results["remedy"]
+
+
 def test_a_private_member_s_code_is_never_drawn(corpus, client):
     # Mutation: read a document for every member the index draws -- the
     # private member's code is drawn, with its own path, and this fails.

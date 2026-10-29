@@ -4,8 +4,8 @@
  *   npm run test:pure
  *
  * The cases worth reading are the refusals. A name with a separator would reach
- * a route as a path, and a view on a family would draw something the address
- * never asked for.
+ * a route as a path, and a view a family does not have would draw something the
+ * address never asked for.
  */
 
 import assert from 'node:assert/strict';
@@ -58,14 +58,19 @@ test("the index's code view is the whole corpus", () => {
     [['every family'], ['the whole corpus']]);
 });
 
-test('only a project has views, and an unknown view is its estate', () => {
-  assert.equal(parseShow('?show=family:core&view=code').view, 'estate');
+test("a family's code view is the family with its projects' code, and a view it has not is its estate", () => {
+  // Mutation: give a family its estate alone, whatever is asked -- its code
+  // view is never opened, and this fails.
+  assert.deepEqual(parseShow('?show=family:core&view=code'), { kind: 'family', name: 'core', view: 'code' });
+  assert.equal(parseShow('?show=family:core&view=system').view, 'estate');
+  assert.equal(parseShow('?show=family:core&view=full').view, 'estate');
   assert.equal(parseShow('?show=project:carlos&view=nonsense').view, 'estate');
   assert.equal(parseShow('?show=project:carlos&view=system').view, 'system');
 });
 
 test('formatting and parsing agree, and the estate view is left out', () => {
   for (const search of ['?show=index', '?show=index&view=code', '?show=family:show-control',
+    '?show=family:core&view=code',
     '?show=project:Cuelist-python', '?show=project:moat&view=system']) {
     assert.equal(formatShow(parseShow(search)), search);
   }
@@ -127,4 +132,13 @@ test('two addresses are the same drawing only when every part agrees', () => {
   assert.ok(sameShow(parseShow('?show'), parseShow('?show=index')));
   assert.ok(!sameShow(parseShow('?show=project:carlos'), parseShow('?show=project:carlos&view=code')));
   assert.ok(!sameShow(parseShow('?show=family:irl'), null));
+});
+
+test("a family's code view ends its trail as itself, named as the family", () => {
+  // Mutation: end it with the family's estate -- a step back to the code view
+  // draws the estate, and this fails.
+  assert.deepEqual(trail(parseShow('?show=family:instruments&view=code'), SUBJECTS).at(-1),
+    [{ kind: 'family', name: 'instruments', view: 'code' }]);
+  assert.equal(names(trail(parseShow('?show=family:instruments&view=code'), SUBJECTS)),
+    'every family › performing › instruments');
 });

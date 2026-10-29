@@ -107,6 +107,29 @@ test("the whole corpus is the index's code view, a switch away from every family
   await expect(page.locator('.show__crumb.is-current')).toHaveText('every family');
 });
 
+test("a family's code view is the family with each project's code, a switch away from the family", async ({ page }) => {
+  // The corpus drawn a family at a time. Mutation: ask the family's estate
+  // route for its code view -- the family is drawn with no code, and this fails.
+  const asked: string[] = [];
+  page.on('request', (request) => {
+    const url = request.url();
+    if (url.includes('/show/family/')) asked.push(new URL(url).pathname);
+  });
+  await page.goto('/?show=family:performing&view=code');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.compound-group circle').first()).toBeAttached({ timeout: SETTLED });
+  expect(asked).toEqual(['/show/family/performing/code/gjgf']);
+  // Mutation: give a family no switch -- its code view cannot be reached
+  // from the panel, and this fails.
+  const switches = page.locator('.show__now .show__view');
+  await expect(switches.filter({ hasText: "with each project's code" })).toHaveAttribute('aria-pressed', 'true');
+  await switches.filter({ hasText: 'the family' }).click();
+  await expect(page).toHaveURL(/\?show=family:performing$/);
+  await expect.poll(() => asked[asked.length - 1]).toBe('/show/family/performing/gjgf');
+  await switches.filter({ hasText: "with each project's code" }).click();
+  await expect(page).toHaveURL(/\?show=family:performing&view=code$/);
+});
+
 test('the whole corpus with no names draws every node and writes nothing on the canvas', async ({ page }) => {
   // The index's third view: the code view's graph, every node drawn, and no
   // node's name or outline's. Mutation: draw it as the code view is, named --

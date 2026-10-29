@@ -26,7 +26,7 @@ import { join } from 'node:path';
 
 import { expect, type Page, type Response } from '@playwright/test';
 
-export type View = 'estate' | 'code' | 'system' | 'full';
+export type View = 'estate' | 'code' | 'system';
 
 export interface ManifestSubject {
   kind: 'index' | 'family' | 'project';
@@ -223,34 +223,43 @@ async function drawEstate(page: Page, subject: ManifestSubject, dir: string) {
 }
 
 /**
- * The index's code view, the whole corpus: every family, each project's code
- * map in it, from the code maps this export has written (`CODECARTO_SHOW_DOCS`).
+ * A family's code view: the family with each of its projects' code map in it,
+ * its subfamilies' too, from the code maps this export has just written
+ * (`CODECARTO_SHOW_DOCS`). The document names each project whose code it drew
+ * and the commit its map was drawn from (`metadata.code`), and keeps none of
+ * their graphs again: each is its own project's document's.
  */
-async function drawCorpus(page: Page, dir: string) {
-  return drawShowgraph(page, '/show/corpus/gjgf', './?show=index&view=code', join(dir, 'code.svg'));
-}
-
-/**
- * The index's full view: the whole corpus again, every node drawn and no
- * name. Its graph is the code view's, so the document keeps its metadata
- * alone rather than the same graph twice.
- */
-async function drawFullCorpus(page: Page, dir: string) {
-  const drawn = await drawShowgraph(page, '/show/corpus/gjgf', './?show=index&view=full', join(dir, 'full.svg'));
-  return { graph: 'the code view\'s', metadata: { ...drawn.metadata, names: false } };
+async function drawFamilyCode(page: Page, subject: ManifestSubject, dir: string) {
+  const drawn = await drawShowgraph(page, `/show/family/${subject.name}/code/gjgf`,
+    `./?show=${subject.address}&view=code`, join(dir, 'code.svg'));
+  return { graph: "each project's code view's", metadata: drawn.metadata };
 }
 
 async function drawShowgraph(page: Page, route: string, address: string, file: string) {
-  const answered = page.waitForResponse((r: Response) => r.url().includes(route), { timeout: SETTLED });
-  await page.goto(address);
-  const results = (await (await answered).json()).results;
+  // **READ ON ITS WAY TO THE PAGE, NOT FROM THE PAGE'S NETWORK LOG.** The log
+  // keeps ten megabytes of an answer, and the whole corpus's was several
+  // times that: "evicted from inspector cache", and no picture.
+  let results: { graph?: { nodes?: object }; metadata?: Record<string, unknown> } | null = null;
+  const asked = (url: URL) => url.pathname.endsWith(route);
+  await page.route(asked, async (request) => {
+    const response = await request.fetch();
+    results = (await response.json()).results;
+    await request.fulfill({ response });
+  });
+  try {
+    await page.goto(address);
+    await expect.poll(() => results !== null, { timeout: SETTLED }).toBe(true);
+  } finally {
+    await page.unroute(asked);
+  }
+  const answer = results!;
   await expect(page.locator('.graph-node').first()).toBeAttached({ timeout: SETTLED });
   await readStep(page);
-  await drawnAll(page, Object.keys(results.graph?.nodes ?? {}).length);
+  await drawnAll(page, Object.keys(answer.graph?.nodes ?? {}).length);
   await settle(page);
   await faded(page);
   writeFileSync(file, await svgOf(page));
-  return { graph: results.graph, metadata: placeless(results.metadata ?? {}) };
+  return { graph: answer.graph, metadata: placeless(answer.metadata ?? {}) };
 }
 
 async function drawCode(page: Page, subject: ManifestSubject, dir: string, answer: ViewAnswer) {
@@ -335,12 +344,9 @@ export async function exportSubject(page: Page, subject: ManifestSubject, manife
     if (view === 'estate') {
       views.estate = await drawEstate(page, subject, dir);
       files.estate = 'estate.svg';
-    } else if (subject.kind === 'index' && view === 'code') {
-      views.code = await drawCorpus(page, dir);
+    } else if (subject.kind === 'family' && view === 'code') {
+      views.code = await drawFamilyCode(page, subject, dir);
       files.code = 'code.svg';
-    } else if (subject.kind === 'index' && view === 'full') {
-      views.full = await drawFullCorpus(page, dir);
-      files.full = 'full.svg';
     } else if (!answers[view]?.available) {
       views[view] = absence(subject, view, answers[view]);
     } else if (view === 'code') {
