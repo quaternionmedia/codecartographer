@@ -108,9 +108,10 @@ export interface ControlPanelRenderOptions {
 
 /**
  * The Showcase's settings (`features/graph/services/showcase.ts`), shown while
- * it is the layout: a dot's size, the gap between dots and how they cluster,
- * which the server lays out by, and which links are drawn, how strongly, and
- * whether a dot is named, which the canvas draws in place.
+ * it is the layout: a dot's size, the gap between dots, how they cluster and
+ * whether each is as large as its source, which the server lays out by; and
+ * which links are drawn, how strongly, and whether a dot is named, which the
+ * canvas draws in place.
  */
 function showcaseControls(shown: ShowcaseOptions, change: (to: ShowcaseSettings) => void): m.Children {
   const slider = (label: string, value: number, min: number, max: number, step: number, unit: string,
@@ -142,6 +143,7 @@ function showcaseControls(shown: ShowcaseOptions, change: (to: ShowcaseSettings)
     slider('Dot Size', shown.dot, 0.5, 6, 0.5, '', (dot) => change({ dot })),
     slider('Dot Spacing', shown.gap, 0, 4, 0.25, '', (gap) => change({ gap })),
     toggle('Cluster by Symbol', shown.nest, (nest) => change({ nest })),
+    toggle('Size by Code', shown.sized, (sized) => change({ sized })),
     ...LINK_KINDS.map((kind) => toggle(`Links: ${kind}`, shown.links[kind],
       (on) => change({ links: { [kind]: on } }), LINK_COLOURS[kind])),
     slider('Link Opacity', shown.linkOpacity, 0.05, 1, 0.05, '', (linkOpacity) => change({ linkOpacity })),

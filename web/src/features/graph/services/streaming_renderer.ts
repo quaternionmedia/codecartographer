@@ -922,7 +922,7 @@ export class StreamingGraphRenderer {
 
   /** The size a node is drawn at: the canvas's node size by its depth, larger on a map. */
   private _nodeSize(n: GraphNode): number {
-    if (this._isDot(n)) return dotRadius(n.depth, this._showcase!.dot);
+    if (this._isDot(n)) return dotRadius(n.depth, this._showcase!.dot, n.dot_scale);
     return this.styling.nodeSize! * depthSizeMultiplier(n) * (this._map ? MAP_NODE_SCALE : 1);
   }
 

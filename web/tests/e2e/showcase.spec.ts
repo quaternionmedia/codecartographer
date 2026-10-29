@@ -20,15 +20,15 @@ const frame = (event: string, data: unknown) => `event: ${event}\ndata: ${JSON.s
 
 /** What the server streams for a small package laid out as a Showcase. */
 function showcaseStream(): string {
-  const node = (id: string, kind: string, depth: number, x: number, y: number) =>
-    frame('node', { id, label: id.split(/[:./]/).pop(), kind, depth, x, y, file: '', line: 0 });
+  const node = (id: string, kind: string, depth: number, x: number, y: number, extra: object = {}) =>
+    frame('node', { id, label: id.split(/[:./]/).pop(), kind, depth, x, y, file: '', line: 0, ...extra });
   const edge = (source: string, target: string, kind: string) => frame('edge', { source, target, kind });
   return [
-    frame('meta', { nodeCount: 8, edgeCount: 11, layout: 'Showcase(dot=2,gap=0.5,nest=true)' }),
+    frame('meta', { nodeCount: 8, edgeCount: 11, layout: 'Showcase(dot=2,gap=0.5,nest=true,sized=true)' }),
     node('dir::pkg', 'directory', 0, 0, 0),
     node('file::pkg/a.py', 'file', 1, 20, 0),
     node('external::os', 'external_module', 1, -40, 0),
-    node('a.run', 'function', 2, 26, 0),
+    node('a.run', 'function', 2, 26, 0, { dot_scale: 2.5 }),
     node('a.helper', 'function', 2, 20, 6),
     node('a.total', 'name', 3, 14, 0),
     node('a.step', 'argument', 3, 20, -6),
@@ -97,7 +97,8 @@ test('the Showcase is a layout in Graph Settings, its settings shown beneath it 
   for (const label of ['Dot Size', 'Dot Spacing', 'Link Opacity']) {
     await expect(settings.locator(`input[type=range][aria-label="${label}"]`)).toHaveCount(1);
   }
-  for (const label of ['Cluster by Symbol', 'Links: calls', 'Links: uses', 'Links: flows', 'Links: imports', 'Dot Names']) {
+  for (const label of ['Cluster by Symbol', 'Size by Code', 'Links: calls', 'Links: uses', 'Links: flows',
+    'Links: imports', 'Dot Names']) {
     await expect(settings.locator(`input[type=checkbox][aria-label="${label}"]`)).toHaveCount(1);
   }
   await expect(settings.locator('input[aria-label="Links: imports"]')).not.toBeChecked();
@@ -107,7 +108,7 @@ test('a Showcase draws every node a dot, borderless, and asks the server for it 
   const asked = await drawShowcase(page);
   // Mutation: ask for the Showcase by its bare name -- the server lays it out
   // at its defaults whatever is set, and this fails.
-  expect(asked).toEqual(['Showcase(dot=2,gap=0.5,nest=true)']);
+  expect(asked).toEqual(['Showcase(dot=2,gap=0.5,nest=true,sized=true)']);
   const dots = await page.locator('.graphRenderer svg g.graph-node').evaluateAll((groups) => groups.map((g) => {
     const path = g.querySelector('path')!;
     const box = (path as SVGPathElement).getBBox();
@@ -120,7 +121,9 @@ test('a Showcase draws every node a dot, borderless, and asks the server for it 
   for (const d of dots) expect(d.d, `${d.id} is a circle`).toMatch(/^M \S+ 0 A /);
   expect(across['dir::pkg']).toBeCloseTo(8, 1);
   expect(across['file::pkg/a.py']).toBeCloseTo(6, 1);
-  expect(across['a.run']).toBeCloseTo(4, 1);
+  // A dot the server sized by its source is drawn at that size (`dot_scale`).
+  // Mutation: draw it by its depth -- a member's four, and this fails.
+  expect(across['a.run']).toBeCloseTo(10, 1);
   expect(across['a.total']).toBeCloseTo(4, 1);
   // No border: a white one a unit wide is a ring round a dot two across. The
   // ring paints each node's view state after every verb, so one is taken:
@@ -183,7 +186,7 @@ test('a link toggled is hidden without asking the server; a dot size asks it for
     dot.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await expect.poll(() => asked.length, { timeout: SETTLED }).toBe(2);
-  expect(asked[1]).toBe('Showcase(dot=3,gap=0.5,nest=true)');
+  expect(asked[1]).toBe('Showcase(dot=3,gap=0.5,nest=true,sized=true)');
   await expect.poll(() => lines('imports'), { timeout: SETTLED }).toBe('1 of 1');
   await expect.poll(() => lines('uses')).toBe('0 of 1');
 });

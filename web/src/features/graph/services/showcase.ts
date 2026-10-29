@@ -3,11 +3,13 @@
  * only how it is filed.
  *
  * Its directories and files are laid out as the Map lays them out, but every
- * node is a dot -- a directory's and a file's a little wider -- and below the
- * files every function, class, variable and call is one, packed tight round
- * what holds it (`show_layout.showcase` on the server). So a file is a cluster
- * as large as what it holds, coloured by what each dot is, in an outline a few
- * dots past it. Over the dots run the links the parse found between them
+ * node is a dot -- a directory's and a file's a little wider, and a symbol's
+ * or a member's as large as the source it stands for -- and below the files
+ * every function, class, variable and call is one, packed tight round what
+ * holds it, kind by kind, so two functions alike look alike
+ * (`show_layout.showcase` on the server). So a file is a cluster as large as
+ * what it holds, coloured by what each dot is, in an outline a few dots past
+ * it. Over the dots run the links the parse found between them
  * (`python_links.py`): what a function calls, the names it uses, and how
  * values flow from one variable to another; and, off at first, what a file
  * imports. The lines that only say what holds what are not drawn: the
@@ -27,6 +29,8 @@ export interface ShowcaseOptions {
   gap: number;
   /** Each symbol's members clustered round it, or a file's all in one disc. Laid out by the server. */
   nest: boolean;
+  /** Each symbol's and member's dot as large as the source it stands for. Laid out by the server. */
+  sized: boolean;
   /** Which links are drawn. Drawn in place. */
   links: Record<ShowcaseLink, boolean>;
   /** How strongly the links are drawn, 0 to 1. Drawn in place. */
@@ -39,6 +43,7 @@ export const SHOWCASE_DEFAULTS: ShowcaseOptions = {
   dot: 2,
   gap: 0.5,
   nest: true,
+  sized: true,
   // A file's imports run the width of the map, to modules drawn beside it:
   // drawn, they cross every cluster on the way.
   links: { calls: true, uses: true, flows: true, imports: false },
@@ -104,8 +109,13 @@ export function linkOf(kind: string): ShowcaseLink | null {
   return kind === 'calls' || kind === 'uses' || kind === 'flows' ? kind : 'imports';
 }
 
-/** A node's radius on a Showcase, by its depth. */
-export function dotRadius(depth: unknown, dot: number): number {
+/**
+ * A node's radius on a Showcase: `dot` times the scale the server laid it out
+ * at (`dot_scale`, `show_layout.showcase`), or, for a node sent without one,
+ * the scale of its depth.
+ */
+export function dotRadius(depth: unknown, dot: number, scale?: unknown): number {
+  if (typeof scale === 'number' && scale > 0) return dot * scale;
   return dot * (typeof depth === 'number' ? DOT_SCALE[depth] ?? 1 : 1);
 }
 
@@ -135,10 +145,11 @@ export function withShowcase(held: ShowcaseSettings | undefined, change: Showcas
 
 /** The layout's name with the settings the server lays it out by (`position_service.layout_spec`). */
 export function showcaseSpec(options: ShowcaseOptions): string {
-  return `Showcase(dot=${options.dot},gap=${options.gap},nest=${options.nest})`;
+  return `Showcase(dot=${options.dot},gap=${options.gap},nest=${options.nest},sized=${options.sized})`;
 }
 
 /** Whether a change to the settings needs the server to lay the graph out again. */
 export function laysOutAgain(before: ShowcaseOptions, after: ShowcaseOptions): boolean {
-  return before.dot !== after.dot || before.gap !== after.gap || before.nest !== after.nest;
+  return before.dot !== after.dot || before.gap !== after.gap || before.nest !== after.nest
+    || before.sized !== after.sized;
 }

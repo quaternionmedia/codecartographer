@@ -3,12 +3,13 @@
 (`position_service.layout_spec`).
 
 A parse is drawn as its directories' and files' discs with every function,
-class, variable and call a dot in them, so a picture says how much code is in
-a file and what kind, not only that the file is there. These tests hold what
-makes it that: the settings reach the layout and nothing else does, no two
-dots overlap, a file's dots fill its disc and stand apart from the next file's,
-a symbol's members lie together, and what the canvas draws is what the server
-laid out. Each is over a real parse of a small package written here.
+class, variable and call a dot in them, as large as the source it stands for,
+so a picture says how much code is in a file and what kind, not only that the
+file is there. These tests hold what makes it that: the settings reach the
+layout and nothing else does, no two dots overlap, a file's dots fill its disc
+and stand apart from the next file's, a symbol's members lie together, two
+symbols that hold alike are drawn alike, and what the canvas draws is what the
+server laid out. Each is over a real parse of a small package written here.
 """
 
 from __future__ import annotations
@@ -22,7 +23,8 @@ import pytest
 from codecarto.services import show_layout
 from codecarto.services.local_repo_service import get_local_repo
 from codecarto.services.position_service import Positions, layout_key, layout_spec
-from codecarto.services.show_layout import SHOWCASE_PAD, SHOWCASE_SCALE, code_map, showcase, showcase_radius
+from codecarto.services.show_layout import (SHOWCASE_PAD, SHOWCASE_SCALE, chars_scale, code_map, showcase,
+                                            showcase_radius)
 from codecarto.services.unified_parser_service import UnifiedParserService
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,10 +40,11 @@ def _source(index: int) -> str:
     lines += ["", "", f"class Thing{index}:", "    def run(self, step):"]
     lines += [f"        v{k} = step + {k}" for k in range(6)]
     lines += ["        return v5", ""]
-    # The parser names a variable once per module, so each function's are its own.
+    # The parser names a variable, and a literal, once per module, so each
+    # function's are its own: no literal, and its own names.
     for f in range(8):
         lines += ["", f"def work{f}(a{f}, b{f}):"]
-        lines += [f"    x{f}_{k} = a{f} + b{f} * {k} + LIMIT_{k % 4}" for k in range(8)]
+        lines += [f"    x{f}_{k} = a{f} + b{f} + LIMIT_{k % 4}" for k in range(8)]
         lines += [f"    return helper{f}(x{f}_7)", "", f"def helper{f}(value):", "    out = value", "    return out"]
     return "\n".join(lines) + "\n"
 
@@ -76,6 +79,11 @@ def _code_of(graph, file_id: str) -> set[str]:
                 found.add(child)
                 frontier.append(child)
     return found
+
+
+def _radius(graph, node, dot: float = 2.0) -> float:
+    """A dot's radius as the layout set it, which the canvas draws it at."""
+    return dot * graph.nodes[node]["dot_scale"]
 
 
 def _span(places) -> float:
@@ -125,6 +133,8 @@ def test_the_showcase_is_laid_out_by_the_settings_on_its_name(parse):
     assert _span(large) > 2.5 * _span(small)
     mixed = Positions().get_node_positions(graph, "Showcase(nest=false)")
     assert mixed != Positions().get_node_positions(graph, "Showcase(nest=true)")
+    unsized = Positions().get_node_positions(graph, "Showcase(sized=false)")
+    assert unsized != Positions().get_node_positions(graph, "Showcase(sized=true)")
 
 
 # ── The layout ─────────────────────────────────────────────────────────────
@@ -141,29 +151,32 @@ def test_no_two_dots_overlap(parse, nest):
     nodes = list(places)
     worst = math.inf
     for i, a in enumerate(nodes):
-        ra = showcase_radius(_depth(graph, a), dot)
+        ra = _radius(graph, a, dot)
         for b in nodes[i + 1:]:
-            clear = math.dist(places[a], places[b]) - ra - showcase_radius(_depth(graph, b), dot)
+            clear = math.dist(places[a], places[b]) - ra - _radius(graph, b, dot)
             worst = min(worst, clear)
     assert worst >= gap - 1e-6, f"two dots are {worst:.2f} apart"
 
 
 def test_two_files_outlines_do_not_overlap(parse):
     # The canvas draws an outline round each file half `SHOWCASE_PAD` dots
-    # past its code. Measured round the file, which sits amid its code, an
-    # outline is no smaller than the canvas's; two such are clear of each
-    # other. Mutation: pad a file's disc by nothing -- the outlines drawn
+    # past the smallest circle round its code (`compound_layout.ts`); two
+    # such are clear of each other. Mutation: pad a file's disc by nothing -- the outlines drawn
     # round two neighbours overlap, and this fails.
     graph = parse()
     dot = 2.0
     places = showcase(graph, dot=dot)
     files = [n for n in graph.nodes if _depth(graph, n) == 1 and _code_of(graph, n)]
     assert len(files) == 6
-    drawn = {f: max(math.dist(places[m], places[f]) for m in _code_of(graph, f)) + dot + SHOWCASE_PAD * dot / 2
-             for f in files}
+    drawn = {}
+    for f in files:
+        x, y, r = show_layout.circle_pack.enclose(
+            [(*places[n], _radius(graph, n, dot)) for n in [f, *_code_of(graph, f)]])
+        drawn[f] = (x, y, r + SHOWCASE_PAD * dot / 2)
     for i, a in enumerate(files):
         for b in files[i + 1:]:
-            apart = math.dist(places[a], places[b]) - drawn[a] - drawn[b]
+            (ax, ay, ar), (bx, by, br) = drawn[a], drawn[b]
+            apart = math.dist((ax, ay), (bx, by)) - ar - br
             assert apart >= -1e-6, f"{a}'s outline and {b}'s overlap by {-apart:.1f}"
 
 
@@ -189,20 +202,74 @@ def test_a_symbol_s_members_lie_together_when_clustered(parse):
     assert spread(showcase(graph, nest=True)) < 0.5 * spread(showcase(graph, nest=False))
 
 
-def test_a_file_s_disc_is_full(parse):
-    # A file's dots fill a disc round it rather than a constellation of
-    # discs round each symbol. Mutation: lay each symbol's members out round
-    # it, as the Map lays out a directory's files -- the disc is mostly
-    # empty, and this fails.
+def test_a_file_s_code_fills_its_disc(parse):
+    # A file's dots, glyph by glyph, fill the circle round them about as
+    # densely as circles pack. Mutation: lay a file's code out as the Map lays
+    # out a directory -- a disc round each symbol, each padded for an outline
+    # it is never drawn -- and the worst file is an eighth dots, and this fails.
     graph = parse()
-    dot, gap = 2.0, 0.5
-    places = showcase(graph, dot=dot, gap=gap)
+    dot = 2.0
+    places = showcase(graph, dot=dot)
     for file in (n for n in graph.nodes if _depth(graph, n) == 1 and _code_of(graph, n)):
-        code = _code_of(graph, file)
-        reach = max(math.dist(places[m], places[file]) for m in code) + dot
-        # A sunflower of n dots `gap` apart fills a disc of about this radius.
-        full = (2 * dot + gap) / 1.6 * math.sqrt(len(code) + 4) + dot
-        assert reach <= 1.25 * full, f"{file}: {reach:.1f} across for {len(code)} dots"
+        code = [file, *_code_of(graph, file)]
+        _, _, outer = show_layout.circle_pack.enclose([(*places[n], _radius(graph, n, dot)) for n in code])
+        full = sum(_radius(graph, n, dot) ** 2 for n in code) / outer ** 2
+        assert full >= 0.22, f"{file} is {full:.0%} dots"
+
+
+def test_a_dot_is_as_large_as_the_source_it_stands_for(parse):
+    # A symbol's or a member's radius grows a dot for each ten times as many
+    # characters, from half a dot to four; a file's and a directory's are
+    # fixed, their discs saying what they hold. Mutation: size every member
+    # as one dot -- the longer function is drawn no larger, and this fails.
+    graph = parse()
+    showcase(graph)
+    scale = {n: graph.nodes[n]["dot_scale"] for n in graph.nodes}
+    chars = {n: (graph.nodes[n].get("meta") or {}).get("chars") for n in graph.nodes}
+    assert chars["top0.work0"] > chars["top0.helper0"] and scale["top0.work0"] > scale["top0.helper0"]
+    for node in graph.nodes:
+        depth = _depth(graph, node)
+        expected = SHOWCASE_SCALE[depth] if depth in SHOWCASE_SCALE else chars_scale(chars[node])
+        assert scale[node] == pytest.approx(expected, abs=1e-3), node
+    assert (chars_scale(None), chars_scale(5), chars_scale(100), chars_scale(10 ** 9)) == (1.0, 0.5, 1.5, 4.0)
+    # Not sized, every member is a dot.
+    unsized = parse()
+    showcase(unsized, sized=False)
+    assert {unsized.nodes[n]["dot_scale"] for n in unsized.nodes if _depth(unsized, n) >= 2} == {1.0}
+
+
+def test_two_functions_that_hold_alike_are_drawn_alike(parse):
+    # Each `work` function holds the same arguments, variables and calls,
+    # each as long as the other's. A function's glyph depends on what it
+    # holds alone, so wherever each is drawn, its members lie round it in the
+    # same places. Mutation: give a file's code its places along a Hilbert
+    # curve through its disc, as the Showcase did -- each function's members
+    # are a run of the curve, shaped by where it falls, and this fails.
+    graph = parse()
+    places = showcase(graph)
+    held = _held(graph)
+
+    def shape(function: str):
+        hx, hy = places[function]
+        return sorted((round(places[m][0] - hx, 3), round(places[m][1] - hy, 3), graph.nodes[m].get("kind"))
+                      for m in held[function])
+
+    works = [n for n in graph.nodes if graph.nodes[n].get("label", "").startswith("work")]
+    assert len(works) == 6 * 8
+    shapes = {str(shape(w)) for w in works}
+    assert len(shapes) == 1, f"{len(shapes)} shapes for {len(works)} functions that hold alike"
+
+
+def test_only_a_function_or_a_class_is_a_glyph_of_its_own():
+    # What a call or a name holds is packed in the glyph of the function over
+    # it: each level a glyph nests is a circle round circles, and nested at
+    # every level the walker holds by, a file was a quarter dots. Mutation:
+    # nest a glyph for every holder -- the call holds its argument, and this
+    # fails.
+    held = {"file": ["f", "IMPORT"], "f": ["call", "x"], "call": ["arg"], "IMPORT": ["alias"]}
+    symbols = {"f"}
+    assert show_layout._by_symbol("file", held, symbols.__contains__) == {
+        "file": ["f", "IMPORT", "alias"], "f": ["call", "arg", "x"]}
 
 
 def test_modules_from_outside_are_one_disc_beside_the_map(parse):

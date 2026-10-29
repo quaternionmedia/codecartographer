@@ -19,8 +19,8 @@ test('the layout is asked for by its name with the settings the server lays it o
   // Mutation: ask for the Showcase by its bare name -- the server lays it
   // out at its defaults whatever is set, and this fails.
   assert.equal(layoutSpec({ layout: SHOWCASE_LAYOUT, showcase: { dot: 3, nest: false } }),
-    'Showcase(dot=3,gap=0.5,nest=false)');
-  assert.equal(layoutSpec({ layout: SHOWCASE_LAYOUT }), 'Showcase(dot=2,gap=0.5,nest=true)');
+    'Showcase(dot=3,gap=0.5,nest=false,sized=true)');
+  assert.equal(layoutSpec({ layout: SHOWCASE_LAYOUT }), 'Showcase(dot=2,gap=0.5,nest=true,sized=true)');
   // Every other layout is asked for by its name alone.
   assert.equal(layoutSpec({ layout: 'map_layout', showcase: { dot: 3 } }), 'Map');
 });
@@ -32,6 +32,7 @@ test('only a setting the server lays out by asks it to lay the graph out again',
   assert.equal(laysOutAgain(before, showcaseOf({ showcase: { dot: 3 } })), true);
   assert.equal(laysOutAgain(before, showcaseOf({ showcase: { gap: 1 } })), true);
   assert.equal(laysOutAgain(before, showcaseOf({ showcase: { nest: false } })), true);
+  assert.equal(laysOutAgain(before, showcaseOf({ showcase: { sized: false } })), true);
   assert.equal(laysOutAgain(before, showcaseOf({ showcase: { linkOpacity: 0.9, names: true } })), false);
   assert.equal(laysOutAgain(before, showcaseOf({ showcase: { links: { ...before.links, uses: false } } })), false);
 });
@@ -40,7 +41,7 @@ test('a setting left unset is its default, a link toggled keeps the others', () 
   assert.deepEqual(showcaseOf(undefined), SHOWCASE_DEFAULTS);
   const one = showcaseOf({ showcase: { links: { flows: false } } });
   assert.deepEqual(one.links, { ...SHOWCASE_DEFAULTS.links, flows: false });
-  assert.equal(showcaseSpec(one), 'Showcase(dot=2,gap=0.5,nest=true)');
+  assert.equal(showcaseSpec(one), 'Showcase(dot=2,gap=0.5,nest=true,sized=true)');
 });
 
 test('a change is made to the settings held, every other setting and link as it was', () => {
@@ -83,6 +84,14 @@ test('a dot is a member\'s size, a file\'s half again and a directory\'s twice',
   assert.equal(dotRadius(2, 2), 2);
   assert.equal(dotRadius(5, 2), 2);
   assert.equal(dotRadius(undefined, 2), 2);
+  // A node the server laid out at its own scale is drawn at it, whatever its
+  // depth (`show_layout.showcase` sets `dot_scale` by the source it stands
+  // for). Mutation: draw every node by its depth -- a long function is a
+  // member's size, and this fails.
+  assert.equal(dotRadius(2, 2, 2.5), 5);
+  assert.equal(dotRadius(1, 2, 0.5), 1);
+  assert.equal(dotRadius(1, 2, 0), 3);
+  assert.equal(dotRadius(2, 2, '2'), 2);
   assert.equal(showcasePadding(showcaseOf({ showcase: { dot: 3 } })), 12);
 });
 

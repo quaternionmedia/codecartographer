@@ -125,7 +125,7 @@ class Positions:
         self.add_layout("sorted_square_layout", sorted_square_layout, ["graph"])
         self.add_layout("compound_layout", compound_layout, ["graph"])
         self.add_layout("map_layout", map_layout, ["graph"])
-        self.add_layout("showcase_layout", showcase_layout, ["graph", "dot", "gap", "nest"])
+        self.add_layout("showcase_layout", showcase_layout, ["graph", "dot", "gap", "nest", "sized"])
 
     def get_layout_names(self) -> list:
         """Get all layout names from the list of available layouts

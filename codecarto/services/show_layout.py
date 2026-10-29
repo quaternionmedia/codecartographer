@@ -46,6 +46,8 @@ from typing import Any, NamedTuple
 
 import networkx as nx
 
+from codecarto.services import circle_pack
+
 # How much larger a map draws its nodes than a code graph does: the canvas's
 # `MAP_NODE_SCALE` in `streaming_renderer.ts`, which a test holds equal.
 MAP_NODE_SCALE = 2.5
@@ -107,6 +109,14 @@ SHOWCASE_SCALE = {0: 2.0, 1: 1.5}
 # directory's this, and a file's half (`showcasePadding`, and the canvas's
 # `computeGroupBounds`).
 SHOWCASE_PAD = 4.0
+# Which kind a Showcase packs first of two the same size (`_glyph`), so two
+# symbols that hold alike are packed, and coloured, alike.
+GLYPH_ORDER = {kind: rank for rank, kind in enumerate((
+    "argument", "name", "constant", "string", "symbol", "call", "loop", "import",
+    "variable", "field", "enum_constant", "function", "async_function", "method",
+    "class", "struct", "union", "enum", "module"))}
+# What a Showcase draws as a glyph of its own, with what it holds round it.
+GLYPH_KINDS = frozenset({"function", "async_function", "method", "class", "struct", "union", "enum"})
 GOLDEN_ANGLE = math.pi * (3 - math.sqrt(5))
 
 
@@ -458,20 +468,16 @@ def _hilbert(n: int, x: int, y: int) -> int:
 
 
 def _patches(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, str],
-             gap: float = FILE_GAP, pad: float = CODE_PAD, grouped: bool = True,
              ) -> tuple[dict[str, tuple[float, float]], float]:
     """`hub`'s code as one evenly full disc round it, each directory's code a
     patch of the disc; and the disc's radius with the canvas's outline padding.
 
-    The places are a sunflower's (`_sunflower`), `gap` apart -- by default as
-    a code map spaces a directory's files -- taken in the order a Hilbert curve
-    passes them and given to the code depth first, each directory before what
-    it holds: a run along the curve is a compact patch, so what a directory
-    holds lies together. Not `grouped`, they are given in the sunflower's own
-    order, a golden angle apart, and the disc is evenly mixed. The corpus
-    outlines none of it, so nothing in it is padded for an outline; a
-    Showcase's file is, by `pad`. Sets each one's `label_at` outward from
-    `hub`, and `hub`'s `none`.
+    The places are a sunflower's (`_sunflower`), spaced as a code map spaces a
+    directory's files, taken in the order a Hilbert curve passes them and given
+    to the code depth first, each directory before what it holds: a run along
+    the curve is a compact patch, so what a directory holds lies together. The
+    corpus outlines none of it, so nothing in it is padded for an outline. Sets
+    each one's `label_at` outward from `hub`, and `hub`'s `none`.
     """
     order: list[str] = []
     seen = {hub}
@@ -487,9 +493,9 @@ def _patches(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str
     local: dict[str, tuple[float, float]] = {hub: (0.0, 0.0)}
     label_at[hub] = "none"
     if not order:
-        return local, radius_of(hub) + pad
+        return local, radius_of(hub) + CODE_PAD
     items = [(node, radius_of(node)) for node in order]
-    spots, radius = _sunflower(radius_of(hub), items, gap)
+    spots, radius = _sunflower(radius_of(hub), items, FILE_GAP)
     side, cells = max(radius, 1.0), 1 << 16
 
     def along(spot: tuple[str, float, float, float]) -> int:
@@ -497,10 +503,10 @@ def _patches(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str
         return _hilbert(cells, int((x + side) / (2 * side) * (cells - 1)),
                         int((y + side) / (2 * side) * (cells - 1)))
 
-    for node, (_, x, y, _) in zip(order, sorted(spots, key=along) if grouped else spots):
+    for node, (_, x, y, _) in zip(order, sorted(spots, key=along)):
         local[node] = (x, y)
         label_at[node] = _side(math.atan2(y, x))
-    return local, radius + max(r for _, r in items) + pad
+    return local, radius + max(r for _, r in items) + CODE_PAD
 
 
 def _turned(places: dict[str, tuple[float, float]], aspect: float) -> dict[str, tuple[float, float]]:
@@ -533,7 +539,7 @@ def _disc(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, s
     where it says None. Places are relative to that circle's centre. Sets each
     member's `label_at` outward from its hub, and the hub's `none`.
 
-    A hub `whole` lays out -- a Showcase's file, by `_patches` -- is laid out
+    A hub `whole` lays out -- a Showcase's file, by `_glyph` -- is laid out
     as it says instead."""
     laid = whole(hub)
     if laid is not None:
@@ -570,7 +576,7 @@ def _disc(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, s
 
 
 def code_map(graph: nx.DiGraph, radius_of=None, spacing: Spacing = MAP_SPACING,
-             patches: bool | None = None) -> dict[str, tuple[float, float]]:
+             files=None) -> dict[str, tuple[float, float]]:
     """A parse laid out as a map, in the canvas's units, and each node's `label_at`.
 
     A node that `contains` others sits at the centre of a disc of what it
@@ -582,11 +588,10 @@ def code_map(graph: nx.DiGraph, radius_of=None, spacing: Spacing = MAP_SPACING,
     nodes and returns each node's place.
 
     `radius_of` and `spacing` size and space it (the Map's by default). With
-    `patches` set -- the Showcase's -- each file's code is one disc round the
-    file (`_patches`), each symbol's members a patch of it beside the symbol
-    or, `patches` false, the whole disc evenly mixed; and what nothing holds
-    and holds nothing is gathered into one disc beside the map rather than
-    rowed.
+    `files` -- the Showcase's -- a file that holds anything is laid out by it,
+    `files(file, held, label_at)` giving its places and radius, and what
+    nothing holds and holds nothing is gathered into one disc beside the map
+    rather than rowed.
     """
     held: dict[str, list[str]] = {}
     parent: dict[str, str] = {}
@@ -606,13 +611,13 @@ def code_map(graph: nx.DiGraph, radius_of=None, spacing: Spacing = MAP_SPACING,
     outlined = lambda n: graph.nodes[n].get("depth", 1) if graph.nodes[n].get("depth", 1) in (0, 1) else None  # noqa: E731
 
     def whole(hub: str):
-        if patches is None or graph.nodes[hub].get("depth") != 1:
+        if files is None or graph.nodes[hub].get("depth") != 1:
             return None
-        return _patches(hub, held, radius_of, label_at, spacing.leaf, spacing.pad[1], patches)
+        return files(hub, held, label_at)
 
     laid = {top: _disc(top, held, radius_of, label_at, outlined=outlined, spacing=spacing, whole=whole)
             for top in tops if held.get(top)}
-    loose = [top for top in tops if top not in laid] if patches is not None else []
+    loose = [top for top in tops if top not in laid] if files is not None else []
     gathered = set(loose) if len(loose) > 1 else set()
     loose = [top for top in loose if top in gathered]
     circles = [(top, laid[top][1]) if top in laid else (top, radius_of(top))
@@ -647,6 +652,61 @@ def code_map(graph: nx.DiGraph, radius_of=None, spacing: Spacing = MAP_SPACING,
     return placed
 
 
+def chars_scale(chars: Any) -> float:
+    """A dot's radius, in a member's, for the `chars` characters of source it
+    stands for: half a member's up to ten, one more for each ten times as
+    many, and at most four. A node the parser measured no source for is a
+    member's."""
+    if not isinstance(chars, (int, float)) or chars <= 0:
+        return 1.0
+    return min(max(0.5 + math.log10(chars / 10), 0.5), 4.0)
+
+
+def _glyph(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, str], gap: float,
+           key) -> tuple[dict[str, tuple[float, float]], float]:
+    """`hub` and what it holds packed tight round it (`circle_pack`), each that
+    holds others packed the same way first: places relative to the circle
+    round them all, and its radius. What it holds is packed in the order
+    `key` gives, which depends on nothing but what each is, so two symbols
+    that hold alike are drawn alike, wherever they are. Sets each member's
+    `label_at` outward from `hub`."""
+    children = held.get(hub, [])
+    inner = {child: _glyph(child, held, radius_of, label_at, gap, key) for child in children}
+    ordered = sorted(children, key=lambda child: key(child, inner[child][1]))
+    centres, radius = circle_pack.pack([radius_of(hub)] + [inner[child][1] for child in ordered], gap)
+    (hx, hy), local = centres[0], {hub: centres[0]}
+    for child, (cx, cy) in zip(ordered, centres[1:]):
+        for node, (dx, dy) in inner[child][0].items():
+            local[node] = (cx + dx, cy + dy)
+        label_at[child] = _side(math.atan2(cy - hy, cx - hx))
+    return local, radius
+
+
+def _below(hub: str, held: dict[str, list[str]]) -> list[str]:
+    """What `hub` holds, and what that holds, depth first."""
+    found: list[str] = []
+    for child in held.get(hub, []):
+        found.append(child)
+        found.extend(_below(child, held))
+    return found
+
+
+def _by_symbol(hub: str, held: dict[str, list[str]], is_symbol) -> dict[str, list[str]]:
+    """`held` below `hub` with only `hub` and its symbols holding: what a
+    call, a loop or a name holds is held by the symbol over it. Each level a
+    glyph nests is a circle round circles, and the gaps between them; nested
+    at every level the walker holds by, a file was a quarter dots."""
+    out: dict[str, list[str]] = {}
+
+    def gather(at: str, into: str) -> None:
+        for child in held.get(at, []):
+            out.setdefault(into, []).append(child)
+            gather(child, child if is_symbol(child) and held.get(child) else into)
+
+    gather(hub, hub)
+    return out
+
+
 def showcase_radius(depth: Any, dot: float) -> float:
     """A node's radius on a Showcase: a dot, wider for a file or a directory
     (`SHOWCASE_SCALE`)."""
@@ -654,26 +714,54 @@ def showcase_radius(depth: Any, dot: float) -> float:
 
 
 def showcase(graph: nx.DiGraph, dot: float = SHOWCASE_DOT, gap: float = SHOWCASE_GAP,
-             nest: bool = True) -> dict[str, tuple[float, float]]:
+             nest: bool = True, sized: bool = True) -> dict[str, tuple[float, float]]:
     """A parse laid out as a showcase: the Map's directories and files, every
-    node a dot of radius `dot` (a file's and a directory's wider,
-    `showcase_radius`), `gap` from the next, packed tight.
+    node a dot -- a file's and a directory's a little wider
+    (`showcase_radius`), and, `sized`, a symbol's or a member's by the source
+    it stands for (`chars_scale`) -- each `gap` from the next, packed tight.
 
-    A file is one evenly full disc of dots round it, as large as what it
-    holds: its functions, classes and imports, and -- parsed to its members --
-    each function's variables and calls, which lie in a patch beside it
-    (`nest`) or are mixed through the disc (`nest` false). A file's outline is
+    A file is a disc of its code, as large as what it holds. With `nest`, each
+    function and class is a glyph: all it holds packed round it, largest
+    first and then kind by kind (`_glyph`), so two functions that hold alike
+    look alike wherever they are; and the file packs its glyphs and the rest
+    of its code the same way. Without, the file packs all of its code round
+    it in that order. A file's outline is
     `SHOWCASE_PAD` half-dots past its disc, a directory's twice that, and two
     discs packed round one directory are a dot and three gaps apart. What
     nothing holds -- a module imported from outside -- is one more disc beside
-    the map. The canvas draws each dot in the same units
-    (`streaming_renderer.ts`), and the links between them -- calls, uses and
-    flows -- over them. Sets `label_at` as `code_map` does.
+    the map. Sets each node's `dot_scale`, its radius in dots, which the
+    canvas draws it at (`streaming_renderer.ts`), and `label_at` as
+    `code_map` does.
     """
     dot = max(float(dot), 0.1)
     gap = max(float(gap), 0.0)
-    radius_of = lambda n: showcase_radius(graph.nodes[n].get("depth", 1), dot)  # noqa: E731
+
+    def radius_of(node: str) -> float:
+        data = graph.nodes[node]
+        depth = data.get("depth", 1)
+        if depth in SHOWCASE_SCALE or not sized:
+            return showcase_radius(depth, dot)
+        return dot * chars_scale((data.get("meta") or {}).get("chars"))
+
+    def key(node: str, radius: float):
+        # Largest first, as circles pack densest: ordered by kind first, a
+        # file was a third dots, and nearer two fifths this way.
+        data = graph.nodes[node]
+        return -round(radius, 6), GLYPH_ORDER.get(data.get("kind"), len(GLYPH_ORDER)), str(data.get("label", node))
+
     pad = SHOWCASE_PAD * dot
+
+    def is_symbol(node: str) -> bool:
+        return graph.nodes[node].get("kind") in GLYPH_KINDS
+
+    def files(hub: str, held: dict[str, list[str]], label_at: dict[str, str]):
+        code = _by_symbol(hub, held, is_symbol) if nest else {hub: _below(hub, held)}
+        local, radius = _glyph(hub, code, radius_of, label_at, gap, key)
+        label_at[hub] = "none"
+        return local, radius + pad / 2
+
+    for node in graph.nodes:
+        graph.nodes[node]["dot_scale"] = radius_of(node) / dot
     return code_map(graph, radius_of=radius_of,
                     spacing=Spacing(gap, dot + 3 * gap, dot * 0.5, (pad, pad / 2), 2 * dot + 2 * gap),
-                    patches=nest)
+                    files=files)
