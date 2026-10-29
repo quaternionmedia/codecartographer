@@ -33,12 +33,42 @@ class BaseASTVisitor(ast.NodeVisitor):
         self.current_module_name = os.path.splitext(file.name)[0]
         self.current_parent_id = None
         self.current_function_args = {}
+        self._lines = file.raw.splitlines(keepends=True)
 
         tree = ast.parse(file.raw)
         self.visit(tree)
 
-    def create_node(self, label, node_type, module, parent=None):
-        """Helper to create a node in the graph with unique ID."""
+    def visit(self, node):
+        """Visit `node`, remembering it, and the statement round it, for
+        `create_node` to measure."""
+        previous = getattr(self, "_at", None), getattr(self, "_statement", None)
+        self._at = node
+        if isinstance(node, ast.stmt):
+            self._statement = node
+        try:
+            return super().visit(node)
+        finally:
+            self._at, self._statement = previous
+
+    def _chars(self, node) -> int:
+        """How many characters of source `node` spans, from its offsets."""
+        lines = getattr(self, "_lines", None)
+        if not lines or getattr(node, "end_lineno", None) is None:
+            return 0
+        first, last = node.lineno - 1, node.end_lineno - 1
+        if first == last:
+            return max(node.end_col_offset - node.col_offset, 0)
+        return (len(lines[first]) - node.col_offset + sum(len(line) for line in lines[first + 1:last])
+                + node.end_col_offset)
+
+    def create_node(self, label, node_type, module, parent=None, span=None):
+        """Helper to create a node in the graph with unique ID.
+
+        Each node keeps `chars`, the most source any one place it stands for
+        spans: a definition's whole body, a variable's largest statement
+        assigning it, otherwise the expression it was met in (`span`, or the
+        node being visited).
+        """
         node_id = f"{module}.{label}"
         if not self.graph.has_node(node_id):
             self.graph.add_node(
@@ -52,6 +82,14 @@ class BaseASTVisitor(ast.NodeVisitor):
             # A function or class read by name before its definition was a
             # name until here: it is the definition.
             self.graph.nodes[node_id].update(type=node_type, parent=parent)
+        at = span if span is not None else getattr(self, "_at", None)
+        statement = getattr(self, "_statement", None)
+        if (isinstance(at, ast.Name) and isinstance(at.ctx, ast.Store)
+                and isinstance(statement, (ast.Assign, ast.AnnAssign, ast.AugAssign))):
+            at = statement
+        if at is not None:
+            data = self.graph.nodes[node_id]
+            data["chars"] = max(data.get("chars", 0), self._chars(at))
         if parent:
             self.graph.add_edge(parent, node_id)
         return node_id
@@ -144,6 +182,7 @@ class PythonCustomAST(BaseASTVisitor):
                     "Function",
                     self.current_module_name,
                     parent=class_id,
+                    span=child,
                 )
                 self.function_map[node.name][child.name] = func_id
             self.visit(child)

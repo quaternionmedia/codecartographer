@@ -217,7 +217,10 @@ class PythonLanguageParser:
                 label=label,
                 file=f"{module}.py" if module else "",
                 line=0,
-                meta={"module": module, "ast_type": ast_type},
+                # `chars`: the source it spans (`PythonCustomAST.create_node`),
+                # which a Showcase sizes its dot by.
+                meta={"module": module, "ast_type": ast_type,
+                      **({"chars": data["chars"]} if data.get("chars") else {})},
                 shape=_PY_SHAPE.get(kind),
                 color=_PY_COLOR.get(kind),
             )

@@ -93,9 +93,11 @@ def _repo_key_from_url(url: str) -> str:
 #      a README newer than the map no longer leaves its regions unmeasured,
 #      and a `Cargo.lock`, `.cargo/config` or `src/bin/` source newer does.
 #  10: a Python parse draws what its code calls, uses and flows into
-#      (`python_links.py`), and every node is held once (`_one_holder`): a
-#      graph cached at 9 has no links for a Showcase to draw, and a node two
-#      files share is held by both.
+#      (`python_links.py`), every node is held once (`_one_holder`), and a
+#      Python node carries the characters of source it stands for
+#      (`meta.chars`): a graph cached at 9 has no links for a Showcase to
+#      draw, no sizes for its dots, and a node two files share is held by
+#      both.
 GRAPH_SCHEMA_VERSION = 10
 
 

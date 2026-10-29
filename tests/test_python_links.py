@@ -125,6 +125,23 @@ def test_the_parser_draws_the_calls_and_the_flows_and_none_below_its_depth():
     assert not [1 for _, _, kind in shallow.edges(data="kind") if kind == "flows"]
 
 
+def test_a_node_carries_the_characters_of_source_it_stands_for():
+    # A Showcase sizes a dot by them (`show_layout.chars_scale`). A
+    # definition is its whole body; a variable its largest assignment; a
+    # constant or an argument itself. Mutation: measure a variable by its
+    # name alone -- `total` is five characters, and this fails.
+    import ast
+
+    tree = ast.parse(SOURCE)
+    segment = {node.name: len(ast.get_source_segment(SOURCE, node))
+               for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.ClassDef))}
+    chars = {n: (d.get("meta") or {}).get("chars") for n, d in _parsed().nodes(data=True)}
+    assert chars["m.run"] == segment["run"] and chars["m.Counter"] == segment["Counter"]
+    assert chars["m.bump"] == segment["bump"]
+    assert chars["m.total"] == len("total = step + LIMIT")
+    assert chars["m.step"] == len("step") and chars["m.Const: 3"] == 1
+
+
 def test_a_python_graph_cached_before_its_links_is_parsed_again(monkeypatch, tmp_path):
     """At 10 a Python parse draws its calls, uses and flows, and holds each
     node once; a graph cached at 9 has none of them, and a Showcase of it is
