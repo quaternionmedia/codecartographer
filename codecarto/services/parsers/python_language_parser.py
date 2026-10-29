@@ -17,6 +17,15 @@ Name         → 'name'          3
 Constant     → 'constant'      3
 For          → 'loop'          3
 <other>      → 'symbol'        3
+
+Edges: `contains` from what holds a node, `imports` to an import, and the
+links between a file's functions and variables:
+
+- `uses` -- a function or class to a name it reads and does not hold: a
+  module-level variable, which its file holds, or a variable a function
+  before it holds (the parser names a variable once per module).
+- `calls` and `flows` -- read from the source by `python_links.links`: a
+  function to what it calls, and a variable to each one assigned from it.
 """
 
 from __future__ import annotations
@@ -33,6 +42,7 @@ from codecarto.services.parsers.language_parser import (
     make_node,
     make_edge,
 )
+from codecarto.services.parsers.python_links import links
 
 
 # ── Type → (kind, depth) mapping ─────────────────────────────────────────────
@@ -152,7 +162,21 @@ class PythonLanguageParser:
         parser = PythonCustomAST()
         raw_graph: nx.DiGraph = parser.parse(folder)
 
-        return self._convert(raw_graph, depth)
+        graph = self._convert(raw_graph, depth)
+        # The calls and flows the source states, between the nodes parsed.
+        for file in files:
+            if not file.name.endswith(".py") or not isinstance(file.raw, str):
+                continue
+            for source, target, kind in links(file.raw, os.path.splitext(file.name)[0]):
+                if not (graph.has_node(source) and graph.has_node(target)):
+                    continue
+                if graph.has_edge(source, target):
+                    # A name a function reads and calls: the call says more.
+                    if kind == "calls" and graph.edges[source, target].get("kind") == "uses":
+                        graph.edges[source, target]["kind"] = "calls"
+                elif not graph.has_edge(target, source):
+                    graph.add_edge(source, target, **make_edge(kind))
+        return graph
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
@@ -200,22 +224,31 @@ class PythonLanguageParser:
             out.add_node(node_id, **attrs)
 
         # ── Pass 2: edges ─────────────────────────────────────────────────────
+        # **A NODE IS HELD ONCE, AND USED FROM ELSEWHERE.** The AST walker
+        # joins every function that reads a name to it, and what a module
+        # defines or assigns at its top level to the module: all as one kind,
+        # so a module's variable, or a function another reads, was held by
+        # whichever function read it first, and every function after held it
+        # again. Its module -- the file -- holds it now, and a function that
+        # reads it uses it; a variable two functions share (one node per
+        # module) is held by the first.
+        module_level = {dst for src, dst in raw.edges()
+                        if raw.nodes[src].get("type") in _SKIPPED_TYPES}
+        held: set[str] = set()
         for src, dst, edata in raw.edges(data=True):
             if not (out.has_node(src) and out.has_node(dst)):
                 continue
 
             # Determine edge kind from context
-            src_kind = out.nodes[src].get("kind", "")
             dst_kind = out.nodes[dst].get("kind", "")
 
             if dst_kind == "import":
                 edge_kind = "imports"
-            elif dst_kind == "class" and src_kind in ("module", "class"):
-                edge_kind = "contains"
-            elif dst_kind == "function":
-                edge_kind = "contains"
+            elif dst in module_level or dst in held:
+                edge_kind = "uses"
             else:
                 edge_kind = "contains"
+                held.add(dst)
 
             out.add_edge(src, dst, **make_edge(edge_kind))
 

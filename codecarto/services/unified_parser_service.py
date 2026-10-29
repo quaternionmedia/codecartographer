@@ -38,6 +38,9 @@ from codecarto.services.parsers.language_parser import (
     make_edge,
 )
 
+# The edges by which one node holds another. A use, a call or a flow joins two
+# nodes something else holds.
+_HOLDS = frozenset({"contains", "field_of"})
 
 
 class UnifiedParserService:
@@ -385,7 +388,7 @@ class UnifiedParserService:
             # rule as _merge_batch_subgraph); depth=3 nodes have a structural
             # edge from their parent (e.g. FIELD_OF) -- all but a module's own,
             # a constant or a name at its top level, which its file holds.
-            parented = {target for _, target in sub.edges()}
+            parented = {target for _, target, kind in sub.edges(data="kind") if kind in _HOLDS}
             for nid, ndata in sub.nodes(data=True):
                 depth_val = ndata.get("depth")
                 if depth_val != 2 and not (isinstance(depth_val, int) and depth_val > 2 and nid not in parented):
@@ -623,6 +626,7 @@ class UnifiedParserService:
 
         if pending:
             _parse_pending_batches(graph, pending, depth)
+        _one_holder(graph)
 
         if depth >= 2:
             _add_python_dependency_edges(graph, directory.root, allowed_exts)
@@ -943,11 +947,34 @@ def _merge_subgraph(
     graph.add_nodes_from(sub.nodes(data=True))
     graph.add_edges_from(sub.edges(data=True))
 
-    # Connect file node → top-level symbols (depth=2 nodes with no parents in sub)
-    sub_roots = {n for n in sub.nodes if sub.in_degree(n) == 0}
+    # Connect file node → top-level symbols: what nothing in sub holds. A
+    # use, a call or a flow into a node is no hold on it.
+    held = {target for _, target, kind in sub.edges(data="kind") if kind in _HOLDS}
+    sub_roots = {n for n in sub.nodes if n not in held}
     for root in sub_roots:
         if not graph.has_edge(file_node_id, root):
             graph.add_edge(file_node_id, root, **make_edge("contains"))
+
+
+def _one_holder(graph: nx.DiGraph) -> None:
+    """Each node held by one node: by the first hold the parse stated on it,
+    and used by every other.
+
+    A parser names a node by its module and its name -- `typing.typing` for
+    an import of `typing`, `typing.ClassVar` for a name several classes read
+    -- so files that share one each stated a hold on it, and the outline the
+    canvas draws round each holder reached across the map to the one place it
+    is drawn. Held once, it is drawn in its first holder's group, and the
+    rest use it.
+    """
+    held: set[str] = set()
+    for source, target, kind in list(graph.edges(data="kind")):
+        if kind not in _HOLDS or source == target:
+            continue
+        if target in held:
+            graph.edges[source, target]["kind"] = "uses"
+        else:
+            held.add(target)
 
 
 def note_event(message: str) -> str:

@@ -48,6 +48,10 @@ class BaseASTVisitor(ast.NodeVisitor):
                 module=module,
                 parent=parent,
             )
+        elif node_type in ("Class", "Function") and self.graph.nodes[node_id].get("type") not in ("Class", "Function"):
+            # A function or class read by name before its definition was a
+            # name until here: it is the definition.
+            self.graph.nodes[node_id].update(type=node_type, parent=parent)
         if parent:
             self.graph.add_edge(parent, node_id)
         return node_id
