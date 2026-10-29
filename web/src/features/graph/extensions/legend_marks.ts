@@ -16,6 +16,8 @@
 
 // `.js`, so the build `node --test` reads resolves it as the bundler does.
 import { nodePath, nodeSides, polygonSides } from '../services/node_shapes.js';
+import { LINK_COLOURS, LINK_KINDS, linkOf } from '../services/showcase.js';
+import type { ShowcaseLink } from '../services/showcase.js';
 
 /** A node kind, and the mark that stands for it. */
 export interface NodeMark {
@@ -168,6 +170,54 @@ export function marksCover(
   marks: readonly { count: number }[],
 ): number {
   return marks.reduce((total, mark) => total + mark.count, 0);
+}
+
+/** One thing a Showcase's key names: what it is, in the colour it is drawn. */
+export interface KeyEntry {
+  label: string;
+  color: string;
+}
+
+/** A node as a Showcase's key reads it: its mark, and how deep it sits. */
+export interface KeyedNode extends MarkableNode {
+  depth?: unknown;
+}
+
+/** An edge as a Showcase's key reads it: its kind, where the renderer reads it. */
+export interface KeyedEdge extends MarkableEdge {
+  metadata?: unknown;
+}
+
+/**
+ * A Showcase's key: each colour its code is drawn in, and each link drawn.
+ *
+ * **THE CODE, NOT ITS FILING.** A dot below the files -- a symbol, or what one
+ * holds -- is keyed by its kind, in the colour drawn, most numerous first. A
+ * directory and a file carry their names, and a module from outside is one
+ * grey among them, so neither is keyed: a key naming what the picture already
+ * says is longer, and no clearer.
+ *
+ * **A LINK IS KEYED WHEN ONE IS DRAWN**: switched on, and in the graph. A key
+ * naming the imports while they are off names a colour nothing is drawn in.
+ */
+export function showcaseKey(
+  nodes: readonly KeyedNode[],
+  edges: readonly KeyedEdge[],
+  links: Readonly<Record<ShowcaseLink, boolean>>,
+  colorBy: string | undefined = 'auto',
+): { dots: KeyEntry[]; links: KeyEntry[] } {
+  const code = nodes.filter((node) => typeof node.depth === 'number' && node.depth >= 2);
+  const dots = nodeMarks(code, colorBy).map((mark) => ({ label: readable(mark.kind).toLowerCase(), color: mark.color }));
+  // The kind the renderer draws a line by (`StreamingGraphRenderer.addEdge`).
+  const drawn = new Set(edges.map((edge) => {
+    const meta = (edge.metadata ?? {}) as { kind?: unknown };
+    return linkOf(String(edge.kind ?? meta.kind ?? ''));
+  }));
+  return {
+    dots,
+    links: LINK_KINDS.filter((link) => links[link] && drawn.has(link))
+      .map((link) => ({ label: link, color: LINK_COLOURS[link] })),
+  };
 }
 
 /** An abstraction layer present in the graph, and how many nodes sit on it. */

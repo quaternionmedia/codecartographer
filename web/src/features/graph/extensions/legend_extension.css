@@ -110,3 +110,13 @@
   margin: 0.5rem 0;
   color: var(--c-font-muted);
 }
+
+/* A Showcase's key, drawn in the canvas's svg (`drawKey`): its words as quiet
+   as the canvas's names, and nothing on it to hover or press. */
+.showcase-key {
+  pointer-events: none;
+}
+
+.showcase-key text {
+  fill: var(--c-font-muted);
+}

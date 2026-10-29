@@ -687,6 +687,11 @@ export class StreamingGraphRenderer {
     return this._allEdges;
   }
 
+  /** The Showcase's settings the graph is drawn with, or none when it is not drawn as one. */
+  getShowcase(): ShowcaseOptions | null {
+    return this._showcase;
+  }
+
   /** The container the renderer was constructed against. */
   getContainer(): HTMLElement {
     return this.svg.node()!.parentElement as HTMLElement;

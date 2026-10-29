@@ -398,3 +398,54 @@ test("a node whose own colour is its construct's is a construct row in any colou
     construct: 'type.product', construct_name: 'Product type', construct_color: '#4a9eff' };
   assert.deepEqual(constructMarks([struct], 'auto').map((m) => m.name), ['Product type']);
 });
+
+// --- a Showcase's key --------------------------------------------------------------
+
+/** A Showcase's nodes, as the renderer holds them once it has coloured them. */
+const SHOWN = [
+  { kind: 'directory', depth: 0, color: '#7f8c8d' },
+  { kind: 'file', depth: 1, color: '#4f9e94' },
+  { kind: 'external_module', depth: 1, color: '#5a5a5a' },
+  { kind: 'function', depth: 2, color: '#31d85b' },
+  { kind: 'async_function', depth: 2, color: '#31d85b' },
+  { kind: 'name', depth: 3, color: '#6f9cff' },
+  { kind: 'name', depth: 3, color: '#6f9cff' },
+  { kind: 'constant', depth: 4, color: '#b39ddb' },
+];
+const ALL_ON = { calls: true, uses: true, flows: true, imports: true };
+
+test("a Showcase's key names the code's dots, in the colour drawn, most numerous first, and not its filing", async () => {
+  /* A directory and a file carry their names, and the modules from outside
+     are one grey: a key naming them says again what the picture says.
+     Mutation: key every depth -- the directory, the file and the module are
+     keyed, and this fails. */
+  const { showcaseKey } = await import('../../dist-pure/features/graph/extensions/legend_marks.js');
+  assert.deepEqual(showcaseKey(SHOWN, [], ALL_ON).dots, [
+    { label: 'name', color: '#6f9cff' },
+    { label: 'function', color: '#31d85b' },
+    { label: 'async function', color: '#31d85b' },
+    { label: 'constant', color: '#b39ddb' },
+  ]);
+});
+
+test("a Showcase's key names a link only when one is drawn: switched on, and in the graph", async () => {
+  /* Mutation: key every link switched on -- the flows, which no edge is, are
+     keyed, and this fails. Mutation: key every link in the graph -- the
+     imports, switched off, are keyed, and this fails. */
+  const { showcaseKey } = await import('../../dist-pure/features/graph/extensions/legend_marks.js');
+  const edges = [
+    { kind: 'contains' },
+    { kind: 'uses' },
+    // The renderer reads a kind the stream carries in the metadata, too.
+    { metadata: { kind: 'calls' } },
+    { kind: 'depends_on' },
+  ];
+  const links = (on) => showcaseKey(SHOWN, edges, on).links;
+  assert.deepEqual(links(ALL_ON), [
+    { label: 'calls', color: '#f2aa4c' },
+    { label: 'uses', color: '#74a8f6' },
+    { label: 'imports', color: '#9aa3b5' },
+  ]);
+  assert.deepEqual(links({ ...ALL_ON, imports: false }).map((l) => l.label), ['calls', 'uses']);
+  assert.deepEqual(links({ calls: false, uses: false, flows: false, imports: false }), []);
+});

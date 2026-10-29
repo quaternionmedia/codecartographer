@@ -1360,9 +1360,10 @@ export class LayoutContext {
     // The key, on the same context and the same lifetime as the menu. It
     // reads the scene the renderer just finished, so it is mounted here
     // rather than during the stream, when the counts would be a snapshot
-    // of a graph still arriving.
+    // of a graph still arriving. A Showcase's is its own, minimal, read from
+    // the settings the renderer draws it with.
     this._legend?.destroy();
-    const legend = new LegendExtension(() => this.appState.state.graphStyling.colorBy);
+    const legend = new LegendExtension(() => this.appState.state.graphStyling.colorBy, () => renderer.getShowcase());
     legend.initialize(context);
     legend.apply();
     this._legend = legend;
