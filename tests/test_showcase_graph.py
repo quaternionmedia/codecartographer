@@ -48,14 +48,14 @@ def _events(text: str) -> list[tuple[str, dict]]:
 
 def _parse() -> tuple[list[dict], list[dict]]:
     """A repository: a module importing two names, one from its sibling, and a
-    docs folder of pages two deep beside a folder of a page and a module."""
+    prose folder of pages two deep beside a folder of a page and a module."""
     nodes = [
         _node("dir::r", "directory", 0),
         _node("file::r/a.py", "file", 1), _node("file::r/b.py", "file", 1),
         _node("a.Sequence", "import", 2, "Sequence"), _node("a.h", "import", 2, "h"),
         _node("a.f", "function", 2, "f"), _node("b.h", "function", 2, "h"),
-        _node("dir::r/docs", "directory", 0), _node("file::r/docs/guide.md", "file", 1),
-        _node("dir::r/docs/deep", "directory", 0), _node("file::r/docs/deep/notes.md", "file", 1),
+        _node("dir::r/prose", "directory", 0), _node("file::r/prose/guide.md", "file", 1),
+        _node("dir::r/prose/deep", "directory", 0), _node("file::r/prose/deep/notes.md", "file", 1),
         _node("dir::r/mixed", "directory", 0), _node("file::r/mixed/readme.md", "file", 1),
         _node("file::r/mixed/c.py", "file", 1),
     ]
@@ -65,15 +65,15 @@ def _parse() -> tuple[list[dict], list[dict]]:
         _edge("file::r/a.py", "a.f"), _edge("file::r/b.py", "b.h"),
         _edge("a.f", "a.h", "imports"), _edge("a.h", "b.h", "uses"),
         _edge("file::r/a.py", "file::r/b.py", "depends_on"),
-        _edge("dir::r", "dir::r/docs"), _edge("dir::r/docs", "file::r/docs/guide.md"),
-        _edge("dir::r/docs", "dir::r/docs/deep"), _edge("dir::r/docs/deep", "file::r/docs/deep/notes.md"),
+        _edge("dir::r", "dir::r/prose"), _edge("dir::r/prose", "file::r/prose/guide.md"),
+        _edge("dir::r/prose", "dir::r/prose/deep"), _edge("dir::r/prose/deep", "file::r/prose/deep/notes.md"),
         _edge("dir::r", "dir::r/mixed"), _edge("dir::r/mixed", "file::r/mixed/readme.md"),
         _edge("dir::r/mixed", "file::r/mixed/c.py"),
     ]
     return nodes, edges
 
 
-LINES = {"file::r/docs/guide.md": 400, "file::r/docs/deep/notes.md": 600, "file::r/mixed/readme.md": 9}
+LINES = {"file::r/prose/guide.md": 400, "file::r/prose/deep/notes.md": 600, "file::r/mixed/readme.md": 9}
 
 
 def test_a_showcase_draws_no_import_and_keeps_a_file_importing_another_as_a_link():
@@ -91,14 +91,14 @@ def test_a_showcase_draws_no_import_and_keeps_a_file_importing_another_as_a_link
 def test_a_folder_of_nothing_but_markdown_is_one_node_as_large_as_its_pages_lines():
     # The outermost folder of prose is the one dot, its pages and its folder
     # of pages gone; a folder holding a module beside its page is not prose.
-    # Mutation: fold a folder by its own pages alone -- docs/deep is folded on
-    # its own and docs keeps it, and this fails.
+    # Mutation: fold a folder by its own pages alone -- prose/deep is folded on
+    # its own and prose keeps it, and this fails.
     nodes, edges = thinned(*_parse(), LINES)
     by_id = {n["id"]: n for n in nodes}
-    assert by_id["dir::r/docs"]["meta"] == {"lines": 1000, "pages": 2}
-    assert not {"file::r/docs/guide.md", "dir::r/docs/deep", "file::r/docs/deep/notes.md"} & set(by_id)
-    assert not [e for e in edges if e["source"].startswith("dir::r/docs/") or "docs/" in e["target"]]
-    assert ("dir::r", "dir::r/docs") in {(e["source"], e["target"]) for e in edges}
+    assert by_id["dir::r/prose"]["meta"] == {"lines": 1000, "pages": 2}
+    assert not {"file::r/prose/guide.md", "dir::r/prose/deep", "file::r/prose/deep/notes.md"} & set(by_id)
+    assert not [e for e in edges if e["source"].startswith("dir::r/prose/") or "prose/" in e["target"]]
+    assert ("dir::r", "dir::r/prose") in {(e["source"], e["target"]) for e in edges}
     # Mutation: fold a folder holding any markdown -- mixed is folded, and this fails.
     assert "meta" not in by_id["dir::r/mixed"] and "file::r/mixed/readme.md" in by_id
 
@@ -138,9 +138,9 @@ def test_a_floored_showcase_folds_its_prose_by_the_lines_the_stream_measured():
         return "".join([chunk async for chunk in floored(stream(), 1, SHOWCASE)])
     events = _events(asyncio.run(collect()))
     drawn = {e["id"]: e for kind, e in events if kind == "node"}
-    assert drawn["dir::r/docs"]["meta"]["lines"] == 1000
-    assert "a.Sequence" not in drawn and "file::r/docs/guide.md" not in drawn
-    assert drawn["dir::r/docs"]["dot_scale"] == pytest.approx(3.0)
+    assert drawn["dir::r/prose"]["meta"]["lines"] == 1000
+    assert "a.Sequence" not in drawn and "file::r/prose/guide.md" not in drawn
+    assert drawn["dir::r/prose"]["dot_scale"] == pytest.approx(3.0)
     assert events[-1][0] == "done" and events[-1][1]["nodes"] == len(drawn)
 
 
@@ -169,9 +169,9 @@ def _repository(where: Path) -> Path:
     where.mkdir()
     (where / "a.py").write_text("import os\nfrom b import h\n\n\ndef f():\n    return h(os.sep)\n", encoding="utf-8")
     (where / "b.py").write_text("def h(x):\n    return x\n", encoding="utf-8")
-    (where / "docs" / "deep").mkdir(parents=True)
-    (where / "docs" / "guide.md").write_text("# Guide\n" + "line\n" * 399, encoding="utf-8")
-    (where / "docs" / "deep" / "notes.md").write_text("# Notes\n" + "line\n" * 599, encoding="utf-8")
+    (where / "prose" / "deep").mkdir(parents=True)
+    (where / "prose" / "guide.md").write_text("# Guide\n" + "line\n" * 399, encoding="utf-8")
+    (where / "prose" / "deep" / "notes.md").write_text("# Notes\n" + "line\n" * 599, encoding="utf-8")
     return where
 
 
@@ -184,14 +184,14 @@ def test_a_local_folder_drawn_as_a_showcase_has_no_import_and_its_prose_folded(t
     body = TestClient(app).post("/parse/stream-url", json={"url": str(repo), "depth": 3, "layout": SHOWCASE}).text
     drawn = {e["id"]: e for kind, e in _events(body) if kind == "node"}
     assert not [n for n in drawn.values() if n.get("kind") == "import"], "an import was drawn"
-    docs = drawn["dir::r/docs"]
-    assert docs["meta"]["lines"] == 1000 and docs["meta"]["pages"] == 2
-    assert not [key for key in drawn if key.startswith(("file::r/docs/", "dir::r/docs/"))]
-    assert docs["dot_scale"] == pytest.approx(3.0)
+    prose = drawn["dir::r/prose"]
+    assert prose["meta"]["lines"] == 1000 and prose["meta"]["pages"] == 2
+    assert not [key for key in drawn if key.startswith(("file::r/prose/", "dir::r/prose/"))]
+    assert prose["dot_scale"] == pytest.approx(3.0)
     # The Map draws the same folder as it was: its imports and its pages.
     mapped = {e["id"] for kind, e in _events(TestClient(app).post(
         "/parse/stream-url", json={"url": str(repo), "depth": 3, "layout": "Map"}).text) if kind == "node"}
-    assert "file::r/docs/guide.md" in mapped
+    assert "file::r/prose/guide.md" in mapped
 
 
 def test_a_showgraph_replayed_from_the_cache_says_the_depth_it_was_drawn_to(tmp_path, monkeypatch):
@@ -226,7 +226,7 @@ def test_a_showcase_cached_before_it_was_thinned_is_parsed_again(tmp_path, monke
     cache_service.CacheService.set(f"{cache_service._repo_key_from_url(url)}::{at_10}", old, label="r",
                                    url=url, mode="3", layout=SHOWCASE)
     body = TestClient(app).post("/parse/stream-url", json={"url": url, "depth": 3, "layout": SHOWCASE}).text
-    assert "CACHED_AT_10" not in body and "dir::r/docs" in body
+    assert "CACHED_AT_10" not in body and "dir::r/prose" in body
 
 
 @pytest.mark.asyncio
@@ -237,9 +237,9 @@ async def test_the_github_stream_says_each_markdown_pages_lines(monkeypatch):
     import codecarto.services.github_service as gh_svc
     from codecarto.services.unified_parser_service import UnifiedParserService
 
-    pages = {"https://raw.example/r/docs/guide.md": "# Guide\n" + "line\n" * 41,
+    pages = {"https://raw.example/r/prose/guide.md": "# Guide\n" + "line\n" * 41,
              "https://raw.example/r/m.py": "def f():\n    pass\n"}
-    items = [("docs/guide.md", "blob", "https://raw.example/r/docs/guide.md"),
+    items = [("prose/guide.md", "blob", "https://raw.example/r/prose/guide.md"),
              ("m.py", "blob", "https://raw.example/r/m.py")]
 
     async def fake_fetch_tree_fast(owner, repo, headers, url):
@@ -253,7 +253,7 @@ async def test_the_github_stream_says_each_markdown_pages_lines(monkeypatch):
     chunks = [c async for c in UnifiedParserService.stream_parse_url("https://github.com/test/r", depth=2)]
     measured = [data for kind, data in _events("".join(chunks)) if kind == "lines"]
     assert len(measured) == 1 and measured[0]["lines"] == 42
-    assert measured[0]["id"].endswith("docs/guide.md")
+    assert measured[0]["id"].endswith("prose/guide.md")
     drawn = {data["id"] for kind, data in _events("".join(chunks)) if kind == "node"}
     assert measured[0]["id"] in drawn, "the lines name a page the stream drew under another id"
 
@@ -269,7 +269,7 @@ def test_a_repository_parsed_whole_as_a_showcase_has_no_import_and_its_prose_fol
             "size": 0,
             "root": {"name": "r", "size": 0, "files": [
                 {"name": "a.py", "size": 0, "raw": "import os\n\n\ndef f():\n    return os.sep\n"}],
-                "folders": [{"name": "docs", "size": 0, "folders": [],
+                "folders": [{"name": "prose", "size": 0, "folders": [],
                              "files": [{"name": "guide.md", "size": 0, "raw": "# Guide\n" + "line\n" * 999}]}]},
             "is_partial": False,
         },
@@ -278,5 +278,5 @@ def test_a_repository_parsed_whole_as_a_showcase_has_no_import_and_its_prose_fol
     }
     nodes = TestClient(app).post("/parse/unified", json=body).json()["results"]["graph"]["nodes"]
     kinds = {key: (node.get("metadata") or node).get("kind") for key, node in nodes.items()}
-    assert "import" not in kinds.values() and "file::r/docs/guide.md" not in kinds
-    assert (nodes["dir::r/docs"].get("metadata") or nodes["dir::r/docs"])["meta"]["lines"] == 1000
+    assert "import" not in kinds.values() and "file::r/prose/guide.md" not in kinds
+    assert (nodes["dir::r/prose"].get("metadata") or nodes["dir::r/prose"])["meta"]["lines"] == 1000
