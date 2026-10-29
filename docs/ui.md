@@ -438,7 +438,12 @@ Id `graph-settings-panel`. In the default arrangement.
   where a node's own colour is its construct's, so the crate graph under *Auto*
   has no *Package* row. The canvas, the vis-network renderer and the key take
   the fill from one function, `paintedColor`. A record (`ngon`) is a row per
-  side count, and says it: *Struct · 4 sides*.
+  side count, and says it: *Struct · 4 sides*. A Showcase carries a key of its
+  own in the legend's place, drawn in the canvas's svg so that a picture of the
+  canvas holds it: one line, wrapped to the canvas's width, of a dot for each
+  colour the code below the files is drawn in, by kind, most numerous first,
+  and a line for each link drawn. It has no count and no heading, and a link
+  switched off leaves it.
 - **Right-click** opens the [radial menu](#the-radial-menu).
 
 ### A node's source

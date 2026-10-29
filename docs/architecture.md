@@ -430,7 +430,10 @@ when `dot`, `gap`, `nest` or `sized` changes; which links are drawn, how strongl
 whether a dot is named, the canvas changes in place. A member the canvas would
 draw grey -- a name, a constant, an argument -- is given its kind's hue
 (`MEMBER_COLOURS`), and each link its kind's colour (`LINK_COLOURS`), none a
-pink or a red.
+pink or a red. Its key is its own (`legend_marks.showcaseKey`), drawn in the
+canvas's svg rather than over it, so a showgraph's picture holds it: a line of
+each colour the code below the files is drawn in and each link drawn, with no
+count and no heading.
 
 The parsers folder of this repository, parsed at depth 3, is 2,008 nodes. The
 Map lays it out 6,987 units by 4,323, and the Showcase at its defaults 449 by
