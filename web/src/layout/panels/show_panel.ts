@@ -177,6 +177,21 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
         onclick: () => open({ kind: 'index', name: '', view }),
       }, indexViews[view].label)));
 
+  /** A family alone, or with each of its projects' code in it. */
+  const familyViews = {
+    estate: { label: 'the family', title: 'draw the family' },
+    code: { label: "with each project's code", title: "draw the family with each of its projects' code in it" },
+  } as const;
+  const familySwitch = (current: ShowAddress) =>
+    m('div.show__views', (['estate', 'code'] as const).map((view) =>
+      m('button.estate-view__draw.show__view', {
+        'data-view': view,
+        class: current.view === view ? 'is-current' : '',
+        'aria-pressed': current.view === view ? 'true' : 'false',
+        title: familyViews[view].title,
+        onclick: () => open({ kind: 'family', name: current.name, view }),
+      }, familyViews[view].label)));
+
   /** The way from every family to what is drawn, each step a link back to it. */
   const trailView = (current: ShowAddress, subjects: Parameters<typeof trail>[1]) => {
     const levels = trail(current, subjects);
@@ -238,7 +253,7 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
           ? m('div.show__now', { 'data-show': formatShow(current) }, [
               trailView(current, subjects),
               current.kind === 'project' ? viewSwitch(current)
-                : current.kind === 'index' ? indexSwitch(current) : null,
+                : current.kind === 'index' ? indexSwitch(current) : familySwitch(current),
               bases
                 ? m('div.show__legend', Object.entries(bases).map(([basis, look]) =>
                     m('span.show__basis', { 'data-basis': basis }, [

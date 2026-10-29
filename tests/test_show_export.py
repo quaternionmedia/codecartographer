@@ -52,12 +52,14 @@ def test_a_subject_is_the_index_a_family_or_a_project_by_a_name_the_address_take
             show_export.parse_subject(bad)
 
 
-def test_all_is_every_family_then_every_public_project_then_the_index() -> None:
+def test_all_is_every_public_project_then_every_family_then_the_index() -> None:
     chosen = show_export.subjects(_reading(), "all")
-    # The index's code view, the whole corpus, is drawn from the projects'
-    # code maps this export writes, so it is drawn after them. Mutation: draw
-    # the index first -- its code view reads code maps not yet written, and
-    # this fails.
+    # A family's code view is drawn from its projects' code maps this export
+    # writes, so every project is drawn before any family. Mutation: draw the
+    # families first -- each family's code view reads code maps not yet
+    # written, and this fails.
+    kinds = [s.kind for s in chosen]
+    assert kinds.index("family") > max(i for i, kind in enumerate(kinds) if kind == "project")
     assert chosen[-1] == Subject("index")
     assert [s.name for s in chosen if s.kind == "family"] == ["infrastructure", "instruments", "performing"]
     assert [s.name for s in chosen if s.kind == "project"] == ["carlos", "moat", "qm", "stomp"]
@@ -76,13 +78,16 @@ def test_with_an_inventory_a_project_is_one_the_host_lists() -> None:
     assert [s.name for s in show_export.subjects(reading, "all") if s.kind == "project"] == ["carlos", "moat", "qm"]
 
 
-def test_a_project_has_three_views_the_index_three_and_a_family_one() -> None:
+def test_a_project_has_three_views_a_family_two_and_the_index_one() -> None:
     assert Subject("project", "carlos").views == ("estate", "code", "system")
-    assert Subject("family", "performing").views == ("estate",)
-    # Its code view is the whole corpus, and its full view the same with every
-    # node drawn and no name. Mutation: give the index its estate alone -- the
-    # whole corpus is never drawn, and this fails.
-    assert Subject("index").views == ("estate", "code", "full")
+    # A family's code view is the family with its projects' code in it.
+    # Mutation: give a family its estate alone -- no family's code is drawn,
+    # and this fails.
+    assert Subject("family", "performing").views == ("estate", "code")
+    # The whole corpus is drawn a family at a time. Mutation: draw the index's
+    # code and full views again -- a picture of every project's code at once,
+    # and this fails.
+    assert Subject("index").views == ("estate",)
     assert Subject("project", "carlos").folder == "project/carlos"
     assert Subject("index").folder == "index"
 

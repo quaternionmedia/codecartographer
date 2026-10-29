@@ -382,7 +382,7 @@ uv run codecarto show export --corpus ../qm --subject project:carlos,family:perf
 | Option | Meaning |
 |---|---|
 | `--corpus` | A checkout of the governance corpus; its `families.json` names the subjects |
-| `--subject` | `all` (the default): every family, every public project and the index, in that order. Or `index`, `family:<name>` and `project:<name>`, comma-separated |
+| `--subject` | `all` (the default): every public project, every family and the index, in that order. Or `index`, `family:<name>` and `project:<name>`, comma-separated |
 | `--out` | Where each subject's folder is written |
 
 Each subject's folder -- `index/`, `family/<name>/`, `project/<name>/` --
@@ -390,12 +390,14 @@ holds `show.json` and a picture of each view the window draws: `estate.svg`,
 `code.svg` (a project's code map, a Showcase as the window opens it, drawn to
 its symbols and held to the window's floor of 100 nodes, with its key; the
 document's `metadata.depth` says how deep it was drawn) and `system.png` (a
-project's system view, which draws in HTML). The index's `code.svg` is the
-whole corpus: every family with each project's code map in it, drawn last, from
-the code maps this export has just written under `--out` (the server reads them
-through `CODECARTO_SHOW_DOCS`). Its `full.svg` is the same graph with every node
-drawn and no name on it; the document keeps that view's metadata, not the graph
-again. A view the window cannot draw here is stated in
+project's system view, which draws in HTML). A family's `code.svg` is the
+family with each of its projects' code map in it, its subfamilies' too, drawn
+after every project from the code maps this export has just written under
+`--out` (the server reads them through `CODECARTO_SHOW_DOCS`); its document
+names each project whose code it drew and the commit its map was drawn from,
+and keeps none of their graphs again. The index is drawn as every family alone:
+every project's code map in one picture is several times what a page can hold,
+so the corpus is drawn a family at a time. A view the window cannot draw here is stated in
 `show.json` with the window's reason, and has no picture. A system view is
 composed from the project's clone on this disk, so it is drawn only when that
 clone is at its default branch's head; otherwise the document says the clone

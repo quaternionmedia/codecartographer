@@ -5,6 +5,7 @@
  *   ?show=index&view=code              every family with each project's code: the whole corpus
  *   ?show=index&view=full              the whole corpus, every node drawn and no name
  *   ?show=family:performing            one family
+ *   ?show=family:performing&view=code  the same family with each of its projects' code
  *   ?show=project:carlos               one project's estate view
  *   ?show=project:carlos&view=code     the same project's code map
  *
@@ -30,9 +31,9 @@ export interface ShowAddress {
   kind: ShowKind;
   /** Empty for the index. */
   name: string;
-  /** A project has three views and the index three (its code view is the
-   *  whole corpus, its full view the same with no names); a family's is
-   *  always `estate`. */
+  /** A project has three views, a family two (its code view is the family
+   *  with each of its projects' code) and the index three (its code view is
+   *  the whole corpus, its full view the same with no names). */
   view: AddressView;
 }
 
@@ -82,14 +83,14 @@ export function parseShow(search: string): ShowAddress | null {
   const asked = params.get('view');
   const view: ShowView = kind === 'project' && asked && (VIEWS as readonly string[]).includes(asked)
     ? asked as ShowView
-    : 'estate';
+    : kind === 'family' && asked === 'code' ? 'code' : 'estate';
   return { kind, name, view };
 }
 
 /** The query string for an address, with the view left out when it is `estate`. */
 export function formatShow(address: ShowAddress): string {
   if (address.kind === 'index') return address.view === 'estate' ? '?show=index' : `?show=index&view=${address.view}`;
-  const view = address.kind === 'project' && address.view !== 'estate' ? `&view=${address.view}` : '';
+  const view = address.view !== 'estate' ? `&view=${address.view}` : '';
   return `?show=${address.kind}:${encodeURIComponent(address.name)}${view}`;
 }
 
@@ -135,7 +136,10 @@ export function trail(address: ShowAddress, subjects: TrailSubjects | null): Sho
   };
 
   if (address.kind === 'family') {
-    return [[index], ...chain(address.name).map((name) => [family(name)])];
+    // A family's code view ends the trail as itself.
+    const levels = chain(address.name).map((name) => [family(name)]);
+    levels[levels.length - 1] = [address];
+    return [[index], ...levels];
   }
   const claims = subjects?.projects.find((p) => p.name === address.name)?.families ?? [];
   if (!claims.length) return [[index], [address]];

@@ -717,16 +717,38 @@ def _code_map(reading: Reading, name: str) -> dict[str, Any] | None:
 
 
 def corpus_graph(reading: Reading, among: list[Path] | None = None):
-    """Every family, each member drawn once, and inside each project its code.
-
-    The index (`index_graph`), with each project's code map from the corpus's
-    show document for it. A code node is `code::<project>::<id>`, one depth
-    below its project for each depth it had in the map, marked `code` so the
-    layout packs it as a disc round the project. A private member has no
-    document and is drawn as the index draws it.
-    """
+    """Every family, each member drawn once, and inside each project its code:
+    the index (`index_graph`) with its projects' code (`_with_code`)."""
     graph = index_graph(reading, among)
     graph.graph["subject"] = "corpus"
+    _with_code(graph, reading)
+    return graph
+
+
+def family_code_graph(reading: Reading, name: str, among: list[Path] | None = None):
+    """One family with each of its projects' code inside it, its subfamilies'
+    too: the family's code view, the part of the whole corpus that is this
+    family's (`family_graph`, `_with_code`).
+
+    **ONE PER FAMILY, NOT ONE FOR THE CORPUS.** Every project's code map drawn
+    to its symbols is some thirty thousand nodes, a picture several times the
+    size the whole corpus's was; a family's is a fraction of that, and the
+    family is the grouping its projects are read in already."""
+    graph = family_graph(reading, name, among)
+    _with_code(graph, reading)
+    return graph
+
+
+def _with_code(graph, reading: Reading) -> None:
+    """Each project `graph` draws, with its code map from the corpus's show
+    document for it inside it.
+
+    A code node is `code::<project>::<id>`, one depth below its project for
+    each depth it had in the map, marked `code` so the layout packs it as a
+    disc round the project. A private member has no document and is drawn as
+    the estate draws it. Sets `code_drawn` (each project drawn with its code,
+    and the commit its map was drawn from) and `code_missing`.
+    """
     drawn: dict[str, str | None] = {}
     missing: list[str] = []
     for repo, attrs in list(graph.nodes(data=True)):
@@ -764,7 +786,6 @@ def corpus_graph(reading: Reading, among: list[Path] | None = None):
                 _edge(graph, repo, code_id, PARSED, "contains", "its code")
         drawn[name] = code["commit"]
     graph.graph.update(code_drawn=drawn, code_missing=missing)
-    return graph
 
 
 def _records(root: Path, name: str) -> list[dict[str, str]] | None:
@@ -888,7 +909,7 @@ def caveat(reading: Reading, graph) -> str:
         parts.append(f"{len(unread)} member(s) had no clone beside this one, or "
                      f"one git could not read, so nothing was measured for them: "
                      f"{', '.join(unread)}.")
-    if graph.graph.get("subject") == "corpus":
+    if "code_drawn" in graph.graph:
         drawn = graph.graph.get("code_drawn") or {}
         missing = graph.graph.get("code_missing") or []
         parts.append(f"Each project's code is the code map its show document in "
@@ -917,16 +938,16 @@ def metadata(reading: Reading, graph, options: Any = None) -> dict[str, Any]:
         "type": getattr(options, "type", None),
         "palette_id": getattr(options, "palette_id", "0"),
         "bases": {basis: dict(LOOK[basis]) for basis in (CLAIM, DECLARED, MEASURED)
-                  + ((PARSED,) if graph.graph.get("subject") == "corpus" else ())},
+                  + ((PARSED,) if "code_drawn" in graph.graph else ())},
         "declared": graph.graph.get("declared"),
         "measured": graph.graph.get("measured"),
         "unread": graph.graph.get("unread") or [],
         "undeclared": graph.graph.get("undeclared") or [],
         "unstated": len(reading.unstated),
         "notes": list(reading.notes),
-        # The whole corpus: each project whose code is drawn, and the commit
-        # of its default branch its code map was drawn from.
-        **({"code": graph.graph.get("code_drawn") or {}} if graph.graph.get("subject") == "corpus" else {}),
+        # The whole corpus, or a family's code view: each project whose code
+        # is drawn, and the commit of its default branch its map was drawn from.
+        **({"code": graph.graph.get("code_drawn") or {}} if "code_drawn" in graph.graph else {}),
         "caveat": caveat(reading, graph),
     }
 
