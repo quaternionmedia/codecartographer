@@ -1,3 +1,5 @@
+import re
+
 import networkx as nx
 from typing import Callable
 
@@ -5,6 +7,44 @@ from codecarto.models.plot_data import LayoutType
 
 
 ########################   OLD CODE   ########################
+_SPEC = re.compile(r"^\s*([^()]*?)\s*\((.*)\)\s*$")
+
+
+def layout_spec(name: str) -> tuple[str, dict[str, str]]:
+    """A layout's name, and the parameters written after it in brackets.
+
+    `Showcase(dot=2, gap=0.5)` is the Showcase layout with its `dot` and `gap`
+    set; a name with no brackets has none. The name is the one string every
+    route already carries from the window to `GraphSerializer` -- a stream's,
+    a showgraph's, a floor's layout pass -- so a layout's settings reach it
+    with no field of their own, and a cached parse is keyed by them too.
+    """
+    match = _SPEC.match(str(name or ""))
+    if not match:
+        return str(name or "").strip(), {}
+    params: dict[str, str] = {}
+    for part in match.group(2).split(","):
+        key, _, value = part.partition("=")
+        if key.strip() and value.strip():
+            params[key.strip().lower()] = value.strip()
+    return match.group(1), params
+
+
+def _value(text: str):
+    """A parameter's value as the layout takes it: a number, a yes or no, or the text."""
+    lowered = text.lower()
+    if lowered in ("true", "yes", "on"):
+        return True
+    if lowered in ("false", "no", "off"):
+        return False
+    for kind in (int, float):
+        try:
+            return kind(text)
+        except ValueError:
+            pass
+    return text
+
+
 def layout_key(name: str) -> str:
     """A layout name as the registry spells it.
 
@@ -15,12 +55,16 @@ def layout_key(name: str) -> str:
     normalise to underscores, and an already-suffixed name is left alone, so
     every spelling of one layout reaches the same entry.
     """
-    cleaned = str(name or "").strip().lower().replace(" ", "_").replace("-", "_")
+    base, params = layout_spec(name)
+    cleaned = base.strip().lower().replace(" ", "_").replace("-", "_")
     while "__" in cleaned:
         cleaned = cleaned.replace("__", "_")
     if not cleaned:
         return ""
-    return cleaned if cleaned.endswith("_layout") else f"{cleaned}_layout"
+    key = cleaned if cleaned.endswith("_layout") else f"{cleaned}_layout"
+    # Its parameters stay with it, in one order, so two spellings of one
+    # setting are one key.
+    return key + ("(" + ",".join(f"{k}={v}" for k, v in sorted(params.items())) + ")" if params else "")
 
 
 class Positions:
@@ -76,10 +120,12 @@ class Positions:
         from codecarto.models.custom_layouts.sorted_square_layout import sorted_square_layout
         from codecarto.models.custom_layouts.compound_layout import compound_layout
         from codecarto.models.custom_layouts.map_layout import map_layout
+        from codecarto.models.custom_layouts.showcase_layout import showcase_layout
 
         self.add_layout("sorted_square_layout", sorted_square_layout, ["graph"])
         self.add_layout("compound_layout", compound_layout, ["graph"])
         self.add_layout("map_layout", map_layout, ["graph"])
+        self.add_layout("showcase_layout", showcase_layout, ["graph", "dot", "gap", "nest"])
 
     def get_layout_names(self) -> list:
         """Get all layout names from the list of available layouts
@@ -135,6 +181,7 @@ class Positions:
             The parameters of the layout
         """
         # Check if the provided name in list (_layouts: list[LayoutType])
+        name = layout_spec(name)[0]
         wanted = layout_key(name)
         for layout in self._layouts:
             if layout["name"] == name or layout["name"] == wanted:
@@ -176,6 +223,7 @@ class Positions:
         # and the next line failed with `UnboundLocalError` -- a message about
         # a local variable, for a caller who chose a layout that is not
         # registered.
+        name = layout_spec(name)[0]
         wanted = layout_key(name)
         layout_func = None
         layout_params = []
@@ -207,9 +255,10 @@ class Positions:
                     # Create the list of lists (shells)
                     shells = list(grouped_nodes.values())
                     layout_kwargs["nshells"] = shells
-            elif param != "G":
-                # TODO Handle other parameters here
-                pass
+            elif param in kwargs and param not in ("G", "graph"):
+                # A parameter the layout declares, set by its spec
+                # (`get_node_positions`).
+                layout_kwargs[param] = kwargs[param]
 
         return layout_func(G=_graph, **layout_kwargs)
 
@@ -229,8 +278,15 @@ class Positions:
                 The positions of nodes for layout.
         """
         seed = -1
+        layout_name, given = layout_spec(layout_name)
         layout_params = self.get_layout_params(layout_name)
+        unknown = sorted(set(given) - set(layout_params))
+        if unknown:
+            raise ValueError(
+                f"Layout {layout_name!r} takes no parameter {', '.join(unknown)}; "
+                f"it takes {', '.join(p for p in layout_params if p != 'graph') or 'none'}")
         layout_kwargs: dict = {"G": graph}
+        layout_kwargs.update({param: _value(value) for param, value in given.items()})
         for param in layout_params:
             if param == "seed":
                 import random
@@ -248,23 +304,10 @@ class Positions:
                 # Create the list of lists (shells)
                 shells = list(grouped_nodes.values())
                 layout_kwargs["nshells"] = shells
-            elif param != "graph":
-                # **REACHED BY NOTHING THE REGISTRY CURRENTLY HOLDS.** Every
-                # layout in `add_networkx_layouts`/`add_custom_layouts` declares
-                # only `graph`, `seed` or `nshells`, and the branches above take
-                # the first two unconditionally and `nshells` for the one layout
-                # that asks for it.
-                #
-                # **AN UNHANDLED PARAMETER IS DROPPED SILENTLY**, and the layout
-                # then runs on networkx's default for it -- a different picture,
-                # not an error. That is the cost of adding a layout with a
-                # fourth parameter name, and this is the place to pay it.
-                #
-                # The guard reads `graph` because that is the name layouts
-                # register. It read `G` -- the keyword networkx takes, which no
-                # layout declares -- so it matched nothing and this branch ran
-                # once per call for `graph` itself.
-                pass
+            # Any other parameter a layout declares is set by its spec, above
+            # (`layout_spec`): `Showcase(dot=2)` sets the Showcase's `dot`. One
+            # the spec leaves out takes the layout's own default, and one the
+            # layout does not declare is refused rather than dropped.
 
         # Compute layout positions
         pos: dict = self.get_positions(layout_name, **layout_kwargs)

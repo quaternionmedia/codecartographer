@@ -20,6 +20,17 @@
  * so `metadata.layout` reads the way the settings panel labels it.
  */
 
+import { SHOWCASE_LAYOUT, showcaseOf, showcaseSpec, type ShowcaseSettings } from './showcase.js';
+
+/**
+ * The layout a request asks for: its backend name, and for the Showcase its
+ * settings after it, `Showcase(dot=2,gap=0.5,nest=true)`, which the server
+ * hands the layout (`position_service.layout_spec`).
+ */
+export function layoutSpec(styling: { layout: string; showcase?: ShowcaseSettings }): string {
+  return styling.layout === SHOWCASE_LAYOUT ? showcaseSpec(showcaseOf(styling)) : backendLayoutName(styling.layout);
+}
+
 export function backendLayoutName(registryName: string): string {
   const trimmed = (registryName ?? '').trim();
   if (!trimmed) return '';

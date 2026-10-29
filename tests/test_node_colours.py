@@ -98,6 +98,24 @@ def test_no_colour_the_canvas_falls_back_on_is_red_or_pink():
     assert red == {}, f"the canvas falls back on red or pink: {red}"
 
 
+SHOWCASE = ROOT / "web" / "src" / "features" / "graph" / "services" / "showcase.ts"
+
+
+def test_no_colour_a_showcase_draws_is_red_or_pink():
+    # A Showcase gives each member kind a hue of its own and each link kind a
+    # line of its own (`MEMBER_COLOURS`, `LINK_COLOURS`). Mutation: draw a
+    # flow in #e0457b -- and this fails.
+    source = SHOWCASE.read_text(encoding="utf-8")
+    colours: dict[str, str] = {}
+    for table in ("MEMBER_COLOURS", "LINK_COLOURS"):
+        body = re.search(table + r"[^=]*= \{(.*?)\};", source, re.S)
+        assert body, f"showcase.ts's {table} was not found"
+        colours.update(re.findall(r"(\w+): '(#[0-9a-fA-F]{6})'", body.group(1)))
+    assert {"calls", "uses", "flows", "imports", "name", "constant", "argument"} <= set(colours), colours
+    red = {kind: c for kind, c in colours.items() if _red_or_pink(c)}
+    assert red == {}, f"a Showcase draws red or pink: {red}"
+
+
 def test_no_outline_the_canvas_draws_round_a_group_is_red_or_pink():
     # A directory's outline and a file's, where no family's hue colours them
     # (`_paintOutlines`). Mutation: draw a file's outline in rgba(155,89,182)

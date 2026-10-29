@@ -487,6 +487,16 @@
   gap: var(--spacing-md);
 }
 
+/* A link kind's colour beside its toggle (the Showcase's links) */
+.panel-settings__swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
 /* Toggle switch */
 .panel-settings__toggle {
   position: relative;

@@ -1,3 +1,5 @@
+import type { ShowcaseSettings } from '../features/graph/services/showcase';
+
 /**
  * The option shapes the application's state carries.
  *
@@ -68,6 +70,10 @@ export interface GraphStylingOptions {
 
   // Compound layout — show translucent bounding circles per dir/file group
   showCompoundGroups?: boolean;
+
+  // The Showcase layout's settings (`features/graph/services/showcase.ts`);
+  // what is left out takes its default.
+  showcase?: ShowcaseSettings;
 
   // Allow dynamic properties for extensibility
   [key: string]: unknown;

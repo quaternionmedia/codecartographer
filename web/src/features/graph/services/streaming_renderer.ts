@@ -23,6 +23,9 @@ import { fitBadgeText, sourceTarget, type SourceTarget } from './node_info';
 import { BADGE_MARGIN, badgePlace } from './source_badge';
 import { FIT_DEFAULTS, fitTransform, framedExtents } from './fit';
 import { placeOutlineLabels } from './outline_labels';
+import { HOLDING_KINDS, LINK_COLOURS, SHOWCASE_LAYOUT, dotRadius, linkOf, memberColour, showcaseOf,
+  showcasePadding, withShowcase, type ShowcaseLink, type ShowcaseOptions }
+  from './showcase';
 import type { Box, FramedNode, FramedOutline } from './fit';
 
 /**
@@ -108,6 +111,11 @@ export class StreamingGraphRenderer {
   private _map = false;
   /** Whether a map's names are on: the Graph Settings toggle still turns them off. */
   private _mapNames = true;
+  /**
+   * The Showcase's settings when the graph is drawn as one (`showcase.ts`):
+   * a map whose symbols and members are dots, with the links between them.
+   */
+  private _showcase: ShowcaseOptions | null = null;
   /** Whether an outline is named; not on a map drawn with no names (`presentAsMap`). */
   private _outlinesNamed = true;
   private _zoomK = 1;
@@ -185,6 +193,10 @@ export class StreamingGraphRenderer {
       interactionProfile: styling?.interactionProfile ?? 'default',
       colorBy: styling?.colorBy ?? 'auto',
     };
+    if (styling?.layout === SHOWCASE_LAYOUT) {
+      this._showcase = showcaseOf(styling);
+      this._map = true;
+    }
 
     container.innerHTML = '';
     this._container = container;
@@ -316,7 +328,17 @@ export class StreamingGraphRenderer {
   updateStyling(options: Partial<GraphStylingOptions>): void {
     Object.assign(this.styling, options);
     if (options.showNodeLabels !== undefined) this._mapNames = options.showNodeLabels;
-    if (options.showNodeLabels !== undefined || options.showLabelsByDepth !== undefined) {
+    // The Showcase's links and dots' names are drawn in place; its dot size,
+    // gap and nesting are laid out again by the server (`layout_context`).
+    if (options.showcase !== undefined && this._showcase) {
+      this._showcase = withShowcase(this._showcase, options.showcase);
+      const shown = this._showcase;
+      this.linkGroup.selectAll<SVGLineElement, unknown>('line[data-kind]')
+        .style('display', (_, i, els) => (shown.links[els[i].getAttribute('data-kind') as ShowcaseLink] ? null : 'none'))
+        .attr('stroke-opacity', shown.linkOpacity);
+    }
+    if (options.showNodeLabels !== undefined || options.showLabelsByDepth !== undefined
+        || (options.showcase !== undefined && this._showcase)) {
       this.labelGroup
         .selectAll<SVGTextElement, unknown>('text')
         .style('display', (_, i, els) => {
@@ -492,17 +514,21 @@ export class StreamingGraphRenderer {
     this._nodeGroupEl.set(node.id, group.node()!);
 
     const baseFill = this._fillFor(node);
+    const dot = this._isDot(node);
     group
       .append('path')
-      // Shapes come from `node_shapes`, so the legend's swatches match.
-      .attr('d', canvasPath(node, size))
+      // Shapes come from `node_shapes`, so the legend's swatches match; a
+      // Showcase's dot is a dot whatever it is, its colour saying what.
+      .attr('d', canvasPath(dot ? { shape: 'circle' } : node, size))
       .attr('fill', baseFill)
       // Remembered so a colour override can be undone without re-deriving
       // the parser's visual grammar here.
       .attr('data-base-fill', baseFill)
-      .attr('fill-opacity', this.styling.nodeOpacity!)
+      .attr('fill-opacity', dot ? 0.95 : this.styling.nodeOpacity!)
       .attr('stroke', '#fff')
-      .attr('stroke-width', this.styling.nodeBorderWidth!);
+      .attr('stroke-width', dot ? 0 : this.styling.nodeBorderWidth!)
+      // And its border, which a pin's gold one is undone to.
+      .attr('data-base-stroke-width', dot ? 0 : this.styling.nodeBorderWidth!);
 
     // A producer's `hover` says more than the label -- a capability's claim, a
     // region's measured use -- and edges already show theirs.
@@ -609,8 +635,14 @@ export class StreamingGraphRenderer {
     // producer's care at the far end, lost at the last step. A top-level field
     // still wins when a caller sets one.
     const md = (edge.metadata ?? {}) as Record<string, unknown>;
-    const colour = (edge.color as string) || (md.color as string) || '#555';
-    const width = typeof md.size === 'number' ? md.size : this.styling.edgeWidth!;
+    const kind = String(edge.kind ?? md.kind ?? '');
+    // A Showcase draws no line that only says what holds what -- the clusters
+    // say it -- and each link in its own colour, as faint as it is set.
+    if (this._showcase && HOLDING_KINDS.has(kind)) return;
+    const link = this._showcase ? linkOf(kind) : null;
+    const colour = link ? LINK_COLOURS[link] : (edge.color as string) || (md.color as string) || '#555';
+    const width = link ? this._showcase!.dot * 0.35
+      : typeof md.size === 'number' ? md.size : this.styling.edgeWidth!;
     const style = (edge.style as string) || (md.style as string) || 'solid';
     const title = (md.hover as string) || (md.title as string) || '';
 
@@ -625,9 +657,13 @@ export class StreamingGraphRenderer {
       .attr('x2', tgt?.x ?? 0)
       .attr('y2', tgt?.y ?? 0)
       .attr('stroke', colour)
-      .attr('stroke-opacity', this.styling.edgeOpacity! * 0.6)
+      .attr('stroke-opacity', link ? this._showcase!.linkOpacity : this.styling.edgeOpacity! * 0.6)
       .attr('stroke-width', width)
       .attr('opacity', 0);
+    if (link) {
+      line.attr('data-kind', link);
+      if (!this._showcase!.links[link]) line.style('display', 'none');
+    }
     if (style === 'dashed') line.attr('stroke-dasharray', '6,4');
     else if (style === 'dotted') line.attr('stroke-dasharray', '2,3');
     if (title) line.append('title').text(title);
@@ -886,19 +922,28 @@ export class StreamingGraphRenderer {
 
   /** The size a node is drawn at: the canvas's node size by its depth, larger on a map. */
   private _nodeSize(n: GraphNode): number {
+    if (this._isDot(n)) return dotRadius(n.depth, this._showcase!.dot);
     return this.styling.nodeSize! * depthSizeMultiplier(n) * (this._map ? MAP_NODE_SCALE : 1);
   }
 
+  /** Whether a node is drawn as a dot: every node on a Showcase, the server
+   *  laying it out at the same size (`show_layout.showcase_radius`). */
+  private _isDot(_n: GraphNode): boolean {
+    return this._showcase !== null;
+  }
+
   /** How far a node's shape reaches from its centre: a shape drawn at `size`
-   *  reaches 1.5 × size at most (a triangle's apex). */
+   *  reaches 1.5 × size at most (a triangle's apex), and a dot its radius. */
   private _extentOf(n: GraphNode): number {
-    return 1.5 * this._nodeSize(n);
+    return (this._isDot(n) ? 1 : 1.5) * this._nodeSize(n);
   }
 
   /** How far an outline is drawn past what it encloses, and how far each node in it reaches. */
   private _outlineSpacing(): OutlineSpacing {
     return {
-      padding: 40,
+      // A Showcase's outlines sit a few dots past their clusters, as the
+      // server packs them (`show_layout.SHOWCASE_PAD`).
+      padding: this._showcase ? showcasePadding(this._showcase) : 40,
       baseNodeSize: this.styling.nodeSize! * 3.0 * (this._map ? MAP_NODE_SCALE : 1),
       radiusOf: (n) => this._extentOf(n),
     };
@@ -1104,6 +1149,7 @@ export class StreamingGraphRenderer {
 
   /** Whether a node's name is drawn: on a map, unless an outline already says it. */
   private _labelShown(node: GraphNode): boolean {
+    if (this._isDot(node)) return this._showcase!.names;
     if (this._map) return this._mapNames && node.label_at !== 'none';
     return this._shouldShowLabel((node.depth as number) ?? 2);
   }
@@ -1228,6 +1274,8 @@ export class StreamingGraphRenderer {
       else if (kind === 'struct' || kind === 'union') node.color = '#4a90d9';
       else if (kind === 'import') node.color = '#facc15';
       else if (kind === 'call') node.color = this.themeFontMuted;
+      // A Showcase's members are most of its dots: each kind in its own hue.
+      else if (this._showcase && memberColour(kind)) node.color = memberColour(kind)!;
       else node.color = '#95a5a6';
     }
   }

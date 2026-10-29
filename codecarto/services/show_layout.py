@@ -42,7 +42,7 @@ small enough to frame.
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, NamedTuple
 
 import networkx as nx
 
@@ -81,6 +81,32 @@ CODE_REACH = 0.5 * 4.0 * 1.8 * MAP_NODE_SCALE  # a file's reach past its radius
 CODE_PAD = 40.0 + CODE_REACH  # the canvas's outline padding, and that reach
 CODE_GROUP_GAP = 16.0   # between two directories' outlines
 CANVAS_ASPECT = 1400 / 900  # the canvas an exported picture is drawn in, width over height
+
+
+class Spacing(NamedTuple):
+    """How far apart a code map's nodes are packed (`_disc`, `_rows`): between
+    two leaves of one disc, between two discs packed round it, past a disc the
+    canvas does not outline, past a directory's disc and a file's that it
+    does, and between two things nothing holds."""
+    leaf: float
+    group: float
+    reach: float
+    pad: tuple[float, float] = (CODE_PAD, CODE_PAD)
+    apart: float = GAP
+
+
+MAP_SPACING = Spacing(FILE_GAP, CODE_GROUP_GAP, CODE_REACH)
+# The Showcase's defaults (`showcase`): a dot's radius, and the gap between two.
+SHOWCASE_DOT = 2.0
+SHOWCASE_GAP = 0.5
+# A Showcase's dot by its depth, in a member's: a directory's twice as wide, a
+# file's half again. `DOT_SCALE` in `web/src/features/graph/services/showcase.ts`,
+# which a test holds equal.
+SHOWCASE_SCALE = {0: 2.0, 1: 1.5}
+# How far an outline is drawn past what it encloses on a Showcase, in dots: a
+# directory's this, and a file's half (`showcasePadding`, and the canvas's
+# `computeGroupBounds`).
+SHOWCASE_PAD = 4.0
 GOLDEN_ANGLE = math.pi * (3 - math.sqrt(5))
 
 
@@ -211,17 +237,18 @@ def _ring(hub_r: float, items: list[tuple[str, float]], arcs: list[float],
     return placed, radius
 
 
-def _rows(circles: list[tuple[str, float]]) -> dict[str, tuple[float, float]]:
-    """Circles in rows, largest first, about `ASPECT` times wider than tall, centred."""
+def _rows(circles: list[tuple[str, float]], gap: float = GAP) -> dict[str, tuple[float, float]]:
+    """Circles in rows, largest first, `gap` apart, about `ASPECT` times wider
+    than tall, centred."""
     if not circles:
         return {}
     ordered = sorted(circles, key=lambda c: -c[1])
-    area = sum((2 * r + GAP) ** 2 for _, r in ordered)
+    area = sum((2 * r + gap) ** 2 for _, r in ordered)
     width = max(max(2 * r for _, r in ordered), math.sqrt(area * ASPECT))
     rows: list[list[tuple[str, float]]] = [[]]
     used = 0.0
     for circle in ordered:
-        span = 2 * circle[1] + (GAP if rows[-1] else 0.0)
+        span = 2 * circle[1] + (gap if rows[-1] else 0.0)
         if rows[-1] and used + span > width:
             rows.append([])
             used, span = 0.0, 2 * circle[1]
@@ -231,13 +258,13 @@ def _rows(circles: list[tuple[str, float]]) -> dict[str, tuple[float, float]]:
     y = 0.0
     for row in rows:
         height = max(2 * r for _, r in row)
-        row_width = sum(2 * r for _, r in row) + GAP * (len(row) - 1)
+        row_width = sum(2 * r for _, r in row) + gap * (len(row) - 1)
         x = -row_width / 2
         for name, r in row:
             centres[name] = (x + r, y + height / 2)
-            x += 2 * r + GAP
-        y += height + GAP
-    shift = (y - GAP) / 2
+            x += 2 * r + gap
+        y += height + gap
+    shift = (y - gap) / 2
     return {name: (cx, cy - shift) for name, (cx, cy) in centres.items()}
 
 
@@ -343,6 +370,9 @@ def pack(gjgf: dict[str, Any], subject: str) -> dict[str, Any]:
 
 
 _CONTAINS = frozenset({"contains", "field_of"})
+# The disc `code_map` gathers what nothing holds into, on a Showcase: a key no
+# node id is.
+_LOOSE = "\0loose"
 
 
 def _pack_around(core: float, circles: list[tuple[str, float]], gap: float,
@@ -428,16 +458,20 @@ def _hilbert(n: int, x: int, y: int) -> int:
 
 
 def _patches(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, str],
+             gap: float = FILE_GAP, pad: float = CODE_PAD, grouped: bool = True,
              ) -> tuple[dict[str, tuple[float, float]], float]:
     """`hub`'s code as one evenly full disc round it, each directory's code a
     patch of the disc; and the disc's radius with the canvas's outline padding.
 
-    The places are a sunflower's (`_sunflower`), spaced as a code map spaces a
-    directory's files, taken in the order a Hilbert curve passes them and given
-    to the code depth first, each directory before what it holds: a run along
-    the curve is a compact patch, so what a directory holds lies together. The
-    corpus outlines none of it, so nothing in it is padded for an outline. Sets
-    each one's `label_at` outward from `hub`, and `hub`'s `none`.
+    The places are a sunflower's (`_sunflower`), `gap` apart -- by default as
+    a code map spaces a directory's files -- taken in the order a Hilbert curve
+    passes them and given to the code depth first, each directory before what
+    it holds: a run along the curve is a compact patch, so what a directory
+    holds lies together. Not `grouped`, they are given in the sunflower's own
+    order, a golden angle apart, and the disc is evenly mixed. The corpus
+    outlines none of it, so nothing in it is padded for an outline; a
+    Showcase's file is, by `pad`. Sets each one's `label_at` outward from
+    `hub`, and `hub`'s `none`.
     """
     order: list[str] = []
     seen = {hub}
@@ -453,9 +487,9 @@ def _patches(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str
     local: dict[str, tuple[float, float]] = {hub: (0.0, 0.0)}
     label_at[hub] = "none"
     if not order:
-        return local, radius_of(hub) + CODE_PAD
+        return local, radius_of(hub) + pad
     items = [(node, radius_of(node)) for node in order]
-    spots, radius = _sunflower(radius_of(hub), items, FILE_GAP)
+    spots, radius = _sunflower(radius_of(hub), items, gap)
     side, cells = max(radius, 1.0), 1 << 16
 
     def along(spot: tuple[str, float, float, float]) -> int:
@@ -463,10 +497,10 @@ def _patches(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str
         return _hilbert(cells, int((x + side) / (2 * side) * (cells - 1)),
                         int((y + side) / (2 * side) * (cells - 1)))
 
-    for node, (_, x, y, _) in zip(order, sorted(spots, key=along)):
+    for node, (_, x, y, _) in zip(order, sorted(spots, key=along) if grouped else spots):
         local[node] = (x, y)
         label_at[node] = _side(math.atan2(y, x))
-    return local, radius + max(r for _, r in items) + CODE_PAD
+    return local, radius + max(r for _, r in items) + pad
 
 
 def _turned(places: dict[str, tuple[float, float]], aspect: float) -> dict[str, tuple[float, float]]:
@@ -488,28 +522,36 @@ def _turned(places: dict[str, tuple[float, float]], aspect: float) -> dict[str, 
 
 def _disc(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, str],
           seen: frozenset[str] = frozenset(),
-          outlined=lambda node: True) -> tuple[dict[str, tuple[float, float]], float]:
+          outlined=lambda node: 0,
+          spacing: Spacing = MAP_SPACING,
+          whole=lambda node: None) -> tuple[dict[str, tuple[float, float]], float]:
     """`hub` laid out at the centre of a disc of what it holds that holds
     nothing, what it holds that holds others packed around the disc, each laid
     out the same way; and the radius of the circle round it all, with the
     canvas's outline padding where `outlined` says the canvas draws one round
-    `hub`, and a node's reach alone where it does not. Places are relative to
-    that circle's centre. Sets each member's `label_at` outward from its hub,
-    and the hub's `none`."""
+    `hub` -- a directory's (0) or a file's (1) -- and a node's reach alone
+    where it says None. Places are relative to that circle's centre. Sets each
+    member's `label_at` outward from its hub, and the hub's `none`.
+
+    A hub `whole` lays out -- a Showcase's file, by `_patches` -- is laid out
+    as it says instead."""
+    laid = whole(hub)
+    if laid is not None:
+        return laid
     seen = seen | {hub}
     leaves = [c for c in held.get(hub, []) if not held.get(c) or c in seen]
-    inner = {c: _disc(c, held, radius_of, label_at, seen, outlined)
+    inner = {c: _disc(c, held, radius_of, label_at, seen, outlined, spacing, whole)
              for c in held.get(hub, []) if c not in leaves}
     local: dict[str, tuple[float, float]] = {hub: (0.0, 0.0)}
     core = radius_of(hub)
     if leaves:
         items = [(leaf, radius_of(leaf)) for leaf in leaves]
-        placed, radius = _sunflower(radius_of(hub), items, FILE_GAP)
+        placed, radius = _sunflower(radius_of(hub), items, spacing.leaf)
         for item, x, y, angle in placed:
             local[item] = (x, y)
             label_at[item] = _side(angle)
         core = radius + max(r for _, r in items)
-    places = _pack_around(core, [(c, inner[c][1]) for c in inner], CODE_GROUP_GAP)
+    places = _pack_around(core, [(c, inner[c][1]) for c in inner], spacing.group)
     for child, (x, y) in places.items():
         for node_id, (dx, dy) in inner[child][0].items():
             local[node_id] = (x + dx, y + dy)
@@ -522,11 +564,13 @@ def _disc(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, s
     cx = (min(x - r for x, _, r in discs) + max(x + r for x, _, r in discs)) / 2
     cy = (min(y - r for _, y, r in discs) + max(y + r for _, y, r in discs)) / 2
     reach = max(math.hypot(x - cx, y - cy) + r for x, y, r in discs)
-    pad = CODE_PAD if outlined(hub) else CODE_REACH
+    outline = outlined(hub)
+    pad = spacing.reach if outline is None else spacing.pad[min(outline, 1)]
     return {node_id: (x - cx, y - cy) for node_id, (x, y) in local.items()}, reach + pad
 
 
-def code_map(graph: nx.DiGraph) -> dict[str, tuple[float, float]]:
+def code_map(graph: nx.DiGraph, radius_of=None, spacing: Spacing = MAP_SPACING,
+             patches: bool | None = None) -> dict[str, tuple[float, float]]:
     """A parse laid out as a map, in the canvas's units, and each node's `label_at`.
 
     A node that `contains` others sits at the centre of a disc of what it
@@ -536,6 +580,13 @@ def code_map(graph: nx.DiGraph) -> dict[str, tuple[float, float]]:
     the canvas's shape. A file's name goes outward from its directory, and a
     node its outline names is given `none`. Sets `label_at` on the graph's
     nodes and returns each node's place.
+
+    `radius_of` and `spacing` size and space it (the Map's by default). With
+    `patches` set -- the Showcase's -- each file's code is one disc round the
+    file (`_patches`), each symbol's members a patch of it beside the symbol
+    or, `patches` false, the whole disc evenly mixed; and what nothing holds
+    and holds nothing is gathered into one disc beside the map rather than
+    rowed.
     """
     held: dict[str, list[str]] = {}
     parent: dict[str, str] = {}
@@ -547,16 +598,37 @@ def code_map(graph: nx.DiGraph) -> dict[str, tuple[float, float]]:
         members.sort(key=lambda n: str(graph.nodes[n].get("label", n)))
 
     label_at: dict[str, str] = {}
-    radius_of = lambda n: _drawn_r(graph.nodes[n].get("depth", 1))  # noqa: E731
+    radius_of = radius_of or (lambda n: _drawn_r(graph.nodes[n].get("depth", 1)))  # noqa: E731
     tops = [n for n in graph.nodes if n not in parent]
     # The canvas outlines a directory, and a file round its symbols
     # (`compound_layout.ts`); a symbol holding members it does not, and a
     # disc padded for one round each class left a file's map mostly empty.
-    outlined = lambda n: graph.nodes[n].get("depth", 1) in (0, 1)  # noqa: E731
-    laid = {top: _disc(top, held, radius_of, label_at, outlined=outlined) for top in tops if held.get(top)}
-    circles = [(top, laid[top][1]) if top in laid else (top, radius_of(top)) for top in tops]
+    outlined = lambda n: graph.nodes[n].get("depth", 1) if graph.nodes[n].get("depth", 1) in (0, 1) else None  # noqa: E731
+
+    def whole(hub: str):
+        if patches is None or graph.nodes[hub].get("depth") != 1:
+            return None
+        return _patches(hub, held, radius_of, label_at, spacing.leaf, spacing.pad[1], patches)
+
+    laid = {top: _disc(top, held, radius_of, label_at, outlined=outlined, spacing=spacing, whole=whole)
+            for top in tops if held.get(top)}
+    loose = [top for top in tops if top not in laid] if patches is not None else []
+    gathered = set(loose) if len(loose) > 1 else set()
+    loose = [top for top in loose if top in gathered]
+    circles = [(top, laid[top][1]) if top in laid else (top, radius_of(top))
+               for top in tops if top not in gathered]
+    if loose:
+        # Round an empty centre a dot wide, as a disc is round its hub: from
+        # none, the first few crowd closer than the gap.
+        widest = max(radius_of(top) for top in loose)
+        flower, radius = _sunflower(widest, [(top, radius_of(top)) for top in loose], spacing.leaf)
+        laid[_LOOSE] = ({top: (x, y) for top, x, y, _ in flower},
+                        radius + max(radius_of(top) for top in loose) + spacing.reach)
+        circles.append((_LOOSE, laid[_LOOSE][1]))
+        for top, _, _, angle in flower:
+            label_at[top] = _side(angle)
     placed: dict[str, tuple[float, float]] = {}
-    for top, (cx, cy) in _rows(circles).items():
+    for top, (cx, cy) in _rows(circles, spacing.apart).items():
         if top in laid:
             for node_id, (dx, dy) in laid[top][0].items():
                 placed[node_id] = (cx + dx, cy + dy)
@@ -573,3 +645,35 @@ def code_map(graph: nx.DiGraph) -> dict[str, tuple[float, float]]:
             (x, y), (hx, hy) = placed[child], placed[holder]
             graph.nodes[child]["label_at"] = _side(math.atan2(y - hy, x - hx))
     return placed
+
+
+def showcase_radius(depth: Any, dot: float) -> float:
+    """A node's radius on a Showcase: a dot, wider for a file or a directory
+    (`SHOWCASE_SCALE`)."""
+    return dot * SHOWCASE_SCALE.get(depth, 1.0) if isinstance(depth, int) else dot
+
+
+def showcase(graph: nx.DiGraph, dot: float = SHOWCASE_DOT, gap: float = SHOWCASE_GAP,
+             nest: bool = True) -> dict[str, tuple[float, float]]:
+    """A parse laid out as a showcase: the Map's directories and files, every
+    node a dot of radius `dot` (a file's and a directory's wider,
+    `showcase_radius`), `gap` from the next, packed tight.
+
+    A file is one evenly full disc of dots round it, as large as what it
+    holds: its functions, classes and imports, and -- parsed to its members --
+    each function's variables and calls, which lie in a patch beside it
+    (`nest`) or are mixed through the disc (`nest` false). A file's outline is
+    `SHOWCASE_PAD` half-dots past its disc, a directory's twice that, and two
+    discs packed round one directory are a dot and three gaps apart. What
+    nothing holds -- a module imported from outside -- is one more disc beside
+    the map. The canvas draws each dot in the same units
+    (`streaming_renderer.ts`), and the links between them -- calls, uses and
+    flows -- over them. Sets `label_at` as `code_map` does.
+    """
+    dot = max(float(dot), 0.1)
+    gap = max(float(gap), 0.0)
+    radius_of = lambda n: showcase_radius(graph.nodes[n].get("depth", 1), dot)  # noqa: E731
+    pad = SHOWCASE_PAD * dot
+    return code_map(graph, radius_of=radius_of,
+                    spacing=Spacing(gap, dot + 3 * gap, dot * 0.5, (pad, pad / 2), 2 * dot + 2 * gap),
+                    patches=nest)
