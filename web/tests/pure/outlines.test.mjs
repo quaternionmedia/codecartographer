@@ -156,3 +156,43 @@ test("a node nested deeper than a symbol is held by its own file's outline, not 
   assert.ok(inside(byId.a, 300, 40, R), "a's deepest is inside a's outline");
   assert.ok(!inside(byId.b, 300, 40, R), "a's deepest was drawn inside b's outline");
 });
+
+test("a member its file holds itself is in that file's outline, however near the next file's symbol", () => {
+  /* A module's own constant is held by its file, with no symbol above it.
+     Here it lies at the edge of a.py's code, beside b.py's symbol. Mutation:
+     find a member's file only through the symbol holding it -- the constant
+     goes to the symbol nearest it, b.py's, whose outline reaches across to
+     it, and this fails. */
+  const nodes = [
+    { id: 'dir', depth: 0, x: 0, y: 0 },
+    { id: 'a', label: 'a.py', depth: 1, x: -40, y: 0 },
+    { id: 'b', label: 'b.py', depth: 1, x: 40, y: 0 },
+    { id: 'a.f', depth: 2, x: -45, y: 0 },
+    { id: 'b.g', depth: 2, x: 30, y: 0 },
+    { id: 'a.f.x', depth: 3, x: -50, y: 0 },
+    { id: 'a.LIMIT', depth: 3, x: 20, y: 0 },
+  ];
+  const edges = [contains('dir', 'a'), contains('dir', 'b'), contains('a', 'a.f'), contains('b', 'b.g'),
+    contains('a.f', 'a.f.x'), contains('a', 'a.LIMIT')];
+  const bounds = new CompoundLayoutManager().computeGroupBounds(nodes, edges, PADDING, R, () => R);
+  const byId = Object.fromEntries(bounds.map((b) => [b.nodeId, b]));
+  assert.ok(inside(byId.a, 20, 0, R), "a.py's constant is inside a.py's outline");
+  // b.py's node and symbol, 10 apart: r = 5 + 3, and half the padding.
+  assert.ok(byId.b.radius <= 8 + PADDING / 2 + EPS, `b.py's outline reaches for it: r=${byId.b.radius}`);
+});
+
+test("a module imported from outside is in no directory's outline, however near it is drawn", () => {
+  /* An external module is held by nothing. Mutation: give it to the
+     directory nearest it, as an orphan is -- the directory's outline grows
+     round it, and this fails. */
+  const nodes = [
+    { id: 'dir', depth: 0, x: 0, y: 0 },
+    { id: 'a', depth: 1, x: 10, y: 0 },
+    { id: 'a.f', depth: 2, x: 14, y: 0 },
+    { id: 'external::os', kind: 'external_module', depth: 1, x: 200, y: 0 },
+  ];
+  const edges = [contains('dir', 'a'), contains('a', 'a.f')];
+  const bounds = new CompoundLayoutManager().computeGroupBounds(nodes, edges, PADDING, R, () => R);
+  const dir = bounds.find((b) => b.nodeId === 'dir');
+  assert.ok(dir.radius < 100, `the directory's outline reaches r=${dir.radius}`);
+});
