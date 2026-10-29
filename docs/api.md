@@ -998,6 +998,16 @@ it, a member it shares marked `also_in` with a `member_of` edge to a marker for
 the other family, and every seam touching a member. A family the corpus does not
 declare answers `unreadable` with the ones it does.
 
+### GET `/show/family/{name}/code/gjgf?layout=&palette_id=`
+
+One family's code view as `GraphData`: the family above, and inside each of its
+projects, its subfamilies' among them, its code map, grafted in as
+`/show/corpus/gjgf` grafts it, with the same `metadata.code` and caveat. It is
+the part of the whole corpus that is this family's: a site page draws the
+corpus a family at a time, every project's code map to its symbols being a
+picture several times what one page can hold. A family the corpus does not
+declare answers `unreadable` with the ones it does.
+
 ### GET `/show/project/{name}/gjgf?layout=&palette_id=`
 
 One repository's place in the estate: its families, its `phase` and `attention`

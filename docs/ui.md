@@ -220,7 +220,11 @@ document the corpus holds for it (`?show=index&view=code`, trail `every family â
 the whole corpus`); and **every node, no names**, the same graph with every node
 drawn and nothing written on it, neither a node's name nor an outline's
 (`?show=index&view=full`). A project with no code map drawn yet is drawn alone, and
-*What this drawing can say* names it. For a project, its three views follow: **estate**,
+*What this drawing can say* names it. For a family, two follow: **the family**,
+and **with each project's code**, the family's outline holding its projects,
+its subfamilies' too, each with its code map (`?show=family:performing&view=code`):
+the part of the whole corpus that is that family's, and the picture a site page
+draws of it. For a project, its three views follow: **estate**,
 **code map** and **system**; the one drawn is pressed. A project's code map
 opens as a Showcase, drawn to its symbols and no deeper than holds 100 nodes:
 its members too where its symbols fall short, each file a disc of what it
