@@ -47,12 +47,14 @@ def _events(text: str) -> list[tuple[str, dict]]:
 
 
 def _parse() -> tuple[list[dict], list[dict]]:
-    """A repository: a module importing two names, one from its sibling, and a
-    prose folder of pages two deep beside a folder of a page and a module."""
+    """A repository: a module importing two names, one from its sibling, the
+    other holding a name it brings in, and a prose folder of pages two deep
+    beside a folder of a page and a module."""
     nodes = [
         _node("dir::r", "directory", 0),
         _node("file::r/a.py", "file", 1), _node("file::r/b.py", "file", 1),
         _node("a.Sequence", "import", 2, "Sequence"), _node("a.h", "import", 2, "h"),
+        _node("a.Sequence.T", "symbol", 3, "T"),
         _node("a.f", "function", 2, "f"), _node("b.h", "function", 2, "h"),
         _node("dir::r/prose", "directory", 0), _node("file::r/prose/guide.md", "file", 1),
         _node("dir::r/prose/deep", "directory", 0), _node("file::r/prose/deep/notes.md", "file", 1),
@@ -62,6 +64,7 @@ def _parse() -> tuple[list[dict], list[dict]]:
     edges = [
         _edge("dir::r", "file::r/a.py"), _edge("dir::r", "file::r/b.py"),
         _edge("file::r/a.py", "a.Sequence"), _edge("file::r/a.py", "a.h"),
+        _edge("a.Sequence", "a.Sequence.T"),
         _edge("file::r/a.py", "a.f"), _edge("file::r/b.py", "b.h"),
         _edge("a.f", "a.h", "imports"), _edge("a.h", "b.h", "uses"),
         _edge("file::r/a.py", "file::r/b.py", "depends_on"),
@@ -83,6 +86,10 @@ def test_a_showcase_draws_no_import_and_keeps_a_file_importing_another_as_a_link
     ids = {n["id"] for n in nodes}
     assert not {"a.Sequence", "a.h"} & ids
     assert not [e for e in edges if {e["source"], e["target"]} & {"a.Sequence", "a.h"}]
+    # With what it holds: left holding nothing, a name an import brought in
+    # was given the nearest outline, which stretched round it. Mutation: leave
+    # out the import alone -- T is drawn, held by nothing, and this fails.
+    assert "a.Sequence.T" not in ids
     assert {(e["source"], e["target"]) for e in edges if e["metadata"]["kind"] == "depends_on"} == {
         ("file::r/a.py", "file::r/b.py")}, "a file importing another lost its link"
     assert {"a.f", "b.h", "file::r/a.py"} <= ids

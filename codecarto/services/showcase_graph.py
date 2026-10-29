@@ -56,13 +56,28 @@ def _kind(attrs: dict) -> Any:
 def _plan(nodes: dict[str, dict], edges: list[tuple[str, str, dict]],
           lines: dict[str, int]) -> tuple[set[str], dict[str, dict]]:
     """The ids a Showcase leaves out, and the meta each folded directory takes."""
-    gone = {key for key, node in nodes.items() if _kind(node) == "import"}
     held: dict[str, list[str]] = defaultdict(list)
     parent: dict[str, str] = {}
     for source, target, attrs in edges:
         if _kind(attrs) in _HOLDS and source in nodes and target in nodes:
             held[source].append(target)
             parent.setdefault(target, source)
+
+    gone: set[str] = set()
+
+    def leave_out(key: str) -> None:
+        # With all it holds: an import holds the names it brings in, which,
+        # left with nothing holding them, the canvas gave the nearest outline.
+        below = [key]
+        while below:
+            node = below.pop()
+            if node not in gone:
+                gone.add(node)
+                below.extend(held[node])
+
+    for key, node in nodes.items():
+        if _kind(node) == "import":
+            leave_out(key)
 
     prose: dict[str, tuple[bool, int, int]] = {}   # a directory: only markdown, its pages, their lines
 
@@ -93,12 +108,8 @@ def _plan(nodes: dict[str, dict], edges: list[tuple[str, str, dict]],
             continue                               # folded into the directory above
         _, pages, count = prose[key]
         folded[key] = {"lines": count, "pages": pages}
-        below = list(held[key])
-        while below:
-            child = below.pop()
-            if child not in gone:
-                gone.add(child)
-                below.extend(held[child])
+        for child in held[key]:
+            leave_out(child)
     return gone, folded
 
 
