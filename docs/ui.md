@@ -376,12 +376,14 @@ Id `graph-settings-panel`. In the default arrangement.
   repository ([Map layout](architecture.md#map-layout)), and a showgraph's code
   map opens in it. *Showcase* lays the graph out as the Map does, but every node
   is a dot, and below the files every function, class, variable and call is one,
-  packed tight round what holds it, each coloured by its kind; the links the
-  parse found between them are drawn over the dots ([Showcase
-  layout](architecture.md#showcase-layout)). While it is chosen, its settings
-  are listed beneath it. *Dot Size*, *Dot Spacing* and *Cluster by Symbol* lay
-  the graph out again: a symbol's members in a patch beside it, or, off, mixed
-  through their file's disc. *Links: calls*, *uses*, *flows* and *imports* (a
+  as large as the source it stands for, packed tight round what holds it, each
+  coloured by its kind; the links the parse found between them are drawn over
+  the dots ([Showcase layout](architecture.md#showcase-layout)). While it is
+  chosen, its settings are listed beneath it. *Dot Size*, *Dot Spacing*,
+  *Cluster by Symbol* and *Size by Code* lay the graph out again: each function
+  and class a glyph of what it holds, packed the same way wherever it is, or,
+  off, a file's code packed flat; and each dot as large as its source, or, off,
+  every member one dot. *Links: calls*, *uses*, *flows* and *imports* (a
   file's imports and every other link between files, off at first), *Link
   Opacity* and *Dot Names* are drawn in place. Parsed at depth 3 (*Deep*), a
   function's variables and the flows between them are drawn; at 2, its functions

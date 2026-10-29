@@ -119,7 +119,7 @@ it.
 | `spring_layout` | Force-directed (default) |
 | `compound_layout` | Hierarchical: dirs → files → symbols in nested orbits |
 | `map_layout` | Each directory a disc of its files, its subdirectories packed around it; nodes carry `label_at` |
-| `showcase_layout` | The Map's directories and files, every node a dot and each file one disc of its code; takes `dot`, `gap` and `nest` |
+| `showcase_layout` | The Map's directories and files, every node a dot as large as its source, each function and class a glyph of what it holds; takes `dot`, `gap`, `nest` and `sized` |
 | `circular_layout` | Nodes on a circle |
 | `kamada_kawai_layout` | Energy-minimized spring |
 | `spectral_layout` | Graph Laplacian eigenvectors |

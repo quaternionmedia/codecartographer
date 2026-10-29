@@ -199,7 +199,10 @@ to a function or class of its module it calls, `self.` and `cls.` methods
 included; `uses`, from a function to a name it reads that another holds, a
 module's constant say; and, parsed at depth 3, `flows`, from each variable a
 value is computed from to the variable it is assigned to. These are what the
-[Showcase](#showcase-layout) draws between its dots.
+[Showcase](#showcase-layout) draws between its dots. Each node carries
+`meta.chars`, the most source any one place it stands for spans: a
+definition's whole body, a variable's largest statement assigning it,
+otherwise the expression it was met in.
 
 ## Data Flow
 
@@ -391,17 +394,23 @@ directories seven.
 parse to show what a repository holds, not only how it is filed. Its places are
 `show_layout.showcase`'s: `code_map`, sized and spaced as a Showcase.
 
-1. **Every node is a dot**, a member's of radius `dot`, a file's half again as
-   wide and a directory's twice (`SHOWCASE_SCALE`), each `gap` clear of the
-   next. The canvas draws each at the same size (`showcase.ts`'s `DOT_SCALE`,
-   which a test holds equal).
-2. **A file is one evenly full disc of its code** (`_patches`), as many dots
-   as it holds: its functions, classes and imports and, parsed to depth 3,
-   their variables, arguments and calls. Each symbol's members are given a run
-   of the disc along a Hilbert curve, so they lie in a patch beside it
-   (`nest`); with `nest` off they take the sunflower's own order, mixed
-   through the disc. Laid out as the Map lays out a directory -- a disc round
-   each symbol -- a file was a sparse constellation of discs.
+1. **Every node is a dot, as large as its source.** A symbol's or a member's
+   radius is `dot` times `chars_scale` of the characters of source it stands
+   for (`meta.chars`): half a dot up to ten characters, one more for each ten
+   times as many, at most four (`sized`). A file's is half again a dot and a
+   directory's twice (`SHOWCASE_SCALE`), their discs saying what they hold.
+   The server sets each node's `dot_scale` and the canvas draws it at that.
+2. **Each function and class is a glyph**: all it holds packed tight round
+   it (`_glyph`, `circle_pack`, a port of d3's sibling packing), largest
+   first, then kind by kind. The order depends on nothing but what each dot
+   is, so two functions that hold alike are drawn alike wherever they are.
+   A file packs its glyphs and the rest of its code round it the same way
+   (`nest`); with `nest` off it packs all of its code flat. Only a function
+   or a class nests (`_by_symbol`): each level a glyph nests is a circle round
+   circles and the gaps between them, and nested at every level the walker
+   holds by, a file was a quarter dots. Its code given places along a Hilbert
+   curve through one disc, the Showcase's first layout, each function was a
+   run of the curve, shaped by where it fell.
 3. **An outline is a few dots past what it holds**: a file's half
    `SHOWCASE_PAD` dots, a directory's all of it, and the canvas pads each by
    the same (`showcasePadding`). The Map's 40 units were twenty dots.
@@ -410,22 +419,23 @@ parse to show what a repository holds, not only how it is filed. Its places are
    canvas gives a node nothing holds to the directory nearest it, but not an
    `external_module`.
 
-The settings ride on the layout's name, `Showcase(dot=2,gap=0.5,nest=true)`.
+The settings ride on the layout's name,
+`Showcase(dot=2,gap=0.5,nest=true,sized=true)`.
 `position_service.layout_spec` reads them, `get_node_positions` hands each to a
 layout that declares it and refuses one it does not, and `layout_key` keeps
 them, sorted, on the name `GraphSerializer` lays the graph out by. A cached
 parse is keyed by the layout as it was asked for, settings and all. The window
 builds the name from Graph Settings (`layout_names.layoutSpec`) and asks again
-when `dot`, `gap` or `nest` changes; which links are drawn, how strongly, and
+when `dot`, `gap`, `nest` or `sized` changes; which links are drawn, how strongly, and
 whether a dot is named, the canvas changes in place. A member the canvas would
 draw grey -- a name, a constant, an argument -- is given its kind's hue
 (`MEMBER_COLOURS`), and each link its kind's colour (`LINK_COLOURS`), none a
 pink or a red.
 
-The parsers folder of this repository, parsed at depth 3, is 1,984 nodes. The
-Map lays it out 6,731 units by 4,249, and the Showcase at its defaults 379 by
-299: each of its files a disc of coloured dots, with 174 calls, 1,726 uses and
-1,038 flows between them.
+The parsers folder of this repository, parsed at depth 3, is 2,008 nodes. The
+Map lays it out 6,987 units by 4,323, and the Showcase at its defaults 449 by
+394: each of its files a disc about two fifths dots, its largest a class of 3.9
+dots, with 177 calls, 1,744 uses and 1,052 flows between them.
 
 ## Compound layout
 
