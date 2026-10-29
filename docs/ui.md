@@ -372,14 +372,25 @@ Id `graph-settings-panel`. In the default arrangement.
 - **Layout**, open by default. *Algorithm* (D3 only) re-draws whatever is on the
   canvas with the chosen layout; *Compound* nests symbols around their files and
   files around their directories; *Map* draws each directory as a disc of its
-  files with its subdirectories packed around it, small enough to frame a
-  whole repository ([Map layout](architecture.md#map-layout)), and a
-  showgraph's code map opens in it. *Physics*, *Repulsion* and *Link Distance*
-  drive vis-network's simulation and are offered on Gravis only, the one
-  renderer that runs one; *Repulsion* and *Link Distance* show while *Physics*
-  is on. `renderer_controls.rendererControls` says which controls each renderer
-  takes. *Group Outlines* (D3 only) circles each group in a translucent dashed
-  outline: grey around a directory's, teal around a file's.
+  files with its subdirectories packed around it, small enough to frame a whole
+  repository ([Map layout](architecture.md#map-layout)), and a showgraph's code
+  map opens in it. *Showcase* lays the graph out as the Map does, but every node
+  is a dot, and below the files every function, class, variable and call is one,
+  packed tight round what holds it, each coloured by its kind; the links the
+  parse found between them are drawn over the dots ([Showcase
+  layout](architecture.md#showcase-layout)). While it is chosen, its settings
+  are listed beneath it. *Dot Size*, *Dot Spacing* and *Cluster by Symbol* lay
+  the graph out again: a symbol's members in a patch beside it, or, off, mixed
+  through their file's disc. *Links: calls*, *uses*, *flows* and *imports* (a
+  file's imports and every other link between files, off at first), *Link
+  Opacity* and *Dot Names* are drawn in place. Parsed at depth 3 (*Deep*), a
+  function's variables and the flows between them are drawn; at 2, its functions
+  and what they call. *Physics*, *Repulsion* and *Link Distance* drive
+  vis-network's simulation and are offered on Gravis only, the one renderer that
+  runs one; *Repulsion* and *Link Distance* show while *Physics* is on.
+  `renderer_controls.rendererControls` says which controls each renderer takes.
+  *Group Outlines* (D3 only) circles each group in a translucent dashed outline:
+  grey around a directory's, teal around a file's.
 - **Visual**, folded: *Node Labels* (and per depth: Dir, File, Sym, Sub), *Node
   Size*, *Color By* (depth and kind, abstraction layer, or construct across
   languages), *Node Opacity*, *Border Width*, *Edge Labels*, *Edge Width*, *Edge

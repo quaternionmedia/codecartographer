@@ -119,9 +119,16 @@ it.
 | `spring_layout` | Force-directed (default) |
 | `compound_layout` | Hierarchical: dirs → files → symbols in nested orbits |
 | `map_layout` | Each directory a disc of its files, its subdirectories packed around it; nodes carry `label_at` |
+| `showcase_layout` | The Map's directories and files, every node a dot and each file one disc of its code; takes `dot`, `gap` and `nest` |
 | `circular_layout` | Nodes on a circle |
 | `kamada_kawai_layout` | Energy-minimized spring |
 | `spectral_layout` | Graph Laplacian eigenvectors |
+
+A layout's settings are written after its name in brackets,
+`Showcase(dot=3,gap=0.5,nest=false)`, here and wherever a route takes a
+`layout`: a number, `true` or `false`. A setting the layout does not take is
+refused rather than dropped, and a cached graph is keyed by its settings too
+([Showcase layout](architecture.md#showcase-layout)).
 
 **depth values:**
 | depth | output |

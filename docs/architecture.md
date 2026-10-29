@@ -186,6 +186,21 @@ scripts) instead receives every file it owns across the whole tree in one
 this because a call is resolved to a function that may be declared in another
 file, which takes the complete file set in one `CParser` call.
 
+**Held once.** A node is held -- by a `contains` or `field_of` edge -- by one
+node: the first hold the parse stated on it (`_one_holder`, at the end of the
+walk). Every later one is a `uses`. A parser names a node by its module and
+its name, so files that import one name each held the same node, and the
+outline the canvas draws round each holder reached across the map to the one
+place it is drawn.
+
+**Python's links.** Besides what each file holds, a Python parse draws what
+its code does with what it holds (`python_links.py`): `calls`, from a function
+to a function or class of its module it calls, `self.` and `cls.` methods
+included; `uses`, from a function to a name it reads that another holds, a
+module's constant say; and, parsed at depth 3, `flows`, from each variable a
+value is computed from to the variable it is assigned to. These are what the
+[Showcase](#showcase-layout) draws between its dots.
+
 ## Data Flow
 
 ### Unified parse path (all languages, depth=2)
@@ -369,6 +384,48 @@ twentieth of its size and every node under a pixel. The Map layout lays it out
 about 8,700 by 6,100, and framed whole in an exported picture, 1,400 by 900
 pixels with its outlines, its files are drawn about four pixels across and its
 directories seven.
+
+## Showcase layout
+
+`showcase_layout` (`codecarto/models/custom_layouts/showcase_layout.py`) draws a
+parse to show what a repository holds, not only how it is filed. Its places are
+`show_layout.showcase`'s: `code_map`, sized and spaced as a Showcase.
+
+1. **Every node is a dot**, a member's of radius `dot`, a file's half again as
+   wide and a directory's twice (`SHOWCASE_SCALE`), each `gap` clear of the
+   next. The canvas draws each at the same size (`showcase.ts`'s `DOT_SCALE`,
+   which a test holds equal).
+2. **A file is one evenly full disc of its code** (`_patches`), as many dots
+   as it holds: its functions, classes and imports and, parsed to depth 3,
+   their variables, arguments and calls. Each symbol's members are given a run
+   of the disc along a Hilbert curve, so they lie in a patch beside it
+   (`nest`); with `nest` off they take the sunflower's own order, mixed
+   through the disc. Laid out as the Map lays out a directory -- a disc round
+   each symbol -- a file was a sparse constellation of discs.
+3. **An outline is a few dots past what it holds**: a file's half
+   `SHOWCASE_PAD` dots, a directory's all of it, and the canvas pads each by
+   the same (`showcasePadding`). The Map's 40 units were twenty dots.
+4. **What nothing holds**, a module imported from outside, is one more disc
+   beside the map rather than a row, and is in no directory's outline: the
+   canvas gives a node nothing holds to the directory nearest it, but not an
+   `external_module`.
+
+The settings ride on the layout's name, `Showcase(dot=2,gap=0.5,nest=true)`.
+`position_service.layout_spec` reads them, `get_node_positions` hands each to a
+layout that declares it and refuses one it does not, and `layout_key` keeps
+them, sorted, on the name `GraphSerializer` lays the graph out by. A cached
+parse is keyed by the layout as it was asked for, settings and all. The window
+builds the name from Graph Settings (`layout_names.layoutSpec`) and asks again
+when `dot`, `gap` or `nest` changes; which links are drawn, how strongly, and
+whether a dot is named, the canvas changes in place. A member the canvas would
+draw grey -- a name, a constant, an argument -- is given its kind's hue
+(`MEMBER_COLOURS`), and each link its kind's colour (`LINK_COLOURS`), none a
+pink or a red.
+
+The parsers folder of this repository, parsed at depth 3, is 1,984 nodes. The
+Map lays it out 6,731 units by 4,249, and the Showcase at its defaults 379 by
+299: each of its files a disc of coloured dots, with 174 calls, 1,726 uses and
+1,038 flows between them.
 
 ## Compound layout
 
