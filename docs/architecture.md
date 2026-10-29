@@ -395,12 +395,24 @@ directories seven.
 parse to show what a repository holds, not only how it is filed. Its places are
 `show_layout.showcase`'s: `code_map`, sized and spaced as a Showcase.
 
-1. **Every node is a dot, as large as its source.** A symbol's or a member's
-   radius is `dot` times `chars_scale` of the characters of source it stands
-   for (`meta.chars`): half a dot up to ten characters, one more for each ten
-   times as many, at most four (`sized`). A file's is half again a dot and a
-   directory's twice (`SHOWCASE_SCALE`), their discs saying what they hold.
-   The server sets each node's `dot_scale` and the canvas draws it at that.
+It is laid out from what it draws (`showcase_graph`): no import node, two in
+five of a code map's, a file importing another drawn as their `depends_on`
+link; and a directory of nothing but markdown, however deep, folded to one
+node as large as the lines its pages hold (`lines_scale`: a directory's two
+dots up to a hundred lines, one more for each ten times as many, at most six).
+The stream measures each page as it reads it (a `lines` event); a folder on
+this disk is measured as it is read. A graph laid out as it arrives drops its
+imports as they come, and folds nothing.
+
+1. **Every node is a circle, as large as its source.** A symbol's or a
+   member's radius is `dot` times `chars_scale` of the characters of source it
+   stands for (`meta.chars`): half a dot up to ten characters, one more for
+   each ten times as many, at most four (`sized`). A file's is half again a
+   dot and a directory's twice (`SHOWCASE_SCALE`), their discs saying what they
+   hold. The server sets each node's `dot_scale` and the canvas draws it at
+   that: a directory or a file a dot, a node of code in its kind's shape
+   fitted inside its circle (`node_shapes.fittedPath`), a function a hexagon
+   and a class a square, so a shape's corners reach no neighbour.
 2. **Each function and class is a glyph**: all it holds packed tight round
    it (`_glyph`, `circle_pack`, a port of d3's sibling packing), largest
    first, then kind by kind. The order depends on nothing but what each dot

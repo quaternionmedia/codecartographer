@@ -377,11 +377,14 @@ Id `graph-settings-panel`. In the default arrangement.
   files around their directories; *Map* draws each directory as a disc of its
   files with its subdirectories packed around it, small enough to frame a whole
   repository ([Map layout](architecture.md#map-layout)). *Showcase*, which a
-  showgraph's code map opens in, lays the graph out as the Map does, but every node
-  is a dot, and below the files every function, class, variable and call is one,
-  as large as the source it stands for, packed tight round what holds it, each
-  coloured by its kind; the links the parse found between them are drawn over
-  the dots ([Showcase layout](architecture.md#showcase-layout)). While it is
+  showgraph's code map opens in, lays the graph out as the Map does, but each
+  directory and file is a dot, and below the files every function, class,
+  variable and call is a mark in its kind's shape and colour (a function a
+  hexagon, a class a square), as large as the source it stands for, packed
+  tight round what holds it; the links the parse found between them are drawn
+  over them ([Showcase layout](architecture.md#showcase-layout)). It draws no
+  import: a file importing another is its imports link. A folder of nothing
+  but markdown is one grey dot as large as the lines its pages hold. While it is
   chosen, its settings are listed beneath it. *Dot Size*, *Dot Spacing*,
   *Cluster by Symbol* and *Size by Code* lay the graph out again: each function
   and class a glyph of what it holds, packed the same way wherever it is, or,
@@ -443,9 +446,9 @@ Id `graph-settings-panel`. In the default arrangement.
   the fill from one function, `paintedColor`. A record (`ngon`) is a row per
   side count, and says it: *Struct · 4 sides*. A Showcase carries a key of its
   own in the legend's place, drawn in the canvas's svg so that a picture of the
-  canvas holds it: one line, wrapped to the canvas's width, of a dot for each
-  colour the code below the files is drawn in, by kind, most numerous first,
-  and a line for each link drawn. It has no count and no heading, and a link
+  canvas holds it: one line, wrapped to the canvas's width, of a mark for each
+  colour and shape the code below the files is drawn in, by kind, most
+  numerous first, and a line for each link drawn. It has no count and no heading, and a link
   switched off leaves it.
 - **Right-click** opens the [radial menu](#the-radial-menu).
 

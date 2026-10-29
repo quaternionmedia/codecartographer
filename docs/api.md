@@ -223,19 +223,32 @@ that has at least that many nodes (`codecarto/services/stream_floor.py`): a
 showgraph's code view. A repository whose directories and files reach it is
 streamed to them and ended before any file is fetched, unless `layout` is a
 Showcase, which is drawn to its symbols at the least. One they do not reach,
-or a Showcase, is parsed on, its members let through only if its directories, files and symbols
-fall short, kept whole to the end, laid out once in `layout`, and sent: each id
-once, and only what a directory of the repository holds, so a module a file
-imports from elsewhere is left out. `done` then carries the `depth` drawn (1
-files, 2 symbols, 3 members), the `floor` and the `nodes` sent. A floor is part
-of the cache key.
+or a Showcase, is parsed on, its members let through only if its directories,
+files and symbols fall short, kept whole to the end, laid out once in
+`layout`, and sent: each id once, and only what a directory of the repository
+holds, so a module a file imports from elsewhere is left out, each node with
+its `dot_scale` where the layout sized it. `done` then carries the `depth`
+drawn (1 files, 2 symbols, 3 members), the `floor` and the `nodes` sent, and
+so does a floored graph replayed from the cache. A floor is part of the cache
+key.
+
+A Showcase (`layout` `Showcase(...)`) is sent as it draws
+(`codecarto/services/showcase_graph.py`): no `import` node, and no edge to or
+from one, a file importing another being their `depends_on` edge; and, where
+the graph is laid out whole (held to a `floor`, or a folder on this disk), each
+directory holding nothing but markdown as one node, its pages and folders of
+pages left out, with `meta.lines` and `meta.pages` and a `dot_scale` by its
+lines.
 
 **Response:** Same SSE event types as `/parse/stream`, plus a `fetching`
 event (`{message}`) emitted during phase 1 (repo tree fetch) before any
 `node`/`edge` events arrive. Phase 2 (symbol parsing) streams nodes as each
 file's content is fetched and parsed, and a `note` where a batch could not be.
 Each symbol is joined to its file by a `contains` edge, as is a member nothing
-else holds, a module's top-level constant or name.
+else holds, a module's top-level constant or name. Each markdown page read is
+followed by a `lines` event (`{id, lines}`), its file's id and the lines it
+holds, which a floored Showcase folds a folder of prose by and a window
+drawing as the stream arrives reads nothing from.
 
 After streaming completes, the full accumulated graph is written to cache
 (GitHub URLs only, and not when the stream carried a `note`) — the next
