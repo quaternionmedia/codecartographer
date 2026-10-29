@@ -387,7 +387,8 @@ uv run codecarto show export --corpus ../qm --subject project:carlos,family:perf
 
 Each subject's folder -- `index/`, `family/<name>/`, `project/<name>/` --
 holds `show.json` and a picture of each view the window draws: `estate.svg`,
-`code.svg` (a project's code map, held to the window's floor of 100 nodes; the
+`code.svg` (a project's code map, a Showcase as the window opens it, drawn to
+its symbols and held to the window's floor of 100 nodes, with its key; the
 document's `metadata.depth` says how deep it was drawn) and `system.png` (a
 project's system view, which draws in HTML). The index's `code.svg` is the
 whole corpus: every family with each project's code map in it, drawn last, from

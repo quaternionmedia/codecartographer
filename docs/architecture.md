@@ -346,8 +346,9 @@ in the [UI reference](ui.md#graphbase). The routes are in [the API reference](ap
 ## Map layout
 
 `map_layout` (`codecarto/models/custom_layouts/map_layout.py`, registered in
-`position_service.py`) is the layout a showgraph's code map opens in. Its
-places are `show_layout.code_map`'s, which lays the graph out by its `contains`
+`position_service.py`) draws a code map by its directories and files, and
+places the [Showcase](#showcase-layout)'s, which a showgraph's code map opens
+in. Its places are `show_layout.code_map`'s, which lays the graph out by its `contains`
 and `field_of` edges:
 
 1. **A directory's files fill a disc round it**, the k-th at a radius growing
@@ -434,6 +435,12 @@ pink or a red. Its key is its own (`legend_marks.showcaseKey`), drawn in the
 canvas's svg rather than over it, so a showgraph's picture holds it: a line of
 each colour the code below the files is drawn in and each link drawn, with no
 count and no heading.
+
+A showgraph's code map opens as a Showcase (`LayoutContext._showcaseLayout`),
+so the corpus's pictures of each project are drawn as one. Held to the floor
+(`stream_floor.floored`), a Showcase is drawn to its symbols at the least,
+where any other layout stops at the files once they reach the floor: drawn to
+its files alone it would have nothing to colour.
 
 The parsers folder of this repository, parsed at depth 3, is 2,008 nodes. The
 Map lays it out 6,987 units by 4,323, and the Showcase at its defaults 449 by

@@ -221,10 +221,11 @@ the whole corpus`); and **every node, no names**, the same graph with every node
 drawn and nothing written on it, neither a node's name nor an outline's
 (`?show=index&view=full`). A project with no code map drawn yet is drawn alone, and
 *What this drawing can say* names it. For a project, its three views follow: **estate**,
-**code map** and **system**; the one drawn is pressed. A project's code map is
-drawn no deeper than holds 100 nodes: a large project's directories and files,
-a small one's symbols too, and its members where even those fall short, each
-file a disc of what it holds. A view that cannot be
+**code map** and **system**; the one drawn is pressed. A project's code map
+opens as a Showcase, drawn to its symbols and no deeper than holds 100 nodes:
+its members too where its symbols fall short, each file a disc of what it
+holds. Drawn again in the Map, a large project's is its directories and files
+alone. A view that cannot be
 drawn here is disabled, with its reason under it. Then the legend: which edges
 are claims, which are declared seams and which are measured. *What this drawing
 can say* holds the caveat and the corpus it was read from, folded. Its line
@@ -240,8 +241,10 @@ frame. A name that would overlap another is hidden until a zoom gives it room,
 and a node's hover always holds it. Names are ranked: families first, then
 projects, then other repositories. Each outline takes its family's hue.
 **Double-click** a family to open it, and a project to open its estate view.
-A project's **code map** is drawn as a map too, in the Map layout: each
-directory a disc of its files, its subdirectories packed around it. At the fit
+A project's **code map** is drawn as a map too, as a Showcase: each directory
+a disc of its files, its subdirectories packed around it, and each file a disc
+of its code's dots, coloured by kind, with its key at the bottom left. *Map* in
+Graph Settings draws it again by its names. At the fit
 that frames a whole repository each directory's outline name keeps its size,
 where a code graph opened from the Open panel draws it a pixel high. A node is
 named only while it is drawn at least four pixels across its middle on screen,
@@ -373,8 +376,8 @@ Id `graph-settings-panel`. In the default arrangement.
   canvas with the chosen layout; *Compound* nests symbols around their files and
   files around their directories; *Map* draws each directory as a disc of its
   files with its subdirectories packed around it, small enough to frame a whole
-  repository ([Map layout](architecture.md#map-layout)), and a showgraph's code
-  map opens in it. *Showcase* lays the graph out as the Map does, but every node
+  repository ([Map layout](architecture.md#map-layout)). *Showcase*, which a
+  showgraph's code map opens in, lays the graph out as the Map does, but every node
   is a dot, and below the files every function, class, variable and call is one,
   as large as the source it stands for, packed tight round what holds it, each
   coloured by its kind; the links the parse found between them are drawn over

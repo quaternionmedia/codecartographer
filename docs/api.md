@@ -221,8 +221,9 @@ streams its parse — no separate `/repo/tree` round-trip first.
 An optional `floor` holds the parse to the shallowest depth, up to `depth`,
 that has at least that many nodes (`codecarto/services/stream_floor.py`): a
 showgraph's code view. A repository whose directories and files reach it is
-streamed to them and ended before any file is fetched. One they do not is
-parsed on, its members let through only if its directories, files and symbols
+streamed to them and ended before any file is fetched, unless `layout` is a
+Showcase, which is drawn to its symbols at the least. One they do not reach,
+or a Showcase, is parsed on, its members let through only if its directories, files and symbols
 fall short, kept whole to the end, laid out once in `layout`, and sent: each id
 once, and only what a directory of the repository holds, so a module a file
 imports from elsewhere is left out. `done` then carries the `depth` drawn (1
@@ -997,7 +998,8 @@ Which of the project's three views can be drawn here: `estate` (the graph
 above), `code` (the parse of its default branch on the host, with the `url`,
 `depth` and `floor` the Show panel streams through `/parse/stream-url`: drawn
 to its members at most and no deeper than holds 100 nodes, so a small
-project's code map shows its symbols and a large one's its files; available
+project's code map shows its symbols and a large one's its files, or its
+symbols as a Showcase, the layout the window opens it in; available
 when the inventory lists the repository among the host's public ones) and `system` (the
 derived system monitor, available when a clone beside this one declares
 components). A view that cannot be drawn carries `available: false`, a
