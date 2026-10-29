@@ -21,9 +21,13 @@ stream that sends none:
   they pile on their neighbours'; here the whole parse is kept to the end,
   its members let through only if the directories, files and symbols fall
   short, and laid out once in the layout asked for -- for a showgraph, the
-  Map, a disc round each file of what it holds -- and sent. It holds what
-  the repository holds: a module a file imports from elsewhere is left out,
-  as the files-deep map never had one.
+  Showcase, a disc round each file of what it holds -- and sent. It holds
+  what the repository holds: a module a file imports from elsewhere is left
+  out, as the files-deep map never had one.
+- **A Showcase is drawn to its symbols at the least**, wherever its files
+  reach the floor: it colours each file by the code in it, and drawn to its
+  files alone it is a field of grey dots with nothing to colour. The window
+  opens a showgraph's code view as one.
 
 `done` says which depth was drawn (`depth`: 1 files, 2 symbols, 3 members),
 the floor it was held to and how many nodes it holds.
@@ -63,6 +67,13 @@ def _sse(event: str, data: Any) -> str:
 def _depth(node: dict) -> int:
     depth = node.get("depth")
     return depth if isinstance(depth, int) else FILES
+
+
+def _least(layout: str) -> int:
+    """The shallowest depth `layout` is drawn to: a Showcase's symbols, any other's files."""
+    from codecarto.services.position_service import layout_key, layout_spec
+
+    return SYMBOLS if layout_key(layout_spec(layout)[0]) == "showcase_layout" else FILES
 
 
 def _done(payload: Any, depth: int, floor: int, nodes: int) -> str:
@@ -130,8 +141,10 @@ def laid_out(nodes: list[dict], edges: list[dict], layout: str) -> list[dict]:
 
 
 async def floored(stream: AsyncIterator[str], floor: int, layout: str = "Map") -> AsyncIterator[str]:
-    """`stream`, a parse drawn to its deepest, cut to the shallowest depth holding `floor` nodes."""
+    """`stream`, a parse drawn to its deepest, cut to the shallowest depth holding `floor` nodes,
+    and no shallower than `layout` is drawn to (`_least`)."""
     start = time.monotonic()
+    least = _least(layout)
     waiting: list[str] = []          # the directories and files, until they are counted
     nodes: list[dict] = []           # a deepened project's, to its symbols
     members: list[dict] = []
@@ -144,7 +157,7 @@ async def floored(stream: AsyncIterator[str], floor: int, layout: str = "Map") -
             if not counted and (event == "phase" or (node is not None and _depth(node) > FILES)):
                 counted = True
                 shown = [n for kind, n in map(_read, waiting) if kind == "node" and isinstance(n, dict)]
-                if len(shown) >= floor:
+                if len(shown) >= floor and least <= FILES:
                     # Enough with the directories and files: no file is fetched.
                     for kept in waiting:
                         yield kept

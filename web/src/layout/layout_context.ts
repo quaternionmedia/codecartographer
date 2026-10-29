@@ -909,9 +909,10 @@ export class LayoutContext {
 
     if (address.view === 'code' && view.url) {
       this._leaveSystemRenderer();
-      this._mapLayout();
+      this._showcaseLayout();
       // The view's depth and floor whenever it is drawn: a large project's
-      // files, a small one's symbols too (`stream_floor.py`). The depth was
+      // files, a small one's symbols too, and a Showcase's symbols always
+      // (`stream_floor.py`). The depth was
       // set around the first stream only, so a layout change drew it again at
       // the Open panel's, symbols and all.
       const show = { depth: view.depth ?? 1, floor: view.floor };
@@ -976,16 +977,19 @@ export class LayoutContext {
   }
 
   /**
-   * The Map layout, the one a showgraph's code view opens in: each directory a
-   * ring of what it holds. The compound layout spreads a repository's
-   * directories by a spring layout, and a code map framed whole came out at a
-   * scale of a twentieth, every node under a pixel.
+   * The Showcase, the layout a showgraph's code view opens in: each directory a
+   * ring of what it holds, as the Map draws it, and each file a disc of its
+   * code's dots, coloured by kind, so a code map says what a repository holds
+   * and not only how it is filed. It is drawn to its symbols at the least
+   * (`stream_floor`). The compound layout spreads a repository's directories
+   * by a spring layout, and a code map framed whole came out at a scale of a
+   * twentieth, every node under a pixel. The Map, chosen in Graph Settings,
+   * draws the view again by its names.
    */
-  private _mapLayout(): void {
+  private _showcaseLayout(): void {
     const styling = this.appState.state.graphStyling;
-    // A reader who chose the Showcase keeps it: a code map drawn as its dots.
-    if (styling.layout !== 'map_layout' && styling.layout !== SHOWCASE_LAYOUT) {
-      this.appState.update({ graphStyling: { ...styling, layout: 'map_layout' } });
+    if (styling.layout !== SHOWCASE_LAYOUT) {
+      this.appState.update({ graphStyling: { ...styling, layout: SHOWCASE_LAYOUT } });
     }
   }
 

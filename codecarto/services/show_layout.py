@@ -31,9 +31,10 @@ from its ring -- and a node whose outline already names it is given `none`.
 Only positions and `label_at` change. Which nodes there are, what they say and
 which edges join them is the graph's, and is not touched here.
 
-`code_map` lays a parse out for the Map layout, the one a showgraph's code
-view opens in: each directory a disc of its files, its subdirectories packed
-around the disc, and the whole turned to the canvas's shape. A file is given
+`code_map` lays a parse out for the Map layout, and for the Showcase a
+showgraph's code view opens in (`showcase`): each directory a disc of its
+files, its subdirectories packed around the disc, and the whole turned to the
+canvas's shape. A file is given
 room for itself, not for its name: a code map has hundreds of names, and the
 canvas draws each one only once zooming in leaves it room, so the map is drawn
 small enough to frame.

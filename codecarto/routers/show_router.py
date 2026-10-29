@@ -177,7 +177,8 @@ def show_project_views(name: str) -> dict[str, Any]:
     else:
         # Drawn to its members at most, and no deeper than holds the floor's
         # nodes: a small project's code map shows its symbols, a large one's
-        # its files (`stream_floor`).
+        # its files, and a Showcase, as the window opens it, its symbols at
+        # the least (`stream_floor`).
         code = {"available": True, "url": f"https://github.com/{reading.org}/{name}",
                 "depth": 3, "floor": CODE_FLOOR}
 
