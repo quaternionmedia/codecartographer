@@ -11,7 +11,7 @@ import { test } from 'node:test';
 
 import { layoutSpec } from '../../dist-pure/features/graph/services/layout_names.js';
 import {
-  LINK_KINDS, SHOWCASE_DEFAULTS, SHOWCASE_LAYOUT, dotRadius, laysOutAgain, linkOf, memberColour,
+  LINK_KINDS, SHOWCASE_DEFAULTS, SHOWCASE_LAYOUT, dotRadius, laysOutAgain, linkOf, memberColour, showcaseColour,
   showcaseOf, showcasePadding, showcaseSpec, withShowcase,
 } from '../../dist-pure/features/graph/services/showcase.js';
 
@@ -61,6 +61,8 @@ test('the links between code are drawn and a file\'s imports are not, at first',
   // Mutation: draw the imports at first -- every file's runs the width of
   // the map to the modules beside it, and this fails.
   assert.deepEqual(SHOWCASE_DEFAULTS.links, { calls: true, uses: true, flows: true, imports: false });
+  // Drawn at a quarter, under the dots. Mutation: draw them at 0.35 again -- and this fails.
+  assert.equal(SHOWCASE_DEFAULTS.linkOpacity, 0.25);
   assert.deepEqual([...LINK_KINDS], ['calls', 'uses', 'flows', 'imports']);
 });
 
@@ -93,6 +95,15 @@ test('a dot is a member\'s size, a file\'s half again and a directory\'s twice',
   assert.equal(dotRadius(1, 2, 0), 3);
   assert.equal(dotRadius(2, 2, '2'), 2);
   assert.equal(showcasePadding(showcaseOf({ showcase: { dot: 3 } })), 12);
+});
+
+test('the parse\'s neon function green is drawn muted on a Showcase, and no other colour is changed', () => {
+  // Mutation: draw each colour as the parse gave it -- the neon green
+  // outshines the code round it, and this fails.
+  assert.equal(showcaseColour('#00ff41'), '#31d85b');
+  assert.equal(showcaseColour('#00FF41'), '#31d85b');
+  assert.equal(showcaseColour('#00aa2a'), '#00aa2a');
+  assert.equal(showcaseColour(undefined), undefined);
 });
 
 test('a member the canvas would draw grey is given its kind\'s colour, and nothing else is', () => {

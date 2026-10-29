@@ -112,6 +112,11 @@ def test_no_colour_a_showcase_draws_is_red_or_pink():
         assert body, f"showcase.ts's {table} was not found"
         colours.update(re.findall(r"(\w+): '(#[0-9a-fA-F]{6})'", body.group(1)))
     assert {"calls", "uses", "flows", "imports", "name", "constant", "argument"} <= set(colours), colours
+    muted = re.search(r"SHOWCASE_MUTED[^=]*= \{(.*?)\};", source, re.S)
+    assert muted, "showcase.ts's SHOWCASE_MUTED was not found"
+    colours.update({f"muted {loud}": quiet for loud, quiet in
+                    re.findall(r"'(#[0-9a-fA-F]{6})': '(#[0-9a-fA-F]{6})'", muted.group(1))})
+    assert any(kind.startswith("muted ") for kind in colours), colours
     red = {kind: c for kind, c in colours.items() if _red_or_pink(c)}
     assert red == {}, f"a Showcase draws red or pink: {red}"
 

@@ -47,8 +47,22 @@ export const SHOWCASE_DEFAULTS: ShowcaseOptions = {
   // A file's imports run the width of the map, to modules drawn beside it:
   // drawn, they cross every cluster on the way.
   links: { calls: true, uses: true, flows: true, imports: false },
-  linkOpacity: 0.35,
+  linkOpacity: 0.25,
   names: false,
+};
+
+/** How opaque a Showcase draws its dots: a little see-through, so a link or a
+ *  neighbour behind one still shows. */
+export const DOT_OPACITY = 0.85;
+
+/**
+ * A colour the parse gives a node, as a Showcase draws it. The parse draws a
+ * function in a neon green, the loudest dot on a Showcase by far, where it
+ * outshone the code round it; muted, it is the same hue a third less
+ * saturated.
+ */
+export const SHOWCASE_MUTED: Readonly<Record<string, string>> = {
+  '#00ff41': '#31d85b',
 };
 
 export const SHOWCASE_LAYOUT = 'showcase_layout';
@@ -82,6 +96,13 @@ export const MEMBER_COLOURS: Readonly<Record<string, string>> = {
 export function memberColour(kind: unknown): string | undefined {
   return typeof kind === 'string' && Object.prototype.hasOwnProperty.call(MEMBER_COLOURS, kind)
     ? MEMBER_COLOURS[kind] : undefined;
+}
+
+/** A node's colour on a Showcase: as given, unless it is one the Showcase mutes. */
+export function showcaseColour<T>(colour: T): T | string {
+  if (typeof colour !== 'string') return colour;
+  const muted = SHOWCASE_MUTED[colour.toLowerCase()];
+  return muted ?? colour;
 }
 
 /** The edges that say only what holds what: not drawn, as the clusters say it. */

@@ -29,7 +29,7 @@ function showcaseStream(): string {
     node('file::pkg/a.py', 'file', 1, 20, 0),
     node('external::os', 'external_module', 1, -40, 0),
     node('a.run', 'function', 2, 26, 0, { dot_scale: 2.5 }),
-    node('a.helper', 'function', 2, 20, 6),
+    node('a.helper', 'function', 2, 20, 6, { color: '#00ff41' }),
     node('a.total', 'name', 3, 14, 0),
     node('a.step', 'argument', 3, 20, -6),
     node('a.LIMIT', 'constant', 3, 26, 6),
@@ -113,7 +113,8 @@ test('a Showcase draws every node a dot, borderless, and asks the server for it 
     const path = g.querySelector('path')!;
     const box = (path as SVGPathElement).getBBox();
     return { id: g.getAttribute('data-node-id'), d: path.getAttribute('d') ?? '',
-      across: Math.max(box.width, box.height), border: path.getAttribute('stroke-width') };
+      across: Math.max(box.width, box.height), border: path.getAttribute('stroke-width'),
+      fill: path.getAttribute('fill'), opacity: path.getAttribute('fill-opacity') };
   }));
   // A dot whatever its kind: a circle, its size by its depth (`DOT_SCALE`).
   // Mutation: draw a file as a Map does -- it is a square, and this fails.
@@ -125,6 +126,10 @@ test('a Showcase draws every node a dot, borderless, and asks the server for it 
   // Mutation: draw it by its depth -- a member's four, and this fails.
   expect(across['a.run']).toBeCloseTo(10, 1);
   expect(across['a.total']).toBeCloseTo(4, 1);
+  // A little see-through, and the parse's neon green muted. Mutation: draw
+  // the dots opaque, or the green as given -- and this fails.
+  expect(new Set(dots.map((d) => d.opacity))).toEqual(new Set(['0.85']));
+  expect(dots.find((d) => d.id === 'a.helper')?.fill).toBe('#31d85b');
   // No border: a white one a unit wide is a ring round a dot two across. The
   // ring paints each node's view state after every verb, so one is taken:
   // Fit, from the canvas's ring. Mutation: clear a node's border when the
@@ -146,12 +151,14 @@ test("a Showcase draws each link in its kind's colour, a file's imports hidden, 
   const lines = await page.locator('.graphRenderer svg line.stream-edge').evaluateAll((all) => all.map((l) => ({
     from: l.getAttribute('data-from'), to: l.getAttribute('data-to'), kind: l.getAttribute('data-kind'),
     colour: l.getAttribute('stroke'), shown: getComputedStyle(l).display !== 'none',
+    opacity: l.getAttribute('stroke-opacity'),
   })));
   // Mutation: draw the holding edges as a Map does -- five more lines, and
   // this fails.
   expect(lines.map((l) => l.kind).sort()).toEqual(['calls', 'flows', 'flows', 'imports', 'uses']);
   const colourOf = Object.fromEntries(lines.map((l) => [l.kind, l.colour]));
   expect(colourOf).toEqual({ calls: '#f2aa4c', uses: '#74a8f6', flows: '#43c6bf', imports: '#9aa3b5' });
+  expect(new Set(lines.map((l) => l.opacity))).toEqual(new Set(['0.25']));
   // Mutation: draw the imports at first -- and this fails.
   expect(lines.filter((l) => l.shown).map((l) => l.kind).sort()).toEqual(['calls', 'flows', 'flows', 'uses']);
 });

@@ -23,8 +23,8 @@ import { fitBadgeText, sourceTarget, type SourceTarget } from './node_info';
 import { BADGE_MARGIN, badgePlace } from './source_badge';
 import { FIT_DEFAULTS, fitTransform, framedExtents } from './fit';
 import { placeOutlineLabels } from './outline_labels';
-import { HOLDING_KINDS, LINK_COLOURS, SHOWCASE_LAYOUT, dotRadius, linkOf, memberColour, showcaseOf,
-  showcasePadding, withShowcase, type ShowcaseLink, type ShowcaseOptions }
+import { DOT_OPACITY, HOLDING_KINDS, LINK_COLOURS, SHOWCASE_LAYOUT, dotRadius, linkOf, memberColour,
+  showcaseColour, showcaseOf, showcasePadding, withShowcase, type ShowcaseLink, type ShowcaseOptions }
   from './showcase';
 import type { Box, FramedNode, FramedOutline } from './fit';
 
@@ -524,7 +524,7 @@ export class StreamingGraphRenderer {
       // Remembered so a colour override can be undone without re-deriving
       // the parser's visual grammar here.
       .attr('data-base-fill', baseFill)
-      .attr('fill-opacity', dot ? 0.95 : this.styling.nodeOpacity!)
+      .attr('fill-opacity', dot ? DOT_OPACITY : this.styling.nodeOpacity!)
       .attr('stroke', '#fff')
       .attr('stroke-width', dot ? 0 : this.styling.nodeBorderWidth!)
       // And its border, which a pin's gold one is undone to.
@@ -1278,6 +1278,8 @@ export class StreamingGraphRenderer {
       else if (this._showcase && memberColour(kind)) node.color = memberColour(kind)!;
       else node.color = '#95a5a6';
     }
+    // A Showcase mutes the parse's loudest colour, as the key reads it too.
+    if (this._showcase) node.color = showcaseColour(node.color);
   }
 
   /**
