@@ -123,3 +123,43 @@ def test_the_parser_draws_the_calls_and_the_flows_and_none_below_its_depth():
     shallow = _parsed(depth=2)
     assert _kinds(shallow, "m.run", "m.helper") == "calls"
     assert not [1 for _, _, kind in shallow.edges(data="kind") if kind == "flows"]
+
+
+def test_a_python_graph_cached_before_its_links_is_parsed_again(monkeypatch, tmp_path):
+    """At 10 a Python parse draws its calls, uses and flows, and holds each
+    node once; a graph cached at 9 has none of them, and a Showcase of it is
+    dots with nothing between them. Mutation: leave GRAPH_SCHEMA_VERSION at 9
+    -- the graph cached at 9 is served."""
+    import hashlib
+
+    from fastapi.testclient import TestClient
+
+    import codecarto.services.cache_service as cache_svc
+    from codecarto.main import app
+
+    repos_dir = tmp_path / "cache" / "repos"
+    monkeypatch.setattr(cache_svc, "_CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr(cache_svc, "_REPOS_DIR", repos_dir)
+    monkeypatch.setattr(cache_svc, "_INDEX_FILE", repos_dir / "index.json")
+
+    url = "https://github.com/test/before-python-links"
+    at_9 = hashlib.sha256(f"v9::{url}::3::Spring::{sorted([])}".encode()).hexdigest()[:16]
+    old = {"graph": {"nodes": {"CACHED_AT_9": {"metadata": {"depth": 2, "kind": "function"}}},
+                     "edges": []}, "metadata": {}}
+    cache_svc.CacheService.set(f"test-before-python-links::{at_9}", old, label="test/before-python-links",
+                               url=url, mode="3", layout="Spring")
+    body = {
+        "directory": {
+            "info": {"url": url, "owner": "test", "name": "before-python-links"},
+            "size": 0,
+            "root": {"name": "r", "size": 0, "folders": [],
+                     "files": [{"name": "m.py", "size": len(SOURCE), "raw": SOURCE}]},
+            "is_partial": False,
+        },
+        "depth": 3,
+        "layout": "Spring",
+    }
+    results = TestClient(app).post("/parse/unified", json=body).json()["results"]
+    assert not results.get("from_cache") and "CACHED_AT_9" not in results["graph"]["nodes"]
+    kinds = {edge.get("metadata", edge).get("kind") for edge in results["graph"]["edges"]}
+    assert {"calls", "uses", "flows"} <= kinds
