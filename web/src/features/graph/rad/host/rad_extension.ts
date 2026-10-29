@@ -162,8 +162,12 @@ export class RadExtension extends BaseExtension<GraphNode, GraphEdge> {
         else if (base) path.attr('fill', base);
 
         path.attr('stroke', v?.pinned ? resolveToken('gold') : '#fff');
+        // Unpinned, a node's border is the one it was drawn with. Cleared,
+        // SVG's default drew every node on the canvas when this ran with a
+        // white border a unit wide: a ring round a Showcase's dot, two
+        // units across.
         if (v?.pinned) path.attr('stroke-width', 2);
-        else path.attr('stroke-width', null);
+        else path.attr('stroke-width', path.attr('data-base-stroke-width'));
       }
     });
   }

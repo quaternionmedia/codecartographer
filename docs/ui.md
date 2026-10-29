@@ -221,10 +221,11 @@ the whole corpus`); and **every node, no names**, the same graph with every node
 drawn and nothing written on it, neither a node's name nor an outline's
 (`?show=index&view=full`). A project with no code map drawn yet is drawn alone, and
 *What this drawing can say* names it. For a project, its three views follow: **estate**,
-**code map** and **system**; the one drawn is pressed. A project's code map is
-drawn no deeper than holds 100 nodes: a large project's directories and files,
-a small one's symbols too, and its members where even those fall short, each
-file a disc of what it holds. A view that cannot be
+**code map** and **system**; the one drawn is pressed. A project's code map
+opens as a Showcase, drawn to its symbols and no deeper than holds 100 nodes:
+its members too where its symbols fall short, each file a disc of what it
+holds. Drawn again in the Map, a large project's is its directories and files
+alone. A view that cannot be
 drawn here is disabled, with its reason under it. Then the legend: which edges
 are claims, which are declared seams and which are measured. *What this drawing
 can say* holds the caveat and the corpus it was read from, folded. Its line
@@ -240,8 +241,10 @@ frame. A name that would overlap another is hidden until a zoom gives it room,
 and a node's hover always holds it. Names are ranked: families first, then
 projects, then other repositories. Each outline takes its family's hue.
 **Double-click** a family to open it, and a project to open its estate view.
-A project's **code map** is drawn as a map too, in the Map layout: each
-directory a disc of its files, its subdirectories packed around it. At the fit
+A project's **code map** is drawn as a map too, as a Showcase: each directory
+a disc of its files, its subdirectories packed around it, and each file a disc
+of its code's dots, coloured by kind, with its key at the bottom left. *Map* in
+Graph Settings draws it again by its names. At the fit
 that frames a whole repository each directory's outline name keeps its size,
 where a code graph opened from the Open panel draws it a pixel high. A node is
 named only while it is drawn at least four pixels across its middle on screen,
@@ -372,14 +375,30 @@ Id `graph-settings-panel`. In the default arrangement.
 - **Layout**, open by default. *Algorithm* (D3 only) re-draws whatever is on the
   canvas with the chosen layout; *Compound* nests symbols around their files and
   files around their directories; *Map* draws each directory as a disc of its
-  files with its subdirectories packed around it, small enough to frame a
-  whole repository ([Map layout](architecture.md#map-layout)), and a
-  showgraph's code map opens in it. *Physics*, *Repulsion* and *Link Distance*
-  drive vis-network's simulation and are offered on Gravis only, the one
-  renderer that runs one; *Repulsion* and *Link Distance* show while *Physics*
-  is on. `renderer_controls.rendererControls` says which controls each renderer
-  takes. *Group Outlines* (D3 only) circles each group in a translucent dashed
-  outline: grey around a directory's, teal around a file's.
+  files with its subdirectories packed around it, small enough to frame a whole
+  repository ([Map layout](architecture.md#map-layout)). *Showcase*, which a
+  showgraph's code map opens in, lays the graph out as the Map does, but each
+  directory and file is a dot, and below the files every function, class,
+  variable and call is a mark in its kind's shape and colour (a function a
+  hexagon, a class a square), as large as the source it stands for, packed
+  tight round what holds it; the links the parse found between them are drawn
+  over them ([Showcase layout](architecture.md#showcase-layout)). It draws no
+  import: a file importing another is its imports link. A folder of nothing
+  but markdown is one grey dot as large as the lines its pages hold. While it is
+  chosen, its settings are listed beneath it. *Dot Size*, *Dot Spacing*,
+  *Cluster by Symbol* and *Size by Code* lay the graph out again: each function
+  and class a glyph of what it holds, packed the same way wherever it is, or,
+  off, a file's code packed flat; and each dot as large as its source, or, off,
+  every member one dot. *Links: calls*, *uses*, *flows* and *imports* (a
+  file's imports and every other link between files, off at first), *Link
+  Opacity* and *Dot Names* are drawn in place. Parsed at depth 3 (*Deep*), a
+  function's variables and the flows between them are drawn; at 2, its functions
+  and what they call. *Physics*, *Repulsion* and *Link Distance* drive
+  vis-network's simulation and are offered on Gravis only, the one renderer that
+  runs one; *Repulsion* and *Link Distance* show while *Physics* is on.
+  `renderer_controls.rendererControls` says which controls each renderer takes.
+  *Group Outlines* (D3 only) circles each group in a translucent dashed outline:
+  grey around a directory's, teal around a file's.
 - **Visual**, folded: *Node Labels* (and per depth: Dir, File, Sym, Sub), *Node
   Size*, *Color By* (depth and kind, abstraction layer, or construct across
   languages), *Node Opacity*, *Border Width*, *Edge Labels*, *Edge Width*, *Edge
@@ -425,7 +444,12 @@ Id `graph-settings-panel`. In the default arrangement.
   where a node's own colour is its construct's, so the crate graph under *Auto*
   has no *Package* row. The canvas, the vis-network renderer and the key take
   the fill from one function, `paintedColor`. A record (`ngon`) is a row per
-  side count, and says it: *Struct · 4 sides*.
+  side count, and says it: *Struct · 4 sides*. A Showcase carries a key of its
+  own in the legend's place, drawn in the canvas's svg so that a picture of the
+  canvas holds it: one line, wrapped to the canvas's width, of a mark for each
+  colour and shape the code below the files is drawn in, by kind, most
+  numerous first, and a line for each link drawn. It has no count and no heading, and a link
+  switched off leaves it.
 - **Right-click** opens the [radial menu](#the-radial-menu).
 
 ### A node's source

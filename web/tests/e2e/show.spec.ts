@@ -520,6 +520,43 @@ test("a code map drawn again in another layout is drawn at its own depth, under 
   await expect(page.locator('.show__crumb.is-current')).toHaveText('moat');
 });
 
+test("a showgraph's code map opens as a Showcase, and the Map draws it again by its names", async ({ page }) => {
+  await stubViews(page, () => ({
+    estate: { available: true },
+    code: { available: true, url: '/work/small', depth: 3, floor: 100 },
+    system: { available: false, problem: 'not here', remedy: '' },
+  }));
+  const bodies: Array<Record<string, unknown>> = [];
+  const frame = (event: string, data: unknown) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  await page.route('**/parse/stream-url', (route) => {
+    bodies.push(route.request().postDataJSON());
+    return route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body: [
+        frame('meta', { nodeCount: 1, edgeCount: 0, layout: 'spring' }),
+        frame('node', { id: 'dir::src', label: 'src', kind: 'directory', depth: 0, x: 0, y: 0, file: '', line: 0 }),
+        frame('done', { elapsed_ms: 1 }),
+      ].join(''),
+    });
+  });
+  await page.goto('/?show=project:moat&view=code');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.graph-node[data-node-id="dir::src"]')).toBeAttached({ timeout: SETTLED });
+  // Streamed as a Showcase, so the server draws it to its symbols at the
+  // least (`stream_floor`). Mutation: open the code view in the Map -- it is
+  // streamed as a Map, and this fails.
+  expect(bodies.map((body) => [String(body.layout).split('(')[0], body.floor])).toEqual([['Showcase', 100]]);
+  await page.locator('.lm_tab', { hasText: /Graph Settings/ }).click();
+  const select = page.locator('select', { has: page.locator('option[value=showcase_layout]') });
+  await expect(select).toHaveValue('showcase_layout');
+
+  await select.selectOption('map_layout');
+  await expect.poll(() => bodies.length, { timeout: SETTLED }).toBe(2);
+  expect([bodies[1].layout, bodies[1].floor]).toEqual(['Map', 100]);
+  await expect(page).toHaveURL(/\?show=project:moat&view=code$/);
+});
+
 /** The canvas's zoom transform, once it has stopped moving: the fit is a 700 ms transition. */
 async function settledTransform(page: Page): Promise<{ x: number; y: number; k: number }> {
   const view = page.locator('.graphRenderer svg').first();

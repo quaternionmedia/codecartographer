@@ -50,6 +50,29 @@ export function canvasPath(node: { shape?: unknown; meta?: unknown }, s: number)
 }
 
 /**
+ * How far a shape drawn at half-extent 1 reaches from its centre. A circle, a
+ * diamond, a hexagon and an `ngon` reach 1 at their rims and vertices; a
+ * square's corners, a rectangle's and a triangle's reach further.
+ */
+export function shapeReach(shape: unknown): number {
+  switch (shape) {
+    case 'square': return Math.SQRT2;
+    case 'rectangle': return Math.hypot(1, 0.55);
+    case 'triangle': return Math.hypot(1, 1.5);
+    default: return 1;
+  }
+}
+
+/**
+ * A node's shape drawn inside a circle of radius `r`: how a Showcase draws a
+ * node of code, in the circle the server packed it in (`show_layout.showcase`),
+ * so a square's corners overlap no neighbour a dot there would not have.
+ */
+export function fittedPath(node: { shape?: unknown; meta?: unknown }, r: number): string {
+  return canvasPath(node, r / shapeReach(node.shape));
+}
+
+/**
  * Every shape name `nodePath` draws distinctly -- no two the same outline at
  * any size, and an `ngon` of any side count none of the others.
  *

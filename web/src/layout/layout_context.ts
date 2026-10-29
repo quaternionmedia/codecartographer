@@ -53,7 +53,8 @@ import type { GraphOps } from '../features/graph/rad/host/graph_intents';
 import type { MenuContext } from '../features/graph/rad/core/types';
 import { DEEPEST_DEPTH } from '../features/graph/rad/host/resolve';
 import type { GraphData, GraphNode, GraphEdge } from '../features/graph/services/graph_types';
-import { backendLayoutName } from '../features/graph/services/layout_names';
+import { layoutSpec } from '../features/graph/services/layout_names';
+import { SHOWCASE_LAYOUT, laysOutAgain, showcaseOf, withShowcase } from '../features/graph/services/showcase';
 import { formatShow, fromNode, parseShow, sameShow } from '../features/show/show_address';
 import type { ShowAddress } from '../features/show/show_address';
 import { SystemDefinitionRegistry } from '../features/graph/services/system_core';
@@ -69,7 +70,6 @@ const SAVED_LAYOUT_KEY = 'cc:gl-layout:default';
 // The menu's registry name, as the backend spells it. One rule in
 // `layout_names.ts`; this used to be a second private table that fell back to
 // 'Spring' for any name it did not list, including `compound_layout`.
-const convertLayout = backendLayoutName;
 
 function findFileByUrl(folder: RawFolder, url: string): RawFile | null {
   for (const f of folder.files) {
@@ -909,9 +909,10 @@ export class LayoutContext {
 
     if (address.view === 'code' && view.url) {
       this._leaveSystemRenderer();
-      this._mapLayout();
+      this._showcaseLayout();
       // The view's depth and floor whenever it is drawn: a large project's
-      // files, a small one's symbols too (`stream_floor.py`). The depth was
+      // files, a small one's symbols too, and a Showcase's symbols always
+      // (`stream_floor.py`). The depth was
       // set around the first stream only, so a layout change drew it again at
       // the Open panel's, symbols and all.
       const show = { depth: view.depth ?? 1, floor: view.floor };
@@ -976,15 +977,19 @@ export class LayoutContext {
   }
 
   /**
-   * The Map layout, the one a showgraph's code view opens in: each directory a
-   * ring of what it holds. The compound layout spreads a repository's
-   * directories by a spring layout, and a code map framed whole came out at a
-   * scale of a twentieth, every node under a pixel.
+   * The Showcase, the layout a showgraph's code view opens in: each directory a
+   * ring of what it holds, as the Map draws it, and each file a disc of its
+   * code's dots, coloured by kind, so a code map says what a repository holds
+   * and not only how it is filed. It is drawn to its symbols at the least
+   * (`stream_floor`). The compound layout spreads a repository's directories
+   * by a spring layout, and a code map framed whole came out at a scale of a
+   * twentieth, every node under a pixel. The Map, chosen in Graph Settings,
+   * draws the view again by its names.
    */
-  private _mapLayout(): void {
+  private _showcaseLayout(): void {
     const styling = this.appState.state.graphStyling;
-    if (styling.layout !== 'map_layout') {
-      this.appState.update({ graphStyling: { ...styling, layout: 'map_layout' } });
+    if (styling.layout !== SHOWCASE_LAYOUT) {
+      this.appState.update({ graphStyling: { ...styling, layout: SHOWCASE_LAYOUT } });
     }
   }
 
@@ -1359,9 +1364,10 @@ export class LayoutContext {
     // The key, on the same context and the same lifetime as the menu. It
     // reads the scene the renderer just finished, so it is mounted here
     // rather than during the stream, when the counts would be a snapshot
-    // of a graph still arriving.
+    // of a graph still arriving. A Showcase's is its own, minimal, read from
+    // the settings the renderer draws it with.
     this._legend?.destroy();
-    const legend = new LegendExtension(() => this.appState.state.graphStyling.colorBy);
+    const legend = new LegendExtension(() => this.appState.state.graphStyling.colorBy, () => renderer.getShowcase());
     legend.initialize(context);
     legend.apply();
     this._legend = legend;
@@ -1430,7 +1436,7 @@ export class LayoutContext {
   /** Stream a pre-fetched Directory via /parse/stream. */
   private _startStream(directory: Directory, statusMsg: string): void {
     const opts = this.appState.state.parserOptions;
-    const layout = convertLayout(this.appState.state.graphStyling.layout);
+    const layout = layoutSpec(this.appState.state.graphStyling);
     const exts = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
     const depth = this.panelState.parseDepth;
 
@@ -1527,7 +1533,7 @@ export class LayoutContext {
    */
   private _startStreamFromUrl(githubUrl: string, show?: { depth: number; floor?: number }): void {
     const opts = this.appState.state.parserOptions;
-    const layout = convertLayout(this.appState.state.graphStyling.layout);
+    const layout = layoutSpec(this.appState.state.graphStyling);
     const exts = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
     const depth = show?.depth ?? this.panelState.parseDepth;
 
@@ -1770,10 +1776,14 @@ export class LayoutContext {
           this.actions.plot.createGraphVnode();
       },
 
-      onGraphStylingChange: async (options) => {
+      onGraphStylingChange: async (change) => {
         const current = this.appState.state;
         const oldLayout = current.graphStyling.layout;
         const oldPhysics = current.graphStyling.enablePhysics;
+        const oldShowcase = showcaseOf(current.graphStyling);
+        // A Showcase setting arrives alone, and is made to the settings held.
+        const options = change.showcase === undefined ? change
+          : { ...change, showcase: withShowcase(current.graphStyling.showcase, change.showcase) };
         this.appState.update({ graphStyling: { ...current.graphStyling, ...options } });
         if (this._streamingRenderer) {
           this._streamingRenderer.updateStyling(options);
@@ -1782,7 +1792,12 @@ export class LayoutContext {
         // mean. A streamed plot is not redrawn below, so without this its key
         // kept describing the colouring it was drawn with.
         if (options.colorBy !== undefined) this._legend?.apply();
-        if (options.layout && options.layout !== oldLayout && this._lastPlotAction) {
+        // A Showcase setting the server lays out by (a dot's size, the gap,
+        // the nesting) lays the graph out again, as a new layout does; the rest
+        // the renderer draws in place.
+        const relaidOut = options.showcase !== undefined && this.appState.state.graphStyling.layout === SHOWCASE_LAYOUT
+          && laysOutAgain(oldShowcase, showcaseOf(this.appState.state.graphStyling));
+        if (((options.layout && options.layout !== oldLayout) || relaidOut) && this._lastPlotAction) {
           this.updatePanelState({ isLoading: true, statusMessage: 'Applying new layout...' });
           try {
             await this._lastPlotAction();

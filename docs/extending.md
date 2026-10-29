@@ -249,7 +249,11 @@ otherwise, in lower case. C's are `calls`, `field_of`, `type_of` and
 `aliases`, and a function's locals hang from it by `contains`
 (`c_language_parser.py`'s `_EDGE_KIND_MAP`); the upper-case `CALLS`,
 `FIELD_OF`, `POINTS_TO`, ... are `CParser`'s own, which only `/c-parser/*`
-answers.
+answers. Python's are `imports`, `calls`, `uses` and `flows`
+(`python_links.py`, [Architecture](architecture.md#the-unified-graph)). A node
+is held -- by `contains` or `field_of` -- once: the first hold the parse states
+on it is kept and every later one made a `uses`, so a parser may state a hold
+on a node another file holds too.
 
 ### Visual grammar
 

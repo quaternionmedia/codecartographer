@@ -34,9 +34,9 @@ def _events(chunks: list[str]) -> list[tuple[str, dict]]:
     return out
 
 
-def _run(stream, floor: int) -> list[tuple[str, dict]]:
+def _run(stream, floor: int, layout: str = "Map") -> list[tuple[str, dict]]:
     async def collect():
-        return [chunk async for chunk in floored(stream, floor)]
+        return [chunk async for chunk in floored(stream, floor, layout)]
     return _events(asyncio.run(collect()))
 
 
@@ -72,6 +72,20 @@ def test_a_project_whose_files_reach_the_floor_is_drawn_to_them_and_no_file_is_f
     assert len(nodes) == 121 and all(n["depth"] <= 1 for n in nodes)
     assert fetched == [], "a file was fetched for its symbols past the floor"
     assert events[-1] == ("done", {"elapsed_ms": events[-1][1]["elapsed_ms"], "depth": 1, "floor": 100, "nodes": 121})
+
+
+def test_a_showcase_is_drawn_to_its_symbols_where_its_files_reach_the_floor():
+    # A Showcase colours each file by the code in it: drawn to its files alone
+    # it has nothing to colour. Asked for as the window asks, its settings and
+    # all. Mutation: hold a Showcase to the floor as any other layout -- its
+    # files reach it, no file is fetched, and this fails.
+    fetched: list[str] = []
+    events = _run(_repository(files=120, symbols=40, members=40, fetched=fetched), floor=100,
+                  layout="Showcase(dot=2,gap=0.5,nest=true,sized=true)")
+    nodes = [e for kind, e in events if kind == "node"]
+    assert {n["depth"] for n in nodes} == {0, 1, 2}, "a Showcase was drawn to its files alone, or to its members"
+    assert len(fetched) == 40
+    assert events[-1][1]["depth"] == 2 and events[-1][1]["nodes"] == 161
 
 
 def test_a_small_project_is_drawn_to_its_symbols_and_its_members_are_left_out_once_they_reach_it():

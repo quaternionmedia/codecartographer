@@ -47,3 +47,13 @@ path = [
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2026 Quaternion Media"
 SPDX-License-Identifier = "Apache-2.0"
+
+# --- Code received from upstream (outbound section 8) ------------------------
+# circle_pack.py is a Python port of d3-hierarchy 3.1.2's packSiblings and
+# packEnclose, and keeps d3's ISC licence and notice: QM's default never
+# displaces the licence of code QM received.
+[[annotations]]
+path = "codecarto/services/circle_pack.py"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright 2010-2021 Mike Bostock"
+SPDX-License-Identifier = "ISC"

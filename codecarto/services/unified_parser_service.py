@@ -32,12 +32,16 @@ from codecarto.services import construct_service
 from codecarto.services.graph_serializer import GraphSerializer
 from codecarto.services.lexicon_bridge import annotate_graph_with_lexicon
 from codecarto.services.lexicon_service import LexiconService
+from codecarto.services.showcase_graph import is_markdown, is_showcase, markdown_lines, thin_graph
 from codecarto.services.parsers.language_parser import (
     ParserRegistry,
     make_node,
     make_edge,
 )
 
+# The edges by which one node holds another. A use, a call or a flow joins two
+# nodes something else holds.
+_HOLDS = frozenset({"contains", "field_of"})
 
 
 class UnifiedParserService:
@@ -81,6 +85,9 @@ class UnifiedParserService:
         graph = UnifiedParserService.build_graph(
             directory, depth, extensions, annotate_lexicon=annotate_lexicon
         )
+        if is_showcase(layout):
+            # No import, and a folder of prose one dot (`showcase_graph`).
+            thin_graph(graph, _markdown_lines(directory.root))
         options = PlotOptions(layout=layout, type="d3")
         gjgf = GraphSerializer.serialize_to_gjgf(graph, options)
         meta = GraphSerializer.create_metadata(graph, options)
@@ -124,6 +131,9 @@ class UnifiedParserService:
         graph = UnifiedParserService.build_graph(
             directory, depth, extensions, annotate_lexicon=annotate_lexicon
         )
+        if is_showcase(layout):
+            # No import, and a folder of prose one dot (`showcase_graph`).
+            thin_graph(graph, _markdown_lines(directory.root))
         options = PlotOptions(layout=layout, type="d3")
         gjgf = GraphSerializer.serialize_to_gjgf(graph, options)
 
@@ -385,7 +395,7 @@ class UnifiedParserService:
             # rule as _merge_batch_subgraph); depth=3 nodes have a structural
             # edge from their parent (e.g. FIELD_OF) -- all but a module's own,
             # a constant or a name at its top level, which its file holds.
-            parented = {target for _, target in sub.edges()}
+            parented = {target for _, target, kind in sub.edges(data="kind") if kind in _HOLDS}
             for nid, ndata in sub.nodes(data=True):
                 depth_val = ndata.get("depth")
                 if depth_val != 2 and not (isinstance(depth_val, int) and depth_val > 2 and nid not in parented):
@@ -419,18 +429,24 @@ class UnifiedParserService:
             if getattr(parser, "language", None) == "python":
                 python_raw_by_file_id[file_id] = raw
                 dependency_file_id_by_stem[Path(file_name).stem] = file_id
+            # A page's lines, which a Showcase sizes a folder of prose by
+            # (`showcase_graph`); a window drawing as it arrives reads no
+            # event it does not know.
+            measured = ([f"event: lines\ndata: {json.dumps({'id': file_id, 'lines': markdown_lines(raw)})}\n\n"]
+                        if is_markdown(file_name) else [])
             try:
                 sf = File(url=dl_url, name=file_name, size=0, raw=raw)
                 sub = parser.parse_files([sf], depth=depth)
             except Exception:
-                return []
+                return measured
             if sub.number_of_nodes() == 0:
-                return []
+                return measured
             if annotate_lexicon:
                 annotate_graph_with_lexicon(sub, getattr(parser, "language", ""))
             # A parser keeps a node's file as its URL, its stem or, as
             # Python's does, its name: one file, so each names it alone.
-            return node_events_for(sub, {Path(file_name).stem: file_id}, {dl_url: file_id, file_name: file_id})
+            return measured + node_events_for(sub, {Path(file_name).stem: file_id},
+                                              {dl_url: file_id, file_name: file_id})
 
         async def fetch_and_parse_batch(
             parser, entries: list[tuple[str, str, str]]
@@ -623,6 +639,7 @@ class UnifiedParserService:
 
         if pending:
             _parse_pending_batches(graph, pending, depth)
+        _one_holder(graph)
 
         if depth >= 2:
             _add_python_dependency_edges(graph, directory.root, allowed_exts)
@@ -812,6 +829,16 @@ def _collect_parseable(
         _collect_parseable(sub, allowed_exts, result, f"{path}/{sub.name}")
 
 
+def _markdown_lines(folder: Folder, path: Optional[str] = None) -> dict[str, int]:
+    """Each markdown page's lines, by the file id `_walk_folder` gives it."""
+    path = path or folder.name
+    found = {f"file::{path}/{f.name}": markdown_lines(f.raw)
+             for f in folder.files if is_markdown(f.name) and isinstance(f.raw, str)}
+    for sub in folder.folders:
+        found.update(_markdown_lines(sub, f"{path}/{sub.name}"))
+    return found
+
+
 def _ext_to_language(ext: str) -> str:
     parser = ParserRegistry.get(ext)
     return parser.language if parser is not None else "unknown"
@@ -943,11 +970,34 @@ def _merge_subgraph(
     graph.add_nodes_from(sub.nodes(data=True))
     graph.add_edges_from(sub.edges(data=True))
 
-    # Connect file node → top-level symbols (depth=2 nodes with no parents in sub)
-    sub_roots = {n for n in sub.nodes if sub.in_degree(n) == 0}
+    # Connect file node → top-level symbols: what nothing in sub holds. A
+    # use, a call or a flow into a node is no hold on it.
+    held = {target for _, target, kind in sub.edges(data="kind") if kind in _HOLDS}
+    sub_roots = {n for n in sub.nodes if n not in held}
     for root in sub_roots:
         if not graph.has_edge(file_node_id, root):
             graph.add_edge(file_node_id, root, **make_edge("contains"))
+
+
+def _one_holder(graph: nx.DiGraph) -> None:
+    """Each node held by one node: by the first hold the parse stated on it,
+    and used by every other.
+
+    A parser names a node by its module and its name -- `typing.typing` for
+    an import of `typing`, `typing.ClassVar` for a name several classes read
+    -- so files that share one each stated a hold on it, and the outline the
+    canvas draws round each holder reached across the map to the one place it
+    is drawn. Held once, it is drawn in its first holder's group, and the
+    rest use it.
+    """
+    held: set[str] = set()
+    for source, target, kind in list(graph.edges(data="kind")):
+        if kind not in _HOLDS or source == target:
+            continue
+        if target in held:
+            graph.edges[source, target]["kind"] = "uses"
+        else:
+            held.add(target)
 
 
 def note_event(message: str) -> str:
