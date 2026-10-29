@@ -172,10 +172,12 @@ export function marksCover(
   return marks.reduce((total, mark) => total + mark.count, 0);
 }
 
-/** One thing a Showcase's key names: what it is, in the colour it is drawn. */
+/** One thing a Showcase's key names: what it is, in the colour and the shape it is drawn. */
 export interface KeyEntry {
   label: string;
   color: string;
+  shape?: string;
+  sides?: number;
 }
 
 /** A node as a Showcase's key reads it: its mark, and how deep it sits. */
@@ -189,10 +191,11 @@ export interface KeyedEdge extends MarkableEdge {
 }
 
 /**
- * A Showcase's key: each colour its code is drawn in, and each link drawn.
+ * A Showcase's key: each colour and shape its code is drawn in, and each link drawn.
  *
- * **THE CODE, NOT ITS FILING.** A dot below the files -- a symbol, or what one
- * holds -- is keyed by its kind, in the colour drawn, most numerous first. A
+ * **THE CODE, NOT ITS FILING.** A mark below the files -- a symbol, or what one
+ * holds -- is keyed by its kind, in the colour and the shape drawn, most
+ * numerous first. A
  * directory and a file carry their names, and a module from outside is one
  * grey among them, so neither is keyed: a key naming what the picture already
  * says is longer, and no clearer.
@@ -207,7 +210,10 @@ export function showcaseKey(
   colorBy: string | undefined = 'auto',
 ): { dots: KeyEntry[]; links: KeyEntry[] } {
   const code = nodes.filter((node) => typeof node.depth === 'number' && node.depth >= 2);
-  const dots = nodeMarks(code, colorBy).map((mark) => ({ label: readable(mark.kind).toLowerCase(), color: mark.color }));
+  const dots = nodeMarks(code, colorBy).map((mark) => ({
+    label: readable(mark.kind).toLowerCase(), color: mark.color,
+    ...(mark.shape ? { shape: mark.shape } : {}), ...(mark.sides !== undefined ? { sides: mark.sides } : {}),
+  }));
   // The kind the renderer draws a line by (`StreamingGraphRenderer.addEdge`).
   const drawn = new Set(edges.map((edge) => {
     const meta = (edge.metadata ?? {}) as { kind?: unknown };

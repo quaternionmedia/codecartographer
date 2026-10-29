@@ -663,6 +663,15 @@ def chars_scale(chars: Any) -> float:
     return min(max(0.5 + math.log10(chars / 10), 0.5), 4.0)
 
 
+def lines_scale(lines: Any) -> float:
+    """A folder of prose's radius, in a member's, for the `lines` its pages
+    hold (`showcase_graph`): a directory's two up to a hundred, one more for
+    each ten times as many, and at most six."""
+    if not isinstance(lines, (int, float)) or lines <= 0:
+        return SHOWCASE_SCALE[0]
+    return min(max(SHOWCASE_SCALE[0] + math.log10(lines / 100), SHOWCASE_SCALE[0]), 6.0)
+
+
 def _glyph(hub: str, held: dict[str, list[str]], radius_of, label_at: dict[str, str], gap: float,
            key) -> tuple[dict[str, tuple[float, float]], float]:
     """`hub` and what it holds packed tight round it (`circle_pack`), each that
@@ -720,6 +729,8 @@ def showcase(graph: nx.DiGraph, dot: float = SHOWCASE_DOT, gap: float = SHOWCASE
     node a dot -- a file's and a directory's a little wider
     (`showcase_radius`), and, `sized`, a symbol's or a member's by the source
     it stands for (`chars_scale`) -- each `gap` from the next, packed tight.
+    A folder of prose folded to one dot (`showcase_graph`) is as large as the
+    lines its pages hold (`lines_scale`).
 
     A file is a disc of its code, as large as what it holds. With `nest`, each
     function and class is a glyph: all it holds packed round it, largest
@@ -740,9 +751,13 @@ def showcase(graph: nx.DiGraph, dot: float = SHOWCASE_DOT, gap: float = SHOWCASE
     def radius_of(node: str) -> float:
         data = graph.nodes[node]
         depth = data.get("depth", 1)
+        meta = data.get("meta") or {}
+        if sized and "pages" in meta:
+            # A folder of prose, folded to one dot (`showcase_graph`).
+            return dot * lines_scale(meta.get("lines"))
         if depth in SHOWCASE_SCALE or not sized:
             return showcase_radius(depth, dot)
-        return dot * chars_scale((data.get("meta") or {}).get("chars"))
+        return dot * chars_scale(meta.get("chars"))
 
     def key(node: str, radius: float):
         # Largest first, as circles pack densest: ordered by kind first, a

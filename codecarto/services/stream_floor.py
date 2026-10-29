@@ -39,6 +39,8 @@ import json
 import time
 from typing import Any, AsyncIterator
 
+from codecarto.services.showcase_graph import is_showcase, thinned
+
 # The fewest nodes a showgraph's code map is drawn with, where the repository
 # has that many: `show_router`'s views name it, the window streams with it.
 CODE_FLOOR = 100
@@ -71,9 +73,7 @@ def _depth(node: dict) -> int:
 
 def _least(layout: str) -> int:
     """The shallowest depth `layout` is drawn to: a Showcase's symbols, any other's files."""
-    from codecarto.services.position_service import layout_key, layout_spec
-
-    return SYMBOLS if layout_key(layout_spec(layout)[0]) == "showcase_layout" else FILES
+    return SYMBOLS if is_showcase(layout) else FILES
 
 
 def _done(payload: Any, depth: int, floor: int, nodes: int) -> str:
@@ -117,7 +117,8 @@ def _held_within(nodes: dict[str, dict], edges: list[dict]) -> set[str]:
 
 def laid_out(nodes: list[dict], edges: list[dict], layout: str) -> list[dict]:
     """`nodes` placed by `layout` over the whole graph, as `GraphSerializer`
-    places a parse, each with the side its name goes on where the layout says."""
+    places a parse, each with the side its name goes on where the layout says,
+    and the radius a Showcase sizes its dot at (`dot_scale`)."""
     import networkx as nx
 
     from codecarto.models.plot_data import PlotOptions
@@ -132,7 +133,7 @@ def laid_out(nodes: list[dict], edges: list[dict], layout: str) -> list[dict]:
     for node in nodes:
         placed = drawn.get(node["id"]) or {}
         meta = placed.get("metadata") if isinstance(placed.get("metadata"), dict) else {}
-        for key in ("x", "y", "label_at"):
+        for key in ("x", "y", "label_at", "dot_scale"):
             if key in placed:
                 node[key] = placed[key]
             elif key in meta:
@@ -149,6 +150,7 @@ async def floored(stream: AsyncIterator[str], floor: int, layout: str = "Map") -
     nodes: list[dict] = []           # a deepened project's, to its symbols
     members: list[dict] = []
     edges: list[dict] = []
+    lines: dict[str, int] = {}       # each markdown page's, which a Showcase folds by
     counted = deepened = False
     try:
         async for chunk in stream:
@@ -189,17 +191,32 @@ async def floored(stream: AsyncIterator[str], floor: int, layout: str = "Map") -
                 (members if _depth(node) >= MEMBERS else nodes).append(node)
             elif event == "edge" and isinstance(payload, dict):
                 edges.append(payload)
+            elif event == "lines" and isinstance(payload, dict):
+                if isinstance(payload.get("lines"), int):
+                    lines[str(payload.get("id"))] = payload["lines"]
             elif event == "done":
                 # Each id once, the shallowest copy: a parser that names two
                 # things alike sent both, and the canvas drew both.
                 unique: dict[str, dict] = {}
                 for item in nodes:
                     unique.setdefault(str(item.get("id")), item)
-                ids = _held_within(unique, edges)
+
+                def drawn(unique: dict[str, dict]) -> tuple[dict[str, dict], list[dict]]:
+                    # A Showcase draws no import, and a folder of prose as one
+                    # dot (`showcase_graph`): counted to the floor as drawn.
+                    if least <= FILES:
+                        return unique, edges
+                    shown, links = thinned(list(unique.values()), edges, lines)
+                    return {str(item.get("id")): item for item in shown}, links
+
+                unique, joining = drawn(unique)
+                ids = _held_within(unique, joining)
                 if len(ids) < floor:
                     for item in members:
                         unique.setdefault(str(item.get("id")), item)
-                    ids = _held_within(unique, edges)
+                    unique, joining = drawn(unique)
+                    ids = _held_within(unique, joining)
+                edges = joining
                 kept = [item for key, item in unique.items() if key in ids]
                 joined = [e for e in edges if str(e.get("source")) in ids and str(e.get("target")) in ids]
                 kept.sort(key=lambda n: (_depth(n), str(n.get("id"))))

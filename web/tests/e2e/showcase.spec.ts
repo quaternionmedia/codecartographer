@@ -28,11 +28,11 @@ function showcaseStream(): string {
     node('dir::pkg', 'directory', 0, 0, 0),
     node('file::pkg/a.py', 'file', 1, 20, 0),
     node('external::os', 'external_module', 1, -40, 0),
-    node('a.run', 'function', 2, 26, 0, { dot_scale: 2.5 }),
+    node('a.run', 'function', 2, 26, 0, { dot_scale: 2.5, shape: 'hexagon' }),
     node('a.helper', 'function', 2, 20, 6, { color: '#00ff41' }),
     node('a.total', 'name', 3, 14, 0),
     node('a.step', 'argument', 3, 20, -6),
-    node('a.LIMIT', 'constant', 3, 26, 6),
+    node('a.LIMIT', 'constant', 3, 26, 6, { shape: 'square' }),
     edge('dir::pkg', 'file::pkg/a.py', 'contains'),
     edge('file::pkg/a.py', 'a.run', 'contains'),
     edge('file::pkg/a.py', 'a.helper', 'contains'),
@@ -116,16 +116,31 @@ test('a Showcase draws every node a dot, borderless, and asks the server for it 
       across: Math.max(box.width, box.height), border: path.getAttribute('stroke-width'),
       fill: path.getAttribute('fill'), opacity: path.getAttribute('fill-opacity') };
   }));
-  // A dot whatever its kind: a circle, its size by its depth (`DOT_SCALE`).
+  // A directory and a file a dot, its size by its depth (`DOT_SCALE`); a node
+  // of code in its kind's shape where it has one, a dot where it has none.
   // Mutation: draw a file as a Map does -- it is a square, and this fails.
   const across = Object.fromEntries(dots.map((d) => [d.id, d.across]));
-  for (const d of dots) expect(d.d, `${d.id} is a circle`).toMatch(/^M \S+ 0 A /);
+  // A function sent with none takes the canvas's own for its kind
+  // (`_assignVisuals`): a hexagon, as a Python one is sent with.
+  const shaped = new Set(['a.run', 'a.helper', 'a.LIMIT']);
+  for (const d of dots.filter((dot) => !shaped.has(dot.id!))) expect(d.d, `${d.id} is a circle`).toMatch(/^M \S+ 0 A /);
   expect(across['dir::pkg']).toBeCloseTo(8, 1);
   expect(across['file::pkg/a.py']).toBeCloseTo(6, 1);
-  // A dot the server sized by its source is drawn at that size (`dot_scale`).
-  // Mutation: draw it by its depth -- a member's four, and this fails.
+  // Mutation: draw every node of code a dot -- the function's hexagon and the
+  // constant's square are circles, and this fails.
+  const by = Object.fromEntries(dots.map((d) => [d.id, d.d]));
+  expect(by['a.run']).not.toMatch(/ A /);
+  expect(by['a.run'].match(/ L /g)).toHaveLength(5);
+  expect(by['a.LIMIT'].match(/ L /g)).toHaveLength(3);
+  // A dot the server sized by its source is drawn at that size (`dot_scale`):
+  // a hexagon's vertices touch its circle. Mutation: draw it by its depth --
+  // a member's four, and this fails.
   expect(across['a.run']).toBeCloseTo(10, 1);
   expect(across['a.total']).toBeCloseTo(4, 1);
+  // A square inside its circle, a member's two across: its side two over
+  // root two. Mutation: draw the shape at the circle's radius -- its corners
+  // reach into the next dot, and this fails.
+  expect(across['a.LIMIT']).toBeCloseTo(4 / Math.SQRT2, 1);
   // A little see-through, and the parse's neon green muted. Mutation: draw
   // the dots opaque, or the green as given -- and this fails.
   expect(new Set(dots.map((d) => d.opacity))).toEqual(new Set(['0.85']));
@@ -201,8 +216,9 @@ test('a link toggled is hidden without asking the server; a dot size asks it for
 /** A Showcase's key as drawn: each entry's word, its colour, and whether it is a dot or a link. */
 const keyOf = (page: Page) => page.locator('.graphRenderer > svg > svg.showcase-key .showcase-key__entry')
   .evaluateAll((all) => all.map((g) => {
-    const dot = g.querySelector('circle');
+    const dot = g.querySelector('path');
     return { label: g.querySelector('text')?.textContent ?? '', dot: dot !== null,
+      shape: dot?.getAttribute('data-shape') ?? null,
       colour: dot ? dot.getAttribute('fill') : g.querySelector('line')?.getAttribute('stroke') ?? null };
   }));
 
@@ -224,14 +240,14 @@ test("a Showcase carries a minimal key in its svg: the code's dots and the links
   await expect(svg.locator(':scope > svg.showcase-key')).toHaveCount(1);
   await expect(page.locator('.graph-legend')).toHaveCount(0);
   const key = await keyOf(page);
-  // Each dot below the files is keyed in the colour it is drawn, and nothing
-  // else is. Mutation: key the directory, the file and the module too -- and
-  // this fails.
+  // Each mark below the files is keyed in the colour and the shape it is
+  // drawn in, and nothing else is. Mutation: key the directory, the file and
+  // the module too -- and this fails.
   const drawn = await svg.locator('g.graph-node').evaluateAll((groups) => groups
-    .map((g) => ({ ...(g as unknown as { __data__: { kind: string; depth: number } }).__data__,
+    .map((g) => ({ ...(g as unknown as { __data__: { kind: string; depth: number; shape?: string } }).__data__,
       fill: g.querySelector('path')!.getAttribute('fill') }))
-    .filter((node) => node.depth >= 2).map((node) => `${node.kind}|${node.fill}`));
-  expect(new Set(key.filter((e) => e.dot).map((e) => `${e.label}|${e.colour}`))).toEqual(new Set(drawn));
+    .filter((node) => node.depth >= 2).map((node) => `${node.kind}|${node.fill}|${node.shape ?? 'circle'}`));
+  expect(new Set(key.filter((e) => e.dot).map((e) => `${e.label}|${e.colour}|${e.shape}`))).toEqual(new Set(drawn));
   expect(key.filter((e) => e.dot)).toHaveLength(new Set(drawn).size);
   // The links drawn, in their colours; the imports are off. Mutation: key
   // every link in the graph, switched on or not -- and this fails.

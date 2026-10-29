@@ -11,7 +11,7 @@
 
 import * as d3 from 'd3';
 import { GraphNode, GraphEdge } from './graph_types';
-import { canvasPath } from './node_shapes';
+import { canvasPath, fittedPath } from './node_shapes';
 import { drawnFill } from '../extensions/legend_marks';
 import { GraphStylingOptions } from '../../../state/types';
 import { CompoundLayoutManager, outlinesAfterRemoval } from './compound_layout';
@@ -517,9 +517,8 @@ export class StreamingGraphRenderer {
     const dot = this._isDot(node);
     group
       .append('path')
-      // Shapes come from `node_shapes`, so the legend's swatches match; a
-      // Showcase's dot is a dot whatever it is, its colour saying what.
-      .attr('d', canvasPath(dot ? { shape: 'circle' } : node, size))
+      // Shapes come from `node_shapes`, so the legend's swatches match.
+      .attr('d', dot ? this._dotPath(node, size) : canvasPath(node, size))
       .attr('fill', baseFill)
       // Remembered so a colour override can be undone without re-deriving
       // the parser's visual grammar here.
@@ -929,6 +928,14 @@ export class StreamingGraphRenderer {
   private _nodeSize(n: GraphNode): number {
     if (this._isDot(n)) return dotRadius(n.depth, this._showcase!.dot, n.dot_scale);
     return this.styling.nodeSize! * depthSizeMultiplier(n) * (this._map ? MAP_NODE_SCALE : 1);
+  }
+
+  /** A node on a Showcase: a directory or a file a dot, its outline saying
+   *  what it holds; a node of code in the shape its kind is drawn in, inside
+   *  the circle the server packed it in, so its shape and its colour both say
+   *  what it is. */
+  private _dotPath(n: GraphNode, size: number): string {
+    return typeof n.depth === 'number' && n.depth >= 2 ? fittedPath(n, size) : canvasPath({ shape: 'circle' }, size);
   }
 
   /** Whether a node is drawn as a dot: every node on a Showcase, the server

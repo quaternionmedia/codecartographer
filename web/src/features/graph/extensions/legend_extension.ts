@@ -24,6 +24,7 @@ import * as d3 from 'd3';
 
 import { BaseExtension } from './base';
 import type { GraphNode, GraphEdge } from '../services/graph_types';
+import { fittedPath } from '../services/node_shapes';
 import { DOT_OPACITY } from '../services/showcase';
 import type { ShowcaseOptions } from '../services/showcase';
 import { constructMarks, edgeMarks, layerMarks, nodeLabel, nodeMarks, readable, showcaseKey, swatchPath } from './legend_marks';
@@ -277,7 +278,10 @@ export class LegendExtension extends BaseExtension<GraphNode, GraphEdge> {
       if (entry.line) {
         item.append('line').attr('x2', KEY.line).attr('stroke', entry.color).attr('stroke-width', 2);
       } else {
-        item.append('circle').attr('cx', KEY.dot).attr('r', KEY.dot)
+        // In the shape the canvas draws it in, fitted as the canvas fits it.
+        item.append('path').attr('transform', `translate(${KEY.dot},0)`)
+          .attr('data-shape', entry.shape ?? 'circle')
+          .attr('d', fittedPath({ shape: entry.shape, meta: { sides: entry.sides } }, KEY.dot))
           .attr('fill', entry.color).attr('fill-opacity', DOT_OPACITY);
       }
       const text = item.append('text')

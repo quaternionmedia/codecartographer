@@ -406,26 +406,43 @@ const SHOWN = [
   { kind: 'directory', depth: 0, color: '#7f8c8d' },
   { kind: 'file', depth: 1, color: '#4f9e94' },
   { kind: 'external_module', depth: 1, color: '#5a5a5a' },
-  { kind: 'function', depth: 2, color: '#31d85b' },
+  { kind: 'function', depth: 2, color: '#31d85b', shape: 'hexagon' },
   { kind: 'async_function', depth: 2, color: '#31d85b' },
   { kind: 'name', depth: 3, color: '#6f9cff' },
   { kind: 'name', depth: 3, color: '#6f9cff' },
   { kind: 'constant', depth: 4, color: '#b39ddb' },
+  { kind: 'struct', depth: 2, color: '#e8a33d', shape: 'ngon', meta: { sides: 7 } },
 ];
 const ALL_ON = { calls: true, uses: true, flows: true, imports: true };
 
-test("a Showcase's key names the code's dots, in the colour drawn, most numerous first, and not its filing", async () => {
+test("a Showcase's key names the code's marks, in the colour and shape drawn, most numerous first, and not its filing", async () => {
   /* A directory and a file carry their names, and the modules from outside
      are one grey: a key naming them says again what the picture says.
      Mutation: key every depth -- the directory, the file and the module are
-     keyed, and this fails. */
+     keyed, and this fails. Mutation: key a mark by its colour alone -- the
+     function's hexagon and the struct's heptagon are dots, and this fails. */
   const { showcaseKey } = await import('../../dist-pure/features/graph/extensions/legend_marks.js');
   assert.deepEqual(showcaseKey(SHOWN, [], ALL_ON).dots, [
     { label: 'name', color: '#6f9cff' },
-    { label: 'function', color: '#31d85b' },
+    { label: 'function', color: '#31d85b', shape: 'hexagon' },
     { label: 'async function', color: '#31d85b' },
     { label: 'constant', color: '#b39ddb' },
+    { label: 'struct', color: '#e8a33d', shape: 'ngon', sides: 7 },
   ]);
+});
+
+test("a Showcase's code is drawn in its shape inside the circle it was packed in", async () => {
+  /* A square at the circle's radius puts its corners into the next dot.
+     Mutation: draw the shape at the circle's radius -- the square reaches
+     past it, and this fails. */
+  const { fittedPath, shapeReach } = await import('../../dist-pure/features/graph/services/node_shapes.js');
+  const reach = (d) => Math.max(...[...d.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)]
+    .map(([, x, y]) => Math.hypot(Number(x), Number(y))));
+  for (const shape of ['square', 'rectangle', 'triangle', 'diamond', 'hexagon']) {
+    assert.ok(Math.abs(reach(fittedPath({ shape }, 4)) - 4) < 0.01, `${shape} reaches its circle and no further`);
+  }
+  assert.ok(Math.abs(reach(fittedPath({ shape: 'ngon', meta: { sides: 7 } }, 4)) - 4) < 0.02);
+  assert.equal(shapeReach(undefined), 1);
 });
 
 test("a Showcase's key names a link only when one is drawn: switched on, and in the graph", async () => {

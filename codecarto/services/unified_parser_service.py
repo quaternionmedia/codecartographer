@@ -32,6 +32,7 @@ from codecarto.services import construct_service
 from codecarto.services.graph_serializer import GraphSerializer
 from codecarto.services.lexicon_bridge import annotate_graph_with_lexicon
 from codecarto.services.lexicon_service import LexiconService
+from codecarto.services.showcase_graph import is_markdown, is_showcase, markdown_lines, thin_graph
 from codecarto.services.parsers.language_parser import (
     ParserRegistry,
     make_node,
@@ -84,6 +85,9 @@ class UnifiedParserService:
         graph = UnifiedParserService.build_graph(
             directory, depth, extensions, annotate_lexicon=annotate_lexicon
         )
+        if is_showcase(layout):
+            # No import, and a folder of prose one dot (`showcase_graph`).
+            thin_graph(graph, _markdown_lines(directory.root))
         options = PlotOptions(layout=layout, type="d3")
         gjgf = GraphSerializer.serialize_to_gjgf(graph, options)
         meta = GraphSerializer.create_metadata(graph, options)
@@ -127,6 +131,9 @@ class UnifiedParserService:
         graph = UnifiedParserService.build_graph(
             directory, depth, extensions, annotate_lexicon=annotate_lexicon
         )
+        if is_showcase(layout):
+            # No import, and a folder of prose one dot (`showcase_graph`).
+            thin_graph(graph, _markdown_lines(directory.root))
         options = PlotOptions(layout=layout, type="d3")
         gjgf = GraphSerializer.serialize_to_gjgf(graph, options)
 
@@ -422,18 +429,24 @@ class UnifiedParserService:
             if getattr(parser, "language", None) == "python":
                 python_raw_by_file_id[file_id] = raw
                 dependency_file_id_by_stem[Path(file_name).stem] = file_id
+            # A page's lines, which a Showcase sizes a folder of prose by
+            # (`showcase_graph`); a window drawing as it arrives reads no
+            # event it does not know.
+            measured = ([f"event: lines\ndata: {json.dumps({'id': file_id, 'lines': markdown_lines(raw)})}\n\n"]
+                        if is_markdown(file_name) else [])
             try:
                 sf = File(url=dl_url, name=file_name, size=0, raw=raw)
                 sub = parser.parse_files([sf], depth=depth)
             except Exception:
-                return []
+                return measured
             if sub.number_of_nodes() == 0:
-                return []
+                return measured
             if annotate_lexicon:
                 annotate_graph_with_lexicon(sub, getattr(parser, "language", ""))
             # A parser keeps a node's file as its URL, its stem or, as
             # Python's does, its name: one file, so each names it alone.
-            return node_events_for(sub, {Path(file_name).stem: file_id}, {dl_url: file_id, file_name: file_id})
+            return measured + node_events_for(sub, {Path(file_name).stem: file_id},
+                                              {dl_url: file_id, file_name: file_id})
 
         async def fetch_and_parse_batch(
             parser, entries: list[tuple[str, str, str]]
@@ -814,6 +827,16 @@ def _collect_parseable(
             result.append((path, f.name, f.url))
     for sub in folder.folders:
         _collect_parseable(sub, allowed_exts, result, f"{path}/{sub.name}")
+
+
+def _markdown_lines(folder: Folder, path: Optional[str] = None) -> dict[str, int]:
+    """Each markdown page's lines, by the file id `_walk_folder` gives it."""
+    path = path or folder.name
+    found = {f"file::{path}/{f.name}": markdown_lines(f.raw)
+             for f in folder.files if is_markdown(f.name) and isinstance(f.raw, str)}
+    for sub in folder.folders:
+        found.update(_markdown_lines(sub, f"{path}/{sub.name}"))
+    return found
 
 
 def _ext_to_language(ext: str) -> str:
