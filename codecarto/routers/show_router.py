@@ -15,6 +15,10 @@ outlines, palettes and radial menu as a code map.
 - `/show/family/{name}/gjgf` -- one family.
 - `/show/family/{name}/code/gjgf` -- one family with each of its projects'
   code in it, its subfamilies' too: the family's code view.
+- `/show/index/imports/gjgf` and `/show/family/{name}/imports/gjgf` -- every
+  family, or one, with the modules two or more of its projects import and
+  each import of another project's package, read from their clones
+  (`show_imports`): the imports view.
 - `/show/project/{name}/gjgf` -- one repository's place in the estate: the
   `estate` view of its showgraph.
 - `/show/project/{name}/views` -- which of a project's three views can be drawn
@@ -143,6 +147,32 @@ def show_family_code(name: str, layout: str = Query("Kamada Kawai"),
                        reading.source)
     return _draw(reading, show_service.family_code_graph(reading, name), layout,
                  palette_id, f"/show/family/{name}/code/gjgf?layout={layout}")
+
+
+@ShowRouter.get("/index/imports/gjgf")
+def show_index_imports(layout: str = Query("Kamada Kawai"),
+                       palette_id: str = Query("0")) -> dict[str, Any]:
+    """Every family with what its projects import in common: the index's imports view."""
+    reading = show_service.read()
+    if not reading.ok:
+        return _unreadable(reading)
+    return _draw(reading, show_service.index_imports_graph(reading), layout, palette_id,
+                 f"/show/index/imports/gjgf?layout={layout}")
+
+
+@ShowRouter.get("/family/{name}/imports/gjgf")
+def show_family_imports(name: str, layout: str = Query("Kamada Kawai"),
+                        palette_id: str = Query("0")) -> dict[str, Any]:
+    """One family with what its projects import in common: the family's imports view."""
+    reading = show_service.read()
+    if not reading.ok:
+        return _unreadable(reading)
+    if name not in reading.families:
+        return _absent(f"the corpus declares no family named {name!r}",
+                       "choose one of: " + ", ".join(reading.families),
+                       reading.source)
+    return _draw(reading, show_service.family_imports_graph(reading, name), layout,
+                 palette_id, f"/show/family/{name}/imports/gjgf?layout={layout}")
 
 
 def _project_problem(reading: show_service.Reading, name: str) -> dict[str, Any] | None:

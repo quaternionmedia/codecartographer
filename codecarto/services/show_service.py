@@ -12,7 +12,7 @@ attention come from the roster, recency from the inventory, family hues from
 `ci/palette.py`, and seams from `ci/interop-registry.yaml`. A family renamed
 there is renamed here on the next read. Nothing in this module names a family.
 
-**EVERY EDGE HAS A BASIS, AND THE THREE ARE NEVER MERGED.**
+**EVERY EDGE HAS A BASIS, AND THE BASES ARE NEVER MERGED.**
 
     claim     families.json: a family contains a subfamily or a member, and a
               repository claimed by two families is a member of each
@@ -20,8 +20,11 @@ there is renamed here on the next read. Nothing in this module names a family.
               another publishes
     measured  a member's own manifests name another estate repository by its
               URL on the host
+    imported  a member's own source imports a module two or more members
+              import, or a package only one other estate repository holds
+              (an imports view only: `show_imports`)
 
-A measured edge never places a repository. Family membership is a claim a
+A measured or imported edge never places a repository. Family membership is a claim a
 person made (`records/DRAFT-a-family-is-bordered-by-what-it-drives.md` §1), and a
 dependency graph that moved a member would be the measurement asserting it.
 
@@ -82,6 +85,10 @@ CLAIM, DECLARED, MEASURED = "claim", "declared", "measured"
 # A project's code, as its show document's code map holds it: no claim, no
 # seam, and nothing measured between repositories.
 PARSED = "parsed"
+# A member's own source imports a module: one two or more members import, or
+# a package one other estate repository's tree holds (`show_imports`). Read
+# by name, not by URL, so it is never merged with what is measured.
+IMPORTED = "imported"
 
 # How each basis is drawn. The renderer reads `style`, `color` and `size` off an
 # edge's metadata, so the legend can say what each look means.
@@ -90,6 +97,7 @@ LOOK = {
     DECLARED: {"style": "solid", "color": "#e0a526", "size": 2.5},
     MEASURED: {"style": "dashed", "color": "#4fb3ad", "size": 1.5},
     PARSED: {"style": "solid", "color": "#56688f", "size": 0.75},
+    IMPORTED: {"style": "dotted", "color": "#b48ead", "size": 1.25},
 }
 
 # Files a member's own dependencies are measured from, read at the clone's
@@ -739,6 +747,75 @@ def family_code_graph(reading: Reading, name: str, among: list[Path] | None = No
     return graph
 
 
+def index_imports_graph(reading: Reading, among: list[Path] | None = None):
+    """Every family with what its members import in common: the index
+    (`index_graph`) with the modules two or more projects import, and each
+    import of another project's package (`_with_imports`)."""
+    graph = index_graph(reading, among)
+    _with_imports(graph, reading, among)
+    return graph
+
+
+def family_imports_graph(reading: Reading, name: str, among: list[Path] | None = None):
+    """One family with what its members import in common, and each import a
+    member makes of another project's package: the family's imports view."""
+    graph = family_graph(reading, name, among)
+    _with_imports(graph, reading, among)
+    return graph
+
+
+def _with_imports(graph, reading: Reading, among: list[Path] | None = None) -> None:
+    """The modules the members `graph` draws share, and their imports of
+    each other's packages, read from each member's clone (`show_imports`).
+
+    **A PROJECT IS ONE MARK AND A MODULE IS ONE MARK**, joined once for each
+    project that imports it, however many of its files do; the files are the
+    edge's `files`. So the view grows with the projects and what they share,
+    never with their code. Who holds a package is asked of every estate
+    repository with a clone, not only the members drawn, so a member's import
+    of another family's package still lands. Sets `imports` (how many links,
+    shared modules and modules one member imports alone) and `imports_unread`.
+    """
+    from codecarto.services import show_imports
+
+    members = sorted(r.removeprefix("repo::") for r, attrs in graph.nodes(data=True)
+                     if r.startswith("repo::") and attrs.get("kind") != "private"
+                     and not attrs.get("elsewhere"))
+    trees: dict[str, dict[str, Any]] = {}
+    unread: list[str] = []
+    for repo in projects(reading):
+        clone = clones.find(repo, among)
+        tree = None if clone is None else show_imports.read(clone)
+        if tree is not None:
+            trees[repo] = tree
+        elif repo in members:
+            unread.append(repo)
+    found = show_imports.across(trees, members)
+
+    for row in found["shared"]:
+        node = f"module::{row['language']}:{row['module']}"
+        users = sorted(row["projects"], key=str.lower)
+        graph.add_node(node, label=row["module"], kind="external_module", language=row["language"],
+                       shape="circle", color="#5a5a5a", importers=len(users),
+                       hover=f"{row['module']} ({row['language']}) — imported by {len(users)} "
+                             f"member(s): {', '.join(users)}")
+        for user in users:
+            files = row["projects"][user]
+            _edge(graph, f"repo::{user}", node, IMPORTED, "imports", "imports", files=files,
+                  hover=f"{user} imports {row['module']} in {files} file(s)")
+    for link in found["links"]:
+        if f"repo::{link['target']}" not in graph:
+            _repo_node(graph, reading, link["target"], depth=None, elsewhere=True,
+                       hue_of=next(iter(reading.claimed_by(link["target"])), None))
+        _edge(graph, f"repo::{link['source']}", f"repo::{link['target']}", IMPORTED, "imports",
+              link["module"], files=link["files"],
+              hover=f"{link['source']} imports {link['target']}'s package {link['module']} "
+                    f"in {link['files']} file(s)")
+    graph.graph.update(imports={"links": len(found["links"]), "shared": len(found["shared"]),
+                                "ambiguous": len(found["ambiguous"]), "alone": found["alone"]},
+                       imports_unread=sorted(unread, key=str.lower))
+
+
 def _with_code(graph, reading: Reading) -> None:
     """Each project `graph` draws, with its code map from the corpus's show
     document for it inside it.
@@ -917,6 +994,20 @@ def caveat(reading: Reading, graph) -> str:
                      f"{len(drawn)} project(s)"
                      + (f"; {len(missing)} with no code map drawn yet are drawn "
                         f"alone: {', '.join(missing)}." if missing else "."))
+    if "imports" in graph.graph:
+        counted = graph.graph["imports"]
+        unread_imports = graph.graph.get("imports_unread") or []
+        parts.append(f"Dotted edges are imports read from each member's own Python, "
+                     f"JavaScript and TypeScript at its clone's default branch: "
+                     f"{counted['shared']} module(s) two or more members import, each "
+                     f"drawn once, and {counted['links']} import(s) of a package one "
+                     f"other project's tree holds. A name is all an import says, so a "
+                     f"package two projects hold is no link to either "
+                     f"({counted['ambiguous']} here), and the {counted['alone']} "
+                     f"module(s) one member imports alone are left to its code map."
+                     + (f" {len(unread_imports)} member(s) had no clone, or one git could "
+                        f"not read, so their imports are not drawn: {', '.join(unread_imports)}."
+                        if unread_imports else ""))
     undeclared = graph.graph.get("undeclared") or []
     if undeclared:
         parts.append(f"{len(undeclared)} measured link(s) have no declared seam: "
@@ -938,7 +1029,8 @@ def metadata(reading: Reading, graph, options: Any = None) -> dict[str, Any]:
         "type": getattr(options, "type", None),
         "palette_id": getattr(options, "palette_id", "0"),
         "bases": {basis: dict(LOOK[basis]) for basis in (CLAIM, DECLARED, MEASURED)
-                  + ((PARSED,) if "code_drawn" in graph.graph else ())},
+                  + ((PARSED,) if "code_drawn" in graph.graph else ())
+                  + ((IMPORTED,) if "imports" in graph.graph else ())},
         "declared": graph.graph.get("declared"),
         "measured": graph.graph.get("measured"),
         "unread": graph.graph.get("unread") or [],
@@ -948,6 +1040,10 @@ def metadata(reading: Reading, graph, options: Any = None) -> dict[str, Any]:
         # The whole corpus, or a family's code view: each project whose code
         # is drawn, and the commit of its default branch its map was drawn from.
         **({"code": graph.graph.get("code_drawn") or {}} if "code_drawn" in graph.graph else {}),
+        # An imports view: how many of each it draws, and the members whose
+        # imports could not be read.
+        **({"imports": {**graph.graph["imports"], "unread": graph.graph.get("imports_unread") or []}}
+           if "imports" in graph.graph else {}),
         "caveat": caveat(reading, graph),
     }
 

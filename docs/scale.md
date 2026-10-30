@@ -8,8 +8,9 @@ measure` takes them again, and sets a new export beside them.
 The baseline is the export the corpus's showgraph pages were last drawn from:
 codecartographer at `92c5a4c`, the corpus at `bb2ed17`, drawn on 2026-10-29,
 with its built site. Every figure here is in
-[docs/scale/baseline.json](scale/baseline.json) and
-[docs/scale/growth.json](scale/growth.json), or says where it came from.
+[docs/scale/baseline.json](scale/baseline.json),
+[docs/scale/growth.json](scale/growth.json) and
+[docs/scale/imports.json](scale/imports.json), or says where it came from.
 
 ## What a picture costs
 
@@ -128,6 +129,59 @@ this many go over the element budgets below:
 | 6 months | 14 pictures, 15 pages; core's page 533,000 elements | 11, 11 |
 | 12 months | 32 pictures, 34 pages; core's page 2.8 million | 18, 18 |
 
+## What the projects share
+
+A code map holds what its repository holds, and leaves out every module its
+files import from elsewhere, so no picture said which projects lean on the
+same libraries, or on each other. `codecarto show imports` read each
+project's Python, JavaScript and TypeScript imports at the commit its code map
+was drawn from, the same 37 projects:
+
+- **218 modules from outside the corpus are imported, and 43 of them by two or
+  more projects**: 194 joins of a project to a module it shares. 175 are
+  imported by one project alone. The most shared are fastapi (17 projects),
+  pydantic (15), pytest and uvicorn (13 each), click and starlette (7 each),
+  and mithril, the most shared script package (6).
+- **Five imports land in another project's package:**
+
+  | importer | imports | files |
+  |---|---|---|
+  | alfred | otto | 4 |
+  | Cuelist-python | ShowRunner's `showrunner` | 1 |
+  | TheatreMix-python | ShowRunner's `showrunner` | 6 |
+  | dossier | qmcp | 1 |
+  | qmcp | vox | 8 |
+
+  The estate's measured edges, read from manifests by URL, name two of them:
+  alfred → otto and qmcp → vox, each a submodule. Cuelist-python and
+  TheatreMix-python name `showrunner` as a package, and Cuelist-python as a
+  path to `../ShowRunner`, never by the URL a measured edge needs; nothing of
+  dossier's names qmcp at all: it imports it in one place, lazily. So three of
+  the five are found only by reading the imports.
+- **A name alone is not enough.** Matched by name, eight imports landed in
+  another project, and three were wrong: qm's `import cli` and `import
+  interop` are its own `ci/cli.py` and `ci/interop.py`, and cesar's `import
+  osc` its own `Cesar/osc.py`, each matched to a single file at another
+  project's root (joe's `cli.py`, carlos's `src/interop.py`, ira's `osc.py`).
+  Each of the five that hold is a package, a folder with an `__init__.py`.
+
+The same reading at the end of each of the last 24 months, in months to
+double:
+
+| series | 6 | 12 | 24 |
+|---|---|---|---|
+| joins (a project to a module it shares, or a link) | 11.4 | 11.0 | 17.2 |
+| modules two or more projects share | 20.5 | 17.0 | 25.8 |
+| projects | 13.4 | 16.8 | 28.3 |
+| code-map nodes (est.), from above | 2.5 | 4.2 | 8.0 |
+
+What the projects share grows with the number of projects, not with the code
+inside them. So a view of it, one mark a project and one a module, stays
+small: the window's imports view of every family draws 817 elements for the 25
+projects with a clone beside this checkout, and a family's 169 to 221.
+Growing at 11 months to double, it reaches the 15,000-element picture budget
+in about four years.
+
 ## Budgets
 
 `show_measure.BUDGETS`, and what each is for:
@@ -194,11 +248,45 @@ adopts these.
    drawing is accepted, and growth is measured again each quarter, to check
    the rate these rules are sized for.
 
+The rules for views across projects, which the imports view is the first of:
+
+8. **A view across projects draws each project once, and each thing they
+   share once.** A module two projects import is one mark, joined once to
+   each of them however many of their files import it; the files are the
+   join's weight, in its `files`. Drawn so, the view grows with the projects
+   and what they share: its joins double every 11 months, where the code
+   doubles every 2.5. Drawn file to file, it would grow at the code's rate.
+9. **A link between projects says how it is known, and goes no further.**
+   Claimed, declared, measured and imported are four bases, drawn four ways
+   and never merged. A manifest's URL names a repository; an import names
+   only a module. So an import lands in another project only where that
+   project holds a package of the name and no other project does, and a
+   package two projects hold is no link to either. By name alone, three of
+   the corpus's eight imports across projects were wrong.
+10. **A page across projects draws what they share, and counts the rest.**
+    A module one project alone imports is that project's business and its
+    code map's: 175 of the 218 the corpus imports. The caveat counts them;
+    no page across projects draws them.
+11. **A new view comes with its cost.** Before a view is drawn for a page,
+    its pull request says which level draws it, what it grows with -- the
+    projects, what they share, or the code in them -- and measures its
+    pictures with `codecarto show measure`. A view that grows with the code
+    is the live window's, linked by address, unless it steps back a level
+    (rules 2 and 3). The imports view is drawn in the window and is not yet
+    exported; this is the rule it meets first.
+12. **A project's source is read once for each commit.** What a view reads
+    from the code grows with the code: the index's imports view took 7 s to
+    answer here with nothing read yet, and 0.03 s to build again once every
+    clone was. So a view keeps each project's reading for the commit its
+    default branch is at, and a redraw of an unchanged project reads nothing,
+    as rule 6 asks of an export.
+
 ## Measuring again
 
 ```bash
 uv run codecarto show measure ../qm/docs/show --site ../qm/site --draw --out report.json --against docs/scale/baseline.json
 uv run codecarto show growth ../clones ../qm/docs/show --out growth.json
+uv run codecarto show imports ../clones ../qm/docs/show --out imports.json
 ```
 
 - **`show measure`** reads an export folder and, with `--site`, a site built
@@ -215,9 +303,14 @@ uv run codecarto show growth ../clones ../qm/docs/show --out growth.json
   `<project>.git` or `<project>`. `gh repo clone quaternionmedia/<project>
   <project>.git -- --bare` makes one. A project whose clone lacks the commit
   its map was drawn from is named and left out.
+- **`show imports`** reads the same clones, and sets what each project
+  imports beside the others', at the drawn commits and at the end of each of
+  the last 24 months (`--months`).
 
 Not measured here:
 - the live window drawing the views rule 2 sends to it;
+- an import in Rust, C or a language read by pattern: `show imports` reads
+  Python, JavaScript and TypeScript;
 - a real phone, rather than Chromium slowed;
 - memory;
 - the network beyond gzipped sizes.

@@ -84,11 +84,14 @@ export class ShowService {
                       request: { layout?: string; paletteId?: string } = {}): Promise<SeamOutcome> {
     // The index's code view is the whole corpus: every family, each
     // project's code in it; its full view the same, drawn with no names. A
-    // family's code view is the family with each of its projects' code.
+    // family's code view is the family with each of its projects' code. An
+    // imports view, the index's or a family's, is its estate with what its
+    // projects import in common.
     const path = address.kind === 'index'
-      ? (address.view === 'estate' ? 'index' : 'corpus')
+      ? (address.view === 'estate' ? 'index' : address.view === 'imports' ? 'index/imports' : 'corpus')
       : `${address.kind}/${encodeURIComponent(address.name)}`
-        + (address.kind === 'family' && address.view === 'code' ? '/code' : '');
+        + (address.kind === 'family' && (address.view === 'code' || address.view === 'imports')
+          ? `/${address.view}` : '');
     return read(get, `${showUrl}/${path}/gjgf${query({ layout: request.layout, palette_id: request.paletteId })}`);
   }
 }

@@ -1008,6 +1008,32 @@ corpus a family at a time, every project's code map to its symbols being a
 picture several times what one page can hold. A family the corpus does not
 declare answers `unreadable` with the ones it does.
 
+### GET `/show/index/imports/gjgf?layout=&palette_id=`
+
+The index's imports view as `GraphData`: every family as `/show/index/gjgf`
+draws it, and what its projects import in common, read from each project's
+Python, JavaScript and TypeScript at its clone's default branch
+(`show_imports`). A module two or more members import is one node,
+`module::<language>:<name>` of kind `external_module`, outside every outline,
+joined once to each member that imports it; an import of a package one other
+estate repository's tree holds -- a folder with an `__init__.py`, or a
+`package.json` naming it -- is an edge between the two, labelled with the
+module. Both carry `basis: "imported"`, are drawn dotted, never place a member,
+and give in `files` how many of the importer's files import it. A package two
+repositories hold is no link to either. `metadata.imports` counts the `links`,
+the `shared` modules, the `ambiguous` packages and the modules one member
+imports `alone`, and names the members `unread`, with no clone or one git
+could not read. A clone is read once for each commit its default branch is at.
+
+### GET `/show/family/{name}/imports/gjgf?layout=&palette_id=`
+
+One family's imports view as `GraphData`: the family as `/show/family/{name}/gjgf`
+draws it, the modules two or more of its members import, and each member's
+import of another repository's package, wherever that repository sits: one
+outside the family is drawn as the estate draws a seam's far end. Who holds a
+package is asked of every estate repository with a clone. A family the corpus
+does not declare answers `unreadable` with the ones it does.
+
 ### GET `/show/project/{name}/gjgf?layout=&palette_id=`
 
 One repository's place in the estate: its families, its `phase` and `attention`

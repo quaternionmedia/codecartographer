@@ -468,6 +468,91 @@ def test_an_unknown_organisation_is_not_blamed_on_a_missing_clone(corpus, clones
     assert any("organisation" in note for note in metadata["notes"])
 
 
+# --- what the members import in common --------------------------------------
+
+@pytest.fixture()
+def importing(tmp_path: Path) -> Path:
+    """beta holds the package `beta`; alpha imports it and fastapi, as beta
+    does; gamma imports fastapi and pydantic; hub, in another family than
+    beta's, imports pydantic and beta. delta and qm have no clone."""
+    where = tmp_path / "importing"
+    for name, files in {"alpha": {"a.py": "import fastapi\nimport beta\n"},
+                        "beta": {"beta/__init__.py": "import fastapi\n"},
+                        "gamma": {"g.py": "import fastapi\nimport pydantic\n"},
+                        "hub": {"h.py": "import pydantic\nfrom beta import thing\n"}}.items():
+        for path, text in files.items():
+            (where / name / path).parent.mkdir(parents=True, exist_ok=True)
+            (where / name / path).write_text(text, encoding="utf-8")
+        _commit_all(where / name)
+    return where
+
+
+def test_an_imports_view_draws_each_shared_module_once_and_places_none(client, importing, monkeypatch):
+    # Mutation: give a module the depth of the members that import it -- the
+    # canvas sets it inside an outline, and this fails.
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(importing))
+    results = _results(client, "/show/index/imports/gjgf")
+    nodes, edges = _nodes(results), _edges(results)
+    modules = sorted(n for n in nodes if n.startswith("module::"))
+    assert modules == ["module::python:fastapi", "module::python:pydantic"]
+    assert all(nodes[m]["kind"] == "external_module" and "depth" not in nodes[m] for m in modules)
+    joins = [e for e in edges if e["target"] == "module::python:fastapi"]
+    assert sorted(e["source"] for e in joins) == ["repo::alpha", "repo::beta", "repo::gamma"]
+    assert {(e["basis"], e["kind"], e["style"], e["files"]) for e in joins} == {("imported", "imports", "dotted", 1)}
+    assert not [e for e in edges if e["target"].startswith("module::") and e["kind"] in ("contains", "member_of")]
+
+
+def test_an_import_of_another_family_s_package_lands_there(client, importing, monkeypatch):
+    # hub, in performing, imports beta's package. Mutation: ask only the
+    # family's own members who holds a package -- the link is lost, and this
+    # fails.
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(importing))
+    results = _results(client, "/show/family/performing/imports/gjgf")
+    nodes, edges = _nodes(results), _edges(results)
+    links = [(e["source"], e["target"], e["label"]) for e in edges
+             if e["basis"] == "imported" and e["target"].startswith("repo::")]
+    assert links == [("repo::hub", "repo::beta", "beta")]
+    assert nodes["repo::beta"]["elsewhere"] is True
+
+
+def test_a_family_s_imports_view_shares_what_its_own_members_share(client, importing, monkeypatch):
+    # gamma and hub share pydantic, outside core. Mutation: share across every
+    # project read -- pydantic is on core's page, and this fails.
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(importing))
+    results = _results(client, "/show/family/core/imports/gjgf")
+    assert sorted(n for n in _nodes(results) if n.startswith("module::")) == ["module::python:fastapi"]
+    assert results["metadata"]["imports"] == {"links": 1, "shared": 1, "ambiguous": 0, "alone": 0,
+                                              "unread": ["qm"]}
+
+
+def test_an_imports_view_names_who_it_could_not_read_and_never_a_private_member(client, importing,
+                                                                                monkeypatch):
+    # Mutation: count a private member among those read -- `private-07` is
+    # named as unread, and this fails.
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(importing))
+    metadata = _results(client, "/show/index/imports/gjgf")["metadata"]
+    assert metadata["imports"]["unread"] == ["delta", "qm"]
+    assert "their imports are not drawn: delta, qm." in metadata["caveat"]
+    assert "2 module(s) two or more members import" in metadata["caveat"]
+
+
+def test_only_an_imports_view_draws_the_imported_basis(client, importing, monkeypatch):
+    # Mutation: list `imported` among every graph's bases -- the estate's
+    # legend shows dotted edges it never draws, and this fails.
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(importing))
+    estate = _results(client, "/show/index/gjgf")
+    assert "imported" not in estate["metadata"]["bases"] and "imports" not in estate["metadata"]
+    assert not [n for n in _nodes(estate) if n.startswith("module::")]
+    bases = _results(client, "/show/index/imports/gjgf")["metadata"]["bases"]
+    assert bases["imported"] == {"style": "dotted", "color": "#b48ead", "size": 1.25}
+
+
+def test_an_imports_view_of_a_family_the_corpus_does_not_declare_names_the_ones_it_does(client):
+    results = _results(client, "/show/family/nope/imports/gjgf")
+    assert results["unreadable"] is True
+    assert "core" in results["remedy"]
+
+
 # --- a project's views ------------------------------------------------------
 
 def test_a_project_says_which_views_it_can_draw(client):
