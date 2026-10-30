@@ -419,6 +419,50 @@ Exit 1 when the harness fails, when a subject's document or a file it names
 was not written, or when a document names a place on this machine, such as a
 home or drive path.
 
+### `show measure`
+
+Measure what an export costs a reader: each picture's elements by what they
+draw, its bytes and gzipped bytes, and what it carries beyond what it shows;
+each show document's graph by depth; and, given the site built from it, each
+page's pictures, the eager apart from the lazy. [Scale](scale.md) holds the
+baseline this is set beside, and why each budget is what it is.
+
+```bash
+uv run codecarto show measure ../qm/docs/show
+uv run codecarto show measure ../qm/docs/show --site ../qm/site --draw --out report.json --against docs/scale/baseline.json
+```
+
+| Option | Meaning |
+|---|---|
+| `--site` | A site built from the export, whose pages embed its pictures from `show/` |
+| `--draw` | Also time each picture and page in Chromium (`web/scripts/measure-draw.mjs`, which needs `npm ci` in `web/`), and name the machine |
+| `--out` | Write the whole report as JSON |
+| `--against` | A report written before; print each headline number that changed |
+| `--check` | Exit 1 when anything exceeds a budget in `show_measure.BUDGETS` |
+
+It prints each level's heaviest picture, the heaviest pages and everything over
+a budget. Every name in the report is relative to the export or the site.
+
+### `show growth`
+
+Measure how fast the corpus grows, from its projects' histories: month by
+month, the commits made, the bytes of the files the parser reads, and those
+bytes as code-map nodes at each project's rate today; and how many months each
+takes to double.
+
+```bash
+uv run codecarto show growth ../clones ../qm/docs/show --out growth.json
+```
+
+The first argument is a folder holding a clone of each project the export has
+a code map of, bare or not, named `<project>.git` or `<project>`; each is read
+up to the commit its map was drawn from. A project whose clone is missing, or
+lacks that commit, is named and left out.
+
+| Option | Meaning |
+|---|---|
+| `--out` | Write the whole report as JSON |
+
 ---
 
 ## Utility Commands

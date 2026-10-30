@@ -1,0 +1,1106 @@
+{
+ "through": "2026-10",
+ "projects": {
+  "aes": {
+   "commit": "d602645755ff6d57c94cf9c289d0a505ce1d69e2",
+   "nodes": 4,
+   "bytes": 247,
+   "first": "2021-08"
+  },
+  "alfred": {
+   "commit": "7fff7ae01bce8f29d05ccf569237fcdf3416b5c0",
+   "nodes": 390,
+   "bytes": 242359,
+   "first": "2019-09"
+  },
+  "apothecary": {
+   "commit": "ac25b8dea01a2ee612da167c32d8fb0e72d76e95",
+   "nodes": 8869,
+   "bytes": 8732055,
+   "first": "2018-07"
+  },
+  "benchmark": {
+   "commit": "dfae9d207ad3dd237f0605b807fb270b76a7abda",
+   "nodes": 327,
+   "bytes": 246649,
+   "first": "2026-02"
+  },
+  "carlos": {
+   "commit": "a5540e7dfb11dea3258cdde8769f26a7dc6d568f",
+   "nodes": 1232,
+   "bytes": 1110890,
+   "first": "2025-08"
+  },
+  "cesar": {
+   "commit": "25926322d8f04ab1736ab3d9993772d804fe9da3",
+   "nodes": 183,
+   "bytes": 60378,
+   "first": "2016-09"
+  },
+  "codecartographer": {
+   "commit": "7c175d6f2e35fd39fc42d2008985695a776c1a88",
+   "nodes": 4121,
+   "bytes": 3298234,
+   "first": "2023-04"
+  },
+  "Cuelist-python": {
+   "commit": "e891a76ff342f2ffa5c5deb19144013ec13f942c",
+   "nodes": 138,
+   "bytes": 6421,
+   "first": "2026-04"
+  },
+  "datum": {
+   "commit": "72b04348b3f914fefd09a6801c147d38f5e25d21",
+   "nodes": 437,
+   "bytes": 116795,
+   "first": "2026-08"
+  },
+  "dossier": {
+   "commit": "414be1c9dad7a4e314e1334c37e59ed713f1a75d",
+   "nodes": 3069,
+   "bytes": 2813720,
+   "first": "2026-01"
+  },
+  "factorio-sysops": {
+   "commit": "da1e1d0c50fd30b082b4031b3ff835947b2246e0",
+   "nodes": 152,
+   "bytes": 376678,
+   "first": "2026-07"
+  },
+  "golfvs": {
+   "commit": "e90481932f225b86940e61b2cd062b66a906d8a8",
+   "nodes": 132,
+   "bytes": 161300,
+   "first": "2026-09"
+  },
+  "holophonor": {
+   "commit": "dd8d9dbf1c7e9571adc99616330ba56de05f5029",
+   "nodes": 110,
+   "bytes": 34505,
+   "first": "2021-03"
+  },
+  "ira": {
+   "commit": "a04467f835d3399d0f450a9a9abc2ccd9d5f7bb5",
+   "nodes": 373,
+   "bytes": 38348,
+   "first": "2018-04"
+  },
+  "joe": {
+   "commit": "474307fc49c20e7efa7393883c9eb5b97a4dbfac",
+   "nodes": 661,
+   "bytes": 517679,
+   "first": "2018-10"
+  },
+  "leo": {
+   "commit": "9305c59e7287eaccc5a3ced59a58d053ec66d30e",
+   "nodes": 371,
+   "bytes": 1214991,
+   "first": "2018-08"
+  },
+  "looksatwords": {
+   "commit": "01da48156b0955bb6c922ce0683148ee715a9205",
+   "nodes": 951,
+   "bytes": 826235,
+   "first": "2024-08"
+  },
+  "ludwig": {
+   "commit": "fe7ee650185685313450f4ffe7e157d503c8cdf3",
+   "nodes": 342,
+   "bytes": 18697,
+   "first": "2021-03"
+  },
+  "midiphonor": {
+   "commit": "407e6c31db235288e05eabf53d7f2074b149b701",
+   "nodes": 63,
+   "bytes": 20316,
+   "first": "2022-03"
+  },
+  "moat": {
+   "commit": "16a595a3598c02ba521fc42617fc130030f9b57f",
+   "nodes": 39,
+   "bytes": 2514,
+   "first": "2019-05"
+  },
+  "otto": {
+   "commit": "c57b2ad70afa9af629efd0b58f8c2585db501a78",
+   "nodes": 109,
+   "bytes": 46457,
+   "first": "2020-04"
+  },
+  "QLab-python": {
+   "commit": "ea8028ed94c9d5f52a688127fe0b8dfb3a8e130c",
+   "nodes": 319,
+   "bytes": 12790,
+   "first": "2024-02"
+  },
+  "qm": {
+   "commit": "bb2ed1731b19a5b335c8e06de444bdd014732e74",
+   "nodes": 3453,
+   "bytes": 4960875,
+   "first": "2026-06"
+  },
+  "qmcp": {
+   "commit": "8aece3e1b64817235fe6372ab6511644f85933e5",
+   "nodes": 3751,
+   "bytes": 2585157,
+   "first": "2026-01"
+  },
+  "qmetronome": {
+   "commit": "1abf5e9f196e33b51567fb866dd3423d4f3a43b9",
+   "nodes": 764,
+   "bytes": 1141328,
+   "first": "2026-06"
+  },
+  "rad": {
+   "commit": "3e8794f11eb94b29e94094aa24e8215593864a6f",
+   "nodes": 153,
+   "bytes": 573204,
+   "first": "2026-08"
+  },
+  "rad-godot": {
+   "commit": "6dd9485f6bd2a5ddf7679f3dfe4c19f44385a5f3",
+   "nodes": 123,
+   "bytes": 172105,
+   "first": "2026-09"
+  },
+  "scad-chess": {
+   "commit": "ff6c62667eeac390546839dc1c5c92d0f5788b0a",
+   "nodes": 5,
+   "bytes": 2944,
+   "first": "2021-03"
+  },
+  "ShowRunner": {
+   "commit": "f37a60b9196ff7f1583cc3426046cc7c7f0fd910",
+   "nodes": 945,
+   "bytes": 539202,
+   "first": "2022-12"
+  },
+  "ShowStopper": {
+   "commit": "51f8b13c14d3aeeb026981f42798c6abe83adde5",
+   "nodes": 83,
+   "bytes": 4075,
+   "first": "2024-11"
+  },
+  "stomp": {
+   "commit": "6d30a6f47303e2378587f1e5870d1461d1443244",
+   "nodes": 3,
+   "bytes": 32,
+   "first": "2021-07"
+  },
+  "TheatreMix-python": {
+   "commit": "5d3fc153aeb2bedb559da92d243247b62bed2289",
+   "nodes": 365,
+   "bytes": 179696,
+   "first": "2025-10"
+  },
+  "uPhonor": {
+   "commit": "150f7a770cade664896c403ff27ccc5cf408f08d",
+   "nodes": 418,
+   "bytes": 327210,
+   "first": "2025-02"
+  },
+  "vox": {
+   "commit": "1721e6f27d9310fea928bd477005c34d1bcfe732",
+   "nodes": 264,
+   "bytes": 180038,
+   "first": "2026-09"
+  },
+  "waveofhormuz": {
+   "commit": "83746f7cbcaa491c1e55e5b576f4b6abed7999e7",
+   "nodes": 22,
+   "bytes": 57451,
+   "first": "2026-04"
+  },
+  "wolf": {
+   "commit": "d960d108d8915b195c5de3b74fc10ac2144e7670",
+   "nodes": 608,
+   "bytes": 42888,
+   "first": "2020-08"
+  },
+  "ztgui": {
+   "commit": "c698ae0dbfaedef15797ab44e5f5afedb5fdba24",
+   "nodes": 39,
+   "bytes": 8162,
+   "first": "2021-01"
+  }
+ },
+ "left_out": {},
+ "months": [
+  {
+   "month": "2016-09",
+   "projects": 1,
+   "commits": 24,
+   "source_bytes": 618,
+   "est_nodes": 2
+  },
+  {
+   "month": "2016-10",
+   "projects": 1,
+   "commits": 4,
+   "source_bytes": 618,
+   "est_nodes": 2
+  },
+  {
+   "month": "2016-11",
+   "projects": 1,
+   "commits": 2,
+   "source_bytes": 618,
+   "est_nodes": 2
+  },
+  {
+   "month": "2016-12",
+   "projects": 1,
+   "commits": 0,
+   "source_bytes": 618,
+   "est_nodes": 2
+  },
+  {
+   "month": "2017-01",
+   "projects": 1,
+   "commits": 3,
+   "source_bytes": 618,
+   "est_nodes": 2
+  },
+  {
+   "month": "2017-02",
+   "projects": 1,
+   "commits": 10,
+   "source_bytes": 14099,
+   "est_nodes": 43
+  },
+  {
+   "month": "2017-03",
+   "projects": 1,
+   "commits": 65,
+   "source_bytes": 34334,
+   "est_nodes": 104
+  },
+  {
+   "month": "2017-04",
+   "projects": 1,
+   "commits": 15,
+   "source_bytes": 51985,
+   "est_nodes": 158
+  },
+  {
+   "month": "2017-05",
+   "projects": 1,
+   "commits": 2,
+   "source_bytes": 52657,
+   "est_nodes": 160
+  },
+  {
+   "month": "2017-06",
+   "projects": 1,
+   "commits": 11,
+   "source_bytes": 52692,
+   "est_nodes": 160
+  },
+  {
+   "month": "2017-07",
+   "projects": 1,
+   "commits": 0,
+   "source_bytes": 52692,
+   "est_nodes": 160
+  },
+  {
+   "month": "2017-08",
+   "projects": 1,
+   "commits": 1,
+   "source_bytes": 52017,
+   "est_nodes": 158
+  },
+  {
+   "month": "2017-09",
+   "projects": 1,
+   "commits": 5,
+   "source_bytes": 53174,
+   "est_nodes": 161
+  },
+  {
+   "month": "2017-10",
+   "projects": 1,
+   "commits": 3,
+   "source_bytes": 53174,
+   "est_nodes": 161
+  },
+  {
+   "month": "2017-11",
+   "projects": 1,
+   "commits": 3,
+   "source_bytes": 53174,
+   "est_nodes": 161
+  },
+  {
+   "month": "2017-12",
+   "projects": 1,
+   "commits": 1,
+   "source_bytes": 53174,
+   "est_nodes": 161
+  },
+  {
+   "month": "2018-01",
+   "projects": 1,
+   "commits": 0,
+   "source_bytes": 53174,
+   "est_nodes": 161
+  },
+  {
+   "month": "2018-02",
+   "projects": 1,
+   "commits": 0,
+   "source_bytes": 53174,
+   "est_nodes": 161
+  },
+  {
+   "month": "2018-03",
+   "projects": 1,
+   "commits": 0,
+   "source_bytes": 53174,
+   "est_nodes": 161
+  },
+  {
+   "month": "2018-04",
+   "projects": 2,
+   "commits": 4,
+   "source_bytes": 53174,
+   "est_nodes": 161
+  },
+  {
+   "month": "2018-05",
+   "projects": 2,
+   "commits": 0,
+   "source_bytes": 53174,
+   "est_nodes": 161
+  },
+  {
+   "month": "2018-06",
+   "projects": 2,
+   "commits": 0,
+   "source_bytes": 53174,
+   "est_nodes": 161
+  },
+  {
+   "month": "2018-07",
+   "projects": 3,
+   "commits": 15,
+   "source_bytes": 62293,
+   "est_nodes": 250
+  },
+  {
+   "month": "2018-08",
+   "projects": 4,
+   "commits": 64,
+   "source_bytes": 2967088,
+   "est_nodes": 1137
+  },
+  {
+   "month": "2018-09",
+   "projects": 4,
+   "commits": 29,
+   "source_bytes": 3948116,
+   "est_nodes": 1436
+  },
+  {
+   "month": "2018-10",
+   "projects": 5,
+   "commits": 14,
+   "source_bytes": 3951032,
+   "est_nodes": 1464
+  },
+  {
+   "month": "2018-11",
+   "projects": 5,
+   "commits": 7,
+   "source_bytes": 3951032,
+   "est_nodes": 1464
+  },
+  {
+   "month": "2018-12",
+   "projects": 5,
+   "commits": 18,
+   "source_bytes": 3949699,
+   "est_nodes": 1451
+  },
+  {
+   "month": "2019-01",
+   "projects": 5,
+   "commits": 6,
+   "source_bytes": 3959620,
+   "est_nodes": 1479
+  },
+  {
+   "month": "2019-02",
+   "projects": 5,
+   "commits": 18,
+   "source_bytes": 3961611,
+   "est_nodes": 1498
+  },
+  {
+   "month": "2019-03",
+   "projects": 5,
+   "commits": 2,
+   "source_bytes": 3965901,
+   "est_nodes": 1540
+  },
+  {
+   "month": "2019-04",
+   "projects": 5,
+   "commits": 12,
+   "source_bytes": 3979645,
+   "est_nodes": 1673
+  },
+  {
+   "month": "2019-05",
+   "projects": 6,
+   "commits": 12,
+   "source_bytes": 3981454,
+   "est_nodes": 1696
+  },
+  {
+   "month": "2019-06",
+   "projects": 6,
+   "commits": 0,
+   "source_bytes": 3981454,
+   "est_nodes": 1696
+  },
+  {
+   "month": "2019-07",
+   "projects": 6,
+   "commits": 6,
+   "source_bytes": 3982107,
+   "est_nodes": 1697
+  },
+  {
+   "month": "2019-08",
+   "projects": 6,
+   "commits": 9,
+   "source_bytes": 3989509,
+   "est_nodes": 1719
+  },
+  {
+   "month": "2019-09",
+   "projects": 7,
+   "commits": 19,
+   "source_bytes": 3994887,
+   "est_nodes": 1730
+  },
+  {
+   "month": "2019-10",
+   "projects": 7,
+   "commits": 46,
+   "source_bytes": 3991688,
+   "est_nodes": 1704
+  },
+  {
+   "month": "2019-11",
+   "projects": 7,
+   "commits": 22,
+   "source_bytes": 120438,
+   "est_nodes": 523
+  },
+  {
+   "month": "2019-12",
+   "projects": 7,
+   "commits": 63,
+   "source_bytes": 148949,
+   "est_nodes": 573
+  },
+  {
+   "month": "2020-01",
+   "projects": 7,
+   "commits": 72,
+   "source_bytes": 162815,
+   "est_nodes": 609
+  },
+  {
+   "month": "2020-02",
+   "projects": 7,
+   "commits": 100,
+   "source_bytes": 174562,
+   "est_nodes": 619
+  },
+  {
+   "month": "2020-03",
+   "projects": 7,
+   "commits": 129,
+   "source_bytes": 180941,
+   "est_nodes": 629
+  },
+  {
+   "month": "2020-04",
+   "projects": 8,
+   "commits": 16,
+   "source_bytes": 202868,
+   "est_nodes": 666
+  },
+  {
+   "month": "2020-05",
+   "projects": 8,
+   "commits": 128,
+   "source_bytes": 237063,
+   "est_nodes": 746
+  },
+  {
+   "month": "2020-06",
+   "projects": 8,
+   "commits": 219,
+   "source_bytes": 271167,
+   "est_nodes": 811
+  },
+  {
+   "month": "2020-07",
+   "projects": 8,
+   "commits": 108,
+   "source_bytes": 297924,
+   "est_nodes": 854
+  },
+  {
+   "month": "2020-08",
+   "projects": 9,
+   "commits": 80,
+   "source_bytes": 307167,
+   "est_nodes": 893
+  },
+  {
+   "month": "2020-09",
+   "projects": 9,
+   "commits": 43,
+   "source_bytes": 330917,
+   "est_nodes": 1204
+  },
+  {
+   "month": "2020-10",
+   "projects": 9,
+   "commits": 0,
+   "source_bytes": 330917,
+   "est_nodes": 1204
+  },
+  {
+   "month": "2020-11",
+   "projects": 9,
+   "commits": 17,
+   "source_bytes": 334092,
+   "est_nodes": 1250
+  },
+  {
+   "month": "2020-12",
+   "projects": 9,
+   "commits": 38,
+   "source_bytes": 348115,
+   "est_nodes": 1449
+  },
+  {
+   "month": "2021-01",
+   "projects": 10,
+   "commits": 54,
+   "source_bytes": 361300,
+   "est_nodes": 1559
+  },
+  {
+   "month": "2021-02",
+   "projects": 10,
+   "commits": 67,
+   "source_bytes": 362080,
+   "est_nodes": 1567
+  },
+  {
+   "month": "2021-03",
+   "projects": 13,
+   "commits": 143,
+   "source_bytes": 405180,
+   "est_nodes": 1788
+  },
+  {
+   "month": "2021-04",
+   "projects": 13,
+   "commits": 13,
+   "source_bytes": 410517,
+   "est_nodes": 1796
+  },
+  {
+   "month": "2021-05",
+   "projects": 13,
+   "commits": 10,
+   "source_bytes": 411273,
+   "est_nodes": 1798
+  },
+  {
+   "month": "2021-06",
+   "projects": 13,
+   "commits": 28,
+   "source_bytes": 414900,
+   "est_nodes": 1807
+  },
+  {
+   "month": "2021-07",
+   "projects": 14,
+   "commits": 10,
+   "source_bytes": 414932,
+   "est_nodes": 1810
+  },
+  {
+   "month": "2021-08",
+   "projects": 15,
+   "commits": 2,
+   "source_bytes": 415179,
+   "est_nodes": 1814
+  },
+  {
+   "month": "2021-09",
+   "projects": 15,
+   "commits": 0,
+   "source_bytes": 415179,
+   "est_nodes": 1814
+  },
+  {
+   "month": "2021-10",
+   "projects": 15,
+   "commits": 0,
+   "source_bytes": 415179,
+   "est_nodes": 1814
+  },
+  {
+   "month": "2021-11",
+   "projects": 15,
+   "commits": 153,
+   "source_bytes": 435852,
+   "est_nodes": 1857
+  },
+  {
+   "month": "2021-12",
+   "projects": 15,
+   "commits": 52,
+   "source_bytes": 455366,
+   "est_nodes": 1889
+  },
+  {
+   "month": "2022-01",
+   "projects": 15,
+   "commits": 74,
+   "source_bytes": 455366,
+   "est_nodes": 1889
+  },
+  {
+   "month": "2022-02",
+   "projects": 15,
+   "commits": 0,
+   "source_bytes": 455366,
+   "est_nodes": 1889
+  },
+  {
+   "month": "2022-03",
+   "projects": 16,
+   "commits": 90,
+   "source_bytes": 457547,
+   "est_nodes": 1921
+  },
+  {
+   "month": "2022-04",
+   "projects": 16,
+   "commits": 0,
+   "source_bytes": 457547,
+   "est_nodes": 1921
+  },
+  {
+   "month": "2022-05",
+   "projects": 16,
+   "commits": 4,
+   "source_bytes": 457547,
+   "est_nodes": 1921
+  },
+  {
+   "month": "2022-06",
+   "projects": 16,
+   "commits": 0,
+   "source_bytes": 457547,
+   "est_nodes": 1921
+  },
+  {
+   "month": "2022-07",
+   "projects": 16,
+   "commits": 82,
+   "source_bytes": 477357,
+   "est_nodes": 1982
+  },
+  {
+   "month": "2022-08",
+   "projects": 16,
+   "commits": 52,
+   "source_bytes": 548702,
+   "est_nodes": 2097
+  },
+  {
+   "month": "2022-09",
+   "projects": 16,
+   "commits": 45,
+   "source_bytes": 551692,
+   "est_nodes": 2102
+  },
+  {
+   "month": "2022-10",
+   "projects": 16,
+   "commits": 17,
+   "source_bytes": 556442,
+   "est_nodes": 2189
+  },
+  {
+   "month": "2022-11",
+   "projects": 16,
+   "commits": 0,
+   "source_bytes": 556442,
+   "est_nodes": 2189
+  },
+  {
+   "month": "2022-12",
+   "projects": 17,
+   "commits": 2,
+   "source_bytes": 557500,
+   "est_nodes": 2191
+  },
+  {
+   "month": "2023-01",
+   "projects": 17,
+   "commits": 7,
+   "source_bytes": 561904,
+   "est_nodes": 2272
+  },
+  {
+   "month": "2023-02",
+   "projects": 17,
+   "commits": 66,
+   "source_bytes": 562613,
+   "est_nodes": 2273
+  },
+  {
+   "month": "2023-03",
+   "projects": 17,
+   "commits": 93,
+   "source_bytes": 536680,
+   "est_nodes": 2219
+  },
+  {
+   "month": "2023-04",
+   "projects": 18,
+   "commits": 66,
+   "source_bytes": 536527,
+   "est_nodes": 2219
+  },
+  {
+   "month": "2023-05",
+   "projects": 18,
+   "commits": 26,
+   "source_bytes": 536540,
+   "est_nodes": 2219
+  },
+  {
+   "month": "2023-06",
+   "projects": 18,
+   "commits": 1,
+   "source_bytes": 536540,
+   "est_nodes": 2219
+  },
+  {
+   "month": "2023-07",
+   "projects": 18,
+   "commits": 8,
+   "source_bytes": 537145,
+   "est_nodes": 2220
+  },
+  {
+   "month": "2023-08",
+   "projects": 18,
+   "commits": 15,
+   "source_bytes": 537145,
+   "est_nodes": 2220
+  },
+  {
+   "month": "2023-09",
+   "projects": 18,
+   "commits": 41,
+   "source_bytes": 1129687,
+   "est_nodes": 2956
+  },
+  {
+   "month": "2023-10",
+   "projects": 18,
+   "commits": 1,
+   "source_bytes": 1129687,
+   "est_nodes": 2956
+  },
+  {
+   "month": "2023-11",
+   "projects": 18,
+   "commits": 24,
+   "source_bytes": 1129685,
+   "est_nodes": 2956
+  },
+  {
+   "month": "2023-12",
+   "projects": 18,
+   "commits": 12,
+   "source_bytes": 1147936,
+   "est_nodes": 2979
+  },
+  {
+   "month": "2024-01",
+   "projects": 18,
+   "commits": 44,
+   "source_bytes": 1227148,
+   "est_nodes": 3087
+  },
+  {
+   "month": "2024-02",
+   "projects": 19,
+   "commits": 12,
+   "source_bytes": 1236734,
+   "est_nodes": 3326
+  },
+  {
+   "month": "2024-03",
+   "projects": 19,
+   "commits": 23,
+   "source_bytes": 2320614,
+   "est_nodes": 3707
+  },
+  {
+   "month": "2024-04",
+   "projects": 19,
+   "commits": 22,
+   "source_bytes": 2376186,
+   "est_nodes": 3737
+  },
+  {
+   "month": "2024-05",
+   "projects": 19,
+   "commits": 4,
+   "source_bytes": 2376186,
+   "est_nodes": 3737
+  },
+  {
+   "month": "2024-06",
+   "projects": 19,
+   "commits": 0,
+   "source_bytes": 2376186,
+   "est_nodes": 3737
+  },
+  {
+   "month": "2024-07",
+   "projects": 19,
+   "commits": 28,
+   "source_bytes": 2414215,
+   "est_nodes": 3784
+  },
+  {
+   "month": "2024-08",
+   "projects": 20,
+   "commits": 23,
+   "source_bytes": 1892915,
+   "est_nodes": 3129
+  },
+  {
+   "month": "2024-09",
+   "projects": 20,
+   "commits": 16,
+   "source_bytes": 1898082,
+   "est_nodes": 3138
+  },
+  {
+   "month": "2024-10",
+   "projects": 20,
+   "commits": 8,
+   "source_bytes": 1898082,
+   "est_nodes": 3138
+  },
+  {
+   "month": "2024-11",
+   "projects": 21,
+   "commits": 17,
+   "source_bytes": 1921807,
+   "est_nodes": 3245
+  },
+  {
+   "month": "2024-12",
+   "projects": 21,
+   "commits": 14,
+   "source_bytes": 1921807,
+   "est_nodes": 3245
+  },
+  {
+   "month": "2025-01",
+   "projects": 21,
+   "commits": 0,
+   "source_bytes": 1921807,
+   "est_nodes": 3245
+  },
+  {
+   "month": "2025-02",
+   "projects": 22,
+   "commits": 18,
+   "source_bytes": 1923465,
+   "est_nodes": 3248
+  },
+  {
+   "month": "2025-03",
+   "projects": 22,
+   "commits": 40,
+   "source_bytes": 1932069,
+   "est_nodes": 3272
+  },
+  {
+   "month": "2025-04",
+   "projects": 22,
+   "commits": 13,
+   "source_bytes": 1935419,
+   "est_nodes": 3300
+  },
+  {
+   "month": "2025-05",
+   "projects": 22,
+   "commits": 1,
+   "source_bytes": 1935615,
+   "est_nodes": 3301
+  },
+  {
+   "month": "2025-06",
+   "projects": 22,
+   "commits": 71,
+   "source_bytes": 2071167,
+   "est_nodes": 3474
+  },
+  {
+   "month": "2025-07",
+   "projects": 22,
+   "commits": 39,
+   "source_bytes": 2261167,
+   "est_nodes": 3717
+  },
+  {
+   "month": "2025-08",
+   "projects": 23,
+   "commits": 29,
+   "source_bytes": 2287174,
+   "est_nodes": 3746
+  },
+  {
+   "month": "2025-09",
+   "projects": 23,
+   "commits": 10,
+   "source_bytes": 2353770,
+   "est_nodes": 3766
+  },
+  {
+   "month": "2025-10",
+   "projects": 24,
+   "commits": 19,
+   "source_bytes": 2374534,
+   "est_nodes": 3818
+  },
+  {
+   "month": "2025-11",
+   "projects": 24,
+   "commits": 7,
+   "source_bytes": 2385331,
+   "est_nodes": 3840
+  },
+  {
+   "month": "2025-12",
+   "projects": 24,
+   "commits": 6,
+   "source_bytes": 2386585,
+   "est_nodes": 3863
+  },
+  {
+   "month": "2026-01",
+   "projects": 26,
+   "commits": 107,
+   "source_bytes": 5309861,
+   "est_nodes": 7367
+  },
+  {
+   "month": "2026-02",
+   "projects": 27,
+   "commits": 31,
+   "source_bytes": 5508213,
+   "est_nodes": 7636
+  },
+  {
+   "month": "2026-03",
+   "projects": 27,
+   "commits": 43,
+   "source_bytes": 5659622,
+   "est_nodes": 7855
+  },
+  {
+   "month": "2026-04",
+   "projects": 29,
+   "commits": 44,
+   "source_bytes": 5908337,
+   "est_nodes": 8382
+  },
+  {
+   "month": "2026-05",
+   "projects": 29,
+   "commits": 7,
+   "source_bytes": 5936164,
+   "est_nodes": 8393
+  },
+  {
+   "month": "2026-06",
+   "projects": 31,
+   "commits": 47,
+   "source_bytes": 7095818,
+   "est_nodes": 9550
+  },
+  {
+   "month": "2026-07",
+   "projects": 32,
+   "commits": 147,
+   "source_bytes": 8541375,
+   "est_nodes": 10493
+  },
+  {
+   "month": "2026-08",
+   "projects": 34,
+   "commits": 893,
+   "source_bytes": 16102655,
+   "est_nodes": 17968
+  },
+  {
+   "month": "2026-09",
+   "projects": 37,
+   "commits": 570,
+   "source_bytes": 18431267,
+   "est_nodes": 20128
+  },
+  {
+   "month": "2026-10",
+   "projects": 37,
+   "commits": 2157,
+   "source_bytes": 30672625,
+   "est_nodes": 33388
+  }
+ ],
+ "doubling_months": {
+  "projects": {
+   "6": 13.40690090840995,
+   "12": 16.80132391851215,
+   "24": 28.34818331325578
+  },
+  "commits": {
+   "6": 0.6393767342392346,
+   "12": 1.5848533870748078,
+   "24": 4.573415957318548
+  },
+  "source_bytes": {
+   "6": 2.0718830631857856,
+   "12": 3.469708646899404,
+   "24": 6.565605630860352
+  },
+  "est_nodes": {
+   "6": 2.5065793877321276,
+   "12": 4.212165013714271,
+   "24": 8.02367058726045
+  }
+ }
+}

@@ -4,6 +4,11 @@
 symbol, and to every member, and each is published as the corpus's pages show
 the first.
 
+[Scale](../scale.md) measures what each project's code map to its symbols, and
+each family's, cost a page, and its rules keep a view of the whole corpus out
+of a published picture and in the live window. That contradicts this page's
+"published" and is the open question here.
+
 The index's full view (`?show=index&view=full`, `full.svg`) draws every node of
 every project's code map as its page draws it, no deeper than holds the floor's
 100 nodes (`stream_floor.py`), with no names: about ten thousand nodes. Two

@@ -1,0 +1,4037 @@
+{
+ "schema": 1,
+ "measured_at": "2026-10-30T01:22:46Z",
+ "of": {
+  "drawn_by": "codecartographer@92c5a4c159c0f3e583f80a7bdda5fe1293379c1f",
+  "corpus": "bb2ed1731b19a5b335c8e06de444bdd014732e74",
+  "drawn_at": "2026-10-29T19:28:44Z"
+ },
+ "legible_px": 8.0,
+ "budgets": {
+  "picture_elements": 15000,
+  "page_open_elements": 15000,
+  "page_elements": 75000,
+  "unseen_labels": 0
+ },
+ "machine": {
+  "cpu": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+  "cores": 16,
+  "memory_gb": 64,
+  "os": "win32 10.0.26300",
+  "browser": "chromium 149.0.7827.55"
+ },
+ "totals": {
+  "files": 141,
+  "bytes": 122875149,
+  "pictures": 93,
+  "picture_bytes": 90586244,
+  "picture_gzip": 8520224,
+  "documents": 47,
+  "document_bytes": 32240806
+ },
+ "levels": {
+  "index": {
+   "count": 1,
+   "bytes": {
+    "median": 70468,
+    "max": 70468,
+    "max_at": "index/estate.svg",
+    "total": 70468
+   },
+   "gzip": {
+    "median": 6880,
+    "max": 6880,
+    "max_at": "index/estate.svg",
+    "total": 6880
+   },
+   "elements": {
+    "median": 372,
+    "max": 372,
+    "max_at": "index/estate.svg",
+    "total": 372
+   },
+   "marks": {
+    "median": 57,
+    "max": 57,
+    "max_at": "index/estate.svg",
+    "total": 57
+   },
+   "links": {
+    "median": 59,
+    "max": 59,
+    "max_at": "index/estate.svg",
+    "total": 59
+   },
+   "titles": {
+    "median": 116,
+    "max": 116,
+    "max_at": "index/estate.svg",
+    "total": 116
+   },
+   "labels": {
+    "median": 57,
+    "max": 57,
+    "max_at": "index/estate.svg",
+    "total": 57
+   },
+   "unseen_labels": {
+    "median": 1,
+    "max": 1,
+    "max_at": "index/estate.svg",
+    "total": 1
+   },
+   "hidden_elements": {
+    "median": 1,
+    "max": 1,
+    "max_at": "index/estate.svg",
+    "total": 1
+   },
+   "carried_bytes": {
+    "median": 33549,
+    "max": 33549,
+    "max_at": "index/estate.svg",
+    "total": 33549
+   },
+   "draw_ms": {
+    "median": 33,
+    "max": 33,
+    "max_at": "index/estate.svg",
+    "total": 33
+   }
+  },
+  "family": {
+   "count": 18,
+   "bytes": {
+    "median": 71175.0,
+    "max": 23634210,
+    "max_at": "family/core/code.svg",
+    "total": 60951561
+   },
+   "gzip": {
+    "median": 7603.0,
+    "max": 2051187,
+    "max_at": "family/core/code.svg",
+    "total": 5244659
+   },
+   "elements": {
+    "median": 350.0,
+    "max": 101338,
+    "max_at": "family/core/code.svg",
+    "total": 265861
+   },
+   "marks": {
+    "median": 55.5,
+    "max": 15770,
+    "max_at": "family/core/code.svg",
+    "total": 41374
+   },
+   "links": {
+    "median": 56.5,
+    "max": 19117,
+    "max_at": "family/core/code.svg",
+    "total": 50056
+   },
+   "titles": {
+    "median": 112.0,
+    "max": 34887,
+    "max_at": "family/core/code.svg",
+    "total": 91430
+   },
+   "labels": {
+    "median": 55.5,
+    "max": 15770,
+    "max_at": "family/core/code.svg",
+    "total": 41355
+   },
+   "unseen_labels": {
+    "median": 15.5,
+    "max": 15762,
+    "max_at": "family/core/code.svg",
+    "total": 40872
+   },
+   "hidden_elements": {
+    "median": 15.5,
+    "max": 15762,
+    "max_at": "family/core/code.svg",
+    "total": 40872
+   },
+   "carried_bytes": {
+    "median": 37048.0,
+    "max": 13168504,
+    "max_at": "family/core/code.svg",
+    "total": 33884715
+   },
+   "draw_ms": {
+    "median": 33.5,
+    "max": 1046,
+    "max_at": "family/core/code.svg",
+    "total": 3138
+   }
+  },
+  "project": {
+   "count": 74,
+   "bytes": {
+    "median": 14504.5,
+    "max": 7881003,
+    "max_at": "project/apothecary/code.svg",
+    "total": 29564215
+   },
+   "gzip": {
+    "median": 2435.0,
+    "max": 834159,
+    "max_at": "project/apothecary/code.svg",
+    "total": 3268685
+   },
+   "elements": {
+    "median": 85.5,
+    "max": 34276,
+    "max_at": "project/apothecary/code.svg",
+    "total": 131455
+   },
+   "marks": {
+    "median": 13.0,
+    "max": 8869,
+    "max_at": "project/apothecary/code.svg",
+    "total": 33638
+   },
+   "links": {
+    "median": 5.0,
+    "max": 6150,
+    "max_at": "project/apothecary/code.svg",
+    "total": 21383
+   },
+   "titles": {
+    "median": 21.5,
+    "max": 8869,
+    "max_at": "project/apothecary/code.svg",
+    "total": 33851
+   },
+   "labels": {
+    "median": 10.5,
+    "max": 504,
+    "max_at": "project/apothecary/code.svg",
+    "total": 2944
+   },
+   "unseen_labels": {
+    "median": 0.0,
+    "max": 3,
+    "max_at": "project/codecartographer/estate.svg",
+    "total": 7
+   },
+   "hidden_elements": {
+    "median": 0.0,
+    "max": 3,
+    "max_at": "project/codecartographer/estate.svg",
+    "total": 7
+   },
+   "carried_bytes": {
+    "median": 6914.5,
+    "max": 4594461,
+    "max_at": "project/apothecary/code.svg",
+    "total": 17106939
+   },
+   "draw_ms": {
+    "median": 33.0,
+    "max": 287,
+    "max_at": "project/apothecary/code.svg",
+    "total": 3081
+   }
+  }
+ },
+ "pages_summary": {
+  "count": 47,
+  "open_elements": {
+   "median": 1385,
+   "max": 101400,
+   "max_at": "families/core/index.html",
+   "total": 397688
+  },
+  "open_bytes": {
+   "median": 267678,
+   "max": 23644846,
+   "max_at": "families/core/index.html",
+   "total": 90586244
+  },
+  "open_gzip": {
+   "median": 26153,
+   "max": 2053016,
+   "max_at": "families/core/index.html",
+   "total": 8520224
+  },
+  "elements": {
+   "median": 1385,
+   "max": 413169,
+   "max_at": "projects/codecartographer/index.html",
+   "total": 795004
+  },
+  "bytes": {
+   "median": 267678,
+   "max": 93955532,
+   "max_at": "projects/codecartographer/index.html",
+   "total": 181102020
+  },
+  "gzip": {
+   "median": 26153,
+   "max": 8853562,
+   "max_at": "projects/codecartographer/index.html",
+   "total": 17033568
+  },
+  "open_ms": {
+   "median": 218,
+   "max": 4576,
+   "max_at": "projects/codecartographer/index.html",
+   "total": 19094
+  }
+ },
+ "pictures": {
+  "family/commons/code.svg": {
+   "bytes": 453421,
+   "gzip": 40925,
+   "elements": 1984,
+   "hidden_elements": 183,
+   "marks": 329,
+   "links": 328,
+   "outlines": 2,
+   "titles": 657,
+   "labels": 329,
+   "shown_labels": 146,
+   "hidden_labels": 183,
+   "small_labels": 0,
+   "unseen_labels": 183,
+   "carried": {
+    "interaction": 124038,
+    "doubled": 90641,
+    "precision": 39187
+   },
+   "carried_bytes": 253866,
+   "draw_ms": 33
+  },
+  "family/commons/estate.svg": {
+   "bytes": 2819,
+   "gzip": 1114,
+   "elements": 20,
+   "hidden_elements": 0,
+   "marks": 2,
+   "links": 1,
+   "outlines": 1,
+   "titles": 3,
+   "labels": 2,
+   "shown_labels": 2,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 308,
+    "doubled": 588,
+    "precision": 118
+   },
+   "carried_bytes": 1014,
+   "draw_ms": 32
+  },
+  "family/core/code.svg": {
+   "bytes": 23634210,
+   "gzip": 2051187,
+   "elements": 101338,
+   "hidden_elements": 15762,
+   "marks": 15770,
+   "links": 19117,
+   "outlines": 8,
+   "titles": 34887,
+   "labels": 15770,
+   "shown_labels": 8,
+   "hidden_labels": 15762,
+   "small_labels": 0,
+   "unseen_labels": 15762,
+   "carried": {
+    "interaction": 6513624,
+    "doubled": 4704695,
+    "precision": 1950185
+   },
+   "carried_bytes": 13168504,
+   "draw_ms": 1046
+  },
+  "family/core/estate.svg": {
+   "bytes": 10636,
+   "gzip": 1829,
+   "elements": 62,
+   "hidden_elements": 0,
+   "marks": 8,
+   "links": 10,
+   "outlines": 1,
+   "titles": 18,
+   "labels": 8,
+   "shown_labels": 8,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1560,
+    "doubled": 2395,
+    "precision": 791
+   },
+   "carried_bytes": 4746,
+   "draw_ms": 102
+  },
+  "family/games/code.svg": {
+   "bytes": 595428,
+   "gzip": 51347,
+   "elements": 2520,
+   "hidden_elements": 279,
+   "marks": 415,
+   "links": 422,
+   "outlines": 4,
+   "titles": 837,
+   "labels": 415,
+   "shown_labels": 136,
+   "hidden_labels": 279,
+   "small_labels": 0,
+   "unseen_labels": 279,
+   "carried": {
+    "interaction": 171421,
+    "doubled": 116046,
+    "precision": 49685
+   },
+   "carried_bytes": 337152,
+   "draw_ms": 49
+  },
+  "family/games/estate.svg": {
+   "bytes": 9475,
+   "gzip": 1632,
+   "elements": 56,
+   "hidden_elements": 0,
+   "marks": 8,
+   "links": 7,
+   "outlines": 1,
+   "titles": 15,
+   "labels": 8,
+   "shown_labels": 8,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1438,
+    "doubled": 2153,
+    "precision": 628
+   },
+   "carried_bytes": 4219,
+   "draw_ms": 32
+  },
+  "family/infra/code.svg": {
+   "bytes": 107782,
+   "gzip": 11360,
+   "elements": 516,
+   "hidden_elements": 29,
+   "marks": 84,
+   "links": 83,
+   "outlines": 3,
+   "titles": 167,
+   "labels": 84,
+   "shown_labels": 55,
+   "hidden_labels": 29,
+   "small_labels": 0,
+   "unseen_labels": 29,
+   "carried": {
+    "interaction": 24406,
+    "doubled": 23064,
+    "precision": 10023
+   },
+   "carried_bytes": 57493,
+   "draw_ms": 31
+  },
+  "family/infra/estate.svg": {
+   "bytes": 7264,
+   "gzip": 1499,
+   "elements": 44,
+   "hidden_elements": 0,
+   "marks": 6,
+   "links": 5,
+   "outlines": 1,
+   "titles": 11,
+   "labels": 6,
+   "shown_labels": 6,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1068,
+    "doubled": 1633,
+    "precision": 441
+   },
+   "carried_bytes": 3142,
+   "draw_ms": 33
+  },
+  "family/instruments/code.svg": {
+   "bytes": 5233783,
+   "gzip": 449290,
+   "elements": 23090,
+   "hidden_elements": 3563,
+   "marks": 3576,
+   "links": 4379,
+   "outlines": 10,
+   "titles": 7955,
+   "labels": 3576,
+   "shown_labels": 13,
+   "hidden_labels": 3563,
+   "small_labels": 0,
+   "unseen_labels": 3563,
+   "carried": {
+    "interaction": 1394096,
+    "doubled": 1071481,
+    "precision": 446133
+   },
+   "carried_bytes": 2911710,
+   "draw_ms": 249
+  },
+  "family/instruments/estate.svg": {
+   "bytes": 16730,
+   "gzip": 2349,
+   "elements": 94,
+   "hidden_elements": 0,
+   "marks": 14,
+   "links": 14,
+   "outlines": 1,
+   "titles": 28,
+   "labels": 14,
+   "shown_labels": 14,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 2661,
+    "doubled": 3784,
+    "precision": 1167
+   },
+   "carried_bytes": 7612,
+   "draw_ms": 32
+  },
+  "family/irl/code.svg": {
+   "bytes": 14974778,
+   "gzip": 1281267,
+   "elements": 64558,
+   "hidden_elements": 10108,
+   "marks": 10117,
+   "links": 12034,
+   "outlines": 7,
+   "titles": 22151,
+   "labels": 10117,
+   "shown_labels": 9,
+   "hidden_labels": 10108,
+   "small_labels": 0,
+   "unseen_labels": 10108,
+   "carried": {
+    "interaction": 4150164,
+    "doubled": 3001472,
+    "precision": 1241164
+   },
+   "carried_bytes": 8392800,
+   "draw_ms": 640
+  },
+  "family/irl/estate.svg": {
+   "bytes": 14410,
+   "gzip": 2213,
+   "elements": 82,
+   "hidden_elements": 0,
+   "marks": 12,
+   "links": 12,
+   "outlines": 1,
+   "titles": 24,
+   "labels": 12,
+   "shown_labels": 12,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 2197,
+    "doubled": 3243,
+    "precision": 1056
+   },
+   "carried_bytes": 6496,
+   "draw_ms": 34
+  },
+  "family/performer-display/code.svg": {
+   "bytes": 1450994,
+   "gzip": 132335,
+   "elements": 6504,
+   "hidden_elements": 1032,
+   "marks": 1038,
+   "links": 1169,
+   "outlines": 3,
+   "titles": 2207,
+   "labels": 1038,
+   "shown_labels": 6,
+   "hidden_labels": 1032,
+   "small_labels": 0,
+   "unseen_labels": 1032,
+   "carried": {
+    "interaction": 368262,
+    "doubled": 303562,
+    "precision": 129247
+   },
+   "carried_bytes": 801071,
+   "draw_ms": 83
+  },
+  "family/performer-display/estate.svg": {
+   "bytes": 7312,
+   "gzip": 1651,
+   "elements": 44,
+   "hidden_elements": 0,
+   "marks": 6,
+   "links": 5,
+   "outlines": 1,
+   "titles": 11,
+   "labels": 6,
+   "shown_labels": 6,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1095,
+    "doubled": 1653,
+    "precision": 364
+   },
+   "carried_bytes": 3112,
+   "draw_ms": 31
+  },
+  "family/performing/code.svg": {
+   "bytes": 10872405,
+   "gzip": 912747,
+   "elements": 48621,
+   "hidden_elements": 7504,
+   "marks": 7530,
+   "links": 9250,
+   "outlines": 6,
+   "titles": 16780,
+   "labels": 7511,
+   "shown_labels": 7,
+   "hidden_labels": 7504,
+   "small_labels": 0,
+   "unseen_labels": 7504,
+   "carried": {
+    "interaction": 2804213,
+    "doubled": 2254815,
+    "precision": 924914
+   },
+   "carried_bytes": 5983942,
+   "draw_ms": 477
+  },
+  "family/performing/estate.svg": {
+   "bytes": 34568,
+   "gzip": 3846,
+   "elements": 184,
+   "hidden_elements": 2,
+   "marks": 27,
+   "links": 30,
+   "outlines": 4,
+   "titles": 57,
+   "labels": 27,
+   "shown_labels": 25,
+   "hidden_labels": 2,
+   "small_labels": 0,
+   "unseen_labels": 2,
+   "carried": {
+    "interaction": 5283,
+    "doubled": 7901,
+    "precision": 3419
+   },
+   "carried_bytes": 16603,
+   "draw_ms": 33
+  },
+  "family/show-control/code.svg": {
+   "bytes": 3512666,
+   "gzip": 296097,
+   "elements": 16070,
+   "hidden_elements": 2410,
+   "marks": 2421,
+   "links": 3180,
+   "outlines": 9,
+   "titles": 5601,
+   "labels": 2421,
+   "shown_labels": 11,
+   "hidden_labels": 2410,
+   "small_labels": 0,
+   "unseen_labels": 2410,
+   "carried": {
+    "interaction": 869614,
+    "doubled": 741310,
+    "precision": 314566
+   },
+   "carried_bytes": 1925490,
+   "draw_ms": 169
+  },
+  "family/show-control/estate.svg": {
+   "bytes": 12880,
+   "gzip": 1971,
+   "elements": 74,
+   "hidden_elements": 0,
+   "marks": 11,
+   "links": 10,
+   "outlines": 1,
+   "titles": 21,
+   "labels": 11,
+   "shown_labels": 11,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 2038,
+    "doubled": 2930,
+    "precision": 775
+   },
+   "carried_bytes": 5743,
+   "draw_ms": 32
+  },
+  "index/estate.svg": {
+   "bytes": 70468,
+   "gzip": 6880,
+   "elements": 372,
+   "hidden_elements": 1,
+   "marks": 57,
+   "links": 59,
+   "outlines": 9,
+   "titles": 116,
+   "labels": 57,
+   "shown_labels": 56,
+   "hidden_labels": 1,
+   "small_labels": 0,
+   "unseen_labels": 1,
+   "carried": {
+    "interaction": 10679,
+    "doubled": 16580,
+    "precision": 6290
+   },
+   "carried_bytes": 33549,
+   "draw_ms": 33
+  },
+  "project/aes/code.svg": {
+   "bytes": 2995,
+   "gzip": 966,
+   "elements": 23,
+   "hidden_elements": 0,
+   "marks": 4,
+   "links": 0,
+   "outlines": 1,
+   "titles": 4,
+   "labels": 1,
+   "shown_labels": 1,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 435,
+    "doubled": 598,
+    "precision": 173
+   },
+   "carried_bytes": 1206,
+   "draw_ms": 33
+  },
+  "project/aes/estate.svg": {
+   "bytes": 5857,
+   "gzip": 1291,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 851,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2453,
+   "draw_ms": 32
+  },
+  "project/alfred/code.svg": {
+   "bytes": 253799,
+   "gzip": 23813,
+   "elements": 1434,
+   "hidden_elements": 0,
+   "marks": 390,
+   "links": 19,
+   "outlines": 70,
+   "titles": 390,
+   "labels": 79,
+   "shown_labels": 79,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 45488,
+    "doubled": 53160,
+    "precision": 37326
+   },
+   "carried_bytes": 135974,
+   "draw_ms": 33
+  },
+  "project/alfred/estate.svg": {
+   "bytes": 13879,
+   "gzip": 2340,
+   "elements": 74,
+   "hidden_elements": 0,
+   "marks": 11,
+   "links": 10,
+   "outlines": 1,
+   "titles": 21,
+   "labels": 11,
+   "shown_labels": 11,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 2403,
+    "doubled": 3118,
+    "precision": 961
+   },
+   "carried_bytes": 6482,
+   "draw_ms": 31
+  },
+  "project/apothecary/code.svg": {
+   "bytes": 7881003,
+   "gzip": 834159,
+   "elements": 34276,
+   "hidden_elements": 0,
+   "marks": 8869,
+   "links": 6150,
+   "outlines": 490,
+   "titles": 8869,
+   "labels": 504,
+   "shown_labels": 504,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1791596,
+    "doubled": 1362040,
+    "precision": 1440825
+   },
+   "carried_bytes": 4594461,
+   "draw_ms": 287
+  },
+  "project/apothecary/estate.svg": {
+   "bytes": 10268,
+   "gzip": 2095,
+   "elements": 56,
+   "hidden_elements": 0,
+   "marks": 8,
+   "links": 7,
+   "outlines": 1,
+   "titles": 15,
+   "labels": 8,
+   "shown_labels": 8,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1725,
+    "doubled": 2258,
+    "precision": 682
+   },
+   "carried_bytes": 4665,
+   "draw_ms": 34
+  },
+  "project/benchmark/code.svg": {
+   "bytes": 184170,
+   "gzip": 16313,
+   "elements": 1078,
+   "hidden_elements": 0,
+   "marks": 327,
+   "links": 0,
+   "outlines": 25,
+   "titles": 327,
+   "labels": 29,
+   "shown_labels": 29,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 38142,
+    "doubled": 36049,
+    "precision": 23561
+   },
+   "carried_bytes": 97752,
+   "draw_ms": 39
+  },
+  "project/benchmark/estate.svg": {
+   "bytes": 5922,
+   "gzip": 1305,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 884,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2486,
+   "draw_ms": 34
+  },
+  "project/carlos/code.svg": {
+   "bytes": 982846,
+   "gzip": 116267,
+   "elements": 4437,
+   "hidden_elements": 0,
+   "marks": 1232,
+   "links": 560,
+   "outlines": 48,
+   "titles": 1232,
+   "labels": 58,
+   "shown_labels": 58,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 205642,
+    "doubled": 164316,
+    "precision": 201049
+   },
+   "carried_bytes": 571007,
+   "draw_ms": 71
+  },
+  "project/carlos/estate.svg": {
+   "bytes": 8800,
+   "gzip": 1959,
+   "elements": 50,
+   "hidden_elements": 0,
+   "marks": 7,
+   "links": 6,
+   "outlines": 1,
+   "titles": 13,
+   "labels": 7,
+   "shown_labels": 7,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1354,
+    "doubled": 1985,
+    "precision": 579
+   },
+   "carried_bytes": 3918,
+   "draw_ms": 32
+  },
+  "project/cesar/code.svg": {
+   "bytes": 145475,
+   "gzip": 19875,
+   "elements": 700,
+   "hidden_elements": 0,
+   "marks": 183,
+   "links": 89,
+   "outlines": 14,
+   "titles": 183,
+   "labels": 18,
+   "shown_labels": 18,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 22960,
+    "doubled": 26431,
+    "precision": 33916
+   },
+   "carried_bytes": 83307,
+   "draw_ms": 33
+  },
+  "project/cesar/estate.svg": {
+   "bytes": 5873,
+   "gzip": 1292,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 863,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2465,
+   "draw_ms": 33
+  },
+  "project/codecartographer/code.svg": {
+   "bytes": 3414420,
+   "gzip": 336847,
+   "elements": 15731,
+   "hidden_elements": 0,
+   "marks": 4121,
+   "links": 1948,
+   "outlines": 438,
+   "titles": 4121,
+   "labels": 471,
+   "shown_labels": 471,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 774092,
+    "doubled": 617487,
+    "precision": 564881
+   },
+   "carried_bytes": 1956460,
+   "draw_ms": 122
+  },
+  "project/codecartographer/estate.svg": {
+   "bytes": 25336,
+   "gzip": 3371,
+   "elements": 122,
+   "hidden_elements": 3,
+   "marks": 19,
+   "links": 18,
+   "outlines": 1,
+   "titles": 37,
+   "labels": 19,
+   "shown_labels": 16,
+   "hidden_labels": 3,
+   "small_labels": 0,
+   "unseen_labels": 3,
+   "carried": {
+    "interaction": 4992,
+    "doubled": 5413,
+    "precision": 1809
+   },
+   "carried_bytes": 12214,
+   "draw_ms": 32
+  },
+  "project/Cuelist-python/code.svg": {
+   "bytes": 98869,
+   "gzip": 11171,
+   "elements": 542,
+   "hidden_elements": 0,
+   "marks": 138,
+   "links": 61,
+   "outlines": 7,
+   "titles": 138,
+   "labels": 20,
+   "shown_labels": 20,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 18011,
+    "doubled": 20247,
+    "precision": 14516
+   },
+   "carried_bytes": 52774,
+   "draw_ms": 33
+  },
+  "project/Cuelist-python/estate.svg": {
+   "bytes": 5950,
+   "gzip": 1304,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 920,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2522,
+   "draw_ms": 32
+  },
+  "project/datum/code.svg": {
+   "bytes": 325576,
+   "gzip": 33470,
+   "elements": 1657,
+   "hidden_elements": 0,
+   "marks": 437,
+   "links": 255,
+   "outlines": 14,
+   "titles": 437,
+   "labels": 28,
+   "shown_labels": 28,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 62785,
+    "doubled": 63602,
+    "precision": 53292
+   },
+   "carried_bytes": 179679,
+   "draw_ms": 34
+  },
+  "project/datum/estate.svg": {
+   "bytes": 19851,
+   "gzip": 3033,
+   "elements": 98,
+   "hidden_elements": 2,
+   "marks": 15,
+   "links": 14,
+   "outlines": 1,
+   "titles": 29,
+   "labels": 15,
+   "shown_labels": 13,
+   "hidden_labels": 2,
+   "small_labels": 0,
+   "unseen_labels": 2,
+   "carried": {
+    "interaction": 3931,
+    "doubled": 4263,
+    "precision": 1414
+   },
+   "carried_bytes": 9608,
+   "draw_ms": 32
+  },
+  "project/dossier/code.svg": {
+   "bytes": 2875267,
+   "gzip": 350832,
+   "elements": 12072,
+   "hidden_elements": 0,
+   "marks": 3069,
+   "links": 2264,
+   "outlines": 191,
+   "titles": 3069,
+   "labels": 198,
+   "shown_labels": 198,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 598487,
+    "doubled": 484677,
+    "precision": 609640
+   },
+   "carried_bytes": 1692804,
+   "draw_ms": 99
+  },
+  "project/dossier/estate.svg": {
+   "bytes": 12357,
+   "gzip": 2372,
+   "elements": 68,
+   "hidden_elements": 0,
+   "marks": 10,
+   "links": 9,
+   "outlines": 1,
+   "titles": 19,
+   "labels": 10,
+   "shown_labels": 10,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1961,
+    "doubled": 2794,
+    "precision": 818
+   },
+   "carried_bytes": 5573,
+   "draw_ms": 33
+  },
+  "project/factorio-sysops/code.svg": {
+   "bytes": 113379,
+   "gzip": 12757,
+   "elements": 578,
+   "hidden_elements": 0,
+   "marks": 152,
+   "links": 51,
+   "outlines": 17,
+   "titles": 152,
+   "labels": 21,
+   "shown_labels": 21,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 24711,
+    "doubled": 21658,
+    "precision": 15426
+   },
+   "carried_bytes": 61795,
+   "draw_ms": 34
+  },
+  "project/factorio-sysops/estate.svg": {
+   "bytes": 8928,
+   "gzip": 1966,
+   "elements": 50,
+   "hidden_elements": 0,
+   "marks": 7,
+   "links": 6,
+   "outlines": 1,
+   "titles": 13,
+   "labels": 7,
+   "shown_labels": 7,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1432,
+    "doubled": 1987,
+    "precision": 580
+   },
+   "carried_bytes": 3999,
+   "draw_ms": 33
+  },
+  "project/golfvs/code.svg": {
+   "bytes": 79456,
+   "gzip": 8110,
+   "elements": 467,
+   "hidden_elements": 0,
+   "marks": 132,
+   "links": 8,
+   "outlines": 13,
+   "titles": 132,
+   "labels": 18,
+   "shown_labels": 18,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 16627,
+    "doubled": 16251,
+    "precision": 9497
+   },
+   "carried_bytes": 42375,
+   "draw_ms": 33
+  },
+  "project/golfvs/estate.svg": {
+   "bytes": 5877,
+   "gzip": 1300,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 851,
+    "doubled": 1263,
+    "precision": 341
+   },
+   "carried_bytes": 2455,
+   "draw_ms": 33
+  },
+  "project/holophonor/code.svg": {
+   "bytes": 86738,
+   "gzip": 11564,
+   "elements": 428,
+   "hidden_elements": 0,
+   "marks": 110,
+   "links": 42,
+   "outlines": 11,
+   "titles": 110,
+   "labels": 16,
+   "shown_labels": 16,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 14680,
+    "doubled": 15923,
+    "precision": 18779
+   },
+   "carried_bytes": 49382,
+   "draw_ms": 32
+  },
+  "project/holophonor/estate.svg": {
+   "bytes": 5902,
+   "gzip": 1296,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 890,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2492,
+   "draw_ms": 32
+  },
+  "project/ira/code.svg": {
+   "bytes": 236294,
+   "gzip": 24060,
+   "elements": 1343,
+   "hidden_elements": 0,
+   "marks": 373,
+   "links": 112,
+   "outlines": 20,
+   "titles": 373,
+   "labels": 35,
+   "shown_labels": 35,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 42883,
+    "doubled": 48732,
+    "precision": 32716
+   },
+   "carried_bytes": 124331,
+   "draw_ms": 34
+  },
+  "project/ira/estate.svg": {
+   "bytes": 7047,
+   "gzip": 1560,
+   "elements": 42,
+   "hidden_elements": 0,
+   "marks": 6,
+   "links": 5,
+   "outlines": 0,
+   "titles": 11,
+   "labels": 6,
+   "shown_labels": 6,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1020,
+    "doubled": 1531,
+    "precision": 394
+   },
+   "carried_bytes": 2945,
+   "draw_ms": 33
+  },
+  "project/joe/code.svg": {
+   "bytes": 561881,
+   "gzip": 65698,
+   "elements": 2552,
+   "hidden_elements": 0,
+   "marks": 661,
+   "links": 331,
+   "outlines": 67,
+   "titles": 661,
+   "labels": 77,
+   "shown_labels": 77,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 116215,
+    "doubled": 99543,
+    "precision": 109058
+   },
+   "carried_bytes": 324816,
+   "draw_ms": 31
+  },
+  "project/joe/estate.svg": {
+   "bytes": 5865,
+   "gzip": 1273,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 866,
+    "doubled": 1263,
+    "precision": 341
+   },
+   "carried_bytes": 2470,
+   "draw_ms": 33
+  },
+  "project/leo/code.svg": {
+   "bytes": 226572,
+   "gzip": 18586,
+   "elements": 1261,
+   "hidden_elements": 0,
+   "marks": 371,
+   "links": 0,
+   "outlines": 36,
+   "titles": 371,
+   "labels": 46,
+   "shown_labels": 46,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 43150,
+    "doubled": 43268,
+    "precision": 37725
+   },
+   "carried_bytes": 124143,
+   "draw_ms": 33
+  },
+  "project/leo/estate.svg": {
+   "bytes": 5864,
+   "gzip": 1269,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 866,
+    "doubled": 1263,
+    "precision": 340
+   },
+   "carried_bytes": 2469,
+   "draw_ms": 32
+  },
+  "project/looksatwords/code.svg": {
+   "bytes": 778402,
+   "gzip": 86090,
+   "elements": 3543,
+   "hidden_elements": 0,
+   "marks": 951,
+   "links": 445,
+   "outlines": 69,
+   "titles": 951,
+   "labels": 79,
+   "shown_labels": 79,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 159160,
+    "doubled": 135041,
+    "precision": 159642
+   },
+   "carried_bytes": 453843,
+   "draw_ms": 50
+  },
+  "project/looksatwords/estate.svg": {
+   "bytes": 7109,
+   "gzip": 1544,
+   "elements": 42,
+   "hidden_elements": 0,
+   "marks": 6,
+   "links": 5,
+   "outlines": 0,
+   "titles": 11,
+   "labels": 6,
+   "shown_labels": 6,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1123,
+    "doubled": 1559,
+    "precision": 378
+   },
+   "carried_bytes": 3060,
+   "draw_ms": 33
+  },
+  "project/ludwig/code.svg": {
+   "bytes": 259109,
+   "gzip": 25831,
+   "elements": 1325,
+   "hidden_elements": 0,
+   "marks": 342,
+   "links": 214,
+   "outlines": 14,
+   "titles": 342,
+   "labels": 26,
+   "shown_labels": 26,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 47097,
+    "doubled": 51555,
+    "precision": 43606
+   },
+   "carried_bytes": 142258,
+   "draw_ms": 32
+  },
+  "project/ludwig/estate.svg": {
+   "bytes": 5874,
+   "gzip": 1295,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 869,
+    "doubled": 1261,
+    "precision": 340
+   },
+   "carried_bytes": 2470,
+   "draw_ms": 33
+  },
+  "project/midiphonor/code.svg": {
+   "bytes": 44377,
+   "gzip": 5075,
+   "elements": 265,
+   "hidden_elements": 0,
+   "marks": 63,
+   "links": 0,
+   "outlines": 18,
+   "titles": 63,
+   "labels": 22,
+   "shown_labels": 22,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 7903,
+    "doubled": 10222,
+    "precision": 4350
+   },
+   "carried_bytes": 22475,
+   "draw_ms": 33
+  },
+  "project/midiphonor/estate.svg": {
+   "bytes": 5902,
+   "gzip": 1297,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 890,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2492,
+   "draw_ms": 32
+  },
+  "project/moat/code.svg": {
+   "bytes": 21073,
+   "gzip": 2768,
+   "elements": 142,
+   "hidden_elements": 0,
+   "marks": 39,
+   "links": 0,
+   "outlines": 3,
+   "titles": 39,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 4205,
+    "doubled": 4562,
+    "precision": 1418
+   },
+   "carried_bytes": 10185,
+   "draw_ms": 33
+  },
+  "project/moat/estate.svg": {
+   "bytes": 5895,
+   "gzip": 1322,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 848,
+    "doubled": 1263,
+    "precision": 341
+   },
+   "carried_bytes": 2452,
+   "draw_ms": 33
+  },
+  "project/otto/code.svg": {
+   "bytes": 83844,
+   "gzip": 11624,
+   "elements": 434,
+   "hidden_elements": 0,
+   "marks": 109,
+   "links": 30,
+   "outlines": 18,
+   "titles": 109,
+   "labels": 23,
+   "shown_labels": 23,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 13925,
+    "doubled": 16464,
+    "precision": 15951
+   },
+   "carried_bytes": 46340,
+   "draw_ms": 33
+  },
+  "project/otto/estate.svg": {
+   "bytes": 5875,
+   "gzip": 1299,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 854,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2456,
+   "draw_ms": 33
+  },
+  "project/QLab-python/code.svg": {
+   "bytes": 262630,
+   "gzip": 24769,
+   "elements": 1307,
+   "hidden_elements": 0,
+   "marks": 319,
+   "links": 280,
+   "outlines": 8,
+   "titles": 319,
+   "labels": 21,
+   "shown_labels": 21,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 50704,
+    "doubled": 53127,
+    "precision": 40208
+   },
+   "carried_bytes": 144039,
+   "draw_ms": 34
+  },
+  "project/QLab-python/estate.svg": {
+   "bytes": 5921,
+   "gzip": 1299,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 899,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2501,
+   "draw_ms": 32
+  },
+  "project/qm/code.svg": {
+   "bytes": 3903386,
+   "gzip": 440662,
+   "elements": 14976,
+   "hidden_elements": 0,
+   "marks": 3453,
+   "links": 4064,
+   "outlines": 174,
+   "titles": 3453,
+   "labels": 182,
+   "shown_labels": 182,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 936032,
+    "doubled": 645946,
+    "precision": 769720
+   },
+   "carried_bytes": 2351698,
+   "draw_ms": 127
+  },
+  "project/qm/estate.svg": {
+   "bytes": 5813,
+   "gzip": 1290,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 815,
+    "doubled": 1263,
+    "precision": 341
+   },
+   "carried_bytes": 2419,
+   "draw_ms": 32
+  },
+  "project/qmcp/code.svg": {
+   "bytes": 3586495,
+   "gzip": 421643,
+   "elements": 14794,
+   "hidden_elements": 0,
+   "marks": 3751,
+   "links": 2760,
+   "outlines": 250,
+   "titles": 3751,
+   "labels": 258,
+   "shown_labels": 258,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 801182,
+    "doubled": 595586,
+    "precision": 733638
+   },
+   "carried_bytes": 2130406,
+   "draw_ms": 116
+  },
+  "project/qmcp/estate.svg": {
+   "bytes": 13629,
+   "gzip": 2436,
+   "elements": 74,
+   "hidden_elements": 0,
+   "marks": 11,
+   "links": 10,
+   "outlines": 1,
+   "titles": 21,
+   "labels": 11,
+   "shown_labels": 11,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 2236,
+    "doubled": 3093,
+    "precision": 925
+   },
+   "carried_bytes": 6254,
+   "draw_ms": 32
+  },
+  "project/qmetronome/code.svg": {
+   "bytes": 490532,
+   "gzip": 40892,
+   "elements": 2758,
+   "hidden_elements": 0,
+   "marks": 764,
+   "links": 0,
+   "outlines": 148,
+   "titles": 764,
+   "labels": 152,
+   "shown_labels": 152,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 105706,
+    "doubled": 102750,
+    "precision": 48954
+   },
+   "carried_bytes": 257410,
+   "draw_ms": 39
+  },
+  "project/qmetronome/estate.svg": {
+   "bytes": 19733,
+   "gzip": 2951,
+   "elements": 98,
+   "hidden_elements": 2,
+   "marks": 15,
+   "links": 14,
+   "outlines": 1,
+   "titles": 29,
+   "labels": 15,
+   "shown_labels": 13,
+   "hidden_labels": 2,
+   "small_labels": 0,
+   "unseen_labels": 2,
+   "carried": {
+    "interaction": 3868,
+    "doubled": 4263,
+    "precision": 1412
+   },
+   "carried_bytes": 9543,
+   "draw_ms": 33
+  },
+  "project/rad/code.svg": {
+   "bytes": 88380,
+   "gzip": 9089,
+   "elements": 550,
+   "hidden_elements": 0,
+   "marks": 153,
+   "links": 0,
+   "outlines": 23,
+   "titles": 153,
+   "labels": 27,
+   "shown_labels": 27,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 17731,
+    "doubled": 19535,
+    "precision": 6979
+   },
+   "carried_bytes": 44245,
+   "draw_ms": 32
+  },
+  "project/rad/estate.svg": {
+   "bytes": 9406,
+   "gzip": 1816,
+   "elements": 54,
+   "hidden_elements": 0,
+   "marks": 8,
+   "links": 7,
+   "outlines": 0,
+   "titles": 15,
+   "labels": 8,
+   "shown_labels": 8,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1404,
+    "doubled": 2077,
+    "precision": 584
+   },
+   "carried_bytes": 4065,
+   "draw_ms": 32
+  },
+  "project/rad-godot/code.svg": {
+   "bytes": 76666,
+   "gzip": 7498,
+   "elements": 447,
+   "hidden_elements": 0,
+   "marks": 123,
+   "links": 3,
+   "outlines": 17,
+   "titles": 123,
+   "labels": 22,
+   "shown_labels": 22,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 15199,
+    "doubled": 15885,
+    "precision": 9762
+   },
+   "carried_bytes": 40846,
+   "draw_ms": 33
+  },
+  "project/rad-godot/estate.svg": {
+   "bytes": 5901,
+   "gzip": 1303,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 869,
+    "doubled": 1263,
+    "precision": 341
+   },
+   "carried_bytes": 2473,
+   "draw_ms": 33
+  },
+  "project/scad-chess/code.svg": {
+   "bytes": 3504,
+   "gzip": 1025,
+   "elements": 26,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 0,
+   "outlines": 1,
+   "titles": 5,
+   "labels": 1,
+   "shown_labels": 1,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 568,
+    "doubled": 693,
+    "precision": 215
+   },
+   "carried_bytes": 1476,
+   "draw_ms": 33
+  },
+  "project/scad-chess/estate.svg": {
+   "bytes": 5915,
+   "gzip": 1320,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 866,
+    "doubled": 1261,
+    "precision": 340
+   },
+   "carried_bytes": 2467,
+   "draw_ms": 32
+  },
+  "project/ShowRunner/code.svg": {
+   "bytes": 787016,
+   "gzip": 93081,
+   "elements": 3563,
+   "hidden_elements": 0,
+   "marks": 945,
+   "links": 495,
+   "outlines": 68,
+   "titles": 945,
+   "labels": 75,
+   "shown_labels": 75,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 147556,
+    "doubled": 136938,
+    "precision": 171293
+   },
+   "carried_bytes": 455787,
+   "draw_ms": 36
+  },
+  "project/ShowRunner/estate.svg": {
+   "bytes": 5913,
+   "gzip": 1300,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 893,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2495,
+   "draw_ms": 33
+  },
+  "project/ShowStopper/code.svg": {
+   "bytes": 63882,
+   "gzip": 7714,
+   "elements": 340,
+   "hidden_elements": 0,
+   "marks": 83,
+   "links": 39,
+   "outlines": 3,
+   "titles": 83,
+   "labels": 15,
+   "shown_labels": 15,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 11419,
+    "doubled": 12543,
+    "precision": 10822
+   },
+   "carried_bytes": 34784,
+   "draw_ms": 33
+  },
+  "project/ShowStopper/estate.svg": {
+   "bytes": 5921,
+   "gzip": 1299,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 899,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2501,
+   "draw_ms": 33
+  },
+  "project/stomp/code.svg": {
+   "bytes": 2557,
+   "gzip": 922,
+   "elements": 20,
+   "hidden_elements": 0,
+   "marks": 3,
+   "links": 0,
+   "outlines": 1,
+   "titles": 3,
+   "labels": 1,
+   "shown_labels": 1,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 337,
+    "doubled": 507,
+    "precision": 144
+   },
+   "carried_bytes": 988,
+   "draw_ms": 32
+  },
+  "project/stomp/estate.svg": {
+   "bytes": 7045,
+   "gzip": 1562,
+   "elements": 42,
+   "hidden_elements": 0,
+   "marks": 6,
+   "links": 5,
+   "outlines": 0,
+   "titles": 11,
+   "labels": 6,
+   "shown_labels": 6,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1031,
+    "doubled": 1531,
+    "precision": 394
+   },
+   "carried_bytes": 2956,
+   "draw_ms": 33
+  },
+  "project/TheatreMix-python/code.svg": {
+   "bytes": 339628,
+   "gzip": 42481,
+   "elements": 1463,
+   "hidden_elements": 0,
+   "marks": 365,
+   "links": 273,
+   "outlines": 24,
+   "titles": 365,
+   "labels": 29,
+   "shown_labels": 29,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 68205,
+    "doubled": 58571,
+    "precision": 72429
+   },
+   "carried_bytes": 199205,
+   "draw_ms": 33
+  },
+  "project/TheatreMix-python/estate.svg": {
+   "bytes": 5969,
+   "gzip": 1306,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 935,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2537,
+   "draw_ms": 32
+  },
+  "project/uPhonor/code.svg": {
+   "bytes": 263376,
+   "gzip": 22725,
+   "elements": 1540,
+   "hidden_elements": 0,
+   "marks": 418,
+   "links": 124,
+   "outlines": 37,
+   "titles": 418,
+   "labels": 51,
+   "shown_labels": 51,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 57853,
+    "doubled": 56885,
+    "precision": 21628
+   },
+   "carried_bytes": 136366,
+   "draw_ms": 34
+  },
+  "project/uPhonor/estate.svg": {
+   "bytes": 7064,
+   "gzip": 1568,
+   "elements": 42,
+   "hidden_elements": 0,
+   "marks": 6,
+   "links": 5,
+   "outlines": 0,
+   "titles": 11,
+   "labels": 6,
+   "shown_labels": 6,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 1045,
+    "doubled": 1531,
+    "precision": 395
+   },
+   "carried_bytes": 2971,
+   "draw_ms": 32
+  },
+  "project/vox/code.svg": {
+   "bytes": 243538,
+   "gzip": 31790,
+   "elements": 1062,
+   "hidden_elements": 0,
+   "marks": 264,
+   "links": 169,
+   "outlines": 26,
+   "titles": 264,
+   "labels": 31,
+   "shown_labels": 31,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 49449,
+    "doubled": 42274,
+    "precision": 49733
+   },
+   "carried_bytes": 141456,
+   "draw_ms": 33
+  },
+  "project/vox/estate.svg": {
+   "bytes": 5852,
+   "gzip": 1292,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 830,
+    "doubled": 1263,
+    "precision": 341
+   },
+   "carried_bytes": 2434,
+   "draw_ms": 33
+  },
+  "project/waveofhormuz/code.svg": {
+   "bytes": 15130,
+   "gzip": 2434,
+   "elements": 97,
+   "hidden_elements": 0,
+   "marks": 22,
+   "links": 0,
+   "outlines": 5,
+   "titles": 22,
+   "labels": 7,
+   "shown_labels": 7,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 2583,
+    "doubled": 3403,
+    "precision": 1361
+   },
+   "carried_bytes": 7347,
+   "draw_ms": 34
+  },
+  "project/waveofhormuz/estate.svg": {
+   "bytes": 5923,
+   "gzip": 1301,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 905,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2507,
+   "draw_ms": 32
+  },
+  "project/wolf/code.svg": {
+   "bytes": 446753,
+   "gzip": 41444,
+   "elements": 2303,
+   "hidden_elements": 0,
+   "marks": 608,
+   "links": 376,
+   "outlines": 17,
+   "titles": 608,
+   "labels": 32,
+   "shown_labels": 32,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 88537,
+    "doubled": 89046,
+    "precision": 66446
+   },
+   "carried_bytes": 244029,
+   "draw_ms": 33
+  },
+  "project/wolf/estate.svg": {
+   "bytes": 5854,
+   "gzip": 1291,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 854,
+    "doubled": 1261,
+    "precision": 341
+   },
+   "carried_bytes": 2456,
+   "draw_ms": 33
+  },
+  "project/ztgui/code.svg": {
+   "bytes": 29227,
+   "gzip": 4206,
+   "elements": 181,
+   "hidden_elements": 0,
+   "marks": 39,
+   "links": 8,
+   "outlines": 6,
+   "titles": 39,
+   "labels": 16,
+   "shown_labels": 16,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 4416,
+    "doubled": 6686,
+    "precision": 3217
+   },
+   "carried_bytes": 14319,
+   "draw_ms": 33
+  },
+  "project/ztgui/estate.svg": {
+   "bytes": 5880,
+   "gzip": 1317,
+   "elements": 36,
+   "hidden_elements": 0,
+   "marks": 5,
+   "links": 4,
+   "outlines": 0,
+   "titles": 9,
+   "labels": 5,
+   "shown_labels": 5,
+   "hidden_labels": 0,
+   "small_labels": 0,
+   "unseen_labels": 0,
+   "carried": {
+    "interaction": 842,
+    "doubled": 1263,
+    "precision": 341
+   },
+   "carried_bytes": 2446,
+   "draw_ms": 32
+  }
+ },
+ "documents": {
+  "family/commons": {
+   "bytes": 5488,
+   "views": {
+    "estate": {
+     "nodes": 2,
+     "edges": 1,
+     "by_depth": {
+      "0": 2
+     }
+    }
+   }
+  },
+  "family/core": {
+   "bytes": 13763,
+   "views": {
+    "estate": {
+     "nodes": 8,
+     "edges": 10,
+     "by_depth": {
+      "0": 8
+     }
+    }
+   }
+  },
+  "family/games": {
+   "bytes": 11463,
+   "views": {
+    "estate": {
+     "nodes": 8,
+     "edges": 7,
+     "by_depth": {
+      "0": 8
+     }
+    }
+   }
+  },
+  "family/infra": {
+   "bytes": 9380,
+   "views": {
+    "estate": {
+     "nodes": 6,
+     "edges": 5,
+     "by_depth": {
+      "0": 6
+     }
+    }
+   }
+  },
+  "family/instruments": {
+   "bytes": 19279,
+   "views": {
+    "estate": {
+     "nodes": 14,
+     "edges": 14,
+     "by_depth": {
+      "0": 14
+     }
+    }
+   }
+  },
+  "family/irl": {
+   "bytes": 16190,
+   "views": {
+    "estate": {
+     "nodes": 12,
+     "edges": 12,
+     "by_depth": {
+      "0": 12
+     }
+    }
+   }
+  },
+  "family/performer-display": {
+   "bytes": 9498,
+   "views": {
+    "estate": {
+     "nodes": 6,
+     "edges": 5,
+     "by_depth": {
+      "0": 6
+     }
+    }
+   }
+  },
+  "family/performing": {
+   "bytes": 35599,
+   "views": {
+    "estate": {
+     "nodes": 27,
+     "edges": 30,
+     "by_depth": {
+      "0": 27
+     }
+    }
+   }
+  },
+  "family/show-control": {
+   "bytes": 15549,
+   "views": {
+    "estate": {
+     "nodes": 11,
+     "edges": 10,
+     "by_depth": {
+      "0": 11
+     }
+    }
+   }
+  },
+  "index": {
+   "bytes": 62848,
+   "views": {
+    "estate": {
+     "nodes": 57,
+     "edges": 59,
+     "by_depth": {
+      "0": 57
+     }
+    }
+   }
+  },
+  "project/aes": {
+   "bytes": 8252,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 4,
+     "edges": 3,
+     "by_depth": {
+      "0": 1,
+      "1": 3
+     }
+    }
+   }
+  },
+  "project/alfred": {
+   "bytes": 280362,
+   "views": {
+    "estate": {
+     "nodes": 11,
+     "edges": 10,
+     "by_depth": {
+      "0": 11
+     }
+    },
+    "code": {
+     "nodes": 390,
+     "edges": 435,
+     "by_depth": {
+      "0": 29,
+      "1": 99,
+      "2": 262
+     }
+    }
+   }
+  },
+  "project/apothecary": {
+   "bytes": 8694464,
+   "views": {
+    "estate": {
+     "nodes": 8,
+     "edges": 7,
+     "by_depth": {
+      "0": 8
+     }
+    },
+    "code": {
+     "nodes": 8869,
+     "edges": 17628,
+     "by_depth": {
+      "0": 109,
+      "1": 487,
+      "2": 8273
+     }
+    }
+   }
+  },
+  "project/benchmark": {
+   "bytes": 218671,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 327,
+     "edges": 326,
+     "by_depth": {
+      "0": 8,
+      "1": 33,
+      "2": 286
+     }
+    }
+   }
+  },
+  "project/carlos": {
+   "bytes": 1195346,
+   "views": {
+    "estate": {
+     "nodes": 7,
+     "edges": 6,
+     "by_depth": {
+      "0": 7
+     }
+    },
+    "code": {
+     "nodes": 1232,
+     "edges": 2448,
+     "by_depth": {
+      "0": 20,
+      "1": 63,
+      "2": 1149
+     }
+    }
+   }
+  },
+  "project/cesar": {
+   "bytes": 163398,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 183,
+     "edges": 403,
+     "by_depth": {
+      "0": 3,
+      "1": 16,
+      "2": 164
+     }
+    }
+   }
+  },
+  "project/codecartographer": {
+   "bytes": 3986038,
+   "views": {
+    "estate": {
+     "nodes": 19,
+     "edges": 18,
+     "by_depth": {
+      "0": 19
+     }
+    },
+    "code": {
+     "nodes": 4121,
+     "edges": 6993,
+     "by_depth": {
+      "0": 112,
+      "1": 431,
+      "2": 3578
+     }
+    }
+   }
+  },
+  "project/Cuelist-python": {
+   "bytes": 99012,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 138,
+     "edges": 206,
+     "by_depth": {
+      "0": 3,
+      "1": 6,
+      "2": 19,
+      "3": 110
+     }
+    }
+   }
+  },
+  "project/datum": {
+   "bytes": 320053,
+   "views": {
+    "estate": {
+     "nodes": 15,
+     "edges": 14,
+     "by_depth": {
+      "0": 15
+     }
+    },
+    "code": {
+     "nodes": 437,
+     "edges": 738,
+     "by_depth": {
+      "0": 15,
+      "1": 17,
+      "2": 64,
+      "3": 341
+     }
+    }
+   }
+  },
+  "project/dossier": {
+   "bytes": 3105712,
+   "views": {
+    "estate": {
+     "nodes": 10,
+     "edges": 9,
+     "by_depth": {
+      "0": 10
+     }
+    },
+    "code": {
+     "nodes": 3069,
+     "edges": 6564,
+     "by_depth": {
+      "0": 27,
+      "1": 208,
+      "2": 2834
+     }
+    }
+   }
+  },
+  "project/factorio-sysops": {
+   "bytes": 134989,
+   "views": {
+    "estate": {
+     "nodes": 7,
+     "edges": 6,
+     "by_depth": {
+      "0": 7
+     }
+    },
+    "code": {
+     "nodes": 152,
+     "edges": 201,
+     "by_depth": {
+      "0": 15,
+      "1": 20,
+      "2": 117
+     }
+    }
+   }
+  },
+  "project/golfvs": {
+   "bytes": 96769,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 132,
+     "edges": 138,
+     "by_depth": {
+      "0": 80,
+      "1": 9,
+      "2": 43
+     }
+    }
+   }
+  },
+  "project/holophonor": {
+   "bytes": 108612,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 110,
+     "edges": 243,
+     "by_depth": {
+      "0": 4,
+      "1": 13,
+      "2": 93
+     }
+    }
+   }
+  },
+  "project/ira": {
+   "bytes": 246814,
+   "views": {
+    "estate": {
+     "nodes": 6,
+     "edges": 5,
+     "by_depth": {
+      "0": 6
+     }
+    },
+    "code": {
+     "nodes": 373,
+     "edges": 490,
+     "by_depth": {
+      "0": 10,
+      "1": 18,
+      "2": 66,
+      "3": 279
+     }
+    }
+   }
+  },
+  "project/joe": {
+   "bytes": 594851,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 661,
+     "edges": 1178,
+     "by_depth": {
+      "0": 13,
+      "1": 67,
+      "2": 581
+     }
+    }
+   }
+  },
+  "project/leo": {
+   "bytes": 250209,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 371,
+     "edges": 377,
+     "by_depth": {
+      "0": 14,
+      "1": 45,
+      "2": 312
+     }
+    }
+   }
+  },
+  "project/looksatwords": {
+   "bytes": 900319,
+   "views": {
+    "estate": {
+     "nodes": 6,
+     "edges": 5,
+     "by_depth": {
+      "0": 6
+     }
+    },
+    "code": {
+     "nodes": 951,
+     "edges": 1754,
+     "by_depth": {
+      "0": 16,
+      "1": 81,
+      "2": 854
+     }
+    }
+   }
+  },
+  "project/ludwig": {
+   "bytes": 244210,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 342,
+     "edges": 627,
+     "by_depth": {
+      "0": 6,
+      "1": 13,
+      "2": 67,
+      "3": 256
+     }
+    }
+   }
+  },
+  "project/midiphonor": {
+   "bytes": 49842,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 63,
+     "edges": 62,
+     "by_depth": {
+      "0": 9,
+      "1": 26,
+      "2": 28
+     }
+    }
+   }
+  },
+  "project/moat": {
+   "bytes": 34304,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 39,
+     "edges": 38,
+     "by_depth": {
+      "0": 34,
+      "1": 2,
+      "3": 3
+     }
+    }
+   }
+  },
+  "project/otto": {
+   "bytes": 93475,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 109,
+     "edges": 162,
+     "by_depth": {
+      "0": 9,
+      "1": 22,
+      "2": 78
+     }
+    }
+   }
+  },
+  "project/QLab-python": {
+   "bytes": 227984,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 319,
+     "edges": 617,
+     "by_depth": {
+      "0": 2,
+      "1": 7,
+      "2": 39,
+      "3": 271
+     }
+    }
+   }
+  },
+  "project/qm": {
+   "bytes": 3749931,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 3453,
+     "edges": 7972,
+     "by_depth": {
+      "0": 89,
+      "1": 175,
+      "2": 3189
+     }
+    }
+   }
+  },
+  "project/qmcp": {
+   "bytes": 3943904,
+   "views": {
+    "estate": {
+     "nodes": 11,
+     "edges": 10,
+     "by_depth": {
+      "0": 11
+     }
+    },
+    "code": {
+     "nodes": 3751,
+     "edges": 8041,
+     "by_depth": {
+      "0": 36,
+      "1": 251,
+      "2": 3464
+     }
+    }
+   }
+  },
+  "project/qmetronome": {
+   "bytes": 643677,
+   "views": {
+    "estate": {
+     "nodes": 15,
+     "edges": 14,
+     "by_depth": {
+      "0": 15
+     }
+    },
+    "code": {
+     "nodes": 764,
+     "edges": 763,
+     "by_depth": {
+      "0": 56,
+      "1": 152,
+      "2": 556
+     }
+    }
+   }
+  },
+  "project/rad": {
+   "bytes": 107203,
+   "views": {
+    "estate": {
+     "nodes": 8,
+     "edges": 7,
+     "by_depth": {
+      "0": 8
+     }
+    },
+    "code": {
+     "nodes": 153,
+     "edges": 152,
+     "by_depth": {
+      "0": 16,
+      "1": 30,
+      "2": 107
+     }
+    }
+   }
+  },
+  "project/rad-godot": {
+   "bytes": 94223,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 123,
+     "edges": 134,
+     "by_depth": {
+      "0": 62,
+      "1": 14,
+      "2": 47
+     }
+    }
+   }
+  },
+  "project/scad-chess": {
+   "bytes": 9189,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 4,
+      "1": 1
+     }
+    }
+   }
+  },
+  "project/ShowRunner": {
+   "bytes": 900121,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 945,
+     "edges": 1935,
+     "by_depth": {
+      "0": 17,
+      "1": 64,
+      "2": 864
+     }
+    }
+   }
+  },
+  "project/ShowStopper": {
+   "bytes": 64985,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 83,
+     "edges": 129,
+     "by_depth": {
+      "0": 1,
+      "1": 3,
+      "2": 19,
+      "3": 60
+     }
+    }
+   }
+  },
+  "project/stomp": {
+   "bytes": 8816,
+   "views": {
+    "estate": {
+     "nodes": 6,
+     "edges": 5,
+     "by_depth": {
+      "0": 6
+     }
+    },
+    "code": {
+     "nodes": 3,
+     "edges": 2,
+     "by_depth": {
+      "0": 2,
+      "1": 1
+     }
+    }
+   }
+  },
+  "project/TheatreMix-python": {
+   "bytes": 373882,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 365,
+     "edges": 829,
+     "by_depth": {
+      "0": 7,
+      "1": 25,
+      "2": 333
+     }
+    }
+   }
+  },
+  "project/uPhonor": {
+   "bytes": 373863,
+   "views": {
+    "estate": {
+     "nodes": 6,
+     "edges": 5,
+     "by_depth": {
+      "0": 6
+     }
+    },
+    "code": {
+     "nodes": 418,
+     "edges": 540,
+     "by_depth": {
+      "0": 6,
+      "1": 52,
+      "2": 360
+     }
+    }
+   }
+  },
+  "project/vox": {
+   "bytes": 258967,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 264,
+     "edges": 514,
+     "by_depth": {
+      "0": 7,
+      "1": 28,
+      "2": 229
+     }
+    }
+   }
+  },
+  "project/waveofhormuz": {
+   "bytes": 20227,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 22,
+     "edges": 21,
+     "by_depth": {
+      "0": 7,
+      "1": 9,
+      "2": 6
+     }
+    }
+   }
+  },
+  "project/wolf": {
+   "bytes": 409182,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 608,
+     "edges": 990,
+     "by_depth": {
+      "0": 3,
+      "1": 16,
+      "2": 46,
+      "3": 543
+     }
+    }
+   }
+  },
+  "project/ztgui": {
+   "bytes": 29893,
+   "views": {
+    "estate": {
+     "nodes": 5,
+     "edges": 4,
+     "by_depth": {
+      "0": 5
+     }
+    },
+    "code": {
+     "nodes": 39,
+     "edges": 45,
+     "by_depth": {
+      "0": 2,
+      "1": 6,
+      "2": 9,
+      "3": 22
+     }
+    }
+   }
+  }
+ },
+ "pages": {
+  "families/commons/index.html": {
+   "pictures": 2,
+   "eager": [
+    "family/commons/estate.svg",
+    "family/commons/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 456240,
+   "open_gzip": 42039,
+   "open_elements": 2004,
+   "bytes": 456240,
+   "gzip": 42039,
+   "elements": 2004,
+   "open_ms": 222
+  },
+  "families/core/index.html": {
+   "pictures": 2,
+   "eager": [
+    "family/core/estate.svg",
+    "family/core/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 23644846,
+   "open_gzip": 2053016,
+   "open_elements": 101400,
+   "bytes": 23644846,
+   "gzip": 2053016,
+   "elements": 101400,
+   "open_ms": 1769
+  },
+  "families/games/index.html": {
+   "pictures": 2,
+   "eager": [
+    "family/games/estate.svg",
+    "family/games/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 604903,
+   "open_gzip": 52979,
+   "open_elements": 2576,
+   "bytes": 604903,
+   "gzip": 52979,
+   "elements": 2576,
+   "open_ms": 266
+  },
+  "families/index.html": {
+   "pictures": 1,
+   "eager": [
+    "index/estate.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 70468,
+   "open_gzip": 6880,
+   "open_elements": 372,
+   "bytes": 70468,
+   "gzip": 6880,
+   "elements": 372,
+   "open_ms": 250
+  },
+  "families/infra/index.html": {
+   "pictures": 2,
+   "eager": [
+    "family/infra/estate.svg",
+    "family/infra/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 115046,
+   "open_gzip": 12859,
+   "open_elements": 560,
+   "bytes": 115046,
+   "gzip": 12859,
+   "elements": 560,
+   "open_ms": 217
+  },
+  "families/instruments/index.html": {
+   "pictures": 2,
+   "eager": [
+    "family/instruments/estate.svg",
+    "family/instruments/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 5250513,
+   "open_gzip": 451639,
+   "open_elements": 23184,
+   "bytes": 5250513,
+   "gzip": 451639,
+   "elements": 23184,
+   "open_ms": 535
+  },
+  "families/irl/index.html": {
+   "pictures": 2,
+   "eager": [
+    "family/irl/estate.svg",
+    "family/irl/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 14989188,
+   "open_gzip": 1283480,
+   "open_elements": 64640,
+   "bytes": 14989188,
+   "gzip": 1283480,
+   "elements": 64640,
+   "open_ms": 1170
+  },
+  "families/performer-display/index.html": {
+   "pictures": 2,
+   "eager": [
+    "family/performer-display/estate.svg",
+    "family/performer-display/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 1458306,
+   "open_gzip": 133986,
+   "open_elements": 6548,
+   "bytes": 1458306,
+   "gzip": 133986,
+   "elements": 6548,
+   "open_ms": 283
+  },
+  "families/performing/index.html": {
+   "pictures": 2,
+   "eager": [
+    "family/performing/estate.svg",
+    "family/performing/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 10906973,
+   "open_gzip": 916593,
+   "open_elements": 48805,
+   "bytes": 10906973,
+   "gzip": 916593,
+   "elements": 48805,
+   "open_ms": 904
+  },
+  "families/show-control/index.html": {
+   "pictures": 2,
+   "eager": [
+    "family/show-control/estate.svg",
+    "family/show-control/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 3525546,
+   "open_gzip": 298068,
+   "open_elements": 16144,
+   "bytes": 3525546,
+   "gzip": 298068,
+   "elements": 16144,
+   "open_ms": 464
+  },
+  "projects/aes/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/aes/estate.svg",
+    "project/aes/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 8852,
+   "open_gzip": 2257,
+   "open_elements": 59,
+   "bytes": 8852,
+   "gzip": 2257,
+   "elements": 59,
+   "open_ms": 202
+  },
+  "projects/alfred/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/alfred/estate.svg",
+    "project/alfred/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 267678,
+   "open_gzip": 26153,
+   "open_elements": 1508,
+   "bytes": 267678,
+   "gzip": 26153,
+   "elements": 1508,
+   "open_ms": 253
+  },
+  "projects/apothecary/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/apothecary/estate.svg",
+    "project/apothecary/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 7891271,
+   "open_gzip": 836254,
+   "open_elements": 34332,
+   "bytes": 7891271,
+   "gzip": 836254,
+   "elements": 34332,
+   "open_ms": 516
+  },
+  "projects/benchmark/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/benchmark/estate.svg",
+    "project/benchmark/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 190092,
+   "open_gzip": 17618,
+   "open_elements": 1114,
+   "bytes": 190092,
+   "gzip": 17618,
+   "elements": 1114,
+   "open_ms": 210
+  },
+  "projects/carlos/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/carlos/estate.svg",
+    "project/carlos/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 991646,
+   "open_gzip": 118226,
+   "open_elements": 4487,
+   "bytes": 991646,
+   "gzip": 118226,
+   "elements": 4487,
+   "open_ms": 265
+  },
+  "projects/cesar/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/cesar/estate.svg",
+    "project/cesar/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 151348,
+   "open_gzip": 21167,
+   "open_elements": 736,
+   "bytes": 151348,
+   "gzip": 21167,
+   "elements": 736,
+   "open_ms": 215
+  },
+  "projects/codecartographer/index.html": {
+   "pictures": 94,
+   "eager": [
+    "project/codecartographer/estate.svg",
+    "project/codecartographer/code.svg"
+   ],
+   "lazy": [
+    "family/commons/code.svg",
+    "family/core/code.svg",
+    "family/games/code.svg",
+    "family/infra/code.svg",
+    "family/instruments/code.svg",
+    "family/irl/code.svg",
+    "family/performer-display/code.svg",
+    "family/performing/code.svg",
+    "family/show-control/code.svg",
+    "project/aes/code.svg",
+    "project/alfred/code.svg",
+    "project/apothecary/code.svg",
+    "project/benchmark/code.svg",
+    "project/carlos/code.svg",
+    "project/cesar/code.svg",
+    "project/codecartographer/code.svg",
+    "project/Cuelist-python/code.svg",
+    "project/datum/code.svg",
+    "project/dossier/code.svg",
+    "project/factorio-sysops/code.svg",
+    "project/golfvs/code.svg",
+    "project/holophonor/code.svg",
+    "project/ira/code.svg",
+    "project/joe/code.svg",
+    "project/leo/code.svg",
+    "project/looksatwords/code.svg",
+    "project/ludwig/code.svg",
+    "project/midiphonor/code.svg",
+    "project/moat/code.svg",
+    "project/otto/code.svg",
+    "project/QLab-python/code.svg",
+    "project/qm/code.svg",
+    "project/qmcp/code.svg",
+    "project/qmetronome/code.svg",
+    "project/rad/code.svg",
+    "project/rad-godot/code.svg",
+    "project/scad-chess/code.svg",
+    "project/ShowRunner/code.svg",
+    "project/ShowStopper/code.svg",
+    "project/stomp/code.svg",
+    "project/TheatreMix-python/code.svg",
+    "project/uPhonor/code.svg",
+    "project/vox/code.svg",
+    "project/waveofhormuz/code.svg",
+    "project/wolf/code.svg",
+    "project/ztgui/code.svg",
+    "project/aes/estate.svg",
+    "project/alfred/estate.svg",
+    "project/apothecary/estate.svg",
+    "project/benchmark/estate.svg",
+    "project/carlos/estate.svg",
+    "project/cesar/estate.svg",
+    "project/codecartographer/estate.svg",
+    "project/Cuelist-python/estate.svg",
+    "project/datum/estate.svg",
+    "project/dossier/estate.svg",
+    "project/factorio-sysops/estate.svg",
+    "project/golfvs/estate.svg",
+    "project/holophonor/estate.svg",
+    "project/ira/estate.svg",
+    "project/joe/estate.svg",
+    "project/leo/estate.svg",
+    "project/looksatwords/estate.svg",
+    "project/ludwig/estate.svg",
+    "project/midiphonor/estate.svg",
+    "project/moat/estate.svg",
+    "project/otto/estate.svg",
+    "project/QLab-python/estate.svg",
+    "project/qm/estate.svg",
+    "project/qmcp/estate.svg",
+    "project/qmetronome/estate.svg",
+    "project/rad/estate.svg",
+    "project/rad-godot/estate.svg",
+    "project/scad-chess/estate.svg",
+    "project/ShowRunner/estate.svg",
+    "project/ShowStopper/estate.svg",
+    "project/stomp/estate.svg",
+    "project/TheatreMix-python/estate.svg",
+    "project/uPhonor/estate.svg",
+    "project/vox/estate.svg",
+    "project/waveofhormuz/estate.svg",
+    "project/wolf/estate.svg",
+    "project/ztgui/estate.svg",
+    "family/commons/estate.svg",
+    "family/core/estate.svg",
+    "family/games/estate.svg",
+    "family/infra/estate.svg",
+    "family/instruments/estate.svg",
+    "family/irl/estate.svg",
+    "family/performer-display/estate.svg",
+    "family/performing/estate.svg",
+    "family/show-control/estate.svg"
+   ],
+   "open_bytes": 3439756,
+   "open_gzip": 340218,
+   "open_elements": 15853,
+   "bytes": 93955532,
+   "gzip": 8853562,
+   "elements": 413169,
+   "open_ms": 4576
+  },
+  "projects/Cuelist-python/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/Cuelist-python/estate.svg",
+    "project/Cuelist-python/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 104819,
+   "open_gzip": 12475,
+   "open_elements": 578,
+   "bytes": 104819,
+   "gzip": 12475,
+   "elements": 578,
+   "open_ms": 219
+  },
+  "projects/datum/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/datum/estate.svg",
+    "project/datum/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 345427,
+   "open_gzip": 36503,
+   "open_elements": 1755,
+   "bytes": 345427,
+   "gzip": 36503,
+   "elements": 1755,
+   "open_ms": 215
+  },
+  "projects/dossier/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/dossier/estate.svg",
+    "project/dossier/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 2887624,
+   "open_gzip": 353204,
+   "open_elements": 12140,
+   "bytes": 2887624,
+   "gzip": 353204,
+   "elements": 12140,
+   "open_ms": 367
+  },
+  "projects/factorio-sysops/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/factorio-sysops/estate.svg",
+    "project/factorio-sysops/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 122307,
+   "open_gzip": 14723,
+   "open_elements": 628,
+   "bytes": 122307,
+   "gzip": 14723,
+   "elements": 628,
+   "open_ms": 200
+  },
+  "projects/golfvs/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/golfvs/estate.svg",
+    "project/golfvs/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 85333,
+   "open_gzip": 9410,
+   "open_elements": 503,
+   "bytes": 85333,
+   "gzip": 9410,
+   "elements": 503,
+   "open_ms": 198
+  },
+  "projects/holophonor/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/holophonor/estate.svg",
+    "project/holophonor/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 92640,
+   "open_gzip": 12860,
+   "open_elements": 464,
+   "bytes": 92640,
+   "gzip": 12860,
+   "elements": 464,
+   "open_ms": 186
+  },
+  "projects/ira/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/ira/estate.svg",
+    "project/ira/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 243341,
+   "open_gzip": 25620,
+   "open_elements": 1385,
+   "bytes": 243341,
+   "gzip": 25620,
+   "elements": 1385,
+   "open_ms": 203
+  },
+  "projects/joe/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/joe/estate.svg",
+    "project/joe/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 567746,
+   "open_gzip": 66971,
+   "open_elements": 2588,
+   "bytes": 567746,
+   "gzip": 66971,
+   "elements": 2588,
+   "open_ms": 221
+  },
+  "projects/leo/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/leo/estate.svg",
+    "project/leo/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 232436,
+   "open_gzip": 19855,
+   "open_elements": 1297,
+   "bytes": 232436,
+   "gzip": 19855,
+   "elements": 1297,
+   "open_ms": 204
+  },
+  "projects/looksatwords/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/looksatwords/estate.svg",
+    "project/looksatwords/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 785511,
+   "open_gzip": 87634,
+   "open_elements": 3585,
+   "bytes": 785511,
+   "gzip": 87634,
+   "elements": 3585,
+   "open_ms": 237
+  },
+  "projects/ludwig/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/ludwig/estate.svg",
+    "project/ludwig/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 264983,
+   "open_gzip": 27126,
+   "open_elements": 1361,
+   "bytes": 264983,
+   "gzip": 27126,
+   "elements": 1361,
+   "open_ms": 201
+  },
+  "projects/midiphonor/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/midiphonor/estate.svg",
+    "project/midiphonor/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 50279,
+   "open_gzip": 6372,
+   "open_elements": 301,
+   "bytes": 50279,
+   "gzip": 6372,
+   "elements": 301,
+   "open_ms": 186
+  },
+  "projects/moat/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/moat/estate.svg",
+    "project/moat/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 26968,
+   "open_gzip": 4090,
+   "open_elements": 178,
+   "bytes": 26968,
+   "gzip": 4090,
+   "elements": 178,
+   "open_ms": 200
+  },
+  "projects/otto/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/otto/estate.svg",
+    "project/otto/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 89719,
+   "open_gzip": 12923,
+   "open_elements": 470,
+   "bytes": 89719,
+   "gzip": 12923,
+   "elements": 470,
+   "open_ms": 195
+  },
+  "projects/QLab-python/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/QLab-python/estate.svg",
+    "project/QLab-python/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 268551,
+   "open_gzip": 26068,
+   "open_elements": 1343,
+   "bytes": 268551,
+   "gzip": 26068,
+   "elements": 1343,
+   "open_ms": 222
+  },
+  "projects/qm/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/qm/estate.svg",
+    "project/qm/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 3909199,
+   "open_gzip": 441952,
+   "open_elements": 15012,
+   "bytes": 3909199,
+   "gzip": 441952,
+   "elements": 15012,
+   "open_ms": 384
+  },
+  "projects/qmcp/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/qmcp/estate.svg",
+    "project/qmcp/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 3600124,
+   "open_gzip": 424079,
+   "open_elements": 14868,
+   "bytes": 3600124,
+   "gzip": 424079,
+   "elements": 14868,
+   "open_ms": 384
+  },
+  "projects/qmetronome/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/qmetronome/estate.svg",
+    "project/qmetronome/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 510265,
+   "open_gzip": 43843,
+   "open_elements": 2856,
+   "bytes": 510265,
+   "gzip": 43843,
+   "elements": 2856,
+   "open_ms": 248
+  },
+  "projects/rad/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/rad/estate.svg",
+    "project/rad/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 97786,
+   "open_gzip": 10905,
+   "open_elements": 604,
+   "bytes": 97786,
+   "gzip": 10905,
+   "elements": 604,
+   "open_ms": 219
+  },
+  "projects/rad-godot/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/rad-godot/estate.svg",
+    "project/rad-godot/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 82567,
+   "open_gzip": 8801,
+   "open_elements": 483,
+   "bytes": 82567,
+   "gzip": 8801,
+   "elements": 483,
+   "open_ms": 201
+  },
+  "projects/scad-chess/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/scad-chess/estate.svg",
+    "project/scad-chess/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 9419,
+   "open_gzip": 2345,
+   "open_elements": 62,
+   "bytes": 9419,
+   "gzip": 2345,
+   "elements": 62,
+   "open_ms": 204
+  },
+  "projects/ShowRunner/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/ShowRunner/estate.svg",
+    "project/ShowRunner/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 792929,
+   "open_gzip": 94381,
+   "open_elements": 3599,
+   "bytes": 792929,
+   "gzip": 94381,
+   "elements": 3599,
+   "open_ms": 269
+  },
+  "projects/ShowStopper/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/ShowStopper/estate.svg",
+    "project/ShowStopper/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 69803,
+   "open_gzip": 9013,
+   "open_elements": 376,
+   "bytes": 69803,
+   "gzip": 9013,
+   "elements": 376,
+   "open_ms": 201
+  },
+  "projects/stomp/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/stomp/estate.svg",
+    "project/stomp/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 9602,
+   "open_gzip": 2484,
+   "open_elements": 62,
+   "bytes": 9602,
+   "gzip": 2484,
+   "elements": 62,
+   "open_ms": 184
+  },
+  "projects/TheatreMix-python/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/TheatreMix-python/estate.svg",
+    "project/TheatreMix-python/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 345597,
+   "open_gzip": 43787,
+   "open_elements": 1499,
+   "bytes": 345597,
+   "gzip": 43787,
+   "elements": 1499,
+   "open_ms": 208
+  },
+  "projects/uPhonor/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/uPhonor/estate.svg",
+    "project/uPhonor/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 270440,
+   "open_gzip": 24293,
+   "open_elements": 1582,
+   "bytes": 270440,
+   "gzip": 24293,
+   "elements": 1582,
+   "open_ms": 204
+  },
+  "projects/vox/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/vox/estate.svg",
+    "project/vox/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 249390,
+   "open_gzip": 33082,
+   "open_elements": 1098,
+   "bytes": 249390,
+   "gzip": 33082,
+   "elements": 1098,
+   "open_ms": 202
+  },
+  "projects/waveofhormuz/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/waveofhormuz/estate.svg",
+    "project/waveofhormuz/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 21053,
+   "open_gzip": 3735,
+   "open_elements": 133,
+   "bytes": 21053,
+   "gzip": 3735,
+   "elements": 133,
+   "open_ms": 218
+  },
+  "projects/wolf/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/wolf/estate.svg",
+    "project/wolf/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 452607,
+   "open_gzip": 42735,
+   "open_elements": 2339,
+   "bytes": 452607,
+   "gzip": 42735,
+   "elements": 2339,
+   "open_ms": 209
+  },
+  "projects/ztgui/index.html": {
+   "pictures": 2,
+   "eager": [
+    "project/ztgui/estate.svg",
+    "project/ztgui/code.svg"
+   ],
+   "lazy": [],
+   "open_bytes": 35107,
+   "open_gzip": 5523,
+   "open_elements": 217,
+   "bytes": 35107,
+   "gzip": 5523,
+   "elements": 217,
+   "open_ms": 188
+  }
+ }
+}

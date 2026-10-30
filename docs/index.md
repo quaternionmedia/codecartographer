@@ -14,6 +14,8 @@ These pages explain how to install, run and extend Codecarto.
 - [Extending](extending.md): the node schema, the renderers, and adding a
   parser, renderer, styling option, extension or route
 - [UI reference](ui.md): the panels, the canvas and the menus
+- [Scale](scale.md): what a show export costs a reader, measured; how fast the
+  corpus grows; and the budgets and rules that keep its pages manageable
 
 ## Open work
 
