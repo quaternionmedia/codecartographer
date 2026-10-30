@@ -13,6 +13,7 @@ what has landed is described in the reference pages under `docs/`.
 | [`c_parser_phase3_compile_commands.md`](c_parser_phase3_compile_commands.md) | Parsing C from a real `compile_commands.json` instead of walking the directory |
 | [`large-repos.md`](large-repos.md) | A repository the size of linux, parsed whole and explored on the canvas |
 | [`the-corpus-at-every-depth.md`](the-corpus-at-every-depth.md) | The whole corpus drawn to every symbol, and to every member, with no names |
+| [`a-page-without-a-server.md`](a-page-without-a-server.md) | One page, served by any static host, that draws the graphs and addresses other apps hand it |
 | *the web window* (in the corpus: `plans/the-web-window.md`) | The estate frame, the topology designer on it, and the chrestomathy of code. Kept in the corpus because it decides things for three repositories; the pickup for this repository is the section below |
 
 ## Picking up the web window

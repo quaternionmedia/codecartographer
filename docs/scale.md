@@ -308,7 +308,9 @@ uv run codecarto show imports ../clones ../qm/docs/show --out imports.json
   the last 24 months (`--months`).
 
 Not measured here:
-- the live window drawing the views rule 2 sends to it;
+- the live window drawing the views rule 2 sends to it, which
+  [a page without a server](roadmap/a-page-without-a-server.md) plans to make
+  a page any reader can open;
 - an import in Rust, C or a language read by pattern: `show imports` reads
   Python, JavaScript and TypeScript;
 - a real phone, rather than Chromium slowed;
