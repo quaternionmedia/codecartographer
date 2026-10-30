@@ -1073,5 +1073,34 @@ def show_growth(clones: str, show_dir: str, out: str | None):
         click.echo(f"\nWrote the report to {out}")
 
 
+@show.command("imports")
+@click.argument("clones", type=click.Path(exists=True, file_okay=False))
+@click.argument("show_dir", type=click.Path(exists=True, file_okay=False))
+@click.option("--months", "back", type=click.IntRange(min=1), default=24, show_default=True,
+              help="How many months back to read what the projects shared")
+@click.option("--out", type=click.Path(dir_okay=False), help="Write the whole report here, as JSON")
+def show_imports(clones: str, show_dir: str, back: int, out: str | None):
+    """
+    Measure what the corpus's projects import in common, and from each other.
+
+    \b
+    CLONES holds a clone of each project SHOW_DIR has a code map of, named
+    <project>.git or <project>, as for `show growth`. Each project's Python,
+    JavaScript and TypeScript imports are read at the commit its map was
+    drawn from: each import of a package one other project holds, each
+    module two or more import, and, month by month, how many there were.
+    """
+    import json
+
+    from codecarto.services import show_imports as importing
+
+    report = importing.survey(Path(clones), Path(show_dir), back)
+    for line in importing.summary(report):
+        click.echo(line)
+    if out:
+        Path(out).write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8", newline="\n")
+        click.echo(f"\nWrote the report to {out}")
+
+
 if __name__ == "__main__":
     cli()

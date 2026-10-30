@@ -463,6 +463,28 @@ lacks that commit, is named and left out.
 |---|---|
 | `--out` | Write the whole report as JSON |
 
+### `show imports`
+
+Measure what the corpus's projects import in common, and from each other:
+each project's Python, JavaScript and TypeScript imports, read at the commit
+its code map was drawn from, set side by side as the imports view sets them
+(`show_imports`), and the same at the end of each month before.
+
+```bash
+uv run codecarto show imports ../clones ../qm/docs/show --out imports.json
+```
+
+The clones are the ones `show growth` reads. It prints each import of a
+package one other project holds, each package two projects hold (which is no
+link), the modules most projects share, and how many months the projects, the
+shared modules and the view's joins (a link, or a project joined to a module
+it shares) each take to double.
+
+| Option | Meaning |
+|---|---|
+| `--months` | How many months back to read (default 24) |
+| `--out` | Write the whole report as JSON |
+
 ---
 
 ## Utility Commands
