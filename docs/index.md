@@ -25,6 +25,7 @@ These pages explain how to install, run and extend Codecarto.
 - [C parsing from `compile_commands.json`](roadmap/c_parser_phase3_compile_commands.md)
 - [Large repositories](roadmap/large-repos.md)
 - [The whole corpus at every depth](roadmap/the-corpus-at-every-depth.md)
+- [A page without a server](roadmap/a-page-without-a-server.md)
 
 The panels that draw other projects' data -- the topology, capability and
 overview panels -- are built to a plan in the governance corpus, the
