@@ -995,5 +995,83 @@ def show_export(corpus: str, subject: str, out: str):
     click.secho(f"✓ {len(chosen)} subject(s) written to {out}", fg="green")
 
 
+@show.command("measure")
+@click.argument("show_dir", type=click.Path(exists=True, file_okay=False))
+@click.option("--site", type=click.Path(exists=True, file_okay=False),
+              help="A built site whose pages embed SHOW_DIR's pictures, copied as its show/")
+@click.option("--draw", is_flag=True,
+              help="Also time each picture and page in Chromium, and name this machine")
+@click.option("--out", type=click.Path(dir_okay=False), help="Write the whole report here, as JSON")
+@click.option("--against", type=click.Path(exists=True, dir_okay=False),
+              help="A report written before, to set this one beside")
+@click.option("--check", is_flag=True, help="Exit 1 when anything exceeds its budget")
+def show_measure(show_dir: str, site: str | None, draw: bool, out: str | None, against: str | None,
+                 check: bool):
+    """
+    Measure what an export costs: each picture, show document and page.
+
+    \b
+    Elements and bytes are the same on every machine; --draw adds how long
+    this machine's Chromium takes to draw each picture and open each page
+    (web/scripts/measure-draw.mjs). docs/scale.md says what each number is,
+    the baseline it is held against and the budgets.
+    """
+    import json
+    import tempfile
+
+    from codecarto.services import show_measure as measuring
+
+    show_path = Path(show_dir).resolve()
+    site_path = Path(site).resolve() if site else None
+    times = None
+    if draw:
+        with tempfile.TemporaryDirectory() as tmp:
+            timed = Path(tmp) / "times.json"
+            args = ["node", "scripts/measure-draw.mjs", str(show_path), str(timed)]
+            if site_path:
+                args.append(str(site_path))
+            if subprocess.run(args, cwd=WEB_DIR).returncode or not timed.is_file():
+                _fail("timing the pictures in Chromium failed")
+            times = json.loads(timed.read_text(encoding="utf-8"))
+    report = measuring.measure(show_path, site_path, times)
+    for line in measuring.summary(report):
+        click.echo(line)
+    if against:
+        click.echo("")
+        for line in measuring.comparison(json.loads(Path(against).read_text(encoding="utf-8")), report):
+            click.echo(line)
+    if out:
+        Path(out).write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8", newline="\n")
+        click.echo(f"\nWrote the report to {out}")
+    if check and measuring.over_budget(report):
+        sys.exit(1)
+
+
+@show.command("growth")
+@click.argument("clones", type=click.Path(exists=True, file_okay=False))
+@click.argument("show_dir", type=click.Path(exists=True, file_okay=False))
+@click.option("--out", type=click.Path(dir_okay=False), help="Write the whole report here, as JSON")
+def show_growth(clones: str, show_dir: str, out: str | None):
+    """
+    Measure how fast the corpus grows, from its projects' histories.
+
+    \b
+    CLONES holds a clone of each project SHOW_DIR has a code map of, named
+    <project>.git or <project> (bare clones do). Each is read up to the
+    commit its map was drawn from: commits, bytes the parser reads and
+    estimated code-map nodes, month by month, and each one's doubling time.
+    """
+    import json
+
+    from codecarto.services import show_growth as growing
+
+    report = growing.growth(Path(clones), Path(show_dir))
+    for line in growing.summary(report):
+        click.echo(line)
+    if out:
+        Path(out).write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8", newline="\n")
+        click.echo(f"\nWrote the report to {out}")
+
+
 if __name__ == "__main__":
     cli()
