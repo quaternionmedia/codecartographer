@@ -68,9 +68,21 @@ test("a family's code view is the family with its projects' code, and a view it 
   assert.equal(parseShow('?show=project:carlos&view=system').view, 'system');
 });
 
+test("an imports view is the index's or a family's, never a project's", () => {
+  // Mutations: read `imports` for the index alone, or for a family alone --
+  // the other opens as its estate -- or for a project too, which has no
+  // route for it, and this fails.
+  assert.deepEqual(parseShow('?show=index&view=imports'), { kind: 'index', name: '', view: 'imports' });
+  assert.deepEqual(parseShow('?show=family:core&view=imports'), { kind: 'family', name: 'core', view: 'imports' });
+  assert.equal(parseShow('?show=project:carlos&view=imports').view, 'estate');
+  assert.equal(crumbLabel({ kind: 'index', name: '', view: 'imports' }), 'shared imports');
+  assert.deepEqual(trail({ kind: 'index', name: '', view: 'imports' }, null).map((level) => level.map(crumbLabel)),
+    [['every family'], ['shared imports']]);
+});
+
 test('formatting and parsing agree, and the estate view is left out', () => {
   for (const search of ['?show=index', '?show=index&view=code', '?show=family:show-control',
-    '?show=family:core&view=code',
+    '?show=family:core&view=code', '?show=index&view=imports', '?show=family:core&view=imports',
     '?show=project:Cuelist-python', '?show=project:moat&view=system']) {
     assert.equal(formatShow(parseShow(search)), search);
   }

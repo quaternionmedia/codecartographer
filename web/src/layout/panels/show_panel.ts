@@ -166,9 +166,10 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
     estate: { label: 'every family', title: 'draw every family' },
     code: { label: "with each project's code", title: "draw every family with each project's code in it" },
     full: { label: 'every node, no names', title: 'draw the whole corpus, every node, with no names' },
+    imports: { label: 'shared imports', title: 'draw every family with what its projects import in common' },
   } as const;
   const indexSwitch = (current: ShowAddress) =>
-    m('div.show__views', (['estate', 'code', 'full'] as const).map((view) =>
+    m('div.show__views', (['estate', 'code', 'full', 'imports'] as const).map((view) =>
       m('button.estate-view__draw.show__view', {
         'data-view': view,
         class: current.view === view ? 'is-current' : '',
@@ -177,13 +178,14 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
         onclick: () => open({ kind: 'index', name: '', view }),
       }, indexViews[view].label)));
 
-  /** A family alone, or with each of its projects' code in it. */
+  /** A family alone, with each of its projects' code in it, or with what they import in common. */
   const familyViews = {
     estate: { label: 'the family', title: 'draw the family' },
     code: { label: "with each project's code", title: "draw the family with each of its projects' code in it" },
+    imports: { label: 'shared imports', title: 'draw the family with what its projects import in common' },
   } as const;
   const familySwitch = (current: ShowAddress) =>
-    m('div.show__views', (['estate', 'code'] as const).map((view) =>
+    m('div.show__views', (['estate', 'code', 'imports'] as const).map((view) =>
       m('button.estate-view__draw.show__view', {
         'data-view': view,
         class: current.view === view ? 'is-current' : '',

@@ -1,0 +1,1041 @@
+{
+ "through": "2026-10",
+ "projects": {
+  "aes": {
+   "commit": "d602645755ff6d57c94cf9c289d0a505ce1d69e2",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 0
+  },
+  "alfred": {
+   "commit": "7fff7ae01bce8f29d05ccf569237fcdf3416b5c0",
+   "packages": {
+    "python": [
+     "alfred"
+    ],
+    "javascript": [
+     "alfred"
+    ]
+   },
+   "imports": 31
+  },
+  "apothecary": {
+   "commit": "ac25b8dea01a2ee612da167c32d8fb0e72d76e95",
+   "packages": {
+    "python": [
+     "apothecary"
+    ],
+    "javascript": []
+   },
+   "imports": 23
+  },
+  "benchmark": {
+   "commit": "dfae9d207ad3dd237f0605b807fb270b76a7abda",
+   "packages": {
+    "python": [],
+    "javascript": [
+     "benchmark"
+    ]
+   },
+   "imports": 6
+  },
+  "carlos": {
+   "commit": "a5540e7dfb11dea3258cdde8769f26a7dc6d568f",
+   "packages": {
+    "python": [
+     "tests",
+     "tools"
+    ],
+    "javascript": []
+   },
+   "imports": 7
+  },
+  "cesar": {
+   "commit": "25926322d8f04ab1736ab3d9993772d804fe9da3",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 12
+  },
+  "codecartographer": {
+   "commit": "7c175d6f2e35fd39fc42d2008985695a776c1a88",
+   "packages": {
+    "python": [
+     "codecarto",
+     "tests"
+    ],
+    "javascript": [
+     "codecartographer"
+    ]
+   },
+   "imports": 24
+  },
+  "Cuelist-python": {
+   "commit": "e891a76ff342f2ffa5c5deb19144013ec13f942c",
+   "packages": {
+    "python": [
+     "cuelist"
+    ],
+    "javascript": []
+   },
+   "imports": 4
+  },
+  "datum": {
+   "commit": "72b04348b3f914fefd09a6801c147d38f5e25d21",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 6
+  },
+  "dossier": {
+   "commit": "414be1c9dad7a4e314e1334c37e59ed713f1a75d",
+   "packages": {
+    "python": [
+     "dossier",
+     "tests"
+    ],
+    "javascript": []
+   },
+   "imports": 19
+  },
+  "factorio-sysops": {
+   "commit": "da1e1d0c50fd30b082b4031b3ff835947b2246e0",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 1
+  },
+  "golfvs": {
+   "commit": "e90481932f225b86940e61b2cd062b66a906d8a8",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 0
+  },
+  "holophonor": {
+   "commit": "dd8d9dbf1c7e9571adc99616330ba56de05f5029",
+   "packages": {
+    "python": [
+     "holophonor"
+    ],
+    "javascript": []
+   },
+   "imports": 3
+  },
+  "ira": {
+   "commit": "a04467f835d3399d0f450a9a9abc2ccd9d5f7bb5",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 12
+  },
+  "joe": {
+   "commit": "474307fc49c20e7efa7393883c9eb5b97a4dbfac",
+   "packages": {
+    "python": [
+     "Modules",
+     "tests"
+    ],
+    "javascript": [
+     "joe"
+    ]
+   },
+   "imports": 13
+  },
+  "leo": {
+   "commit": "9305c59e7287eaccc5a3ced59a58d053ec66d30e",
+   "packages": {
+    "python": [
+     "leo"
+    ],
+    "javascript": [
+     "@mrharpo/leo"
+    ]
+   },
+   "imports": 17
+  },
+  "looksatwords": {
+   "commit": "01da48156b0955bb6c922ce0683148ee715a9205",
+   "packages": {
+    "python": [
+     "looksatwords"
+    ],
+    "javascript": []
+   },
+   "imports": 25
+  },
+  "ludwig": {
+   "commit": "fe7ee650185685313450f4ffe7e157d503c8cdf3",
+   "packages": {
+    "python": [
+     "ludwig"
+    ],
+    "javascript": []
+   },
+   "imports": 4
+  },
+  "midiphonor": {
+   "commit": "407e6c31db235288e05eabf53d7f2074b149b701",
+   "packages": {
+    "python": [],
+    "javascript": [
+     "midiphonor"
+    ]
+   },
+   "imports": 6
+  },
+  "moat": {
+   "commit": "16a595a3598c02ba521fc42617fc130030f9b57f",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 2
+  },
+  "otto": {
+   "commit": "c57b2ad70afa9af629efd0b58f8c2585db501a78",
+   "packages": {
+    "python": [
+     "otto"
+    ],
+    "javascript": []
+   },
+   "imports": 12
+  },
+  "QLab-python": {
+   "commit": "ea8028ed94c9d5f52a688127fe0b8dfb3a8e130c",
+   "packages": {
+    "python": [
+     "qlab"
+    ],
+    "javascript": []
+   },
+   "imports": 3
+  },
+  "qm": {
+   "commit": "bb2ed1731b19a5b335c8e06de444bdd014732e74",
+   "packages": {
+    "python": [
+     "ci"
+    ],
+    "javascript": []
+   },
+   "imports": 61
+  },
+  "qmcp": {
+   "commit": "8aece3e1b64817235fe6372ab6511644f85933e5",
+   "packages": {
+    "python": [
+     "qmcp",
+     "tests"
+    ],
+    "javascript": []
+   },
+   "imports": 19
+  },
+  "qmetronome": {
+   "commit": "1abf5e9f196e33b51567fb866dd3423d4f3a43b9",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 0
+  },
+  "rad": {
+   "commit": "3e8794f11eb94b29e94094aa24e8215593864a6f",
+   "packages": {
+    "python": [],
+    "javascript": [
+     "@quaternionmedia/rad"
+    ]
+   },
+   "imports": 1
+  },
+  "rad-godot": {
+   "commit": "6dd9485f6bd2a5ddf7679f3dfe4c19f44385a5f3",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 0
+  },
+  "scad-chess": {
+   "commit": "ff6c62667eeac390546839dc1c5c92d0f5788b0a",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 0
+  },
+  "ShowRunner": {
+   "commit": "f37a60b9196ff7f1583cc3426046cc7c7f0fd910",
+   "packages": {
+    "python": [
+     "showrunner"
+    ],
+    "javascript": []
+   },
+   "imports": 20
+  },
+  "ShowStopper": {
+   "commit": "51f8b13c14d3aeeb026981f42798c6abe83adde5",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 1
+  },
+  "stomp": {
+   "commit": "6d30a6f47303e2378587f1e5870d1461d1443244",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 0
+  },
+  "TheatreMix-python": {
+   "commit": "5d3fc153aeb2bedb559da92d243247b62bed2289",
+   "packages": {
+    "python": [
+     "theatremix"
+    ],
+    "javascript": []
+   },
+   "imports": 10
+  },
+  "uPhonor": {
+   "commit": "150f7a770cade664896c403ff27ccc5cf408f08d",
+   "packages": {
+    "python": [],
+    "javascript": [
+     "uPhonor"
+    ]
+   },
+   "imports": 4
+  },
+  "vox": {
+   "commit": "1721e6f27d9310fea928bd477005c34d1bcfe732",
+   "packages": {
+    "python": [
+     "vox"
+    ],
+    "javascript": []
+   },
+   "imports": 5
+  },
+  "waveofhormuz": {
+   "commit": "83746f7cbcaa491c1e55e5b576f4b6abed7999e7",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 0
+  },
+  "wolf": {
+   "commit": "d960d108d8915b195c5de3b74fc10ac2144e7670",
+   "packages": {
+    "python": [],
+    "javascript": [
+     "wolf"
+    ]
+   },
+   "imports": 19
+  },
+  "ztgui": {
+   "commit": "c698ae0dbfaedef15797ab44e5f5afedb5fdba24",
+   "packages": {
+    "python": [],
+    "javascript": []
+   },
+   "imports": 4
+  }
+ },
+ "left_out": {},
+ "links": [
+  {
+   "source": "alfred",
+   "target": "otto",
+   "module": "otto",
+   "language": "python",
+   "files": 4
+  },
+  {
+   "source": "Cuelist-python",
+   "target": "ShowRunner",
+   "module": "showrunner",
+   "language": "python",
+   "files": 1
+  },
+  {
+   "source": "dossier",
+   "target": "qmcp",
+   "module": "qmcp",
+   "language": "python",
+   "files": 1
+  },
+  {
+   "source": "qmcp",
+   "target": "vox",
+   "module": "vox",
+   "language": "python",
+   "files": 8
+  },
+  {
+   "source": "TheatreMix-python",
+   "target": "ShowRunner",
+   "module": "showrunner",
+   "language": "python",
+   "files": 6
+  }
+ ],
+ "shared": [
+  {
+   "module": "fastapi",
+   "language": "python",
+   "projects": {
+    "alfred": 11,
+    "apothecary": 56,
+    "carlos": 1,
+    "codecartographer": 41,
+    "Cuelist-python": 1,
+    "dossier": 3,
+    "ira": 2,
+    "joe": 10,
+    "leo": 1,
+    "looksatwords": 6,
+    "moat": 1,
+    "otto": 4,
+    "qmcp": 19,
+    "ShowRunner": 20,
+    "TheatreMix-python": 3,
+    "wolf": 1,
+    "ztgui": 1
+   }
+  },
+  {
+   "module": "pydantic",
+   "language": "python",
+   "projects": {
+    "alfred": 1,
+    "apothecary": 73,
+    "carlos": 6,
+    "codecartographer": 8,
+    "Cuelist-python": 1,
+    "datum": 1,
+    "dossier": 1,
+    "leo": 1,
+    "looksatwords": 3,
+    "ludwig": 4,
+    "otto": 1,
+    "QLab-python": 1,
+    "qmcp": 25,
+    "ShowRunner": 5,
+    "TheatreMix-python": 1
+   }
+  },
+  {
+   "module": "pytest",
+   "language": "python",
+   "projects": {
+    "apothecary": 134,
+    "carlos": 4,
+    "codecartographer": 44,
+    "datum": 1,
+    "dossier": 73,
+    "joe": 12,
+    "looksatwords": 14,
+    "otto": 1,
+    "qm": 57,
+    "qmcp": 75,
+    "ShowRunner": 9,
+    "TheatreMix-python": 8,
+    "vox": 7
+   }
+  },
+  {
+   "module": "uvicorn",
+   "language": "python",
+   "projects": {
+    "alfred": 1,
+    "apothecary": 2,
+    "carlos": 1,
+    "dossier": 1,
+    "ira": 2,
+    "leo": 1,
+    "looksatwords": 1,
+    "moat": 1,
+    "otto": 1,
+    "qmcp": 2,
+    "ShowRunner": 1,
+    "wolf": 1,
+    "ztgui": 1
+   }
+  },
+  {
+   "module": "click",
+   "language": "python",
+   "projects": {
+    "apothecary": 53,
+    "carlos": 2,
+    "codecartographer": 5,
+    "datum": 1,
+    "dossier": 15,
+    "looksatwords": 3,
+    "qmcp": 17
+   }
+  },
+  {
+   "module": "starlette",
+   "language": "python",
+   "projects": {
+    "alfred": 3,
+    "apothecary": 1,
+    "ira": 2,
+    "leo": 1,
+    "qmcp": 2,
+    "wolf": 1,
+    "ztgui": 1
+   }
+  },
+  {
+   "module": "mithril",
+   "language": "javascript",
+   "projects": {
+    "alfred": 35,
+    "codecartographer": 39,
+    "leo": 13,
+    "midiphonor": 15,
+    "uPhonor": 2,
+    "wolf": 6
+   }
+  },
+  {
+   "module": "PIL",
+   "language": "python",
+   "projects": {
+    "apothecary": 27,
+    "cesar": 1,
+    "dossier": 1,
+    "factorio-sysops": 2,
+    "looksatwords": 1,
+    "otto": 2
+   }
+  },
+  {
+   "module": "httpx",
+   "language": "python",
+   "projects": {
+    "apothecary": 17,
+    "codecartographer": 3,
+    "dossier": 8,
+    "looksatwords": 4,
+    "qmcp": 24,
+    "vox": 4
+   }
+  },
+  {
+   "module": "numpy",
+   "language": "python",
+   "projects": {
+    "cesar": 2,
+    "codecartographer": 2,
+    "joe": 13,
+    "looksatwords": 2,
+    "otto": 2
+   }
+  },
+  {
+   "module": "requests",
+   "language": "python",
+   "projects": {
+    "codecartographer": 1,
+    "ira": 2,
+    "looksatwords": 2,
+    "otto": 1,
+    "ztgui": 1
+   }
+  },
+  {
+   "module": "sqlalchemy",
+   "language": "python",
+   "projects": {
+    "dossier": 33,
+    "looksatwords": 2,
+    "qmcp": 14,
+    "ShowRunner": 5,
+    "TheatreMix-python": 5
+   }
+  },
+  {
+   "module": "sqlmodel",
+   "language": "python",
+   "projects": {
+    "dossier": 67,
+    "looksatwords": 8,
+    "qmcp": 30,
+    "ShowRunner": 14,
+    "TheatreMix-python": 5
+   }
+  },
+  {
+   "module": "yaml",
+   "language": "python",
+   "projects": {
+    "apothecary": 3,
+    "codecartographer": 7,
+    "dossier": 5,
+    "qm": 61,
+    "qmcp": 2
+   }
+  },
+  {
+   "module": "@playwright/test",
+   "language": "javascript",
+   "projects": {
+    "benchmark": 12,
+    "codecartographer": 33,
+    "joe": 11,
+    "rad": 13
+   }
+  },
+  {
+   "module": "playwright",
+   "language": "python",
+   "projects": {
+    "apothecary": 51,
+    "carlos": 1,
+    "looksatwords": 2,
+    "qm": 2
+   }
+  },
+  {
+   "module": "pluggy",
+   "language": "python",
+   "projects": {
+    "holophonor": 3,
+    "ludwig": 3,
+    "ShowRunner": 7,
+    "TheatreMix-python": 1
+   }
+  },
+  {
+   "module": "pythonosc",
+   "language": "python",
+   "projects": {
+    "cesar": 1,
+    "ira": 1,
+    "QLab-python": 1,
+    "ShowRunner": 2
+   }
+  },
+  {
+   "module": "rtmidi",
+   "language": "python",
+   "projects": {
+    "holophonor": 6,
+    "ludwig": 6,
+    "ShowRunner": 1,
+    "wolf": 1
+   }
+  },
+  {
+   "module": "animejs",
+   "language": "javascript",
+   "projects": {
+    "benchmark": 1,
+    "codecartographer": 1,
+    "joe": 2
+   }
+  },
+  {
+   "module": "meiosis-setup",
+   "language": "javascript",
+   "projects": {
+    "codecartographer": 4,
+    "leo": 2,
+    "uPhonor": 1
+   }
+  },
+  {
+   "module": "vite",
+   "language": "javascript",
+   "projects": {
+    "benchmark": 1,
+    "looksatwords": 1,
+    "uPhonor": 1
+   }
+  },
+  {
+   "module": "loguru",
+   "language": "python",
+   "projects": {
+    "holophonor": 2,
+    "ShowRunner": 11,
+    "TheatreMix-python": 1
+   }
+  },
+  {
+   "module": "matplotlib",
+   "language": "python",
+   "projects": {
+    "cesar": 2,
+    "joe": 2,
+    "looksatwords": 2
+   }
+  },
+  {
+   "module": "networkx",
+   "language": "python",
+   "projects": {
+    "cesar": 3,
+    "codecartographer": 36,
+    "wolf": 2
+   }
+  },
+  {
+   "module": "pymongo",
+   "language": "python",
+   "projects": {
+    "alfred": 1,
+    "codecartographer": 1,
+    "leo": 2
+   }
+  },
+  {
+   "module": "rich",
+   "language": "python",
+   "projects": {
+    "dossier": 3,
+    "looksatwords": 4,
+    "ShowRunner": 1
+   }
+  },
+  {
+   "module": "serial",
+   "language": "python",
+   "projects": {
+    "apothecary": 3,
+    "cesar": 2,
+    "ira": 2
+   }
+  },
+  {
+   "module": "typer",
+   "language": "python",
+   "projects": {
+    "joe": 3,
+    "ShowRunner": 3,
+    "vox": 2
+   }
+  },
+  {
+   "module": "typing_extensions",
+   "language": "python",
+   "projects": {
+    "Cuelist-python": 1,
+    "looksatwords": 1,
+    "QLab-python": 1
+   }
+  },
+  {
+   "module": "fuse.js",
+   "language": "javascript",
+   "projects": {
+    "leo": 1,
+    "wolf": 1
+   }
+  },
+  {
+   "module": "golden-layout",
+   "language": "javascript",
+   "projects": {
+    "apothecary": 1,
+    "codecartographer": 4
+   }
+  },
+  {
+   "module": "interactjs",
+   "language": "javascript",
+   "projects": {
+    "alfred": 3,
+    "wolf": 1
+   }
+  },
+  {
+   "module": "meiosis-tracer",
+   "language": "javascript",
+   "projects": {
+    "leo": 1,
+    "uPhonor": 1
+   }
+  },
+  {
+   "module": "mergerino",
+   "language": "javascript",
+   "projects": {
+    "codecartographer": 2,
+    "midiphonor": 1
+   }
+  },
+  {
+   "module": "mido",
+   "language": "python",
+   "projects": {
+    "cesar": 1,
+    "wolf": 2
+   }
+  },
+  {
+   "module": "nicegui",
+   "language": "python",
+   "projects": {
+    "ShowRunner": 7,
+    "TheatreMix-python": 1
+   }
+  },
+  {
+   "module": "nox",
+   "language": "python",
+   "projects": {
+    "alfred": 1,
+    "otto": 1
+   }
+  },
+  {
+   "module": "pdfrw",
+   "language": "python",
+   "projects": {
+    "alfred": 1,
+    "wolf": 1
+   }
+  },
+  {
+   "module": "pydantic_core",
+   "language": "python",
+   "projects": {
+    "apothecary": 2,
+    "qmcp": 1
+   }
+  },
+  {
+   "module": "screenplay_tools",
+   "language": "python",
+   "projects": {
+    "ShowRunner": 1,
+    "TheatreMix-python": 5
+   }
+  },
+  {
+   "module": "textual",
+   "language": "python",
+   "projects": {
+    "dossier": 31,
+    "ShowStopper": 1
+   }
+  },
+  {
+   "module": "tinydb",
+   "language": "python",
+   "projects": {
+    "carlos": 1,
+    "looksatwords": 1
+   }
+  }
+ ],
+ "ambiguous": [],
+ "alone": 175,
+ "months": [
+  {
+   "month": "2024-11",
+   "projects": 21,
+   "shared": 24,
+   "links": 1,
+   "joins": 81
+  },
+  {
+   "month": "2024-12",
+   "projects": 21,
+   "shared": 24,
+   "links": 1,
+   "joins": 81
+  },
+  {
+   "month": "2025-01",
+   "projects": 21,
+   "shared": 24,
+   "links": 1,
+   "joins": 81
+  },
+  {
+   "month": "2025-02",
+   "projects": 22,
+   "shared": 24,
+   "links": 1,
+   "joins": 84
+  },
+  {
+   "month": "2025-03",
+   "projects": 22,
+   "shared": 24,
+   "links": 1,
+   "joins": 84
+  },
+  {
+   "month": "2025-04",
+   "projects": 22,
+   "shared": 24,
+   "links": 1,
+   "joins": 84
+  },
+  {
+   "month": "2025-05",
+   "projects": 22,
+   "shared": 24,
+   "links": 1,
+   "joins": 84
+  },
+  {
+   "month": "2025-06",
+   "projects": 22,
+   "shared": 24,
+   "links": 1,
+   "joins": 84
+  },
+  {
+   "month": "2025-07",
+   "projects": 22,
+   "shared": 24,
+   "links": 1,
+   "joins": 84
+  },
+  {
+   "month": "2025-08",
+   "projects": 23,
+   "shared": 25,
+   "links": 1,
+   "joins": 89
+  },
+  {
+   "month": "2025-09",
+   "projects": 23,
+   "shared": 25,
+   "links": 1,
+   "joins": 89
+  },
+  {
+   "month": "2025-10",
+   "projects": 24,
+   "shared": 25,
+   "links": 1,
+   "joins": 89
+  },
+  {
+   "month": "2025-11",
+   "projects": 24,
+   "shared": 25,
+   "links": 1,
+   "joins": 89
+  },
+  {
+   "month": "2025-12",
+   "projects": 24,
+   "shared": 25,
+   "links": 1,
+   "joins": 89
+  },
+  {
+   "month": "2026-01",
+   "projects": 26,
+   "shared": 32,
+   "links": 1,
+   "joins": 128
+  },
+  {
+   "month": "2026-02",
+   "projects": 27,
+   "shared": 34,
+   "links": 1,
+   "joins": 133
+  },
+  {
+   "month": "2026-03",
+   "projects": 27,
+   "shared": 34,
+   "links": 1,
+   "joins": 137
+  },
+  {
+   "month": "2026-04",
+   "projects": 29,
+   "shared": 36,
+   "links": 2,
+   "joins": 147
+  },
+  {
+   "month": "2026-05",
+   "projects": 29,
+   "shared": 36,
+   "links": 2,
+   "joins": 147
+  },
+  {
+   "month": "2026-06",
+   "projects": 31,
+   "shared": 36,
+   "links": 2,
+   "joins": 151
+  },
+  {
+   "month": "2026-07",
+   "projects": 32,
+   "shared": 36,
+   "links": 2,
+   "joins": 152
+  },
+  {
+   "month": "2026-08",
+   "projects": 34,
+   "shared": 38,
+   "links": 3,
+   "joins": 167
+  },
+  {
+   "month": "2026-09",
+   "projects": 37,
+   "shared": 39,
+   "links": 4,
+   "joins": 179
+  },
+  {
+   "month": "2026-10",
+   "projects": 37,
+   "shared": 43,
+   "links": 5,
+   "joins": 199
+  }
+ ],
+ "doubling_months": {
+  "projects": {
+   "6": 13.40690090840995,
+   "12": 16.80132391851215,
+   "24": 28.34818331325578
+  },
+  "shared": {
+   "6": 20.514228037619436,
+   "12": 17.048572218123937,
+   "24": 25.774886752695195
+  },
+  "joins": {
+   "6": 11.449989839818269,
+   "12": 11.03700895536728,
+   "24": 17.17583710584826
+  }
+ }
+}

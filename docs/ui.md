@@ -213,25 +213,35 @@ does.
 The panel opens on what is drawn. A trail runs from *every family* down to it
 -- `every family › performing › instruments › carlos` -- and each step is a
 link back. A project two families claim is reached from both
-(`instruments · irl`). For every family, three buttons follow: **every family**;
+(`instruments · irl`). For every family, four buttons follow: **every family**;
 **with each project's code**, the whole corpus in one graph: each family's
 outline holding its projects, and each project its code map, from the show
 document the corpus holds for it (`?show=index&view=code`, trail `every family ›
-the whole corpus`); and **every node, no names**, the same graph with every node
+the whole corpus`); **every node, no names**, the same graph with every node
 drawn and nothing written on it, neither a node's name nor an outline's
-(`?show=index&view=full`). A project with no code map drawn yet is drawn alone, and
-*What this drawing can say* names it. For a family, two follow: **the family**,
-and **with each project's code**, the family's outline holding its projects,
-its subfamilies' too, each with its code map (`?show=family:performing&view=code`):
-the part of the whole corpus that is that family's, and the picture a site page
-draws of it. For a project, its three views follow: **estate**,
+(`?show=index&view=full`); and **shared imports**, every family with the modules
+two or more of its projects import, each a grey node outside every outline
+joined by a dotted edge to each project that imports it, and a dotted edge
+wherever one project imports another's package (`?show=index&view=imports`,
+trail `every family › shared imports`). A project with no code map drawn yet is
+drawn alone, and *What this drawing can say* names it. For a family, three
+follow: **the family**; **with each project's code**, the family's outline
+holding its projects, its subfamilies' too, each with its code map
+(`?show=family:performing&view=code`): the part of the whole corpus that is
+that family's, and the picture a site page draws of it; and **shared imports**,
+the family with what its projects import in common
+(`?show=family:performing&view=imports`). The imports are read from each
+project's clone beside this one, its Python, JavaScript and TypeScript, so a
+project with no clone is drawn with none, and the caveat names it.
+For a project, its three views follow: **estate**,
 **code map** and **system**; the one drawn is pressed. A project's code map
 opens as a Showcase, drawn to its symbols and no deeper than holds 100 nodes:
 its members too where its symbols fall short, each file a disc of what it
 holds. Drawn again in the Map, a large project's is its directories and files
 alone. A view that cannot be
 drawn here is disabled, with its reason under it. Then the legend: which edges
-are claims, which are declared seams and which are measured. *What this drawing
+are claims, which are declared seams and which are measured, and in an imports
+view which are imported. *What this drawing
 can say* holds the caveat and the corpus it was read from, folded. Its line
 counts the seams nobody has declared and the members nothing measured.
 

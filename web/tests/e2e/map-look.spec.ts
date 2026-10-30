@@ -172,6 +172,57 @@ test('the whole corpus with no names draws every node and writes nothing on the 
   await expect.poll(written, { timeout: SETTLED }).toBeGreaterThan(0);
 });
 
+test("an imports view is a switch away from the index's and a family's estate, and asks its own route", async ({ page }) => {
+  // What the projects import in common is read from their clones, which CI
+  // has none of: each imports route is answered here with two members and a
+  // module both import. Mutations: ask the estate's route for an imports
+  // view, or give the index or a family no switch to one -- it cannot be
+  // reached, or draws the estate -- and this fails.
+  const asked: string[] = [];
+  page.on('request', (request) => {
+    const url = request.url();
+    if (url.includes('/show/') && url.includes('/gjgf')) asked.push(new URL(url).pathname);
+  });
+  const nodes = {
+    'family::core': { label: 'core', metadata: { label: 'core', kind: 'family', depth: 0, x: 0, y: 0 } },
+    'repo::alpha': { label: 'alpha', metadata: { label: 'alpha', kind: 'repository', depth: 1, x: -60, y: 0 } },
+    'repo::beta': { label: 'beta', metadata: { label: 'beta', kind: 'repository', depth: 1, x: 60, y: 0 } },
+    'module::python:fastapi': { label: 'fastapi', metadata: {
+      label: 'fastapi', kind: 'external_module', x: 0, y: 200 } },
+  };
+  const dotted = { kind: 'imports', basis: 'imported', style: 'dotted', color: '#b48ead', size: 1.25 };
+  const edges = [
+    { source: 'family::core', target: 'repo::alpha', metadata: { kind: 'contains' } },
+    { source: 'family::core', target: 'repo::beta', metadata: { kind: 'contains' } },
+    { source: 'repo::alpha', target: 'module::python:fastapi', metadata: dotted },
+    { source: 'repo::beta', target: 'module::python:fastapi', metadata: dotted },
+  ];
+  await page.route('**/show/**/imports/gjgf*', (route) => route.fulfill({ json: { status: 200, results: {
+    graph: { nodes, edges },
+    metadata: { kind: 'show', subject: 'index', caveat: '', notes: [], provenance: {},
+      bases: { imported: { style: 'dotted', color: '#b48ead', size: 1.25 } } },
+  } } }));
+
+  await page.goto('/?show=index&view=imports');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.graphRenderer svg g.graph-node')).toHaveCount(4, { timeout: SETTLED });
+  expect(asked).toEqual(['/show/index/imports/gjgf']);
+  await expect(page.locator('.graphRenderer svg line[stroke-dasharray="2,3"]')).toHaveCount(2);
+  await expect(page.locator('.show__crumb.is-current')).toHaveText('shared imports');
+  const switches = page.locator('.show__now .show__view');
+  await expect(switches.filter({ hasText: 'shared imports' })).toHaveAttribute('aria-pressed', 'true');
+  await switches.filter({ hasText: 'every family' }).click();
+  await expect(page).toHaveURL(/\?show=index$/);
+  await expect.poll(() => asked[asked.length - 1]).toBe('/show/index/gjgf');
+
+  await page.goto('/?show=family:performing');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.compound-group circle').first()).toBeAttached({ timeout: SETTLED });
+  await page.locator('.show__now .show__view').filter({ hasText: 'shared imports' }).click();
+  await expect(page).toHaveURL(/\?show=family:performing&view=imports$/);
+  await expect.poll(() => asked[asked.length - 1]).toBe('/show/family/performing/imports/gjgf');
+});
+
 test('a showgraph of thousands of nodes is drawn in seconds, not a minute', async ({ page }) => {
   // Two thousand members on a grid, answered for every family at once.
   // Mutation: hand the canvas the graph without its total -- it draws one node

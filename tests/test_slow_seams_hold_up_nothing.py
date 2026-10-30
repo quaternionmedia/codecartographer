@@ -137,6 +137,9 @@ _RENDER = {"graph_data": {"graph": {"nodes": {}, "edges": []}}, "options": {}}
     ("/show/subjects", None, [(show_service, "read", _slow_reading)]),
     ("/show/index/gjgf", None, [(show_service, "read", _slow_reading)]),
     ("/show/family/core/gjgf", None, [(show_service, "read", _slow_reading)]),
+    # An imports view reads every project's source besides, seconds cold.
+    ("/show/index/imports/gjgf", None, [(show_service, "read", _slow_reading)]),
+    ("/show/family/core/imports/gjgf", None, [(show_service, "read", _slow_reading)]),
     ("/show/project/alpha/gjgf", None, [(show_service, "read", _slow_reading)]),
     ("/show/project/alpha/views", None, [(show_service, "read", _slow_reading)]),
 ])

@@ -892,8 +892,9 @@ export class LayoutContext {
     // Another drawing, or another plot, was asked for while they were read.
     if (!current()) return;
     const views = this.appState.state.showViews;
-    // A project's view: `full` is the index's alone, drawn above.
-    const view = views && address.view !== 'full' ? views[address.view] : null;
+    // A project's view: `full` is the index's alone and `imports` an index's or
+    // a family's, drawn above.
+    const view = views && address.view !== 'full' && address.view !== 'imports' ? views[address.view] : null;
     if (!view || !view.available) {
       this.appState.update({
         showProblem: {
