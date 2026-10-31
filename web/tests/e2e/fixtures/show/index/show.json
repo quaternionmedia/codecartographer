@@ -1,0 +1,6680 @@
+{
+ "schema": 1,
+ "subject": {
+  "kind": "index",
+  "name": ""
+ },
+ "provenance": {
+  "claims": {
+   "repo": "quaternionmedia/qm",
+   "commit": "153bb1241988399d4a25897e3f3703e5c2f1b4dd",
+   "digest": "sha256:96374578f2b45d1918f844e858733c626ccad8735877d6e4a2362535d4861bd8"
+  },
+  "drawn_by": {
+   "graph": "codecartographer@9ba33d6bad83a59e54827c110fd46111c4e4db28+changes"
+  },
+  "drawn_at": "2026-10-31T00:52:12Z"
+ },
+ "views": {
+  "estate": {
+   "graph": {
+    "nodes": {
+     "family::commons": {
+      "label": "commons",
+      "metadata": {
+       "kind": "family",
+       "family": "commons",
+       "drives": "the public — open information a community reads and adds to: maps, records, public data",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "commons — drives the public — open information a community reads and adds to: maps, records, public data",
+       "click": "<p>The <b>commons</b> family drives the public — open information a community reads and adds to: maps, records, public data.</p><p>1 member(s) in all.</p>",
+       "show": "family:commons",
+       "color": "#e0bd4f",
+       "depth": 0,
+       "x": -408,
+       "y": 424.4994282133388,
+       "size": 50,
+       "label_at": "none"
+      }
+     },
+     "family::core": {
+      "label": "core",
+      "metadata": {
+       "kind": "family",
+       "family": "core",
+       "drives": "the corpus and its tooling — governance, the archive, the deltas, the maps, the language data",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "core — drives the corpus and its tooling — governance, the archive, the deltas, the maps, the language data",
+       "click": "<p>The <b>core</b> family drives the corpus and its tooling — governance, the archive, the deltas, the maps, the language data.</p><p>7 member(s) in all.</p>",
+       "show": "family:core",
+       "color": "#74a8f6",
+       "depth": 0,
+       "x": 213.52789285868926,
+       "y": -204,
+       "size": 110,
+       "label_at": "none"
+      }
+     },
+     "family::games": {
+      "label": "games",
+      "metadata": {
+       "kind": "family",
+       "family": "games",
+       "drives": "play — a game somebody plays: its rules, its world, its loop, and the server it is played on",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "games — drives play — a game somebody plays: its rules, its world, its loop, and the server it is played on",
+       "click": "<p>The <b>games</b> family drives play — a game somebody plays: its rules, its world, its loop, and the server it is played on.</p><p>7 member(s) in all.</p>",
+       "show": "family:games",
+       "color": "#73c886",
+       "depth": 0,
+       "x": 635.4709635679883,
+       "y": -204,
+       "size": 110,
+       "label_at": "none"
+      }
+     },
+     "family::infra": {
+      "label": "infra",
+      "metadata": {
+       "kind": "family",
+       "family": "infra",
+       "drives": "where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "infra — drives where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path",
+       "click": "<p>The <b>infra</b> family drives where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path.</p><p>5 member(s) in all.</p>",
+       "show": "family:infra",
+       "color": "#98a7bc",
+       "depth": 0,
+       "x": 0,
+       "y": 424.4994282133388,
+       "size": 90,
+       "label_at": "none"
+      }
+     },
+     "family::instruments": {
+      "label": "instruments",
+      "metadata": {
+       "kind": "family",
+       "family": "instruments",
+       "drives": "the sound — looping, synthesis, tempo, remote control surfaces",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "instruments — drives the sound — looping, synthesis, tempo, remote control surfaces",
+       "click": "<p>The <b>instruments</b> family drives the sound — looping, synthesis, tempo, remote control surfaces.</p><p>Within <b>performing</b>.</p><p>10 member(s) in all.</p>",
+       "show": "family:instruments",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -257.50942879372235,
+       "y": -320.5120981119268,
+       "size": 130,
+       "label_at": "none"
+      }
+     },
+     "family::irl": {
+      "label": "irl",
+      "metadata": {
+       "kind": "family",
+       "family": "irl",
+       "drives": "matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "irl — drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "click": "<p>The <b>irl</b> family drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work.</p><p>9 member(s) in all.</p>",
+       "show": "family:irl",
+       "color": "#dd9b63",
+       "depth": 0,
+       "x": 408,
+       "y": 424.4994282133388,
+       "size": 130,
+       "label_at": "none"
+      }
+     },
+     "family::performer-display": {
+      "label": "performer-display",
+      "metadata": {
+       "kind": "family",
+       "family": "performer-display",
+       "drives": "the performer — what a player reads while playing",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "performer-display — drives the performer — what a player reads while playing",
+       "click": "<p>The <b>performer-display</b> family drives the performer — what a player reads while playing.</p><p>Within <b>performing</b>.</p><p>3 member(s) in all.</p>",
+       "show": "family:performer-display",
+       "color": "#a693f3",
+       "depth": 1,
+       "x": -341.7833430386356,
+       "y": -19.100271336520308,
+       "size": 60,
+       "label_at": "none"
+      }
+     },
+     "family::performing": {
+      "label": "performing",
+      "metadata": {
+       "kind": "family",
+       "family": "performing",
+       "drives": "a show — what an audience sees and hears, and the video made before and after it",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "performing — drives a show — what an audience sees and hears, and the video made before and after it",
+       "click": "<p>The <b>performing</b> family drives a show — what an audience sees and hears, and the video made before and after it.</p><p>22 member(s) in all.</p>",
+       "show": "family:performing",
+       "color": "#f2aa4c",
+       "depth": 0,
+       "x": -421.94307070929904,
+       "y": -204,
+       "size": 90,
+       "label_at": "none"
+      }
+     },
+     "family::show-control": {
+      "label": "show-control",
+      "metadata": {
+       "kind": "family",
+       "family": "show-control",
+       "drives": "the room — cues, lighting, sound and video playback, audio transport",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "show-control — drives the room — cues, lighting, sound and video playback, audio transport",
+       "click": "<p>The <b>show-control</b> family drives the room — cues, lighting, sound and video playback, audio transport.</p><p>Within <b>performing</b>.</p><p>8 member(s) in all.</p>",
+       "show": "family:show-control",
+       "color": "#a9d05c",
+       "depth": 1,
+       "x": -619.3856257683174,
+       "y": -163.62762018619836,
+       "size": 110,
+       "label_at": "none"
+      }
+     },
+     "repo::benchmark": {
+      "label": "benchmark",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.2",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "benchmark — v0.0.2 · not adopted",
+       "click": "<p><b>benchmark</b> — A place to keep track of benches</p><p>not adopted. Phase <b>v0.0.2</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:benchmark",
+       "shape": "circle",
+       "color": "#e0bd4f",
+       "depth": 1,
+       "x": -408,
+       "y": 500.4994282133388,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "repo::qm": {
+      "label": "qm",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "n/a",
+       "attention": "active",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qm — n/a · governed",
+       "click": "<p><b>qm</b> — The Quaternion Media constitution: the org-level decision records every QM project adopts by reference, the process that keeps them coherent, and the template each new project forks from.</p><p>governed. Phase <b>n/a</b> (n/a); attention <b>active</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:qm",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 249.52789285868926,
+       "y": -278.7547702766041,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::dossier": {
+      "label": "dossier",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "active",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "dossier — v0.0.1 · governed",
+       "click": "<p><b>dossier</b> — Documentation standardization tool that auto-parses project documentation</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>active</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:dossier",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 294.4191585925181,
+       "y": -222.46290353890598,
+       "size": 40,
+       "label_at": "right"
+      }
+     },
+     "repo::qmcp": {
+      "label": "qmcp",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "active",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qmcp — v0.0.1 · governed",
+       "click": "<p><b>qmcp</b> — Quaternion MCP</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>active</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:qmcp",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 278.39765134766344,
+       "y": -152.26809386181466,
+       "size": 40,
+       "label_at": "right"
+      }
+     },
+     "repo::vox": {
+      "label": "vox",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.0",
+       "attention": "active",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "vox — v0.0.0 · not adopted",
+       "click": "<p><b>vox</b> — The voice-interaction seam: speech-to-text and text-to-speech in one small vendored adapter</p><p>not adopted. Phase <b>v0.0.0</b> (scaffolded); attention <b>active</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:vox",
+       "shape": "circle",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 213.52789285868926,
+       "y": -121.02846464535048,
+       "size": 40,
+       "label_at": "below"
+      }
+     },
+     "repo::rad": {
+      "label": "rad",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "active",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "rad — v0.0.1 · governed",
+       "click": "<p><b>rad</b> — QM's default radial menu: an interaction contract, conformance vectors and a single-file web reference</p><p>governed. Phase <b>v0.0.1</b> (stated); attention <b>active</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:rad",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 148.65813436971507,
+       "y": -152.26809386181466,
+       "size": 50,
+       "label_at": "left"
+      }
+     },
+     "repo::codecartographer": {
+      "label": "codecartographer",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.2",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "codecartographer — v0.0.2 · governed",
+       "click": "<p><b>codecartographer</b> — Project for mapping code</p><p>governed. Phase <b>v0.0.2</b> (stated); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:codecartographer",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 132.63662712486044,
+       "y": -222.46290353890595,
+       "size": 40,
+       "label_at": "left"
+      }
+     },
+     "repo::looksatwords": {
+      "label": "looksatwords",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "looksatwords — v0.0.1 · governed",
+       "click": "<p><b>looksatwords</b> — A python module to make, gather, analyze, and visualize language data.</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:looksatwords",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 177.52789285868926,
+       "y": -278.7547702766041,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::factorio-sysops": {
+      "label": "factorio-sysops",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "factorio-sysops — v0.0.1 · governed",
+       "click": "<p><b>factorio-sysops</b> — Factorio mod: IT Infrastructure addon (sensors, servers, dashboards, incidents, technical debt) -- monitor and automate your factory's IT layer</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:factorio-sysops",
+       "shape": "square",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 671.4709635679883,
+       "y": -278.7547702766041,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::golfvs": {
+      "label": "golfvs",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "golfvs — n/a · not adopted",
+       "click": "<p><b>golfvs</b> — Golf is the only sport where nobody is trying to stop you. golfVs fixes that. Arcade physics golf with asymmetric defence, built in Godot.</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:golfvs",
+       "shape": "circle",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 716.3622293018171,
+       "y": -222.46290353890598,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::rad-godot": {
+      "label": "rad-godot",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "rad-godot — n/a · not adopted",
+       "click": "<p><b>rad-godot</b> — rad, the radial menu, as a Godot addon: the contract's vectors replayed in GDScript.</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:rad-godot",
+       "shape": "circle",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 700.3407220569625,
+       "y": -152.26809386181466,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::qmcli-godot": {
+      "label": "qmcli-godot",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "unknown",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qmcli-godot — n/a · not adopted",
+       "click": "<p><b>qmcli-godot</b></p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>unknown</b> (measured).</p>",
+       "show": "project:qmcli-godot",
+       "shape": "circle",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 635.4709635679883,
+       "y": -121.02846464535048,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "repo::streaming-infrastructure": {
+      "label": "streaming-infrastructure",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "unknown",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "streaming-infrastructure — v0.0.1 · governed",
+       "click": "<p><b>streaming-infrastructure</b></p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>unknown</b> (measured).</p>",
+       "show": "project:streaming-infrastructure",
+       "shape": "square",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 44.67167917422796,
+       "y": 363.01413664084276,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::moat": {
+      "label": "moat",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.0",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "moat — v0.0.0 · not adopted",
+       "click": "<p><b>moat</b> — simple reverse proxy with Traefik</p><p>not adopted. Phase <b>v0.0.0</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:moat",
+       "shape": "circle",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 72.28029523843166,
+       "y": 447.9847197858348,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::ztgui": {
+      "label": "ztgui",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ztgui — n/a · not adopted",
+       "click": "<p><b>ztgui</b> — Zeroteir Gui</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:ztgui",
+       "shape": "circle",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 4.653657836759942e-15,
+       "y": 500.4994282133388,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "repo::carlos": {
+      "label": "carlos",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "carlos — v0.0.1 · governed",
+       "click": "<p><b>carlos</b> — Browser workspace for sketching hardware rigs from real gear, patched on the face its sockets are on</p><p>governed. Phase <b>v0.0.1</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:carlos",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -221.50942879372238,
+       "y": -395.26686838853084,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::qmetronome": {
+      "label": "qmetronome",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.3",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qmetronome — v0.0.3 · governed",
+       "click": "<p><b>qmetronome</b> — Metronome and tempo visualizer for Android 13+: tap tempo, set queues, MIDI clock sync, and the Nothing Phone Glyph Matrix</p><p>governed. Phase <b>v0.0.3</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:qmetronome",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -176.61816305989356,
+       "y": -338.9750016508327,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::holophonor": {
+      "label": "holophonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "holophonor — n/a · not adopted",
+       "click": "<p><b>holophonor</b> — Live looping, unlimited!</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:holophonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -192.6396703047482,
+       "y": -268.7801919737414,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::midiphonor": {
+      "label": "midiphonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "midiphonor — n/a · not adopted",
+       "click": "<p><b>midiphonor</b> — A Holophonor implementation, using Tone.js</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:midiphonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -257.50942879372235,
+       "y": -237.54056275727723,
+       "size": 20,
+       "label_at": "below"
+      }
+     },
+     "repo::uPhonor": {
+      "label": "uPhonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "instruments",
+        "irl"
+       ],
+       "hover": "uPhonor — n/a · not adopted · also in instruments, irl",
+       "click": "<p><b>uPhonor</b> — Micro-Holophonor</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in instruments, irl.</p>",
+       "show": "project:uPhonor",
+       "shape": "circle",
+       "x": 147.24528560313883,
+       "y": 51.993665050706,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "repo::stomp": {
+      "label": "stomp",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "instruments",
+        "irl"
+       ],
+       "hover": "stomp — n/a · not adopted · also in instruments, irl",
+       "click": "<p><b>stomp</b> — a midi foot controller for Arduino / Teensy</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in instruments, irl.</p>",
+       "show": "project:stomp",
+       "shape": "circle",
+       "x": 75.24528560313883,
+       "y": 51.993665050706,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "repo::wolf": {
+      "label": "wolf",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "wolf — n/a · not adopted",
+       "click": "<p><b>wolf</b> — remote midi controller</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:wolf",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -322.37918728269653,
+       "y": -268.7801919737414,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::ludwig": {
+      "label": "ludwig",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ludwig — n/a · not adopted",
+       "click": "<p><b>ludwig</b> — remote mixing</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:ludwig",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -338.4006945275512,
+       "y": -338.9750016508327,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::waveofhormuz": {
+      "label": "waveofhormuz",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "waveofhormuz — n/a · not adopted",
+       "click": "<p><b>waveofhormuz</b> — VCV Rack 2 strait-shaping square wave oscillator — conflict timeline as a default waveform</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:waveofhormuz",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -293.5094287937224,
+       "y": -395.26686838853084,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::apothecary": {
+      "label": "apothecary",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.2",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "apothecary — v0.0.2 · governed",
+       "click": "<p><b>apothecary</b> — OpenSCAD generation toolkit and curated printable parts, composed from Python</p><p>governed. Phase <b>v0.0.2</b> (stated); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:apothecary",
+       "shape": "square",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 446,
+       "y": 358.6814975257214,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::datum": {
+      "label": "datum",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "datum — v0.0.1 · governed",
+       "click": "<p><b>datum</b> — A physical switch for devices that lost one: dry contacts in, versioned JSON events out over MQTT</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:datum",
+       "shape": "square",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 484,
+       "y": 424.4994282133388,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::ira": {
+      "label": "ira",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl",
+        "show-control"
+       ],
+       "hover": "ira — n/a · not adopted · also in irl, show-control",
+       "click": "<p><b>ira</b> — LED controller, designed for live theater</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl, show-control.</p>",
+       "show": "project:ira",
+       "shape": "circle",
+       "x": -105.69281288415868,
+       "y": 130.43590401357022,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "repo::scad-chess": {
+      "label": "scad-chess",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "scad-chess — n/a · not adopted",
+       "click": "<p><b>scad-chess</b> — Chess set, designed in openSCAD</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:scad-chess",
+       "shape": "circle",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 446,
+       "y": 490.31735890095615,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::joe": {
+      "label": "joe",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "joe — n/a · not adopted",
+       "click": "<p><b>joe</b> — Realtime sheet music visualization</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:joe",
+       "shape": "circle",
+       "color": "#a693f3",
+       "depth": 2,
+       "x": -281.7833430386356,
+       "y": -19.100271336520308,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::leo": {
+      "label": "leo",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "leo — n/a · not adopted",
+       "click": "<p><b>leo</b> — Web pdf viewer, annotator, collaborator</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:leo",
+       "shape": "circle",
+       "color": "#a693f3",
+       "depth": 2,
+       "x": -401.7833430386356,
+       "y": -19.100271336520308,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::alfred": {
+      "label": "alfred",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "alfred — v0.0.1 · governed",
+       "click": "<p><b>alfred</b> — serverless video editing</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:alfred",
+       "shape": "square",
+       "color": "#f2aa4c",
+       "depth": 1,
+       "x": -537.9875775208809,
+       "y": -368.7639646249145,
+       "size": 40,
+       "label_at": "left"
+      }
+     },
+     "repo::otto": {
+      "label": "otto",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.0",
+       "attention": "active",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "otto — v0.0.0 · not adopted",
+       "click": "<p><b>otto</b> — automatic video generation</p><p>not adopted. Phase <b>v0.0.0</b> (scaffolded); attention <b>active</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:otto",
+       "shape": "circle",
+       "color": "#f2aa4c",
+       "depth": 1,
+       "x": -462.8761801219059,
+       "y": -401.3270689841586,
+       "size": 40,
+       "label_at": "above"
+      }
+     },
+     "repo::ShowRunner": {
+      "label": "ShowRunner",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ShowRunner — n/a · not adopted",
+       "click": "<p><b>ShowRunner</b> — Show control for live performances</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:ShowRunner",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -583.3856257683174,
+       "y": -238.38239046280248,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::Cuelist-python": {
+      "label": "Cuelist-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "Cuelist-python — n/a · not adopted",
+       "click": "<p><b>Cuelist-python</b> — Python helpers for Cuelist (thecuelist.com) and plugin for ShowRunner</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:Cuelist-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -538.4943600344885,
+       "y": -182.09052372510433,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::QLab-python": {
+      "label": "QLab-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "QLab-python — n/a · not adopted",
+       "click": "<p><b>QLab-python</b> — QLab interface for Python</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:QLab-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -554.5158672793432,
+       "y": -111.89571404801302,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::TheatreMix-python": {
+      "label": "TheatreMix-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "TheatreMix-python — n/a · not adopted",
+       "click": "<p><b>TheatreMix-python</b> — Python components for interacting with TheatreMix</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:TheatreMix-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -619.3856257683174,
+       "y": -80.65608483154884,
+       "size": 20,
+       "label_at": "below"
+      }
+     },
+     "repo::cesar": {
+      "label": "cesar",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "cesar — n/a · not adopted",
+       "click": "<p><b>cesar</b> — A unified lighting / sound / video controller for theatrical applications</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:cesar",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -684.2553842572916,
+       "y": -111.89571404801302,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::ShowStopper": {
+      "label": "ShowStopper",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ShowStopper — n/a · not adopted",
+       "click": "<p><b>ShowStopper</b> — Stopwatch geared towards tracking need for the performing arts</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:ShowStopper",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -700.2768915021461,
+       "y": -182.09052372510433,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::aes": {
+      "label": "aes",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "aes — n/a · not adopted",
+       "click": "<p><b>aes</b> — AES67 scripts</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:aes",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -655.3856257683174,
+       "y": -238.38239046280245,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::private-32": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 570.6012050790141,
+       "y": -152.26809386181466,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-33": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 554.5796978341594,
+       "y": -222.46290353890595,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-38": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 599.4709635679883,
+       "y": -278.7547702766041,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-23": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": -72.28029523843166,
+       "y": 447.9847197858348,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-26": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": -44.67167917422797,
+       "y": 363.01413664084276,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-34": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "x": -26.605576493296212,
+       "y": -93.46472856825292,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "repo::private-03": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 370,
+       "y": 490.3173589009561,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-05": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 332,
+       "y": 424.4994282133388,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-07": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 370,
+       "y": 358.6814975257214,
+       "size": 30,
+       "label_at": "left"
+      }
+     }
+    },
+    "edges": [
+     {
+      "source": "family::commons",
+      "target": "repo::benchmark",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::qm",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::dossier",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::qmcp",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::vox",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::rad",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::codecartographer",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::looksatwords",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::factorio-sysops",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::golfvs",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::rad-godot",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::qmcli-godot",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::private-32",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::private-33",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::private-38",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::streaming-infrastructure",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::moat",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::ztgui",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::private-23",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::private-26",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::carlos",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::qmetronome",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::holophonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::midiphonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::wolf",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::ludwig",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::waveofhormuz",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::apothecary",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::datum",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::scad-chess",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::private-03",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::private-05",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::private-07",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performer-display",
+      "target": "repo::joe",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performer-display",
+      "target": "repo::leo",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "family::instruments",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "family::performer-display",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "family::show-control",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "repo::alfred",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "repo::otto",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::ShowRunner",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::Cuelist-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::QLab-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::TheatreMix-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::cesar",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::ShowStopper",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::aes",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "repo::rad",
+      "label": "rad-interaction-contract",
+      "metadata": {
+       "kind": "seam",
+       "basis": "declared",
+       "stated": true,
+       "hover": "dossier implements rad-interaction-contract, published by rad (declared in ci/interop-registry.yaml)",
+       "style": "solid",
+       "color": "#e0a526",
+       "size": 2.5
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "repo::vox",
+      "label": "measured from .gitmodules",
+      "metadata": {
+       "kind": "depends_on",
+       "basis": "measured",
+       "stated": false,
+       "hover": "qmcp's .gitmodules names vox",
+       "style": "dashed",
+       "color": "#4fb3ad",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "repo::rad",
+      "label": "rad-interaction-contract",
+      "metadata": {
+       "kind": "seam",
+       "basis": "declared",
+       "stated": true,
+       "hover": "codecartographer implements rad-interaction-contract, published by rad (declared in ci/interop-registry.yaml)",
+       "style": "solid",
+       "color": "#e0a526",
+       "size": 2.5
+      }
+     },
+     {
+      "source": "repo::uPhonor",
+      "target": "family::instruments",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::uPhonor",
+      "target": "family::irl",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::stomp",
+      "target": "family::instruments",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::stomp",
+      "target": "family::irl",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "family::irl",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "family::show-control",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "repo::otto",
+      "label": "measured from .gitmodules",
+      "metadata": {
+       "kind": "depends_on",
+       "basis": "measured",
+       "stated": false,
+       "hover": "alfred's .gitmodules names otto",
+       "style": "dashed",
+       "color": "#4fb3ad",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::private-34",
+      "target": "family::instruments",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::private-34",
+      "target": "family::performer-display",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     }
+    ],
+    "directed": true,
+    "metadata": {
+     "kind": "show",
+     "subject": "index",
+     "declared": 2,
+     "measured": 2,
+     "unread": [
+      "benchmark",
+      "factorio-sysops",
+      "holophonor",
+      "joe",
+      "leo",
+      "otto",
+      "qmcli-godot",
+      "qmetronome",
+      "scad-chess",
+      "streaming-infrastructure",
+      "uPhonor",
+      "ztgui"
+     ],
+     "undeclared": [
+      {
+       "source": "qmcp",
+       "target": "vox"
+      },
+      {
+       "source": "alfred",
+       "target": "otto"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "kind": "show",
+    "subject": "index",
+    "source": "families.json",
+    "generated_at": "2026-10-24T14:49:28Z",
+    "commit": "153bb12",
+    "provenance": {
+     "source": "families.json",
+     "commit": "153bb12",
+     "schema": 2,
+     "generated_at": "2026-10-24T14:49:28Z",
+     "overridden": true
+    },
+    "layout": "Compound",
+    "type": "d3",
+    "palette_id": "0",
+    "bases": {
+     "claim": {
+      "style": "solid",
+      "color": "#8a93a6",
+      "size": 1.5
+     },
+     "declared": {
+      "style": "solid",
+      "color": "#e0a526",
+      "size": 2.5
+     },
+     "measured": {
+      "style": "dashed",
+      "color": "#4fb3ad",
+      "size": 1.5
+     }
+    },
+    "declared": 2,
+    "measured": 2,
+    "unread": [
+     "benchmark",
+     "factorio-sysops",
+     "holophonor",
+     "joe",
+     "leo",
+     "otto",
+     "qmcli-godot",
+     "qmetronome",
+     "scad-chess",
+     "streaming-infrastructure",
+     "uPhonor",
+     "ztgui"
+    ],
+    "undeclared": [
+     {
+      "source": "qmcp",
+      "target": "vox"
+     },
+     {
+      "source": "alfred",
+      "target": "otto"
+     }
+    ],
+    "unstated": 1,
+    "notes": [],
+    "caveat": "Membership is a claim a person made in the roster; this draws it and cannot tell whether a repository drives what its family drives. Solid grey edges are claims, gold edges are seams declared in the interop registry, and dashed edges are measured from a member's own manifests and never place it. 12 member(s) had no clone this export could read, so nothing was measured for them: benchmark, factorio-sysops, holophonor, joe, leo, otto, qmcli-godot, qmetronome, scad-chess, streaming-infrastructure, uPhonor, ztgui. 2 measured link(s) have no declared seam: qmcp → vox, alfred → otto. Each is a seam nobody has stated, not a fault."
+   }
+  },
+  "imports": {
+   "graph": {
+    "nodes": {
+     "family::commons": {
+      "label": "commons",
+      "metadata": {
+       "kind": "family",
+       "family": "commons",
+       "drives": "the public — open information a community reads and adds to: maps, records, public data",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "commons — drives the public — open information a community reads and adds to: maps, records, public data",
+       "click": "<p>The <b>commons</b> family drives the public — open information a community reads and adds to: maps, records, public data.</p><p>1 member(s) in all.</p>",
+       "show": "family:commons",
+       "color": "#e0bd4f",
+       "depth": 0,
+       "x": -408,
+       "y": 424.4994282133388,
+       "size": 50,
+       "label_at": "none"
+      }
+     },
+     "family::core": {
+      "label": "core",
+      "metadata": {
+       "kind": "family",
+       "family": "core",
+       "drives": "the corpus and its tooling — governance, the archive, the deltas, the maps, the language data",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "core — drives the corpus and its tooling — governance, the archive, the deltas, the maps, the language data",
+       "click": "<p>The <b>core</b> family drives the corpus and its tooling — governance, the archive, the deltas, the maps, the language data.</p><p>7 member(s) in all.</p>",
+       "show": "family:core",
+       "color": "#74a8f6",
+       "depth": 0,
+       "x": 213.52789285868926,
+       "y": -204,
+       "size": 110,
+       "label_at": "none"
+      }
+     },
+     "family::games": {
+      "label": "games",
+      "metadata": {
+       "kind": "family",
+       "family": "games",
+       "drives": "play — a game somebody plays: its rules, its world, its loop, and the server it is played on",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "games — drives play — a game somebody plays: its rules, its world, its loop, and the server it is played on",
+       "click": "<p>The <b>games</b> family drives play — a game somebody plays: its rules, its world, its loop, and the server it is played on.</p><p>7 member(s) in all.</p>",
+       "show": "family:games",
+       "color": "#73c886",
+       "depth": 0,
+       "x": 635.4709635679883,
+       "y": -204,
+       "size": 110,
+       "label_at": "none"
+      }
+     },
+     "family::infra": {
+      "label": "infra",
+      "metadata": {
+       "kind": "family",
+       "family": "infra",
+       "drives": "where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "infra — drives where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path",
+       "click": "<p>The <b>infra</b> family drives where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path.</p><p>5 member(s) in all.</p>",
+       "show": "family:infra",
+       "color": "#98a7bc",
+       "depth": 0,
+       "x": 0,
+       "y": 424.4994282133388,
+       "size": 90,
+       "label_at": "none"
+      }
+     },
+     "family::instruments": {
+      "label": "instruments",
+      "metadata": {
+       "kind": "family",
+       "family": "instruments",
+       "drives": "the sound — looping, synthesis, tempo, remote control surfaces",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "instruments — drives the sound — looping, synthesis, tempo, remote control surfaces",
+       "click": "<p>The <b>instruments</b> family drives the sound — looping, synthesis, tempo, remote control surfaces.</p><p>Within <b>performing</b>.</p><p>10 member(s) in all.</p>",
+       "show": "family:instruments",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -257.50942879372235,
+       "y": -320.5120981119268,
+       "size": 130,
+       "label_at": "none"
+      }
+     },
+     "family::irl": {
+      "label": "irl",
+      "metadata": {
+       "kind": "family",
+       "family": "irl",
+       "drives": "matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "irl — drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "click": "<p>The <b>irl</b> family drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work.</p><p>9 member(s) in all.</p>",
+       "show": "family:irl",
+       "color": "#dd9b63",
+       "depth": 0,
+       "x": 408,
+       "y": 424.4994282133388,
+       "size": 130,
+       "label_at": "none"
+      }
+     },
+     "family::performer-display": {
+      "label": "performer-display",
+      "metadata": {
+       "kind": "family",
+       "family": "performer-display",
+       "drives": "the performer — what a player reads while playing",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "performer-display — drives the performer — what a player reads while playing",
+       "click": "<p>The <b>performer-display</b> family drives the performer — what a player reads while playing.</p><p>Within <b>performing</b>.</p><p>3 member(s) in all.</p>",
+       "show": "family:performer-display",
+       "color": "#a693f3",
+       "depth": 1,
+       "x": -341.7833430386356,
+       "y": -19.100271336520308,
+       "size": 60,
+       "label_at": "none"
+      }
+     },
+     "family::performing": {
+      "label": "performing",
+      "metadata": {
+       "kind": "family",
+       "family": "performing",
+       "drives": "a show — what an audience sees and hears, and the video made before and after it",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "performing — drives a show — what an audience sees and hears, and the video made before and after it",
+       "click": "<p>The <b>performing</b> family drives a show — what an audience sees and hears, and the video made before and after it.</p><p>22 member(s) in all.</p>",
+       "show": "family:performing",
+       "color": "#f2aa4c",
+       "depth": 0,
+       "x": -421.94307070929904,
+       "y": -204,
+       "size": 90,
+       "label_at": "none"
+      }
+     },
+     "family::show-control": {
+      "label": "show-control",
+      "metadata": {
+       "kind": "family",
+       "family": "show-control",
+       "drives": "the room — cues, lighting, sound and video playback, audio transport",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "show-control — drives the room — cues, lighting, sound and video playback, audio transport",
+       "click": "<p>The <b>show-control</b> family drives the room — cues, lighting, sound and video playback, audio transport.</p><p>Within <b>performing</b>.</p><p>8 member(s) in all.</p>",
+       "show": "family:show-control",
+       "color": "#a9d05c",
+       "depth": 1,
+       "x": -619.3856257683174,
+       "y": -163.62762018619836,
+       "size": 110,
+       "label_at": "none"
+      }
+     },
+     "repo::benchmark": {
+      "label": "benchmark",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.2",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "benchmark — v0.0.2 · not adopted",
+       "click": "<p><b>benchmark</b> — A place to keep track of benches</p><p>not adopted. Phase <b>v0.0.2</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:benchmark",
+       "shape": "circle",
+       "color": "#e0bd4f",
+       "depth": 1,
+       "x": -408,
+       "y": 500.4994282133388,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "repo::qm": {
+      "label": "qm",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "n/a",
+       "attention": "active",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qm — n/a · governed",
+       "click": "<p><b>qm</b> — The Quaternion Media constitution: the org-level decision records every QM project adopts by reference, the process that keeps them coherent, and the template each new project forks from.</p><p>governed. Phase <b>n/a</b> (n/a); attention <b>active</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:qm",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 249.52789285868926,
+       "y": -278.7547702766041,
+       "size": 60,
+       "label_at": "right"
+      }
+     },
+     "repo::dossier": {
+      "label": "dossier",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "active",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "dossier — v0.0.1 · governed",
+       "click": "<p><b>dossier</b> — Documentation standardization tool that auto-parses project documentation</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>active</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:dossier",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 294.4191585925181,
+       "y": -222.46290353890598,
+       "size": 170,
+       "label_at": "right"
+      }
+     },
+     "repo::qmcp": {
+      "label": "qmcp",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "active",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qmcp — v0.0.1 · governed",
+       "click": "<p><b>qmcp</b> — Quaternion MCP</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>active</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:qmcp",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 278.39765134766344,
+       "y": -152.26809386181466,
+       "size": 170,
+       "label_at": "right"
+      }
+     },
+     "repo::vox": {
+      "label": "vox",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.0",
+       "attention": "active",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "vox — v0.0.0 · not adopted",
+       "click": "<p><b>vox</b> — The voice-interaction seam: speech-to-text and text-to-speech in one small vendored adapter</p><p>not adopted. Phase <b>v0.0.0</b> (scaffolded); attention <b>active</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:vox",
+       "shape": "circle",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 213.52789285868926,
+       "y": -121.02846464535048,
+       "size": 70,
+       "label_at": "below"
+      }
+     },
+     "repo::rad": {
+      "label": "rad",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "active",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "rad — v0.0.1 · governed",
+       "click": "<p><b>rad</b> — QM's default radial menu: an interaction contract, conformance vectors and a single-file web reference</p><p>governed. Phase <b>v0.0.1</b> (stated); attention <b>active</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:rad",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 148.65813436971507,
+       "y": -152.26809386181466,
+       "size": 60,
+       "label_at": "left"
+      }
+     },
+     "repo::codecartographer": {
+      "label": "codecartographer",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.2",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "codecartographer — v0.0.2 · governed",
+       "click": "<p><b>codecartographer</b> — Project for mapping code</p><p>governed. Phase <b>v0.0.2</b> (stated); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:codecartographer",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 132.63662712486044,
+       "y": -222.46290353890595,
+       "size": 180,
+       "label_at": "left"
+      }
+     },
+     "repo::looksatwords": {
+      "label": "looksatwords",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "looksatwords — v0.0.1 · governed",
+       "click": "<p><b>looksatwords</b> — A python module to make, gather, analyze, and visualize language data.</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:looksatwords",
+       "shape": "square",
+       "color": "#74a8f6",
+       "depth": 1,
+       "x": 177.52789285868926,
+       "y": -278.7547702766041,
+       "size": 190,
+       "label_at": "left"
+      }
+     },
+     "repo::factorio-sysops": {
+      "label": "factorio-sysops",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "factorio-sysops — v0.0.1 · governed",
+       "click": "<p><b>factorio-sysops</b> — Factorio mod: IT Infrastructure addon (sensors, servers, dashboards, incidents, technical debt) -- monitor and automate your factory's IT layer</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:factorio-sysops",
+       "shape": "square",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 671.4709635679883,
+       "y": -278.7547702766041,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::golfvs": {
+      "label": "golfvs",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "golfvs — n/a · not adopted",
+       "click": "<p><b>golfvs</b> — Golf is the only sport where nobody is trying to stop you. golfVs fixes that. Arcade physics golf with asymmetric defence, built in Godot.</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:golfvs",
+       "shape": "circle",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 716.3622293018171,
+       "y": -222.46290353890598,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::rad-godot": {
+      "label": "rad-godot",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "rad-godot — n/a · not adopted",
+       "click": "<p><b>rad-godot</b> — rad, the radial menu, as a Godot addon: the contract's vectors replayed in GDScript.</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:rad-godot",
+       "shape": "circle",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 700.3407220569625,
+       "y": -152.26809386181466,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::qmcli-godot": {
+      "label": "qmcli-godot",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "unknown",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qmcli-godot — n/a · not adopted",
+       "click": "<p><b>qmcli-godot</b></p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>unknown</b> (measured).</p>",
+       "show": "project:qmcli-godot",
+       "shape": "circle",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 635.4709635679883,
+       "y": -121.02846464535048,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "repo::streaming-infrastructure": {
+      "label": "streaming-infrastructure",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "unknown",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "streaming-infrastructure — v0.0.1 · governed",
+       "click": "<p><b>streaming-infrastructure</b></p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>unknown</b> (measured).</p>",
+       "show": "project:streaming-infrastructure",
+       "shape": "square",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 44.67167917422796,
+       "y": 363.01413664084276,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::moat": {
+      "label": "moat",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.0",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "moat — v0.0.0 · not adopted",
+       "click": "<p><b>moat</b> — simple reverse proxy with Traefik</p><p>not adopted. Phase <b>v0.0.0</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:moat",
+       "shape": "circle",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 72.28029523843166,
+       "y": 447.9847197858348,
+       "size": 50,
+       "label_at": "right"
+      }
+     },
+     "repo::ztgui": {
+      "label": "ztgui",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ztgui — n/a · not adopted",
+       "click": "<p><b>ztgui</b> — Zeroteir Gui</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:ztgui",
+       "shape": "circle",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 4.653657836759942e-15,
+       "y": 500.4994282133388,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "repo::carlos": {
+      "label": "carlos",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "carlos — v0.0.1 · governed",
+       "click": "<p><b>carlos</b> — Browser workspace for sketching hardware rigs from real gear, patched on the face its sockets are on</p><p>governed. Phase <b>v0.0.1</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:carlos",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -221.50942879372238,
+       "y": -395.26686838853084,
+       "size": 90,
+       "label_at": "right"
+      }
+     },
+     "repo::qmetronome": {
+      "label": "qmetronome",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.3",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qmetronome — v0.0.3 · governed",
+       "click": "<p><b>qmetronome</b> — Metronome and tempo visualizer for Android 13+: tap tempo, set queues, MIDI clock sync, and the Nothing Phone Glyph Matrix</p><p>governed. Phase <b>v0.0.3</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:qmetronome",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -176.61816305989356,
+       "y": -338.9750016508327,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::holophonor": {
+      "label": "holophonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "holophonor — n/a · not adopted",
+       "click": "<p><b>holophonor</b> — Live looping, unlimited!</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:holophonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -192.6396703047482,
+       "y": -268.7801919737414,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::midiphonor": {
+      "label": "midiphonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "midiphonor — n/a · not adopted",
+       "click": "<p><b>midiphonor</b> — A Holophonor implementation, using Tone.js</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:midiphonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -257.50942879372235,
+       "y": -237.54056275727723,
+       "size": 40,
+       "label_at": "below"
+      }
+     },
+     "repo::uPhonor": {
+      "label": "uPhonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "instruments",
+        "irl"
+       ],
+       "hover": "uPhonor — n/a · not adopted · also in instruments, irl",
+       "click": "<p><b>uPhonor</b> — Micro-Holophonor</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in instruments, irl.</p>",
+       "show": "project:uPhonor",
+       "shape": "circle",
+       "x": 137.2351654910278,
+       "y": 88.82253050971872,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "repo::stomp": {
+      "label": "stomp",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "instruments",
+        "irl"
+       ],
+       "hover": "stomp — n/a · not adopted · also in instruments, irl",
+       "click": "<p><b>stomp</b> — a midi foot controller for Arduino / Teensy</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in instruments, irl.</p>",
+       "show": "project:stomp",
+       "shape": "circle",
+       "x": 75.24528560313883,
+       "y": 51.993665050706,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "repo::wolf": {
+      "label": "wolf",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "wolf — n/a · not adopted",
+       "click": "<p><b>wolf</b> — remote midi controller</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:wolf",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -322.37918728269653,
+       "y": -268.7801919737414,
+       "size": 110,
+       "label_at": "left"
+      }
+     },
+     "repo::ludwig": {
+      "label": "ludwig",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ludwig — n/a · not adopted",
+       "click": "<p><b>ludwig</b> — remote mixing</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:ludwig",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -338.4006945275512,
+       "y": -338.9750016508327,
+       "size": 40,
+       "label_at": "left"
+      }
+     },
+     "repo::waveofhormuz": {
+      "label": "waveofhormuz",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "waveofhormuz — n/a · not adopted",
+       "click": "<p><b>waveofhormuz</b> — VCV Rack 2 strait-shaping square wave oscillator — conflict timeline as a default waveform</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:waveofhormuz",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": -293.5094287937224,
+       "y": -395.26686838853084,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::apothecary": {
+      "label": "apothecary",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.2",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "apothecary — v0.0.2 · governed",
+       "click": "<p><b>apothecary</b> — OpenSCAD generation toolkit and curated printable parts, composed from Python</p><p>governed. Phase <b>v0.0.2</b> (stated); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:apothecary",
+       "shape": "square",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 446,
+       "y": 358.6814975257214,
+       "size": 160,
+       "label_at": "right"
+      }
+     },
+     "repo::datum": {
+      "label": "datum",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "datum — v0.0.1 · governed",
+       "click": "<p><b>datum</b> — A physical switch for devices that lost one: dry contacts in, versioned JSON events out over MQTT</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:datum",
+       "shape": "square",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 484,
+       "y": 424.4994282133388,
+       "size": 60,
+       "label_at": "right"
+      }
+     },
+     "repo::ira": {
+      "label": "ira",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl",
+        "show-control"
+       ],
+       "hover": "ira — n/a · not adopted · also in irl, show-control",
+       "click": "<p><b>ira</b> — LED controller, designed for live theater</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl, show-control.</p>",
+       "show": "project:ira",
+       "shape": "circle",
+       "x": -55.358935041562674,
+       "y": 156.82260336741285,
+       "size": 81,
+       "label_at": "below"
+      }
+     },
+     "repo::scad-chess": {
+      "label": "scad-chess",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "scad-chess — n/a · not adopted",
+       "click": "<p><b>scad-chess</b> — Chess set, designed in openSCAD</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:scad-chess",
+       "shape": "circle",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 446,
+       "y": 490.31735890095615,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::joe": {
+      "label": "joe",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "joe — n/a · not adopted",
+       "click": "<p><b>joe</b> — Realtime sheet music visualization</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:joe",
+       "shape": "circle",
+       "color": "#a693f3",
+       "depth": 2,
+       "x": -281.7833430386356,
+       "y": -19.100271336520308,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::leo": {
+      "label": "leo",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "leo — n/a · not adopted",
+       "click": "<p><b>leo</b> — Web pdf viewer, annotator, collaborator</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:leo",
+       "shape": "circle",
+       "color": "#a693f3",
+       "depth": 2,
+       "x": -401.7833430386356,
+       "y": -19.100271336520308,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::alfred": {
+      "label": "alfred",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "alfred — v0.0.1 · governed",
+       "click": "<p><b>alfred</b> — serverless video editing</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:alfred",
+       "shape": "square",
+       "color": "#f2aa4c",
+       "depth": 1,
+       "x": -537.9875775208809,
+       "y": -368.7639646249145,
+       "size": 120,
+       "label_at": "left"
+      }
+     },
+     "repo::otto": {
+      "label": "otto",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.0",
+       "attention": "active",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "otto — v0.0.0 · not adopted",
+       "click": "<p><b>otto</b> — automatic video generation</p><p>not adopted. Phase <b>v0.0.0</b> (scaffolded); attention <b>active</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:otto",
+       "shape": "circle",
+       "color": "#f2aa4c",
+       "depth": 1,
+       "x": -462.8761801219059,
+       "y": -401.3270689841586,
+       "size": 40,
+       "label_at": "above"
+      }
+     },
+     "repo::ShowRunner": {
+      "label": "ShowRunner",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ShowRunner — n/a · not adopted",
+       "click": "<p><b>ShowRunner</b> — Show control for live performances</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:ShowRunner",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -583.3856257683174,
+       "y": -238.38239046280248,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::Cuelist-python": {
+      "label": "Cuelist-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "Cuelist-python — n/a · not adopted",
+       "click": "<p><b>Cuelist-python</b> — Python helpers for Cuelist (thecuelist.com) and plugin for ShowRunner</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:Cuelist-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -538.4943600344885,
+       "y": -182.09052372510433,
+       "size": 50,
+       "label_at": "right"
+      }
+     },
+     "repo::QLab-python": {
+      "label": "QLab-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "QLab-python — n/a · not adopted",
+       "click": "<p><b>QLab-python</b> — QLab interface for Python</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:QLab-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -554.5158672793432,
+       "y": -111.89571404801302,
+       "size": 50,
+       "label_at": "right"
+      }
+     },
+     "repo::TheatreMix-python": {
+      "label": "TheatreMix-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "TheatreMix-python — n/a · not adopted",
+       "click": "<p><b>TheatreMix-python</b> — Python components for interacting with TheatreMix</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:TheatreMix-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -619.3856257683174,
+       "y": -80.65608483154884,
+       "size": 20,
+       "label_at": "below"
+      }
+     },
+     "repo::cesar": {
+      "label": "cesar",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "cesar — n/a · not adopted",
+       "click": "<p><b>cesar</b> — A unified lighting / sound / video controller for theatrical applications</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:cesar",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -684.2553842572916,
+       "y": -111.89571404801302,
+       "size": 90,
+       "label_at": "left"
+      }
+     },
+     "repo::ShowStopper": {
+      "label": "ShowStopper",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ShowStopper — n/a · not adopted",
+       "click": "<p><b>ShowStopper</b> — Stopwatch geared towards tracking need for the performing arts</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:ShowStopper",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -700.2768915021461,
+       "y": -182.09052372510433,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::aes": {
+      "label": "aes",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "aes — n/a · not adopted",
+       "click": "<p><b>aes</b> — AES67 scripts</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:aes",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -655.3856257683174,
+       "y": -238.38239046280245,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::private-32": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 570.6012050790141,
+       "y": -152.26809386181466,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-33": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 554.5796978341594,
+       "y": -222.46290353890595,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-38": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#73c886",
+       "depth": 1,
+       "x": 599.4709635679883,
+       "y": -278.7547702766041,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-23": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": -72.28029523843166,
+       "y": 447.9847197858348,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-26": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": -44.67167917422797,
+       "y": 363.01413664084276,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-34": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "x": -49.030578986265816,
+       "y": 74.0276707722092,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "repo::private-03": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 370,
+       "y": 490.3173589009561,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-05": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 332,
+       "y": 424.4994282133388,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-07": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#dd9b63",
+       "depth": 1,
+       "x": 370,
+       "y": 358.6814975257214,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "module::python:fastapi": {
+      "label": "fastapi",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 11,
+       "hover": "fastapi (python) — imported by 11 member(s): alfred, apothecary, carlos, codecartographer, Cuelist-python, dossier, ira, looksatwords, moat, qmcp, wolf",
+       "x": -23.766329939817716,
+       "y": -104.17483495008342,
+       "size": 111,
+       "label_at": "below"
+      }
+     },
+     "module::python:pydantic": {
+      "label": "pydantic",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 11,
+       "hover": "pydantic (python) — imported by 11 member(s): alfred, apothecary, carlos, codecartographer, Cuelist-python, datum, dossier, looksatwords, ludwig, QLab-python, qmcp",
+       "x": -106.48363615874493,
+       "y": -126.24433320283737,
+       "size": 111,
+       "label_at": "below"
+      }
+     },
+     "module::python:pytest": {
+      "label": "pytest",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 9,
+       "hover": "pytest (python) — imported by 9 member(s): apothecary, carlos, codecartographer, datum, dossier, looksatwords, qm, qmcp, vox",
+       "x": 349.8894096472443,
+       "y": 28.207051455715995,
+       "size": 91,
+       "label_at": "below"
+      }
+     },
+     "module::python:uvicorn": {
+      "label": "uvicorn",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 9,
+       "hover": "uvicorn (python) — imported by 9 member(s): alfred, apothecary, carlos, dossier, ira, looksatwords, moat, qmcp, wolf",
+       "x": 169.45167662442756,
+       "y": 24.432341735406773,
+       "size": 91,
+       "label_at": "below"
+      }
+     },
+     "module::python:click": {
+      "label": "click",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 7,
+       "hover": "click (python) — imported by 7 member(s): apothecary, carlos, codecartographer, datum, dossier, looksatwords, qmcp",
+       "x": 233.70098586773196,
+       "y": -8.06421445173305,
+       "size": 71,
+       "label_at": "below"
+      }
+     },
+     "module::python:httpx": {
+      "label": "httpx",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 6,
+       "hover": "httpx (python) — imported by 6 member(s): apothecary, codecartographer, dossier, looksatwords, qmcp, vox",
+       "x": 303.2598588294704,
+       "y": -26.65354451746534,
+       "size": 61,
+       "label_at": "below"
+      }
+     },
+     "module::python:starlette": {
+      "label": "starlette",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 5,
+       "hover": "starlette (python) — imported by 5 member(s): alfred, apothecary, ira, qmcp, wolf",
+       "x": -7.726695910169855,
+       "y": -33.98416505589476,
+       "size": 51,
+       "label_at": "below"
+      }
+     },
+     "module::python:yaml": {
+      "label": "yaml",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 5,
+       "hover": "yaml (python) — imported by 5 member(s): apothecary, codecartographer, dossier, qm, qmcp",
+       "x": 362.5330758819505,
+       "y": -67.52756732229315,
+       "size": 51,
+       "label_at": "below"
+      }
+     },
+     "module::javascript:mithril": {
+      "label": "mithril",
+      "metadata": {
+       "kind": "external_module",
+       "language": "javascript",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 4,
+       "hover": "mithril (javascript) — imported by 4 member(s): alfred, codecartographer, midiphonor, wolf",
+       "x": -40.90397482406246,
+       "y": -356.7055597234089,
+       "size": 41,
+       "label_at": "below"
+      }
+     },
+     "module::python:PIL": {
+      "label": "PIL",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 4,
+       "hover": "PIL (python) — imported by 4 member(s): apothecary, cesar, dossier, looksatwords",
+       "x": 58.42291679847895,
+       "y": -63.60797258445043,
+       "size": 41,
+       "label_at": "below"
+      }
+     },
+     "module::python:playwright": {
+      "label": "playwright",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 4,
+       "hover": "playwright (python) — imported by 4 member(s): apothecary, carlos, looksatwords, qm",
+       "x": 121.90328785600273,
+       "y": -29.633828144904996,
+       "size": 41,
+       "label_at": "below"
+      }
+     },
+     "module::python:networkx": {
+      "label": "networkx",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 3,
+       "hover": "networkx (python) — imported by 3 member(s): cesar, codecartographer, wolf",
+       "x": 35.16208011547724,
+       "y": -287.566869187352,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "module::python:numpy": {
+      "label": "numpy",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 3,
+       "hover": "numpy (python) — imported by 3 member(s): cesar, codecartographer, looksatwords",
+       "x": 41.300761162482324,
+       "y": -135.00134392344899,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "module::python:pythonosc": {
+      "label": "pythonosc",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 3,
+       "hover": "pythonosc (python) — imported by 3 member(s): cesar, ira, QLab-python",
+       "x": -793.9564123636123,
+       "y": -30.460799256567924,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "module::python:requests": {
+      "label": "requests",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 3,
+       "hover": "requests (python) — imported by 3 member(s): codecartographer, ira, looksatwords",
+       "x": 67.41681499749359,
+       "y": -351.9379191841544,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "module::python:serial": {
+      "label": "serial",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 3,
+       "hover": "serial (python) — imported by 3 member(s): apothecary, cesar, ira",
+       "x": -119.12769212864578,
+       "y": 123.39289173885419,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "module::python:sqlalchemy": {
+      "label": "sqlalchemy",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 3,
+       "hover": "sqlalchemy (python) — imported by 3 member(s): dossier, looksatwords, qmcp",
+       "x": 397.77789291967156,
+       "y": -273.63995417499905,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "module::python:sqlmodel": {
+      "label": "sqlmodel",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 3,
+       "hover": "sqlmodel (python) — imported by 3 member(s): dossier, looksatwords, qmcp",
+       "x": 464.2355495507683,
+       "y": -301.34157642177803,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "module::python:typing_extensions": {
+      "label": "typing_extensions",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 3,
+       "hover": "typing_extensions (python) — imported by 3 member(s): Cuelist-python, looksatwords, QLab-python",
+       "x": -68.45369092442563,
+       "y": 4.696994137419942,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "module::javascript:@playwright/test": {
+      "label": "@playwright/test",
+      "metadata": {
+       "kind": "external_module",
+       "language": "javascript",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "@playwright/test (javascript) — imported by 2 member(s): codecartographer, rad",
+       "x": 21.49484513613254,
+       "y": -160.16970999007418,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::javascript:golden-layout": {
+      "label": "golden-layout",
+      "metadata": {
+       "kind": "external_module",
+       "language": "javascript",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "golden-layout (javascript) — imported by 2 member(s): apothecary, codecartographer",
+       "x": 289.3183135624302,
+       "y": 68.10929699340772,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::javascript:interactjs": {
+      "label": "interactjs",
+      "metadata": {
+       "kind": "external_module",
+       "language": "javascript",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "interactjs (javascript) — imported by 2 member(s): alfred, wolf",
+       "x": -451.340101471802,
+       "y": -613.4454727382225,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::javascript:mergerino": {
+      "label": "mergerino",
+      "metadata": {
+       "kind": "external_module",
+       "language": "javascript",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "mergerino (javascript) — imported by 2 member(s): codecartographer, midiphonor",
+       "x": -12.513124429575328,
+       "y": -233.61249150038947,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:matplotlib": {
+      "label": "matplotlib",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "matplotlib (python) — imported by 2 member(s): cesar, looksatwords",
+       "x": -52.186951114940236,
+       "y": -173.52932017813296,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:mido": {
+      "label": "mido",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "mido (python) — imported by 2 member(s): cesar, wolf",
+       "x": -826.7765098736377,
+       "y": -136.03186704159236,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:pdfrw": {
+      "label": "pdfrw",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "pdfrw (python) — imported by 2 member(s): alfred, wolf",
+       "x": -379.340101471802,
+       "y": -613.4454727382225,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:pydantic_core": {
+      "label": "pydantic_core",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "pydantic_core (python) — imported by 2 member(s): apothecary, qmcp",
+       "x": 362.1988256738317,
+       "y": 103.20670183195337,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:pymongo": {
+      "label": "pymongo",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "pymongo (python) — imported by 2 member(s): alfred, codecartographer",
+       "x": -68.17534978290354,
+       "y": -423.3409265180345,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:rich": {
+      "label": "rich",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "rich (python) — imported by 2 member(s): dossier, looksatwords",
+       "x": 298.99063911809094,
+       "y": -381.4652212174799,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:rtmidi": {
+      "label": "rtmidi",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "rtmidi (python) — imported by 2 member(s): ludwig, wolf",
+       "x": -144.56069321398655,
+       "y": -506.60336617183566,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:textual": {
+      "label": "textual",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "textual (python) — imported by 2 member(s): dossier, ShowStopper",
+       "x": 63.048522527709835,
+       "y": -221.1865533581151,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:tinydb": {
+      "label": "tinydb",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "tinydb (python) — imported by 2 member(s): carlos, looksatwords",
+       "x": -36.82149469825531,
+       "y": -289.1047108683349,
+       "size": 21,
+       "label_at": "below"
+      }
+     }
+    },
+    "edges": [
+     {
+      "source": "family::commons",
+      "target": "repo::benchmark",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::qm",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::dossier",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::qmcp",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::vox",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::rad",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::codecartographer",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::core",
+      "target": "repo::looksatwords",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::factorio-sysops",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::golfvs",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::rad-godot",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::qmcli-godot",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::private-32",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::private-33",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::games",
+      "target": "repo::private-38",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::streaming-infrastructure",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::moat",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::ztgui",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::private-23",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::private-26",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::carlos",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::qmetronome",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::holophonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::midiphonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::wolf",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::ludwig",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::waveofhormuz",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::apothecary",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::datum",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::scad-chess",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::private-03",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::private-05",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::irl",
+      "target": "repo::private-07",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performer-display",
+      "target": "repo::joe",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performer-display",
+      "target": "repo::leo",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "family::instruments",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "family::performer-display",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "family::show-control",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "repo::alfred",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "repo::otto",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::ShowRunner",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::Cuelist-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::QLab-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::TheatreMix-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::cesar",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::ShowStopper",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::aes",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::qm",
+      "target": "module::python:pytest",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qm imports pytest in 58 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 58
+      }
+     },
+     {
+      "source": "repo::qm",
+      "target": "module::python:yaml",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qm imports yaml in 62 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 62
+      }
+     },
+     {
+      "source": "repo::qm",
+      "target": "module::python:playwright",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qm imports playwright in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "repo::rad",
+      "label": "rad-interaction-contract",
+      "metadata": {
+       "kind": "seam",
+       "basis": "declared",
+       "stated": true,
+       "hover": "dossier implements rad-interaction-contract, published by rad (declared in ci/interop-registry.yaml)",
+       "style": "solid",
+       "color": "#e0a526",
+       "size": 2.5
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports fastapi in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports pydantic in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:pytest",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports pytest in 73 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 73
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports uvicorn in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:click",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports click in 15 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 15
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:httpx",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports httpx in 8 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 8
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:yaml",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports yaml in 5 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 5
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:PIL",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports PIL in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:sqlalchemy",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports sqlalchemy in 33 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 33
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:sqlmodel",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports sqlmodel in 67 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 67
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:rich",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports rich in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "module::python:textual",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports textual in 31 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 31
+      }
+     },
+     {
+      "source": "repo::dossier",
+      "target": "repo::qmcp",
+      "label": "qmcp",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "dossier imports qmcp's package qmcp in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "repo::vox",
+      "label": "measured from .gitmodules",
+      "metadata": {
+       "kind": "depends_on",
+       "basis": "measured",
+       "stated": false,
+       "hover": "qmcp's .gitmodules names vox",
+       "style": "dashed",
+       "color": "#4fb3ad",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "repo::vox",
+      "label": "vox",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports vox's package vox in 8 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 8
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports fastapi in 19 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 19
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports pydantic in 25 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 25
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "module::python:pytest",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports pytest in 75 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 75
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports uvicorn in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "module::python:click",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports click in 17 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 17
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "module::python:httpx",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports httpx in 24 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 24
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "module::python:starlette",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports starlette in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "module::python:yaml",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports yaml in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "module::python:sqlalchemy",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports sqlalchemy in 14 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 14
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "module::python:sqlmodel",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports sqlmodel in 30 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 30
+      }
+     },
+     {
+      "source": "repo::qmcp",
+      "target": "module::python:pydantic_core",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "qmcp imports pydantic_core in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::vox",
+      "target": "module::python:pytest",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "vox imports pytest in 7 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 7
+      }
+     },
+     {
+      "source": "repo::vox",
+      "target": "module::python:httpx",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "vox imports httpx in 4 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 4
+      }
+     },
+     {
+      "source": "repo::rad",
+      "target": "module::javascript:@playwright/test",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "rad imports @playwright/test in 13 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 13
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "repo::rad",
+      "label": "rad-interaction-contract",
+      "metadata": {
+       "kind": "seam",
+       "basis": "declared",
+       "stated": true,
+       "hover": "codecartographer implements rad-interaction-contract, published by rad (declared in ci/interop-registry.yaml)",
+       "style": "solid",
+       "color": "#e0a526",
+       "size": 2.5
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports fastapi in 41 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 41
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports pydantic in 8 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 8
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::python:pytest",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports pytest in 44 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 44
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::python:click",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports click in 5 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 5
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::python:httpx",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports httpx in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::python:yaml",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports yaml in 7 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 7
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::javascript:mithril",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports mithril in 39 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 39
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::python:networkx",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports networkx in 36 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 36
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::python:numpy",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports numpy in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::python:requests",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports requests in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::javascript:@playwright/test",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports @playwright/test in 33 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 33
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::javascript:golden-layout",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports golden-layout in 4 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 4
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::javascript:mergerino",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports mergerino in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::codecartographer",
+      "target": "module::python:pymongo",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "codecartographer imports pymongo in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports fastapi in 6 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 6
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports pydantic in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:pytest",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports pytest in 14 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 14
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports uvicorn in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:click",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports click in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:httpx",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports httpx in 4 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 4
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:PIL",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports PIL in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:playwright",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports playwright in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:numpy",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports numpy in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:requests",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports requests in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:sqlalchemy",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports sqlalchemy in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:sqlmodel",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports sqlmodel in 8 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 8
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:typing_extensions",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports typing_extensions in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:matplotlib",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports matplotlib in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:rich",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports rich in 4 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 4
+      }
+     },
+     {
+      "source": "repo::looksatwords",
+      "target": "module::python:tinydb",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "looksatwords imports tinydb in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::moat",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "moat imports fastapi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::moat",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "moat imports uvicorn in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports fastapi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports pydantic in 6 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 6
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:pytest",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports pytest in 4 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 4
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports uvicorn in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:click",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports click in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:playwright",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports playwright in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:tinydb",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports tinydb in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::midiphonor",
+      "target": "module::javascript:mithril",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "midiphonor imports mithril in 15 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 15
+      }
+     },
+     {
+      "source": "repo::midiphonor",
+      "target": "module::javascript:mergerino",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "midiphonor imports mergerino in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::uPhonor",
+      "target": "family::instruments",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::uPhonor",
+      "target": "family::irl",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::stomp",
+      "target": "family::instruments",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::stomp",
+      "target": "family::irl",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports fastapi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports uvicorn in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:starlette",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports starlette in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::javascript:mithril",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports mithril in 6 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 6
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:networkx",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports networkx in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::javascript:interactjs",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports interactjs in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:mido",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports mido in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:pdfrw",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports pdfrw in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:rtmidi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports rtmidi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::ludwig",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ludwig imports pydantic in 4 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 4
+      }
+     },
+     {
+      "source": "repo::ludwig",
+      "target": "module::python:rtmidi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ludwig imports rtmidi in 6 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 6
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports fastapi in 56 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 56
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports pydantic in 73 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 73
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:pytest",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports pytest in 134 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 134
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports uvicorn in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:click",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports click in 53 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 53
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:httpx",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports httpx in 17 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 17
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:starlette",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports starlette in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:yaml",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports yaml in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:PIL",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports PIL in 27 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 27
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:playwright",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports playwright in 51 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 51
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:serial",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports serial in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::javascript:golden-layout",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports golden-layout in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::apothecary",
+      "target": "module::python:pydantic_core",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "apothecary imports pydantic_core in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::datum",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "datum imports pydantic in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::datum",
+      "target": "module::python:pytest",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "datum imports pytest in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::datum",
+      "target": "module::python:click",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "datum imports click in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "family::irl",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "family::show-control",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ira imports fastapi in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ira imports uvicorn in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "module::python:starlette",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ira imports starlette in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "module::python:pythonosc",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ira imports pythonosc in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "module::python:requests",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ira imports requests in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "module::python:serial",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ira imports serial in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "repo::otto",
+      "label": "measured from .gitmodules",
+      "metadata": {
+       "kind": "depends_on",
+       "basis": "measured",
+       "stated": false,
+       "hover": "alfred's .gitmodules names otto",
+       "style": "dashed",
+       "color": "#4fb3ad",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports fastapi in 11 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 11
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports pydantic in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports uvicorn in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::python:starlette",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports starlette in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::javascript:mithril",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports mithril in 35 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 35
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::javascript:interactjs",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports interactjs in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::python:pdfrw",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports pdfrw in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::python:pymongo",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports pymongo in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::Cuelist-python",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "Cuelist-python imports fastapi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::Cuelist-python",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "Cuelist-python imports pydantic in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::Cuelist-python",
+      "target": "module::python:typing_extensions",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "Cuelist-python imports typing_extensions in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::QLab-python",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "QLab-python imports pydantic in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::QLab-python",
+      "target": "module::python:pythonosc",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "QLab-python imports pythonosc in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::QLab-python",
+      "target": "module::python:typing_extensions",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "QLab-python imports typing_extensions in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::cesar",
+      "target": "module::python:PIL",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "cesar imports PIL in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::cesar",
+      "target": "module::python:networkx",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "cesar imports networkx in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::cesar",
+      "target": "module::python:numpy",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "cesar imports numpy in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::cesar",
+      "target": "module::python:pythonosc",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "cesar imports pythonosc in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::cesar",
+      "target": "module::python:serial",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "cesar imports serial in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::cesar",
+      "target": "module::python:matplotlib",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "cesar imports matplotlib in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::cesar",
+      "target": "module::python:mido",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "cesar imports mido in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::ShowStopper",
+      "target": "module::python:textual",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ShowStopper imports textual in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::private-34",
+      "target": "family::instruments",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::private-34",
+      "target": "family::performer-display",
+      "label": "member of",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member of (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     }
+    ],
+    "directed": true,
+    "metadata": {
+     "kind": "show",
+     "subject": "index",
+     "declared": 2,
+     "measured": 2,
+     "unread": [
+      "benchmark",
+      "factorio-sysops",
+      "holophonor",
+      "joe",
+      "leo",
+      "otto",
+      "qmcli-godot",
+      "qmetronome",
+      "scad-chess",
+      "streaming-infrastructure",
+      "uPhonor",
+      "ztgui"
+     ],
+     "undeclared": [
+      {
+       "source": "qmcp",
+       "target": "vox"
+      },
+      {
+       "source": "alfred",
+       "target": "otto"
+      }
+     ],
+     "imports": {
+      "links": 2,
+      "shared": 32,
+      "ambiguous": 0,
+      "alone": 159
+     },
+     "imports_read": {
+      "aes": "d602645755ff6d57c94cf9c289d0a505ce1d69e2",
+      "alfred": "7fff7ae01bce8f29d05ccf569237fcdf3416b5c0",
+      "apothecary": "ac25b8dea01a2ee612da167c32d8fb0e72d76e95",
+      "carlos": "a5540e7dfb11dea3258cdde8769f26a7dc6d568f",
+      "cesar": "25926322d8f04ab1736ab3d9993772d804fe9da3",
+      "codecartographer": "7c175d6f2e35fd39fc42d2008985695a776c1a88",
+      "Cuelist-python": "e891a76ff342f2ffa5c5deb19144013ec13f942c",
+      "datum": "72b04348b3f914fefd09a6801c147d38f5e25d21",
+      "dossier": "414be1c9dad7a4e314e1334c37e59ed713f1a75d",
+      "golfvs": "e90481932f225b86940e61b2cd062b66a906d8a8",
+      "ira": "a04467f835d3399d0f450a9a9abc2ccd9d5f7bb5",
+      "looksatwords": "01da48156b0955bb6c922ce0683148ee715a9205",
+      "ludwig": "fe7ee650185685313450f4ffe7e157d503c8cdf3",
+      "midiphonor": "407e6c31db235288e05eabf53d7f2074b149b701",
+      "moat": "16a595a3598c02ba521fc42617fc130030f9b57f",
+      "QLab-python": "ea8028ed94c9d5f52a688127fe0b8dfb3a8e130c",
+      "qm": "97c57c24f6274b5c53b24da0fcc331a7ecd20c0e",
+      "qmcp": "8aece3e1b64817235fe6372ab6511644f85933e5",
+      "rad": "3e8794f11eb94b29e94094aa24e8215593864a6f",
+      "rad-godot": "6dd9485f6bd2a5ddf7679f3dfe4c19f44385a5f3",
+      "ShowStopper": "51f8b13c14d3aeeb026981f42798c6abe83adde5",
+      "stomp": "6d30a6f47303e2378587f1e5870d1461d1443244",
+      "vox": "1721e6f27d9310fea928bd477005c34d1bcfe732",
+      "waveofhormuz": "83746f7cbcaa491c1e55e5b576f4b6abed7999e7",
+      "wolf": "d960d108d8915b195c5de3b74fc10ac2144e7670"
+     },
+     "imports_unread": [
+      "benchmark",
+      "factorio-sysops",
+      "holophonor",
+      "joe",
+      "leo",
+      "otto",
+      "qmcli-godot",
+      "qmetronome",
+      "scad-chess",
+      "ShowRunner",
+      "streaming-infrastructure",
+      "TheatreMix-python",
+      "uPhonor",
+      "ztgui"
+     ]
+    }
+   },
+   "metadata": {
+    "kind": "show",
+    "subject": "index",
+    "source": "families.json",
+    "generated_at": "2026-10-24T14:49:28Z",
+    "commit": "153bb12",
+    "provenance": {
+     "source": "families.json",
+     "commit": "153bb12",
+     "schema": 2,
+     "generated_at": "2026-10-24T14:49:28Z",
+     "overridden": true
+    },
+    "layout": "Compound",
+    "type": "d3",
+    "palette_id": "0",
+    "bases": {
+     "claim": {
+      "style": "solid",
+      "color": "#8a93a6",
+      "size": 1.5
+     },
+     "declared": {
+      "style": "solid",
+      "color": "#e0a526",
+      "size": 2.5
+     },
+     "measured": {
+      "style": "dashed",
+      "color": "#4fb3ad",
+      "size": 1.5
+     },
+     "imported": {
+      "style": "dotted",
+      "color": "#b48ead",
+      "size": 1.25
+     }
+    },
+    "declared": 2,
+    "measured": 2,
+    "unread": [
+     "benchmark",
+     "factorio-sysops",
+     "holophonor",
+     "joe",
+     "leo",
+     "otto",
+     "qmcli-godot",
+     "qmetronome",
+     "scad-chess",
+     "streaming-infrastructure",
+     "uPhonor",
+     "ztgui"
+    ],
+    "undeclared": [
+     {
+      "source": "qmcp",
+      "target": "vox"
+     },
+     {
+      "source": "alfred",
+      "target": "otto"
+     }
+    ],
+    "unstated": 1,
+    "notes": [],
+    "imports": {
+     "links": 2,
+     "shared": 32,
+     "ambiguous": 0,
+     "alone": 159,
+     "read": {
+      "aes": "d602645755ff6d57c94cf9c289d0a505ce1d69e2",
+      "alfred": "7fff7ae01bce8f29d05ccf569237fcdf3416b5c0",
+      "apothecary": "ac25b8dea01a2ee612da167c32d8fb0e72d76e95",
+      "carlos": "a5540e7dfb11dea3258cdde8769f26a7dc6d568f",
+      "cesar": "25926322d8f04ab1736ab3d9993772d804fe9da3",
+      "codecartographer": "7c175d6f2e35fd39fc42d2008985695a776c1a88",
+      "Cuelist-python": "e891a76ff342f2ffa5c5deb19144013ec13f942c",
+      "datum": "72b04348b3f914fefd09a6801c147d38f5e25d21",
+      "dossier": "414be1c9dad7a4e314e1334c37e59ed713f1a75d",
+      "golfvs": "e90481932f225b86940e61b2cd062b66a906d8a8",
+      "ira": "a04467f835d3399d0f450a9a9abc2ccd9d5f7bb5",
+      "looksatwords": "01da48156b0955bb6c922ce0683148ee715a9205",
+      "ludwig": "fe7ee650185685313450f4ffe7e157d503c8cdf3",
+      "midiphonor": "407e6c31db235288e05eabf53d7f2074b149b701",
+      "moat": "16a595a3598c02ba521fc42617fc130030f9b57f",
+      "QLab-python": "ea8028ed94c9d5f52a688127fe0b8dfb3a8e130c",
+      "qm": "97c57c24f6274b5c53b24da0fcc331a7ecd20c0e",
+      "qmcp": "8aece3e1b64817235fe6372ab6511644f85933e5",
+      "rad": "3e8794f11eb94b29e94094aa24e8215593864a6f",
+      "rad-godot": "6dd9485f6bd2a5ddf7679f3dfe4c19f44385a5f3",
+      "ShowStopper": "51f8b13c14d3aeeb026981f42798c6abe83adde5",
+      "stomp": "6d30a6f47303e2378587f1e5870d1461d1443244",
+      "vox": "1721e6f27d9310fea928bd477005c34d1bcfe732",
+      "waveofhormuz": "83746f7cbcaa491c1e55e5b576f4b6abed7999e7",
+      "wolf": "d960d108d8915b195c5de3b74fc10ac2144e7670"
+     },
+     "unread": [
+      "benchmark",
+      "factorio-sysops",
+      "holophonor",
+      "joe",
+      "leo",
+      "otto",
+      "qmcli-godot",
+      "qmetronome",
+      "scad-chess",
+      "ShowRunner",
+      "streaming-infrastructure",
+      "TheatreMix-python",
+      "uPhonor",
+      "ztgui"
+     ]
+    },
+    "caveat": "Membership is a claim a person made in the roster; this draws it and cannot tell whether a repository drives what its family drives. Solid grey edges are claims, gold edges are seams declared in the interop registry, and dashed edges are measured from a member's own manifests and never place it. 12 member(s) had no clone this export could read, so nothing was measured for them: benchmark, factorio-sysops, holophonor, joe, leo, otto, qmcli-godot, qmetronome, scad-chess, streaming-infrastructure, uPhonor, ztgui. Dotted edges are imports read from each member's own Python, JavaScript and TypeScript at the commit its show document was drawn from, or at its clone's default branch where it has none: 32 module(s) two or more members import, each drawn once, and 2 import(s) of a package one other project's tree holds. A name is all an import says, so a package two projects hold is no link to either (0 here), and the 159 module(s) one member imports alone are left to its code map. 14 member(s) had no clone, or one git could not read at that commit, so their imports are not drawn: benchmark, factorio-sysops, holophonor, joe, leo, otto, qmcli-godot, qmetronome, scad-chess, ShowRunner, streaming-infrastructure, TheatreMix-python, uPhonor, ztgui. 2 measured link(s) have no declared seam: qmcp → vox, alfred → otto. Each is a seam nobody has stated, not a fault."
+   }
+  }
+ },
+ "files": {
+  "estate": "estate.svg",
+  "imports": "imports.svg"
+ }
+}

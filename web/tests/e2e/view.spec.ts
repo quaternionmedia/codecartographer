@@ -70,7 +70,7 @@ const drawn = (page: Page) => expect(page.locator('body[data-drawn="true"]')).to
 test("a show document's estate and code views are drawn where it places them, asking no codecarto route", async ({ page }) => {
   const asked = await served(page);
   const document = JSON.parse(fixture('project/ztgui'));
-  for (const view of ['estate', 'code']) {
+  for (const [view, title] of [['estate', 'ztgui · estate'], ['code', 'ztgui · code map']]) {
     await page.goto(`/view.html?doc=${DOCS}/project/ztgui/show.json&view=${view}`);
     await drawn(page);
     const want = placedBy(document.views[view].graph.nodes);
@@ -80,15 +80,19 @@ test("a show document's estate and code views are drawn where it places them, as
       expect(x, id).toBeCloseTo(want[id][0], 2);
       expect(y, id).toBeCloseTo(want[id][1], 2);
     }
-    await expect(page.locator('.view__subject')).toHaveText(`project:ztgui · ${view}`);
+    await expect(page.locator('.view__subject')).toHaveText(title);
     await expect(page.locator('.view__handed')).toHaveText(`read from ${DOCS}/project/ztgui/show.json`);
     await expect(page.locator('.view__drawn')).toContainText('from quaternionmedia/ztgui at c698ae0');
     await expect(page.locator('.view__canvas .graph-legend')).toHaveCount(1);
   }
-  // The code view carries no caveat, and the page invents none; the estate's is shown as written.
-  await expect(page.locator('.view__caveat')).toBeHidden();
+  // The code view carries no caveat, and the page invents none; the estate's is shown as written,
+  // folded under what the drawing can say.
+  await expect(page.locator('.view__caveat')).toHaveText('');
   await page.goto(`/view.html?doc=${DOCS}/project/ztgui/show.json`);
   await drawn(page);
+  await expect(page.locator('.view__caveat')).toBeHidden();
+  await page.getByText('What this drawing can say').click();
+  await expect(page.locator('.view__caveat')).toBeVisible();
   await expect(page.locator('.view__caveat')).toHaveText(document.views.estate.metadata.caveat);
   expect(asked).toEqual([]);
 });
@@ -103,7 +107,10 @@ test('a pointer view, a composed system and a view its document lacks are each r
     await page.goto(`/view.html?doc=${DOCS}/${subject}/show.json&view=${view}`);
     await expect(page.locator('.view__problem-what')).toContainText(`Not drawn, read from ${DOCS}/${subject}/show.json: ${problem}`);
     await expect(page.locator('.view__problem-remedy')).toContainText(remedy);
-    await expect(page.locator('.view__canvas')).toBeHidden();
+    // Under the refusal, the subject's first view the page draws, and the address says so.
+    await drawn(page);
+    await expect(page.locator('.view__views [aria-current="page"]')).toHaveAttribute('data-view', 'estate');
+    expect(new URL(page.url()).searchParams.get('view')).toBe('estate');
   }
   await page.goto(`/view.html?doc=${DOCS}/project/none/show.json`);
   await expect(page.locator('.view__problem-what')).toContainText('answered 404');
@@ -116,7 +123,7 @@ test('a file opened, a file dropped and a paste are each read as a document name
   await expect(page.locator('.view__empty')).toBeVisible();
 
   await page.locator('.view__chooser').setInputFiles(`${FIXTURES}/project/ztgui/show.json`);
-  await expect(page.locator('.view__subject')).toHaveText('project:ztgui · estate');
+  await expect(page.locator('.view__subject')).toHaveText('ztgui · estate');
   await drawn(page);
   await expect(page.locator('.view__handed')).toHaveText('opened from the file show.json');
 
@@ -125,7 +132,7 @@ test('a file opened, a file dropped and a paste are each read as a document name
     carried.items.add(new File([text], 'core.json', { type: 'application/json' }));
     window.dispatchEvent(new DragEvent('drop', { dataTransfer: carried, bubbles: true, cancelable: true }));
   }, fixture('family/core'));
-  await expect(page.locator('.view__subject')).toHaveText('family:core · estate');
+  await expect(page.locator('.view__subject')).toHaveText('core · the family');
   await drawn(page);
   await expect(page.locator('.view__handed')).toHaveText('opened from the file core.json');
 
@@ -187,7 +194,181 @@ test('the built page opens from a subfolder of a plain static server, its root t
   await expect(page.locator('.view__handed')).toHaveText(`read from ${STATIC_SITE}/qm/show/project/ztgui/show.json`);
   await page.goto(`${STATIC_SITE}/codecartographer/view.html?doc=/qm/show/family/core/show.json`);
   await drawn(page);
-  await expect(page.locator('.view__subject')).toHaveText('family:core · estate');
+  await expect(page.locator('.view__subject')).toHaveText('core · the family');
   expect(failed).toEqual([]);
+  expect(asked).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------
+// The journeys `docs/journeys.md` names: each test below walks one, as a
+// reader would, and `tests/test_journeys.py` holds the page to their titles.
+// ---------------------------------------------------------------------------
+
+/** The corpus's show folder, named as a reader names another one. */
+const WALKED = `docs=${DOCS}/`;
+const trailOf = (page: Page) => page.locator('.view__trail');
+const viewNamed = (page: Page, label: string) => page.locator('.view__views').getByText(label, { exact: true });
+const listed = (page: Page, name: string) => page.locator('.view__here').getByRole('link', { name, exact: true });
+
+test("journey: a reader at the page's own address sees every family, and what can be opened from it", async ({ page }) => {
+  const asked = await served(page);
+  await page.goto(`${STATIC_SITE}/codecartographer/`);
+  await drawn(page);
+  await expect(trailOf(page)).toHaveText('every family');
+  await expect(page.locator('.view__views [aria-current="page"]')).toHaveText('every family');
+  await expect(viewNamed(page, 'shared imports')).toHaveAttribute('href', '?show=index&view=imports');
+  const shown = new Set(Object.values(JSON.parse(fixture('index')).views.estate.graph.nodes)
+    .map((node: any) => node.metadata.show as string).filter(Boolean));
+  const families = [...shown].filter((show) => show.startsWith('family:')).length;
+  await expect(page.locator('.view__here-summary'))
+    .toHaveText(`${families} families and ${shown.size - families} projects to open`);
+  await expect(page.locator('.view__hint')).toContainText('Double-click a family or a project to open it');
+  // The page's own address is left as it is: it names every family already.
+  expect(page.url()).toBe(`${STATIC_SITE}/codecartographer/`);
+  expect(asked).toEqual([]);
+});
+
+test("journey: a reader walks down from every family to a project's code map, and Back walks up again", async ({ page }) => {
+  const asked = await served(page);
+  await page.goto(`/view.html?${WALKED}`);
+  await drawn(page);
+
+  await page.locator('.view__here-summary').click();
+  await page.keyboard.type('infra');
+  await listed(page, 'infra').click();
+  await expect(page).toHaveTitle('infra · the family · Code Cartographer');
+  await expect(trailOf(page)).toHaveText('every family›infra');
+  expect(new URL(page.url()).searchParams.get('show')).toBe('family:infra');
+  await drawn(page);
+
+  // A double-click on a project opens it, as in the window.
+  await page.locator('.view__canvas g.graph-node[data-node-id="repo::ztgui"]').dblclick();
+  await expect(page).toHaveTitle('ztgui · estate · Code Cartographer');
+  await expect(trailOf(page)).toHaveText('every family›infra›ztgui');
+  await drawn(page);
+
+  await viewNamed(page, 'code map').click();
+  await expect(page).toHaveTitle('ztgui · code map · Code Cartographer');
+  expect(new URL(page.url()).searchParams.get('view')).toBe('code');
+  await drawn(page);
+  const want = placedBy(JSON.parse(fixture('project/ztgui')).views.code.graph.nodes);
+  expect(Object.keys(await places(page)).sort()).toEqual(Object.keys(want).sort());
+
+  for (const title of ['ztgui · estate', 'infra · the family', 'the corpus · every family']) {
+    await page.goBack();
+    await expect(page).toHaveTitle(`${title} · Code Cartographer`);
+    await drawn(page);
+  }
+  expect(page.url()).toMatch(/\/view\.html\?docs=/);
+  expect(asked).toEqual([]);
+});
+
+test('journey: a reader who follows a link to a nested family steps up its trail', async ({ page }) => {
+  const asked = await served(page);
+  await page.goto(`/view.html?show=family:instruments&${WALKED}`);
+  await drawn(page);
+  // Its own document does not say what holds it; the index, read once, does.
+  await expect(trailOf(page)).toHaveText('every family›performing›instruments');
+  await trailOf(page).getByRole('link', { name: 'performing' }).click();
+  await expect(page).toHaveTitle('performing · the family · Code Cartographer');
+  await expect(trailOf(page)).toHaveText('every family›performing');
+  await trailOf(page).getByRole('link', { name: 'every family' }).click();
+  await expect(page).toHaveTitle('the corpus · every family · Code Cartographer');
+  expect(asked).toEqual([]);
+});
+
+test('journey: a reader copies the address of what is drawn, and it opens the same drawing', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const asked = await served(page);
+  await page.goto(`/view.html?${WALKED}`);
+  await drawn(page);
+  await page.locator('.view__here-summary').click();
+  await listed(page, 'ztgui').click();
+  await expect(page).toHaveTitle('ztgui · estate · Code Cartographer');
+  await viewNamed(page, 'code map').click();
+  await drawn(page);
+  await page.getByRole('button', { name: 'copy link' }).click();
+  await expect(page.locator('.view__copy')).toHaveText('copied');
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toBe(page.url());
+
+  const again = await context.newPage();
+  const askedAgain = await served(again);
+  await again.goto(copied);
+  await drawn(again);
+  await expect(again).toHaveTitle('ztgui · code map · Code Cartographer');
+  await expect(trailOf(again)).toHaveText('every family›infra›ztgui');
+  expect([...asked, ...askedAgain]).toEqual([]);
+});
+
+test('journey: a reader shown a view the page cannot draw is told why, and where it is drawn', async ({ page }) => {
+  const asked = await served(page);
+  // Linked to a family's code view, a pointer: the family is drawn under why not.
+  await page.goto(`/view.html?show=family:core&view=code&${WALKED}`);
+  await drawn(page);
+  await expect(page).toHaveTitle('core · the family · Code Cartographer');
+  await expect(page.locator('.view__problem-what'))
+    .toContainText('the code view of family:core is not a graph in its document but a pointer');
+  await expect(page.locator('.view__window')).toHaveAttribute('href', 'http://localhost:2718/app?show=family:core&view=code');
+  expect(new URL(page.url()).searchParams.get('view')).toBeNull();
+
+  // A view offered but not drawn here says so when pressed, and what is drawn stays drawn.
+  await page.goto(`/view.html?show=project:moat&${WALKED}`);
+  await drawn(page);
+  await expect(page.locator('.view__problem')).toBeHidden();
+  await viewNamed(page, 'system').click();
+  await expect(page.locator('.view__problem-what')).toContainText('the system view of project:moat is a composed system');
+  await expect(page.locator('.view__window')).toHaveAttribute('href', 'http://localhost:2718/app?show=project:moat&view=system');
+  await expect(page).toHaveTitle('moat · estate · Code Cartographer');
+  await expect(page.locator('.view__canvas g.graph-node')).toHaveCount(5);
+  await page.getByRole('button', { name: 'dismiss' }).click();
+  await expect(page.locator('.view__problem')).toBeHidden();
+
+  // A project the show folder holds no document for: the window draws it from its clone.
+  await page.goto(`/view.html?${WALKED}`);
+  await drawn(page);
+  await page.locator('.view__here-summary').click();
+  await listed(page, 'benchmark').click();
+  await expect(page.locator('.view__problem-what')).toContainText('the show folder holds no document for project:benchmark');
+  await expect(page.locator('.view__window')).toHaveAttribute('href', 'http://localhost:2718/app?show=project:benchmark');
+  await expect(page).toHaveTitle('the corpus · every family · Code Cartographer');
+  expect(asked).toEqual([]);
+});
+
+test("journey: a reader's own document, opened from a file, has its views drawn in hand", async ({ page }) => {
+  const asked = await served(page);
+  await page.goto('/view.html');
+  await expect(page.locator('.view__empty')).toBeVisible();
+  await page.locator('.view__chooser').setInputFiles(`${FIXTURES}/project/ztgui/show.json`);
+  await drawn(page);
+  await expect(page.locator('.view__subject')).toHaveText('ztgui · estate');
+  // A file has no address: no trail, nothing to copy, and its views are its own.
+  await expect(trailOf(page)).toBeHidden();
+  await expect(page.locator('.view__copy')).toBeHidden();
+  await viewNamed(page, 'code map').click();
+  await drawn(page);
+  await expect(page.locator('.view__subject')).toHaveText('ztgui · code map');
+  await expect(page.locator('.view__canvas g.graph-node')).toHaveCount(39);
+  expect(new URL(page.url()).search).toBe('');
+  expect(asked).toEqual([]);
+});
+
+test('journey: from the keyboard alone, a reader filters the list and opens a project', async ({ page }) => {
+  const asked = await served(page);
+  await page.goto(`/view.html?${WALKED}`);
+  await drawn(page);
+  await page.locator('.view__here-summary').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.view__here-filter')).toBeFocused();
+  await page.keyboard.type('ztg');
+  await expect(page.locator('.view__here-item:not([hidden])')).toHaveCount(1);
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveTitle('ztgui · estate · Code Cartographer');
+  // Escape folds the list it opened, and gives the focus back.
+  await page.locator('.view__here-summary').focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.view__here')).not.toHaveAttribute('open', '');
+  await expect(page.locator('.view__here-summary')).toBeFocused();
   expect(asked).toEqual([]);
 });

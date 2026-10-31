@@ -12,8 +12,11 @@ published from this repository's GitHub Pages,
 `https://quaternionmedia.github.io/codecartographer/view.html`. This page is
 the order the rest of the work lands in.
 
-The page draws a document now: [The page without a server](../view.md) is what
-it does, and what it refuses.
+The page draws a document now, and a person walks it: [The page without a
+server](../view.md) is what it does and what it refuses, and
+[Journeys](../journeys.md) each walk through it. A person comes first: the
+page is walked from its own address before other apps are given messages to
+drive it.
 
 ## Why
 
@@ -35,16 +38,14 @@ Largest first:
 2. **The system monitor asks its routes.** It reads `/system/compose` and
    `/system/events` and opens a replay socket, where a show document already
    holds the composed system.
-3. **The breadcrumb is the Show panel's**, and the Show panel asks
-   `/show/subjects`; the index's show document holds every subject it names.
 
 | view | positioned in its show document | opens in the page |
 |---|---|---|
 | a subject's estate (index, family, project) | yes, the route's own answer | now |
 | a project's code | yes, every node | now |
 | an imports view (index, family) | yes, as exported | now |
-| a project's system | composed; the system monitor lays it out in the browser | from step 2 |
-| a family's code, the corpus's full view | no: a pointer to its projects' code views, packed again by `show_layout.pack` | refused by name until step 4 decides |
+| a project's system | composed; the system monitor lays it out in the browser | from step 3 |
+| a family's code, the corpus's full view | no: a pointer to its projects' code views, packed again by `show_layout.pack` | refused by name until step 5 decides |
 
 ## The steps
 
@@ -59,24 +60,35 @@ Each step is a pull request, measured as its last section says.
 - **Done when** the published page draws carlos's code view from the corpus's
   site: `view.html?doc=../qm/show/project/carlos/show.json&view=code`.
 
-### 2. Addresses, and the system view
+### 2. Walked by a person
 
-- `?show=<address>` through `parseShow`, read from
-  `<docs>/<folder>/show.json`: the corpus's published show folder, or the one
-  `?docs=` names.
-- A double-click opens the next address in the page (the canvas's
-  `codecarto:show-open` event), and Back returns (`popstate`).
-- The breadcrumb is read from the index's document, not from
-  `/show/subjects`.
+- The page's own address opens every family. `?show=<address>` opens a
+  subject's view through `parseShow`, read from `<docs>/<folder>/show.json`:
+  the corpus's published show folder, or the one `?docs=` names.
+- The bar's trail steps up, read from the documents read and the index's;
+  its views step across, named as the window's Show panel names them; and its
+  list of the families and projects a drawing names steps down, as a
+  double-click on one does (the canvas's `codecarto:show-open` event). Each
+  step adds a history entry, and Back returns (`popstate`).
+- **copy link**, and a refusal that links the window where it draws what the
+  page does not.
+- [Journeys](../journeys.md) writes each walk, and a browser test of its name
+  walks it.
+- What remains: the corpus's pages linking each subject's deeper view to the
+  page (`view.html?show=<address>`). That change is the corpus's, in
+  quaternionmedia/qm.
+- **Done when** every journey in [Journeys](../journeys.md) is walked by its
+  test, and every address the export draws opens in the page from a copy of
+  the published folder, each pointer view refused by name.
+
+### 3. The system view
+
 - A project's system view drawn from its document's `composed`, the monitor
   handed it rather than asking `/system/compose`, with no replay.
-- The corpus's pages link each subject's deeper view to the page
-  (`view.html?show=<address>`). That change is the corpus's, in
-  quaternionmedia/qm.
-- **Done when** every address the export draws opens in the page from a copy
-  of the published folder, and each pointer view is refused by name.
+- **Done when** each project's system view the export writes is drawn in the
+  page, and its journey is walked by a test.
 
-### 3. Messages
+### 4. Messages
 
 - The envelope, the ops (`load`, `show`, `select`, `intent`) and the events
   (`ready`, `drawn`, `selected`, `opened`, `refused`), as the record states
@@ -92,7 +104,7 @@ Each step is a pull request, measured as its last section says.
 - **Done when** both host pages drive every op and see every event, and a
   message from an origin `?from=` leaves out changes nothing.
 
-### 4. The deep views
+### 5. The deep views
 
 A family to its symbols, the corpus's full view, and
 [the corpus at every depth](the-corpus-at-every-depth.md) are composed and
@@ -118,7 +130,8 @@ five:
 
 | measured | the page drawing its first documents |
 |---|---|
-| its script, gzipped | 34.5 KB, d3 included; the window loads 145.8 KB at once |
+| its script, gzipped | 38.6 KB, d3 included, and 34.5 KB before the page was walked; the window loads 145.8 KB at once |
+| the index, read for every family and the trail | 19 KB gzipped as this codecartographer exports it; the corpus's site serves 715 KB until it exports again |
 | carlos's code view, 1,232 nodes | 3.2 s, and 5.4 s at a 4× slowdown: mostly the canvas's pacing, a hundredth of the nodes a frame, as the window draws it |
 | core's family estate, 8 nodes | 0.24 s, and 0.51 s at a 4× slowdown |
 | its requests | the page, its two assets and the document; none to codecarto |

@@ -1,0 +1,606 @@
+{
+ "schema": 1,
+ "subject": {
+  "kind": "family",
+  "name": "infra"
+ },
+ "provenance": {
+  "claims": {
+   "repo": "quaternionmedia/qm",
+   "commit": "153bb1241988399d4a25897e3f3703e5c2f1b4dd",
+   "digest": "sha256:ebd4ba15e366342af1e74e61e184a8ceabfdc75f3aae843cf81a0d3298e800ae"
+  },
+  "drawn_by": {
+   "graph": "codecartographer@9ba33d6bad83a59e54827c110fd46111c4e4db28+changes"
+  },
+  "drawn_at": "2026-10-31T00:52:12Z"
+ },
+ "views": {
+  "estate": {
+   "graph": {
+    "nodes": {
+     "family::infra": {
+      "label": "infra",
+      "metadata": {
+       "kind": "family",
+       "family": "infra",
+       "drives": "where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "infra — drives where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path",
+       "click": "<p>The <b>infra</b> family drives where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path.</p><p>5 member(s) in all.</p>",
+       "show": "family:infra",
+       "color": "#98a7bc",
+       "depth": 0,
+       "x": 0,
+       "y": 0,
+       "size": 90,
+       "label_at": "none"
+      }
+     },
+     "repo::streaming-infrastructure": {
+      "label": "streaming-infrastructure",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "unknown",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "streaming-infrastructure — v0.0.1 · governed",
+       "click": "<p><b>streaming-infrastructure</b></p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>unknown</b> (measured).</p>",
+       "show": "project:streaming-infrastructure",
+       "shape": "square",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 44.67167917422796,
+       "y": -61.48529157249601,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::moat": {
+      "label": "moat",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.0",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "moat — v0.0.0 · not adopted",
+       "click": "<p><b>moat</b> — simple reverse proxy with Traefik</p><p>not adopted. Phase <b>v0.0.0</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:moat",
+       "shape": "circle",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 72.28029523843166,
+       "y": 23.485291572496003,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::ztgui": {
+      "label": "ztgui",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ztgui — n/a · not adopted",
+       "click": "<p><b>ztgui</b> — Zeroteir Gui</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:ztgui",
+       "shape": "circle",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 4.653657836759942e-15,
+       "y": 76,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "repo::private-23": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": -72.28029523843166,
+       "y": 23.48529157249601,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-26": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": -44.67167917422797,
+       "y": -61.485291572495996,
+       "size": 30,
+       "label_at": "left"
+      }
+     }
+    },
+    "edges": [
+     {
+      "source": "family::infra",
+      "target": "repo::streaming-infrastructure",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::moat",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::ztgui",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::private-23",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::private-26",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     }
+    ],
+    "directed": true,
+    "metadata": {
+     "kind": "show",
+     "subject": "family:infra",
+     "declared": 0,
+     "measured": 0,
+     "unread": [
+      "streaming-infrastructure",
+      "ztgui"
+     ],
+     "undeclared": []
+    }
+   },
+   "metadata": {
+    "kind": "show",
+    "subject": "family:infra",
+    "source": "families.json",
+    "generated_at": "2026-10-24T14:49:28Z",
+    "commit": "153bb12",
+    "provenance": {
+     "source": "families.json",
+     "commit": "153bb12",
+     "schema": 2,
+     "generated_at": "2026-10-24T14:49:28Z",
+     "overridden": true
+    },
+    "layout": "Compound",
+    "type": "d3",
+    "palette_id": "0",
+    "bases": {
+     "claim": {
+      "style": "solid",
+      "color": "#8a93a6",
+      "size": 1.5
+     },
+     "declared": {
+      "style": "solid",
+      "color": "#e0a526",
+      "size": 2.5
+     },
+     "measured": {
+      "style": "dashed",
+      "color": "#4fb3ad",
+      "size": 1.5
+     }
+    },
+    "declared": 0,
+    "measured": 0,
+    "unread": [
+     "streaming-infrastructure",
+     "ztgui"
+    ],
+    "undeclared": [],
+    "unstated": 1,
+    "notes": [],
+    "caveat": "Membership is a claim a person made in the roster; this draws it and cannot tell whether a repository drives what its family drives. Solid grey edges are claims, gold edges are seams declared in the interop registry, and dashed edges are measured from a member's own manifests and never place it. 2 member(s) had no clone this export could read, so nothing was measured for them: streaming-infrastructure, ztgui."
+   }
+  },
+  "code": {
+   "graph": "each project's code view's",
+   "metadata": {
+    "kind": "show",
+    "subject": "family:infra",
+    "source": "families.json",
+    "generated_at": "2026-10-24T14:49:28Z",
+    "commit": "153bb12",
+    "provenance": {
+     "source": "families.json",
+     "commit": "153bb12",
+     "schema": 2,
+     "generated_at": "2026-10-24T14:49:28Z",
+     "overridden": true
+    },
+    "layout": "Compound",
+    "type": "d3",
+    "palette_id": "0",
+    "bases": {
+     "claim": {
+      "style": "solid",
+      "color": "#8a93a6",
+      "size": 1.5
+     },
+     "declared": {
+      "style": "solid",
+      "color": "#e0a526",
+      "size": 2.5
+     },
+     "measured": {
+      "style": "dashed",
+      "color": "#4fb3ad",
+      "size": 1.5
+     },
+     "parsed": {
+      "style": "solid",
+      "color": "#56688f",
+      "size": 0.75
+     }
+    },
+    "declared": 0,
+    "measured": 0,
+    "unread": [
+     "streaming-infrastructure",
+     "ztgui"
+    ],
+    "undeclared": [],
+    "unstated": 1,
+    "notes": [],
+    "code": {
+     "moat": "16a595a3598c02ba521fc42617fc130030f9b57f",
+     "ztgui": "c698ae0dbfaedef15797ab44e5f5afedb5fdba24"
+    },
+    "caveat": "Membership is a claim a person made in the roster; this draws it and cannot tell whether a repository drives what its family drives. Solid grey edges are claims, gold edges are seams declared in the interop registry, and dashed edges are measured from a member's own manifests and never place it. 2 member(s) had no clone this export could read, so nothing was measured for them: streaming-infrastructure, ztgui. Each project's code is the code map its show document in the corpus holds, drawn from its default branch: 2 project(s); 1 with no code map drawn yet are drawn alone: streaming-infrastructure."
+   }
+  },
+  "imports": {
+   "graph": {
+    "nodes": {
+     "family::infra": {
+      "label": "infra",
+      "metadata": {
+       "kind": "family",
+       "family": "infra",
+       "drives": "where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "infra — drives where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path",
+       "click": "<p>The <b>infra</b> family drives where a thing runs, and how it is reached — ingress, identity, storage, DNS, observability, the network path.</p><p>5 member(s) in all.</p>",
+       "show": "family:infra",
+       "color": "#98a7bc",
+       "depth": 0,
+       "x": 0,
+       "y": 0,
+       "size": 90,
+       "label_at": "none"
+      }
+     },
+     "repo::streaming-infrastructure": {
+      "label": "streaming-infrastructure",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "unknown",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "streaming-infrastructure — v0.0.1 · governed",
+       "click": "<p><b>streaming-infrastructure</b></p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>unknown</b> (measured).</p>",
+       "show": "project:streaming-infrastructure",
+       "shape": "square",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 44.67167917422796,
+       "y": -61.48529157249601,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::moat": {
+      "label": "moat",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.0",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "moat — v0.0.0 · not adopted",
+       "click": "<p><b>moat</b> — simple reverse proxy with Traefik</p><p>not adopted. Phase <b>v0.0.0</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:moat",
+       "shape": "circle",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 72.28029523843166,
+       "y": 23.485291572496003,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::ztgui": {
+      "label": "ztgui",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ztgui — n/a · not adopted",
+       "click": "<p><b>ztgui</b> — Zeroteir Gui</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:ztgui",
+       "shape": "circle",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": 4.653657836759942e-15,
+       "y": 76,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "repo::private-23": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": -72.28029523843166,
+       "y": 23.48529157249601,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::private-26": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#98a7bc",
+       "depth": 1,
+       "x": -44.67167917422797,
+       "y": -61.485291572495996,
+       "size": 30,
+       "label_at": "left"
+      }
+     }
+    },
+    "edges": [
+     {
+      "source": "family::infra",
+      "target": "repo::streaming-infrastructure",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::moat",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::ztgui",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::private-23",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::infra",
+      "target": "repo::private-26",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     }
+    ],
+    "directed": true,
+    "metadata": {
+     "kind": "show",
+     "subject": "family:infra",
+     "declared": 0,
+     "measured": 0,
+     "unread": [
+      "streaming-infrastructure",
+      "ztgui"
+     ],
+     "undeclared": [],
+     "imports": {
+      "links": 0,
+      "shared": 0,
+      "ambiguous": 0,
+      "alone": 2
+     },
+     "imports_read": {
+      "moat": "16a595a3598c02ba521fc42617fc130030f9b57f"
+     },
+     "imports_unread": [
+      "streaming-infrastructure",
+      "ztgui"
+     ]
+    }
+   },
+   "metadata": {
+    "kind": "show",
+    "subject": "family:infra",
+    "source": "families.json",
+    "generated_at": "2026-10-24T14:49:28Z",
+    "commit": "153bb12",
+    "provenance": {
+     "source": "families.json",
+     "commit": "153bb12",
+     "schema": 2,
+     "generated_at": "2026-10-24T14:49:28Z",
+     "overridden": true
+    },
+    "layout": "Compound",
+    "type": "d3",
+    "palette_id": "0",
+    "bases": {
+     "claim": {
+      "style": "solid",
+      "color": "#8a93a6",
+      "size": 1.5
+     },
+     "declared": {
+      "style": "solid",
+      "color": "#e0a526",
+      "size": 2.5
+     },
+     "measured": {
+      "style": "dashed",
+      "color": "#4fb3ad",
+      "size": 1.5
+     },
+     "imported": {
+      "style": "dotted",
+      "color": "#b48ead",
+      "size": 1.25
+     }
+    },
+    "declared": 0,
+    "measured": 0,
+    "unread": [
+     "streaming-infrastructure",
+     "ztgui"
+    ],
+    "undeclared": [],
+    "unstated": 1,
+    "notes": [],
+    "imports": {
+     "links": 0,
+     "shared": 0,
+     "ambiguous": 0,
+     "alone": 2,
+     "read": {
+      "moat": "16a595a3598c02ba521fc42617fc130030f9b57f"
+     },
+     "unread": [
+      "streaming-infrastructure",
+      "ztgui"
+     ]
+    },
+    "caveat": "Membership is a claim a person made in the roster; this draws it and cannot tell whether a repository drives what its family drives. Solid grey edges are claims, gold edges are seams declared in the interop registry, and dashed edges are measured from a member's own manifests and never place it. 2 member(s) had no clone this export could read, so nothing was measured for them: streaming-infrastructure, ztgui. Dotted edges are imports read from each member's own Python, JavaScript and TypeScript at the commit its show document was drawn from, or at its clone's default branch where it has none: 0 module(s) two or more members import, each drawn once, and 0 import(s) of a package one other project's tree holds. A name is all an import says, so a package two projects hold is no link to either (0 here), and the 2 module(s) one member imports alone are left to its code map. 2 member(s) had no clone, or one git could not read at that commit, so their imports are not drawn: streaming-infrastructure, ztgui."
+   }
+  }
+ },
+ "files": {
+  "estate": "estate.svg",
+  "code": "code.svg",
+  "imports": "imports.svg"
+ }
+}

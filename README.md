@@ -26,6 +26,8 @@ submodules and a first graph.
 ## Where to go next
 
 - [Getting Started](docs/getting-started.md): install, run, and draw a first graph
+- [Journeys](docs/journeys.md): each way a person uses codecarto, from where
+  they start to where they arrive, and the page that needs no server
 - [CLI](docs/cli.md): every `codecarto` command, option and environment variable
 - [API](docs/api.md): the backend's routes, each one described. The running
   server's `/docs` lists those in its OpenAPI schema, which leaves out the

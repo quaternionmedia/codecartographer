@@ -49,7 +49,7 @@ const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
  * The query string's parameters. Written out rather than `URLSearchParams`,
  * which the DOM-free build this is tested in does not have.
  */
-function parameters(search: string): Map<string, string> {
+export function parameters(search: string): Map<string, string> {
   const out = new Map<string, string>();
   for (const pair of (search.startsWith('?') ? search.slice(1) : search).split('&')) {
     if (!pair) continue;
@@ -155,6 +155,35 @@ export function trail(address: ShowAddress, subjects: TrailSubjects | null): Sho
   levels[levels.length - 1].push(...claims.slice(1).map(family));
   return [[index], ...levels, [address]];
 }
+
+type Named = { label: string; title: string };
+
+/**
+ * How each subject's views are named, and what drawing one does, in the order
+ * they are offered: the Show panel's buttons and the page's views say the same.
+ */
+export const VIEW_NAMES: {
+  readonly index: Readonly<Record<'estate' | 'code' | 'full' | 'imports', Named>>;
+  readonly family: Readonly<Record<'estate' | 'code' | 'imports', Named>>;
+  readonly project: Readonly<Record<ShowView, Named>>;
+} = {
+  index: {
+    estate: { label: 'every family', title: 'draw every family' },
+    code: { label: "with each project's code", title: "draw every family with each project's code in it" },
+    full: { label: 'every node, no names', title: 'draw the whole corpus, every node, with no names' },
+    imports: { label: 'shared imports', title: 'draw every family with what its projects import in common' },
+  },
+  family: {
+    estate: { label: 'the family', title: 'draw the family' },
+    code: { label: "with each project's code", title: "draw the family with each of its projects' code in it" },
+    imports: { label: 'shared imports', title: 'draw the family with what its projects import in common' },
+  },
+  project: {
+    estate: { label: 'estate', title: 'draw the estate' },
+    code: { label: 'code map', title: 'draw the code map' },
+    system: { label: 'system', title: 'draw the system' },
+  },
+};
 
 /** How a step of the trail is named. */
 export function crumbLabel(address: ShowAddress): string {

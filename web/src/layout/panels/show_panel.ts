@@ -35,16 +35,16 @@ import { ProblemView } from '../../features/estate/problem_view';
 import { Provenance } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import type { ShowAddress, ShowView } from '../../features/show/show_address';
-import { VIEWS, crumbLabel, formatShow, trail } from '../../features/show/show_address';
+import { VIEWS, VIEW_NAMES, crumbLabel, formatShow, trail } from '../../features/show/show_address';
 import type { ShowFamilyRow, ShowProjectRow } from '../../features/show/show_service';
 import { pressable } from '../../components/codecarto/control_panel/pressable';
 import '../../features/estate/estate.css';
 import './show_panel.css';
 
 const VIEW_LABEL: Record<ShowView, string> = {
-  estate: 'estate',
-  code: 'code map',
-  system: 'system',
+  estate: VIEW_NAMES.project.estate.label,
+  code: VIEW_NAMES.project.code.label,
+  system: VIEW_NAMES.project.system.label,
 };
 
 function same(a: ShowAddress | null, kind: string, name: string): boolean {
@@ -150,7 +150,7 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
           class: current.view === view ? 'is-current' : '',
           // Which of the three is drawn, said as well as shown.
           'aria-pressed': current.view === view ? 'true' : 'false',
-          title: disabled ? (state?.problem ?? 'asking which views can be drawn…') : `draw the ${VIEW_LABEL[view]}`,
+          title: disabled ? (state?.problem ?? 'asking which views can be drawn…') : VIEW_NAMES.project[view].title,
           onclick: () => open({ kind: 'project', name: current.name, view }),
         }, VIEW_LABEL[view]);
       })),
@@ -162,12 +162,7 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
   };
 
   /** Every family alone, or with each project's code in it: the whole corpus, named or not. */
-  const indexViews = {
-    estate: { label: 'every family', title: 'draw every family' },
-    code: { label: "with each project's code", title: "draw every family with each project's code in it" },
-    full: { label: 'every node, no names', title: 'draw the whole corpus, every node, with no names' },
-    imports: { label: 'shared imports', title: 'draw every family with what its projects import in common' },
-  } as const;
+  const indexViews = VIEW_NAMES.index;
   const indexSwitch = (current: ShowAddress) =>
     m('div.show__views', (['estate', 'code', 'full', 'imports'] as const).map((view) =>
       m('button.estate-view__draw.show__view', {
@@ -179,11 +174,7 @@ export function createShowPanel(ctx: LayoutContext): m.Component {
       }, indexViews[view].label)));
 
   /** A family alone, with each of its projects' code in it, or with what they import in common. */
-  const familyViews = {
-    estate: { label: 'the family', title: 'draw the family' },
-    code: { label: "with each project's code", title: "draw the family with each of its projects' code in it" },
-    imports: { label: 'shared imports', title: 'draw the family with what its projects import in common' },
-  } as const;
+  const familyViews = VIEW_NAMES.family;
   const familySwitch = (current: ShowAddress) =>
     m('div.show__views', (['estate', 'code', 'imports'] as const).map((view) =>
       m('button.estate-view__draw.show__view', {

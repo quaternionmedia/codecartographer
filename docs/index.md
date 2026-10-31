@@ -5,6 +5,8 @@ These pages explain how to install, run and extend Codecarto.
 ## Reference
 
 - [Getting Started](getting-started.md): install, run, and draw a first graph
+- [Journeys](journeys.md): each way a person uses codecarto, from where they
+  start to where they arrive, a step at a time
 - [CLI](cli.md): every `codecarto` command, its options, and the environment
   variables the code reads
 - [API](api.md): every route the backend serves, and the envelope it answers in

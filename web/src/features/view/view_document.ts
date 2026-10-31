@@ -54,6 +54,8 @@ export interface Drawing {
 export interface Refusal {
   problem: string;
   remedy: string;
+  /** The `?show=` address the window draws it at, when the window can and this page cannot. */
+  window?: string;
 }
 
 export type Reading = { drawing: Drawing } | { refused: Refusal };
@@ -128,14 +130,20 @@ function readShow(data: Json, asked: string | null): Reading {
     return refuse(text(entry.problem) ?? `${subject} has no ${view} view`, text(entry.remedy) ?? '');
   }
   if (typeof entry.graph === 'string') {
-    return refuse(`the ${view} view of ${subject} is not a graph in its document but a pointer ("${entry.graph}"): `
-      + 'codecarto composes it and lays it out again, and this page draws only positioned graphs',
-      `open it in codecarto, at ${address(subject, view)}, or open each project's ${view} view here`);
+    return { refused: {
+      problem: `the ${view} view of ${subject} is not a graph in its document but a pointer ("${entry.graph}"): `
+        + 'codecarto composes it and lays it out again, and this page draws only positioned graphs',
+      remedy: `open it in codecarto, at ${address(subject, view)}, or open each project's ${view} view here`,
+      window: address(subject, view),
+    } };
   }
   if ('composed' in entry) {
-    return refuse(`the ${view} view of ${subject} is a composed system, which the window's system monitor lays out, `
-      + 'and this page does not carry the monitor',
-      `open it in codecarto, at ${address(subject, view)}`);
+    return { refused: {
+      problem: `the ${view} view of ${subject} is a composed system, which the window's system monitor lays out, `
+        + 'and this page does not carry the monitor',
+      remedy: `open it in codecarto, at ${address(subject, view)}`,
+      window: address(subject, view),
+    } };
   }
   // The window draws a project's code view as a Showcase, and every other
   // view as compound outlines (`layout_context.ts`, `_openShow`).

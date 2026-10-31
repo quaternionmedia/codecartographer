@@ -1,5 +1,6 @@
-/* The page without a server (`view.html`): a bar saying what is drawn and who
- * handed it, the producer's caveat, and the canvas filling the rest. */
+/* The page without a server (`view.html`): a bar saying where the drawing is,
+ * its views, what can be opened from it and who handed it; the producer's
+ * caveat; and the canvas filling the rest. */
 
 .view {
   display: flex;
@@ -29,8 +30,173 @@
   overflow-wrap: anywhere;
 }
 
-.view__open {
+.view__tools {
+  display: flex;
+  gap: var(--spacing-sm);
   margin-left: auto;
+}
+
+/* Where the drawing is: every family › performing › instruments › carlos. */
+.view__trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+}
+
+.view__crumb {
+  color: var(--c-accent);
+}
+
+.view__crumb.is-current {
+  color: var(--c-font);
+  font-weight: bold;
+}
+
+.view__sep {
+  color: var(--c-font-muted);
+}
+
+/* The subject's views, the one drawn pressed. */
+.view__views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.view__view,
+button.view__view {
+  display: inline-block;
+  min-height: 0;
+  padding: 2px var(--spacing-sm);
+  border: 1px solid var(--c-border);
+  border-radius: 3px;
+  background: none;
+  box-shadow: none;
+  color: var(--c-accent);
+  font: inherit;
+  font-size: 0.9em;
+  text-transform: none;
+  letter-spacing: normal;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.view__view:hover,
+button.view__view:hover {
+  background: none;
+  box-shadow: none;
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+.view__view.is-current {
+  border-color: var(--c-border-active);
+  color: var(--c-font);
+  cursor: default;
+}
+
+/* Not drawn here: pressed, it says why and where it is. */
+.view__view.is-refused,
+button.view__view.is-refused:hover {
+  border-style: dashed;
+  color: var(--c-font-muted);
+}
+
+/* What this drawing can say: the producer's caveat and where it was drawn, folded. */
+.view__about {
+  padding: var(--spacing-xs) var(--spacing-md) 0;
+  font-size: 0.8em;
+}
+
+.view__about-summary {
+  color: var(--c-font-muted);
+  cursor: pointer;
+}
+
+/* What can be opened from the drawing, folded under its count. */
+.view__here {
+  position: relative;
+}
+
+.view__here-summary {
+  color: var(--c-accent);
+  cursor: pointer;
+}
+
+.view__here[open] > .view__here-filter,
+.view__here[open] > .view__here-list {
+  position: absolute;
+  left: 0;
+  z-index: 10;
+  width: max-content;
+  min-width: 14rem;
+  max-width: min(24rem, 90vw);
+  background: var(--c-primary-light);
+  border: 1px solid var(--c-border);
+}
+
+.view__here-filter {
+  top: 1.6em;
+  box-sizing: border-box;
+  padding: var(--spacing-xs);
+}
+
+.view__here-list {
+  top: calc(1.6em + 2em);
+  max-height: 60vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--spacing-xs) 0;
+  list-style: none;
+}
+
+.view__here-filter[hidden] + .view__here-list {
+  top: 1.6em;
+}
+
+.view__here-item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: 2px var(--spacing-sm);
+}
+
+.view__here-link {
+  color: var(--c-accent);
+}
+
+.view__here-kind {
+  color: var(--c-font-muted);
+  font-size: 0.85em;
+}
+
+.view__hint {
+  margin: 0;
+  padding: var(--spacing-xs) var(--spacing-md) 0;
+  color: var(--c-font-muted);
+  font-size: 0.8em;
+}
+
+.view__empty-why {
+  color: var(--c-font-muted);
+  font-size: 0.85em;
+}
+
+.view__window {
+  color: var(--c-accent);
+  white-space: nowrap;
+}
+
+button.view__problem-dismiss {
+  float: right;
+  min-height: 0;
+  margin-left: var(--spacing-sm);
+  padding: 0 var(--spacing-xs);
+  border: 1px solid currentColor;
+  color: inherit;
+  font-size: 0.8em;
+  text-transform: none;
 }
 
 .view__caveat,
@@ -88,4 +254,9 @@
 
 [hidden] {
   display: none !important;
+}
+
+.view__about .view__caveat,
+.view__about .view__drawn {
+  padding: var(--spacing-xs) 0;
 }

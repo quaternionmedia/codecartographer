@@ -1,0 +1,1459 @@
+{
+ "schema": 1,
+ "subject": {
+  "kind": "family",
+  "name": "instruments"
+ },
+ "provenance": {
+  "claims": {
+   "repo": "quaternionmedia/qm",
+   "commit": "153bb1241988399d4a25897e3f3703e5c2f1b4dd",
+   "digest": "sha256:31f568e83dbb18e359699d1f6b98e80b0a50bfdedf475f87538ef77189571e3a"
+  },
+  "drawn_by": {
+   "graph": "codecartographer@9ba33d6bad83a59e54827c110fd46111c4e4db28+changes"
+  },
+  "drawn_at": "2026-10-31T00:52:12Z"
+ },
+ "views": {
+  "estate": {
+   "graph": {
+    "nodes": {
+     "family::instruments": {
+      "label": "instruments",
+      "metadata": {
+       "kind": "family",
+       "family": "instruments",
+       "drives": "the sound — looping, synthesis, tempo, remote control surfaces",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "instruments — drives the sound — looping, synthesis, tempo, remote control surfaces",
+       "click": "<p>The <b>instruments</b> family drives the sound — looping, synthesis, tempo, remote control surfaces.</p><p>Within <b>performing</b>.</p><p>10 member(s) in all.</p>",
+       "show": "family:instruments",
+       "color": "#43c6bf",
+       "depth": 0,
+       "x": 0,
+       "y": 0,
+       "size": 150,
+       "label_at": "none"
+      }
+     },
+     "repo::carlos": {
+      "label": "carlos",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "carlos — v0.0.1 · governed",
+       "click": "<p><b>carlos</b> — Browser workspace for sketching hardware rigs from real gear, patched on the face its sockets are on</p><p>governed. Phase <b>v0.0.1</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:carlos",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 36.00000000000001,
+       "y": -110.79660733830912,
+       "size": 30,
+       "label_at": "above"
+      }
+     },
+     "repo::private-34": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 94.24922359499622,
+       "y": -68.47606917325106,
+       "size": 40,
+       "label_at": "right"
+      }
+     },
+     "family::performer-display": {
+      "label": "performer-display ↗",
+      "metadata": {
+       "kind": "family",
+       "family": "performer-display",
+       "drives": "the performer — what a player reads while playing",
+       "elsewhere": true,
+       "shape": "hexagon",
+       "hover": "performer-display — drives the performer — what a player reads while playing",
+       "click": "<p>The <b>performer-display</b> family drives the performer — what a player reads while playing.</p><p>Within <b>performing</b>.</p><p>3 member(s) in all.</p>",
+       "show": "family:performer-display",
+       "color": "#a693f3",
+       "x": 186.47716095374022,
+       "y": -135.483587934593,
+       "size": 11,
+       "label_at": "below"
+      }
+     },
+     "repo::qmetronome": {
+      "label": "qmetronome",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.3",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qmetronome — v0.0.3 · governed",
+       "click": "<p><b>qmetronome</b> — Metronome and tempo visualizer for Android 13+: tap tempo, set queues, MIDI clock sync, and the Nothing Phone Glyph Matrix</p><p>governed. Phase <b>v0.0.3</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:qmetronome",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 116.49844718999243,
+       "y": 0,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::holophonor": {
+      "label": "holophonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "holophonor — n/a · not adopted",
+       "click": "<p><b>holophonor</b> — Live looping, unlimited!</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:holophonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 94.24922359499622,
+       "y": 68.47606917325106,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::midiphonor": {
+      "label": "midiphonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "midiphonor — n/a · not adopted",
+       "click": "<p><b>midiphonor</b> — A Holophonor implementation, using Tone.js</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:midiphonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 36.00000000000001,
+       "y": 110.79660733830912,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "repo::uPhonor": {
+      "label": "uPhonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl"
+       ],
+       "hover": "uPhonor — n/a · not adopted · also in irl",
+       "click": "<p><b>uPhonor</b> — Micro-Holophonor</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl.</p>",
+       "show": "project:uPhonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -36.00000000000004,
+       "y": 110.7966073383091,
+       "size": 40,
+       "label_at": "below"
+      }
+     },
+     "family::irl": {
+      "label": "irl ↗",
+      "metadata": {
+       "kind": "family",
+       "family": "irl",
+       "drives": "matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "elsewhere": true,
+       "shape": "hexagon",
+       "hover": "irl — drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "click": "<p>The <b>irl</b> family drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work.</p><p>9 member(s) in all.</p>",
+       "show": "family:irl",
+       "color": "#dd9b63",
+       "x": -135.483587934593,
+       "y": 186.4771609537402,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "repo::stomp": {
+      "label": "stomp",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl"
+       ],
+       "hover": "stomp — n/a · not adopted · also in irl",
+       "click": "<p><b>stomp</b> — a midi foot controller for Arduino / Teensy</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl.</p>",
+       "show": "project:stomp",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -94.24922359499621,
+       "y": 68.47606917325108,
+       "size": 40,
+       "label_at": "left"
+      }
+     },
+     "repo::wolf": {
+      "label": "wolf",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "wolf — n/a · not adopted",
+       "click": "<p><b>wolf</b> — remote midi controller</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:wolf",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -116.49844718999243,
+       "y": 1.426694504568612e-14,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::ludwig": {
+      "label": "ludwig",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ludwig — n/a · not adopted",
+       "click": "<p><b>ludwig</b> — remote mixing</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:ludwig",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -94.24922359499622,
+       "y": -68.47606917325105,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::waveofhormuz": {
+      "label": "waveofhormuz",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "waveofhormuz — n/a · not adopted",
+       "click": "<p><b>waveofhormuz</b> — VCV Rack 2 strait-shaping square wave oscillator — conflict timeline as a default waveform</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:waveofhormuz",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -36.000000000000014,
+       "y": -110.79660733830912,
+       "size": 30,
+       "label_at": "above"
+      }
+     },
+     "family::performing": {
+      "label": "performing ↗",
+      "metadata": {
+       "kind": "family",
+       "family": "performing",
+       "drives": "a show — what an audience sees and hears, and the video made before and after it",
+       "elsewhere": true,
+       "shape": "hexagon",
+       "hover": "performing — drives a show — what an audience sees and hears, and the video made before and after it",
+       "click": "<p>The <b>performing</b> family drives a show — what an audience sees and hears, and the video made before and after it.</p><p>22 member(s) in all.</p>",
+       "show": "family:performing",
+       "color": "#f2aa4c",
+       "x": -73.31643263662362,
+       "y": 222.79857064772312,
+       "size": 11,
+       "label_at": "below"
+      }
+     }
+    },
+    "edges": [
+     {
+      "source": "family::instruments",
+      "target": "repo::carlos",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::private-34",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::qmetronome",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::holophonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::midiphonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::uPhonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::stomp",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::wolf",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::ludwig",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::waveofhormuz",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "family::performing",
+      "label": "within",
+      "metadata": {
+       "kind": "within",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::private-34",
+      "target": "family::performer-display",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::uPhonor",
+      "target": "family::irl",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::stomp",
+      "target": "family::irl",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     }
+    ],
+    "directed": true,
+    "metadata": {
+     "kind": "show",
+     "subject": "family:instruments",
+     "declared": 0,
+     "measured": 0,
+     "unread": [
+      "holophonor",
+      "qmetronome",
+      "uPhonor"
+     ],
+     "undeclared": []
+    }
+   },
+   "metadata": {
+    "kind": "show",
+    "subject": "family:instruments",
+    "source": "families.json",
+    "generated_at": "2026-10-24T14:49:28Z",
+    "commit": "153bb12",
+    "provenance": {
+     "source": "families.json",
+     "commit": "153bb12",
+     "schema": 2,
+     "generated_at": "2026-10-24T14:49:28Z",
+     "overridden": true
+    },
+    "layout": "Compound",
+    "type": "d3",
+    "palette_id": "0",
+    "bases": {
+     "claim": {
+      "style": "solid",
+      "color": "#8a93a6",
+      "size": 1.5
+     },
+     "declared": {
+      "style": "solid",
+      "color": "#e0a526",
+      "size": 2.5
+     },
+     "measured": {
+      "style": "dashed",
+      "color": "#4fb3ad",
+      "size": 1.5
+     }
+    },
+    "declared": 0,
+    "measured": 0,
+    "unread": [
+     "holophonor",
+     "qmetronome",
+     "uPhonor"
+    ],
+    "undeclared": [],
+    "unstated": 1,
+    "notes": [],
+    "caveat": "Membership is a claim a person made in the roster; this draws it and cannot tell whether a repository drives what its family drives. Solid grey edges are claims, gold edges are seams declared in the interop registry, and dashed edges are measured from a member's own manifests and never place it. 3 member(s) had no clone this export could read, so nothing was measured for them: holophonor, qmetronome, uPhonor."
+   }
+  },
+  "code": {
+   "graph": "each project's code view's",
+   "metadata": {
+    "kind": "show",
+    "subject": "family:instruments",
+    "source": "families.json",
+    "generated_at": "2026-10-24T14:49:28Z",
+    "commit": "153bb12",
+    "provenance": {
+     "source": "families.json",
+     "commit": "153bb12",
+     "schema": 2,
+     "generated_at": "2026-10-24T14:49:28Z",
+     "overridden": true
+    },
+    "layout": "Compound",
+    "type": "d3",
+    "palette_id": "0",
+    "bases": {
+     "claim": {
+      "style": "solid",
+      "color": "#8a93a6",
+      "size": 1.5
+     },
+     "declared": {
+      "style": "solid",
+      "color": "#e0a526",
+      "size": 2.5
+     },
+     "measured": {
+      "style": "dashed",
+      "color": "#4fb3ad",
+      "size": 1.5
+     },
+     "parsed": {
+      "style": "solid",
+      "color": "#56688f",
+      "size": 0.75
+     }
+    },
+    "declared": 0,
+    "measured": 0,
+    "unread": [
+     "holophonor",
+     "qmetronome",
+     "uPhonor"
+    ],
+    "undeclared": [],
+    "unstated": 1,
+    "notes": [],
+    "code": {
+     "carlos": "a5540e7dfb11dea3258cdde8769f26a7dc6d568f",
+     "qmetronome": "1abf5e9f196e33b51567fb866dd3423d4f3a43b9",
+     "holophonor": "dd8d9dbf1c7e9571adc99616330ba56de05f5029",
+     "midiphonor": "407e6c31db235288e05eabf53d7f2074b149b701",
+     "uPhonor": "150f7a770cade664896c403ff27ccc5cf408f08d",
+     "stomp": "6d30a6f47303e2378587f1e5870d1461d1443244",
+     "wolf": "d960d108d8915b195c5de3b74fc10ac2144e7670",
+     "ludwig": "fe7ee650185685313450f4ffe7e157d503c8cdf3",
+     "waveofhormuz": "83746f7cbcaa491c1e55e5b576f4b6abed7999e7"
+    },
+    "caveat": "Membership is a claim a person made in the roster; this draws it and cannot tell whether a repository drives what its family drives. Solid grey edges are claims, gold edges are seams declared in the interop registry, and dashed edges are measured from a member's own manifests and never place it. 3 member(s) had no clone this export could read, so nothing was measured for them: holophonor, qmetronome, uPhonor. Each project's code is the code map its show document in the corpus holds, drawn from its default branch: 9 project(s)."
+   }
+  },
+  "imports": {
+   "graph": {
+    "nodes": {
+     "family::instruments": {
+      "label": "instruments",
+      "metadata": {
+       "kind": "family",
+       "family": "instruments",
+       "drives": "the sound — looping, synthesis, tempo, remote control surfaces",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "instruments — drives the sound — looping, synthesis, tempo, remote control surfaces",
+       "click": "<p>The <b>instruments</b> family drives the sound — looping, synthesis, tempo, remote control surfaces.</p><p>Within <b>performing</b>.</p><p>10 member(s) in all.</p>",
+       "show": "family:instruments",
+       "color": "#43c6bf",
+       "depth": 0,
+       "x": 0,
+       "y": 0,
+       "size": 150,
+       "label_at": "none"
+      }
+     },
+     "repo::carlos": {
+      "label": "carlos",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "carlos — v0.0.1 · governed",
+       "click": "<p><b>carlos</b> — Browser workspace for sketching hardware rigs from real gear, patched on the face its sockets are on</p><p>governed. Phase <b>v0.0.1</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:carlos",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 36.00000000000001,
+       "y": -110.79660733830912,
+       "size": 60,
+       "label_at": "above"
+      }
+     },
+     "repo::private-34": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 94.24922359499622,
+       "y": -68.47606917325106,
+       "size": 40,
+       "label_at": "right"
+      }
+     },
+     "family::performer-display": {
+      "label": "performer-display ↗",
+      "metadata": {
+       "kind": "family",
+       "family": "performer-display",
+       "drives": "the performer — what a player reads while playing",
+       "elsewhere": true,
+       "shape": "hexagon",
+       "hover": "performer-display — drives the performer — what a player reads while playing",
+       "click": "<p>The <b>performer-display</b> family drives the performer — what a player reads while playing.</p><p>Within <b>performing</b>.</p><p>3 member(s) in all.</p>",
+       "show": "family:performer-display",
+       "color": "#a693f3",
+       "x": 186.47716095374022,
+       "y": -135.483587934593,
+       "size": 11,
+       "label_at": "below"
+      }
+     },
+     "repo::qmetronome": {
+      "label": "qmetronome",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.3",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qmetronome — v0.0.3 · governed",
+       "click": "<p><b>qmetronome</b> — Metronome and tempo visualizer for Android 13+: tap tempo, set queues, MIDI clock sync, and the Nothing Phone Glyph Matrix</p><p>governed. Phase <b>v0.0.3</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:qmetronome",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 116.49844718999243,
+       "y": 0,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::holophonor": {
+      "label": "holophonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "holophonor — n/a · not adopted",
+       "click": "<p><b>holophonor</b> — Live looping, unlimited!</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:holophonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 94.24922359499622,
+       "y": 68.47606917325106,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::midiphonor": {
+      "label": "midiphonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "midiphonor — n/a · not adopted",
+       "click": "<p><b>midiphonor</b> — A Holophonor implementation, using Tone.js</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:midiphonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 36.00000000000001,
+       "y": 110.79660733830912,
+       "size": 40,
+       "label_at": "below"
+      }
+     },
+     "repo::uPhonor": {
+      "label": "uPhonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl"
+       ],
+       "hover": "uPhonor — n/a · not adopted · also in irl",
+       "click": "<p><b>uPhonor</b> — Micro-Holophonor</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl.</p>",
+       "show": "project:uPhonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -36.00000000000004,
+       "y": 110.7966073383091,
+       "size": 40,
+       "label_at": "below"
+      }
+     },
+     "family::irl": {
+      "label": "irl ↗",
+      "metadata": {
+       "kind": "family",
+       "family": "irl",
+       "drives": "matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "elsewhere": true,
+       "shape": "hexagon",
+       "hover": "irl — drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "click": "<p>The <b>irl</b> family drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work.</p><p>9 member(s) in all.</p>",
+       "show": "family:irl",
+       "color": "#dd9b63",
+       "x": -135.483587934593,
+       "y": 186.4771609537402,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "repo::stomp": {
+      "label": "stomp",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl"
+       ],
+       "hover": "stomp — n/a · not adopted · also in irl",
+       "click": "<p><b>stomp</b> — a midi foot controller for Arduino / Teensy</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl.</p>",
+       "show": "project:stomp",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -94.24922359499621,
+       "y": 68.47606917325108,
+       "size": 40,
+       "label_at": "left"
+      }
+     },
+     "repo::wolf": {
+      "label": "wolf",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "wolf — n/a · not adopted",
+       "click": "<p><b>wolf</b> — remote midi controller</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:wolf",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -116.49844718999243,
+       "y": 1.426694504568612e-14,
+       "size": 70,
+       "label_at": "left"
+      }
+     },
+     "repo::ludwig": {
+      "label": "ludwig",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ludwig — n/a · not adopted",
+       "click": "<p><b>ludwig</b> — remote mixing</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:ludwig",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -94.24922359499622,
+       "y": -68.47606917325105,
+       "size": 50,
+       "label_at": "left"
+      }
+     },
+     "repo::waveofhormuz": {
+      "label": "waveofhormuz",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "waveofhormuz — n/a · not adopted",
+       "click": "<p><b>waveofhormuz</b> — VCV Rack 2 strait-shaping square wave oscillator — conflict timeline as a default waveform</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:waveofhormuz",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": -36.000000000000014,
+       "y": -110.79660733830912,
+       "size": 30,
+       "label_at": "above"
+      }
+     },
+     "family::performing": {
+      "label": "performing ↗",
+      "metadata": {
+       "kind": "family",
+       "family": "performing",
+       "drives": "a show — what an audience sees and hears, and the video made before and after it",
+       "elsewhere": true,
+       "shape": "hexagon",
+       "hover": "performing — drives a show — what an audience sees and hears, and the video made before and after it",
+       "click": "<p>The <b>performing</b> family drives a show — what an audience sees and hears, and the video made before and after it.</p><p>22 member(s) in all.</p>",
+       "show": "family:performing",
+       "color": "#f2aa4c",
+       "x": -73.31643263662362,
+       "y": 222.79857064772312,
+       "size": 11,
+       "label_at": "below"
+      }
+     },
+     "module::javascript:mithril": {
+      "label": "mithril",
+      "metadata": {
+       "kind": "external_module",
+       "language": "javascript",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "mithril (javascript) — imported by 2 member(s): midiphonor, wolf",
+       "x": -1.5022819525334115,
+       "y": 230.49355154956683,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:fastapi": {
+      "label": "fastapi",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "fastapi (python) — imported by 2 member(s): carlos, wolf",
+       "x": -135.483587934593,
+       "y": -186.4771609537402,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:pydantic": {
+      "label": "pydantic",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "pydantic (python) — imported by 2 member(s): carlos, ludwig",
+       "x": -71.22793735874401,
+       "y": -219.21705019595663,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:rtmidi": {
+      "label": "rtmidi",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "rtmidi (python) — imported by 2 member(s): ludwig, wolf",
+       "x": -219.21705019595663,
+       "y": -71.22793735874399,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:uvicorn": {
+      "label": "uvicorn",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "uvicorn (python) — imported by 2 member(s): carlos, wolf",
+       "x": -109.89732156324794,
+       "y": -279.95154389800757,
+       "size": 21,
+       "label_at": "below"
+      }
+     }
+    },
+    "edges": [
+     {
+      "source": "family::instruments",
+      "target": "repo::carlos",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::private-34",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::qmetronome",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::holophonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::midiphonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::uPhonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::stomp",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::wolf",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::ludwig",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::waveofhormuz",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "family::performing",
+      "label": "within",
+      "metadata": {
+       "kind": "within",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports fastapi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports pydantic in 6 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 6
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports uvicorn in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::private-34",
+      "target": "family::performer-display",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::midiphonor",
+      "target": "module::javascript:mithril",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "midiphonor imports mithril in 15 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 15
+      }
+     },
+     {
+      "source": "repo::uPhonor",
+      "target": "family::irl",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::stomp",
+      "target": "family::irl",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::javascript:mithril",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports mithril in 6 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 6
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports fastapi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:rtmidi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports rtmidi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports uvicorn in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::ludwig",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ludwig imports pydantic in 4 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 4
+      }
+     },
+     {
+      "source": "repo::ludwig",
+      "target": "module::python:rtmidi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ludwig imports rtmidi in 6 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 6
+      }
+     }
+    ],
+    "directed": true,
+    "metadata": {
+     "kind": "show",
+     "subject": "family:instruments",
+     "declared": 0,
+     "measured": 0,
+     "unread": [
+      "holophonor",
+      "qmetronome",
+      "uPhonor"
+     ],
+     "undeclared": [],
+     "imports": {
+      "links": 0,
+      "shared": 5,
+      "ambiguous": 0,
+      "alone": 26
+     },
+     "imports_read": {
+      "carlos": "a5540e7dfb11dea3258cdde8769f26a7dc6d568f",
+      "ludwig": "fe7ee650185685313450f4ffe7e157d503c8cdf3",
+      "midiphonor": "407e6c31db235288e05eabf53d7f2074b149b701",
+      "stomp": "6d30a6f47303e2378587f1e5870d1461d1443244",
+      "waveofhormuz": "83746f7cbcaa491c1e55e5b576f4b6abed7999e7",
+      "wolf": "d960d108d8915b195c5de3b74fc10ac2144e7670"
+     },
+     "imports_unread": [
+      "holophonor",
+      "qmetronome",
+      "uPhonor"
+     ]
+    }
+   },
+   "metadata": {
+    "kind": "show",
+    "subject": "family:instruments",
+    "source": "families.json",
+    "generated_at": "2026-10-24T14:49:28Z",
+    "commit": "153bb12",
+    "provenance": {
+     "source": "families.json",
+     "commit": "153bb12",
+     "schema": 2,
+     "generated_at": "2026-10-24T14:49:28Z",
+     "overridden": true
+    },
+    "layout": "Compound",
+    "type": "d3",
+    "palette_id": "0",
+    "bases": {
+     "claim": {
+      "style": "solid",
+      "color": "#8a93a6",
+      "size": 1.5
+     },
+     "declared": {
+      "style": "solid",
+      "color": "#e0a526",
+      "size": 2.5
+     },
+     "measured": {
+      "style": "dashed",
+      "color": "#4fb3ad",
+      "size": 1.5
+     },
+     "imported": {
+      "style": "dotted",
+      "color": "#b48ead",
+      "size": 1.25
+     }
+    },
+    "declared": 0,
+    "measured": 0,
+    "unread": [
+     "holophonor",
+     "qmetronome",
+     "uPhonor"
+    ],
+    "undeclared": [],
+    "unstated": 1,
+    "notes": [],
+    "imports": {
+     "links": 0,
+     "shared": 5,
+     "ambiguous": 0,
+     "alone": 26,
+     "read": {
+      "carlos": "a5540e7dfb11dea3258cdde8769f26a7dc6d568f",
+      "ludwig": "fe7ee650185685313450f4ffe7e157d503c8cdf3",
+      "midiphonor": "407e6c31db235288e05eabf53d7f2074b149b701",
+      "stomp": "6d30a6f47303e2378587f1e5870d1461d1443244",
+      "waveofhormuz": "83746f7cbcaa491c1e55e5b576f4b6abed7999e7",
+      "wolf": "d960d108d8915b195c5de3b74fc10ac2144e7670"
+     },
+     "unread": [
+      "holophonor",
+      "qmetronome",
+      "uPhonor"
+     ]
+    },
+    "caveat": "Membership is a claim a person made in the roster; this draws it and cannot tell whether a repository drives what its family drives. Solid grey edges are claims, gold edges are seams declared in the interop registry, and dashed edges are measured from a member's own manifests and never place it. 3 member(s) had no clone this export could read, so nothing was measured for them: holophonor, qmetronome, uPhonor. Dotted edges are imports read from each member's own Python, JavaScript and TypeScript at the commit its show document was drawn from, or at its clone's default branch where it has none: 5 module(s) two or more members import, each drawn once, and 0 import(s) of a package one other project's tree holds. A name is all an import says, so a package two projects hold is no link to either (0 here), and the 26 module(s) one member imports alone are left to its code map. 3 member(s) had no clone, or one git could not read at that commit, so their imports are not drawn: holophonor, qmetronome, uPhonor."
+   }
+  }
+ },
+ "files": {
+  "estate": "estate.svg",
+  "code": "code.svg",
+  "imports": "imports.svg"
+ }
+}
