@@ -1,0 +1,78 @@
+name: Pages
+
+# The page without a server (docs/view.md), built and published to this
+# repository's GitHub Pages:
+#
+#   https://quaternionmedia.github.io/codecartographer/view.html
+#
+# Published from main only. GitHub Pages must have GitHub Actions as its
+# source (the repository's Settings, Pages), which the repository's owner sets;
+# until then the deploy job fails at deploy-pages, and nothing else does. The
+# decision is the draft record "One page without a server draws the graphs
+# and addresses other apps hand it", section 8, on project/codecartographer.
+#
+# The build is the page's own (npm run build:view): a folder that names its
+# assets relative to itself, holds the same page as its index.html, and
+# carries none of the window's code. A pull request builds that folder in the
+# browser suite, which serves it from a subfolder of a plain static server
+# (web.yml's e2e job); this workflow publishes what main holds.
+#
+# Not a seed file. This is the project's own workflow and is free to change.
+
+on:
+  push:
+    branches: [main]
+    # Everything the page's build reads is under web/.
+    paths:
+      - 'web/**'
+      - '.github/workflows/pages.yml'
+  # Publish main again by hand, as after Pages is first enabled.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One deployment at a time, and none cut off half-way.
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # graphbase is private and the runner has no credential for it;
+          # nothing under web/ needs a submodule.
+          submodules: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npm run build:view
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: web/dist-view
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Only this job may publish, and only through Pages's own token.
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}view.html
+    steps:
+      - uses: actions/deploy-pages@v5
+        id: deployment
