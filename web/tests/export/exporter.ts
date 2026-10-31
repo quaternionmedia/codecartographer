@@ -132,10 +132,23 @@ async function readStep(page: Page): Promise<void> {
 }
 
 /**
- * The canvas's svg as a file: each element's drawn style inlined, the size it
- * is drawn at, and the canvas's own background behind it.
+ * The canvas's svg as a file: what it draws, at the size it is drawn at, on
+ * the canvas's own background -- and nothing a page showing it as an image
+ * does not show (`docs/scale.md`, rules 4 and 5):
+ *
+ * - **each colour once.** An element's drawn style is written as its
+ *   presentation attributes, where it differs from what it inherits or from
+ *   the initial value, and never again in a `style` beside them;
+ * - **no hidden element**, by `display` or by `visibility`, unless something
+ *   inside it is shown: the declutter keeps every name it hides, and core's
+ *   family code map hid fifteen thousand;
+ * - **no `<title>`**, which a browser shows only on hovering a picture opened
+ *   on its own, and **no `data-*`**, the window's interaction data;
+ * - **one decimal** for every coordinate, and **the fit settled to fixed
+ *   steps** -- its scale to steps of 1%, held about the canvas's centre, and
+ *   its offset to the pixel -- so the same drawing writes the same bytes.
  */
-async function svgOf(page: Page): Promise<string> {
+export async function svgOf(page: Page): Promise<string> {
   return page.locator('.graphRenderer > svg').first().evaluate((svg: SVGSVGElement) => {
     // Inherited: written where an element's differs from its parent's.
     const INHERITED = [
@@ -144,6 +157,14 @@ async function svgOf(page: Page): Promise<string> {
     ];
     // Not inherited: written where an element's is not the initial value.
     const OWN: Record<string, string> = { opacity: '1', display: 'inline', 'dominant-baseline': 'auto' };
+    // Coordinates, to one decimal. A scale is not one, and keeps its digits.
+    const GEOMETRY = ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'dx', 'dy',
+      'width', 'height', 'd', 'points'];
+    const tenth = (text: string) =>
+      text.replace(/-?\d*\.\d+(?:e[-+]?\d+)?/gi, (n) => String(Math.round(Number(n) * 10) / 10));
+    // `rgb(r, g, b)` as `#rrggbb`: the same colour in under half the bytes.
+    const hex = (value: string) => value.replace(/^rgb\((\d+), (\d+), (\d+)\)$/, (_, ...rgb: string[]) =>
+      `#${rgb.slice(0, 3).map((c) => Number(c).toString(16).padStart(2, '0')).join('')}`);
     const copy = svg.cloneNode(true) as SVGSVGElement;
     const from = [svg, ...svg.querySelectorAll('*')];
     const to = [copy, ...copy.querySelectorAll('*')];
@@ -151,21 +172,48 @@ async function svgOf(page: Page): Promise<string> {
     from.forEach((el, i) => {
       const own = drawn.get(el)!;
       const parent = el === svg ? null : drawn.get(el.parentElement!) ?? null;
-      const style = [
-        ...INHERITED.filter((p) => !parent || own.getPropertyValue(p) !== parent.getPropertyValue(p)),
-        ...Object.keys(OWN).filter((p) => own.getPropertyValue(p) !== OWN[p]),
-      ].map((p) => `${p}:${own.getPropertyValue(p)}`).join(';');
-      if (style) (to[i] as SVGElement).setAttribute('style', style);
-      else (to[i] as SVGElement).removeAttribute('style');
+      const target = to[i] as SVGElement;
+      for (const p of INHERITED) {
+        if (!parent || own.getPropertyValue(p) !== parent.getPropertyValue(p)) target.setAttribute(p, hex(own.getPropertyValue(p)));
+        else target.removeAttribute(p);
+      }
+      for (const p of Object.keys(OWN)) {
+        if (own.getPropertyValue(p) !== OWN[p]) target.setAttribute(p, hex(own.getPropertyValue(p)));
+        else target.removeAttribute(p);
+      }
+      target.removeAttribute('style');
+      for (const name of target.getAttributeNames()) {
+        if (name.startsWith('data-')) target.removeAttribute(name);
+        else if (GEOMETRY.includes(name)) target.setAttribute(name, tenth(target.getAttribute(name)!));
+        else if (name === 'transform') {
+          target.setAttribute(name, target.getAttribute(name)!.replace(/translate\(([^)]*)\)/g, (_, at) => `translate(${tenth(at)})`));
+        }
+      }
     });
-    // A picture holds what is drawn: a name the canvas keeps but does not
-    // draw -- every name on the whole corpus drawn with none -- is left out.
-    from.forEach((el, i) => {
-      if (el !== svg && drawn.get(el)!.display === 'none') to[i].remove();
-    });
+    // A picture holds what is drawn. Ancestors come before what they hold, so
+    // walking the elements backwards meets what an element holds first.
+    const shows = new Set<Element>();
+    for (let i = from.length - 1; i > 0; i--) {
+      const style = drawn.get(from[i])!;
+      const shown = style.display !== 'none' && (style.visibility !== 'hidden' || shows.has(from[i]));
+      if (shown && from[i].tagName !== 'title') shows.add(from[i].parentElement!);
+      if (!shown || from[i].tagName === 'title') to[i].remove();
+    }
     const box = svg.getBoundingClientRect();
     const width = Math.round(box.width);
     const height = Math.round(box.height);
+    // The fit, settled: its scale to the nearest step of 1%, its offset moved to
+    // keep the point under the canvas's centre there, and rounded to the pixel.
+    const zoom = copy.querySelector('g');
+    const fit = /^translate\(([-\d.e]+),\s*([-\d.e]+)\)\s*scale\(([-\d.e]+)\)$/i.exec(zoom?.getAttribute('transform') ?? '');
+    if (zoom && fit) {
+      const [tx, ty, k] = fit.slice(1).map(Number);
+      const step = Math.log(1.01);
+      const settled = Number(Math.exp(Math.round(Math.log(k) / step) * step).toPrecision(6));
+      const x = Math.round(width / 2 - (width / 2 - tx) * settled / k);
+      const y = Math.round(height / 2 - (height / 2 - ty) * settled / k);
+      zoom.setAttribute('transform', `translate(${x},${y}) scale(${settled})`);
+    }
     copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     copy.setAttribute('width', String(width));
     copy.setAttribute('height', String(height));

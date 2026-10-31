@@ -15,7 +15,7 @@ import { join } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
-import { exportSubject, type Manifest, type ManifestSubject } from '../export/exporter';
+import { exportSubject, svgOf, type Manifest, type ManifestSubject } from '../export/exporter';
 import { stubWideCodeMap } from './helpers';
 
 const index: ManifestSubject = {
@@ -38,6 +38,21 @@ function manifest(out: string): Manifest {
 }
 
 const read = (path: string) => readFileSync(path, 'utf8');
+
+/**
+ * A picture carries nothing its page does not show (`docs/scale.md`, rule 4).
+ * Mutations, each in `svgOf`: keep the drawn style in a `style` beside the
+ * attributes; keep the names the declutter hid; keep the marks' titles; keep
+ * the window's `data-*`; write coordinates as drawn -- and this fails.
+ */
+function lean(picture: string): void {
+  expect(picture).not.toMatch(/ style="/);
+  expect(picture).not.toMatch(/visibility="hidden"/);
+  expect(picture).not.toContain('<title');
+  expect(picture).not.toMatch(/ data-[\w-]+="/);
+  expect(picture).not.toMatch(/ (?:x|y|x1|y1|x2|y2|cx|cy|r|d|points)="[^"]*\d\.\d\d/);
+  expect(picture).not.toMatch(/translate\([^)]*\d\.\d\d/);
+}
 
 test('a subject is written as its pictures and one show document naming where each came from', async ({ page }) => {
   test.setTimeout(120_000);
@@ -71,14 +86,15 @@ test('a subject is written as its pictures and one show document naming where ea
   expect(shown.files).toEqual({ estate: 'estate.svg' });
 
   // The picture draws on its own: a namespaced svg, the size it was drawn at,
-  // and its styles written into it. Mutation: serialize the svg without its
-  // computed styles -- its names lose their font, and this fails.
+  // and its styles written into it as attributes. Mutation: serialize the svg
+  // without its computed styles -- its names lose their font, and this fails.
   const picture = read(join(out, 'index', 'estate.svg'));
   const root = /^<svg[^>]*>/.exec(picture)?.[0] ?? '';
   expect(root).toContain('xmlns="http://www.w3.org/2000/svg"');
   expect(root).toMatch(/viewBox="0 0 \d+ \d+"/);
-  expect(root).toMatch(/style="[^"]*font-family:[^"]*"/);
-  expect(picture).toContain('data-node-id="family::');
+  expect(root).toMatch(/font-family="[^"]+"/);
+  expect((picture.match(/<g class="graph-node/g) ?? []).length).toBeGreaterThan(5);
+  lean(picture);
 
   const project = JSON.parse(read(join(out, 'project', 'carlos', 'show.json')));
   expect(project.provenance.source).toEqual({ repo: 'quaternionmedia/carlos', commit: 'a'.repeat(40) });
@@ -94,7 +110,9 @@ test('a subject is written as its pictures and one show document naming where ea
   });
   expect(project.files).toEqual({ estate: 'estate.svg', code: 'code.svg' });
   expect(existsSync(join(out, 'project', 'carlos', 'system.png'))).toBe(false);
-  expect(read(join(out, 'project', 'carlos', 'code.svg'))).toContain('data-node-id="dir::quaternionmedia/carlos/walkthrough"');
+  const code = read(join(out, 'project', 'carlos', 'code.svg'));
+  expect(code.match(/<g class="graph-node/g) ?? []).toHaveLength(90);
+  lean(code);
 });
 
 test("a family's code view is written as its picture, naming its projects' code maps rather than holding them again", async ({ page }) => {
@@ -115,7 +133,9 @@ test("a family's code view is written as its picture, naming its projects' code 
   // its code view -- no project's code is spoken of, and this fails.
   expect(shown.views.code.metadata.code).toEqual({});
   expect(shown.views.code.metadata.caveat).toContain('no code map drawn yet');
-  expect(read(join(out, 'family', 'performing', 'code.svg'))).toContain('data-node-id="family::performing"');
+  const family = read(join(out, 'family', 'performing', 'code.svg'));
+  expect(family).toContain('>performing</text>');
+  lean(family);
 });
 
 test("a system view is drawn only from the default branch's head the document names", async ({ page }) => {
@@ -215,7 +235,33 @@ test('a code map is pictured once every node it was sent is drawn, with none of 
   // which the canvas draws once its edges are in. Mutation: take the picture
   // once every node is drawn -- its outlines are not in it, and this fails.
   expect((picture.match(/class="compound-group/g) ?? []).length).toBeGreaterThanOrEqual(30);
-  const named = [...picture.matchAll(/<text[^>]*data-node-id="file::[^"]*"[^>]*>/g)]
-    .filter(([tag]) => !/visibility:\s*hidden|display:\s*none/.test(tag));
-  expect(named).toHaveLength(0);
+  // None of its files named. A name the declutter hid is left out of the
+  // picture, so a name in it is one it shows. Mutation: picture the code map
+  // before its names are tidied -- its files are named, and this fails.
+  expect(picture).not.toMatch(/>module_\d+\.py</);
+  lean(picture);
+});
+
+test('a drawing moved by less than a step writes the same picture', async ({ page }) => {
+  /**
+   * Two exports of the same sources differed, in most pictures, in
+   * coordinates past the first decimal and in the transform that fits the
+   * drawing to the window. So `svgOf` writes coordinates to one decimal and
+   * settles the fit to fixed steps, and a redraw of an unchanged subject
+   * writes the same bytes (`docs/scale.md`, rule 5).
+   */
+  test.setTimeout(120_000);
+  await exportSubject(page, index, manifest(test.info().outputPath('show')));
+  const drawn = await svgOf(page);
+  // The fit a hair off where it was: a thousandth of a pixel, and a
+  // hundred-thousandth of its scale. Mutation: write the fit's scale as the
+  // canvas left it, or its offset as drawn -- and this fails.
+  await page.locator('.graphRenderer > svg').first().evaluate((svg) => {
+    const zoom = svg.querySelector('g')!;
+    const [tx, ty, k] = /translate\(([-\d.e]+),\s*([-\d.e]+)\)\s*scale\(([-\d.e]+)\)/
+      .exec(zoom.getAttribute('transform')!)!.slice(1).map(Number);
+    zoom.setAttribute('transform', `translate(${tx + 0.001},${ty - 0.001}) scale(${k * 1.00001})`);
+  });
+  expect(await svgOf(page)).toBe(drawn);
+  lean(drawn);
 });

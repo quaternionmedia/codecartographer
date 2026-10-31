@@ -410,7 +410,11 @@ The pictures come from the real renderer, run headlessly by
 theme, QM: a deep blue ground and light yellow names, on the docs site's
 palette. Each subject's address is opened, the canvas maximised (step 4,
 Read), and the picture taken once every node the window was sent is drawn,
-the fit has settled and nothing is fading in or out. `show.json` holds the graph each view drew, and names
+the fit has settled and nothing is fading in or out. A picture carries only
+what it shows: its drawn style as attributes, each colour once; no name the
+window hid, no `<title>` and no `data-*`; coordinates to one decimal, and the
+fit settled to steps of 1% and whole pixels, so the same drawing writes the
+same bytes ([Scale](scale.md), rules 4 and 5). `show.json` holds the graph each view drew, and names
 where its claims and its source came from by repository and commit: the
 corpus, a project's default branch, and the codecartographer commit that drew
 it, marked `+changes` when that checkout had uncommitted changes.
