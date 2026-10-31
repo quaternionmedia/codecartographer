@@ -773,8 +773,15 @@ def _with_imports(graph, reading: Reading, among: list[Path] | None = None) -> N
     edge's `files`. So the view grows with the projects and what they share,
     never with their code. Who holds a package is asked of every estate
     repository with a clone, not only the members drawn, so a member's import
-    of another family's package still lands. Sets `imports` (how many links,
-    shared modules and modules one member imports alone) and `imports_unread`.
+    of another family's package still lands.
+
+    **A PROJECT IS READ AT THE COMMIT ITS SHOW DOCUMENT WAS DRAWN FROM**, and at
+    its clone's default branch only when it has none: so the view shows what
+    the projects' code maps show, and an export never pictures a state only a
+    clone on one machine holds. A clone that lacks that commit is not read.
+    Sets `imports` (how many links, shared modules and modules one member
+    imports alone), `imports_read` (each member read, and the commit) and
+    `imports_unread`.
     """
     from codecarto.services import show_imports
 
@@ -785,7 +792,7 @@ def _with_imports(graph, reading: Reading, among: list[Path] | None = None) -> N
     unread: list[str] = []
     for repo in projects(reading):
         clone = clones.find(repo, among)
-        tree = None if clone is None else show_imports.read(clone)
+        tree = None if clone is None else show_imports.read(clone, _drawn_commit(reading, repo))
         if tree is not None:
             trees[repo] = tree
         elif repo in members:
@@ -813,7 +820,40 @@ def _with_imports(graph, reading: Reading, among: list[Path] | None = None) -> N
                     f"in {link['files']} file(s)")
     graph.graph.update(imports={"links": len(found["links"]), "shared": len(found["shared"]),
                                 "ambiguous": len(found["ambiguous"]), "alone": found["alone"]},
+                       imports_read={m: trees[m]["commit"] for m in sorted(trees, key=str.lower) if m in members},
                        imports_unread=sorted(unread, key=str.lower))
+
+
+_DRAWN: dict[tuple[str, int, int], str | None] = {}
+COMMIT_ID = re.compile(r"[0-9a-f]{7,40}")
+
+
+def _drawn_commit(reading: Reading, name: str) -> str | None:
+    """The commit `name`'s show document was drawn from, or None when it has no
+    document naming one. Read once for each version of the document: a show
+    document is megabytes, and the imports view asks of every project."""
+    docs = os.environ.get("CODECARTO_SHOW_DOCS")
+    if docs:
+        path = Path(docs) / "project" / name / "show.json"
+    elif reading.root is not None:
+        path = reading.root / SHOW_DOCS / "project" / name / "show.json"
+    else:
+        return None
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    key = (str(path), stat.st_mtime_ns, stat.st_size)
+    if key not in _DRAWN:
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            document = None
+        source = ((document or {}).get("provenance") or {}).get("source") if isinstance(document, dict) else None
+        commit = source.get("commit") if isinstance(source, dict) else None
+        # Handed to git as an argument: a commit id, never anything git reads as an option.
+        _DRAWN[key] = commit if isinstance(commit, str) and COMMIT_ID.fullmatch(commit) else None
+    return _DRAWN[key]
 
 
 def _with_code(graph, reading: Reading) -> None:
@@ -998,7 +1038,8 @@ def caveat(reading: Reading, graph) -> str:
         counted = graph.graph["imports"]
         unread_imports = graph.graph.get("imports_unread") or []
         parts.append(f"Dotted edges are imports read from each member's own Python, "
-                     f"JavaScript and TypeScript at its clone's default branch: "
+                     f"JavaScript and TypeScript at the commit its show document was "
+                     f"drawn from, or at its clone's default branch where it has none: "
                      f"{counted['shared']} module(s) two or more members import, each "
                      f"drawn once, and {counted['links']} import(s) of a package one "
                      f"other project's tree holds. A name is all an import says, so a "
@@ -1006,7 +1047,8 @@ def caveat(reading: Reading, graph) -> str:
                      f"({counted['ambiguous']} here), and the {counted['alone']} "
                      f"module(s) one member imports alone are left to its code map."
                      + (f" {len(unread_imports)} member(s) had no clone, or one git could "
-                        f"not read, so their imports are not drawn: {', '.join(unread_imports)}."
+                        f"not read at that commit, so their imports are not drawn: "
+                        f"{', '.join(unread_imports)}."
                         if unread_imports else ""))
     undeclared = graph.graph.get("undeclared") or []
     if undeclared:
@@ -1042,7 +1084,8 @@ def metadata(reading: Reading, graph, options: Any = None) -> dict[str, Any]:
         **({"code": graph.graph.get("code_drawn") or {}} if "code_drawn" in graph.graph else {}),
         # An imports view: how many of each it draws, and the members whose
         # imports could not be read.
-        **({"imports": {**graph.graph["imports"], "unread": graph.graph.get("imports_unread") or []}}
+        **({"imports": {**graph.graph["imports"], "read": graph.graph.get("imports_read") or {},
+                        "unread": graph.graph.get("imports_unread") or []}}
            if "imports" in graph.graph else {}),
         "caveat": caveat(reading, graph),
     }

@@ -231,8 +231,11 @@ holding its projects, its subfamilies' too, each with its code map
 that family's, and the picture a site page draws of it; and **shared imports**,
 the family with what its projects import in common
 (`?show=family:performing&view=imports`). The imports are read from each
-project's clone beside this one, its Python, JavaScript and TypeScript, so a
-project with no clone is drawn with none, and the caveat names it.
+project's clone beside this one, its Python, JavaScript and TypeScript, at the
+commit its show document was drawn from, so they match the code maps the
+corpus shows; a project with no show document is read at its clone's default
+branch. A project with no clone, or one without that commit, is drawn with no
+imports, and the caveat names it.
 For a project, its three views follow: **estate**,
 **code map** and **system**; the one drawn is pressed. A project's code map
 opens as a Showcase, drawn to its symbols and no deeper than holds 100 nodes:

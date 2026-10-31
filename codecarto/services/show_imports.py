@@ -217,11 +217,12 @@ def read_tree(repo: Path, commit: str) -> dict[str, Any] | None:
 _TREES_READ: dict[tuple[str, str], dict[str, Any]] = {}
 
 
-def read(clone: Path) -> dict[str, Any] | None:
-    """`read_tree` at the clone's default branch, kept per commit, as the
-    manifests are. None when git could not read it, which is kept for nothing:
-    the next drawing asks again."""
-    commit = clones.default_commit(clone)
+def read(clone: Path, commit: str | None = None) -> dict[str, Any] | None:
+    """`read_tree` at `commit`, or at the clone's default branch when none is
+    given, kept per commit, as the manifests are. None when git could not read
+    it -- a clone that lacks the commit, too -- which is kept for nothing: the
+    next drawing asks again."""
+    commit = commit or clones.default_commit(clone)
     if commit is None:
         return None
     key = (str(clone), commit)
