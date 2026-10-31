@@ -5,7 +5,7 @@ import { DirectoryNavController } from '../components/codecarto/directory/direct
 import { ConfigManager, DebugManager } from './config_manager';
 import { GraphStylingOptions, ParserOptions, GraphRendererType } from './types';
 import { GraphData } from '../features/graph';
-import { THEME_LABEL_COLOR } from '../features/graph/services/label_color';
+import { DEFAULT_GRAPH_STYLING } from './graph_styling';
 import type { TopologyChoices, TopologyProblem } from '../services/topology_service';
 import type { SeamProblem } from '../features/estate/seam_client';
 import type { CapabilitiesDocument, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
@@ -126,26 +126,7 @@ export class CellState implements ICellState {
   public chrestomathyProblem: SeamProblem | null = null;
   public chrestomathyCensus: CensusDocument | null = null;
   public censusProblem: SeamProblem | null = null;
-  public graphStyling: GraphStylingOptions = {
-    layout: 'spring_layout',
-    enablePhysics: true,
-    chargeStrength: -350,
-    linkDistance: 120,
-    nodeSize: 4,
-    nodeOpacity: 0.75,
-    nodeBorderWidth: 0,
-    nodeColorOverride: undefined,
-    edgeWidth: 1.5,
-    edgeOpacity: 0.7,
-    edgeColor: '#666666',
-    edgeStyle: 'solid',
-    showNodeLabels: false,
-    showEdgeLabels: false,
-    labelSize: 9,
-    labelColor: THEME_LABEL_COLOR,
-    backgroundColor: 'transparent',
-    interactionProfile: 'default',
-  };
+  public graphStyling: GraphStylingOptions = { ...DEFAULT_GRAPH_STYLING };
   public parserOptions: ParserOptions = {
     fileExtensions: [],
     annotateLexicon: false,

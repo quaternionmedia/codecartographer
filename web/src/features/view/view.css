@@ -1,0 +1,91 @@
+/* The page without a server (`view.html`): a bar saying what is drawn and who
+ * handed it, the producer's caveat, and the canvas filling the rest. */
+
+.view {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+.view__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spacing-xs) var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-primary-light);
+}
+
+.view__subject {
+  color: var(--c-font);
+}
+
+.view__counts,
+.view__handed {
+  color: var(--c-font-muted);
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
+
+.view__open {
+  margin-left: auto;
+}
+
+.view__caveat,
+.view__drawn {
+  margin: 0;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
+
+.view__caveat {
+  color: var(--c-warning);
+}
+
+.view__drawn {
+  color: var(--c-font-muted);
+}
+
+.view__problem {
+  margin: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--c-error);
+  color: var(--c-error);
+  overflow-wrap: anywhere;
+}
+
+.view__problem p {
+  margin: var(--spacing-xs) 0;
+}
+
+.view__empty {
+  margin: auto;
+  max-width: 44rem;
+  padding: var(--spacing-md);
+  text-align: center;
+}
+
+.view__empty-more {
+  color: var(--c-font-muted);
+  font-size: 0.85em;
+}
+
+.view__canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--c-primary);
+}
+
+.view--dropping .view {
+  outline: 2px dashed var(--c-accent);
+  outline-offset: -6px;
+}
+
+[hidden] {
+  display: none !important;
+}

@@ -8,6 +8,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
+    "build:view": "tsc --noEmit && vite build --mode view && node -e \"require('fs').copyFileSync('dist-view/view.html','dist-view/index.html')\"",
     "dev": "vite",
     "test:e2e": "playwright test",
     "lint:rad": "node scripts/rad-core-lint.mjs",

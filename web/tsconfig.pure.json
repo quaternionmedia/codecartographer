@@ -48,6 +48,7 @@
     "src/features/cartography/chrestomathy_rows.ts",
     "src/layout/saved_layout.ts",
     "src/features/show/show_address.ts",
+    "src/features/view/view_document.ts",
     "src/features/graph/services/parse_notes.ts",
     "src/features/cartography/cartography_actions.ts",
     "src/features/cartography/followed_draft.ts",
