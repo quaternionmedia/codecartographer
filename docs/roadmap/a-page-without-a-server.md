@@ -52,14 +52,10 @@ Each step is a pull request, measured as its last section says.
 
 ### 1. Published
 
-- A workflow builds the page (`npm run build:view`) on every push to `main`
-  that changes `web/`, and deploys its folder to this repository's GitHub
-  Pages. Pages is enabled with **GitHub Actions** as its source, by the
-  repository's owner.
-- The record names the host in its service inventory entry: GitHub Pages
-  serves static files, and any static host serves the same folder, so its
-  withdrawal is a change of host and of the links to it, not an engineering
-  project.
+- `.github/workflows/pages.yml` publishes the page from `main`
+  ([Published](../view.md#published)). What remains is the repository's
+  owner setting **GitHub Actions** as Pages's source, and the workflow's first
+  run on `main`.
 - **Done when** the published page draws carlos's code view from the corpus's
   site: `view.html?doc=../qm/show/project/carlos/show.json&view=code`.
 

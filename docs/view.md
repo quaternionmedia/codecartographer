@@ -70,13 +70,30 @@ What is already drawn stays drawn.
 `view.html`, the same page again as `index.html` so a folder's address opens
 it, and the assets they name, relative to the page. The page's script is
 34.5 KB gzipped, d3 included, against the 145.8 KB the window loads at once.
-Copy the folder to any static host; the dev server (`npm run dev`) serves the
-page at `/view.html` beside the window.
+Copy the folder to any static host, as the workflow below does; the dev
+server (`npm run dev`) serves the page at `/view.html` beside the window.
 
 The browser suite opens it two ways (`web/tests/e2e/view.spec.ts`): from the
 dev server, and built, from a subfolder of a plain static server
 (`web/scripts/static-server.mjs`). Every test refuses each request to a path
 the backend mounts, on any origin, and counts them: none.
+
+## Published
+
+`.github/workflows/pages.yml` publishes the page to this repository's GitHub
+Pages, at `https://quaternionmedia.github.io/codecartographer/view.html`, and
+the same page at the folder's own address. It builds `npm run build:view` on
+each push to `main` that changes `web/`, uploads the folder the build writes,
+and deploys it; it can be run again by hand from `main`. No pull request is
+published: the browser suite opens the same built folder instead.
+
+The repository's owner sets GitHub Actions as Pages's source, in the
+repository's settings under Pages. Until then the deploy job fails, and
+nothing else does.
+
+The page shares `quaternionmedia.github.io` with the corpus's site, so a
+relative address reaches the corpus's show documents:
+`view.html?doc=../qm/show/project/carlos/show.json&view=code`.
 
 ## Not yet
 
