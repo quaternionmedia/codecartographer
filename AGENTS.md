@@ -23,12 +23,25 @@ other briefing, read this file fully before your first commit or edit.
    request a review -- in this repo, and in the `governance/qm` submodule when
    you touch this project's records there (that PR is based on
    `project/codecartographer`, never on `main`). Get every gate green.
-   **Nothing reaches `main` without the human's explicit click**: leave the
-   green PR open and say so in the handoff. Never push `main` directly, and
-   never close a PR by pushing its commits onto its base -- pushing first
-   *merges* it. `governance/qm/AGENTS.md` item 3 and
-   `governance/qm/handbook/async-contract.md` §1-3 are the rules; where this
-   summary and those disagree, they win and this is repaired.
+   **Merge your PR into `main` yourself, with a merge commit, once every
+   check is green and the full local suite has passed at its head**: the
+   Tests section below, `npm run build` and every other `test:*` script in
+   `web/package.json`, synced with `--extra dev --extra c-parsing`, after the
+   branch is updated from `main`. The checks run part of a change, so the
+   suite is the rest of the evidence: a suite that cannot run is not a pass,
+   a failure `main` shares is still a failure, and a skip is named with its
+   reason. Bolster the tests first: every defect a review of the PR finds is
+   pinned by a test you have seen fail, then fixed on its branch -- not
+   deferred as a follow-up. Merge at the head you tested (`gh pr merge <n>
+   --merge --match-head-commit <sha>`), and put that head and what each
+   command reported in the PR body. **A PR into `project/codecartographer`
+   is the human's click**: no session merges its own records. Never push `main`
+   directly, and never close a PR by pushing its commits onto its base --
+   pushing first *merges* it. `governance/qm/AGENTS.md` item 3 and
+   `governance/qm/handbook/async-contract.md` §1-3 are the rules; this
+   project adds the local suite to their "merge once every gate is green",
+   and where this summary and those otherwise disagree, they win and this is
+   repaired.
 4. **Human-only contributorship applies to every commit you make here** (see
    `governance/qm/records/DRAFT-human-only-contributorship.md`): do not add
    yourself, your model name, or any co-author trailer naming an unmonitored
