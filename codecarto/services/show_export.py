@@ -66,9 +66,11 @@ class Subject:
         # A family's code view is the family with each of its projects' code
         # map in it. The whole corpus is not drawn: every project's code map
         # to its symbols is a picture several times what a site page can
-        # hold, and its families hold it a part each.
+        # hold, and its families hold it a part each. The imports view grows
+        # with the projects and what they share, not with their code
+        # (docs/scale.md, rule 8), so the index and each family draw one.
         return {"project": ("estate", "code", "system"),
-                "family": ("estate", "code")}.get(self.kind, ("estate",))
+                "family": ("estate", "code", "imports")}.get(self.kind, ("estate", "imports"))
 
 
 def parse_subject(text: str) -> Subject:

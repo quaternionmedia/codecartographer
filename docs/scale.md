@@ -219,10 +219,15 @@ double:
 
 What the projects share grows with the number of projects, not with the code
 inside them. So a view of it, one mark a project and one a module, stays
-small: the window's imports view of every family draws 817 elements for the 25
-projects with a clone beside this checkout, and a family's 169 to 221.
-Growing at 11 months to double, it reaches the 15,000-element picture budget
-in about four years.
+small. Exported on 2026-10-31 (UTC), each project read at the commit its code
+map was drawn from, the index's imports view is 474 elements and a family's 17
+to 202, each drawn in about 33 ms here, as an estate is
+([docs/scale/imports-export.json](scale/imports-export.json)). The export read
+25 of the index's 39 members: 12 had no clone beside the checkout it ran from,
+and the clones of ShowRunner and TheatreMix-python lacked the commits their
+code maps were drawn from, so the links into ShowRunner are not in that
+picture. Growing at 11 months to double, the index's view reaches the
+15,000-element picture budget in about four and a half years.
 
 ## Budgets
 
@@ -315,8 +320,9 @@ The rules for views across projects, which the imports view is the first of:
     projects, what they share, or the code in them -- and measures its
     pictures with `codecarto show measure`. A view that grows with the code
     is the live window's, linked by address, unless it steps back a level
-    (rules 2 and 3). The imports view is drawn in the window and is not yet
-    exported; this is the rule it meets first.
+    (rules 2 and 3). The imports view met it first: the index and each
+    family draw it, it grows with the projects and what they share, and its
+    ten pictures are 17 to 474 elements (*What the projects share*).
 12. **A project's source is read once for each commit.** What a view reads
     from the code grows with the code: the index's imports view took 7 s to
     answer here with nothing read yet, and 0.03 s to build again once every

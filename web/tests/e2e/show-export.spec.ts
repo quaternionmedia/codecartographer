@@ -242,6 +242,38 @@ test('a code map is pictured once every node it was sent is drawn, with none of 
   lean(picture);
 });
 
+test("the index's and a family's imports views are written as pictures, naming what each read", async ({ page }) => {
+  /**
+   * What the members import in common grows with the projects, not with their
+   * code (`docs/scale.md`, rule 8), so the index and each family draw it. The
+   * backend reads whatever clones sit beside the checkout it runs from, so
+   * this says what each document names, not how many modules it found.
+   */
+  test.setTimeout(120_000);
+  const out = test.info().outputPath('show');
+  const everyFamily: ManifestSubject = { ...index, views: ['estate', 'imports'] };
+  const performing: ManifestSubject = {
+    kind: 'family', name: 'performing', address: 'family:performing', folder: 'family/performing',
+    views: ['imports'], digest: 'sha256:performing',
+  };
+  await exportSubject(page, everyFamily, manifest(out));
+  await exportSubject(page, performing, manifest(out));
+
+  for (const [folder, files] of [['index', { estate: 'estate.svg', imports: 'imports.svg' }],
+                                 ['family/performing', { imports: 'imports.svg' }]] as const) {
+    const shown = JSON.parse(read(join(out, ...folder.split('/'), 'show.json')));
+    expect(shown.files).toEqual(files);
+    // Mutation: draw the imports view from the estate's route -- it counts no
+    // imports and names nothing read, and this fails.
+    const counted = shown.views.imports.metadata.imports;
+    expect(Object.keys(counted).sort()).toEqual(['alone', 'ambiguous', 'links', 'read', 'shared', 'unread']);
+    expect(Object.keys(shown.views.imports.metadata.bases)).toContain('imported');
+    expect(shown.views.imports.metadata.caveat).toContain('at the commit its show document was drawn from');
+    expect(shown.views.imports.metadata.caveat).not.toMatch(/beside this|this checkout|this disk/);
+    lean(read(join(out, ...folder.split('/'), 'imports.svg')));
+  }
+});
+
 test('a drawing moved by less than a step writes the same picture', async ({ page }) => {
   /**
    * Two exports of the same sources differed, in most pictures, in

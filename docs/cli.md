@@ -389,8 +389,13 @@ Each subject's folder -- `index/`, `family/<name>/`, `project/<name>/` --
 holds `show.json` and a picture of each view the window draws: `estate.svg`,
 `code.svg` (a project's code map, a Showcase as the window opens it, drawn to
 its symbols and held to the window's floor of 100 nodes, with its key; the
-document's `metadata.depth` says how deep it was drawn) and `system.png` (a
-project's system view, which draws in HTML). A family's `code.svg` is the
+document's `metadata.depth` says how deep it was drawn), `system.png` (a
+project's system view, which draws in HTML) and, for the index and each
+family, `imports.svg`: what their projects import in common, each project read
+at the commit its code map was drawn from, which the document names
+(`metadata.imports.read`). A project whose clone beside this checkout lacks
+that commit is named among the `unread`, so fetch each clone before an
+export. A family's `code.svg` is the
 family with each of its projects' code map in it, its subfamilies' too, drawn
 after every project from the code maps this export has just written under
 `--out` (the server reads them through `CODECARTO_SHOW_DOCS`); its document

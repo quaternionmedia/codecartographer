@@ -521,8 +521,70 @@ def test_a_family_s_imports_view_shares_what_its_own_members_share(client, impor
     monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(importing))
     results = _results(client, "/show/family/core/imports/gjgf")
     assert sorted(n for n in _nodes(results) if n.startswith("module::")) == ["module::python:fastapi"]
-    assert results["metadata"]["imports"] == {"links": 1, "shared": 1, "ambiguous": 0, "alone": 0,
-                                              "unread": ["qm"]}
+    imports = results["metadata"]["imports"]
+    assert {k: v for k, v in imports.items() if k != "read"} == {"links": 1, "shared": 1, "ambiguous": 0,
+                                                                 "alone": 0, "unread": ["qm"]}
+    # Each member read, and the commit: its clone's default branch, since no
+    # member here has a show document.
+    assert sorted(imports["read"]) == ["alpha", "beta"]
+    assert all(len(commit) == 40 for commit in imports["read"].values())
+
+
+def _head(where: Path) -> str:
+    return subprocess.run(["git", "-C", str(where), "rev-parse", "HEAD"], check=True,
+                          capture_output=True, text=True).stdout.strip()
+
+
+def _drawn_from(docs: Path, name: str, commit: str) -> None:
+    (docs / "project" / name).mkdir(parents=True)
+    (docs / "project" / name / "show.json").write_text(
+        json.dumps({"schema": 1, "provenance": {"source": {"repo": f"example/{name}", "commit": commit}}}),
+        encoding="utf-8")
+
+
+def test_an_imports_view_reads_a_project_at_the_commit_its_show_document_was_drawn_from(
+        client, importing, monkeypatch, tmp_path):
+    # alpha's code map was drawn while alpha imported beta; its clone has gone
+    # on to a commit that does not. Mutation: read alpha at its clone's default
+    # branch -- the link its drawn commit holds is lost, and this fails.
+    drawn = _head(importing / "alpha")
+    (importing / "alpha" / "a.py").write_text("import fastapi\n", encoding="utf-8")
+    _git(importing / "alpha", "commit", "-q", "-am", "no beta")
+    docs = tmp_path / "docs"
+    _drawn_from(docs, "alpha", drawn)
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(importing))
+    monkeypatch.setenv("CODECARTO_SHOW_DOCS", str(docs))
+    results = _results(client, "/show/family/core/imports/gjgf")
+    links = [(e["source"], e["target"]) for e in _edges(results)
+             if e["basis"] == "imported" and e["target"].startswith("repo::")]
+    assert links == [("repo::alpha", "repo::beta")]
+    assert results["metadata"]["imports"]["read"]["alpha"] == drawn
+    assert "at the commit its show document was drawn from" in results["metadata"]["caveat"]
+
+
+def test_an_imports_view_reads_nothing_of_a_clone_that_lacks_the_drawn_commit(
+        client, importing, monkeypatch, tmp_path):
+    # beta's document names a commit its clone does not hold. Mutation: read
+    # the clone's default branch instead -- beta's state on this one machine
+    # is drawn as if it were the drawn commit's, and this fails.
+    docs = tmp_path / "docs"
+    _drawn_from(docs, "beta", "0" * 40)
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(importing))
+    monkeypatch.setenv("CODECARTO_SHOW_DOCS", str(docs))
+    imports = _results(client, "/show/family/core/imports/gjgf")["metadata"]["imports"]
+    assert imports["unread"] == ["beta", "qm"]
+    assert "beta" not in imports["read"]
+
+
+def test_a_drawn_commit_is_handed_to_git_only_as_a_commit_id(client, importing, monkeypatch, tmp_path):
+    # A document is data. Mutation: hand git whatever the document names -- an
+    # option, here, and this fails (alpha is read at its default branch).
+    docs = tmp_path / "docs"
+    _drawn_from(docs, "alpha", "--output=x")
+    monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(importing))
+    monkeypatch.setenv("CODECARTO_SHOW_DOCS", str(docs))
+    imports = _results(client, "/show/family/core/imports/gjgf")["metadata"]["imports"]
+    assert imports["read"]["alpha"] == _head(importing / "alpha")
 
 
 def test_an_imports_view_names_who_it_could_not_read_and_never_a_private_member(client, importing,

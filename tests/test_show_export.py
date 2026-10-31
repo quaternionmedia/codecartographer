@@ -78,16 +78,18 @@ def test_with_an_inventory_a_project_is_one_the_host_lists() -> None:
     assert [s.name for s in show_export.subjects(reading, "all") if s.kind == "project"] == ["carlos", "moat", "qm"]
 
 
-def test_a_project_has_three_views_a_family_two_and_the_index_one() -> None:
+def test_a_project_has_three_views_a_family_three_and_the_index_two() -> None:
     assert Subject("project", "carlos").views == ("estate", "code", "system")
-    # A family's code view is the family with its projects' code in it.
-    # Mutation: give a family its estate alone -- no family's code is drawn,
-    # and this fails.
-    assert Subject("family", "performing").views == ("estate", "code")
-    # The whole corpus is drawn a family at a time. Mutation: draw the index's
-    # code and full views again -- a picture of every project's code at once,
-    # and this fails.
-    assert Subject("index").views == ("estate",)
+    # A family's code view is the family with its projects' code in it, and
+    # its imports view what its projects import in common. Mutation: give a
+    # family its estate alone -- no family's code or imports are drawn, and
+    # this fails.
+    assert Subject("family", "performing").views == ("estate", "code", "imports")
+    # The whole corpus is drawn a family at a time; what it imports grows with
+    # its projects, not their code, so the index draws that. Mutation: draw the
+    # index's code and full views again -- a picture of every project's code at
+    # once, and this fails; or leave out its imports, and this fails.
+    assert Subject("index").views == ("estate", "imports")
     assert Subject("project", "carlos").folder == "project/carlos"
     assert Subject("index").folder == "index"
 

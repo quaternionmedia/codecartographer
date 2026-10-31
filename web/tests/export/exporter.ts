@@ -26,7 +26,7 @@ import { join } from 'node:path';
 
 import { expect, type Page, type Response } from '@playwright/test';
 
-export type View = 'estate' | 'code' | 'system';
+export type View = 'estate' | 'code' | 'system' | 'imports';
 
 export interface ManifestSubject {
   kind: 'index' | 'family' | 'project';
@@ -283,6 +283,18 @@ async function drawFamilyCode(page: Page, subject: ManifestSubject, dir: string)
   return { graph: "each project's code view's", metadata: drawn.metadata };
 }
 
+/**
+ * What the index's or a family's members import in common, and of each
+ * other (`docs/scale.md`, rule 8). The server reads each project at the
+ * commit its code map was drawn from, which the document names
+ * (`metadata.imports.read`), so the picture shows no state only a clone on
+ * this machine holds; a member whose clone lacks that commit is named unread.
+ */
+async function drawImports(page: Page, subject: ManifestSubject, dir: string) {
+  const route = subject.kind === 'index' ? '/show/index/imports/gjgf' : `/show/family/${subject.name}/imports/gjgf`;
+  return drawShowgraph(page, route, `./?show=${subject.address}&view=imports`, join(dir, 'imports.svg'));
+}
+
 async function drawShowgraph(page: Page, route: string, address: string, file: string) {
   // **READ ON ITS WAY TO THE PAGE, NOT FROM THE PAGE'S NETWORK LOG.** The log
   // keeps ten megabytes of an answer, and the whole corpus's was several
@@ -395,6 +407,9 @@ export async function exportSubject(page: Page, subject: ManifestSubject, manife
     } else if (subject.kind === 'family' && view === 'code') {
       views.code = await drawFamilyCode(page, subject, dir);
       files.code = 'code.svg';
+    } else if (view === 'imports') {
+      views.imports = await drawImports(page, subject, dir);
+      files.imports = 'imports.svg';
     } else if (!answers[view]?.available) {
       views[view] = absence(subject, view, answers[view]);
     } else if (view === 'code') {
