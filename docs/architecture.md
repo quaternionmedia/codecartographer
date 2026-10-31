@@ -124,7 +124,8 @@ web/src/
 │   └── provenance.ts                # source and caveat, above the controls
 │
 ├── features/view/
-│   └── view_document.ts             # what the page without a server reads and refuses (pure; tested under node)
+│   ├── view_document.ts             # what the page without a server reads and refuses (pure; tested under node)
+│   └── view_walk.ts                 # the page's addresses, views, list and trail: where a reader goes (pure)
 │
 ├── features/graph/
 │   ├── services/

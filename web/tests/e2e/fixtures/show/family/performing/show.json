@@ -1,0 +1,3082 @@
+{
+ "schema": 1,
+ "subject": {
+  "kind": "family",
+  "name": "performing"
+ },
+ "provenance": {
+  "claims": {
+   "repo": "quaternionmedia/qm",
+   "commit": "153bb1241988399d4a25897e3f3703e5c2f1b4dd",
+   "digest": "sha256:3b231c58d10dcb61d938ecd3aa7a24ff591205f45025164ab40a40db95353e09"
+  },
+  "drawn_by": {
+   "graph": "codecartographer@9ba33d6bad83a59e54827c110fd46111c4e4db28+changes"
+  },
+  "drawn_at": "2026-10-31T00:52:12Z"
+ },
+ "views": {
+  "estate": {
+   "graph": {
+    "nodes": {
+     "family::performing": {
+      "label": "performing",
+      "metadata": {
+       "kind": "family",
+       "family": "performing",
+       "drives": "a show — what an audience sees and hears, and the video made before and after it",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "performing — drives a show — what an audience sees and hears, and the video made before and after it",
+       "click": "<p>The <b>performing</b> family drives a show — what an audience sees and hears, and the video made before and after it.</p><p>22 member(s) in all.</p>",
+       "show": "family:performing",
+       "color": "#f2aa4c",
+       "depth": 0,
+       "x": 0,
+       "y": 0,
+       "size": 90,
+       "label_at": "none"
+      }
+     },
+     "family::instruments": {
+      "label": "instruments",
+      "metadata": {
+       "kind": "family",
+       "family": "instruments",
+       "drives": "the sound — looping, synthesis, tempo, remote control surfaces",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "instruments — drives the sound — looping, synthesis, tempo, remote control surfaces",
+       "click": "<p>The <b>instruments</b> family drives the sound — looping, synthesis, tempo, remote control surfaces.</p><p>Within <b>performing</b>.</p><p>10 member(s) in all.</p>",
+       "show": "family:instruments",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 191.23699267789473,
+       "y": -107.3380398874558,
+       "size": 130,
+       "label_at": "none"
+      }
+     },
+     "repo::carlos": {
+      "label": "carlos",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "carlos — v0.0.1 · governed",
+       "click": "<p><b>carlos</b> — Browser workspace for sketching hardware rigs from real gear, patched on the face its sockets are on</p><p>governed. Phase <b>v0.0.1</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:carlos",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 227.23699267789473,
+       "y": -218.13464722576492,
+       "size": 20,
+       "label_at": "above"
+      }
+     },
+     "repo::private-34": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 285.48621627289094,
+       "y": -175.81410906070687,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::qmetronome": {
+      "label": "qmetronome",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.3",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qmetronome — v0.0.3 · governed",
+       "click": "<p><b>qmetronome</b> — Metronome and tempo visualizer for Android 13+: tap tempo, set queues, MIDI clock sync, and the Nothing Phone Glyph Matrix</p><p>governed. Phase <b>v0.0.3</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:qmetronome",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 307.7354398678872,
+       "y": -107.3380398874558,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::holophonor": {
+      "label": "holophonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "holophonor — n/a · not adopted",
+       "click": "<p><b>holophonor</b> — Live looping, unlimited!</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:holophonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 285.48621627289094,
+       "y": -38.861970714204745,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::midiphonor": {
+      "label": "midiphonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "midiphonor — n/a · not adopted",
+       "click": "<p><b>midiphonor</b> — A Holophonor implementation, using Tone.js</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:midiphonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 227.23699267789473,
+       "y": 3.458567450853309,
+       "size": 20,
+       "label_at": "below"
+      }
+     },
+     "repo::uPhonor": {
+      "label": "uPhonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl"
+       ],
+       "hover": "uPhonor — n/a · not adopted · also in irl",
+       "click": "<p><b>uPhonor</b> — Micro-Holophonor</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl.</p>",
+       "show": "project:uPhonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 155.2369926778947,
+       "y": 3.4585674508532946,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "family::irl": {
+      "label": "irl ↗",
+      "metadata": {
+       "kind": "family",
+       "family": "irl",
+       "drives": "matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "elsewhere": true,
+       "shape": "hexagon",
+       "hover": "irl — drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "click": "<p>The <b>irl</b> family drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work.</p><p>9 member(s) in all.</p>",
+       "show": "family:irl",
+       "color": "#dd9b63",
+       "x": -405.2571434582814,
+       "y": 221.417289892775,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "repo::stomp": {
+      "label": "stomp",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl"
+       ],
+       "hover": "stomp — n/a · not adopted · also in irl",
+       "click": "<p><b>stomp</b> — a midi foot controller for Arduino / Teensy</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl.</p>",
+       "show": "project:stomp",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 96.98776908289852,
+       "y": -38.86197071420473,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::wolf": {
+      "label": "wolf",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "wolf — n/a · not adopted",
+       "click": "<p><b>wolf</b> — remote midi controller</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:wolf",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 74.7385454879023,
+       "y": -107.33803988745579,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::ludwig": {
+      "label": "ludwig",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ludwig — n/a · not adopted",
+       "click": "<p><b>ludwig</b> — remote mixing</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:ludwig",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 96.98776908289851,
+       "y": -175.81410906070687,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::waveofhormuz": {
+      "label": "waveofhormuz",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "waveofhormuz — n/a · not adopted",
+       "click": "<p><b>waveofhormuz</b> — VCV Rack 2 strait-shaping square wave oscillator — conflict timeline as a default waveform</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:waveofhormuz",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 155.2369926778947,
+       "y": -218.13464722576492,
+       "size": 20,
+       "label_at": "above"
+      }
+     },
+     "family::performer-display": {
+      "label": "performer-display",
+      "metadata": {
+       "kind": "family",
+       "family": "performer-display",
+       "drives": "the performer — what a player reads while playing",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "performer-display — drives the performer — what a player reads while playing",
+       "click": "<p>The <b>performer-display</b> family drives the performer — what a player reads while playing.</p><p>Within <b>performing</b>.</p><p>3 member(s) in all.</p>",
+       "show": "family:performer-display",
+       "color": "#a693f3",
+       "depth": 1,
+       "x": 56.51040958414335,
+       "y": 211.8952943885224,
+       "size": 60,
+       "label_at": "none"
+      }
+     },
+     "repo::joe": {
+      "label": "joe",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "joe — n/a · not adopted",
+       "click": "<p><b>joe</b> — Realtime sheet music visualization</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:joe",
+       "shape": "circle",
+       "color": "#a693f3",
+       "depth": 2,
+       "x": 116.51040958414336,
+       "y": 211.8952943885224,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::leo": {
+      "label": "leo",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "leo — n/a · not adopted",
+       "click": "<p><b>leo</b> — Web pdf viewer, annotator, collaborator</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:leo",
+       "shape": "circle",
+       "color": "#a693f3",
+       "depth": 2,
+       "x": -3.4895904158566466,
+       "y": 211.8952943885224,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "family::show-control": {
+      "label": "show-control",
+      "metadata": {
+       "kind": "family",
+       "family": "show-control",
+       "drives": "the room — cues, lighting, sound and video playback, audio transport",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "show-control — drives the room — cues, lighting, sound and video playback, audio transport",
+       "click": "<p>The <b>show-control</b> family drives the room — cues, lighting, sound and video playback, audio transport.</p><p>Within <b>performing</b>.</p><p>8 member(s) in all.</p>",
+       "show": "family:show-control",
+       "color": "#a9d05c",
+       "depth": 1,
+       "x": -217.51604177217578,
+       "y": 27.925145427218325,
+       "size": 110,
+       "label_at": "none"
+      }
+     },
+     "repo::ShowRunner": {
+      "label": "ShowRunner",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ShowRunner — n/a · not adopted",
+       "click": "<p><b>ShowRunner</b> — Show control for live performances</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:ShowRunner",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -181.51604177217578,
+       "y": -58.986542818213096,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::Cuelist-python": {
+      "label": "Cuelist-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "Cuelist-python — n/a · not adopted",
+       "click": "<p><b>Cuelist-python</b> — Python helpers for Cuelist (thecuelist.com) and plugin for ShowRunner</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:Cuelist-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -130.60435352674438,
+       "y": -8.074854572781675,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::QLab-python": {
+      "label": "QLab-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "QLab-python — n/a · not adopted",
+       "click": "<p><b>QLab-python</b> — QLab interface for Python</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:QLab-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -130.60435352674438,
+       "y": 63.925145427218325,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::TheatreMix-python": {
+      "label": "TheatreMix-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "TheatreMix-python — n/a · not adopted",
+       "click": "<p><b>TheatreMix-python</b> — Python components for interacting with TheatreMix</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:TheatreMix-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -181.51604177217578,
+       "y": 114.83683367264975,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::cesar": {
+      "label": "cesar",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "cesar — n/a · not adopted",
+       "click": "<p><b>cesar</b> — A unified lighting / sound / video controller for theatrical applications</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:cesar",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -253.51604177217578,
+       "y": 114.83683367264975,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::ira": {
+      "label": "ira",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl"
+       ],
+       "hover": "ira — n/a · not adopted · also in irl",
+       "click": "<p><b>ira</b> — LED controller, designed for live theater</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl.</p>",
+       "show": "project:ira",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -304.4277300176072,
+       "y": 63.9251454272183,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::ShowStopper": {
+      "label": "ShowStopper",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ShowStopper — n/a · not adopted",
+       "click": "<p><b>ShowStopper</b> — Stopwatch geared towards tracking need for the performing arts</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:ShowStopper",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -304.4277300176072,
+       "y": -8.074854572781703,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::aes": {
+      "label": "aes",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "aes — n/a · not adopted",
+       "click": "<p><b>aes</b> — AES67 scripts</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:aes",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -253.51604177217584,
+       "y": -58.98654281821307,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::alfred": {
+      "label": "alfred",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "alfred — v0.0.1 · governed",
+       "click": "<p><b>alfred</b> — serverless video editing</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:alfred",
+       "shape": "square",
+       "color": "#f2aa4c",
+       "depth": 1,
+       "x": -117.93279413165442,
+       "y": -184.89158510777884,
+       "size": 40,
+       "label_at": "left"
+      }
+     },
+     "repo::otto": {
+      "label": "otto",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.0",
+       "attention": "active",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "otto — v0.0.0 · not adopted",
+       "click": "<p><b>otto</b> — automatic video generation</p><p>not adopted. Phase <b>v0.0.0</b> (scaffolded); attention <b>active</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:otto",
+       "shape": "circle",
+       "color": "#f2aa4c",
+       "depth": 1,
+       "x": -41.25799865970122,
+       "y": -215.3852820458313,
+       "size": 40,
+       "label_at": "above"
+      }
+     }
+    },
+    "edges": [
+     {
+      "source": "family::performing",
+      "target": "family::instruments",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "family::performer-display",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "family::show-control",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "repo::alfred",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "repo::otto",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::carlos",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::private-34",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::qmetronome",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::holophonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::midiphonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::uPhonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::stomp",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::wolf",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::ludwig",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::waveofhormuz",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::private-34",
+      "target": "family::performer-display",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::uPhonor",
+      "target": "family::irl",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::stomp",
+      "target": "family::irl",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performer-display",
+      "target": "repo::joe",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performer-display",
+      "target": "repo::leo",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::ShowRunner",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::Cuelist-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::QLab-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::TheatreMix-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::cesar",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::ira",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::ShowStopper",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::aes",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "family::irl",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "repo::otto",
+      "label": "measured from .gitmodules",
+      "metadata": {
+       "kind": "depends_on",
+       "basis": "measured",
+       "stated": false,
+       "hover": "alfred's .gitmodules names otto",
+       "style": "dashed",
+       "color": "#4fb3ad",
+       "size": 1.5
+      }
+     }
+    ],
+    "directed": true,
+    "metadata": {
+     "kind": "show",
+     "subject": "family:performing",
+     "declared": 0,
+     "measured": 1,
+     "unread": [
+      "holophonor",
+      "joe",
+      "leo",
+      "otto",
+      "qmetronome",
+      "uPhonor"
+     ],
+     "undeclared": [
+      {
+       "source": "alfred",
+       "target": "otto"
+      }
+     ]
+    }
+   },
+   "metadata": {
+    "kind": "show",
+    "subject": "family:performing",
+    "source": "families.json",
+    "generated_at": "2026-10-24T14:49:28Z",
+    "commit": "153bb12",
+    "provenance": {
+     "source": "families.json",
+     "commit": "153bb12",
+     "schema": 2,
+     "generated_at": "2026-10-24T14:49:28Z",
+     "overridden": true
+    },
+    "layout": "Compound",
+    "type": "d3",
+    "palette_id": "0",
+    "bases": {
+     "claim": {
+      "style": "solid",
+      "color": "#8a93a6",
+      "size": 1.5
+     },
+     "declared": {
+      "style": "solid",
+      "color": "#e0a526",
+      "size": 2.5
+     },
+     "measured": {
+      "style": "dashed",
+      "color": "#4fb3ad",
+      "size": 1.5
+     }
+    },
+    "declared": 0,
+    "measured": 1,
+    "unread": [
+     "holophonor",
+     "joe",
+     "leo",
+     "otto",
+     "qmetronome",
+     "uPhonor"
+    ],
+    "undeclared": [
+     {
+      "source": "alfred",
+      "target": "otto"
+     }
+    ],
+    "unstated": 1,
+    "notes": [],
+    "caveat": "Membership is a claim a person made in the roster; this draws it and cannot tell whether a repository drives what its family drives. Solid grey edges are claims, gold edges are seams declared in the interop registry, and dashed edges are measured from a member's own manifests and never place it. 6 member(s) had no clone this export could read, so nothing was measured for them: holophonor, joe, leo, otto, qmetronome, uPhonor. 1 measured link(s) have no declared seam: alfred → otto. Each is a seam nobody has stated, not a fault."
+   }
+  },
+  "code": {
+   "graph": "each project's code view's",
+   "metadata": {
+    "kind": "show",
+    "subject": "family:performing",
+    "source": "families.json",
+    "generated_at": "2026-10-24T14:49:28Z",
+    "commit": "153bb12",
+    "provenance": {
+     "source": "families.json",
+     "commit": "153bb12",
+     "schema": 2,
+     "generated_at": "2026-10-24T14:49:28Z",
+     "overridden": true
+    },
+    "layout": "Compound",
+    "type": "d3",
+    "palette_id": "0",
+    "bases": {
+     "claim": {
+      "style": "solid",
+      "color": "#8a93a6",
+      "size": 1.5
+     },
+     "declared": {
+      "style": "solid",
+      "color": "#e0a526",
+      "size": 2.5
+     },
+     "measured": {
+      "style": "dashed",
+      "color": "#4fb3ad",
+      "size": 1.5
+     },
+     "parsed": {
+      "style": "solid",
+      "color": "#56688f",
+      "size": 0.75
+     }
+    },
+    "declared": 0,
+    "measured": 1,
+    "unread": [
+     "holophonor",
+     "joe",
+     "leo",
+     "otto",
+     "qmetronome",
+     "uPhonor"
+    ],
+    "undeclared": [
+     {
+      "source": "alfred",
+      "target": "otto"
+     }
+    ],
+    "unstated": 1,
+    "notes": [],
+    "code": {
+     "carlos": "a5540e7dfb11dea3258cdde8769f26a7dc6d568f",
+     "qmetronome": "1abf5e9f196e33b51567fb866dd3423d4f3a43b9",
+     "holophonor": "dd8d9dbf1c7e9571adc99616330ba56de05f5029",
+     "midiphonor": "407e6c31db235288e05eabf53d7f2074b149b701",
+     "uPhonor": "150f7a770cade664896c403ff27ccc5cf408f08d",
+     "stomp": "6d30a6f47303e2378587f1e5870d1461d1443244",
+     "wolf": "d960d108d8915b195c5de3b74fc10ac2144e7670",
+     "ludwig": "fe7ee650185685313450f4ffe7e157d503c8cdf3",
+     "waveofhormuz": "83746f7cbcaa491c1e55e5b576f4b6abed7999e7",
+     "joe": "474307fc49c20e7efa7393883c9eb5b97a4dbfac",
+     "leo": "9305c59e7287eaccc5a3ced59a58d053ec66d30e",
+     "ShowRunner": "f37a60b9196ff7f1583cc3426046cc7c7f0fd910",
+     "Cuelist-python": "e891a76ff342f2ffa5c5deb19144013ec13f942c",
+     "QLab-python": "ea8028ed94c9d5f52a688127fe0b8dfb3a8e130c",
+     "TheatreMix-python": "5d3fc153aeb2bedb559da92d243247b62bed2289",
+     "cesar": "25926322d8f04ab1736ab3d9993772d804fe9da3",
+     "ira": "a04467f835d3399d0f450a9a9abc2ccd9d5f7bb5",
+     "ShowStopper": "51f8b13c14d3aeeb026981f42798c6abe83adde5",
+     "aes": "d602645755ff6d57c94cf9c289d0a505ce1d69e2",
+     "alfred": "7fff7ae01bce8f29d05ccf569237fcdf3416b5c0",
+     "otto": "c57b2ad70afa9af629efd0b58f8c2585db501a78"
+    },
+    "caveat": "Membership is a claim a person made in the roster; this draws it and cannot tell whether a repository drives what its family drives. Solid grey edges are claims, gold edges are seams declared in the interop registry, and dashed edges are measured from a member's own manifests and never place it. 6 member(s) had no clone this export could read, so nothing was measured for them: holophonor, joe, leo, otto, qmetronome, uPhonor. Each project's code is the code map its show document in the corpus holds, drawn from its default branch: 21 project(s). 1 measured link(s) have no declared seam: alfred → otto. Each is a seam nobody has stated, not a fault."
+   }
+  },
+  "imports": {
+   "graph": {
+    "nodes": {
+     "family::performing": {
+      "label": "performing",
+      "metadata": {
+       "kind": "family",
+       "family": "performing",
+       "drives": "a show — what an audience sees and hears, and the video made before and after it",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "performing — drives a show — what an audience sees and hears, and the video made before and after it",
+       "click": "<p>The <b>performing</b> family drives a show — what an audience sees and hears, and the video made before and after it.</p><p>22 member(s) in all.</p>",
+       "show": "family:performing",
+       "color": "#f2aa4c",
+       "depth": 0,
+       "x": 0,
+       "y": 0,
+       "size": 90,
+       "label_at": "none"
+      }
+     },
+     "family::instruments": {
+      "label": "instruments",
+      "metadata": {
+       "kind": "family",
+       "family": "instruments",
+       "drives": "the sound — looping, synthesis, tempo, remote control surfaces",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "instruments — drives the sound — looping, synthesis, tempo, remote control surfaces",
+       "click": "<p>The <b>instruments</b> family drives the sound — looping, synthesis, tempo, remote control surfaces.</p><p>Within <b>performing</b>.</p><p>10 member(s) in all.</p>",
+       "show": "family:instruments",
+       "color": "#43c6bf",
+       "depth": 1,
+       "x": 191.23699267789473,
+       "y": -107.3380398874558,
+       "size": 130,
+       "label_at": "none"
+      }
+     },
+     "repo::carlos": {
+      "label": "carlos",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "carlos — v0.0.1 · governed",
+       "click": "<p><b>carlos</b> — Browser workspace for sketching hardware rigs from real gear, patched on the face its sockets are on</p><p>governed. Phase <b>v0.0.1</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:carlos",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 227.23699267789473,
+       "y": -218.13464722576492,
+       "size": 50,
+       "label_at": "above"
+      }
+     },
+     "repo::private-34": {
+      "label": "a private member",
+      "metadata": {
+       "kind": "private",
+       "hover": "a private member, counted and not named",
+       "click": "<p>A private member. The corpus counts it and does not name it.</p>",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 285.48621627289094,
+       "y": -175.81410906070687,
+       "size": 30,
+       "label_at": "right"
+      }
+     },
+     "repo::qmetronome": {
+      "label": "qmetronome",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.3",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "qmetronome — v0.0.3 · governed",
+       "click": "<p><b>qmetronome</b> — Metronome and tempo visualizer for Android 13+: tap tempo, set queues, MIDI clock sync, and the Nothing Phone Glyph Matrix</p><p>governed. Phase <b>v0.0.3</b> (stated); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:qmetronome",
+       "shape": "square",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 307.7354398678872,
+       "y": -107.3380398874558,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::holophonor": {
+      "label": "holophonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "holophonor — n/a · not adopted",
+       "click": "<p><b>holophonor</b> — Live looping, unlimited!</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:holophonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 285.48621627289094,
+       "y": -38.861970714204745,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::midiphonor": {
+      "label": "midiphonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "midiphonor — n/a · not adopted",
+       "click": "<p><b>midiphonor</b> — A Holophonor implementation, using Tone.js</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:midiphonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 227.23699267789473,
+       "y": 3.458567450853309,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "repo::uPhonor": {
+      "label": "uPhonor",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl"
+       ],
+       "hover": "uPhonor — n/a · not adopted · also in irl",
+       "click": "<p><b>uPhonor</b> — Micro-Holophonor</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl.</p>",
+       "show": "project:uPhonor",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 155.2369926778947,
+       "y": 3.4585674508532946,
+       "size": 30,
+       "label_at": "below"
+      }
+     },
+     "family::irl": {
+      "label": "irl ↗",
+      "metadata": {
+       "kind": "family",
+       "family": "irl",
+       "drives": "matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "elsewhere": true,
+       "shape": "hexagon",
+       "hover": "irl — drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work",
+       "click": "<p>The <b>irl</b> family drives matter — a thing somebody builds, holds or installs: parts, boards, enclosures, and the firmware that makes one work.</p><p>9 member(s) in all.</p>",
+       "show": "family:irl",
+       "color": "#dd9b63",
+       "x": -405.2571434582814,
+       "y": 221.417289892775,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "repo::stomp": {
+      "label": "stomp",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl"
+       ],
+       "hover": "stomp — n/a · not adopted · also in irl",
+       "click": "<p><b>stomp</b> — a midi foot controller for Arduino / Teensy</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl.</p>",
+       "show": "project:stomp",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 96.98776908289852,
+       "y": -38.86197071420473,
+       "size": 30,
+       "label_at": "left"
+      }
+     },
+     "repo::wolf": {
+      "label": "wolf",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "wolf — n/a · not adopted",
+       "click": "<p><b>wolf</b> — remote midi controller</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:wolf",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 74.7385454879023,
+       "y": -107.33803988745579,
+       "size": 110,
+       "label_at": "left"
+      }
+     },
+     "repo::ludwig": {
+      "label": "ludwig",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ludwig — n/a · not adopted",
+       "click": "<p><b>ludwig</b> — remote mixing</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:ludwig",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 96.98776908289851,
+       "y": -175.81410906070687,
+       "size": 40,
+       "label_at": "left"
+      }
+     },
+     "repo::waveofhormuz": {
+      "label": "waveofhormuz",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "waveofhormuz — n/a · not adopted",
+       "click": "<p><b>waveofhormuz</b> — VCV Rack 2 strait-shaping square wave oscillator — conflict timeline as a default waveform</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:waveofhormuz",
+       "shape": "circle",
+       "color": "#43c6bf",
+       "depth": 2,
+       "x": 155.2369926778947,
+       "y": -218.13464722576492,
+       "size": 20,
+       "label_at": "above"
+      }
+     },
+     "family::performer-display": {
+      "label": "performer-display",
+      "metadata": {
+       "kind": "family",
+       "family": "performer-display",
+       "drives": "the performer — what a player reads while playing",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "performer-display — drives the performer — what a player reads while playing",
+       "click": "<p>The <b>performer-display</b> family drives the performer — what a player reads while playing.</p><p>Within <b>performing</b>.</p><p>3 member(s) in all.</p>",
+       "show": "family:performer-display",
+       "color": "#a693f3",
+       "depth": 1,
+       "x": 56.51040958414335,
+       "y": 211.8952943885224,
+       "size": 60,
+       "label_at": "none"
+      }
+     },
+     "repo::joe": {
+      "label": "joe",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "joe — n/a · not adopted",
+       "click": "<p><b>joe</b> — Realtime sheet music visualization</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:joe",
+       "shape": "circle",
+       "color": "#a693f3",
+       "depth": 2,
+       "x": 116.51040958414336,
+       "y": 211.8952943885224,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::leo": {
+      "label": "leo",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "leo — n/a · not adopted",
+       "click": "<p><b>leo</b> — Web pdf viewer, annotator, collaborator</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:leo",
+       "shape": "circle",
+       "color": "#a693f3",
+       "depth": 2,
+       "x": -3.4895904158566466,
+       "y": 211.8952943885224,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "family::show-control": {
+      "label": "show-control",
+      "metadata": {
+       "kind": "family",
+       "family": "show-control",
+       "drives": "the room — cues, lighting, sound and video playback, audio transport",
+       "elsewhere": false,
+       "shape": "hexagon",
+       "hover": "show-control — drives the room — cues, lighting, sound and video playback, audio transport",
+       "click": "<p>The <b>show-control</b> family drives the room — cues, lighting, sound and video playback, audio transport.</p><p>Within <b>performing</b>.</p><p>8 member(s) in all.</p>",
+       "show": "family:show-control",
+       "color": "#a9d05c",
+       "depth": 1,
+       "x": -217.51604177217578,
+       "y": 27.925145427218325,
+       "size": 110,
+       "label_at": "none"
+      }
+     },
+     "repo::ShowRunner": {
+      "label": "ShowRunner",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ShowRunner — n/a · not adopted",
+       "click": "<p><b>ShowRunner</b> — Show control for live performances</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:ShowRunner",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -181.51604177217578,
+       "y": -58.986542818213096,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::Cuelist-python": {
+      "label": "Cuelist-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "quiet",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "Cuelist-python — n/a · not adopted",
+       "click": "<p><b>Cuelist-python</b> — Python helpers for Cuelist (thecuelist.com) and plugin for ShowRunner</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>quiet</b> (measured).</p>",
+       "show": "project:Cuelist-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -130.60435352674438,
+       "y": -8.074854572781675,
+       "size": 50,
+       "label_at": "right"
+      }
+     },
+     "repo::QLab-python": {
+      "label": "QLab-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "QLab-python — n/a · not adopted",
+       "click": "<p><b>QLab-python</b> — QLab interface for Python</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:QLab-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -130.60435352674438,
+       "y": 63.925145427218325,
+       "size": 50,
+       "label_at": "right"
+      }
+     },
+     "repo::TheatreMix-python": {
+      "label": "TheatreMix-python",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "live",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "TheatreMix-python — n/a · not adopted",
+       "click": "<p><b>TheatreMix-python</b> — Python components for interacting with TheatreMix</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>live</b> (measured).</p>",
+       "show": "project:TheatreMix-python",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -181.51604177217578,
+       "y": 114.83683367264975,
+       "size": 20,
+       "label_at": "right"
+      }
+     },
+     "repo::cesar": {
+      "label": "cesar",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "cesar — n/a · not adopted",
+       "click": "<p><b>cesar</b> — A unified lighting / sound / video controller for theatrical applications</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:cesar",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -253.51604177217578,
+       "y": 114.83683367264975,
+       "size": 60,
+       "label_at": "left"
+      }
+     },
+     "repo::ira": {
+      "label": "ira",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [
+        "irl"
+       ],
+       "hover": "ira — n/a · not adopted · also in irl",
+       "click": "<p><b>ira</b> — LED controller, designed for live theater</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p><p>Also in irl.</p>",
+       "show": "project:ira",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -304.4277300176072,
+       "y": 63.9251454272183,
+       "size": 80,
+       "label_at": "left"
+      }
+     },
+     "repo::ShowStopper": {
+      "label": "ShowStopper",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "ShowStopper — n/a · not adopted",
+       "click": "<p><b>ShowStopper</b> — Stopwatch geared towards tracking need for the performing arts</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:ShowStopper",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -304.4277300176072,
+       "y": -8.074854572781703,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::aes": {
+      "label": "aes",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "n/a",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "aes — n/a · not adopted",
+       "click": "<p><b>aes</b> — AES67 scripts</p><p>not adopted. Phase <b>n/a</b> (n/a); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:aes",
+       "shape": "circle",
+       "color": "#a9d05c",
+       "depth": 2,
+       "x": -253.51604177217584,
+       "y": -58.98654281821307,
+       "size": 20,
+       "label_at": "left"
+      }
+     },
+     "repo::alfred": {
+      "label": "alfred",
+      "metadata": {
+       "kind": "project",
+       "governed": true,
+       "phase": "v0.0.1",
+       "attention": "unstated",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "alfred — v0.0.1 · governed",
+       "click": "<p><b>alfred</b> — serverless video editing</p><p>governed. Phase <b>v0.0.1</b> (scaffolded); attention <b>unstated</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:alfred",
+       "shape": "square",
+       "color": "#f2aa4c",
+       "depth": 1,
+       "x": -117.93279413165442,
+       "y": -184.89158510777884,
+       "size": 110,
+       "label_at": "left"
+      }
+     },
+     "repo::otto": {
+      "label": "otto",
+      "metadata": {
+       "kind": "repository",
+       "governed": false,
+       "phase": "v0.0.0",
+       "attention": "active",
+       "recency": "cold",
+       "elsewhere": false,
+       "also_in": [],
+       "hover": "otto — v0.0.0 · not adopted",
+       "click": "<p><b>otto</b> — automatic video generation</p><p>not adopted. Phase <b>v0.0.0</b> (scaffolded); attention <b>active</b> (claims) beside recency <b>cold</b> (measured).</p>",
+       "show": "project:otto",
+       "shape": "circle",
+       "color": "#f2aa4c",
+       "depth": 1,
+       "x": -41.25799865970122,
+       "y": -215.3852820458313,
+       "size": 40,
+       "label_at": "above"
+      }
+     },
+     "module::python:fastapi": {
+      "label": "fastapi",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 5,
+       "hover": "fastapi (python) — imported by 5 member(s): alfred, carlos, Cuelist-python, ira, wolf",
+       "x": -223.23701916979152,
+       "y": -404.2575934470661,
+       "size": 51,
+       "label_at": "below"
+      }
+     },
+     "module::python:pydantic": {
+      "label": "pydantic",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 5,
+       "hover": "pydantic (python) — imported by 5 member(s): alfred, carlos, Cuelist-python, ludwig, QLab-python",
+       "x": -0.3820399617618131,
+       "y": -533.6102223251244,
+       "size": 51,
+       "label_at": "below"
+      }
+     },
+     "module::python:uvicorn": {
+      "label": "uvicorn",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 4,
+       "hover": "uvicorn (python) — imported by 4 member(s): alfred, carlos, ira, wolf",
+       "x": -138.01601958185387,
+       "y": -442.17458887570564,
+       "size": 41,
+       "label_at": "below"
+      }
+     },
+     "module::javascript:mithril": {
+      "label": "mithril",
+      "metadata": {
+       "kind": "external_module",
+       "language": "javascript",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 3,
+       "hover": "mithril (javascript) — imported by 3 member(s): alfred, midiphonor, wolf",
+       "x": 248.19702069259904,
+       "y": -389.43190355535177,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "module::python:pythonosc": {
+      "label": "pythonosc",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 3,
+       "hover": "pythonosc (python) — imported by 3 member(s): cesar, ira, QLab-python",
+       "x": -437.5216337184922,
+       "y": 160.27474384387324,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "module::python:starlette": {
+      "label": "starlette",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 3,
+       "hover": "starlette (python) — imported by 3 member(s): alfred, ira, wolf",
+       "x": -385.99621860175716,
+       "y": -253.5071750711836,
+       "size": 31,
+       "label_at": "below"
+      }
+     },
+     "module::javascript:interactjs": {
+      "label": "interactjs",
+      "metadata": {
+       "kind": "external_module",
+       "language": "javascript",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "interactjs (javascript) — imported by 2 member(s): alfred, wolf",
+       "x": -67.52463957215942,
+       "y": -456.83628537811796,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:mido": {
+      "label": "mido",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "mido (python) — imported by 2 member(s): cesar, wolf",
+       "x": -461.3940031777525,
+       "y": 19.353098435015095,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:networkx": {
+      "label": "networkx",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "networkx (python) — imported by 2 member(s): cesar, wolf",
+       "x": -458.0982765036356,
+       "y": 91.27762961659121,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:pdfrw": {
+      "label": "pdfrw",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "pdfrw (python) — imported by 2 member(s): alfred, wolf",
+       "x": 4.523767118101173,
+       "y": -461.77754830490454,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:rtmidi": {
+      "label": "rtmidi",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "rtmidi (python) — imported by 2 member(s): ludwig, wolf",
+       "x": 187.05334485261562,
+       "y": -427.4509896145277,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:serial": {
+      "label": "serial",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "serial (python) — imported by 2 member(s): cesar, ira",
+       "x": -530.0257244649287,
+       "y": 94.509073531544,
+       "size": 21,
+       "label_at": "below"
+      }
+     },
+     "module::python:typing_extensions": {
+      "label": "typing_extensions",
+      "metadata": {
+       "kind": "external_module",
+       "language": "python",
+       "shape": "circle",
+       "color": "#5a5a5a",
+       "importers": 2,
+       "hover": "typing_extensions (python) — imported by 2 member(s): Cuelist-python, QLab-python",
+       "x": -369.070354157885,
+       "y": 137.94936979290594,
+       "size": 21,
+       "label_at": "below"
+      }
+     }
+    },
+    "edges": [
+     {
+      "source": "family::performing",
+      "target": "family::instruments",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "family::performer-display",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "family::show-control",
+      "label": "within",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "within (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "repo::alfred",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performing",
+      "target": "repo::otto",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::carlos",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::private-34",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::qmetronome",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::holophonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::midiphonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::uPhonor",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::stomp",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::wolf",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::ludwig",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::instruments",
+      "target": "repo::waveofhormuz",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports fastapi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports pydantic in 6 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 6
+      }
+     },
+     {
+      "source": "repo::carlos",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "carlos imports uvicorn in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::private-34",
+      "target": "family::performer-display",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::midiphonor",
+      "target": "module::javascript:mithril",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "midiphonor imports mithril in 15 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 15
+      }
+     },
+     {
+      "source": "repo::uPhonor",
+      "target": "family::irl",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::stomp",
+      "target": "family::irl",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports fastapi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports uvicorn in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::javascript:mithril",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports mithril in 6 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 6
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:starlette",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports starlette in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::javascript:interactjs",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports interactjs in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:mido",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports mido in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:networkx",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports networkx in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:pdfrw",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports pdfrw in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::wolf",
+      "target": "module::python:rtmidi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "wolf imports rtmidi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::ludwig",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ludwig imports pydantic in 4 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 4
+      }
+     },
+     {
+      "source": "repo::ludwig",
+      "target": "module::python:rtmidi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ludwig imports rtmidi in 6 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 6
+      }
+     },
+     {
+      "source": "family::performer-display",
+      "target": "repo::joe",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::performer-display",
+      "target": "repo::leo",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::ShowRunner",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::Cuelist-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::QLab-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::TheatreMix-python",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::cesar",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::ira",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::ShowStopper",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "family::show-control",
+      "target": "repo::aes",
+      "label": "member",
+      "metadata": {
+       "kind": "contains",
+       "basis": "claim",
+       "stated": true,
+       "hover": "member (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::Cuelist-python",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "Cuelist-python imports fastapi in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::Cuelist-python",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "Cuelist-python imports pydantic in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::Cuelist-python",
+      "target": "module::python:typing_extensions",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "Cuelist-python imports typing_extensions in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::QLab-python",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "QLab-python imports pydantic in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::QLab-python",
+      "target": "module::python:pythonosc",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "QLab-python imports pythonosc in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::QLab-python",
+      "target": "module::python:typing_extensions",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "QLab-python imports typing_extensions in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::cesar",
+      "target": "module::python:pythonosc",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "cesar imports pythonosc in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::cesar",
+      "target": "module::python:mido",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "cesar imports mido in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::cesar",
+      "target": "module::python:networkx",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "cesar imports networkx in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::cesar",
+      "target": "module::python:serial",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "cesar imports serial in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "family::irl",
+      "label": "also in",
+      "metadata": {
+       "kind": "member_of",
+       "basis": "claim",
+       "stated": true,
+       "hover": "also in (claim)",
+       "style": "solid",
+       "color": "#8a93a6",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ira imports fastapi in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ira imports uvicorn in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "module::python:pythonosc",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ira imports pythonosc in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "module::python:starlette",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ira imports starlette in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::ira",
+      "target": "module::python:serial",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "ira imports serial in 2 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 2
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "repo::otto",
+      "label": "measured from .gitmodules",
+      "metadata": {
+       "kind": "depends_on",
+       "basis": "measured",
+       "stated": false,
+       "hover": "alfred's .gitmodules names otto",
+       "style": "dashed",
+       "color": "#4fb3ad",
+       "size": 1.5
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::python:fastapi",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports fastapi in 11 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 11
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::python:pydantic",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports pydantic in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::python:uvicorn",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports uvicorn in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::javascript:mithril",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports mithril in 35 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 35
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::python:starlette",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports starlette in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::javascript:interactjs",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports interactjs in 3 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 3
+      }
+     },
+     {
+      "source": "repo::alfred",
+      "target": "module::python:pdfrw",
+      "label": "imports",
+      "metadata": {
+       "kind": "imports",
+       "basis": "imported",
+       "stated": true,
+       "hover": "alfred imports pdfrw in 1 file(s)",
+       "style": "dotted",
+       "color": "#b48ead",
+       "size": 1.25,
+       "files": 1
+      }
+     }
+    ],
+    "directed": true,
+    "metadata": {
+     "kind": "show",
+     "subject": "family:performing",
+     "declared": 0,
+     "measured": 1,
+     "unread": [
+      "holophonor",
+      "joe",
+      "leo",
+      "otto",
+      "qmetronome",
+      "uPhonor"
+     ],
+     "undeclared": [
+      {
+       "source": "alfred",
+       "target": "otto"
+      }
+     ],
+     "imports": {
+      "links": 0,
+      "shared": 13,
+      "ambiguous": 0,
+      "alone": 62
+     },
+     "imports_read": {
+      "aes": "d602645755ff6d57c94cf9c289d0a505ce1d69e2",
+      "alfred": "7fff7ae01bce8f29d05ccf569237fcdf3416b5c0",
+      "carlos": "a5540e7dfb11dea3258cdde8769f26a7dc6d568f",
+      "cesar": "25926322d8f04ab1736ab3d9993772d804fe9da3",
+      "Cuelist-python": "e891a76ff342f2ffa5c5deb19144013ec13f942c",
+      "ira": "a04467f835d3399d0f450a9a9abc2ccd9d5f7bb5",
+      "ludwig": "fe7ee650185685313450f4ffe7e157d503c8cdf3",
+      "midiphonor": "407e6c31db235288e05eabf53d7f2074b149b701",
+      "QLab-python": "ea8028ed94c9d5f52a688127fe0b8dfb3a8e130c",
+      "ShowStopper": "51f8b13c14d3aeeb026981f42798c6abe83adde5",
+      "stomp": "6d30a6f47303e2378587f1e5870d1461d1443244",
+      "waveofhormuz": "83746f7cbcaa491c1e55e5b576f4b6abed7999e7",
+      "wolf": "d960d108d8915b195c5de3b74fc10ac2144e7670"
+     },
+     "imports_unread": [
+      "holophonor",
+      "joe",
+      "leo",
+      "otto",
+      "qmetronome",
+      "ShowRunner",
+      "TheatreMix-python",
+      "uPhonor"
+     ]
+    }
+   },
+   "metadata": {
+    "kind": "show",
+    "subject": "family:performing",
+    "source": "families.json",
+    "generated_at": "2026-10-24T14:49:28Z",
+    "commit": "153bb12",
+    "provenance": {
+     "source": "families.json",
+     "commit": "153bb12",
+     "schema": 2,
+     "generated_at": "2026-10-24T14:49:28Z",
+     "overridden": true
+    },
+    "layout": "Compound",
+    "type": "d3",
+    "palette_id": "0",
+    "bases": {
+     "claim": {
+      "style": "solid",
+      "color": "#8a93a6",
+      "size": 1.5
+     },
+     "declared": {
+      "style": "solid",
+      "color": "#e0a526",
+      "size": 2.5
+     },
+     "measured": {
+      "style": "dashed",
+      "color": "#4fb3ad",
+      "size": 1.5
+     },
+     "imported": {
+      "style": "dotted",
+      "color": "#b48ead",
+      "size": 1.25
+     }
+    },
+    "declared": 0,
+    "measured": 1,
+    "unread": [
+     "holophonor",
+     "joe",
+     "leo",
+     "otto",
+     "qmetronome",
+     "uPhonor"
+    ],
+    "undeclared": [
+     {
+      "source": "alfred",
+      "target": "otto"
+     }
+    ],
+    "unstated": 1,
+    "notes": [],
+    "imports": {
+     "links": 0,
+     "shared": 13,
+     "ambiguous": 0,
+     "alone": 62,
+     "read": {
+      "aes": "d602645755ff6d57c94cf9c289d0a505ce1d69e2",
+      "alfred": "7fff7ae01bce8f29d05ccf569237fcdf3416b5c0",
+      "carlos": "a5540e7dfb11dea3258cdde8769f26a7dc6d568f",
+      "cesar": "25926322d8f04ab1736ab3d9993772d804fe9da3",
+      "Cuelist-python": "e891a76ff342f2ffa5c5deb19144013ec13f942c",
+      "ira": "a04467f835d3399d0f450a9a9abc2ccd9d5f7bb5",
+      "ludwig": "fe7ee650185685313450f4ffe7e157d503c8cdf3",
+      "midiphonor": "407e6c31db235288e05eabf53d7f2074b149b701",
+      "QLab-python": "ea8028ed94c9d5f52a688127fe0b8dfb3a8e130c",
+      "ShowStopper": "51f8b13c14d3aeeb026981f42798c6abe83adde5",
+      "stomp": "6d30a6f47303e2378587f1e5870d1461d1443244",
+      "waveofhormuz": "83746f7cbcaa491c1e55e5b576f4b6abed7999e7",
+      "wolf": "d960d108d8915b195c5de3b74fc10ac2144e7670"
+     },
+     "unread": [
+      "holophonor",
+      "joe",
+      "leo",
+      "otto",
+      "qmetronome",
+      "ShowRunner",
+      "TheatreMix-python",
+      "uPhonor"
+     ]
+    },
+    "caveat": "Membership is a claim a person made in the roster; this draws it and cannot tell whether a repository drives what its family drives. Solid grey edges are claims, gold edges are seams declared in the interop registry, and dashed edges are measured from a member's own manifests and never place it. 6 member(s) had no clone this export could read, so nothing was measured for them: holophonor, joe, leo, otto, qmetronome, uPhonor. Dotted edges are imports read from each member's own Python, JavaScript and TypeScript at the commit its show document was drawn from, or at its clone's default branch where it has none: 13 module(s) two or more members import, each drawn once, and 0 import(s) of a package one other project's tree holds. A name is all an import says, so a package two projects hold is no link to either (0 here), and the 62 module(s) one member imports alone are left to its code map. 8 member(s) had no clone, or one git could not read at that commit, so their imports are not drawn: holophonor, joe, leo, otto, qmetronome, ShowRunner, TheatreMix-python, uPhonor. 1 measured link(s) have no declared seam: alfred → otto. Each is a seam nobody has stated, not a fault."
+   }
+  }
+ },
+ "files": {
+  "estate": "estate.svg",
+  "code": "code.svg",
+  "imports": "imports.svg"
+ }
+}
