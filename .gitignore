@@ -110,3 +110,8 @@ web/dist-system/
 
 # pure-logic test build output
 web/dist-pure/
+
+# One machine's way of starting this repository's servers from an editor or an
+# assistant's preview pane. It names ports and commands for this disk and this
+# tool; the ports this repository reserves are declared in the corpus's ci/.
+.claude/launch.json
