@@ -25,6 +25,13 @@ const API_PORT = 27182;
 const WEB_PORT = 12340;
 const API = `http://127.0.0.1:${API_PORT}`;
 const WEB = `http://localhost:${WEB_PORT}/codecartographer/`;
+/**
+ * The page without a server, built, on a plain static server: in a subfolder,
+ * as GitHub Pages serves it, with the fixtures' show documents beside it where
+ * the corpus's site serves its own (`tests/e2e/view.spec.ts`).
+ */
+const STATIC_PORT = 12341;
+export const STATIC_SITE = `http://127.0.0.1:${STATIC_PORT}`;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -76,6 +83,15 @@ export default defineConfig({
       // by "the API", and a panel once sat forever asking a port nothing
       // answered on.
       env: { CODECARTO_API: API, CODECARTO_WEB_PORT: String(WEB_PORT) },
+    },
+    {
+      // Built here: nothing else in a browser run builds the page, and the
+      // dev server's page is compiled module by module, not bundled.
+      command: `npm run build:view && node scripts/static-server.mjs ${STATIC_PORT} `
+        + '/codecartographer=dist-view /qm/show=tests/e2e/fixtures/show',
+      url: `${STATIC_SITE}/codecartographer/view.html`,
+      reuseExistingServer: false,
+      timeout: 120_000,
     },
   ],
 });

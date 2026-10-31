@@ -52,6 +52,8 @@ htmlcov/
 node_modules/
 .vite/
 web/dist/
+# the page without a server's build (`npm run build:view`)
+web/dist-view/
 web/test-results/
 web/playwright-report/
 web/blob-report/

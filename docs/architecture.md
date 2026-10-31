@@ -106,6 +106,9 @@ codecarto/
 
 ```
 web/src/
+├── index.html, index.ts       # the window: the dock, its panels, its routes
+├── view.html, view.ts         # the page without a server: the canvas and its key, no route (docs/view.md)
+│
 ├── layout/
 │   ├── golden_layout_shell.ts   # GL bootstrap; "+" add-window; layout save/restore
 │   ├── layout_context.ts        # shared state hub for all GL panels; the step the reader is on
@@ -119,6 +122,9 @@ web/src/
 │   ├── estate_service.ts            # the URLs and document shapes
 │   ├── problem_view.ts              # the one "nothing was drawn" component
 │   └── provenance.ts                # source and caveat, above the controls
+│
+├── features/view/
+│   └── view_document.ts             # what the page without a server reads and refuses (pure; tested under node)
 │
 ├── features/graph/
 │   ├── services/
@@ -139,6 +145,7 @@ web/src/
 │
 ├── state/
 │   ├── types.ts             # GraphStylingOptions, app state shapes
+│   ├── graph_styling.ts     # the styling a canvas starts with, the window's and the page's
 │   ├── config_manager.ts    # the API's address: a meta tag, else the page's origin, else settings
 │   ├── api_base.ts          # API endpoint base URLs
 │   └── state_controller.ts  # Meiosis cell wrapper

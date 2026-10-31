@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 // Where the API is while developing. The dev server proxies to it so the app
 // and its API share an origin in development exactly as they do in production,
 // which removes the whole class of "works built, broken in dev".
@@ -19,52 +21,61 @@ const API_PATHS = [
   '/c-parser', '/pam', '/system', '/db', '/auth', '/docs', '/openapi.json',
 ];
 
-export default {
-  root: 'src',
-  server: {
-    // The port is stated, and it is strict. Without `strictPort`, a busy 1234
-    // made Vite move to 1235 and print it -- while every document here, and the
-    // browser tests' config, said 1234. A reader then measured whatever held
-    // 1234, which on this workstation is very often another project's server.
-    // Failing is the honest answer; `CODECARTO_WEB_PORT` moves it on purpose.
-    port: Number(process.env.CODECARTO_WEB_PORT) || 1234,
-    strictPort: true,
-    // Loopback unless asked. Bound to every interface, this server put its
-    // proxy on the local network -- and through it `/repo/tree?url=<path>`,
-    // which reads a local directory's files. Nothing here runs it in a
-    // container (docker-compose builds the backend alone), so nothing needs
-    // the wider bind; `CODECARTO_WEB_HOST=0.0.0.0` gives it to a session that
-    // means it.
-    host: process.env.CODECARTO_WEB_HOST || 'localhost',
-    proxy: Object.fromEntries(
-      API_PATHS.map((path) => [path, { target: API, changeOrigin: true }]),
-    ),
-  },
-  build: {
-    base: '/codecartographer',
-    outDir: '../dist',
-    emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          // vis-network/vis-data (~530 KB minified) are only ever loaded
-          // via the dynamic import() inside GravisGraphRenderer.render(),
-          // so isolating them here doesn't add to the eager bundle -- it
-          // gives that lazy chunk one stable, named file instead of an
-          // auto-hashed one, and it's never in index.html's
-          // modulepreload list (verified: only d3/golden-layout are).
-          'vis-network': ['vis-network', 'vis-data'],
-          // d3/golden-layout are both needed at startup either way; split
-          // out mainly so unrelated app-code deploys don't invalidate
-          // browser caches for these rarely-changing vendor chunks.
-          'golden-layout': ['golden-layout'],
-          'd3': ['d3'],
+// Two pages, each its own build. The window (`npm run build`, `index.html`) is
+// served by the backend at `/app`, its assets at `/assets`. The page without a
+// server (`npm run build:view`, `view.html`, mode `view`) is served by any
+// static host from any folder of it, so it names its assets relative to
+// itself and carries none of the window's. The dev server serves both.
+export default ({ mode }) => {
+  const page = mode === 'view';
+  return {
+    root: 'src',
+    base: page ? './' : '/',
+    server: {
+      // The port is stated, and it is strict. Without `strictPort`, a busy 1234
+      // made Vite move to 1235 and print it -- while every document here, and the
+      // browser tests' config, said 1234. A reader then measured whatever held
+      // 1234, which on this workstation is very often another project's server.
+      // Failing is the honest answer; `CODECARTO_WEB_PORT` moves it on purpose.
+      port: Number(process.env.CODECARTO_WEB_PORT) || 1234,
+      strictPort: true,
+      // Loopback unless asked. Bound to every interface, this server put its
+      // proxy on the local network -- and through it `/repo/tree?url=<path>`,
+      // which reads a local directory's files. Nothing here runs it in a
+      // container (docker-compose builds the backend alone), so nothing needs
+      // the wider bind; `CODECARTO_WEB_HOST=0.0.0.0` gives it to a session that
+      // means it.
+      host: process.env.CODECARTO_WEB_HOST || 'localhost',
+      proxy: Object.fromEntries(
+        API_PATHS.map((path) => [path, { target: API, changeOrigin: true }]),
+      ),
+    },
+    build: {
+      outDir: page ? '../dist-view' : '../dist',
+      emptyOutDir: true,
+      rollupOptions: {
+        input: fileURLToPath(new URL(page ? './src/view.html' : './src/index.html', import.meta.url)),
+        output: {
+          manualChunks: page ? undefined : {
+            // vis-network/vis-data (~530 KB minified) are only ever loaded
+            // via the dynamic import() inside GravisGraphRenderer.render(),
+            // so isolating them here doesn't add to the eager bundle -- it
+            // gives that lazy chunk one stable, named file instead of an
+            // auto-hashed one, and it's never in index.html's
+            // modulepreload list (verified: only d3/golden-layout are).
+            'vis-network': ['vis-network', 'vis-data'],
+            // d3/golden-layout are both needed at startup either way; split
+            // out mainly so unrelated app-code deploys don't invalidate
+            // browser caches for these rarely-changing vendor chunks.
+            'golden-layout': ['golden-layout'],
+            'd3': ['d3'],
+          },
         },
       },
+      // The vis-network chunk above is intentionally >500 KB but lazy --
+      // the default warning threshold doesn't distinguish eager from lazy
+      // chunks, so it would otherwise flag a non-problem on every build.
+      chunkSizeWarningLimit: 600,
     },
-    // The vis-network chunk above is intentionally >500 KB but lazy --
-    // the default warning threshold doesn't distinguish eager from lazy
-    // chunks, so it would otherwise flag a non-problem on every build.
-    chunkSizeWarningLimit: 600,
-  },
+  };
 };
