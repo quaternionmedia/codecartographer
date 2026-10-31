@@ -91,6 +91,48 @@ that publishes this export adds 10.5 MB to its repository's history, against a
 After the first, which starts the servers, each subject took about 5.7 s and
 2.1 s per thousand marks; core's family code map took 49 s.
 
+## The lean writer
+
+The export's picture writer (`svgOf`, `web/tests/export/exporter.ts`) holds to
+rules 4 and 5 below. Every subject was exported three times on 2026-10-31
+(UTC), from the same sources: the corpus at `153bb12` and each project at its
+default branch's head. One export used the writer as it stood before rules 4
+and 5, and two used the lean one. Over the 93 pictures, and for core's family
+code map:
+
+| | before | lean |
+|---|---|---|
+| elements | 395,859 | 230,320 |
+| bytes | 86.0 MB | 24.8 MB |
+| gzipped | 8.1 MB | 1.4 MB |
+| unseen labels | 40,749 | 0 |
+| pictures over 15,000 elements | 8 | 4 |
+| core's family code map: elements | 101,508 | 50,774 |
+| its bytes, and gzipped | 22.6 MB, 2.0 MB | 5.6 MB, 293 KB |
+| it drawn here | 1,020 ms | 292 ms |
+
+- **What stayed:** the same 74,808 marks and 70,974 links, and the 3,461
+  labels the window showed.
+- **What went:** the 40,749 labels it hid, 124,790 titles, the window's data,
+  restated colours, and digits past the first.
+- **Draw time fell further than elements.** Core's took 29% of its time, where
+  its elements fell to 50%: a browser parses a picture's bytes as well as
+  painting its elements, so the fit above, over pictures carrying all of this,
+  overstates what a lean picture costs.
+- **Still over the picture budget:** the family code maps of core, irl and
+  performing, and apothecary's code map. Rule 3 is theirs.
+- **The same bytes:** two lean exports wrote 82 of the 93 pictures as the same
+  bytes, where the baseline's two wrote 35. The other 11 differ in an
+  outline's label and in the fit that frames it. The canvas places each such
+  label from its text measured at the zoom it is drawn at, and the fit frames
+  the labels, so two runs can settle a step apart. That is the renderer's to
+  settle, not the writer's.
+
+The baseline stays the export the corpus's pages were drawn from until the
+corpus is drawn again with this writer; that redraw's pull request replaces it
+(rule 7). The two reports are [docs/scale/lean.json](scale/lean.json) and
+[docs/scale/lean-before.json](scale/lean-before.json).
+
 ## How fast the corpus grows
 
 `codecarto show growth` read each project's history up to the commit its code
@@ -232,13 +274,14 @@ adopts these.
    - a colour once;
    - one decimal.
 
-   In core's family code map that is half its elements and over half its
-   bytes. Draw time follows elements, so it is about half the time: 508 ms by
-   the fit, against 1,046.
+   In core's family code map that is half its elements and three quarters of
+   its bytes, and it draws in 292 ms where it drew in 1,020 (*The lean
+   writer*).
 5. **The same inputs draw the same bytes.** Coordinates rounded and the fit's
    transform settled to fixed steps, so that a redraw of an unchanged subject
    writes nothing, and the corpus's history grows by what changed, not by the
-   whole folder.
+   whole folder. The lean writer rounds to one decimal and settles the fit to
+   steps of 1% and whole pixels: two exports wrote 82 of 93 pictures the same.
 6. **A redraw draws what changed.** A full export's time grows with the marks
    drawn, which double every few months. Once rule 5 holds, an export skips a
    subject whose source commit, claims and drawer are all unchanged.
