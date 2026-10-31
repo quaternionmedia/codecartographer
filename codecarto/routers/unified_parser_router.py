@@ -122,8 +122,12 @@ def _stamp_cached(cached: dict) -> dict:
     return cached
 
 
-async def _stream_cached_graph(cached: dict, layout: str):
+async def _stream_cached_graph(cached: dict, layout: str, floor: Optional[int] = None):
     """Replay a cached graph as SSE events: meta → nodes (depth-sorted) → edges → done.
+
+    A graph held to a `floor` ends saying the depth it was drawn to, as the
+    stream that drew it did (`stream_floor`): ended without it, a showgraph
+    replayed from the cache was said to be drawn as deep as it was asked for.
 
     Shared between ``stream_parse`` and ``stream_from_url`` so the two
     endpoints stay byte-for-byte identical on the cache-replay path —
@@ -162,7 +166,11 @@ async def _stream_cached_graph(cached: dict, layout: str):
     for edge in edges:
         yield f"event: edge\ndata: {json.dumps(edge)}\n\n"
         await asyncio.sleep(0)
-    yield f"event: done\ndata: {json.dumps({'elapsed_ms': 0, 'from_cache': True})}\n\n"
+    done: dict = {"elapsed_ms": 0, "from_cache": True}
+    if floor:
+        depths = [n["depth"] for n in nodes_list if isinstance(n.get("depth"), int)]
+        done.update(depth=max(depths + [1]), floor=floor, nodes=len(nodes_list))
+    yield f"event: done\ndata: {json.dumps(done)}\n\n"
 
 
 # ── Request bodies ─────────────────────────────────────────────────────────────
@@ -382,6 +390,7 @@ async def stream_from_url(request: StreamUrlRequest):
     from codecarto.services.github_service import is_github_url
     from codecarto.services.local_repo_service import get_local_repo
     from codecarto.services.stream_floor import floored
+    from codecarto.services.showcase_graph import is_showcase, without_imports
 
     effective_depth = (
         MODE_TO_DEPTH.get(request.mode, request.depth)
@@ -392,7 +401,11 @@ async def stream_from_url(request: StreamUrlRequest):
         mode_key += f"/floor{request.floor}"
 
     def held(stream):
-        return floored(stream, request.floor, request.layout) if request.floor else stream
+        if request.floor:
+            return floored(stream, request.floor, request.layout)
+        # A Showcase draws no import (`showcase_graph`); laid out as it
+        # arrives, it is drawn without them.
+        return without_imports(stream) if is_showcase(request.layout) else stream
 
     # Check cache first. annotate_lexicon requests bypass the cache
     # entirely, both read and write - same reasoning as /unified (the
@@ -408,7 +421,7 @@ async def stream_from_url(request: StreamUrlRequest):
         cached = CacheService.get(key)
         if cached is not None:
             return StreamingResponse(
-                _stream_cached_graph(cached, request.layout),
+                _stream_cached_graph(cached, request.layout, request.floor),
                 media_type="text/event-stream",
                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
             )

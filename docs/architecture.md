@@ -186,6 +186,24 @@ scripts) instead receives every file it owns across the whole tree in one
 this because a call is resolved to a function that may be declared in another
 file, which takes the complete file set in one `CParser` call.
 
+**Held once.** A node is held -- by a `contains` or `field_of` edge -- by one
+node: the first hold the parse stated on it (`_one_holder`, at the end of the
+walk). Every later one is a `uses`. A parser names a node by its module and
+its name, so files that import one name each held the same node, and the
+outline the canvas draws round each holder reached across the map to the one
+place it is drawn.
+
+**Python's links.** Besides what each file holds, a Python parse draws what
+its code does with what it holds (`python_links.py`): `calls`, from a function
+to a function or class of its module it calls, `self.` and `cls.` methods
+included; `uses`, from a function to a name it reads that another holds, a
+module's constant say; and, parsed at depth 3, `flows`, from each variable a
+value is computed from to the variable it is assigned to. These are what the
+[Showcase](#showcase-layout) draws between its dots. Each node carries
+`meta.chars`, the most source any one place it stands for spans: a
+definition's whole body, a variable's largest statement assigning it,
+otherwise the expression it was met in.
+
 ## Data Flow
 
 ### Unified parse path (all languages, depth=2)
@@ -328,8 +346,9 @@ in the [UI reference](ui.md#graphbase). The routes are in [the API reference](ap
 ## Map layout
 
 `map_layout` (`codecarto/models/custom_layouts/map_layout.py`, registered in
-`position_service.py`) is the layout a showgraph's code map opens in. Its
-places are `show_layout.code_map`'s, which lays the graph out by its `contains`
+`position_service.py`) draws a code map by its directories and files, and
+places the [Showcase](#showcase-layout)'s, which a showgraph's code map opens
+in. Its places are `show_layout.code_map`'s, which lays the graph out by its `contains`
 and `field_of` edges:
 
 1. **A directory's files fill a disc round it**, the k-th at a radius growing
@@ -369,6 +388,76 @@ twentieth of its size and every node under a pixel. The Map layout lays it out
 about 8,700 by 6,100, and framed whole in an exported picture, 1,400 by 900
 pixels with its outlines, its files are drawn about four pixels across and its
 directories seven.
+
+## Showcase layout
+
+`showcase_layout` (`codecarto/models/custom_layouts/showcase_layout.py`) draws a
+parse to show what a repository holds, not only how it is filed. Its places are
+`show_layout.showcase`'s: `code_map`, sized and spaced as a Showcase.
+
+It is laid out from what it draws (`showcase_graph`): no import node, two in
+five of a code map's, a file importing another drawn as their `depends_on`
+link; and a directory of nothing but markdown, however deep, folded to one
+node as large as the lines its pages hold (`lines_scale`: a directory's two
+dots up to a hundred lines, one more for each ten times as many, at most six).
+The stream measures each page as it reads it (a `lines` event); a folder on
+this disk is measured as it is read. A graph laid out as it arrives drops its
+imports as they come, and folds nothing.
+
+1. **Every node is a circle, as large as its source.** A symbol's or a
+   member's radius is `dot` times `chars_scale` of the characters of source it
+   stands for (`meta.chars`): half a dot up to ten characters, one more for
+   each ten times as many, at most four (`sized`). A file's is half again a
+   dot and a directory's twice (`SHOWCASE_SCALE`), their discs saying what they
+   hold. The server sets each node's `dot_scale` and the canvas draws it at
+   that: a directory or a file a dot, a node of code in its kind's shape
+   fitted inside its circle (`node_shapes.fittedPath`), a function a hexagon
+   and a class a square, so a shape's corners reach no neighbour.
+2. **Each function and class is a glyph**: all it holds packed tight round
+   it (`_glyph`, `circle_pack`, a port of d3's sibling packing), largest
+   first, then kind by kind. The order depends on nothing but what each dot
+   is, so two functions that hold alike are drawn alike wherever they are.
+   A file packs its glyphs and the rest of its code round it the same way
+   (`nest`); with `nest` off it packs all of its code flat. Only a function
+   or a class nests (`_by_symbol`): each level a glyph nests is a circle round
+   circles and the gaps between them, and nested at every level the walker
+   holds by, a file was a quarter dots. Its code given places along a Hilbert
+   curve through one disc, the Showcase's first layout, each function was a
+   run of the curve, shaped by where it fell.
+3. **An outline is a few dots past what it holds**: a file's half
+   `SHOWCASE_PAD` dots, a directory's all of it, and the canvas pads each by
+   the same (`showcasePadding`). The Map's 40 units were twenty dots.
+4. **What nothing holds**, a module imported from outside, is one more disc
+   beside the map rather than a row, and is in no directory's outline: the
+   canvas gives a node nothing holds to the directory nearest it, but not an
+   `external_module`.
+
+The settings ride on the layout's name,
+`Showcase(dot=2,gap=0.5,nest=true,sized=true)`.
+`position_service.layout_spec` reads them, `get_node_positions` hands each to a
+layout that declares it and refuses one it does not, and `layout_key` keeps
+them, sorted, on the name `GraphSerializer` lays the graph out by. A cached
+parse is keyed by the layout as it was asked for, settings and all. The window
+builds the name from Graph Settings (`layout_names.layoutSpec`) and asks again
+when `dot`, `gap`, `nest` or `sized` changes; which links are drawn, how strongly, and
+whether a dot is named, the canvas changes in place. A member the canvas would
+draw grey -- a name, a constant, an argument -- is given its kind's hue
+(`MEMBER_COLOURS`), and each link its kind's colour (`LINK_COLOURS`), none a
+pink or a red. Its key is its own (`legend_marks.showcaseKey`), drawn in the
+canvas's svg rather than over it, so a showgraph's picture holds it: a line of
+each colour the code below the files is drawn in and each link drawn, with no
+count and no heading.
+
+A showgraph's code map opens as a Showcase (`LayoutContext._showcaseLayout`),
+so the corpus's pictures of each project are drawn as one. Held to the floor
+(`stream_floor.floored`), a Showcase is drawn to its symbols at the least,
+where any other layout stops at the files once they reach the floor: drawn to
+its files alone it would have nothing to colour.
+
+The parsers folder of this repository, parsed at depth 3, is 2,008 nodes. The
+Map lays it out 6,987 units by 4,323, and the Showcase at its defaults 449 by
+394: each of its files a disc about two fifths dots, its largest a class of 3.9
+dots, with 177 calls, 1,744 uses and 1,052 flows between them.
 
 ## Compound layout
 

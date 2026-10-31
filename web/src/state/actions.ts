@@ -21,7 +21,7 @@ import { GraphStylingOptions } from './types';
 import { GraphRendererRegistry } from '../features/graph/services/renderers';
 import { Directory, RawFile, RawFolder, RepoInfo } from '../components/models/source';
 import { logger } from '../core/logger';
-import { backendLayoutName } from '../features/graph/services/layout_names';
+import { layoutSpec } from '../features/graph/services/layout_names';
 import { localTree } from '../features/repository/local_tree';
 import { THEME_LABEL_COLOR } from '../features/graph/services/label_color';
 import { parseNotes } from '../features/graph/services/parse_notes';
@@ -31,7 +31,6 @@ import type { PlotTicket } from './latest_plot';
 // The menu's registry name, as the backend spells it. One rule in
 // `layout_names.ts`; this used to be a private table here that fell back to
 // 'Spring' for any name it did not list.
-const convertLayoutToBackend = backendLayoutName;
 
 /**
  * Plot Actions - handles all graph/visualization related operations
@@ -274,7 +273,7 @@ export class PlotActions {
    */
     private createNotebookVnode(graphData: GraphData): void {
       const stylingOptions = this.stateController.state.graphStyling;
-      const layout = convertLayoutToBackend(stylingOptions.layout);
+      const layout = layoutSpec(stylingOptions);
       const themedGraphData = this.applyThemeToGraphData(graphData, stylingOptions);
 
     // Show loading state while fetching HTML
@@ -492,7 +491,7 @@ export class PlotActions {
    */
   async loadDemo(): Promise<boolean> {
     try {
-      const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
+      const layout = layoutSpec(this.stateController.state.graphStyling);
       return await this.plots.plot(
         () => PlotService.loadDemo(this.stateController.api.plotter, layout),
         (data) => this.handlePlotData(data),
@@ -516,9 +515,7 @@ export class PlotActions {
   async loadTopology(request: TopologyRequest = {}): Promise<boolean> {
     this.stateController.clear();
     try {
-      const layout = convertLayoutToBackend(
-        this.stateController.state.graphStyling.layout,
-      );
+      const layout = layoutSpec(this.stateController.state.graphStyling);
       const found = await TopologyService.load(
         this.stateController.api.topology,
         { ...request, layout: request.layout ?? layout },
@@ -720,7 +717,7 @@ export class PlotActions {
   // the state, the canvas and the routes -- the census of the canvas too.
 
   private _layout(): string {
-    return convertLayoutToBackend(this.stateController.state.graphStyling.layout);
+    return layoutSpec(this.stateController.state.graphStyling);
   }
 
   /** Put a document in one field and clear the other, or the reverse (`settlePatch`). */
@@ -769,7 +766,7 @@ export class PlotActions {
    */
   async plotUploads(files: RawFile[], depth: number): Promise<string[] | null> {
     try {
-      const layout = convertLayoutToBackend(this.stateController.state.graphStyling.layout);
+      const layout = layoutSpec(this.stateController.state.graphStyling);
       const opts   = this.stateController.state.parserOptions;
       const exts   = opts.fileExtensions.length > 0 ? opts.fileExtensions : null;
       const size   = files.reduce((total, f) => total + f.size, 0);

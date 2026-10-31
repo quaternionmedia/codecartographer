@@ -1,3 +1,5 @@
+import { LINK_COLOURS, LINK_KINDS, SHOWCASE_LAYOUT, showcaseOf, type ShowcaseOptions, type ShowcaseSettings }
+  from '../../../features/graph/services/showcase';
 import m from 'mithril';
 import { exampleGroups } from '../../../features/examples/examples';
 import type { BundledExample, Example } from '../../../features/examples/examples';
@@ -104,10 +106,59 @@ export interface ControlPanelRenderOptions {
   mode: ControlPanelMode;
 }
 
+/**
+ * The Showcase's settings (`features/graph/services/showcase.ts`), shown while
+ * it is the layout: a dot's size, the gap between dots, how they cluster and
+ * whether each is as large as its source, which the server lays out by; and
+ * which links are drawn, how strongly, and whether a dot is named, which the
+ * canvas draws in place.
+ */
+function showcaseControls(shown: ShowcaseOptions, change: (to: ShowcaseSettings) => void): m.Children {
+  const slider = (label: string, value: number, min: number, max: number, step: number, unit: string,
+                  set: (v: number) => void) => m('div.panel-settings__group', [
+    m('span.panel-settings__label-compact', label),
+    m('div.panel-settings__slider-group', [
+      m('input.panel-settings__slider[type=range]', {
+        min, max, step, value, 'aria-label': label,
+        onchange: (e: Event) => set(parseFloat((e.target as HTMLInputElement).value)),
+      }),
+      m('span.panel-settings__slider-value', `${value}${unit}`),
+    ]),
+  ]);
+  const toggle = (label: string, checked: boolean, set: (v: boolean) => void, swatch?: string) =>
+    m('div.panel-settings__toggle-row', [
+      m('span.panel-settings__label-compact', [
+        swatch ? m('span.panel-settings__swatch', { style: `background:${swatch}` }) : null, label,
+      ]),
+      m('label.panel-settings__toggle-compact.panel-settings__toggle', [
+        m('input[type=checkbox]', {
+          checked, 'aria-label': label,
+          onchange: (e: Event) => set((e.target as HTMLInputElement).checked),
+        }),
+        m('span.panel-settings__toggle-slider'),
+      ]),
+    ]);
+  return m('div.panel-settings__group.panel-settings__showcase', [
+    m('span.panel-settings__label-compact', 'Showcase'),
+    slider('Dot Size', shown.dot, 0.5, 6, 0.5, '', (dot) => change({ dot })),
+    slider('Dot Spacing', shown.gap, 0, 4, 0.25, '', (gap) => change({ gap })),
+    toggle('Cluster by Symbol', shown.nest, (nest) => change({ nest })),
+    toggle('Size by Code', shown.sized, (sized) => change({ sized })),
+    ...LINK_KINDS.map((kind) => toggle(`Links: ${kind}`, shown.links[kind],
+      (on) => change({ links: { [kind]: on } }), LINK_COLOURS[kind])),
+    slider('Link Opacity', shown.linkOpacity, 0.05, 1, 0.05, '', (linkOpacity) => change({ linkOpacity })),
+    toggle('Dot Names', shown.names, (names) => change({ names })),
+    m('p.panel-settings__hint',
+      'Parse at depth 3 to see each function\'s variables and how values flow between them; '
+      + 'at 2, its functions and what they call.'),
+  ]);
+}
+
 const LAYOUT_OPTIONS = [
   { value: 'spring_layout', label: 'Spring' },
   { value: 'compound_layout', label: 'Compound' },
   { value: 'map_layout', label: 'Map' },
+  { value: 'showcase_layout', label: 'Showcase' },
   { value: 'spectral_layout', label: 'Spectral' },
   { value: 'kamada_kawai_layout', label: 'Kamada-Kawai' },
   { value: 'circular_layout', label: 'Circular' },
@@ -576,6 +627,12 @@ export function ControlPanel(
             m('option', { value: opt.value }, opt.label)
           )),
         ]) : m('p.panel-settings__hint', 'Layout algorithm is only available for the D3 renderer.'),
+
+        supportsLayout && styling.layout === SHOWCASE_LAYOUT ? showcaseControls(
+          showcaseOf(styling),
+          // What changed alone: the state holds the rest (`withShowcase`).
+          (change) => callbacks.onGraphStylingChange({ showcase: change }),
+        ) : null,
 
         supportsPhysics ? m('div.panel-settings__group', [
           m('div.panel-settings__toggle-row', [

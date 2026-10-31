@@ -1,0 +1,296 @@
+/**
+ * The Showcase: a layout chosen in Graph Settings, with its settings beneath
+ * it, that draws every node a dot and the links between them in their own
+ * colours -- calls, uses and flows on, a file's imports off -- and no line
+ * that only says what holds what.
+ *
+ * The parse is stubbed: a directory holding a file, its functions and their
+ * variables, a module imported from outside, and one link of each kind. The
+ * dots' sizes, the layout's name the window asks for, and what a setting
+ * changes in place or asks for again are what is held here.
+ */
+
+import { expect, test, type Page } from '@playwright/test';
+
+import { dismissOnboardingModal } from './helpers';
+
+const SETTLED = 30_000;
+
+const frame = (event: string, data: unknown) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+
+/** What the server streams for a small package laid out as a Showcase. */
+function showcaseStream(): string {
+  const node = (id: string, kind: string, depth: number, x: number, y: number, extra: object = {}) =>
+    frame('node', { id, label: id.split(/[:./]/).pop(), kind, depth, x, y, file: '', line: 0, ...extra });
+  const edge = (source: string, target: string, kind: string) => frame('edge', { source, target, kind });
+  return [
+    frame('meta', { nodeCount: 8, edgeCount: 11, layout: 'Showcase(dot=2,gap=0.5,nest=true,sized=true)' }),
+    node('dir::pkg', 'directory', 0, 0, 0),
+    node('file::pkg/a.py', 'file', 1, 20, 0),
+    node('external::os', 'external_module', 1, -40, 0),
+    node('a.run', 'function', 2, 26, 0, { dot_scale: 2.5, shape: 'hexagon' }),
+    node('a.helper', 'function', 2, 20, 6, { color: '#00ff41' }),
+    node('a.total', 'name', 3, 14, 0),
+    node('a.step', 'argument', 3, 20, -6),
+    node('a.LIMIT', 'constant', 3, 26, 6, { shape: 'square' }),
+    edge('dir::pkg', 'file::pkg/a.py', 'contains'),
+    edge('file::pkg/a.py', 'a.run', 'contains'),
+    edge('file::pkg/a.py', 'a.helper', 'contains'),
+    edge('file::pkg/a.py', 'a.LIMIT', 'contains'),
+    edge('a.run', 'a.total', 'contains'),
+    edge('a.run', 'a.step', 'contains'),
+    edge('a.run', 'a.helper', 'calls'),
+    edge('a.run', 'a.LIMIT', 'uses'),
+    edge('a.step', 'a.total', 'flows'),
+    edge('a.LIMIT', 'a.total', 'flows'),
+    edge('file::pkg/a.py', 'external::os', 'depends_on'),
+    frame('done', { elapsed_ms: 1 }),
+  ].join('');
+}
+
+/** Choose the Showcase, plot the stubbed package, and return the layouts the window asked for. */
+async function drawShowcase(page: Page): Promise<string[]> {
+  const asked: string[] = [];
+  await page.route('**/repo/tree?**', (route) => route.fulfill({
+    json: {
+      status: 200,
+      message: 'stubbed',
+      results: {
+        info: { owner: 'example', name: 'pkg', url: '/work/pkg' },
+        size: 1,
+        root: { name: '', size: 0, folders: [], files: [{ name: 'a.py', size: 1, raw: '', url: '/work/pkg/a.py' }] },
+        is_partial: false,
+      },
+    },
+  }));
+  await page.route('**/parse/stream-url', (route) => {
+    asked.push(String(route.request().postDataJSON()?.layout));
+    return route.fulfill({ status: 200, contentType: 'text/event-stream', body: showcaseStream() });
+  });
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.locator('.lm_tab', { hasText: 'Graph Settings' }).click();
+  await page.locator('select', { has: page.locator('option[value=showcase_layout]') }).selectOption('showcase_layout');
+  await page.locator('.lm_tab', { hasText: 'Open' }).click();
+  await page.locator('.panel-source__url-input input').fill('/work/pkg');
+  await page.locator('.panel-source__url-input button.primary').click();
+  await expect(page.locator('.graphRenderer svg g.graph-node')).toHaveCount(8, { timeout: SETTLED });
+  await expect(page.locator('.graphRenderer svg line[data-kind]')).toHaveCount(5);
+  return asked;
+}
+
+const toggle = (page: Page, label: string) =>
+  page.locator('label.panel-settings__toggle', { has: page.locator(`input[aria-label="${label}"]`) });
+
+test('the Showcase is a layout in Graph Settings, its settings shown beneath it while it is chosen', async ({ page }) => {
+  // Mutation: show the Showcase's settings with no layout chosen -- and this
+  // fails. Mutation: show none -- and this fails.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.locator('.lm_tab', { hasText: 'Graph Settings' }).click();
+  const settings = page.locator('.panel-settings__showcase');
+  const layout = page.locator('select', { has: page.locator('option[value=showcase_layout]') });
+  await layout.selectOption('map_layout');
+  await expect(settings).toHaveCount(0);
+  await layout.selectOption('showcase_layout');
+  await expect(settings).toBeVisible();
+  for (const label of ['Dot Size', 'Dot Spacing', 'Link Opacity']) {
+    await expect(settings.locator(`input[type=range][aria-label="${label}"]`)).toHaveCount(1);
+  }
+  for (const label of ['Cluster by Symbol', 'Size by Code', 'Links: calls', 'Links: uses', 'Links: flows',
+    'Links: imports', 'Dot Names']) {
+    await expect(settings.locator(`input[type=checkbox][aria-label="${label}"]`)).toHaveCount(1);
+  }
+  await expect(settings.locator('input[aria-label="Links: imports"]')).not.toBeChecked();
+});
+
+test('a Showcase draws every node a dot, borderless, and asks the server for it by its settings', async ({ page }) => {
+  const asked = await drawShowcase(page);
+  // Mutation: ask for the Showcase by its bare name -- the server lays it out
+  // at its defaults whatever is set, and this fails.
+  expect(asked).toEqual(['Showcase(dot=2,gap=0.5,nest=true,sized=true)']);
+  const dots = await page.locator('.graphRenderer svg g.graph-node').evaluateAll((groups) => groups.map((g) => {
+    const path = g.querySelector('path')!;
+    const box = (path as SVGPathElement).getBBox();
+    return { id: g.getAttribute('data-node-id'), d: path.getAttribute('d') ?? '',
+      across: Math.max(box.width, box.height), border: path.getAttribute('stroke-width'),
+      fill: path.getAttribute('fill'), opacity: path.getAttribute('fill-opacity') };
+  }));
+  // A directory and a file a dot, its size by its depth (`DOT_SCALE`); a node
+  // of code in its kind's shape where it has one, a dot where it has none.
+  // Mutation: draw a file as a Map does -- it is a square, and this fails.
+  const across = Object.fromEntries(dots.map((d) => [d.id, d.across]));
+  // A function sent with none takes the canvas's own for its kind
+  // (`_assignVisuals`): a hexagon, as a Python one is sent with.
+  const shaped = new Set(['a.run', 'a.helper', 'a.LIMIT']);
+  for (const d of dots.filter((dot) => !shaped.has(dot.id!))) expect(d.d, `${d.id} is a circle`).toMatch(/^M \S+ 0 A /);
+  expect(across['dir::pkg']).toBeCloseTo(8, 1);
+  expect(across['file::pkg/a.py']).toBeCloseTo(6, 1);
+  // Mutation: draw every node of code a dot -- the function's hexagon and the
+  // constant's square are circles, and this fails.
+  const by = Object.fromEntries(dots.map((d) => [d.id, d.d]));
+  expect(by['a.run']).not.toMatch(/ A /);
+  expect(by['a.run'].match(/ L /g)).toHaveLength(5);
+  expect(by['a.LIMIT'].match(/ L /g)).toHaveLength(3);
+  // A dot the server sized by its source is drawn at that size (`dot_scale`):
+  // a hexagon's vertices touch its circle. Mutation: draw it by its depth --
+  // a member's four, and this fails.
+  expect(across['a.run']).toBeCloseTo(10, 1);
+  expect(across['a.total']).toBeCloseTo(4, 1);
+  // A square inside its circle, a member's two across: its side two over
+  // root two. Mutation: draw the shape at the circle's radius -- its corners
+  // reach into the next dot, and this fails.
+  expect(across['a.LIMIT']).toBeCloseTo(4 / Math.SQRT2, 1);
+  // A little see-through, and the parse's neon green muted. Mutation: draw
+  // the dots opaque, or the green as given -- and this fails.
+  expect(new Set(dots.map((d) => d.opacity))).toEqual(new Set(['0.85']));
+  expect(dots.find((d) => d.id === 'a.helper')?.fill).toBe('#31d85b');
+  // No border: a white one a unit wide is a ring round a dot two across. The
+  // ring paints each node's view state after every verb, so one is taken:
+  // Fit, from the canvas's ring. Mutation: clear a node's border when the
+  // view state is painted, as it was -- SVG draws its default, and this fails.
+  const svg = (await page.locator('.graphRenderer svg').first().boundingBox())!;
+  await page.mouse.click(svg.x + 20, svg.y + 20, { button: 'right' });
+  const ring = page.locator('.rad-root');
+  await expect(ring).toHaveAttribute('aria-label', 'canvas');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(ring).toHaveCount(0);
+  const borders = await page.locator('.graphRenderer svg g.graph-node path').evaluateAll(
+    (paths) => paths.map((p) => p.getAttribute('stroke-width')));
+  expect(new Set(borders)).toEqual(new Set(['0']));
+});
+
+test("a Showcase draws each link in its kind's colour, a file's imports hidden, and nothing that only holds", async ({ page }) => {
+  await drawShowcase(page);
+  const lines = await page.locator('.graphRenderer svg line.stream-edge').evaluateAll((all) => all.map((l) => ({
+    from: l.getAttribute('data-from'), to: l.getAttribute('data-to'), kind: l.getAttribute('data-kind'),
+    colour: l.getAttribute('stroke'), shown: getComputedStyle(l).display !== 'none',
+    opacity: l.getAttribute('stroke-opacity'),
+  })));
+  // Mutation: draw the holding edges as a Map does -- five more lines, and
+  // this fails.
+  expect(lines.map((l) => l.kind).sort()).toEqual(['calls', 'flows', 'flows', 'imports', 'uses']);
+  const colourOf = Object.fromEntries(lines.map((l) => [l.kind, l.colour]));
+  expect(colourOf).toEqual({ calls: '#f2aa4c', uses: '#74a8f6', flows: '#43c6bf', imports: '#9aa3b5' });
+  expect(new Set(lines.map((l) => l.opacity))).toEqual(new Set(['0.25']));
+  // Mutation: draw the imports at first -- and this fails.
+  expect(lines.filter((l) => l.shown).map((l) => l.kind).sort()).toEqual(['calls', 'flows', 'flows', 'uses']);
+});
+
+test('a link toggled is hidden without asking the server; a dot size asks it for the layout again', async ({ page }) => {
+  const asked = await drawShowcase(page);
+  await page.locator('.lm_tab', { hasText: 'Graph Settings' }).click();
+  // Each kind's lines, once all are drawn, and how many of them are shown: a
+  // setting changed draws the graph again, and a count taken before its
+  // lines are back says nothing.
+  const lines = (kind: string) => page.locator(`.graphRenderer svg line[data-kind="${kind}"]`)
+    .evaluateAll((all) => `${all.filter((l) => getComputedStyle(l).display !== 'none').length} of ${all.length}`);
+  // Mutation: lay the graph out again for a link toggled -- it is asked for
+  // twice, and this fails. Mutation: draw a link's line whether or not it
+  // is toggled on -- the uses stay, and this fails.
+  await toggle(page, 'Links: uses').click();
+  await expect.poll(() => lines('uses')).toBe('0 of 1');
+  await expect.poll(() => lines('flows')).toBe('2 of 2');
+  expect(asked).toHaveLength(1);
+  // Two settings changed before the panel is drawn again -- as when a large
+  // graph's drawing holds the page -- both hold: the imports turned on, and
+  // a dot size the server lays the graph out again for. Mutation: send the
+  // panel's whole settings with each change, as it did -- the second sends
+  // the imports back off, and this fails. Mutation: draw a dot size in place
+  // -- nothing is asked, and this fails.
+  await page.evaluate(() => {
+    const imports = document.querySelector<HTMLInputElement>('input[aria-label="Links: imports"]')!;
+    imports.checked = true;
+    imports.dispatchEvent(new Event('change', { bubbles: true }));
+    const dot = document.querySelector<HTMLInputElement>('input[type=range][aria-label="Dot Size"]')!;
+    dot.value = '3';
+    dot.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect.poll(() => asked.length, { timeout: SETTLED }).toBe(2);
+  expect(asked[1]).toBe('Showcase(dot=3,gap=0.5,nest=true,sized=true)');
+  await expect.poll(() => lines('imports'), { timeout: SETTLED }).toBe('1 of 1');
+  await expect.poll(() => lines('uses')).toBe('0 of 1');
+});
+
+/** A Showcase's key as drawn: each entry's word, its colour, and whether it is a dot or a link. */
+const keyOf = (page: Page) => page.locator('.graphRenderer > svg > svg.showcase-key .showcase-key__entry')
+  .evaluateAll((all) => all.map((g) => {
+    const dot = g.querySelector('path');
+    return { label: g.querySelector('text')?.textContent ?? '', dot: dot !== null,
+      shape: dot?.getAttribute('data-shape') ?? null,
+      colour: dot ? dot.getAttribute('fill') : g.querySelector('line')?.getAttribute('stroke') ?? null };
+  }));
+
+/** How many rows the key is laid out in, and its box and the canvas's. */
+const keyLaidOut = (page: Page) => page.locator('.graphRenderer > svg').first().evaluate((svg) => {
+  const key = svg.querySelector(':scope > svg.showcase-key > g')!;
+  const rows = new Set([...key.querySelectorAll('.showcase-key__entry')]
+    .map((g) => g.getAttribute('transform')?.split(',')[1]));
+  const at = key.getBoundingClientRect();
+  const box = svg.getBoundingClientRect();
+  return { rows: rows.size, left: at.left - box.left, right: box.right - at.right, below: box.bottom - at.bottom };
+});
+
+test("a Showcase carries a minimal key in its svg: the code's dots and the links drawn, at the bottom left", async ({ page }) => {
+  await drawShowcase(page);
+  const svg = page.locator('.graphRenderer > svg').first();
+  // Mutation: give a Showcase the collapsible key -- drawn over the canvas,
+  // it is in no picture of it, and this fails.
+  await expect(svg.locator(':scope > svg.showcase-key')).toHaveCount(1);
+  await expect(page.locator('.graph-legend')).toHaveCount(0);
+  const key = await keyOf(page);
+  // Each mark below the files is keyed in the colour and the shape it is
+  // drawn in, and nothing else is. Mutation: key the directory, the file and
+  // the module too -- and this fails.
+  const drawn = await svg.locator('g.graph-node').evaluateAll((groups) => groups
+    .map((g) => ({ ...(g as unknown as { __data__: { kind: string; depth: number; shape?: string } }).__data__,
+      fill: g.querySelector('path')!.getAttribute('fill') }))
+    .filter((node) => node.depth >= 2).map((node) => `${node.kind}|${node.fill}|${node.shape ?? 'circle'}`));
+  expect(new Set(key.filter((e) => e.dot).map((e) => `${e.label}|${e.colour}|${e.shape}`))).toEqual(new Set(drawn));
+  expect(key.filter((e) => e.dot)).toHaveLength(new Set(drawn).size);
+  // The links drawn, in their colours; the imports are off. Mutation: key
+  // every link in the graph, switched on or not -- and this fails.
+  expect(key.filter((e) => !e.dot).map((e) => [e.label, e.colour]))
+    .toEqual([['calls', '#f2aa4c'], ['uses', '#74a8f6'], ['flows', '#43c6bf']]);
+  // At the bottom left, a few pixels in. Mutation: draw it at the top -- and
+  // this fails.
+  const placed = await keyLaidOut(page);
+  expect(placed.rows).toBe(1);
+  expect(placed.left).toBeGreaterThan(0);
+  expect(placed.left).toBeLessThan(30);
+  expect(placed.below).toBeGreaterThan(0);
+  expect(placed.below).toBeLessThan(30);
+  // As the exporter needs it: after the drawing, which it reads the zoom of
+  // as the svg's first group, and nothing on it part-faded, which it waits
+  // out. Mutation: draw the key first -- and this fails. Mutation: draw its
+  // words faint by opacity -- and this fails.
+  expect(await svg.evaluate((s) => s.querySelector('g')?.closest('.showcase-key') ?? null)).toBeNull();
+  expect(await svg.locator(':scope > svg.showcase-key *').evaluateAll((all) =>
+    all.filter((el) => Number(getComputedStyle(el).opacity) < 1).length)).toBe(0);
+
+  // A link switched off leaves the key: the canvas is drawn again from the
+  // graph it holds, and its key with it.
+  await page.locator('.lm_tab', { hasText: 'Graph Settings' }).click();
+  await toggle(page, 'Links: uses').click();
+  await expect.poll(async () => (await keyOf(page)).filter((e) => !e.dot).map((e) => e.label)).toEqual(['calls', 'flows']);
+
+  // Another layout chosen, the canvas carries the collapsible key again.
+  // Mutation: draw the Showcase's key whatever the layout -- and this fails.
+  await page.locator('select', { has: page.locator('option[value=showcase_layout]') }).selectOption('map_layout');
+  await expect(page.locator('.graph-legend')).toHaveCount(1, { timeout: SETTLED });
+  await expect(page.locator('.graphRenderer svg.showcase-key')).toHaveCount(0);
+});
+
+test("a Showcase's key wraps to the canvas's width, and is laid out again as the canvas is resized", async ({ page }) => {
+  await drawShowcase(page);
+  expect((await keyLaidOut(page)).rows).toBe(1);
+  // Mutation: lay the key out once -- it runs off the narrowed canvas in one
+  // row, and this fails. Mutation: never wrap it -- and this fails.
+  await page.setViewportSize({ width: 420, height: 720 });
+  await expect.poll(async () => (await keyLaidOut(page)).rows).toBeGreaterThan(1);
+  const placed = await keyLaidOut(page);
+  expect(placed.right).toBeGreaterThan(0);
+  expect(placed.below).toBeGreaterThan(0);
+  expect(placed.below).toBeLessThan(30);
+});

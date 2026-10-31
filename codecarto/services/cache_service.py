@@ -92,7 +92,17 @@ def _repo_key_from_url(url: str) -> str:
 #   9: a link map is stale by what the link reads (`link_map_service.link_input`):
 #      a README newer than the map no longer leaves its regions unmeasured,
 #      and a `Cargo.lock`, `.cargo/config` or `src/bin/` source newer does.
-GRAPH_SCHEMA_VERSION = 9
+#  10: a Python parse draws what its code calls, uses and flows into
+#      (`python_links.py`), every node is held once (`_one_holder`), and a
+#      Python node carries the characters of source it stands for
+#      (`meta.chars`): a graph cached at 9 has no links for a Showcase to
+#      draw, no sizes for its dots, and a node two files share is held by
+#      both.
+#  11: a Showcase draws no import node and folds a folder of prose to one
+#      dot (`showcase_graph`), and a showgraph's code view is drawn to its
+#      symbols as one: a Showcase cached at 10 holds its imports and its
+#      pages, and a floored one may stop at its files.
+GRAPH_SCHEMA_VERSION = 11
 
 
 def _make_key(url: str, mode: str, layout: str, extensions: list[str]) -> str:

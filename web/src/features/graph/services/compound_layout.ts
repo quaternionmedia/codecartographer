@@ -25,6 +25,9 @@ interface ParentChain {
   fileToDir: Map<string, GraphNode>;
   sym2ToFile: Map<string, GraphNode>;
   sym3ToSym2: Map<string, GraphNode>;
+  /** A member's file, through whatever holds it -- a symbol, or the file
+   *  itself -- and none for a member nothing holds. */
+  sym3ToFile: Map<string, GraphNode>;
 }
 
 /**
@@ -59,6 +62,7 @@ export class CompoundLayoutManager {
       fileToDir: this._assignParents(edges, files, dirs),
       sym2ToFile: this._assignParents(edges, syms2, files),
       sym3ToSym2: this._assignParents(edges, syms3, syms2),
+      sym3ToFile: this._assignParents(edges, syms3, files, false),
     };
   }
 
@@ -86,6 +90,7 @@ export class CompoundLayoutManager {
     edges: GraphEdge[],
     children: GraphNode[],
     parents: GraphNode[],
+    byPosition = true,
   ): Map<string, GraphNode> {
     const parentById = new Map(parents.map(p => [p.id, p]));
     const childIds = new Set(children.map(c => c.id));
@@ -118,8 +123,12 @@ export class CompoundLayoutManager {
       }
     }
 
-    for (const c of children) {
-      if (result.has(c.id) || c.x == null || c.y == null) continue;
+    // What nothing holds goes to the parent nearest it, unless `byPosition`
+    // is off. A module imported from outside the repository is in none of
+    // its directories, wherever it is drawn: placed beside one, it was drawn
+    // in that directory's outline, which grew round every import it was given.
+    for (const c of byPosition ? children : []) {
+      if (result.has(c.id) || c.x == null || c.y == null || c.kind === 'external_module') continue;
       let best: GraphNode | null = null;
       let bestDist = Infinity;
       for (const p of parents) {
@@ -154,7 +163,7 @@ export class CompoundLayoutManager {
     baseNodeSize = 4,
     radiusOf: (node: GraphNode) => number = () => baseNodeSize,
   ): GroupBounds[] {
-    const { dirs, files, syms2, syms3, fileToDir, sym2ToFile, sym3ToSym2 } =
+    const { dirs, files, syms2, syms3, fileToDir, sym2ToFile, sym3ToSym2, sym3ToFile } =
       this._buildParentChain(nodes, edges);
 
     if (dirs.length === 0 && files.length === 0) return [];
@@ -172,9 +181,13 @@ export class CompoundLayoutManager {
       list.push(s);
       symsByFile.set(f.id, list);
     }
+    // A member is its file's through whatever holds it. One its file holds
+    // itself -- a module's own constant or name -- has no symbol above it,
+    // and was given the symbol nearest it, often the next file's: that
+    // file's outline reached across to it.
     for (const s of syms3) {
       const sym = sym3ToSym2.get(s.id);
-      const f = sym && sym2ToFile.get(sym.id);
+      const f = sym3ToFile.get(s.id) ?? (sym && sym2ToFile.get(sym.id));
       if (!f) continue;
       const list = symsByFile.get(f.id) ?? [];
       list.push(s);

@@ -26,6 +26,7 @@ services/
 └── parsers/
     ├── language_parser.py     # LanguageParser Protocol + ParserRegistry
     ├── python_language_parser.py
+    ├── python_links.py        # a Python file's calls, uses and flows between what it holds
     ├── c_language_parser.py
     ├── rust_language_parser.py   # Rust at the item level: tokenizer, module tree, relations
     ├── linker_script_parser.py   # GNU ld scripts and memory.x: regions, sections, symbols
@@ -215,6 +216,13 @@ graph = parser.parse(folder)
 `UnifiedParserService` builds the directory and file hierarchy itself (depth
 1), and `_add_python_dependency_edges()` adds Python's `depends_on` edges between
 files at depth 2 and deeper.
+
+`PythonLanguageParser` adds, from `python_links.links()`, what each file's code
+does with what it holds: `calls` from a function to a function or class of its
+module, `self.` and `cls.` methods included; `uses` from a function to a name it
+reads that another holds; and at depth 3 `flows`, from each variable a value is
+computed from to the one it is assigned to. A call upgrades a `uses` the walk
+drew to `calls`.
 
 ### RustLanguageParser
 
