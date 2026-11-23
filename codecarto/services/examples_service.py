@@ -28,6 +28,15 @@ BUNDLED: list[dict[str, str]] = [
                   "wrote for it: the code map, the Cargo panel, rustc's warning and the "
                   "measured memory, with no network and no toolchain"),
     },
+    {
+        "id": "lean-proofs",
+        "label": "parity proofs",
+        # The selector heads a group with this as written.
+        "language": "Lean",
+        "title": ("A three-file Lean 4 library: theorems and what each statement and proof "
+                  "uses, a structure, inductives, a class and its instances, two axioms and "
+                  "one unfinished proof, with no network and no toolchain"),
+    },
 ]
 
 

@@ -603,7 +603,8 @@ for the project selector to offer beside its GitHub ones: each with `id`,
 -- whether it is a Cargo workspace, whose recorded documents the selector also
 loads into the Cargo panel. Only what `codecarto/services/examples_service.py`
 names is offered, and an installed package, which has no `examples/`, answers
-an empty list.
+an empty list. A `language` no group of the selector's carries heads a group of
+its own, as written.
 
 ---
 

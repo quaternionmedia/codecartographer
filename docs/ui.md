@@ -133,7 +133,8 @@ then the examples:
   as a filled chip: it is read from this checkout with the documents its build
   recorded, so it needs no network, and a Cargo workspace's records go to the
   Cargo panel, which comes forward. A GitHub example draws the code map only;
-  its tooltip says how much of the repository is drawn.
+  its tooltip says how much of the repository is drawn. The Lean group holds
+  one bundled example, **parity proofs**.
 
 In the default arrangement in a 1600×1000 window, the URL, Load Demo and the
 lexicons are in view without scrolling. Files and folders from disk are added

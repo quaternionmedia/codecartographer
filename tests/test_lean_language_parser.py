@@ -371,7 +371,7 @@ def test_an_import_names_the_file_at_its_module_path(graph):
     mathlib = graph.nodes["external::lean::Mathlib"]
     assert (mathlib["kind"], mathlib["depth"], mathlib["meta"]) == ("external_module", 1, {"core": False})
     assert graph.graph["file_meta"]["proj/Demo/Basic.lean"] == {
-        "imports": ["Mathlib.Data.Nat.Basic", "Demo.Defs"], "sorry": 1}
+        "imports": ["Mathlib.Data.Nat.Basic", "Demo.Defs"], "sorry_count": 1}
 
 
 def test_an_import_two_files_could_be_or_that_names_a_missing_local_file_draws_nothing():
@@ -404,7 +404,8 @@ def test_the_pipeline_hangs_declarations_from_their_files_and_joins_the_imports(
     basic, defs = files["Basic.lean"], files["Defs.lean"]
     assert g.edges[basic, defs]["kind"] == "depends_on"
     assert g.edges[basic, "external::lean::Mathlib"]["resolution"] == "external"
-    assert g.nodes[basic]["meta"]["sorry"] == 1
+    assert g.nodes[basic]["meta"]["sorry_count"] == 1
+    assert "facets" not in g.nodes[basic]["meta"]  # the facet is a declaration's, not its file's
     held = {g.nodes[v]["label"] for _, v, d in g.out_edges(basic, data=True) if d["kind"] == "contains"}
     assert {"double", "double_eq", "Point", "Color"} <= held and "x" not in held
     # The lexicon join: a theorem is on the proof layer, a structure on data's.

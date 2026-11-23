@@ -684,7 +684,7 @@ class LeanLanguageParser:
         graph.graph["file_relations"] = self._imports(graph, reads)
         graph.graph["file_meta"] = {
             file: {"imports": [name for name, _ in read.imports],
-                   "sorry": sum(d.sorry for d in read.decls)}
+                   "sorry_count": sum(d.sorry for d in read.decls)}
             for file, read in reads.items()
         }
         construct_service.annotate(graph)
