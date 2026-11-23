@@ -71,12 +71,29 @@ _KIND_TOKEN_MAP: dict[str, dict[str, str]] = {
         "extern_block": "extern",
         "macro": "macro_rules",
     },
+    # lean_language_parser.py's kinds are the command keywords, but for
+    # `theorem`, which is also `lemma`, and `macro`, which is every command
+    # that extends the syntax; a field and a constructor have no keyword.
+    "lean": {
+        "theorem": "theorem",
+        "axiom": "axiom",
+        "example": "example",
+        "def": "def",
+        "abbrev": "abbrev",
+        "opaque": "opaque",
+        "structure": "structure",
+        "class": "class",
+        "inductive": "inductive",
+        "instance": "instance",
+        "macro": "macro",
+    },
 }
 
 # language -> meta key holding an already-tokenized keyword/qualifier list.
 _QUALIFIER_META_KEY: dict[str, str] = {
     "c": "qualifiers",
     "rust": "qualifiers",  # pub, unsafe, async, const, extern, mut, static
+    "lean": "qualifiers",  # private, protected, noncomputable, partial, unsafe, ...
 }
 
 

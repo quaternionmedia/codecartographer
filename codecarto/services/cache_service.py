@@ -92,7 +92,10 @@ def _repo_key_from_url(url: str) -> str:
 #   9: a link map is stale by what the link reads (`link_map_service.link_input`):
 #      a README newer than the map no longer leaves its regions unmeasured,
 #      and a `Cargo.lock`, `.cargo/config` or `src/bin/` source newer does.
-GRAPH_SCHEMA_VERSION = 9
+#  10: a `.lean` file's declarations are nodes (`lean_language_parser`), with
+#      what each uses, extends and implements; a tree cached at 9 drew its
+#      Lean files with nothing in them.
+GRAPH_SCHEMA_VERSION = 10
 
 
 def _make_key(url: str, mode: str, layout: str, extensions: list[str]) -> str:

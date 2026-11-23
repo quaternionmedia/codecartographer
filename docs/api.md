@@ -45,7 +45,8 @@ backend, so the app and its API share an origin as they do in production;
 
 These are the recommended endpoints. They work across all registered languages
 (`GET /parse/languages` lists them: Python by its AST, C/C++ by libclang, Rust by
-an item-level reader, linker scripts by theirs, the rest by a regex per language)
+an item-level reader, linker scripts by theirs, Lean by a declaration-level
+reader, the rest by a regex per language)
 and produce gJGF output that any renderer can display.
 
 Folder and file ids are the path from the root (`file::ws/crates/hal/src/lib.rs`),
@@ -107,7 +108,7 @@ Parse a directory tree to the requested depth and return a gJGF graph.
 
 **`annotate_lexicon`** (default `false`): stamp Lexicon abstraction-layer
 data (`layer_ordinal`, `meta.lexicon_layers`) onto nodes whose language
-has one (`c`, `python` and `rust`; `GET /lexicon/` lists them — see
+has one (`c`, `lean`, `python` and `rust`; `GET /lexicon/` lists them — see
 `docs/architecture.md`, *Lexicons and the construct vocabulary*). Requests
 with this set to `true` bypass the response cache, whose key does not include
 it.
@@ -259,7 +260,7 @@ rooted at `node_id` and its descendants.
 List all registered language parsers and their file extensions: one key per
 language, each with the extensions it reads.
 
-**Response** (the first four of the languages):
+**Response** (the first five of the languages):
 ```json
 {
   "status": 200,
@@ -270,6 +271,7 @@ language, each with the extensions it reads.
       "c": [".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hxx"],
       "rust": [".rs"],
       "linker": [".ld", ".lds", ".x"],
+      "lean": [".lean"],
       ...
     }
   }
@@ -792,7 +794,7 @@ vocabulary*, describes them.
 
 ### GET `/lexicon/`
 
-List available language ids (`results.languages`, e.g. `["c", "python", "rust"]`).
+List available language ids (`results.languages`, e.g. `["c", "lean", "python", "rust"]`).
 
 ### GET `/lexicon/{language}`
 
@@ -833,8 +835,8 @@ parser `kinds` that realise it, what `carried_by` a facet in source (`#[interrup
 `qualifier volatile`), and a `note`. **Every language the vocabulary lists under
 `languages:` is a row of every construct, never a missing one**: a language with
 no spelling has its note -- Rust has no `volatile`, C has no method -- and one the
-vocabulary records nothing for has a note saying so. C, Rust, Python, assembly and
-the linker script are listed, so each is a row of every construct. The crate
+vocabulary records nothing for has a note saying so. C, Rust, Python, assembly,
+the linker script and Lean are listed, so each is a row of every construct. The crate
 graph's nodes (`language: cargo`) are mapped under `graphs:`, which places them
 without making Cargo a row: nothing is written in it. An unknown construct
 is a 200 with `unreadable`, `problem` and the known ids as `remedy`.

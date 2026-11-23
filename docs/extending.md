@@ -14,7 +14,7 @@ Three tiers exist, from lightest to most capable:
 |------|------|-------------|
 | **Regex** | `regex_language_parser.py` | Any language where top-level symbols (functions, classes, structs, headings, SQL tables, …) can be identified by a line-anchored regex. Zero new dependencies. Add a `_PATTERNS` list + one entry in `_LANGUAGES`. |
 | **Dedicated libclang** | `c_language_parser.py` | C/C++ only. Cross-file `calls` resolution, `#include` tracking via `unsaved_files`. Requires the `c-parsing` extra: `uv sync --locked --extra dev --extra c-parsing`. |
-| **Structural reader** | `rust_language_parser.py`, `linker_script_parser.py` | A tokenizer and brace matcher, stdlib only, for a language whose items are delimited by keywords and brackets: nesting, attributes, the module tree, relations each labelled with how they were resolved. Stops where name resolution begins; that is the compiler's. |
+| **Structural reader** | `rust_language_parser.py`, `linker_script_parser.py`, `lean_language_parser.py` | A tokenizer and brace matcher, stdlib only, for a language whose items are delimited by keywords and brackets: nesting, attributes, the module tree, relations each labelled with how they were resolved. Stops where name resolution begins; that is the compiler's. |
 
 **Currently registered parsers and extensions:**
 
@@ -26,6 +26,7 @@ Three tiers exist, from lightest to most capable:
 | TypeScript | `.ts`, `.tsx`, `.cts`, `.mts` |
 | Rust | `.rs` (RustLanguageParser — item-level structural reader) |
 | Linker scripts | `.ld`, `.lds`, `.x` (LinkerScriptParser — MEMORY, SECTIONS, symbols) |
+| Lean 4 | `.lean` (LeanLanguageParser — declarations, and what each statement and proof uses) |
 | Go | `.go` |
 | Java | `.java` |
 | C# | `.cs` |

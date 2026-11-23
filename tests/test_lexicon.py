@@ -120,4 +120,4 @@ def test_every_lexicon_projects_to_a_connected_graph(language):
 
 def test_the_shipped_lexicons_are_available():
     """Guards against silently losing a language file."""
-    assert set(LexiconService.available()) >= {"c", "python", "rust"}
+    assert set(LexiconService.available()) >= {"c", "lean", "python", "rust"}

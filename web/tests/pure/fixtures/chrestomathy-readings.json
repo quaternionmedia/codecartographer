@@ -90,6 +90,31 @@
       "kinds": [],
       "carried_by": [],
       "note": "constructs.yaml records no Linker script spelling of product type."
+    },
+    {
+      "language": "lean",
+      "display_name": "Lean",
+      "has_lexicon": true,
+      "tokens": [
+        {
+          "token": "structure",
+          "contexts": [
+            {
+              "kind": "keyword",
+              "layer_ordinal": 1,
+              "layer_name": "Definitions & data",
+              "group": "data",
+              "role": "",
+              "since": ""
+            }
+          ]
+        }
+      ],
+      "kinds": [
+        "structure"
+      ],
+      "carried_by": [],
+      "note": ""
     }
   ],
   "memory.volatile": [
@@ -153,6 +178,15 @@
       "kinds": [],
       "carried_by": [],
       "note": "constructs.yaml records no Linker script spelling of volatile access."
+    },
+    {
+      "language": "lean",
+      "display_name": "Lean",
+      "has_lexicon": true,
+      "tokens": [],
+      "kinds": [],
+      "carried_by": [],
+      "note": "constructs.yaml records no Lean spelling of volatile access."
     }
   ]
 }

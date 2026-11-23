@@ -4,7 +4,7 @@
  * A printed chrestomathy taught a language by placing passages side by side;
  * this one places a construct — a record, a sum type, an interrupt handler, a
  * volatile access — in each language the server reads it in: C, Rust, Python,
- * assembly and the linker script, every language `constructs.yaml` lists —
+ * assembly, the linker script and Lean, every language `constructs.yaml` lists —
  * with the tokens each spells it with, the parser kinds that realise it and
  * the abstraction layer each token sits on.
  *

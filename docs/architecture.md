@@ -29,6 +29,7 @@
 │  │                      Parsers                             │    │
 │  │  PythonLanguageParser  CLangaugeParser                   │    │
 │  │  RustLanguageParser    LinkerScriptParser                │    │
+│  │  LeanLanguageParser                                      │    │
 │  │  RegexLanguageParser   (one regex adapter per language)  │    │
 │  └─────────────────────────┬───────────────────────────────┘    │
 └─────────────────────────┬───────────────────────────────────────┘
@@ -91,6 +92,7 @@ codecarto/
 │       ├── c_parser.py                 # libclang core
 │       ├── rust_language_parser.py     # Rust, item level (tokenizer, batch_whole_tree)
 │       ├── linker_script_parser.py     # GNU ld scripts and memory.x
+│       ├── lean_language_parser.py     # Lean 4, declaration level (tokenizer, batch_whole_tree)
 │       ├── regex_language_parser.py    # one regex adapter per language
 │       └── pam_parser.py              # PAM log parser
 │
@@ -176,12 +178,13 @@ with `ParserRegistry` when `codecarto/services/parsers/__init__.py` imports
 it. The registry maps an extension to its parser; `GET /parse/languages` lists
 each language with its extensions. Python (`PythonLanguageParser`), C
 (`CLangaugeParser`, which needs the `c-parsing` extra), Rust
-(`RustLanguageParser`) and linker scripts (`LinkerScriptParser`) have readers of
-their own; `RegexLanguageParser` reads the rest.
+(`RustLanguageParser`), linker scripts (`LinkerScriptParser`) and Lean
+(`LeanLanguageParser`) have readers of their own; `RegexLanguageParser` reads
+the rest.
 
 **`batch_whole_tree`.** By default the walk (`_walk_folder`) hands a parser one
 file at a time. A parser that sets `batch_whole_tree = True` (C, Rust, linker
-scripts) instead receives every file it owns across the whole tree in one
+scripts, Lean) instead receives every file it owns across the whole tree in one
 `parse_files` call, made after the walk (`_parse_pending_batches`). C needs
 this because a call is resolved to a function that may be declared in another
 file, which takes the complete file set in one `CParser` call.
@@ -434,9 +437,10 @@ so a drag after the outlines are turned off draws them again.
 
 A lexicon is a hand-authored ontology of one language's reserved words and
 operators, arranged on abstraction layers from machine-facing (ordinal 0) to
-abstract. Three exist, in `codecarto/data/lexicons/`: C, Python (the shorter
-template) and Rust, whose layers follow C's wherever the two languages answer
-the same question. **A layer's ordinal is a rank within its own lexicon**, not
+abstract. Four exist, in `codecarto/data/lexicons/`: C, Python (the shorter
+template), Rust, whose layers follow C's wherever the two languages answer
+the same question, and Lean, whose layers run from computation up to
+propositions and proof. **A layer's ordinal is a rank within its own lexicon**, not
 a scale the languages share: Rust's keyword layers line up with C's from 0 to 3
 and its operator layers with C's from 0 to 4, so there the number -- and the
 colour the one ramp gives it -- is one layer in both; past those, and in
@@ -468,13 +472,18 @@ never matches. What does:
 - **Rust**: its item kinds by the keyword each spells (`fn` for `function` and
   `method`, `mod` for `module`, ...), and `pub`, `unsafe`, `async`, `const`,
   `extern`, `mut` and `static` from `meta.qualifiers`.
+- **Lean**: its declaration kinds by keyword (`theorem`, `def`, `structure`,
+  `inductive`, `instance`, ...), and `private`, `protected`, `noncomputable`,
+  `partial` and `unsafe` from `meta.qualifiers`.
 
 **The construct vocabulary.** `codecarto/data/constructs.yaml` names what a
 token or a parser kind *is*, the same in every language it lists: a C `struct`
 and a Rust `struct` are `type.product` and are drawn alike; a Rust `enum` whose
 variants carry data is `type.sum`, C's `enum` is `type.enumeration`; an
 `#[interrupt]` handler and a linker script's output section name
-`firmware.interrupt` and `layout.section`. `construct_service` stamps every
+`firmware.interrupt` and `layout.section`; a Lean `theorem` is `proof.theorem`,
+and one whose proof holds a `sorry` carries the facet `proof.incomplete`.
+`construct_service` stamps every
 node with its `construct` and `meta.facets`, and reads one construct across
 languages for `/lexicon/chrestomathy/*`. Lexicons and constructs together are
 the chrestomathy: one construct set beside itself in every language.

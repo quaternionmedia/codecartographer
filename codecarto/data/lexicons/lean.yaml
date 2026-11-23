@@ -1,0 +1,219 @@
+# Lean 4 lexicon — command keywords, term keywords and operators arranged on a
+# hierarchy of abstractions, from computation up to proof.
+#
+# Lean's keywords are not a closed list: `macro`, `syntax` and `notation` add
+# tokens, and Mathlib adds `lemma` among others. This file holds the ones a
+# reader meets in ordinary Lean 4 and Mathlib source. Tactics are not here:
+# they are a second, open-ended language inside `by`, and each is defined by a
+# macro or an elaborator rather than reserved by the grammar.
+#
+# The join to parsed code reaches the declaration keywords and the modifiers
+# (`codecarto/services/lexicon_bridge.py`); the rest are drawn in the lexicon's
+# own graph and in the chrestomathy.
+
+language: lean
+display_name: "Lean"
+# Where a token is not core Lean 4, `since` names what adds it.
+standards: [lean4, mathlib]
+
+keywords:
+  layers:
+    - ordinal: 0
+      name: "Computation"
+      gloss: >
+        What runs: branching, matching, binding and the `do` block. The most
+        machine-facing layer — the part of Lean that compiles to code.
+      groups:
+        - name: "selection"
+          tokens:
+            - {token: if}
+            - {token: then}
+            - {token: else}
+            - {token: match}
+            - {token: with}
+        - name: "binding"
+          tokens:
+            - {token: fun}
+            - {token: let}
+            - {token: where, role: "local definitions, and the fields of a structure"}
+        - name: "sequencing"
+          tokens:
+            - {token: do}
+            - {token: for}
+            - {token: in}
+            - {token: return}
+
+    - ordinal: 1
+      name: "Definitions & data"
+      gloss: >
+        Naming a value and composing a type. `def` names anything — a
+        function, a number, a type, a proposition — because in Lean all four
+        are terms. A modifier says what the kernel and the compiler are asked
+        to accept about one.
+      groups:
+        - name: "definition"
+          tokens:
+            - {token: def}
+            - {token: abbrev}
+            - {token: opaque}
+        - name: "data"
+          tokens:
+            - {token: structure}
+            - {token: inductive}
+            - {token: extends}
+            - {token: deriving}
+        - name: "evaluation"
+          tokens:
+            - {token: noncomputable, role: "has no compiled code"}
+            - {token: partial, role: "need not terminate"}
+            - {token: unsafe, role: "not checked by the kernel"}
+            - {token: nonrec}
+            - {token: termination_by}
+            - {token: decreasing_by}
+
+    - ordinal: 2
+      name: "Type classes"
+      gloss: >
+        Behaviour found by search: a `class` names a set of operations and
+        laws, and an `instance` provides them for a type, to be found by the
+        elaborator wherever they are needed.
+      groups:
+        - name: "class"
+          tokens:
+            - {token: class}
+            - {token: instance}
+
+    - ordinal: 3
+      name: "Organisation"
+      gloss: >
+        Names and scope: a `namespace` prefixes names, a `section` bounds
+        variables and options, `import` brings in a file and `open` shortens
+        what it declared.
+      groups:
+        - name: "scope"
+          tokens:
+            - {token: namespace}
+            - {token: section}
+            - {token: end}
+            - {token: mutual}
+            - {token: variable}
+            - {token: universe}
+        - name: "module system"
+          tokens:
+            - {token: import}
+            - {token: open}
+            - {token: export}
+        - name: "visibility"
+          tokens:
+            - {token: private}
+            - {token: protected}
+            - {token: local}
+            - {token: scoped}
+
+    - ordinal: 4
+      name: "Syntax extension"
+      gloss: >
+        Extending the language from inside it: new notation, new syntax and
+        the macros and elaborators that give them meaning.
+      groups:
+        - name: "notation"
+          tokens:
+            - {token: notation}
+            - {token: infix}
+            - {token: infixl}
+            - {token: infixr}
+            - {token: prefix}
+            - {token: postfix}
+        - name: "macro"
+          tokens:
+            - {token: syntax}
+            - {token: macro}
+            - {token: macro_rules}
+            - {token: elab}
+            - {token: declare_syntax_cat}
+        - name: "attribute"
+          tokens:
+            - {token: attribute}
+            - {token: set_option}
+
+    - ordinal: 5
+      name: "Propositions & proof"
+      gloss: >
+        Stating something and establishing it. A `theorem` is a definition
+        whose type is a proposition and whose value is its proof; the kernel
+        checks that the value has the type.
+      groups:
+        - name: "statement"
+          tokens:
+            - {token: theorem}
+            - {token: lemma, since: mathlib}
+            - {token: example}
+            - {token: axiom}
+        - name: "proof"
+          tokens:
+            - {token: by, role: "opens a tactic proof"}
+            - {token: have}
+            - {token: show}
+            - {token: from}
+            - {token: calc}
+            - {token: at}
+        - name: "hole"
+          tokens:
+            - {token: sorry, role: "a proof or term left out"}
+
+operators:
+  layers:
+    - ordinal: 0
+      name: "Binding & application"
+      gloss: >
+        Giving a name its value and passing a value to a function.
+      groups:
+        - name: "definition"
+          tokens:
+            - {token: ":=", role: "is defined as"}
+            - {token: "=>", role: "a function's or a match arm's body"}
+            - {token: "←", role: "bind in a do block; rewrite right to left"}
+        - name: "application"
+          tokens:
+            - {token: "|>", role: "pipe a value into a function"}
+            - {token: "<|", role: "apply to everything to the right"}
+            - {token: "·", role: "an argument left open; a focused goal"}
+        - name: "construction"
+          tokens:
+            - {token: "⟨", role: "anonymous constructor, open"}
+            - {token: "⟩", role: "anonymous constructor, close"}
+
+    - ordinal: 1
+      name: "Types"
+      gloss: >
+        Building one type from others.
+      groups:
+        - name: "type former"
+          tokens:
+            - {token: ":", role: "has type"}
+            - {token: "→", role: "function type; implication"}
+            - {token: "×", role: "product type"}
+            - {token: "⊕", role: "sum type"}
+
+    - ordinal: 2
+      name: "Logic"
+      gloss: >
+        Connectives and quantifiers. Each is a type former read as a
+        proposition: a proof of `A ∧ B` is a pair, and a proof of `∀ x, P x`
+        is a function.
+      groups:
+        - name: "connective"
+          tokens:
+            - {token: "∧", role: "and"}
+            - {token: "∨", role: "or"}
+            - {token: "¬", role: "not"}
+            - {token: "↔", role: "if and only if"}
+        - name: "quantifier"
+          tokens:
+            - {token: "∀", role: "for all"}
+            - {token: "∃", role: "there exists"}
+        - name: "relation"
+          tokens:
+            - {token: "=", role: "propositional equality"}
+            - {token: "≠", role: "not equal"}
+            - {token: "≤", role: "less than or equal"}
