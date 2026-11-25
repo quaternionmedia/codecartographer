@@ -9,6 +9,7 @@ import { THEME_LABEL_COLOR } from '../features/graph/services/label_color';
 import type { TopologyChoices, TopologyProblem } from '../services/topology_service';
 import type { SeamProblem } from '../features/estate/seam_client';
 import type { CapabilitiesDocument, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
+import type { HarnessDocument } from '../features/estate/run_state';
 import type { ShowSubjectsDocument, ShowViewsDocument } from '../features/show/show_service';
 import type { ShowAddress } from '../features/show/show_address';
 import type {
@@ -55,6 +56,10 @@ export interface ICellState {
   estateSeams: SeamsDocument | null;
   /** Why the table could not be read -- only ever this window's own API. */
   estateProblem: SeamProblem | null;
+  /** The harness's runs, queue, instructions and states, or null while the
+   *  Harness panel is not in the page. */
+  harnessReading: HarnessDocument | null;
+  harnessProblem: SeamProblem | null;
   /** The registry's declarations as the panel lists them, or null before asked. */
   capabilitiesReading: CapabilitiesDocument | null;
   capabilitiesProblem: SeamProblem | null;
@@ -108,6 +113,8 @@ export class CellState implements ICellState {
   public topologySubject: string = '';
   public estateSeams: SeamsDocument | null = null;
   public estateProblem: SeamProblem | null = null;
+  public harnessReading: HarnessDocument | null = null;
+  public harnessProblem: SeamProblem | null = null;
   public capabilitiesReading: CapabilitiesDocument | null = null;
   public capabilitiesProblem: SeamProblem | null = null;
   public overviewReading: OverviewDocument | null = null;

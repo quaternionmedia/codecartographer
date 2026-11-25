@@ -65,7 +65,7 @@ which names the step after it; the last step has no Next.
 
 | | Step | Brings forward | Owns |
 |---|---|---|---|
-| 1 | **Open** | Open, then the Graph panel | Open, Estate, Show, Topology, Capabilities, Overview, Cargo, Graphbase |
+| 1 | **Open** | Open, then the Graph panel | Open, Estate, Show, Topology, Capabilities, Overview, Harness, Cargo, Graphbase |
 | 2 | **Browse** | Files, then the Graph panel | Files |
 | 3 | **Tune** | Graph Settings, then the Graph panel | Graph Settings |
 | 4 | **Read** | The Graph panel, maximised, which hides every other window | Graph, Chrestomathy |
@@ -178,6 +178,19 @@ Id `topology-panel`. Opens from the `+` menu or the Estate panel's topology row.
 says about* takes a project name and draws what the harness's archive says about
 it. The harness's caveat sits above the controls; a relation nobody measured is
 drawn dashed.
+
+### Harness
+
+Id `harness-panel`. Opens from the `+` menu.
+
+What the harness is running and asking, read again every few seconds while
+the panel is open. *On the canvas* lists each project the harness gave a run
+state, with the row that gave it; a box whose address names that project
+carries a ring in the state's colour and line, and a project no drawn box
+names says so here. *Questions for a person*, *Instructions* and *Tool runs*
+list the harness's rows
+and say how many more it holds. The panel is read-only: a question is
+answered in a terminal, and closing the panel clears the marks.
 
 ### Capabilities
 

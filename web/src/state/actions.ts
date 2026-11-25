@@ -611,6 +611,12 @@ export class PlotActions {
     this.stateController.redraw();
   }
 
+  /** The harness's runs, queue, instructions and states. Draws nothing. */
+  async loadHarnessReading(): Promise<void> {
+    const found = await EstateService.harnessData(this.stateController.api.harness);
+    this._settle(found, 'harnessReading', 'harnessProblem');
+  }
+
   /** The registry's declarations, for the panel's list. Draws nothing. */
   async loadCapabilitiesReading(): Promise<void> {
     const found = await EstateService.capabilitiesData(this.stateController.api.capabilities);
@@ -726,8 +732,8 @@ export class PlotActions {
   /** Put a document in one field and clear the other, or the reverse (`settlePatch`). */
   private _settle(
     found: SeamOutcome,
-    readingField: 'capabilitiesReading' | 'overviewReading' | 'showSubjects' | 'showViews',
-    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem',
+    readingField: 'capabilitiesReading' | 'overviewReading' | 'showSubjects' | 'showViews' | 'harnessReading',
+    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem' | 'harnessProblem',
   ): void {
     if (isProblem(found)) logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
     this.stateController.update(settlePatch(found, readingField, problemField) as Patch<ICellState>);

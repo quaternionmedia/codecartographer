@@ -47,6 +47,7 @@ import { GraphbaseService, GraphbaseBookmark, GraphbaseSnapshotMeta, GraphbaseHi
 import { RadExtension } from '../features/graph/rad/host/rad_extension';
 import { GraphSurface } from '../features/graph/services/graph_surface';
 import { LegendExtension } from '../features/graph/extensions';
+import { RunStateExtension } from '../features/graph/extensions/run_state_extension';
 import { viewActions, EMPTY_VIEW_STATE, anyHidden } from '../features/graph/rad/host/view_state';
 import type { NodeViewState } from '../features/graph/rad/host/view_state';
 import type { GraphOps } from '../features/graph/rad/host/graph_intents';
@@ -139,6 +140,7 @@ export class LayoutContext {
   // about it. Integration standard §5.1.
   private _rad: RadExtension | null = null;
   private _legend: LegendExtension | null = null;
+  private _runState: RunStateExtension | null = null;
   private _nodeViewState: NodeViewState = EMPTY_VIEW_STATE;
   private _radSelection = new Set<GraphNode>();
   /** Set by the `relayout` verb so the remount knows to keep view state. */
@@ -1149,6 +1151,15 @@ export class LayoutContext {
    * graph of record first, complete by the time it is set, and the renderer's
    * own when nothing is recorded.
    */
+  /** Draw the newest harness reading's states on the canvas, or clear them. */
+  public applyRunState(): void {
+    try {
+      this._runState?.apply();
+    } catch {
+      // No canvas has been drawn yet: there is nothing to mark.
+    }
+  }
+
   public canvasNodes(): GraphNode[] {
     const recorded = this._normaliseGraph(this.appState.state.graphData).nodes;
     return recorded.length ? recorded : this._streamingRenderer?.getNodes() ?? [];
@@ -1365,6 +1376,14 @@ export class LayoutContext {
     legend.initialize(context);
     legend.apply();
     this._legend = legend;
+
+    // The harness's run states, on the same context. With no reading it
+    // marks nothing, so every canvas carries it and only a read harness shows.
+    this._runState?.destroy();
+    const runState = new RunStateExtension(() => this.appState.state.harnessReading?.states ?? []);
+    runState.initialize(context);
+    runState.apply();
+    this._runState = runState;
   }
 
   /** Core SSE render loop (shared by all stream starters). */

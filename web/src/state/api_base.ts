@@ -7,6 +7,7 @@ export class API {
   private _parse: string = 'parse';
   private _lexicon: string = 'lexicon';
   private _topology: string = 'topology';
+  private _harness: string = 'harness';
   private _capabilities: string = 'capabilities';
   private _overview: string = 'overview';
   private _estate: string = 'estate';
@@ -43,6 +44,10 @@ export class API {
 
   get topology(): string {
     return `${this._base}/${this._topology}`;
+  }
+
+  get harness(): string {
+    return `${this._base}/${this._harness}`;
   }
 
   get capabilities(): string {

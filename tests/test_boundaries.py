@@ -55,6 +55,7 @@ ESTATE_SERVICES = (
     "codecarto/services/capability_service.py",
     "codecarto/services/overview_service.py",
     "codecarto/services/qmcp_client.py",
+    "codecarto/services/harness_service.py",
     # A Cargo workspace is read the same way a seam is: manifests and the
     # documents cargo wrote, never a write and never a run.
     "codecarto/services/cargo_service.py",
@@ -63,6 +64,7 @@ ESTATE_SERVICES = (
 ESTATE_ROUTERS = (
     "codecarto/routers/estate_router.py",
     "codecarto/routers/topology_router.py",
+    "codecarto/routers/harness_router.py",
     "codecarto/routers/capability_router.py",
     "codecarto/routers/overview_router.py",
     "codecarto/routers/cargo_router.py",
@@ -72,6 +74,8 @@ ESTATE_PANELS = (
     "web/src/layout/panels/estate_panel.ts",
     "web/src/layout/panels/topology_panel.ts",
     "web/src/layout/panels/capabilities_panel.ts",
+    "web/src/layout/panels/harness_panel.ts",
+    "web/src/features/estate/run_state.ts",
     "web/src/layout/panels/overview_panel.ts",
     "web/src/features/estate/seam_client.ts",
     "web/src/features/estate/estate_service.ts",

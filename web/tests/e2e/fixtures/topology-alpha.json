@@ -1,0 +1,119 @@
+{
+ "status": 200,
+ "message": "Success",
+ "results": {
+  "graph": {
+   "nodes": {
+    "subject": {
+     "label": "alpha",
+     "metadata": {
+      "address": "org/alpha",
+      "content": "https://github.com/org/alpha",
+      "kind": "input",
+      "type": "Input",
+      "base": "topology.input",
+      "shape": "circle",
+      "color": "#6db2ff",
+      "size": 45.0,
+      "note": "org/alpha",
+      "count": null,
+      "hover": "org/alpha  --  open the repository",
+      "click": "<b>alpha</b><div><code>org/alpha</code></div><div><a href=\"https://github.com/org/alpha\" target=\"_blank\" rel=\"noreferrer\">open the code this represents</a></div>",
+      "x": 500.0,
+      "y": 286.0485277438319
+     }
+    },
+    "r0": {
+     "label": "the-work",
+     "metadata": {
+      "address": "org/alpha/delta/the-work",
+      "content": "https://github.com/org/alpha",
+      "kind": "worker",
+      "type": "Worker",
+      "base": "topology.worker",
+      "shape": "rectangle",
+      "color": "#8ab4f8",
+      "size": 30.0,
+      "note": "org/alpha/delta/the-work",
+      "count": null,
+      "hover": "org/alpha/delta/the-work  --  open the repository",
+      "click": "<b>the-work</b><div><code>org/alpha/delta/the-work</code></div><div><a href=\"https://github.com/org/alpha\" target=\"_blank\" rel=\"noreferrer\">open the code this represents</a></div>",
+      "x": -2.313812123571931,
+      "y": 4.010023568086921
+     }
+    },
+    "gate": {
+     "label": "a gate",
+     "metadata": {
+      "address": "",
+      "content": null,
+      "kind": "gate",
+      "type": "Gate",
+      "base": "topology.gate",
+      "shape": "hexagon",
+      "color": "#e0c069",
+      "size": 35.0,
+      "note": "",
+      "count": null,
+      "hover": "a gate",
+      "click": "<b>a gate</b><div><i>not a place &mdash; nothing to open</i></div>",
+      "x": -497.686187876428,
+      "y": -290.0585513119189
+     }
+    }
+   },
+   "edges": [
+    {
+     "source": "subject",
+     "target": "r0",
+     "label": "part-of",
+     "metadata": {
+      "size": 1.6,
+      "color": "#6db2ff",
+      "hover": "part-of: not measured. This edge is drawn dashed because nobody looked, which is different from looking and finding it weak",
+      "style": "dashed",
+      "measured": false,
+      "strength": null,
+      "title": "part-of: not measured. This edge is drawn dashed because nobody looked, which is different from looking and finding it weak"
+     }
+    },
+    {
+     "source": "r0",
+     "target": "gate",
+     "label": "passes",
+     "metadata": {
+      "size": 1.6,
+      "color": "#6db2ff",
+      "hover": "passes: not measured. This edge is drawn dashed because nobody looked, which is different from looking and finding it weak",
+      "style": "dashed",
+      "measured": false,
+      "strength": null,
+      "title": "passes: not measured. This edge is drawn dashed because nobody looked, which is different from looking and finding it weak"
+     }
+    }
+   ],
+   "directed": true,
+   "metadata": {
+    "topology": "alpha",
+    "caption": "what the archive says about alpha",
+    "status": "runs",
+    "unmeasured": 2
+   }
+  },
+  "metadata": {
+   "kind": "topology",
+   "layout": "Kamada Kawai",
+   "type": "d3",
+   "palette_id": "0",
+   "topology": "alpha",
+   "caption": "what the archive says about alpha",
+   "source": "thread archive",
+   "surveyed": null,
+   "nodeCount": 3,
+   "edgeCount": 2,
+   "measured": 0,
+   "unmeasured": 2,
+   "caveat": "none of the 2 edge(s) is measured -- this is the shape of the relation and says nothing about strength"
+  }
+ }
+}

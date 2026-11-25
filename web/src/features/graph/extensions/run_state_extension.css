@@ -1,0 +1,44 @@
+/**
+ * The harness's run state on a box: a ring around the node's own shape.
+ *
+ * The ring's stroke keeps its width at every zoom, so a state reads on a
+ * canvas fitted to a large graph. Each state differs in line as well as in
+ * colour, because a theme moves the colours: idle is dashed, active pulses,
+ * success is a plain line and failed a heavy one. The colours are the
+ * application's tokens, the same ones the Harness panel's dots use.
+ */
+
+.run-state-ring {
+  fill: none;
+  stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+g.graph-node[data-run-state="idle"] > .run-state-ring {
+  stroke: var(--c-font-muted, #7a8a99);
+  stroke-dasharray: 3 3;
+}
+
+g.graph-node[data-run-state="active"] > .run-state-ring {
+  stroke: var(--c-warning, #ffcc00);
+  animation: run-state-active 1.6s ease-in-out infinite;
+}
+
+g.graph-node[data-run-state="success"] > .run-state-ring {
+  stroke: var(--c-accent, #00d4ff);
+}
+
+g.graph-node[data-run-state="failed"] > .run-state-ring {
+  stroke: var(--c-error, #ff3333);
+  stroke-width: 4px;
+}
+
+@keyframes run-state-active {
+  0%, 100% { stroke-opacity: 1; }
+  50%      { stroke-opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  g.graph-node[data-run-state="active"] > .run-state-ring { animation: none; }
+}
