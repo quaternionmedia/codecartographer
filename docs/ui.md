@@ -186,8 +186,9 @@ Id `harness-panel`. Opens from the `+` menu.
 What the harness is running and asking, read again every few seconds while
 the panel is open. *On the canvas* lists each project the harness gave a run
 state, with the row that gave it; a box whose address names that project
-glows in the state's colour, and a project no drawn box names says so here.
-*Waiting on a person*, *Instructions* and *Tool runs* list the harness's rows
+carries a ring in the state's colour and line, and a project no drawn box
+names says so here. *Questions for a person*, *Instructions* and *Tool runs*
+list the harness's rows
 and say how many more it holds. The panel is read-only: a question is
 answered in a terminal, and closing the panel clears the marks.
 

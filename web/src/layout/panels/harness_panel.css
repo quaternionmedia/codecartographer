@@ -1,18 +1,35 @@
 /**
  * The Harness panel's own marks. Rows, headings and hints are the estate
- * views' shared classes; this adds the state dot's four colours, the same
- * tokens the canvas marks a box with.
+ * views' shared classes; this adds the panel's spacing and the state dot.
+ *
+ * A dot differs in shape as well as in colour, as the ring on the canvas
+ * does, because a theme moves the colours: idle is hollow, failed is square.
  */
 
 .gl-panel--harness {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md, 0.9rem);
+  gap: var(--spacing-md, 0.75rem);
+  padding: var(--spacing-md, 0.75rem);
+  overflow-y: auto;
 }
 
-.harness__state[data-run-state="idle"]    .estate__dot { background: var(--c-font-muted); }
-.harness__state[data-run-state="active"]  .estate__dot { background: var(--c-secondary); }
-.harness__state[data-run-state="success"] .estate__dot { background: var(--c-accent); }
-.harness__state[data-run-state="failed"]  .estate__dot { background: var(--c-error, var(--c-warning)); }
+.harness__read { font-variant-numeric: tabular-nums; }
 
+.harness__state[data-run-state="idle"] .estate__dot {
+  background: transparent;
+  border: 1px solid var(--c-font-muted);
+}
+.harness__state[data-run-state="active"]  .estate__dot { background: var(--c-warning); }
+.harness__state[data-run-state="success"] .estate__dot { background: var(--c-accent); }
+.harness__state[data-run-state="failed"]  .estate__dot {
+  background: var(--c-error, var(--c-warning));
+  border-radius: 1px;
+}
+
+.harness__state[data-on-canvas="no"] { border-style: dashed; }
 .harness__unmatched { color: var(--c-warning); }
+
+/* An id is long and has no place to break; let it wrap inside its row. */
+.gl-panel--harness .estate__row code,
+.gl-panel--harness .estate__detail { overflow-wrap: anywhere; }

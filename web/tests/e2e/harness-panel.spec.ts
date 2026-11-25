@@ -101,8 +101,12 @@ test('a state marks every box that names its project, and a project with no box 
   await expect(node(page, 'subject')).toHaveAttribute('data-run-state', 'active');
   await expect(node(page, 'r0')).toHaveAttribute('data-run-state', 'active');
   await expect(node(page, 'gate')).not.toHaveAttribute('data-run-state', /.*/);
+  // One ring on each marked box and none on the other.
+  await expect(node(page, 'subject').locator('.run-state-ring')).toHaveCount(1);
+  await expect(node(page, 'r0').locator('.run-state-ring')).toHaveCount(1);
+  await expect(node(page, 'gate').locator('.run-state-ring')).toHaveCount(0);
 
-  await expect(panel.locator('.harness__unplaced')).toContainText('1 tool runs give no box a state');
+  await expect(panel.locator('.harness__unplaced')).toHaveText('tool runs lighting no box: 1. Why: a tool run names no project.');
 });
 
 test('the queue says how many rows the harness holds beyond the ones shown', async ({ page }) => {

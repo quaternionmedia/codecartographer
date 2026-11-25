@@ -19,7 +19,7 @@ import m from 'mithril';
 
 import type { LayoutContext } from '../layout_context';
 import { ProblemView } from '../../features/estate/problem_view';
-import { heldBack, joinStates } from '../../features/estate/run_state';
+import { heldBack, joinStates, unplacedShown, whenShown } from '../../features/estate/run_state';
 import type { HarnessListing, RunState } from '../../features/estate/run_state';
 import '../../features/estate/estate.css';
 import './harness_panel.css';
@@ -35,6 +35,7 @@ function listed(
   listing: HarnessListing,
   row: (found: Record<string, unknown>) => m.Children,
   empty: string,
+  after: m.Children = null,
 ): m.Children {
   const more = heldBack(listing);
   return m('div.estate-view__section', { 'data-harness-list': name }, [
@@ -46,12 +47,15 @@ function listed(
     !listing.problem && listing.rows.length === 0 ? m('p.estate-view__hint', empty) : null,
     m('div.estate__rows', listing.rows.map(row)),
     more ? m('p.estate-view__hint.harness__more', more) : null,
+    after,
   ]);
 }
 
 export function createHarnessPanel(ctx: LayoutContext): m.Component {
   let timer: ReturnType<typeof setInterval> | null = null;
   let root: Element | null = null;
+  /** When the reading on screen arrived, by this window's clock. */
+  let readAt: Date | null = null;
 
   const leave = () => {
     if (timer !== null) clearInterval(timer);
@@ -69,7 +73,11 @@ export function createHarnessPanel(ctx: LayoutContext): m.Component {
     }
     void ctx.actions.plot
       .loadHarnessReading()
-      .then(() => ctx.applyRunState())
+      .then(() => {
+        if (ctx.appState.state.harnessReading) readAt = new Date();
+        ctx.applyRunState();
+        m.redraw();
+      })
       .catch(() => undefined);
   };
 
@@ -107,6 +115,8 @@ export function createHarnessPanel(ctx: LayoutContext): m.Component {
 
         reading
           ? [
+              m('p.estate-view__hint.harness__read',
+                `read ${readAt ? readAt.toLocaleTimeString() : 'just now'}, and again every ${POLL_MS / 1000} s while this panel is open`),
               m('div.estate-view__section', { 'data-harness-list': 'states' }, [
                 m('h4.estate-view__heading', 'On the canvas'),
                 reading.states.length === 0
@@ -127,12 +137,11 @@ export function createHarnessPanel(ctx: LayoutContext): m.Component {
                       : null,
                   ]))),
                 reading.unplaced.map((found) =>
-                  m('p.estate-view__hint.harness__unplaced',
-                    `${found.count} ${found.what} give no box a state: ${found.why}`)),
+                  m('p.estate-view__hint.harness__unplaced', unplacedShown(found))),
                 m('p.estate-view__hint', reading.caveat),
               ]),
 
-              listed('Waiting on a person', 'queue', reading.queue, (found) =>
+              listed('Questions for a person', 'queue', reading.queue, (found) =>
                 m('div.estate__row', { 'data-ask': text(found.id), class: found.status === 'pending' ? 'is-live' : '' }, [
                   m('span.estate__dot'),
                   m('span.estate__name', text(found.prompt)),
@@ -144,13 +153,13 @@ export function createHarnessPanel(ctx: LayoutContext): m.Component {
                   Array.isArray(found.options) && found.options.length
                     ? m('p.estate__detail', `options: ${found.options.map(text).join(', ')}`)
                     : null,
-                  found.expires_at ? m('p.estate__where', `expires ${text(found.expires_at)}`) : null,
-                ]), 'the harness holds no questions'),
-              m('p.estate-view__hint.harness__answer-where', [
-                'Answered in a terminal: ',
-                m('code', 'qmcp human respond <id> <option>'),
-                '. Nothing in this panel answers.',
-              ]),
+                  found.expires_at ? m('p.estate__where', `expires ${whenShown(found.expires_at)}`) : null,
+                ]), 'the harness holds no questions',
+                m('p.estate-view__hint.harness__answer-where', [
+                  'Answered in a terminal: ',
+                  m('code', 'qmcp human respond <id> <option>'),
+                  '. Nothing in this panel answers.',
+                ])),
 
               listed('Instructions', 'instructions', reading.instructions, (found) =>
                 m('div.estate__row', { 'data-instruction': text(found.id) }, [
@@ -162,7 +171,7 @@ export function createHarnessPanel(ctx: LayoutContext): m.Component {
                     found.project ? ` — ${text(found.project)}` : ' — no project resolved',
                   ]),
                   found.outcome_text ? m('p.estate__detail', text(found.outcome_text)) : null,
-                  m('p.estate__where', `updated ${text(found.updated_at)}`),
+                  m('p.estate__where', `updated ${whenShown(found.updated_at)}`),
                 ]), 'the harness holds no instructions'),
 
               listed('Tool runs', 'runs', reading.runs, (found) =>
@@ -171,7 +180,7 @@ export function createHarnessPanel(ctx: LayoutContext): m.Component {
                   m('span.estate__name', text(found.tool_name)),
                   m('span.estate__actions', m('span.estate-view__rung', text(found.status))),
                   found.error ? m('p.estate__detail', text(found.error)) : null,
-                  m('p.estate__where', text(found.created_at)),
+                  m('p.estate__where', whenShown(found.created_at)),
                 ]), 'the harness recorded no tool runs'),
             ]
           : null,

@@ -66,3 +66,21 @@ test('rows held back are stated, and a full page is stated as a floor', () => {
   assert.match(heldBack({ more: 7, more_is_floor: false }), /^7 more the harness holds/);
   assert.match(heldBack({ more: 480, more_is_floor: true }), /^at least 480 more/);
 });
+
+test('a harness timestamp is shown to the second, in UTC, without the fraction', async () => {
+  // Mutation: return `value` unchanged -- the first three cases fail.
+  const { whenShown } = await import('../../dist-pure/features/estate/run_state.js');
+  assert.equal(whenShown('2026-01-01T00:10:00.491655'), '2026-01-01 00:10:00 UTC');
+  assert.equal(whenShown('2026-01-01T00:10:00Z'), '2026-01-01 00:10:00 UTC');
+  assert.equal(whenShown('2026-11-25T00:42:05+00:00'), '2026-11-25 00:42:05 UTC');
+  assert.equal(whenShown('2026-11-25T02:42:05+02:00'), '2026-11-25 02:42:05 +02:00');
+  assert.equal(whenShown('soon'), 'soon');
+  assert.equal(whenShown(null), '');
+});
+
+test('what lights no box is one sentence whatever the count', async () => {
+  // Mutation: leave the count out -- this fails.
+  const { unplacedShown } = await import('../../dist-pure/features/estate/run_state.js');
+  assert.equal(unplacedShown({ what: 'tool runs', count: 1, why: 'a tool run names no project' }),
+    'tool runs lighting no box: 1. Why: a tool run names no project.');
+});

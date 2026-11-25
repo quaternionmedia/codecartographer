@@ -98,3 +98,25 @@ export function heldBack(listing: Pick<HarnessListing, 'more' | 'more_is_floor'>
     ? `at least ${listing.more} more the harness holds and this panel does not show`
     : `${listing.more} more the harness holds and this panel does not show`;
 }
+
+/**
+ * A harness timestamp as a panel shows it: `2026-01-01 00:10:00 UTC`.
+ *
+ * The harness writes UTC, with no zone on a stored time and `Z` or `+00:00`
+ * on a served one. Fractions of a second are dropped. A time with another
+ * offset is shown with that offset, and anything that is not a timestamp is
+ * shown as given.
+ */
+export function whenShown(value: unknown): string {
+  if (typeof value !== 'string' || value === '') return '';
+  const found = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/.exec(value);
+  if (!found) return value;
+  const [, day, time, zone] = found;
+  const utc = !zone || zone === 'Z' || zone.replace(':', '') === '+0000';
+  return `${day} ${time} ${utc ? 'UTC' : zone}`;
+}
+
+/** One `unplaced` entry as a sentence that holds for one row and for many. */
+export function unplacedShown(found: { what: string; count: number; why: string }): string {
+  return `${found.what} lighting no box: ${found.count}. Why: ${found.why}.`;
+}
