@@ -140,8 +140,10 @@ def test_a_prime_ends_a_name_and_a_quote_opens_a_character():
 @pytest.mark.parametrize("src", ['theorem t : "never closed', "/- never closed", 'r#"raw',
                                  "def f := (((", "⟩ ] } end end", "'", "@[", ""])
 def test_any_text_is_read(src):
-    read_file(src)
-    assert "".join(t.text for t in tokenize("a b")) == "ab"
+    """A quote, a comment or a bracket left open is read to the end of the
+    text; nothing raises."""
+    assert isinstance(read_file(src).decls, list)
+    assert parse(("A.lean", src)).number_of_edges() == 0
 
 
 def test_a_token_knows_its_line_and_whether_it_begins_one():
