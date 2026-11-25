@@ -10,4 +10,5 @@ from . import python_language_parser  # noqa: F401
 from . import c_language_parser       # noqa: F401
 from . import rust_language_parser    # noqa: F401
 from . import linker_script_parser    # noqa: F401
+from . import lean_language_parser    # noqa: F401
 from . import regex_language_parser   # noqa: F401

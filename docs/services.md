@@ -29,6 +29,7 @@ services/
     ├── c_language_parser.py
     ├── rust_language_parser.py   # Rust at the item level: tokenizer, module tree, relations
     ├── linker_script_parser.py   # GNU ld scripts and memory.x: regions, sections, symbols
+    ├── lean_language_parser.py   # Lean 4 at the declaration level: theorems, what each uses
     ├── regex_language_parser.py  # one regex adapter per language; `_LANGUAGES` is the list
     └── ASTs/
         └── python_custom_ast.py
@@ -233,6 +234,32 @@ It does not expand macros (an item inside `cfg_if!` or `bitflags!` is a
 `macro_invocation`), resolve a method call on anything but `self`, or follow a
 `use` through a re-export it cannot see.
 
+### LeanLanguageParser
+
+**File:** `parsers/lean_language_parser.py`
+
+A tokenizer and a bracket matcher over Lean 4 source, standard library only;
+no Lean toolchain is run. It reads each declaration -- `theorem` and `lemma`,
+`def`, `abbrev`, `opaque`, `axiom`, `structure` and `class` with their fields,
+`inductive` with its constructors, `instance`, `example`, and the commands
+that extend the syntax -- with its full name, its statement as written, its
+modifiers and attributes, and how many `sorry` it holds.
+
+The relations it draws are `uses` (a declaration names another in its
+statement or its body, and `part` on the edge says which), `inherits`
+(`extends`), `implements` (an instance and its class) and, between files,
+`depends_on` from `import`. A name is looked up the way Lean scopes it: as
+written, through each enclosing namespace, then through each `open`; the
+edge's `resolution` says which, and a name more than one declaration could be
+draws nothing. A namespace is a prefix of names rather than a node.
+
+Elaboration is Lean's: it does not resolve an instance, read `x.f` on a local,
+expand a notation or a macro, or see a name `to_additive` or `alias`
+generates. A local name is recognised by how it is spelled -- a binder, a
+`variable`, a name after `fun`, `intro`, `have` or `obtain` -- so a local
+introduced another way that shares a declaration's name is drawn as a use of
+it. Its module docstring states each rule.
+
 ---
 
 ## LexiconService
@@ -357,7 +384,8 @@ The examples bundled with a checkout, for the project selector: `bundled()`
 lists each one `BUNDLED` names whose directory exists under `examples/`, with
 the absolute path it is read from and whether it is a Cargo workspace. Only what
 is named is offered, and an installed package, which has no `examples/`, offers
-none. `examples/rust-firmware` carries the records real cargo and rust-lld wrote
+none. `examples/lean-proofs` is a small Lean 4 library, read as its sources
+with nothing recorded beside them. `examples/rust-firmware` carries the records real cargo and rust-lld wrote
 for it, its absolute paths rewritten; its README says how to record it afresh,
 with `scripts/record_example.py`, which records and rewrites them.
 

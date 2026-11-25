@@ -432,4 +432,78 @@ def test_the_route():
 
     resp = TestClient(app).get("/repo/examples")
     assert resp.status_code == 200
-    assert [e["id"] for e in resp.json()["results"]["examples"]] == ["rust-firmware"]
+    assert [e["id"] for e in resp.json()["results"]["examples"]] == ["rust-firmware", "lean-proofs"]
+
+
+# ── the Lean example ──────────────────────────────────────────────────────────
+
+
+@pytest.fixture(scope="module")
+def lean_graph():
+    from codecarto.services.local_repo_service import get_local_repo
+    from codecarto.services.unified_parser_service import UnifiedParserService
+
+    directory = get_local_repo(str(examples_service.ROOT / "lean-proofs"))
+    return UnifiedParserService.build_graph(directory, depth=3, extensions=None)
+
+
+def _lean(graph, label):
+    found = [(n, d) for n, d in graph.nodes(data=True)
+             if d.get("language") == "lean" and d["label"] == label]
+    assert len(found) == 1, (label, len(found))
+    return found[0]
+
+
+def _lean_edges(graph, kind):
+    return {(graph.nodes[u]["label"], graph.nodes[v]["label"]): d
+            for u, v, d in graph.edges(data=True) if d.get("kind") == kind}
+
+
+def test_the_lean_example_is_offered_under_its_own_heading():
+    lean = {e["id"]: e for e in examples_service.bundled()}["lean-proofs"]
+    assert (lean["language"], lean["cargo"]) == ("Lean", False)
+
+
+def test_the_lean_example_shows_each_construct_its_readme_names(lean_graph):
+    """The README says what the example shows; this is that list, read from
+    the sources. Mutation: delete `Proofs/Shapes.lean` -- the constructs it
+    alone holds are missing and this fails."""
+    constructs = collections.Counter(d["construct"] for _, d in lean_graph.nodes(data=True)
+                                     if d.get("language") == "lean" and d.get("construct"))
+    assert set(constructs) == {
+        "proof.theorem", "proof.axiom", "callable.function", "type.product", "type.sum",
+        "type.enumeration", "type.interface", "type.implementation", "member.field",
+        "member.variant"}
+    assert constructs["proof.axiom"] == 2 and constructs["type.implementation"] == 2
+    assert _lean(lean_graph, "Colour")[1]["construct"] == "type.enumeration"
+    assert _lean(lean_graph, "Shape")[1]["construct"] == "type.sum"
+
+
+def test_the_lean_example_has_one_unfinished_proof(lean_graph):
+    """Mutation: finish `even_or_odd` in `Proofs/Parity.lean` -- nothing
+    carries the facet, and the example no longer shows it."""
+    unfinished = [d["label"] for _, d in lean_graph.nodes(data=True)
+                  if "proof.incomplete" in (d.get("meta") or {}).get("facets", [])]
+    assert unfinished == ["even_or_odd"]
+    files = {d["label"]: d for _, d in lean_graph.nodes(data=True) if d.get("kind") == "file"}
+    assert files["Parity.lean"]["meta"]["sorry_count"] == 1 and files["Basic.lean"]["meta"]["sorry_count"] == 0
+
+
+def test_the_lean_examples_proofs_cite_what_they_are_built_on(lean_graph):
+    uses = _lean_edges(lean_graph, "uses")
+    assert uses[("IsEven.add", "double_add")]["part"] == "body"
+    assert uses[("IsEven.add", "IsEven")]["part"] == "statement"
+    assert uses[("isEven_zero", "double_zero")]["part"] == "body"
+    assert uses[("even_or_odd", "isEven_zero")]["part"] == "body"
+    assert uses[("scaled_pos", "unitLength_pos")]["part"] == "body"
+    assert uses[("Shape.area_square", "double")]["part"] == "statement"
+    assert uses[("Shape.area_rect", "rect")]["resolution"] == "namespace"
+    assert set(_lean_edges(lean_graph, "inherits")) == {("ColouredPoint", "Point")}
+    assert {target for _, target in _lean_edges(lean_graph, "implements")} == {"Sized"}
+
+
+def test_the_lean_examples_files_depend_as_they_import(lean_graph):
+    depends = {(a, b) for (a, b), d in _lean_edges(lean_graph, "depends_on").items()}
+    assert depends == {
+        ("Proofs.lean", "Basic.lean"), ("Proofs.lean", "Parity.lean"), ("Proofs.lean", "Shapes.lean"),
+        ("Parity.lean", "Basic.lean"), ("Shapes.lean", "Basic.lean")}

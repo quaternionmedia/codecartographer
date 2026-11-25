@@ -5,7 +5,7 @@ Codecarto reads a codebase and draws it as a graph you can explore: folders, fil
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-It reads Python, C and Rust in depth and many other languages at the level of
+It reads Python, C, Rust and Lean in depth and many other languages at the level of
 their top-level definitions. The graph streams into the browser as each file is
 parsed, laid out as nested clusters: folders around their files, files around
 their symbols. It also draws a Cargo workspace's crates, a linker script's

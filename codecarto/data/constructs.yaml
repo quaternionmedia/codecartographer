@@ -53,6 +53,7 @@ constructs:
       rust: {tokens: [fn]}
       python: {tokens: [def]}
       assembly: {note: "A label that call or bl targets; nothing but its use marks it as a function."}
+      lean: {tokens: [def], note: "def names any definition: a function, a value, a type or a proposition."}
 
   - id: callable.method
     name: Method
@@ -62,6 +63,7 @@ constructs:
       c: {note: "None. A function whose first parameter is a pointer to the struct is the idiom."}
       rust: {tokens: [fn, impl], note: "A fn inside an impl or trait block; self is an explicit first parameter."}
       python: {tokens: [def, class], note: "A def inside a class body; self is explicit by convention."}
+      lean: {note: "None. A def in a type's namespace is called as x.f by its name alone."}
 
   # ── Types ──────────────────────────────────────────────────────────────────
   - id: type.product
@@ -72,6 +74,7 @@ constructs:
       c: {tokens: [struct]}
       rust: {tokens: [struct], note: "Layout is the compiler's choice unless #[repr(C)] fixes it to C's."}
       python: {tokens: [class], note: "A class holding fields; @dataclass is the closest spelling."}
+      lean: {tokens: [structure]}
 
   - id: type.union
     name: Untagged union
@@ -89,6 +92,7 @@ constructs:
       c: {tokens: [enum], note: "Named integer constants; the type converts to and from int freely."}
       rust: {tokens: [enum], note: "An enum whose variants carry no data. #[repr(u8)] fixes its size for a register or a wire format."}
       python: {note: "enum.Enum, a library class rather than syntax."}
+      lean: {tokens: [inductive], note: "An inductive none of whose constructors takes an argument."}
 
   - id: type.sum
     name: Sum type
@@ -98,6 +102,7 @@ constructs:
       rust: {tokens: [enum, match], note: "Variants carry fields; match must cover every variant."}
       c: {tokens: [struct, enum, union], note: "No sum type. A struct holding an enum tag beside a union is the idiom, and nothing checks the tag."}
       python: {note: "A Union type hint, unchecked when the program runs."}
+      lean: {tokens: [inductive, match], note: "Constructors carry arguments; match must cover every one."}
 
   - id: type.alias
     name: Type alias
@@ -107,6 +112,7 @@ constructs:
       c: {tokens: [typedef]}
       rust: {tokens: [type]}
       python: {note: "Assigning a type to a name, or `type X = ...` from Python 3.12."}
+      lean: {tokens: [abbrev], note: "A definition that is always unfolded; it need not be a type."}
 
   - id: type.interface
     name: Interface
@@ -116,6 +122,7 @@ constructs:
       rust: {tokens: [trait]}
       c: {tokens: [struct], note: "A struct of function pointers, a hand-built vtable, is the idiom."}
       python: {note: "abc.ABC or typing.Protocol, library rather than syntax."}
+      lean: {tokens: [class], note: "A structure whose instances are found by search rather than passed."}
 
   - id: type.implementation
     name: Implementation
@@ -125,6 +132,7 @@ constructs:
       rust: {tokens: [impl, for], groups: {for: behaviour}, note: "impl Type { .. } adds methods; impl Trait for Type { .. } provides an interface."}
       c: {note: "None: functions are free, and belong to a type only by naming convention."}
       python: {tokens: [class], note: "Behaviour is written inside the class body, with the data."}
+      lean: {tokens: [instance]}
 
   - id: type.class
     name: Class
@@ -144,6 +152,7 @@ constructs:
       c: {note: "A declaration inside a struct or union body."}
       rust: {note: "name: Type inside a struct body, with its own pub."}
       python: {note: "An attribute assigned in __init__, or annotated in the class body."}
+      lean: {note: "name : Type after where in a structure or class; a field may be a proposition."}
 
   - id: member.variant
     name: Variant
@@ -152,6 +161,7 @@ constructs:
     spelled:
       c: {tokens: [enum], note: "An enumerator: an int constant with a name."}
       rust: {tokens: [enum], note: "A variant, which may carry its own fields."}
+      lean: {tokens: [inductive], note: "A constructor: | name args after the inductive's head."}
 
   - id: member.associated
     name: Associated item
@@ -169,6 +179,7 @@ constructs:
       c: {tokens: [const], note: "A const object still has an address; #define is the older spelling and has no type."}
       rust: {tokens: [const], note: "Inlined at each use; it has no single address."}
       python: {note: "None: an upper-case name by convention."}
+      lean: {tokens: [opaque], note: "A constant whose value nothing may unfold."}
 
   - id: storage.static
     name: Static storage
@@ -197,6 +208,7 @@ constructs:
       rust: {tokens: [mod]}
       python: {note: "A file is a module; a directory with __init__.py is a package."}
       c: {note: "None. A translation unit is the nearest thing, and every external name shares one space."}
+      lean: {tokens: [namespace], note: "A prefix of names, reopened in any file; codecarto draws it on each name rather than as a node."}
 
   - id: namespace.package
     name: Package
@@ -215,6 +227,7 @@ constructs:
       c: {note: "#include, textual inclusion by the preprocessor rather than a name."}
       rust: {tokens: [use, crate]}
       python: {tokens: [import]}
+      lean: {tokens: [import, open], note: "import brings a file's declarations in; open shortens their names."}
 
   # ── Linkage & the foreign boundary ─────────────────────────────────────────
   - id: linkage.foreign-block
@@ -233,6 +246,7 @@ constructs:
     spelled:
       c: {note: "#define, a preprocessor directive rather than a keyword; it sees text, not syntax."}
       rust: {tokens: [macro_rules], note: "macro_rules! matches token trees and is hygienic."}
+      lean: {tokens: [macro, syntax, notation]}
 
   - id: meta.macro-call
     name: Macro invocation
@@ -290,6 +304,24 @@ constructs:
       c: {note: "main for a hosted program; on a device, the reset handler the vector table names."}
       assembly: {note: "_start, or Reset_Handler."}
 
+  # ── Propositions and proofs ────────────────────────────────────────────────
+  - id: proof.theorem
+    name: Theorem
+    gloss: A stated proposition together with a proof a checker accepted.
+    look: {shape: hexagon, color: "#0ea5e9"}
+    spelled:
+      lean: {tokens: [theorem, lemma], note: "lemma is Mathlib's spelling of the same command."}
+      c: {note: "None: an assert checks one run, and nothing proves a statement for every input."}
+      rust: {note: "None: the compiler proves memory safety, and no statement a programmer writes."}
+      python: {note: "None: a test checks the cases it lists."}
+
+  - id: proof.axiom
+    name: Axiom
+    gloss: A proposition taken as true without proof; everything that uses it rests on it.
+    look: {shape: triangle, color: "#ea580c"}
+    spelled:
+      lean: {tokens: [axiom]}
+
   # ── Control ────────────────────────────────────────────────────────────────
   - id: control.loop
     name: Loop
@@ -307,6 +339,7 @@ constructs:
     spelled:
       rust: {tokens: [unsafe], note: "Marks the fn, block, trait or impl where the programmer, not the compiler, upholds the rules."}
       c: {note: "All of it; there is no checked subset to leave."}
+      lean: {tokens: [unsafe], note: "Marks a definition the kernel does not check."}
 
   - id: memory.volatile
     name: Volatile access
@@ -349,6 +382,7 @@ constructs:
     spelled:
       c: {tokens: [static], note: "static at file scope: this translation unit only."}
       rust: {tokens: [pub], note: "The default — an item is private unless pub says otherwise."}
+      lean: {tokens: [private]}
 
   - id: firmware.interrupt
     name: Interrupt handler
@@ -385,6 +419,12 @@ constructs:
       rust: {note: "asm! inside a fn, global_asm! at item position."}
       c: {note: "asm or __asm__, a compiler extension."}
       assembly: {note: "The whole file."}
+
+  - id: proof.incomplete
+    name: Unfinished proof
+    gloss: A statement whose proof has a hole; the checker accepts it with a warning and it is not proved.
+    spelled:
+      lean: {tokens: [sorry], note: "sorry stands for any missing term or tactic; admit is the same hole."}
 
 languages:
   c:
@@ -484,6 +524,32 @@ languages:
       section: layout.section
       entry: firmware.entry
       symbol: linkage.symbol
+
+  lean:
+    kinds:
+      theorem: proof.theorem
+      axiom: proof.axiom
+      def: callable.function
+      abbrev: type.alias
+      opaque: storage.constant
+      structure: type.product
+      class: type.interface
+      inductive: type.sum
+      instance: type.implementation
+      macro: meta.macro
+      field: member.field
+      constructor: member.variant
+    not_constructs:
+      example: "An anonymous declaration, checked and then discarded: nothing can refer to it."
+    refine:
+      # An inductive whose constructors take no arguments is an enumeration.
+      - {kind: inductive, meta: enumeration, construct: type.enumeration}
+    qualifiers:
+      unsafe: memory.unsafe
+      private: linkage.internal
+    meta:
+      # How many `sorry` the declaration holds.
+      sorry: proof.incomplete
 
 graphs:
   cargo:
