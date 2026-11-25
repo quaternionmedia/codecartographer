@@ -74,6 +74,8 @@ ESTATE_PANELS = (
     "web/src/layout/panels/estate_panel.ts",
     "web/src/layout/panels/topology_panel.ts",
     "web/src/layout/panels/capabilities_panel.ts",
+    "web/src/layout/panels/harness_panel.ts",
+    "web/src/features/estate/run_state.ts",
     "web/src/layout/panels/overview_panel.ts",
     "web/src/features/estate/seam_client.ts",
     "web/src/features/estate/estate_service.ts",

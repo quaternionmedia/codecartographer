@@ -1,0 +1,18 @@
+/**
+ * The Harness panel's own marks. Rows, headings and hints are the estate
+ * views' shared classes; this adds the state dot's four colours, the same
+ * tokens the canvas marks a box with.
+ */
+
+.gl-panel--harness {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 0.9rem);
+}
+
+.harness__state[data-run-state="idle"]    .estate__dot { background: var(--c-font-muted); }
+.harness__state[data-run-state="active"]  .estate__dot { background: var(--c-secondary); }
+.harness__state[data-run-state="success"] .estate__dot { background: var(--c-accent); }
+.harness__state[data-run-state="failed"]  .estate__dot { background: var(--c-error, var(--c-warning)); }
+
+.harness__unmatched { color: var(--c-warning); }

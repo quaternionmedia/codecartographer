@@ -137,3 +137,4 @@ export { HighlightExtension } from './highlight_extension';
 export { TooltipExtension } from './tooltip_extension';
 export { ColorExtension } from './color_extension';
 export { LegendExtension } from './legend_extension';
+export { RunStateExtension } from './run_state_extension';

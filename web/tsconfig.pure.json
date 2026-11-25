@@ -34,6 +34,7 @@
     "src/features/graph/services/vis_look.ts",
     "src/features/estate/seam_client.ts",
     "src/features/estate/provenance_shown.ts",
+    "src/features/estate/run_state.ts",
     "src/features/graph/services/layout_names.ts",
     "src/features/graph/services/label_color.ts",
     "src/features/repository/local_tree.ts",
