@@ -395,7 +395,8 @@ Id `graph-settings-panel`. In the default arrangement.
 ## The canvas
 
 - **Zoom** with the scroll wheel; **pan** by dragging the background.
-- **Drag a node** to move it. Once a graph's group outlines have been drawn,
+- **Drag a node** to move it; its edges and its label move with it, whatever
+  its id holds. Once a graph's group outlines have been drawn,
   what is drawn inside the node (a directory's files, a file's symbols) moves
   with it, and the outlines are drawn again where the drag ends, even after
   Group Outlines is turned off; a graph drawn with it off moves one node at a

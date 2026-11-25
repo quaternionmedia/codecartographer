@@ -57,6 +57,16 @@ export const MAP_NODE_SCALE = 2.5;
  */
 export const MAP_NAMED_PX = 4;
 
+/**
+ * The selector for an attribute holding exactly *value*. A node id is data --
+ * a symbol's carries its file's path, backslashes and all on Windows -- and in
+ * a selector a backslash begins an escape and a quote ends the string, so the
+ * value is escaped rather than written in as it comes.
+ */
+function attrIs(name: string, value: string): string {
+  return `[${name}="${CSS.escape(value)}"]`;
+}
+
 /** The theme's font colour, which the canvas's names take unless the reader chose one. */
 function themeFont(): string {
   return getComputedStyle(document.documentElement).getPropertyValue('--c-font');
@@ -729,8 +739,8 @@ export class StreamingGraphRenderer {
     for (const id of ids) {
       this.nodeById.delete(id);
       this._nodeGroupEl.delete(id);
-      this.nodeGroup.select(`g.graph-node[data-node-id="${CSS.escape(id)}"]`).remove();
-      this.labelGroup.selectAll(`text[data-node-id="${CSS.escape(id)}"]`).remove();
+      this.nodeGroup.select(`g.graph-node${attrIs('data-node-id', id)}`).remove();
+      this.labelGroup.selectAll(`text${attrIs('data-node-id', id)}`).remove();
     }
     this._allEdges = this._allEdges.filter(
       (e) => !gone.has(String(e.source)) && !gone.has(String(e.target)),
@@ -1241,9 +1251,9 @@ export class StreamingGraphRenderer {
   }
 
   private _updateEdgesForNode(nodeId: string, x: number, y: number): void {
-    this.linkGroup.selectAll<SVGLineElement, unknown>(`[data-from="${nodeId}"]`)
+    this.linkGroup.selectAll<SVGLineElement, unknown>(attrIs('data-from', nodeId))
       .attr('x1', x).attr('y1', y);
-    this.linkGroup.selectAll<SVGLineElement, unknown>(`[data-to="${nodeId}"]`)
+    this.linkGroup.selectAll<SVGLineElement, unknown>(attrIs('data-to', nodeId))
       .attr('x2', x).attr('y2', y);
   }
 
@@ -1251,7 +1261,7 @@ export class StreamingGraphRenderer {
     // Labels are rendered in document order matching nodeById insertion order
     // We track them by data attribute for simplicity
     const node = this.nodeById.get(nodeId);
-    const text = this.labelGroup.selectAll<SVGTextElement, unknown>(`text[data-node-id="${nodeId}"]`);
+    const text = this.labelGroup.selectAll<SVGTextElement, unknown>(`text${attrIs('data-node-id', nodeId)}`);
     if (node) {
       text.each((_, i, els) => this._placeLabel(d3.select(els[i]), node, x, y, size));
     } else {
