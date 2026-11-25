@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from codecarto.routers.c_parser_router import CParserRouter
 from codecarto.routers.topology_router import TopologyRouter
 from codecarto.routers.capability_router import CapabilityRouter
+from codecarto.routers.harness_router import HarnessRouter
 from codecarto.routers.overview_router import OverviewRouter
 from codecarto.routers.estate_router import EstateRouter
 from codecarto.routers.show_router import ShowRouter
@@ -79,6 +80,8 @@ app.include_router(CargoRouter, prefix="/cargo", tags=["cargo"])
 # The harness's topology, drawn here. `codecarto` is qmcp's front end on
 # the web; the terminal one is `dossier`, and both read the same document.
 app.include_router(TopologyRouter, prefix="/topology", tags=["topology"])
+# What the harness is running and asking, read for the Harness panel.
+app.include_router(HarnessRouter, prefix="/harness", tags=["harness"])
 # What each named thing this estate can do has reached. The vocabulary is the
 # corpus's and `dossier` is the other window onto the same registry.
 app.include_router(CapabilityRouter, prefix="/capabilities",

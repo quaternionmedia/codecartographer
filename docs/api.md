@@ -27,6 +27,7 @@ the `/pam/api/*` aliases; each is named in its section below.
 | `/lexicon` | lexicon | Hand-authored language lexicons, the construct vocabulary and the chrestomathy |
 | `/cargo` | cargo | A Cargo workspace and its last recorded build, as graph data -- read, never run |
 | `/topology` | topology | The harness's flows, as graph data |
+| `/harness` | harness | What the harness is running and asking, and the run state each project has |
 | `/capabilities` | capabilities | The governance corpus's capability registry, as graph data |
 | `/overview` | overview | dossier's reading of the estate, as graph data |
 | `/estate` | estate | Every seam above and whether each is there |
@@ -1054,6 +1055,19 @@ the harness is not answering, `topologies` is empty and the envelope carries the
 What this window drew, edge by edge — widths, styles, whether each was measured
 — so two windows onto one topology can be compared with each other rather than
 only with the payload both were handed.
+
+### GET `/harness/data`
+
+What the harness is running and asking. `runs`, `queue` and `instructions`
+each carry `rows`, `shown`, `more` and `more_is_floor`: the rows a panel
+shows, how many the harness returned beyond them, and whether the harness
+may hold others still. A list the harness would not serve carries its own
+`problem`, `remedy` and `where` and no rows. `states` holds one entry per
+project an instruction or a pending question names, with `state` (`idle`,
+`active`, `success` or `failed`) and `because`, the row that gave it.
+`unplaced` counts what was read and gives no project a state, and `caveat`
+says what a state is read from. The route reads the harness and posts
+nothing to it.
 
 ### GET `/capabilities/gjgf?layout=&palette_id=`
 

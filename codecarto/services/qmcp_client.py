@@ -132,3 +132,25 @@ def relations(subject: str, base: str | None = None) -> Reach:
     is the harness's decision and not this side's to route around.
     """
     return fetch(f"/v1/topology/relations/{subject}", base)
+
+
+LOOPBACK_ONLY = ("the harness serves this route only on a loopback bind, or "
+                 "this build of the harness does not have it")
+
+
+def invocations(limit: int, base: str | None = None) -> Reach:
+    """The tool runs the harness recorded, newest first, at most `limit`."""
+    return fetch(f"/v1/invocations?limit={limit}", base,
+                 remedy_404="this build of the harness does not list its runs")
+
+
+def queue(limit: int, base: str | None = None) -> Reach:
+    """The questions the harness holds for a person, at most `limit`."""
+    return fetch(f"/v1/human/requests?limit={limit}", base,
+                 remedy_404="this build of the harness does not list its queue")
+
+
+def instructions(limit: int, base: str | None = None) -> Reach:
+    """The instructions the harness recorded, newest first, at most `limit`."""
+    return fetch(f"/v1/instructions?limit={limit}", base,
+                 remedy_404=LOOPBACK_ONLY)
