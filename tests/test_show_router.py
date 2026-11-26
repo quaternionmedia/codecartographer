@@ -172,10 +172,27 @@ def _edges(results: dict) -> list[dict]:
 # --- absences ---------------------------------------------------------------
 
 def test_a_missing_families_document_is_a_sentence(tmp_path, monkeypatch):
-    monkeypatch.setenv("CODECARTO_CORPUS", str(tmp_path / "empty"))
+    checkout = tmp_path / "corpus"
+    checkout.mkdir()
+    (checkout / "README.md").write_text("a corpus\n", encoding="utf-8")
+    monkeypatch.setenv("CODECARTO_CORPUS", str(checkout))
     results = _results(TestClient(app), "/show/index/gjgf")
     assert results.get("unreadable") is True
     assert "families document" in results["problem"]
+    assert "graph" not in results
+
+
+def test_a_checkout_that_holds_nothing_is_not_a_missing_document(tmp_path, monkeypatch):
+    """Mutation: drop the `reading.unfetched` branch in the router -- the
+    remedy tells a reader to move a pin."""
+    from codecarto.services import corpus
+
+    monkeypatch.delenv(corpus.ENV, raising=False)
+    monkeypatch.setattr(corpus, "SUBMODULE", tmp_path / "absent")
+    results = _results(TestClient(app), "/show/index/gjgf")
+    assert results.get("unreadable") is True
+    assert "has not been fetched" in results["problem"]
+    assert corpus.FETCH in results["remedy"]
     assert "graph" not in results
 
 

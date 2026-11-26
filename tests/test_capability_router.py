@@ -180,11 +180,32 @@ def test_the_caveat_says_a_pointer_is_not_a_finding(tmp_path: Path):
 # --- a pin older than the registry ----------------------------------------------
 
 
+def _checkout_without_the_registry(tmp_path: Path) -> Path:
+    """A corpus checkout that holds something and not the registry."""
+    (tmp_path / "README.md").write_text("a corpus\n", encoding="utf-8")
+    return tmp_path
+
+
 def test_an_absent_registry_is_a_reason_and_not_an_empty_estate(tmp_path: Path):
-    reading = mod.read(tmp_path)
+    reading = mod.read(_checkout_without_the_registry(tmp_path))
 
     assert reading.ok is False, "a pin older than the registry drew an empty estate"
     assert "pin may predate it" in reading.reason
+    assert reading.unfetched is False
+
+
+@pytest.mark.parametrize("missing", [False, True])
+def test_a_checkout_that_holds_nothing_says_it_was_not_fetched(tmp_path: Path, missing: bool):
+    """A clone made without its submodules, whose mount point is empty or
+    missing, is not a pin older than the registry.
+
+    Mutation: return False from `corpus.unfetched` -- the reason is the pin's.
+    """
+    reading = mod.read(tmp_path / "absent" if missing else tmp_path)
+
+    assert reading.ok is False and reading.unfetched is True
+    assert "has not been fetched" in reading.reason
+    assert "pin may predate" not in reading.reason
 
 
 def test_a_registry_that_does_not_parse_says_so(tmp_path: Path):
@@ -281,7 +302,7 @@ def test_an_unreadable_registry_answers_200_with_the_problem_in_results(
     because `RequestHandler.handleResponse` parses the message in one exact
     shape -- the failure `topology_router._unreachable` documents.
     """
-    monkeypatch.setattr(corpus_root, "SUBMODULE", tmp_path)
+    monkeypatch.setattr(corpus_root, "SUBMODULE", _checkout_without_the_registry(tmp_path))
 
     response = client.get("/capabilities/gjgf")
 
@@ -291,6 +312,24 @@ def test_an_unreadable_registry_answers_200_with_the_problem_in_results(
     assert "pin may predate it" in results["problem"]
     assert "propagate/" in results["remedy"]
     assert "graph" not in results, "an unreadable registry drew a canvas"
+
+
+def test_an_unfetched_checkout_answers_with_the_command_that_fetches_it(
+        client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """The remedy is the fetch, and not a propagation that would change nothing.
+
+    Mutation: drop the `reading.unfetched` branch in `_unreadable`'s remedy --
+    the remedy names a propagation.
+    """
+    monkeypatch.delenv(corpus_root.ENV, raising=False)
+    monkeypatch.setattr(corpus_root, "SUBMODULE", tmp_path)
+
+    for path in ("/capabilities/gjgf", "/capabilities/data"):
+        results = client.get(path).json()["results"]
+        assert results["unreadable"] is True, path
+        assert "has not been fetched" in results["problem"], path
+        assert corpus_root.FETCH in results["remedy"], path
+        assert "propagate/" not in results["remedy"], path
 
 
 def test_this_window_agrees_with_the_corpus_about_the_rungs():

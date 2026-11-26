@@ -92,6 +92,8 @@ class Reading:
     capabilities: list[dict[str, Any]] = field(default_factory=list)
     reason: str = ""
     source: str = ""
+    unfetched: bool = False
+    """The corpus checkout holds nothing, so the fix is to fetch it."""
 
     @property
     def ok(self) -> bool:
@@ -109,6 +111,9 @@ def read(corpus: Path | str | None = None) -> Reading:
 
     root = Path(corpus) if corpus else corpus_root.root()
     path = root / REGISTRY
+    if corpus_root.unfetched(root):
+        return Reading(source=str(path), unfetched=True,
+                       reason=corpus_root.unfetched_problem(root))
     if not path.is_file():
         return Reading(source=str(path), reason=(
             f"no capability registry at {path.as_posix()}. The governance pin "

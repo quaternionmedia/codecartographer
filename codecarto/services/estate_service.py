@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from codecarto.services import capability_service, overview_service, qmcp_client
+from codecarto.services import corpus as corpus_root
 
 # Where the prose reader answers. Root two, the fourth constant in
 # `governance/qm/ci/dashboard.py`'s allocation -- a memory aid and not a claim,
@@ -118,6 +119,9 @@ def probe_harness() -> Identity:
 def probe_corpus(corpus: Path | str | None = None) -> Identity:
     """The capability registry, at the pinned governance path."""
     reading = capability_service.read(corpus)
+    if reading.unfetched:
+        return Identity(False, reading.source, problem=reading.reason,
+                        remedy=corpus_root.unfetched_remedy())
     if not reading.ok:
         return Identity(False, reading.source, problem=reading.reason,
                         remedy=("a propagation moves this project's governance "
@@ -171,6 +175,9 @@ def probe_families(corpus: Path | str | None = None) -> Identity:
     from codecarto.services import show_service
 
     reading = show_service.read(corpus)
+    if reading.unfetched:
+        return Identity(False, reading.source, problem=reading.reason,
+                        remedy=corpus_root.unfetched_remedy())
     if not reading.ok:
         return Identity(False, reading.source, problem=reading.reason,
                         remedy=("point this window at a corpus checkout that "
