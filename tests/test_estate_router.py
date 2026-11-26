@@ -78,7 +78,37 @@ def test_harness_down_carries_the_start_command(monkeypatch):
 
 # --- the corpus and overview probes: files, present or not --------------------
 
+def test_an_unfetched_corpus_names_the_fetch_on_both_seams(tmp_path, monkeypatch):
+    """The corpus and the families seams read one checkout, and say the same
+    fix when it holds nothing.
+
+    Mutation: drop either probe's `reading.unfetched` branch -- its remedy
+    names the pin.
+    """
+    from codecarto.services import corpus
+
+    monkeypatch.delenv(corpus.ENV, raising=False)
+    for probe in (estate_service.probe_corpus, estate_service.probe_families):
+        found = probe(tmp_path)
+        assert not found.ok, probe.__name__
+        assert "has not been fetched" in found.problem, probe.__name__
+        assert corpus.FETCH in found.remedy, probe.__name__
+
+
+def test_an_override_that_names_nothing_is_not_told_to_fetch_the_pin(tmp_path, monkeypatch):
+    """Mutation: drop the `overridden()` branches in `corpus` -- the remedy is
+    the submodule fetch, which would not change what the override names."""
+    from codecarto.services import corpus
+
+    monkeypatch.setenv(corpus.ENV, str(tmp_path / "absent"))
+    found = estate_service.probe_corpus()
+    assert not found.ok
+    assert corpus.ENV in found.problem and corpus.ENV in found.remedy
+    assert corpus.FETCH not in found.remedy
+
+
 def test_corpus_absent_names_the_propagation(tmp_path):
+    (tmp_path / "README.md").write_text("a corpus\n", encoding="utf-8")
     found = estate_service.probe_corpus(tmp_path)
     assert not found.ok
     assert "no capability registry" in found.problem

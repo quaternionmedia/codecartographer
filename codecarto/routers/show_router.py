@@ -38,7 +38,7 @@ from typing import Any
 from fastapi import APIRouter, Query
 
 from codecarto.models.plot_data import PlotOptions
-from codecarto.services import clones, estate_service, show_service, system_composer
+from codecarto.services import clones, corpus, estate_service, show_service, system_composer
 from codecarto.services.stream_floor import CODE_FLOOR
 from codecarto.util.utilities import generate_return
 
@@ -55,6 +55,8 @@ def _absent(problem: str, remedy: str, where: str) -> dict[str, Any]:
 
 
 def _unreadable(reading: show_service.Reading) -> dict[str, Any]:
+    if reading.unfetched:
+        return _absent(reading.reason, corpus.unfetched_remedy(), reading.source)
     return _absent(
         reading.reason,
         ("point this window at a corpus checkout that carries it with "

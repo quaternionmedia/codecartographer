@@ -80,7 +80,8 @@ def _slow_reading(*_args, **_kwargs) -> SimpleNamespace:
     """A registry or overview read that takes SLOW and finds nothing to draw."""
     _waiting.set()
     time.sleep(SLOW)
-    return SimpleNamespace(ok=False, reason="slow test reading", source="none: a test")
+    return SimpleNamespace(ok=False, reason="slow test reading", source="none: a test",
+                           unfetched=False)
 
 
 async def _cheap_while(slow_path: str, body: dict | None = None) -> tuple[float, int]:

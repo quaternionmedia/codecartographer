@@ -37,7 +37,7 @@ from typing import Any
 from fastapi import APIRouter, Query
 
 from codecarto.models.plot_data import PlotOptions
-from codecarto.services import capability_service, estate_service
+from codecarto.services import capability_service, corpus, estate_service
 from codecarto.util.utilities import generate_return
 
 CapabilityRouter = APIRouter()
@@ -59,7 +59,8 @@ def _unreadable(reading) -> dict[str, Any]:
     return generate_return(results={
         "unreadable": True,
         "problem": reading.reason,
-        "remedy": ("A propagation moves this project's governance pin: "
+        "remedy": (corpus.unfetched_remedy() if reading.unfetched else
+                   "A propagation moves this project's governance pin: "
                    "`propagate/<name>-<date>` in the corpus, merged into "
                    "`project/<name>`, then the submodule moved to that tip."),
         "where": reading.source,

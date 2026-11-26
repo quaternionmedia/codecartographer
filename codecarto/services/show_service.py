@@ -124,6 +124,8 @@ class Reading:
 
     source: str = ""
     reason: str = ""
+    unfetched: bool = False
+    """The corpus checkout holds nothing, so the fix is to fetch it."""
     root: Path | None = None
     schema: int | None = None
     commit: str | None = None
@@ -242,6 +244,10 @@ def read(corpus: Path | str | None = None) -> Reading:
     path = root / FAMILIES_FILE
     where = corpus_root.shown(path)
     reading = Reading(source=where, root=root)
+    if corpus_root.unfetched(root):
+        reading.unfetched = True
+        reading.reason = corpus_root.unfetched_problem(root)
+        return reading
     if not path.is_file():
         reading.reason = (f"no families document at {where}. The "
                           f"governance pin may predate it.")

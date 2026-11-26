@@ -62,6 +62,40 @@ def shown(path: Path) -> str:
     return path.as_posix()
 
 
+FETCH = "git submodule update --init governance/qm"
+"""The command that fetches the pinned corpus into a clone made without it."""
+
+
+def unfetched(checkout: Path) -> bool:
+    """Whether a corpus checkout holds nothing at all.
+
+    A clone made without its submodules leaves the mount point missing or
+    empty, and every corpus file is then absent for that one reason. A
+    checkout that holds anything is a checkout, and a file missing from it is
+    a file its commit does not carry.
+    """
+    try:
+        return not checkout.is_dir() or not any(checkout.iterdir())
+    except OSError:
+        return True
+
+
+def unfetched_problem(checkout: Path) -> str:
+    """The sentence for a checkout that holds nothing."""
+    if overridden():
+        return (f"the corpus checkout {ENV} names, {shown(checkout)}, is "
+                f"missing or empty")
+    return (f"the corpus checkout at {shown(checkout)} is missing or empty: "
+            f"this clone's governance submodule has not been fetched")
+
+
+def unfetched_remedy() -> str:
+    """What brings a corpus checkout that holds nothing into place."""
+    if overridden():
+        return f"point {ENV} at a corpus checkout, or unset it to read the pin"
+    return f"fetch it with `{FETCH}`, run in this repository"
+
+
 def overridden() -> bool:
     """Whether a person pointed this window at a corpus other than the pin."""
     return bool(os.environ.get(ENV, "").strip())
