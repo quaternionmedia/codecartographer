@@ -259,7 +259,7 @@ async function placeOf(page: Page, id: string): Promise<{ x: number; y: number }
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
-test('the panel only reads: its one control draws, and it sends nothing but GET', async ({ page }) => {
+test('the panel only reads: its button draws, its checkbox says how, and it sends nothing but GET', async ({ page }) => {
   // Mutation: add a `button` to a row in `interactions_panel.ts` -- this fails.
   const sent: Request[] = [];
   page.on('request', (request) => {
@@ -271,10 +271,11 @@ test('the panel only reads: its one control draws, and it sends nothing but GET'
   const panel = page.locator('.gl-panel--interactions');
   await expect(panel.locator('[data-ref="ins-1"]')).toBeVisible({ timeout: SETTLED });
   const controls = panel.locator('button, input, select, textarea, a[href]');
-  await expect(controls).toHaveCount(1);
-  await expect(controls).toHaveText('draw as a graph');
+  await expect(controls).toHaveCount(2);
+  await expect(controls.nth(0)).toHaveText('draw as a graph');
+  await expect(controls.nth(1)).toHaveAttribute('type', 'checkbox');
 
-  await controls.click();
+  await controls.nth(0).click();
   await expect(node(page, 'harness')).toHaveCount(1, { timeout: SETTLED });
   expect(sent.some((request) => new URL(request.url()).pathname.endsWith('/harness/gjgf'))).toBe(true);
   expect(sent.filter((request) => request.method() !== 'GET')).toEqual([]);
@@ -430,6 +431,38 @@ test('the graph is asked for in reading order on the press, and by the algorithm
   await page.locator('.interactions__draw').click();
   await expect.poll(() => asked.length, { timeout: SETTLED }).toBe(3);
   expect(asked[2]).toBe('Reading_Order');
+});
+
+test('the graph is asked for as rows, and with every node once the checkbox is ticked', async ({ page }) => {
+  // Mutations: ask for no detail on the press -- the route draws every node;
+  // drop the detail when Graph Settings redraws -- a graph drawn as rows
+  // gains its sources and projects on a change of algorithm; ignore the
+  // checkbox -- the ticked press asks for rows again.
+  const asked: string[] = [];
+  await page.route('**/harness/gjgf*', (route) => {
+    asked.push(new URL(route.request().url()).searchParams.get('detail') ?? '');
+    return route.fulfill(graphAnswer);
+  });
+  await openInteractions(page, level());
+  const every = page.locator('.interactions__every-node');
+  await expect(every).not.toBeChecked();
+  await page.locator('.interactions__draw').click();
+  await expect(node(page, 'harness')).toHaveCount(1, { timeout: SETTLED });
+  expect(asked).toEqual(['rows']);
+
+  // A change of algorithm redraws the same rows.
+  await page.locator('.lm_tab', { hasText: /Graph Settings/ }).click();
+  const algorithm = page.locator('.panel-settings__group', { hasText: 'Algorithm' }).locator('select');
+  await algorithm.waitFor({ timeout: SETTLED });
+  await algorithm.selectOption('circular_layout');
+  await expect.poll(() => asked.length, { timeout: SETTLED }).toBe(2);
+  expect(asked[1]).toBe('rows');
+
+  await page.locator('.lm_tab', { hasText: /Interactions/ }).click();
+  await every.check();
+  await page.locator('.interactions__draw').click();
+  await expect.poll(() => asked.length, { timeout: SETTLED }).toBe(3);
+  expect(asked[2]).toBe('all');
 });
 
 test('a drawn graph stays as drawn while the panel reads again, and says when the harness has moved on', async ({ page }) => {

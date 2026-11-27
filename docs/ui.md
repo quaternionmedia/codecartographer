@@ -211,9 +211,17 @@ is read-only.
 *draw as a graph* draws the same rows in the Graph panel, in reading order
 and with every name written, whatever Graph Settings holds. Left to right:
 who, the instruction, the question it raised, who answered. A protocol turn
-is one straight row, with its chat and session tucked under it. The sources
-instructions came in by stand above the rows under the harness, and tools
-and projects below. Rows that name nobody come last, and instructions and
+is one straight row. The way an instruction came in is written before its
+text, and its project, session, chat and turn are on its hover. Rows stand
+close, and a harness with many of them is drawn as blocks of rows side by
+side, read top to bottom and then block by block; the rows one name starts
+stay in one block while a block can hold them.
+
+With *with sources, projects and sessions as nodes* ticked, the button draws
+those as nodes as well: a turn's chat and session tucked under its row, the
+sources instructions came in by above the rows under the harness, and tools
+and projects below, in one column of rows however many there are. Either
+way, rows that name nobody come last, and instructions and
 questions that name nobody and belong to no turn are one node each with
 their count; the lists further down the panel hold every one of them.
 

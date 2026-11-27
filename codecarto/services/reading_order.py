@@ -24,6 +24,16 @@ The spacing is for names drawn at the size the canvas keeps them readable at:
 a row leaves room for a name above its node, and a column for a name of
 `interaction_graph.LABEL` characters beside or above it.
 
+**A graph that says it is `dense`** carries nothing above, below or beneath
+its rows, so its rows stand closer and its middle columns further apart, with
+room for a longer name over each. When its rows would make a column much
+taller than a canvas is, they wrap into blocks side by side, each block the
+four columns again, read top to bottom and then block by block. The rows one
+name starts stay in one block while a block can hold them, so a block may run
+longer than its neighbours; a name with more rows than that is cut where a
+block fills. A node in rows of several blocks stands in the block that holds
+most of them.
+
 **Any other graph** is placed by how far each node is along its arrows: a
 node nothing points at stands at the left, and each other node one column
 right of the furthest node that points at it. Nodes on a cycle share the
@@ -31,11 +41,15 @@ column after the last.
 
 What this cannot do: uncross every edge. Rows are ordered once, by name; a
 name that answers rows far apart still has edges that cross the rows between,
-and an edge to a node above or below the rows crosses the rows on its way.
+and an edge to a node above or below the rows crosses the rows on its way. A
+name in rows of two blocks has edges that cross from one block to the other.
+It does not know the canvas it is drawn on: blocks are chosen for `ASPECT`.
 """
 
 from __future__ import annotations
 
+from collections import Counter
+from math import ceil, log
 from typing import Any, Hashable
 
 WHO, INSTRUCTION_COLUMN, QUESTION_COLUMN, ANSWERER = "who", "instruction", "question", "answerer"
@@ -49,6 +63,23 @@ X = {WHO: 0.0, INSTRUCTION_COLUMN: 130.0, QUESTION_COLUMN: 345.0, ANSWERER: 475.
 
 ROW = 44.0
 """From one row to the next: a node, the name above it, and air."""
+
+DENSE_X = {WHO: 0.0, INSTRUCTION_COLUMN: 180.0, QUESTION_COLUMN: 470.0, ANSWERER: 610.0}
+"""The columns of a dense graph: the instruction's name is longer there."""
+
+DENSE_ROW = 36.0
+"""From one row of a dense graph to the next."""
+
+ASPECT = 2.4
+"""Width over height of the picture a dense graph's blocks are chosen for: a
+canvas wider than it is tall."""
+
+OVERFLOW = 1.5
+"""How many times a block's share of the rows one name's rows may take and
+still be kept in one block."""
+
+BLOCK_GAP = 70.0
+"""Between the names at the right of one block and those at the left of the next."""
 
 NAME_GAP = 30.0
 """The least between two nodes at an end of the reading, whose names are beside them."""
@@ -86,8 +117,37 @@ def place(graph: Any) -> Place:
     """Where each node of `graph` goes, in the canvas's units."""
     nodes = list(graph.nodes(data=True))
     if nodes and all(data.get("column") in COLUMNS for _, data in nodes):
-        return _reading(graph)
+        return _reading(graph, dense=bool(graph.graph.get("dense")))
     return _along_the_arrows(graph)
+
+
+def blocks(rows: int, pitch: float, row: float = DENSE_ROW) -> int:
+    """How many blocks side by side bring `rows` rows nearest to `ASPECT`."""
+    def off(count: int) -> float:
+        return abs(log(count * pitch / (ceil(rows / count) * row) / ASPECT))
+    return min(range(1, rows + 1), key=off) if rows > 0 else 1
+
+
+def breaks(sizes: list[int], per: int) -> set[int]:
+    """The rows that start a block, given how many rows each name starts in turn.
+
+    A block takes `per` rows. A name's rows that would run past that start the
+    next block, whole if they are at most `OVERFLOW` blocks' worth, and are
+    otherwise cut every `per` rows.
+    """
+    starts, held, index = {0}, 0, 0
+    for size in sizes:
+        whole = size <= per * OVERFLOW
+        if whole and held and held + size > per:
+            starts.add(index)
+            held = 0
+        for _ in range(size):
+            if not whole and held >= per:
+                starts.add(index)
+                held = 0
+            held += 1
+            index += 1
+    return starts
 
 
 def _mean(values: list[float]) -> float:
@@ -104,7 +164,8 @@ def _spread(wanted: list[tuple[float, Hashable]], gap: float) -> dict[Hashable, 
     return placed
 
 
-def _reading(graph: Any) -> Place:
+def _reading(graph: Any, dense: bool = False) -> Place:
+    xs, row_gap = (DENSE_X, DENSE_ROW) if dense else (X, ROW)
     column = {node: data["column"] for node, data in graph.nodes(data=True)}
     label = {node: str(data.get("label") or node).lower() for node, data in graph.nodes(data=True)}
     rank = {node: int(data.get("rank") or 0) for node, data in graph.nodes(data=True)}
@@ -157,34 +218,60 @@ def _reading(graph: Any) -> Place:
         if column[target] == BENEATH and column[source] in X and target not in carried:
             carries.setdefault(source, []).append(target)
             carried.add(target)
+    def widest(name: str) -> float:
+        return max([0.0] + [len(label[node]) * CHAR for node in of[name]])
+
+    # A dense graph's rows wrap into blocks; any other is the one block.
+    pitch = xs[ANSWERER] + widest(WHO) + widest(ANSWERER) + BLOCK_GAP
+    starts = {0}
+    if dense and rows:
+        sizes: list[int] = []
+        for index, row in enumerate(rows):
+            if index and row[0] is not None and row[0] == rows[index - 1][0]:
+                sizes[-1] += 1
+            else:
+                sizes.append(1)
+        starts = breaks(sizes, ceil(len(rows) / blocks(len(rows), pitch, row_gap)))
     height: dict[int, float] = {}
-    down = 0.0
+    within: dict[int, int] = {}
+    down = deepest = 0.0
+    block = -1
     for index, row in enumerate(rows):
+        if index in starts:
+            down = 0.0
+            block += 1
+        within[index] = block
         height[index] = down
         ends_here = any(node in carries and not any(node in later for later in rows[index + 1:])
                         for node in row)
-        down += ROW + (BENEATH_ROOM if ends_here else 0.0)
+        down += row_gap + (BENEATH_ROOM if ends_here else 0.0)
+        deepest = max(deepest, down)
 
     found: Place = {}
-    wanted: dict[str, dict[Hashable, list[float]]] = {name: {} for name in X}
+    wanted: dict[str, dict[Hashable, list[tuple[int, float]]]] = {name: {} for name in xs}
     for index, row in enumerate(rows):
-        for name, node in zip(X, row):
+        for name, node in zip(xs, row):
             if node is not None:
-                wanted[name].setdefault(node, []).append(height[index])
-    below = down
-    for name in X:
-        asks: list[tuple[float, Hashable]] = []
+                wanted[name].setdefault(node, []).append((within[index], height[index]))
+    below = deepest
+    for name in xs:
+        asks: dict[int, list[tuple[float, Hashable]]] = {}
         for node in of[name]:
             if node in wanted[name]:
-                asks.append((_mean(wanted[name][node]), node))
+                # In the block that holds most of its rows, the first on a tie.
+                held = Counter(block for block, _ in wanted[name][node])
+                block = min(held, key=lambda found_in: (-held[found_in], found_in))
+                asks.setdefault(block, []).append(
+                    (_mean([y for at, y in wanted[name][node] if at == block]), node))
             else:
                 # In no row: an end of the reading that only an edge to above
                 # or below reaches. It goes under the rows.
-                asks.append((below, node))
+                asks.setdefault(0, []).append((below, node))
                 below += NAME_GAP
-        gap = NAME_GAP if name in (WHO, ANSWERER) else ROW
-        for node, y in _spread(asks, gap).items():
-            found[node] = (X[name], y)
+        gap = NAME_GAP if name in (WHO, ANSWERER) else row_gap
+        for block, asking in asks.items():
+            for node, y in _spread(asking, gap).items():
+                found[node] = (block * pitch + xs[name], y)
 
     def room(node: Hashable) -> float:
         """The width a node above or below the rows takes with its name."""
@@ -210,7 +297,7 @@ def _reading(graph: Any) -> Place:
 
     # Tucked under its row: each `beneath` node under the node that points
     # at it, and a `beneath` node that one points at a column to its right.
-    across = sorted(X.values())
+    across = sorted(block * pitch + x for block in range(len(starts)) for x in xs.values())
     for holder, tucked in carries.items():
         hx, hy = found[holder]
         for node in tucked:
