@@ -120,6 +120,7 @@ it.
 | `spring_layout` | Force-directed (default) |
 | `compound_layout` | Hierarchical: dirs → files → symbols in nested orbits |
 | `map_layout` | Each directory a disc of its files, its subdirectories packed around it; nodes carry `label_at` |
+| `reading_order_layout` | Left to right, the way the arrows read: a graph whose nodes carry `column` as rows of a reading, any other by how far each node is along its arrows |
 | `circular_layout` | Nodes on a circle |
 | `kamada_kawai_layout` | Energy-minimized spring |
 | `spectral_layout` | Graph Laplacian eigenvectors |
@@ -1090,23 +1091,39 @@ serve. The route reads the harness and posts nothing to it.
 
 ### GET `/harness/gjgf?layout=&palette_id=`
 
-The same rows as `GraphData`. A node is something a row names: a name with
-the field it was read from, `nobody named`, an instruction, its source, a
+The same rows as `GraphData`, laid out by `reading_order_layout` unless
+`layout` names another. A node is something a row names: a name with the
+field it was read from, `nobody named`, an instruction, its source, a
 question, a tool, a project, a protocol session or chat, and the harness. An
 edge is a field of a row, with `kind` one of `instructed`, `asked`,
 `answered`, `ran`, `way in`, `for`, `turn`, `in session` and `recorded by`.
 An instruction is joined to the question an act on it raised, so a protocol
 turn is a path from its client through the instruction and the question to
-whoever answered. Rows that share both ends and a kind are one edge:
-`metadata.count` is how many, `metadata.size` a width from it,
-`metadata.hover` says the count, and
-`metadata.style` is `dashed` when an end is `nobody named`. `recorded by`
-joins a record to the harness all of them were read from and is no single
-row's field. The graph `metadata` carries `kind` (`interactions`), `source`,
-`instance`, `rows`, `unnamed`, `not_drawn`, `answers`, `may_hold_more` and
-the `caveat` to read before the shape. A harness that is not answering is
-`unreachable` and no graph; a layout nobody registered is `unreadable`. The
-route reads the harness and posts nothing to it.
+whoever answered.
+
+Each node's `metadata.column` says where it stands in that reading -- `who`,
+`instruction`, `question`, `answerer`, or `head`, `over`, `under` and
+`beneath` for what stands above, below and tucked under a row -- and
+`metadata.label_at` the side its name is written on. There are two
+`nobody named` nodes: one at the start of the reading and one at its end,
+for answers. Instructions that name nobody, raised no question and came in
+no protocol session are one `instructions` node with `metadata.count`, when
+there are two or more; questions that name nobody on either side and that no
+instruction raised are one `questions` node likewise.
+
+Rows that share both ends and a kind are one edge: `metadata.count` is how
+many, `metadata.size` a width from it, `metadata.hover` says the count, and
+`metadata.style` is `dashed` when an end is `nobody named`. `instructed`,
+`asked` and `answered` carry a `metadata.color` each and every other kind
+one grey. `recorded by` joins an instruction's source to the harness all
+rows were read from and is no single row's field.
+
+The graph `metadata` carries `kind` (`interactions`), `names` (`true`: the
+canvas draws every name), `source`, `instance`, `rows`, `unnamed`, `counted`,
+`not_drawn`, `answers`, `may_hold_more` and the `caveat` to read before the
+shape. A harness that is not answering is `unreachable` and no graph; a
+layout nobody registered is `unreadable`. The route reads the harness and
+posts nothing to it.
 
 ### GET `/capabilities/gjgf?layout=&palette_id=`
 

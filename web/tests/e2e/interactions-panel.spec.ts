@@ -241,9 +241,23 @@ test('a harness that is not answering is a sentence with a way back, and lists n
 
 const graphAnswer = { status: 200, contentType: 'application/json', path: GRAPH };
 
+/** A reading that holds as many rows as the fixture graph was drawn from. */
+const level = (rows = 8) => {
+  const read = reading();
+  return { ...read, interactions: { ...read.interactions, more: rows - read.interactions.shown } };
+};
+
 const node = (page: Page, id: string) => page.locator(`g.graph-node[data-node-id="${id}"]`);
+const name = (page: Page, id: string) => page.locator(`svg text[data-node-id="${id}"]`);
 const edge = (page: Page, from: string, to: string) =>
   page.locator(`line.stream-edge[data-from="${from}"][data-to="${to}"]`);
+
+/** Where the canvas drew a node on screen: the centre of its shape. */
+async function placeOf(page: Page, id: string): Promise<{ x: number; y: number }> {
+  const box = await node(page, id).locator('path').boundingBox();
+  if (!box) throw new Error(`no place for ${id}`);
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
 
 test('the panel only reads: its one control draws, and it sends nothing but GET', async ({ page }) => {
   // Mutation: add a `button` to a row in `interactions_panel.ts` -- this fails.
@@ -252,7 +266,7 @@ test('the panel only reads: its one control draws, and it sends nothing but GET'
     if (new URL(request.url()).pathname.includes('/harness')) sent.push(request);
   });
   await page.route('**/harness/gjgf*', (route) => route.fulfill(graphAnswer));
-  await openInteractions(page, reading());
+  await openInteractions(page, level());
 
   const panel = page.locator('.gl-panel--interactions');
   await expect(panel.locator('[data-ref="ins-1"]')).toBeVisible({ timeout: SETTLED });
@@ -268,7 +282,7 @@ test('the panel only reads: its one control draws, and it sends nothing but GET'
 
 async function drawGraph(page: Page): Promise<void> {
   await page.route('**/harness/gjgf*', (route) => route.fulfill(graphAnswer));
-  await openInteractions(page, reading());
+  await openInteractions(page, level());
   await page.locator('.interactions__draw').click();
   await expect(node(page, 'harness')).toHaveCount(1, { timeout: SETTLED });
 }
@@ -280,10 +294,11 @@ test('draw as a graph puts each thing a row names on the canvas, and a turn is a
   await drawGraph(page);
 
   for (const id of ['nobody', 'name:detail.client:editor-7', 'instruction:ins-1', 'question:ask-1',
-    'name:responded_by:ada', 'way:protocol', 'way:voice', 'tool:echo', 'project:alpha', 'chat:c-1', 'session:s-1']) {
+    'name:responded_by:ada', 'way:protocol', 'way:voice', 'way:typed', 'tool:echo', 'instructions:unnamed',
+    'project:alpha', 'chat:c-1', 'session:s-1']) {
     await expect(node(page, id), id).toHaveCount(1);
   }
-  await expect(page.locator('g.graph-node')).toHaveCount(13);
+  await expect(page.locator('g.graph-node')).toHaveCount(14);
 
   // The turn: its client, the instruction, the consent question, who answered.
   await expect(edge(page, 'name:detail.client:editor-7', 'instruction:ins-1')).toHaveCount(1);
@@ -292,36 +307,169 @@ test('draw as a graph puts each thing a row names on the canvas, and a turn is a
   await expect(answered).toHaveCount(1);
   await expect(answered).toHaveAttribute('data-style', 'solid');
   await expect(answered.locator('title')).toHaveText('answered approve');
-  await expect(page.locator('line.stream-edge')).toHaveCount(14);
+  await expect(page.locator('line.stream-edge')).toHaveCount(15);
 });
 
-test('an edge of a row that names nobody is dashed, and a counted edge is wider', async ({ page }) => {
-  // Mutations, both where the canvas draws an edge: read `edge.style` and not
-  // `metadata.style` -- no line is dashed; take the width from the styling
-  // alone -- the counted edge is as wide as the rest.
+test('every name is drawn with no setting changed, and a turn runs left to right on one line', async ({ page }) => {
+  // Mutations: have `namedGraph` answer for a showgraph alone -- the names
+  // stay off until Graph Settings turns them on; drop a node's `x` and `y`
+  // in `flattenNodes` -- the canvas places the turn on a ring.
   await drawGraph(page);
 
-  const unnamed = edge(page, 'nobody', 'instruction:ins-2');
+  const names = page.locator('svg text[data-node-id]');
+  await expect(names).toHaveCount(14);
+  const hidden = await names.evaluateAll((texts) =>
+    texts.filter((text) => (text as SVGElement).style.display === 'none').length);
+  expect(hidden).toBe(0);
+  await expect(name(page, 'name:detail.client:editor-7')).toHaveText('editor-7');
+  await expect(name(page, 'question:ask-1')).toHaveText('consent · responded');
+  await expect(name(page, 'instructions:unnamed')).toHaveText('2 instructions');
+  // Outward at the ends of the reading, above in the middle of it.
+  await expect(name(page, 'name:detail.client:editor-7')).toHaveAttribute('text-anchor', 'end');
+  await expect(name(page, 'name:responded_by:ada')).toHaveAttribute('text-anchor', 'start');
+  await expect(name(page, 'instruction:ins-1')).toHaveAttribute('text-anchor', 'middle');
+
+  const turn = [];
+  for (const id of ['name:detail.client:editor-7', 'instruction:ins-1', 'question:ask-1', 'name:responded_by:ada']) {
+    turn.push(await placeOf(page, id));
+  }
+  const across = turn.map((at) => at.x);
+  expect(across).toEqual([...across].sort((a, b) => a - b));
+  expect(across[1] - across[0]).toBeGreaterThan(20);
+  // The middle gap is the widest: the two names written above it need the room.
+  expect(across[2] - across[1]).toBeGreaterThan(across[1] - across[0]);
+  for (const at of turn) expect(Math.abs(at.y - turn[0].y)).toBeLessThan(1);
+  // Its chat and session are tucked under it; what names nobody is lower.
+  expect((await placeOf(page, 'chat:c-1')).y).toBeGreaterThan(turn[0].y);
+  expect((await placeOf(page, 'instructions:unnamed')).y).toBeGreaterThan((await placeOf(page, 'chat:c-1')).y);
+  expect((await placeOf(page, 'way:protocol')).y).toBeLessThan(turn[0].y);
+});
+
+test('an edge of a row that names nobody is dashed, a counted edge is wider, and the reading is coloured', async ({ page }) => {
+  // Mutations, all where the canvas draws an edge: read `edge.style` and not
+  // `metadata.style` -- no line is dashed; take the width from the styling
+  // alone -- the counted edge is as wide as the rest; read `edge.color` and
+  // not `metadata.color` -- every edge is the one default grey.
+  await drawGraph(page);
+
+  const unnamed = edge(page, 'nobody', 'instructions:unnamed');
   await expect(unnamed).toHaveAttribute('data-style', 'dashed');
   await expect(unnamed).toHaveAttribute('stroke-dasharray', '6,4');
-  await expect(unnamed).toHaveAttribute('stroke-width', '1');
-  await expect(edge(page, 'name:detail.client:editor-7', 'instruction:ins-1')).not.toHaveAttribute('stroke-dasharray', /.*/);
+  await expect(unnamed).toHaveAttribute('stroke-width', '3.25');
+  await expect(unnamed.locator('title')).toHaveText('instructed ×2');
+  const named = edge(page, 'name:detail.client:editor-7', 'instruction:ins-1');
+  await expect(named).not.toHaveAttribute('stroke-dasharray', /.*/);
+  await expect(named).toHaveAttribute('stroke-width', '1.5');
   await expect(page.locator('line.stream-edge[data-style="dashed"]')).toHaveCount(2);
 
-  // The fixture's three tool runs are one edge from nobody and one to the harness.
+  // The fixture's three tool runs are one edge from nobody.
   const ran = edge(page, 'nobody', 'tool:echo');
   await expect(ran).toHaveAttribute('data-style', 'dashed');
   await expect(ran).toHaveAttribute('stroke-width', '5');
   await expect(ran.locator('title')).toHaveText('ran ×3');
-  await expect(edge(page, 'tool:echo', 'harness')).toHaveAttribute('stroke-width', '5');
-  await expect(edge(page, 'tool:echo', 'harness')).toHaveAttribute('data-style', 'solid');
+
+  // The three edges of the reading have a colour each; the rest are one grey.
+  await expect(named).toHaveAttribute('stroke', '#6db2ff');
+  await expect(edge(page, 'instruction:ins-1', 'question:ask-1')).toHaveAttribute('stroke', '#e0c069');
+  await expect(edge(page, 'question:ask-1', 'name:responded_by:ada')).toHaveAttribute('stroke', '#5ac8b0');
+  await expect(edge(page, 'instruction:ins-1', 'way:protocol')).toHaveAttribute('stroke', '#6b7480');
+  await expect(ran).toHaveAttribute('stroke', '#6b7480');
+});
+
+test('the key to the edges is in the panel while the graph is drawn, in the colours drawn', async ({ page }) => {
+  // Mutations: leave `keyShown` out of the panel -- there is no key; draw
+  // every sample in the text's colour -- the key does not show the colours
+  // the edges are drawn in.
+  await page.route('**/harness/gjgf*', (route) => route.fulfill(graphAnswer));
+  await openInteractions(page, level());
+  const key = page.locator('.gl-panel--interactions .interactions__key');
+  await expect(page.locator('.interactions__draw')).toBeVisible({ timeout: SETTLED });
+  await expect(key).toHaveCount(0);
+
+  await page.locator('.interactions__draw').click();
+  await expect(key).toBeVisible({ timeout: SETTLED });
+  const entries = key.locator('.interactions__key-entry');
+  await expect(entries).toHaveCount(5);
+  for (const [kinds, colour] of [['instructed', '#6db2ff'], ['asked', '#e0c069'], ['answered', '#5ac8b0']]) {
+    const entry = key.locator(`[data-kinds="${kinds}"]`);
+    await expect(entry).toHaveText(kinds);
+    await expect(entry.locator('line')).toHaveAttribute('stroke', colour);
+  }
+  const rest = key.locator('[data-kinds="recorded by,way in,for,turn,in session,ran"]');
+  await expect(rest).toHaveText('recorded by, way in, for, turn, in session, ran');
+  await expect(rest.locator('line')).toHaveAttribute('stroke', '#6b7480');
+  const dashed = key.locator('.interactions__key-dashed');
+  await expect(dashed).toHaveText('names nobody');
+  await expect(dashed.locator('line')).toHaveAttribute('stroke-dasharray', '6,4');
+});
+
+test('the graph is asked for in reading order on the press, and by the algorithm Graph Settings then names', async ({ page }) => {
+  // Mutations: ask for reading order on every run of the action -- choosing
+  // Circular draws reading order again; ask for no layout on the press -- the
+  // graph is drawn by whatever algorithm the window had, Spring.
+  const asked: string[] = [];
+  await page.route('**/harness/gjgf*', (route) => {
+    asked.push(new URL(route.request().url()).searchParams.get('layout') ?? '');
+    return route.fulfill(graphAnswer);
+  });
+  await openInteractions(page, level());
+  await page.locator('.interactions__draw').click();
+  await expect(node(page, 'harness')).toHaveCount(1, { timeout: SETTLED });
+  expect(asked).toEqual(['Reading_Order']);
+
+  // The reader's next choice of algorithm applies, as it does to any drawing.
+  await page.locator('.lm_tab', { hasText: /Graph Settings/ }).click();
+  const algorithm = page.locator('.panel-settings__group', { hasText: 'Algorithm' }).locator('select');
+  await algorithm.waitFor({ timeout: SETTLED });
+  await algorithm.selectOption('circular_layout');
+  await expect.poll(() => asked.length, { timeout: SETTLED }).toBe(2);
+  expect(asked[1]).toBe('Circular');
+
+  // And the press asks for reading order again.
+  await page.locator('.lm_tab', { hasText: /Interactions/ }).click();
+  await page.locator('.interactions__draw').click();
+  await expect.poll(() => asked.length, { timeout: SETTLED }).toBe(3);
+  expect(asked[2]).toBe('Reading_Order');
+});
+
+test('a drawn graph stays as drawn while the panel reads again, and says when the harness has moved on', async ({ page }) => {
+  // Mutations: leave the stale sentence out of the panel -- a graph of an
+  // older reading says nothing; draw again on every reading -- the graph is
+  // asked for more than once and a reader's place on the canvas is lost.
+  test.setTimeout(90_000);
+  let read = 0;
+  let drawn = 0;
+  await page.route('**/harness/gjgf*', (route) => {
+    drawn += 1;
+    return route.fulfill(graphAnswer);
+  });
+  await page.route('**/harness/interactions*', (route) => {
+    read += 1;
+    return route.fulfill(envelope(level(read === 1 ? 8 : 9)));
+  });
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Interactions$/ }).click();
+  await page.locator('.interactions__draw').click();
+  await expect(node(page, 'harness')).toHaveCount(1, { timeout: SETTLED });
+  const stale = page.locator('.interactions__stale');
+  await expect(stale).toHaveCount(0);
+
+  // The panel reads again on its interval; the harness now holds one row more.
+  await expect(stale).toHaveText(
+    'The harness held 8 rows when this graph was drawn and holds 9 now. Draw again to read them.',
+    { timeout: 40_000 });
+  expect(read).toBeGreaterThan(1);
+  expect(drawn).toBe(1);
+  await expect(page.locator('g.graph-node')).toHaveCount(14);
 });
 
 test('the caveat and the harness it was read from sit in the panel only while its graph is drawn', async ({ page }) => {
   // Mutation: pass `kind: 'topology'` to the panel's `Provenance` -- the strip
   // never shows for this graph.
   await page.route('**/harness/gjgf*', (route) => route.fulfill(graphAnswer));
-  await openInteractions(page, reading());
+  await openInteractions(page, level());
   const strip = page.locator('.gl-panel--interactions .interactions-graph__caveat');
   await expect(page.locator('.interactions__draw')).toBeVisible({ timeout: SETTLED });
   await expect(strip).toHaveCount(0);
@@ -341,7 +489,7 @@ test('a harness that does not answer the graph is the problem in the panel, and 
     remedy: 'start it with `uv run qm dashboard --start harness`',
     where: 'http://127.0.0.1:3141/health',
   })));
-  await openInteractions(page, reading());
+  await openInteractions(page, level());
   await page.locator('.interactions__draw').click();
 
   const problem = page.locator('.interactions__problem');

@@ -71,3 +71,21 @@
 .gl-panel--interactions .estate__row code,
 .gl-panel--interactions .estate__name,
 .gl-panel--interactions .estate__detail { overflow-wrap: anywhere; }
+
+/* The key to the drawn graph's edges: one entry per colour, on one line
+   while there is room, each a sample of the line and the kinds drawn in it. */
+.interactions__key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--c-font);
+}
+.interactions__key-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.interactions__key-line { flex: none; }
+.interactions__stale { color: var(--c-warning); }

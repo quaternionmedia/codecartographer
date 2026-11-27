@@ -23,9 +23,10 @@ import { Provenance } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import { heldBack, whenShown } from '../../features/estate/run_state';
 import {
-  actShown, answersShown, cellLevel, instanceShown, moreNamesShown, mostInACell, undatedShown, whoShown,
+  READING_ORDER, actShown, answersShown, cellLevel, edgeKey, instanceShown, moreNamesShown, mostInACell,
+  staleShown, undatedShown, whoShown,
 } from '../../features/estate/interactions';
-import type { Interaction, Lane, WhoRow } from '../../features/estate/interactions';
+import type { Interaction, KeyLine, KeyedEdge, Lane, WhoRow } from '../../features/estate/interactions';
 import '../../features/estate/estate.css';
 import './interactions_panel.css';
 
@@ -89,6 +90,25 @@ function interactionRow(found: Interaction): m.Children {
   ]);
 }
 
+/**
+ * The key to the drawn graph's edges: a line in each colour an edge is drawn
+ * in, with the kinds drawn in it, and the dash of a row that names nobody.
+ * The colours are the graph's own; none is chosen here.
+ */
+function keyShown(key: { lines: KeyLine[]; dashed: boolean }): m.Children {
+  const sample = (stroke: string, dash?: string) =>
+    m('svg.interactions__key-line', { width: 26, height: 8, 'aria-hidden': 'true' },
+      m('line', { x1: 0, y1: 4, x2: 26, y2: 4, stroke, 'stroke-width': 3, 'stroke-dasharray': dash }));
+  return m('p.interactions__key', [
+    key.lines.map((line) =>
+      m('span.interactions__key-entry', { 'data-kinds': line.kinds.join(',') },
+        [sample(line.color), line.kinds.join(', ')])),
+    key.dashed
+      ? m('span.interactions__key-entry.interactions__key-dashed', [sample('currentColor', '6,4'), 'names nobody'])
+      : null,
+  ]);
+}
+
 export function createInteractionsPanel(ctx: LayoutContext): m.Component {
   let timer: ReturnType<typeof setInterval> | null = null;
   let root: Element | null = null;
@@ -117,6 +137,17 @@ export function createInteractionsPanel(ctx: LayoutContext): m.Component {
       .catch(() => undefined);
   };
 
+  const draw = () => {
+    // In reading order on the press. A layout chosen in Graph Settings
+    // afterwards runs this action again, and is asked for as chosen.
+    let pressed = true;
+    void ctx.plotWith(() => {
+      const request = pressed ? { layout: READING_ORDER } : {};
+      pressed = false;
+      return ctx.actions.plot.drawInteractions(request);
+    }).then((drew) => { if (drew) ctx.focusDockPanel('graph'); });
+  };
+
   return {
     oninit: ask,
     oncreate: (vnode) => {
@@ -131,6 +162,12 @@ export function createInteractionsPanel(ctx: LayoutContext): m.Component {
       const problem = state.interactionsProblem;
       const most = reading ? mostInACell(reading.over_time.lanes) : 0;
       const metadata = state.graphData?.metadata as EstateMetadata | undefined;
+      // The key and the staleness are of this seam's graph, while it is drawn.
+      const drawn = metadata?.kind === 'interactions' ? state.graphData : null;
+      const key = drawn ? edgeKey((drawn.graph?.edges ?? []) as KeyedEdge[]) : null;
+      const stale = drawn && reading
+        ? staleShown(metadata?.rows, reading.interactions.shown + reading.interactions.more)
+        : '';
 
       return m('div.gl-panel.gl-panel--controls.gl-panel--interactions', [
         problem
@@ -149,21 +186,21 @@ export function createInteractionsPanel(ctx: LayoutContext): m.Component {
           ? m('p.estate-view__pending', 'asking the harness…')
           : null,
 
+        reading
+          ? m('div.estate-view__section', { 'data-interactions': 'graph' }, [
+              m('button.estate-view__draw.interactions__draw', { onclick: draw }, 'draw as a graph'),
+              key ? keyShown(key) : null,
+              stale ? m('p.estate-view__hint.interactions__stale', stale) : null,
+              m('p.estate-view__hint.interactions__draw-hint',
+                'Read left to right: who, the instruction, the question it raised, who answered. '
+                + 'The graph is the harness as read for that drawing, and stays as drawn until it is drawn again. '
+                + 'An algorithm chosen in Graph Settings draws it by that instead.'),
+            ])
+          : null,
+
         // Only when the canvas holds this seam's graph: its caveat, and the
         // harness it was read from.
         m(Provenance, { metadata, prefix: 'interactions-graph', kind: 'interactions' }),
-
-        reading
-          ? m('div.estate-view__section', { 'data-interactions': 'graph' }, [
-              m('button.estate-view__draw.interactions__draw', {
-                onclick: () => void ctx.plotWith(() => ctx.actions.plot.drawInteractions())
-                  .then((drawn) => { if (drawn) ctx.focusDockPanel('graph'); }),
-              }, 'draw as a graph'),
-              m('p.estate-view__hint.interactions__draw-hint',
-                'Names, instructions, questions and the harness as nodes, and each row as an edge. '
-                + 'The graph is the harness as read for that drawing; draw again to read again.'),
-            ])
-          : null,
 
         reading
           ? [

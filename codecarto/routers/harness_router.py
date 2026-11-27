@@ -54,7 +54,7 @@ async def harness_interactions() -> dict[str, Any]:
 
 @HarnessRouter.get("/gjgf")
 def harness_gjgf(
-    layout: str = Query("Kamada Kawai"),
+    layout: str = Query(interaction_graph.LAYOUT),
     palette_id: str = Query("0"),
 ) -> dict[str, Any]:
     """The harness's interactions as `GraphData`, in this project's envelope.

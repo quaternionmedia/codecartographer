@@ -493,6 +493,7 @@ whatever is there, and `/topology/available` lists the result.
 |--------|------|-------------|
 | Compound | `compound_layout.py` | Hierarchical: dirs, then files, then symbols in nested orbits |
 | Sorted Square | `sorted_square_layout.py` | Grid arrangement |
+| Reading Order | `reading_order_layout.py` | Left to right, the way the arrows read; the layout the harness's interactions are drawn in |
 
 ---
 
