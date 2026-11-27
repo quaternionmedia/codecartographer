@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
@@ -154,3 +155,19 @@ def instructions(limit: int, base: str | None = None) -> Reach:
     """The instructions the harness recorded, newest first, at most `limit`."""
     return fetch(f"/v1/instructions?limit={limit}", base,
                  remedy_404=LOOPBACK_ONLY)
+
+
+def health(base: str | None = None) -> Reach:
+    """The harness's health answer, which says which server it is."""
+    return fetch("/health", base,
+                 remedy_404="what answers there serves no health route")
+
+
+def question(request_id: str, base: str | None = None) -> Reach:
+    """One question with its answer, if it has one.
+
+    The harness's list of questions carries no answer, so an answer is read
+    one question at a time.
+    """
+    return fetch(f"/v1/human/requests/{urllib.parse.quote(request_id, safe='')}",
+                 base, remedy_404="the harness holds no such question")

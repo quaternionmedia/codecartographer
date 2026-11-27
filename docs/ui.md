@@ -65,7 +65,7 @@ which names the step after it; the last step has no Next.
 
 | | Step | Brings forward | Owns |
 |---|---|---|---|
-| 1 | **Open** | Open, then the Graph panel | Open, Estate, Show, Topology, Capabilities, Overview, Harness, Cargo, Graphbase |
+| 1 | **Open** | Open, then the Graph panel | Open, Estate, Show, Topology, Capabilities, Overview, Harness, Interactions, Cargo, Graphbase |
 | 2 | **Browse** | Files, then the Graph panel | Files |
 | 3 | **Tune** | Graph Settings, then the Graph panel | Graph Settings |
 | 4 | **Read** | The Graph panel, maximised, which hides every other window | Graph, Chrestomathy |
@@ -191,6 +191,22 @@ names says so here. *Questions for a person*, *Instructions* and *Tool runs*
 list the harness's rows
 and say how many more it holds. The panel is read-only: a question is
 answered in a terminal, and closing the panel clears the marks.
+
+### Interactions
+
+Id `interactions-panel`. Opens from the `+` menu.
+
+Who did what at the harness and through which way in, read again on an
+interval while the panel is open. *Which harness* is the server that
+answered, as its health answer states it. *Who, and which way in* counts the
+harness's rows by the name each carries, what it records and the way in; a
+row that names nobody is counted as naming nobody, with a hollow dot. *Over
+time* is a lane for each act and way in, shaded by how many fall in each
+equal span between the oldest and the newest read. *Newest first* lists
+instructions, questions, answers and tool runs as one list. A name is shown
+as the harness holds it, beside the field it was read from; the panel names
+no machine and no account, because the harness's rows hold none. The panel
+is read-only and draws nothing on the canvas.
 
 ### Capabilities
 

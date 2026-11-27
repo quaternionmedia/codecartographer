@@ -10,6 +10,7 @@ import type { TopologyChoices, TopologyProblem } from '../services/topology_serv
 import type { SeamProblem } from '../features/estate/seam_client';
 import type { CapabilitiesDocument, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
 import type { HarnessDocument } from '../features/estate/run_state';
+import type { InteractionsDocument } from '../features/estate/interactions';
 import type { ShowSubjectsDocument, ShowViewsDocument } from '../features/show/show_service';
 import type { ShowAddress } from '../features/show/show_address';
 import type {
@@ -60,6 +61,10 @@ export interface ICellState {
    *  Harness panel is not in the page. */
   harnessReading: HarnessDocument | null;
   harnessProblem: SeamProblem | null;
+  /** Who did what at the harness, or null while the Interactions panel is
+   *  not in the page. */
+  interactionsReading: InteractionsDocument | null;
+  interactionsProblem: SeamProblem | null;
   /** The registry's declarations as the panel lists them, or null before asked. */
   capabilitiesReading: CapabilitiesDocument | null;
   capabilitiesProblem: SeamProblem | null;
@@ -115,6 +120,8 @@ export class CellState implements ICellState {
   public estateProblem: SeamProblem | null = null;
   public harnessReading: HarnessDocument | null = null;
   public harnessProblem: SeamProblem | null = null;
+  public interactionsReading: InteractionsDocument | null = null;
+  public interactionsProblem: SeamProblem | null = null;
   public capabilitiesReading: CapabilitiesDocument | null = null;
   public capabilitiesProblem: SeamProblem | null = null;
   public overviewReading: OverviewDocument | null = null;

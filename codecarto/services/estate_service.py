@@ -184,7 +184,7 @@ def probe_families(corpus: Path | str | None = None) -> Identity:
 SEAMS: tuple[Seam, ...] = (
     Seam("harness", "the work, and the only source of it", probe_harness,
          routes=("/topology/gjgf", "/topology/available", "/topology/data",
-                 "/harness/data"),
+                 "/harness/data", "/harness/interactions"),
          panel="topology-panel"),
     Seam("corpus", "what each named thing this estate can do has reached",
          probe_corpus,

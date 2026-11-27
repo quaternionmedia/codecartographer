@@ -3,12 +3,15 @@
 - `/harness/data` -- the tool runs, the questions held for a person and the
   instructions, each cut to the rows a panel shows with the number held back,
   and a run state for each project those rows name.
+- `/harness/interactions` -- the same rows and the answers to the questions,
+  as one list ordered by time: what was done, the way in and the name each
+  row carries, and which harness answered.
 
-It answers in `generate_return`'s envelope with status 200. A harness that is
-not answering is a `results` carrying `unreachable`, a `problem`, a `remedy`
-and a `where`, as every estate route reports an absent seam.
+Each answers in `generate_return`'s envelope with status 200. A harness that
+is not answering is a `results` carrying `unreachable`, a `problem`, a
+`remedy` and a `where`, as every estate route reports an absent seam.
 
-The route reads. Nothing here posts to the harness.
+The routes read. Nothing here posts to the harness.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.concurrency import run_in_threadpool
 
-from codecarto.services import harness_service
+from codecarto.services import harness_service, interaction_service
 from codecarto.util.utilities import generate_return
 
 HarnessRouter = APIRouter()
@@ -32,3 +35,13 @@ async def harness_data() -> dict[str, Any]:
     each of three reads, and the event loop keeps serving meanwhile.
     """
     return generate_return(results=await run_in_threadpool(harness_service.read))
+
+
+@HarnessRouter.get("/interactions")
+async def harness_interactions() -> dict[str, Any]:
+    """Who did what at the harness, through which way in, newest first.
+
+    Read in the threadpool, as `/harness/data` is: the answers are one read
+    of the harness each.
+    """
+    return generate_return(results=await run_in_threadpool(interaction_service.read))
