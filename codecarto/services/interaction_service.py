@@ -28,6 +28,7 @@ counted.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -229,70 +230,113 @@ def _rows(reach: Reach, key: str) -> list[dict[str, Any]]:
 
 
 def answers(asks: list[dict[str, Any]], base: str | None = None,
-            limit: int = ANSWERS_READ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """The answers to the newest answered questions, and how many were not read.
+            limit: int = ANSWERS_READ) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
+    """The answers to the newest answered questions, by question id, and how
+    many were not read.
 
     A read that finds nothing answering ends the reading of answers: the
     rest are counted as unread and nothing more is asked.
     """
     responded = [row for row in asks if row.get("status") == "responded"]
-    found: list[dict[str, Any]] = []
+    found: dict[str, dict[str, Any]] = {}
     for row in responded[:limit]:
         reach = qmcp_client.question(str(row.get("id")), base)
         if not reach.ok and reach.status is None:
             break
         response = _dict(reach.document).get("response") if reach.ok else None
         if isinstance(response, dict):
-            found.append(answered(row, response))
+            found[str(row.get("id"))] = response
     return found, {"read": len(found), "unread": len(responded) - len(found),
                    "limit": limit}
 
 
-def read(base: str | None = None) -> dict[str, Any]:
-    """Everything the panel shows.
+@dataclass
+class Rows:
+    """The harness's rows as they were read, before a panel or a graph shapes them."""
+
+    health: Reach
+    instructions: list[dict[str, Any]] = field(default_factory=list)
+    asks: list[dict[str, Any]] = field(default_factory=list)
+    runs: list[dict[str, Any]] = field(default_factory=list)
+    responses: dict[str, dict[str, Any]] = field(default_factory=dict)
+    """Question id to its answer, for the answers that were read."""
+
+    answers: dict[str, Any] = field(default_factory=dict)
+    """How many answers were read, how many were not, and the limit."""
+
+    unread_lists: list[dict[str, Any]] = field(default_factory=list)
+    full: bool = False
+    """Whether a list came back as long as was asked for, so the harness may
+    hold more."""
+
+    @property
+    def answering(self) -> bool:
+        """Whether anything answered at the harness's address."""
+        return self.health.ok or self.health.status is not None
+
+    def unreachable(self) -> dict[str, Any]:
+        """The one problem a route answers with when nothing answered."""
+        return {"unreachable": True, "problem": self.health.problem,
+                "remedy": self.health.remedy, "where": self.health.where}
+
+    def interactions(self) -> list[dict[str, Any]]:
+        """Every row read, as one interaction each, in no order."""
+        found = [instructed(row) for row in self.instructions]
+        found += [asked(row) for row in self.asks]
+        found += [ran(row) for row in self.runs]
+        found += [answered(row, self.responses[str(row.get("id"))])
+                  for row in self.asks if str(row.get("id")) in self.responses]
+        return found
+
+
+def gather(base: str | None = None) -> Rows:
+    """Read the harness: its health answer, three lists and the answers.
 
     The health answer is read first. When nothing answers, no other read is
-    made and the answer is that one problem. Otherwise a list the harness
-    would not serve is named in `unread_lists` and the others are shown.
+    made. Otherwise a list the harness would not serve is named in
+    `unread_lists` and the others are kept.
     """
-    health = qmcp_client.health(base)
-    if not health.ok and health.status is None:
-        return {"unreachable": True, "problem": health.problem,
-                "remedy": health.remedy, "where": health.where}
+    rows = Rows(health=qmcp_client.health(base))
+    if not rows.answering:
+        return rows
 
-    reads = (("instructions", qmcp_client.instructions(ASKED, base), "instructions", instructed),
-             ("questions", qmcp_client.queue(ASKED, base), "requests", asked),
-             ("tool runs", qmcp_client.invocations(ASKED, base), "invocations", ran))
-    found: list[dict[str, Any]] = []
-    unread_lists: list[dict[str, Any]] = []
-    full = False
-    asks: list[dict[str, Any]] = []
-    for what, reach, key, shape in reads:
+    reads = (("instructions", qmcp_client.instructions(ASKED, base), "instructions"),
+             ("questions", qmcp_client.queue(ASKED, base), "requests"),
+             ("tool runs", qmcp_client.invocations(ASKED, base), "invocations"))
+    kept: dict[str, list[dict[str, Any]]] = {}
+    for what, reach, key in reads:
         if not reach.ok:
-            unread_lists.append({"what": what, "problem": reach.problem,
-                                 "remedy": reach.remedy, "where": reach.where})
+            rows.unread_lists.append({"what": what, "problem": reach.problem,
+                                      "remedy": reach.remedy, "where": reach.where})
             continue
-        rows = _rows(reach, key)
-        full = full or len(rows) >= ASKED
-        found.extend(shape(row) for row in rows)
-        if what == "questions":
-            asks = rows
+        kept[what] = _rows(reach, key)
+        rows.full = rows.full or len(kept[what]) >= ASKED
+    rows.instructions = kept.get("instructions", [])
+    rows.asks = kept.get("questions", [])
+    rows.runs = kept.get("tool runs", [])
+    rows.responses, rows.answers = answers(rows.asks, base)
+    return rows
 
-    given, counted = answers(asks, base)
-    found.extend(given)
 
+def read(base: str | None = None) -> dict[str, Any]:
+    """Everything the panel shows, or the one problem when nothing answered."""
+    rows = gather(base)
+    if not rows.answering:
+        return rows.unreachable()
+
+    found = rows.interactions()
     ordered = newest_first(found)
     page = ordered[:SHOWN]
     table = who_table(found)
     return {
-        "instance": instance(health),
+        "instance": instance(rows.health),
         "interactions": {"rows": page, "shown": len(page),
                          "more": len(ordered) - len(page),
-                         "more_is_floor": full or counted["unread"] > 0},
+                         "more_is_floor": rows.full or rows.answers["unread"] > 0},
         "who": {"rows": table[:WHO_SHOWN], "shown": len(table[:WHO_SHOWN]),
                 "more": len(table) - len(table[:WHO_SHOWN])},
         "over_time": over_time(found),
-        "answers": counted,
-        "unread_lists": unread_lists,
+        "answers": rows.answers,
+        "unread_lists": rows.unread_lists,
         "caveat": CAVEAT,
     }

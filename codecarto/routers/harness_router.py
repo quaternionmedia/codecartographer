@@ -6,6 +6,9 @@
 - `/harness/interactions` -- the same rows and the answers to the questions,
   as one list ordered by time: what was done, the way in and the name each
   row carries, and which harness answered.
+- `/harness/gjgf` -- those interactions as `GraphData`, the graph format
+  every other plot here produces, so the page draws them on the one canvas
+  with the same layouts, palettes and menu.
 
 Each answers in `generate_return`'s envelope with status 200. A harness that
 is not answering is a `results` carrying `unreachable`, a `problem`, a
@@ -18,10 +21,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.concurrency import run_in_threadpool
 
-from codecarto.services import harness_service, interaction_service
+from codecarto.models.plot_data import PlotOptions
+from codecarto.services import (estate_service, harness_service, interaction_graph,
+                                interaction_service)
 from codecarto.util.utilities import generate_return
 
 HarnessRouter = APIRouter()
@@ -45,3 +50,30 @@ async def harness_interactions() -> dict[str, Any]:
     of the harness each.
     """
     return generate_return(results=await run_in_threadpool(interaction_service.read))
+
+
+@HarnessRouter.get("/gjgf")
+def harness_gjgf(
+    layout: str = Query("Kamada Kawai"),
+    palette_id: str = Query("0"),
+) -> dict[str, Any]:
+    """The harness's interactions as `GraphData`, in this project's envelope.
+
+    A plain `def`, so the reads of the harness and the layout run in the
+    threadpool. A layout nobody registered is `unreadable` with the
+    registered ones named, as on every estate route.
+    """
+    rows = interaction_service.gather()
+    if not rows.answering:
+        return generate_return(results=rows.unreachable())
+    options = PlotOptions(layout=layout, palette_id=palette_id, type="d3")
+    made = interaction_graph.picture(rows)
+    try:
+        graph = interaction_graph.as_gjgf(made, options, rows.health.where)
+    except ValueError as error:
+        return generate_return(results=estate_service.unknown_layout(
+            error, f"/harness/gjgf?layout={layout}"))
+    return generate_return(results={
+        "graph": graph,
+        "metadata": interaction_graph.metadata(rows, made, options),
+    })

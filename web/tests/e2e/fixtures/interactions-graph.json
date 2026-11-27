@@ -1,0 +1,448 @@
+{
+ "status": 200,
+ "message": "Success",
+ "results": {
+  "graph": {
+   "nodes": {
+    "harness": {
+     "label": "harness :3999",
+     "metadata": {
+      "kind": "harness",
+      "hover": "http://harness/health -- pid 4242, port 3999, database_fingerprint 0123456789abcdef, started_at 2026-01-01T00:00:00+00:00, version 0.1.0",
+      "type": "Store",
+      "base": "topology.store",
+      "shape": "rectangle",
+      "color": "#5ac8b0",
+      "size": 35.0,
+      "click": "<p>http://harness/health -- pid 4242, port 3999, database_fingerprint 0123456789abcdef, started_at 2026-01-01T00:00:00+00:00, version 0.1.0</p>",
+      "x": 100.0,
+      "y": -2.2924862849600896e-07
+     }
+    },
+    "way:protocol": {
+     "label": "protocol",
+     "metadata": {
+      "kind": "way in",
+      "hover": "instructions whose source is protocol",
+      "type": "Output",
+      "base": "topology.output",
+      "shape": "circle",
+      "color": "#b39ddb",
+      "size": 40.0,
+      "click": "<p>instructions whose source is protocol</p>",
+      "x": 88.54560282263382,
+      "y": 46.47231568574182
+     }
+    },
+    "instruction:ins-1": {
+     "label": "do thing 1",
+     "metadata": {
+      "kind": "instruction",
+      "hover": "instruction ins-1: do thing 1 -- recorded",
+      "status": "recorded",
+      "at": "2026-01-01T00:00:01",
+      "type": "Worker",
+      "base": "topology.worker",
+      "shape": "rectangle",
+      "color": "#8ab4f8",
+      "size": 30.0,
+      "click": "<p>instruction ins-1: do thing 1 -- recorded</p>",
+      "x": 56.806475914293166,
+      "y": 82.29838398102652
+     }
+    },
+    "name:detail.client:editor-7": {
+     "label": "editor-7",
+     "metadata": {
+      "kind": "name",
+      "hover": "editor-7 -- as `detail.client` gives it, unchecked",
+      "who_from": "detail.client",
+      "type": "Input",
+      "base": "topology.input",
+      "shape": "circle",
+      "color": "#6db2ff",
+      "size": 45.0,
+      "click": "<p>editor-7 -- as `detail.client` gives it, unchecked</p>",
+      "x": 12.053670515150507,
+      "y": 99.27088367776497
+     }
+    },
+    "project:alpha": {
+     "label": "alpha",
+     "metadata": {
+      "kind": "project",
+      "hover": "project alpha",
+      "type": "Store",
+      "base": "topology.store",
+      "shape": "rectangle",
+      "color": "#5ac8b0",
+      "size": 35.0,
+      "click": "<p>project alpha</p>",
+      "x": -35.460480922449534,
+      "y": 93.50162507246034
+     }
+    },
+    "session:s-1": {
+     "label": "s-1",
+     "metadata": {
+      "kind": "session",
+      "hover": "protocol session s-1",
+      "type": "Output",
+      "base": "topology.output",
+      "shape": "circle",
+      "color": "#b39ddb",
+      "size": 40.0,
+      "click": "<p>protocol session s-1</p>",
+      "x": -74.85106782612738,
+      "y": 66.31226364666996
+     }
+    },
+    "chat:c-1": {
+     "label": "c-1",
+     "metadata": {
+      "kind": "chat",
+      "hover": "protocol chat c-1",
+      "type": "Output",
+      "base": "topology.output",
+      "shape": "circle",
+      "color": "#b39ddb",
+      "size": 40.0,
+      "click": "<p>protocol chat c-1</p>",
+      "x": -97.09417964187541,
+      "y": 23.931566593015045
+     }
+    },
+    "way:voice": {
+     "label": "voice",
+     "metadata": {
+      "kind": "way in",
+      "hover": "instructions whose source is voice",
+      "type": "Output",
+      "base": "topology.output",
+      "shape": "circle",
+      "color": "#b39ddb",
+      "size": 40.0,
+      "click": "<p>instructions whose source is voice</p>",
+      "x": -97.09417964187541,
+      "y": -23.93156109104796
+     }
+    },
+    "instruction:ins-2": {
+     "label": "do thing 2",
+     "metadata": {
+      "kind": "instruction",
+      "hover": "instruction ins-2: do thing 2 -- recorded",
+      "status": "recorded",
+      "at": "2026-01-01T00:00:02",
+      "type": "Worker",
+      "base": "topology.worker",
+      "shape": "rectangle",
+      "color": "#8ab4f8",
+      "size": 30.0,
+      "click": "<p>instruction ins-2: do thing 2 -- recorded</p>",
+      "x": -74.85107974705606,
+      "y": -66.31225814470287
+     }
+    },
+    "nobody": {
+     "label": "nobody named",
+     "metadata": {
+      "kind": "nobody named",
+      "hover": "rows of the harness that carry no name",
+      "type": "Input",
+      "base": "topology.input",
+      "shape": "circle",
+      "color": "#6db2ff",
+      "size": 45.0,
+      "click": "<p>rows of the harness that carry no name</p>",
+      "x": -35.460498803842555,
+      "y": -93.50161957049326
+     }
+    },
+    "question:ask-1": {
+     "label": "act on 1?",
+     "metadata": {
+      "kind": "question",
+      "hover": "question ask-1: act on 1? -- responded",
+      "status": "responded",
+      "at": "2026-01-01T00:00:03",
+      "type": "Gate",
+      "base": "topology.gate",
+      "shape": "hexagon",
+      "color": "#e0c069",
+      "size": 35.0,
+      "click": "<p>question ask-1: act on 1? -- responded</p>",
+      "x": 12.053676475614848,
+      "y": -99.27088413626221
+     }
+    },
+    "name:responded_by:ada": {
+     "label": "ada",
+     "metadata": {
+      "kind": "name",
+      "hover": "ada -- as `responded_by` gives it, unchecked",
+      "who_from": "responded_by",
+      "type": "Input",
+      "base": "topology.input",
+      "shape": "circle",
+      "color": "#6db2ff",
+      "size": 45.0,
+      "click": "<p>ada -- as `responded_by` gives it, unchecked</p>",
+      "x": 56.80645803290014,
+      "y": -82.29839636045244
+     }
+    },
+    "tool:echo": {
+     "label": "echo",
+     "metadata": {
+      "kind": "tool",
+      "hover": "tool echo",
+      "type": "Worker",
+      "base": "topology.worker",
+      "shape": "rectangle",
+      "color": "#8ab4f8",
+      "size": 30.0,
+      "click": "<p>tool echo</p>",
+      "x": 88.54560282263382,
+      "y": -46.47231912447125
+     }
+    }
+   },
+   "edges": [
+    {
+     "source": "way:protocol",
+     "target": "harness",
+     "label": "recorded by",
+     "metadata": {
+      "kind": "recorded by",
+      "count": 1,
+      "size": 1.0,
+      "style": "solid",
+      "named": true,
+      "hover": "recorded by",
+      "title": "recorded by"
+     }
+    },
+    {
+     "source": "instruction:ins-1",
+     "target": "way:protocol",
+     "label": "way in",
+     "metadata": {
+      "kind": "way in",
+      "count": 1,
+      "size": 1.0,
+      "style": "solid",
+      "named": true,
+      "hover": "way in",
+      "title": "way in"
+     }
+    },
+    {
+     "source": "instruction:ins-1",
+     "target": "project:alpha",
+     "label": "for",
+     "metadata": {
+      "kind": "for",
+      "count": 1,
+      "size": 1.0,
+      "style": "solid",
+      "named": true,
+      "hover": "for",
+      "title": "for"
+     }
+    },
+    {
+     "source": "instruction:ins-1",
+     "target": "chat:c-1",
+     "label": "turn",
+     "metadata": {
+      "kind": "turn",
+      "count": 1,
+      "size": 1.0,
+      "style": "solid",
+      "named": true,
+      "hover": "turn t-1",
+      "title": "turn t-1"
+     }
+    },
+    {
+     "source": "instruction:ins-1",
+     "target": "question:ask-1",
+     "label": "asked",
+     "metadata": {
+      "kind": "asked",
+      "count": 1,
+      "size": 1.0,
+      "style": "solid",
+      "named": true,
+      "hover": "asked",
+      "title": "asked"
+     }
+    },
+    {
+     "source": "name:detail.client:editor-7",
+     "target": "instruction:ins-1",
+     "label": "instructed",
+     "metadata": {
+      "kind": "instructed",
+      "count": 1,
+      "size": 1.0,
+      "style": "solid",
+      "named": true,
+      "hover": "instructed",
+      "title": "instructed"
+     }
+    },
+    {
+     "source": "chat:c-1",
+     "target": "session:s-1",
+     "label": "in session",
+     "metadata": {
+      "kind": "in session",
+      "count": 1,
+      "size": 1.0,
+      "style": "solid",
+      "named": true,
+      "hover": "in session",
+      "title": "in session"
+     }
+    },
+    {
+     "source": "way:voice",
+     "target": "harness",
+     "label": "recorded by",
+     "metadata": {
+      "kind": "recorded by",
+      "count": 1,
+      "size": 1.0,
+      "style": "solid",
+      "named": true,
+      "hover": "recorded by",
+      "title": "recorded by"
+     }
+    },
+    {
+     "source": "instruction:ins-2",
+     "target": "way:voice",
+     "label": "way in",
+     "metadata": {
+      "kind": "way in",
+      "count": 1,
+      "size": 1.0,
+      "style": "solid",
+      "named": true,
+      "hover": "way in",
+      "title": "way in"
+     }
+    },
+    {
+     "source": "instruction:ins-2",
+     "target": "project:alpha",
+     "label": "for",
+     "metadata": {
+      "kind": "for",
+      "count": 1,
+      "size": 1.0,
+      "style": "solid",
+      "named": true,
+      "hover": "for",
+      "title": "for"
+     }
+    },
+    {
+     "source": "nobody",
+     "target": "instruction:ins-2",
+     "label": "instructed",
+     "metadata": {
+      "kind": "instructed",
+      "count": 1,
+      "size": 1.0,
+      "style": "dashed",
+      "named": false,
+      "hover": "instructed",
+      "title": "instructed"
+     }
+    },
+    {
+     "source": "nobody",
+     "target": "tool:echo",
+     "label": "ran",
+     "metadata": {
+      "kind": "ran",
+      "count": 3,
+      "size": 5.0,
+      "style": "dashed",
+      "named": false,
+      "hover": "ran \u00d73",
+      "title": "ran \u00d73"
+     }
+    },
+    {
+     "source": "question:ask-1",
+     "target": "name:responded_by:ada",
+     "label": "answered",
+     "metadata": {
+      "kind": "answered",
+      "count": 1,
+      "size": 1.0,
+      "style": "solid",
+      "named": true,
+      "hover": "answered approve",
+      "title": "answered approve"
+     }
+    },
+    {
+     "source": "tool:echo",
+     "target": "harness",
+     "label": "recorded by",
+     "metadata": {
+      "kind": "recorded by",
+      "count": 3,
+      "size": 5.0,
+      "style": "solid",
+      "named": true,
+      "hover": "recorded by \u00d73",
+      "title": "recorded by \u00d73"
+     }
+    }
+   ],
+   "directed": true,
+   "metadata": {
+    "kind": "interactions",
+    "source": "http://harness/health"
+   }
+  },
+  "metadata": {
+   "kind": "interactions",
+   "source": "http://127.0.0.1:3999/health",
+   "layout": "Circular",
+   "type": "d3",
+   "palette_id": "0",
+   "instance": {
+    "identified": true,
+    "where": "http://127.0.0.1:3999/health",
+    "pid": 4242,
+    "port": 3999,
+    "database_fingerprint": "0123456789abcdef",
+    "started_at": "2026-01-01T00:00:00+00:00",
+    "session": null,
+    "version": "0.1.0",
+    "problem": "",
+    "remedy": ""
+   },
+   "rows": 7,
+   "unnamed": 5,
+   "not_drawn": {
+    "instructions": 0,
+    "questions": 0
+   },
+   "answers": {
+    "read": 1,
+    "unread": 0,
+    "limit": 20
+   },
+   "may_hold_more": false,
+   "caveat": "Every node is something a row of the harness names and every edge is a field of a row, except `recorded by`, which joins a record to the one harness all of them were read from. A name is what a row says, unchecked, beside the field it came from. A dashed line is a row that names nobody. No node is a machine, an address or an account: no field read holds one."
+  }
+ }
+}

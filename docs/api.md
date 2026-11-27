@@ -1088,6 +1088,26 @@ says how many answers were read and how many were not, since each is one
 read of the harness. `unread_lists` names each list the harness would not
 serve. The route reads the harness and posts nothing to it.
 
+### GET `/harness/gjgf?layout=&palette_id=`
+
+The same rows as `GraphData`. A node is something a row names: a name with
+the field it was read from, `nobody named`, an instruction, its source, a
+question, a tool, a project, a protocol session or chat, and the harness. An
+edge is a field of a row, with `kind` one of `instructed`, `asked`,
+`answered`, `ran`, `way in`, `for`, `turn`, `in session` and `recorded by`.
+An instruction is joined to the question an act on it raised, so a protocol
+turn is a path from its client through the instruction and the question to
+whoever answered. Rows that share both ends and a kind are one edge:
+`metadata.count` is how many, `metadata.size` a width from it,
+`metadata.hover` says the count, and
+`metadata.style` is `dashed` when an end is `nobody named`. `recorded by`
+joins a record to the harness all of them were read from and is no single
+row's field. The graph `metadata` carries `kind` (`interactions`), `source`,
+`instance`, `rows`, `unnamed`, `not_drawn`, `answers`, `may_hold_more` and
+the `caveat` to read before the shape. A harness that is not answering is
+`unreachable` and no graph; a layout nobody registered is `unreadable`. The
+route reads the harness and posts nothing to it.
+
 ### GET `/capabilities/gjgf?layout=&palette_id=`
 
 The capability registry (`governance/qm/ci/capability-registry.yaml`) as

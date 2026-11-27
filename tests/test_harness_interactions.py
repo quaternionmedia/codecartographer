@@ -219,7 +219,7 @@ def test_interactions_beyond_the_ones_shown_are_counted_never_dropped(monkeypatc
 
 
 def test_a_full_page_from_the_harness_says_it_may_hold_more(monkeypatch):
-    """Mutation: compare with `>` instead of `>=` in `read` -- this fails."""
+    """Mutation: compare with `>` instead of `>=` in `gather` -- this fails."""
     asked = interaction_service.ASKED
     found = _read(monkeypatch, Harness(
         runs=[_run(n, "2026-01-01T00:00:00") for n in range(asked + 5)]))
@@ -316,8 +316,8 @@ def test_a_question_id_is_quoted_into_the_path(monkeypatch):
 
 
 def test_nothing_answering_is_one_problem_and_no_other_read(monkeypatch):
-    """Mutation: never take the early return in `read` -- the lists are asked
-    for too, and the answer carries no `unreachable`."""
+    """Mutation: never take the early return in `gather` -- the lists are
+    asked for too."""
     harness = Harness(gone_after=0)
     found = _read(monkeypatch, harness)
 
@@ -371,8 +371,8 @@ def test_a_health_answer_with_no_pid_and_port_does_not_identify_a_server(monkeyp
 
 
 def test_no_health_route_leaves_the_rows_shown_and_says_so(monkeypatch):
-    """Mutation: treat any failed health read as nothing answering -- the
-    rows disappear."""
+    """Mutation: have `Rows.answering` be `health.ok` alone, so any failed
+    health read is nothing answering -- the rows disappear."""
     found = _read(monkeypatch, Harness(runs=[_run(1, "2026-01-01T00:00:00")],
                                       refuse={"/health": 404}))
 
@@ -383,8 +383,8 @@ def test_no_health_route_leaves_the_rows_shown_and_says_so(monkeypatch):
 
 
 def test_a_list_the_harness_does_not_serve_is_named_and_the_others_shown(monkeypatch):
-    """Mutation: do not append to `unread_lists` in `read` -- the missing list
-    is silent."""
+    """Mutation: do not append to `unread_lists` in `gather` -- the missing
+    list is silent."""
     found = _read(monkeypatch, Harness(
         runs=[_run(1, "2026-01-01T00:00:00")],
         refuse={"/v1/instructions": 404}))

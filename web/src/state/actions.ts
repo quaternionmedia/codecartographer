@@ -623,6 +623,16 @@ export class PlotActions {
     this._settle(found, 'interactionsReading', 'interactionsProblem');
   }
 
+  /** The harness's interactions as a graph, on the canvas. Resolves whether it drew (`_draw`). */
+  async drawInteractions(request: DrawRequest = {}): Promise<boolean> {
+    this.stateController.clear();
+    const found = await EstateService.harnessGraph(
+      this.stateController.api.harness,
+      { ...request, layout: request.layout ?? this._layout() },
+    );
+    return this._draw(found, 'interactionsProblem');
+  }
+
   /** The registry's declarations, for the panel's list. Draws nothing. */
   async loadCapabilitiesReading(): Promise<void> {
     const found = await EstateService.capabilitiesData(this.stateController.api.capabilities);
@@ -759,7 +769,10 @@ export class PlotActions {
    * True when it drew, false when it holds the problem: the panel brings the
    * canvas forward only on a draw, or the canvas covers the problem view.
    */
-  private _draw(found: SeamOutcome, problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem'): boolean {
+  private _draw(
+    found: SeamOutcome,
+    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem' | 'interactionsProblem',
+  ): boolean {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {
       patch[problemField] = found.problem as SeamProblem;

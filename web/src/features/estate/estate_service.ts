@@ -93,6 +93,11 @@ export class EstateService {
     return read(get, `${harnessUrl}/interactions`);
   }
 
+  /** The harness's interactions as a graph, laid out by the server. */
+  public static harnessGraph(harnessUrl: string, request: DrawRequest = {}): Promise<SeamOutcome> {
+    return read(get, `${harnessUrl}/gjgf${query({ layout: request.layout, palette_id: request.paletteId })}`);
+  }
+
   public static capabilitiesData(capabilitiesUrl: string): Promise<SeamOutcome> {
     return read(get, `${capabilitiesUrl}/data`);
   }

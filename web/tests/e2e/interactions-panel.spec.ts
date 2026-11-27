@@ -4,8 +4,10 @@
  * The harness is a separate process this suite does not start, so what the
  * window's own API answers for it is stubbed at the route:
  * `/harness/interactions` with a reading in the shape
- * `tests/test_harness_interactions.py` holds the real route to. The panel, the
- * state action and the wording functions all run as shipped.
+ * `tests/test_harness_interactions.py` holds the real route to, and
+ * `/harness/gjgf` with `fixtures/interactions-graph.json`, which is what the
+ * real route, serializer and layout return for invented rows. The panel, the
+ * state actions, the wording functions and the canvas all run as shipped.
  *
  * Each test names the mutation it was seen to fail under.
  */
@@ -16,6 +18,8 @@ import { expect, test } from '@playwright/test';
 import { dismissOnboardingModal } from './helpers';
 
 const SETTLED = 20_000;
+/** Read from `web/`, where the suite runs, as the other specs' fixtures are. */
+const GRAPH = 'tests/e2e/fixtures/interactions-graph.json';
 
 const row = (over: Record<string, unknown>) => ({
   at: '2026-01-01T00:00:00', act: 'ran', way: null, who: null, who_from: null, what: 'echo',
@@ -235,18 +239,114 @@ test('a harness that is not answering is a sentence with a way back, and lists n
   await expect(page.locator('.gl-panel--interactions .interactions__instance')).toHaveCount(0);
 });
 
-test('the panel only reads: it offers no control and sends nothing but GET', async ({ page }) => {
+const graphAnswer = { status: 200, contentType: 'application/json', path: GRAPH };
+
+const node = (page: Page, id: string) => page.locator(`g.graph-node[data-node-id="${id}"]`);
+const edge = (page: Page, from: string, to: string) =>
+  page.locator(`line.stream-edge[data-from="${from}"][data-to="${to}"]`);
+
+test('the panel only reads: its one control draws, and it sends nothing but GET', async ({ page }) => {
   // Mutation: add a `button` to a row in `interactions_panel.ts` -- this fails.
   const sent: Request[] = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname.includes('/harness')) sent.push(request);
   });
+  await page.route('**/harness/gjgf*', (route) => route.fulfill(graphAnswer));
   await openInteractions(page, reading());
 
   const panel = page.locator('.gl-panel--interactions');
   await expect(panel.locator('[data-ref="ins-1"]')).toBeVisible({ timeout: SETTLED });
-  await expect(panel.locator('button, input, select, textarea, a[href]')).toHaveCount(0);
+  const controls = panel.locator('button, input, select, textarea, a[href]');
+  await expect(controls).toHaveCount(1);
+  await expect(controls).toHaveText('draw as a graph');
 
-  expect(sent.length).toBeGreaterThan(0);
+  await controls.click();
+  await expect(node(page, 'harness')).toHaveCount(1, { timeout: SETTLED });
+  expect(sent.some((request) => new URL(request.url()).pathname.endsWith('/harness/gjgf'))).toBe(true);
   expect(sent.filter((request) => request.method() !== 'GET')).toEqual([]);
+});
+
+async function drawGraph(page: Page): Promise<void> {
+  await page.route('**/harness/gjgf*', (route) => route.fulfill(graphAnswer));
+  await openInteractions(page, reading());
+  await page.locator('.interactions__draw').click();
+  await expect(node(page, 'harness')).toHaveCount(1, { timeout: SETTLED });
+}
+
+test('draw as a graph puts each thing a row names on the canvas, and a turn is a path of edges', async ({ page }) => {
+  // Mutations: answer false from `drawInteractions` before it reads -- nothing
+  // is drawn; ask `/harness/interactions` in `harnessGraph` -- what comes back
+  // is a reading and no graph.
+  await drawGraph(page);
+
+  for (const id of ['nobody', 'name:detail.client:editor-7', 'instruction:ins-1', 'question:ask-1',
+    'name:responded_by:ada', 'way:protocol', 'way:voice', 'tool:echo', 'project:alpha', 'chat:c-1', 'session:s-1']) {
+    await expect(node(page, id), id).toHaveCount(1);
+  }
+  await expect(page.locator('g.graph-node')).toHaveCount(13);
+
+  // The turn: its client, the instruction, the consent question, who answered.
+  await expect(edge(page, 'name:detail.client:editor-7', 'instruction:ins-1')).toHaveCount(1);
+  await expect(edge(page, 'instruction:ins-1', 'question:ask-1')).toHaveCount(1);
+  const answered = edge(page, 'question:ask-1', 'name:responded_by:ada');
+  await expect(answered).toHaveCount(1);
+  await expect(answered).toHaveAttribute('data-style', 'solid');
+  await expect(answered.locator('title')).toHaveText('answered approve');
+  await expect(page.locator('line.stream-edge')).toHaveCount(14);
+});
+
+test('an edge of a row that names nobody is dashed, and a counted edge is wider', async ({ page }) => {
+  // Mutations, both where the canvas draws an edge: read `edge.style` and not
+  // `metadata.style` -- no line is dashed; take the width from the styling
+  // alone -- the counted edge is as wide as the rest.
+  await drawGraph(page);
+
+  const unnamed = edge(page, 'nobody', 'instruction:ins-2');
+  await expect(unnamed).toHaveAttribute('data-style', 'dashed');
+  await expect(unnamed).toHaveAttribute('stroke-dasharray', '6,4');
+  await expect(unnamed).toHaveAttribute('stroke-width', '1');
+  await expect(edge(page, 'name:detail.client:editor-7', 'instruction:ins-1')).not.toHaveAttribute('stroke-dasharray', /.*/);
+  await expect(page.locator('line.stream-edge[data-style="dashed"]')).toHaveCount(2);
+
+  // The fixture's three tool runs are one edge from nobody and one to the harness.
+  const ran = edge(page, 'nobody', 'tool:echo');
+  await expect(ran).toHaveAttribute('data-style', 'dashed');
+  await expect(ran).toHaveAttribute('stroke-width', '5');
+  await expect(ran.locator('title')).toHaveText('ran ×3');
+  await expect(edge(page, 'tool:echo', 'harness')).toHaveAttribute('stroke-width', '5');
+  await expect(edge(page, 'tool:echo', 'harness')).toHaveAttribute('data-style', 'solid');
+});
+
+test('the caveat and the harness it was read from sit in the panel only while its graph is drawn', async ({ page }) => {
+  // Mutation: pass `kind: 'topology'` to the panel's `Provenance` -- the strip
+  // never shows for this graph.
+  await page.route('**/harness/gjgf*', (route) => route.fulfill(graphAnswer));
+  await openInteractions(page, reading());
+  const strip = page.locator('.gl-panel--interactions .interactions-graph__caveat');
+  await expect(page.locator('.interactions__draw')).toBeVisible({ timeout: SETTLED });
+  await expect(strip).toHaveCount(0);
+
+  await page.locator('.interactions__draw').click();
+  await expect(strip).toContainText('A name is what a row says, unchecked', { timeout: SETTLED });
+  await expect(strip).toContainText('No node is a machine, an address or an account');
+  await expect(page.locator('.interactions-graph__provenance')).toHaveText('from http://127.0.0.1:3999/health');
+});
+
+test('a harness that does not answer the graph is the problem in the panel, and nothing is drawn', async ({ page }) => {
+  // Mutation: draw whatever came back in `drawInteractions` instead of
+  // calling `_draw` -- the problem is never shown.
+  await page.route('**/harness/gjgf*', (route) => route.fulfill(envelope({
+    unreachable: true,
+    problem: 'nothing is answering at http://127.0.0.1:3141',
+    remedy: 'start it with `uv run qm dashboard --start harness`',
+    where: 'http://127.0.0.1:3141/health',
+  })));
+  await openInteractions(page, reading());
+  await page.locator('.interactions__draw').click();
+
+  const problem = page.locator('.interactions__problem');
+  await expect(problem).toBeVisible({ timeout: SETTLED });
+  await expect(problem).toHaveAttribute('data-kind', 'unreachable');
+  await expect(problem).toContainText('dashboard --start harness');
+  await expect(page.locator('g.graph-node')).toHaveCount(0);
 });
