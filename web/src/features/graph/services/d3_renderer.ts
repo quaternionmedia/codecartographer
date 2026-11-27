@@ -22,6 +22,7 @@ import { IGraphRenderer } from './base_renderer';
 import { GraphData, GraphNode, GraphEdge } from './graph_types';
 import { GraphSurface } from './graph_surface';
 import { StreamingGraphRenderer } from './streaming_renderer';
+import { namedGraph } from './graph_names';
 import { GraphStylingOptions } from '../../../state/types';
 import { logger } from '../../../core/logger';
 
@@ -52,7 +53,7 @@ export function drawCopy(container: HTMLElement, data: GraphData, styling?: Grap
   container.innerHTML = '';
   const renderer = new StreamingGraphRenderer(container, styling);
   const shown = (data as { metadata?: { kind?: unknown; names?: unknown } }).metadata;
-  if (shown?.kind === 'show') renderer.presentAsMap({ names: shown.names !== false });
+  if (namedGraph(shown)) renderer.presentAsMap({ names: shown?.names !== false });
   const nodes = flattenNodes(data.graph?.nodes);
   renderer.setTotal(nodes.length);
   renderer.mergeGraph(nodes, (data.graph?.edges ?? []) as GraphEdge[]);
@@ -79,8 +80,9 @@ export class D3GraphRenderer implements IGraphRenderer {
     const renderer = new StreamingGraphRenderer(container, styling);
     // A showgraph says so in its metadata, and is drawn as a map of names --
     // or with none, where its metadata says so: the whole corpus, every node.
+    // So is a graph whose metadata says its names are to be drawn.
     const shown = (graphData as { metadata?: { kind?: unknown; names?: unknown } }).metadata;
-    if (shown?.kind === 'show') renderer.presentAsMap({ names: shown.names !== false });
+    if (namedGraph(shown)) renderer.presentAsMap({ names: shown?.names !== false });
     const nodes = flattenNodes(graphData.graph?.nodes);
     const edges = (graphData.graph?.edges ?? []) as GraphEdge[];
 

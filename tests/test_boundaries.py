@@ -58,6 +58,7 @@ ESTATE_SERVICES = (
     "codecarto/services/harness_service.py",
     "codecarto/services/interaction_service.py",
     "codecarto/services/interaction_graph.py",
+    "codecarto/services/reading_order.py",
     # A Cargo workspace is read the same way a seam is: manifests and the
     # documents cargo wrote, never a write and never a run.
     "codecarto/services/cargo_service.py",

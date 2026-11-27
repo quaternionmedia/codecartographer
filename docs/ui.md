@@ -208,15 +208,26 @@ as the harness holds it, beside the field it was read from; the panel names
 no machine and no account, because the harness's rows hold none. The panel
 is read-only.
 
-*draw as a graph* draws the same rows in the Graph panel: a node for each
-name, instruction, question, source, tool, project and protocol session or
-chat, and for the harness, and an edge for each row, dashed where the row
-names nobody and wider where several rows are one edge. A protocol turn
-reads as a path from its client through the instruction and its consent
-question to whoever answered. The graph is the harness as read for that
-drawing, laid out by the algorithm Graph Settings names; names are shown
-when *Node Labels* is on there. The caveat and the harness it was read from
-sit above the button while the graph is on the canvas.
+*draw as a graph* draws the same rows in the Graph panel, in reading order
+and with every name written, whatever Graph Settings holds. Left to right:
+who, the instruction, the question it raised, who answered. A protocol turn
+is one straight row, with its chat and session tucked under it. The sources
+instructions came in by stand above the rows under the harness, and tools
+and projects below. Rows that name nobody come last, and instructions and
+questions that name nobody and belong to no turn are one node each with
+their count; the lists further down the panel hold every one of them.
+
+The three edges of the reading have a colour each and every other edge is
+one grey; an edge is dashed where its row names nobody and wider where
+several rows are one edge. The key to those lines sits beside the button
+while the graph is on the canvas, and the caveat and the harness it was read
+from under it.
+
+The graph is the harness as read for that drawing. It stays as drawn while
+the panel reads again, and the panel says when the harness holds a different
+number of rows than the graph was drawn from. Choosing an algorithm in Graph
+Settings draws it by that algorithm; the button draws it in reading order
+again.
 
 ### Capabilities
 

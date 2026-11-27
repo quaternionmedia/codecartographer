@@ -137,3 +137,52 @@ export function undatedShown(undated: number): string {
 export function moreNamesShown(more: number): string {
   return more > 0 ? `${more} more the harness's rows give and this panel does not show` : '';
 }
+
+/** The layout the interactions graph is drawn in when its panel draws it. */
+export const READING_ORDER = 'Reading_Order';
+
+/** As much of a drawn edge as the key reads: its kind, colour and line. */
+export interface KeyedEdge {
+  label?: unknown;
+  metadata?: { kind?: unknown; color?: unknown; style?: unknown } | null;
+}
+
+/** One line of the key: a colour as drawn, and the kinds of edge drawn in it. */
+export interface KeyLine {
+  color: string;
+  kinds: string[];
+}
+
+/**
+ * The key to a drawn graph's edges, read from the edges themselves: each
+ * colour with the kinds drawn in it, in the order they first appear, and
+ * whether any edge is dashed. An edge that states no colour is left out.
+ */
+export function edgeKey(edges: readonly KeyedEdge[]): { lines: KeyLine[]; dashed: boolean } {
+  const lines: KeyLine[] = [];
+  let dashed = false;
+  for (const edge of edges) {
+    const held = edge.metadata ?? {};
+    if (held.style === 'dashed') dashed = true;
+    const kind = typeof held.kind === 'string' && held.kind ? held.kind
+      : typeof edge.label === 'string' ? edge.label : '';
+    if (typeof held.color !== 'string' || !held.color || !kind) continue;
+    let line = lines.find((found) => found.color === held.color);
+    if (!line) {
+      line = { color: held.color, kinds: [] };
+      lines.push(line);
+    }
+    if (!line.kinds.includes(kind)) line.kinds.push(kind);
+  }
+  return { lines, dashed };
+}
+
+/**
+ * What a panel says when the harness holds a different number of rows than
+ * the graph on the canvas was drawn from, or ''. Rows that changed without
+ * the number changing are not seen.
+ */
+export function staleShown(drawn: unknown, now: unknown): string {
+  if (typeof drawn !== 'number' || typeof now !== 'number' || drawn === now) return '';
+  return `The harness held ${drawn} rows when this graph was drawn and holds ${now} now. Draw again to read them.`;
+}
