@@ -141,6 +141,15 @@ export function moreNamesShown(more: number): string {
 /** The layout the interactions graph is drawn in when its panel draws it. */
 export const READING_ORDER = 'Reading_Order';
 
+/** The graph as rows alone, and with every source, project, chat and session a node. */
+export const ROWS = 'rows';
+export const ALL = 'all';
+
+/** What the route is asked to draw: rows alone unless every node is wanted. */
+export function detailAsked(everyNode: boolean): string {
+  return everyNode ? ALL : ROWS;
+}
+
 /** As much of a drawn edge as the key reads: its kind, colour and line. */
 export interface KeyedEdge {
   label?: unknown;

@@ -75,6 +75,8 @@ export interface DrawRequest {
   paletteId?: string;
   /** Overview only: a seam path other than the default. */
   seam?: string;
+  /** Harness interactions only: `rows` for the reading alone, `all` for every node. */
+  detail?: string;
 }
 
 export class EstateService {
@@ -95,7 +97,9 @@ export class EstateService {
 
   /** The harness's interactions as a graph, laid out by the server. */
   public static harnessGraph(harnessUrl: string, request: DrawRequest = {}): Promise<SeamOutcome> {
-    return read(get, `${harnessUrl}/gjgf${query({ layout: request.layout, palette_id: request.paletteId })}`);
+    return read(get, `${harnessUrl}/gjgf${query({
+      layout: request.layout, palette_id: request.paletteId, detail: request.detail,
+    })}`);
   }
 
   public static capabilitiesData(capabilitiesUrl: string): Promise<SeamOutcome> {

@@ -7,9 +7,10 @@
  * first. A row that names nobody says so; no element here answers a question
  * or starts anything at the harness.
  *
- * Its one control draws the same rows as a graph in the Graph panel, through
- * the path every other plot takes. The graph is the harness as it was read
- * for that drawing; it is drawn again when asked.
+ * Its button draws the same rows as a graph in the Graph panel, through the
+ * path every other plot takes: as rows alone, set close, unless its checkbox
+ * asks for every source, project, chat and session as a node. The graph is
+ * the harness as it was read for that drawing; it is drawn again when asked.
  *
  * The reading is asked again on an interval while the panel is in the page,
  * and cleared when the panel leaves.
@@ -23,7 +24,7 @@ import { Provenance } from '../../features/estate/provenance';
 import type { EstateMetadata } from '../../features/estate/provenance';
 import { heldBack, whenShown } from '../../features/estate/run_state';
 import {
-  READING_ORDER, actShown, answersShown, cellLevel, edgeKey, instanceShown, moreNamesShown, mostInACell,
+  READING_ORDER, actShown, answersShown, cellLevel, detailAsked, edgeKey, instanceShown, moreNamesShown, mostInACell,
   staleShown, undatedShown, whoShown,
 } from '../../features/estate/interactions';
 import type { Interaction, KeyLine, KeyedEdge, Lane, WhoRow } from '../../features/estate/interactions';
@@ -114,6 +115,8 @@ export function createInteractionsPanel(ctx: LayoutContext): m.Component {
   let root: Element | null = null;
   /** When the reading on screen arrived, by this window's clock. */
   let readAt: Date | null = null;
+  /** Whether the next drawing has every source, project, chat and session as a node. */
+  let everyNode = false;
 
   const leave = () => {
     if (timer !== null) clearInterval(timer);
@@ -141,8 +144,9 @@ export function createInteractionsPanel(ctx: LayoutContext): m.Component {
     // In reading order on the press. A layout chosen in Graph Settings
     // afterwards runs this action again, and is asked for as chosen.
     let pressed = true;
+    const detail = detailAsked(everyNode);
     void ctx.plotWith(() => {
-      const request = pressed ? { layout: READING_ORDER } : {};
+      const request = pressed ? { layout: READING_ORDER, detail } : { detail };
       pressed = false;
       return ctx.actions.plot.drawInteractions(request);
     }).then((drew) => { if (drew) ctx.focusDockPanel('graph'); });
@@ -189,10 +193,19 @@ export function createInteractionsPanel(ctx: LayoutContext): m.Component {
         reading
           ? m('div.estate-view__section', { 'data-interactions': 'graph' }, [
               m('button.estate-view__draw.interactions__draw', { onclick: draw }, 'draw as a graph'),
+              m('label.interactions__every', [
+                m('input.interactions__every-node', {
+                  type: 'checkbox',
+                  checked: everyNode,
+                  onchange: (event: Event) => { everyNode = (event.target as HTMLInputElement).checked; },
+                }),
+                ' with sources, projects and sessions as nodes',
+              ]),
               key ? keyShown(key) : null,
               stale ? m('p.estate-view__hint.interactions__stale', stale) : null,
               m('p.estate-view__hint.interactions__draw-hint',
-                'Read left to right: who, the instruction, the question it raised, who answered. '
+                'Read left to right: who, the instruction with the way it came in, the question it raised, who answered; '
+                + 'rows that do not fit one column continue in the next block to the right. '
                 + 'The graph is the harness as read for that drawing, and stays as drawn until it is drawn again. '
                 + 'An algorithm chosen in Graph Settings draws it by that instead.'),
             ])

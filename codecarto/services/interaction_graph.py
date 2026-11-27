@@ -37,6 +37,14 @@ them are one node with their count; questions that name nobody on either side
 and that no instruction raised likewise. The Interactions panel lists each of
 those rows.
 
+**Drawn as rows** (`detail` `rows`), only the reading is drawn: a source, a
+project, a chat, a session and the harness are not nodes. The way an
+instruction came in is written before its text in its name, and its project,
+session, chat and turn are on its hover; a question's project is on its
+hover; a tool stands in the instruction column. The graph says it is `dense`,
+and `reading_order.place` then sets its rows closer and wraps them into
+blocks.
+
 A question is joined to its instruction by the instruction's
 `consent_request_id` or the question's `context.instruction_id`. `recorded by`
 is the one edge no single field states: every row read is the one harness's,
@@ -72,6 +80,10 @@ TOLD = 3
 MIN_WIDTH = 1.5
 MAX_WIDTH = 5.0
 """Line width for an edge of one row, and for the edge of the most rows."""
+
+ALL, ROWS = "all", "rows"
+"""What is drawn: every node above, or the reading alone with the rest in
+names and hovers."""
 
 LAYOUT = "Reading Order"
 """The layout this graph is drawn in unless another is asked for."""
@@ -129,6 +141,19 @@ CAVEAT = ("Read left to right: who, the instruction, the question it raised, "
           "raised. No node is a machine, an address or an account: no field "
           "read holds one")
 
+ROWS_CAVEAT = ("Read left to right: who, the instruction with the way it came "
+               "in before it, the question it raised, who answered. Every node "
+               "is something a row of the harness names and every edge is a "
+               "field of a row. An instruction's project, session, chat and "
+               "turn are on its hover and are not drawn, and a question's "
+               "project likewise. A name is what a row says, unchecked, beside "
+               "the field it came from. A dashed line is a row that names "
+               "nobody. Instructions that name nobody and raised no question "
+               "are one node with their count, and so are questions that name "
+               "nobody and no instruction raised. Rows that do not fit one "
+               "column continue in the next block to the right. No node is a "
+               "machine, an address or an account: no field read holds one")
+
 
 @dataclass
 class Picture:
@@ -141,6 +166,13 @@ class Picture:
 
     counted: dict[str, int] = field(default_factory=dict)
     """Rows drawn as one counted node, by what they are."""
+
+    detail: str = ALL
+    """`ALL`, or `ROWS` for the reading alone."""
+
+    @property
+    def rows_only(self) -> bool:
+        return self.detail == ROWS
 
     def node(self, node_id: str, kind: str, label: str, hover: str, **more: Any) -> str:
         """Add a node once; a second mention of the same thing changes nothing."""
@@ -207,23 +239,33 @@ def _told(texts: list[Any]) -> str:
     return f"newest: {quoted}" + ("; …" if len(texts) > TOLD else "")
 
 
-def _instructions(made: Picture, rows: Rows, drawn: int, harness: str,
+_FOLDED = (("way in", "way"), ("project", "project"), ("session", "session"),
+           ("chat", "chat"), ("turn", "turn"))
+"""What an instruction drawn as a row says on its hover and not as nodes."""
+
+
+def _instructions(made: Picture, rows: Rows, drawn: int, harness: str | None,
                   raised: set[str]) -> dict[str, str]:
     """Draw the instructions; return the node of each one drawn singly, by id."""
     singly: dict[str, str] = {}
     plain: list[tuple[dict[str, Any], dict[str, Any]]] = []
 
     def one(row: dict[str, Any], seen: dict[str, Any]) -> None:
+        label, hover = _short(seen["what"]), ""
+        if made.rows_only:
+            if seen["way"]:
+                label = f"{seen['way']} · {label}"
+            hover = "".join(f" -- {name} {seen[key]}" for name, key in _FOLDED if seen[key])
         node = made.node(
-            f"instruction:{row.get('id')}", INSTRUCTION, _short(seen["what"]),
-            f"instruction {row.get('id')}: {seen['what']} -- {row.get('status')}",
+            f"instruction:{row.get('id')}", INSTRUCTION, label,
+            f"instruction {row.get('id')}: {seen['what']} -- {row.get('status')}{hover}",
             status=row.get("status"), at=seen["at"])
         singly[str(row.get("id"))] = node
         _joined(made, node, seen)
 
     for index, row in enumerate(rows.instructions):
         seen = interaction_service.instructed(row)
-        if seen["way"]:
+        if seen["way"] and harness is not None:
             made.edge(_way(made, seen["way"]), harness, "recorded by")
         if index >= drawn:
             continue
@@ -250,6 +292,8 @@ def _instructions(made: Picture, rows: Rows, drawn: int, harness: str,
 def _joined(made: Picture, node: str, seen: dict[str, Any]) -> None:
     """One instruction's edges, from its own node or the node it is counted in."""
     made.edge(_name(made, seen["who"], seen["who_from"]), node, "instructed")
+    if made.rows_only:
+        return
     if seen["way"]:
         made.edge(node, _way(made, seen["way"]), "way in")
     if seen["project"]:
@@ -295,7 +339,7 @@ def _questions(made: Picture, rows: Rows, drawn: int, singly: dict[str, str],
         made.counted["questions"] = len(plain)
         for _, seen, answer in plain:
             made.edge(_name(made, None, None), node, "asked")
-            if seen["project"]:
+            if seen["project"] and not made.rows_only:
                 made.edge(node, _project(made, seen["project"]), "for")
             if answer is not None:
                 made.edge(node, _name(made, None, None, answering=True), "answered")
@@ -308,14 +352,15 @@ def _question(made: Picture, row: dict[str, Any], seen: dict[str, Any],
     # A consent's prompt repeats its instruction, which stands beside it; its
     # status is what the reading needs there.
     label = f"consent · {row.get('status')}" if raised else _short(seen["what"])
+    project = f" -- project {seen['project']}" if made.rows_only and seen["project"] else ""
     node = made.node(
         f"question:{row.get('id')}", QUESTION, label,
-        f"question {row.get('id')}: {seen['what']} -- {row.get('status')}",
+        f"question {row.get('id')}: {seen['what']} -- {row.get('status')}{project}",
         status=row.get("status"), at=seen["at"])
     origin = singly.get(raised) if raised else None
     if origin:
         made.edge(origin, node, "asked")
-    elif seen["project"]:
+    elif seen["project"] and not made.rows_only:
         made.edge(node, _project(made, seen["project"]), "for")
     # Who issued it, when the row says. A question an act raised names nobody
     # and is not drawn as asked by nobody: its instruction asked.
@@ -326,10 +371,10 @@ def _question(made: Picture, row: dict[str, Any], seen: dict[str, Any],
                   "answered", f"answered {answer['what']}")
 
 
-def picture(rows: Rows, drawn: int = DRAWN) -> Picture:
+def picture(rows: Rows, drawn: int = DRAWN, detail: str = ALL) -> Picture:
     """The rows as nodes and edges. Reads nothing and lays out nothing."""
-    made = Picture()
-    harness = _harness(made, rows)
+    made = Picture(detail=detail)
+    harness = None if made.rows_only else _harness(made, rows)
 
     consents = {str(row["consent_request_id"]): str(row.get("id"))
                 for row in rows.instructions if row.get("consent_request_id")}
@@ -341,7 +386,8 @@ def picture(rows: Rows, drawn: int = DRAWN) -> Picture:
     for row in rows.runs:
         seen = interaction_service.ran(row)
         tool = made.node(f"tool:{seen['what']}", TOOL, str(seen["what"]),
-                         f"tool {seen['what']}", rank=2)
+                         f"tool {seen['what']}", rank=2,
+                         placed=(INSTRUCTION_COLUMN, "above") if made.rows_only else None)
         made.edge(_name(made, None, None), tool, "ran")
     return made
 
@@ -362,7 +408,7 @@ def as_graph(made: Picture, source: str = ""):
 
     from codecarto.services import palette_service
 
-    graph = nx.MultiDiGraph(kind="interactions", source=source)
+    graph = nx.MultiDiGraph(kind="interactions", source=source, dense=made.rows_only)
     for node_id, node in made.nodes.items():
         graph.add_node(
             node_id, **node,
@@ -387,7 +433,7 @@ def as_graph(made: Picture, source: str = ""):
 
 def caveat(rows: Rows, made: Picture) -> str:
     """The sentence a reader needs before believing the shape."""
-    parts = [CAVEAT]
+    parts = [ROWS_CAVEAT if made.rows_only else CAVEAT]
     held = [f"{count} older {what}" for what, count in made.not_drawn.items() if count]
     if held:
         parts.append(f"Not drawn: {', '.join(held)}")
@@ -416,6 +462,7 @@ def metadata(rows: Rows, made: Picture, options: Any = None) -> dict[str, Any]:
         # Every node's name is what this graph is for: the canvas draws them
         # without the reader turning names on.
         "names": True,
+        "detail": made.detail,
         "instance": interaction_service.instance(rows.health),
         "rows": len(found),
         "unnamed": sum(1 for row in found if not row["who"]),

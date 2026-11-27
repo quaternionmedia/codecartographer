@@ -1089,7 +1089,7 @@ says how many answers were read and how many were not, since each is one
 read of the harness. `unread_lists` names each list the harness would not
 serve. The route reads the harness and posts nothing to it.
 
-### GET `/harness/gjgf?layout=&palette_id=`
+### GET `/harness/gjgf?layout=&palette_id=&detail=`
 
 The same rows as `GraphData`, laid out by `reading_order_layout` unless
 `layout` names another. A node is something a row names: a name with the
@@ -1118,8 +1118,19 @@ many, `metadata.size` a width from it, `metadata.hover` says the count, and
 one grey. `recorded by` joins an instruction's source to the harness all
 rows were read from and is no single row's field.
 
+`detail=rows` draws the reading alone; `detail=all`, the default, draws
+every node above, and any other value is refused with a 422. Drawn as rows,
+a source, a project, a chat, a session and the harness are not nodes and the
+only kinds of edge are `instructed`, `asked`, `answered` and `ran`. An
+instruction's label starts with the way it came in, and its hover says its
+project, session, chat and turn; a question's hover says its project; a tool
+stands in the `instruction` column. The rows are set closer, and where they
+would make a column much taller than a canvas is wide they wrap into blocks
+side by side, each block the four columns again. The rows one name starts
+stay in one block while a block can hold them.
+
 The graph `metadata` carries `kind` (`interactions`), `names` (`true`: the
-canvas draws every name), `source`, `instance`, `rows`, `unnamed`, `counted`,
+canvas draws every name), `detail` (`all` or `rows`), `source`, `instance`, `rows`, `unnamed`, `counted`,
 `not_drawn`, `answers`, `may_hold_more` and the `caveat` to read before the
 shape. A harness that is not answering is `unreachable` and no graph; a
 layout nobody registered is `unreadable`. The route reads the harness and

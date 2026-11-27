@@ -56,8 +56,12 @@ async def harness_interactions() -> dict[str, Any]:
 def harness_gjgf(
     layout: str = Query(interaction_graph.LAYOUT),
     palette_id: str = Query("0"),
+    detail: str = Query(interaction_graph.ALL, pattern="^(all|rows)$"),
 ) -> dict[str, Any]:
     """The harness's interactions as `GraphData`, in this project's envelope.
+
+    `detail=rows` draws the reading alone, with each instruction's way in in
+    its name and the rest on hovers, set closer and wrapped into blocks.
 
     A plain `def`, so the reads of the harness and the layout run in the
     threadpool. A layout nobody registered is `unreadable` with the
@@ -67,7 +71,7 @@ def harness_gjgf(
     if not rows.answering:
         return generate_return(results=rows.unreachable())
     options = PlotOptions(layout=layout, palette_id=palette_id, type="d3")
-    made = interaction_graph.picture(rows)
+    made = interaction_graph.picture(rows, detail=detail)
     try:
         graph = interaction_graph.as_gjgf(made, options, rows.health.where)
     except ValueError as error:
