@@ -5,7 +5,11 @@
  * returned: which harness answered, a table of names by act and way in, a
  * lane per act and way in counted over time, and the interactions newest
  * first. A row that names nobody says so; no element here answers a question
- * or starts anything.
+ * or starts anything at the harness.
+ *
+ * Its one control draws the same rows as a graph in the Graph panel, through
+ * the path every other plot takes. The graph is the harness as it was read
+ * for that drawing; it is drawn again when asked.
  *
  * The reading is asked again on an interval while the panel is in the page,
  * and cleared when the panel leaves.
@@ -15,6 +19,8 @@ import m from 'mithril';
 
 import type { LayoutContext } from '../layout_context';
 import { ProblemView } from '../../features/estate/problem_view';
+import { Provenance } from '../../features/estate/provenance';
+import type { EstateMetadata } from '../../features/estate/provenance';
 import { heldBack, whenShown } from '../../features/estate/run_state';
 import {
   actShown, answersShown, cellLevel, instanceShown, moreNamesShown, mostInACell, undatedShown, whoShown,
@@ -124,6 +130,7 @@ export function createInteractionsPanel(ctx: LayoutContext): m.Component {
       const reading = state.interactionsReading;
       const problem = state.interactionsProblem;
       const most = reading ? mostInACell(reading.over_time.lanes) : 0;
+      const metadata = state.graphData?.metadata as EstateMetadata | undefined;
 
       return m('div.gl-panel.gl-panel--controls.gl-panel--interactions', [
         problem
@@ -140,6 +147,22 @@ export function createInteractionsPanel(ctx: LayoutContext): m.Component {
 
         reading === null && !problem
           ? m('p.estate-view__pending', 'asking the harness…')
+          : null,
+
+        // Only when the canvas holds this seam's graph: its caveat, and the
+        // harness it was read from.
+        m(Provenance, { metadata, prefix: 'interactions-graph', kind: 'interactions' }),
+
+        reading
+          ? m('div.estate-view__section', { 'data-interactions': 'graph' }, [
+              m('button.estate-view__draw.interactions__draw', {
+                onclick: () => void ctx.plotWith(() => ctx.actions.plot.drawInteractions())
+                  .then((drawn) => { if (drawn) ctx.focusDockPanel('graph'); }),
+              }, 'draw as a graph'),
+              m('p.estate-view__hint.interactions__draw-hint',
+                'Names, instructions, questions and the harness as nodes, and each row as an edge. '
+                + 'The graph is the harness as read for that drawing; draw again to read again.'),
+            ])
           : null,
 
         reading

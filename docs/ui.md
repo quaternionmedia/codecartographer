@@ -206,7 +206,17 @@ equal span between the oldest and the newest read. *Newest first* lists
 instructions, questions, answers and tool runs as one list. A name is shown
 as the harness holds it, beside the field it was read from; the panel names
 no machine and no account, because the harness's rows hold none. The panel
-is read-only and draws nothing on the canvas.
+is read-only.
+
+*draw as a graph* draws the same rows in the Graph panel: a node for each
+name, instruction, question, source, tool, project and protocol session or
+chat, and for the harness, and an edge for each row, dashed where the row
+names nobody and wider where several rows are one edge. A protocol turn
+reads as a path from its client through the instruction and its consent
+question to whoever answered. The graph is the harness as read for that
+drawing, laid out by the algorithm Graph Settings names; names are shown
+when *Node Labels* is on there. The caveat and the harness it was read from
+sit above the button while the graph is on the canvas.
 
 ### Capabilities
 
