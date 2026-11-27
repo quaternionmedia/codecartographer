@@ -63,7 +63,7 @@ codecarto/
 │   ├── cargo_router.py           # /cargo/*  a Cargo workspace and its recorded build, as GraphData
 │   ├── palette_router.py         # /palette/*
 │   ├── topology_router.py        # /topology/*     the harness's shapes, as GraphData
-│   ├── harness_router.py         # /harness/data   the harness's runs, queue and instructions, read
+│   ├── harness_router.py         # /harness/*      the harness's runs, queue and instructions, and who did what, read
 │   ├── capability_router.py      # /capabilities/* the corpus's registry, as GraphData
 │   ├── overview_router.py        # /overview/*     dossier's seam, as GraphData
 │   ├── estate_router.py          # /estate/seams   every seam above, identified or not
@@ -81,6 +81,7 @@ codecarto/
 │   ├── qmcp_client.py             # the seam to the harness: a URL and a JSON shape, never an import
 │   ├── topology_service.py        # harness payload -> networkx -> GraphSerializer
 │   ├── harness_service.py         # harness rows -> lists with a held-back count, and a state per project
+│   ├── interaction_service.py     # harness rows and answers -> one list by time, with the way in and the name each carries
 │   ├── capability_service.py      # registry YAML -> networkx -> GraphSerializer
 │   ├── overview_service.py        # overview seam -> networkx -> GraphSerializer
 │   ├── estate_service.py          # the seam registry: identity probes, the liveness table
@@ -536,6 +537,7 @@ what displays it. `tests/test_boundaries.py` checks the rules below.
 | **Code maps** (`/parse`, `/repo`) | this backend: parsers produce nodes and edges, `PositionService` lays them out, `GraphSerializer` sizes by degree | `CacheService` — content-addressed, keyed by the graph schema version + url + mode + layout + extensions, filesystem or MongoDB; `graphbase` for named bookmarks (separate store, separate decision) | the one canvas, `StreamingGraphRenderer`; the legend counts what was drawn |
 | **Topologies** (`/topology`) | the harness declares shapes (boxes, arrows, no coordinates) and measures relation weights from its archive; this backend resolves the *encoding* — width from strength, dashed from unmeasured, colour from kind — and lays out | nothing here. Read live on every request; the harness stores its own archive and its own runs | the canvas draws exactly the channels `topology_service` resolved; the panel shows the harness's caveat verbatim |
 | **Run state** (`/harness`) | the harness records runs, questions and instructions; this backend cuts each list to the rows shown, counts the rest, and maps the newest acted-on instruction and any pending question to one state per project | nothing here. Read on every request; the window keeps the last reading in memory while the Harness panel is open | the Harness panel lists the rows as returned; the canvas marks each box whose address names a project with a state, and the panel names every project with a state and no box |
+| **Interactions** (`/harness/interactions`) | the harness records instructions, questions, answers and tool runs; this backend orders them by time, reads the way in and the name each row carries, counts them by name and into equal spans of time, and reads the server's identity from its health answer | nothing here. Read on every request; the window keeps the last reading in memory while the Interactions panel is open | the Interactions panel shows each name as the row gives it and maps each span's count to a shade; a row that names nobody is shown as naming nobody |
 | **Capabilities** (`/capabilities`) | the corpus's registry states claims; this backend counts nothing but the rungs naming no evidence, and lays out | nothing here; the registry is the corpus's file at the governance pin | the canvas; the panel lists the claims as stated, with who stated them and when |
 | **Overview** (`/overview`) | dossier builds masthead figures and sections from its database and writes them as a seam; this backend draws the one relation the seam states (a section lists a subject) and lays out | dossier's seam file — a snapshot; this window reads it and never writes it | the canvas; the panel shows the masthead as written, with the producer's own `note` beside each figure, and when the reading was made |
 | **Liveness** (`/estate/seams`) | this backend probes each seam for a document whose shape it knows | nothing | the Estate panel, one row per seam, the server's `ok` and the server's sentence |

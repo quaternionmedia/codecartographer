@@ -1,0 +1,73 @@
+/**
+ * The Interactions panel's own marks. Rows, headings and hints are the estate
+ * views' shared classes; this adds the panel's spacing, the dot of a row that
+ * names nobody, and the lanes.
+ *
+ * A lane is a strip of equal spans. A span's shade is its level, 0 to 4, of
+ * one hue, so a theme that moves the hue moves every lane together. A row
+ * that names nobody differs in shape as well as colour: its dot is hollow.
+ */
+
+.gl-panel--interactions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 0.75rem);
+  padding: var(--spacing-md, 0.75rem);
+  overflow-y: auto;
+}
+
+.interactions__read,
+.interactions__count,
+.interactions__lane-count { font-variant-numeric: tabular-nums; }
+
+.gl-panel--interactions [data-named="yes"] .estate__dot { background: var(--c-accent); }
+.gl-panel--interactions [data-named="no"] .estate__dot {
+  background: transparent;
+  border: 1px solid var(--c-font-muted);
+}
+
+.interactions__lanes {
+  display: grid;
+  grid-template-columns: max-content 1fr max-content;
+  gap: 0.3rem 0.6rem;
+  align-items: center;
+  padding: 0.5rem 0.6rem;
+  background: var(--c-primary-light);
+  border: 1px solid var(--c-border);
+  border-radius: 2px;
+}
+
+/* Each lane's three parts sit in the lanes' own columns, so every strip
+   starts and ends at the same place. */
+.interactions__lane { display: contents; }
+
+.interactions__lane-name,
+.interactions__lane-count {
+  font-size: 0.72rem;
+  color: var(--c-font);
+}
+.interactions__lane-count { color: var(--c-font-muted); text-align: right; }
+
+.interactions__cells {
+  display: flex;
+  gap: 1px;
+  min-width: 0;
+  height: 0.9rem;
+}
+
+.interactions__cell {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--c-accent);
+  border-radius: 1px;
+}
+.interactions__cell[data-level="0"] { background: var(--c-border); opacity: 0.35; }
+.interactions__cell[data-level="1"] { opacity: 0.35; }
+.interactions__cell[data-level="2"] { opacity: 0.55; }
+.interactions__cell[data-level="3"] { opacity: 0.8; }
+.interactions__cell[data-level="4"] { opacity: 1; }
+
+/* An id is long and has no place to break; let it wrap inside its row. */
+.gl-panel--interactions .estate__row code,
+.gl-panel--interactions .estate__name,
+.gl-panel--interactions .estate__detail { overflow-wrap: anywhere; }

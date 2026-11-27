@@ -1069,6 +1069,25 @@ project an instruction or a pending question names, with `state` (`idle`,
 says what a state is read from. The route reads the harness and posts
 nothing to it.
 
+### GET `/harness/interactions`
+
+Who did what at the harness, through which way in. `interactions` carries
+`rows`, `shown`, `more` and `more_is_floor`, newest first: each row is an
+instruction, a question, an answer or a tool run, with `at`, `act`
+(`instructed`, `asked`, `answered` or `ran`), `way`, `who`, `who_from`,
+`what`, `ref` and `project`, and `session`, `chat` and `turn` when a protocol
+client's turn recorded them. `way` is an instruction's source and is null on
+every other row. `who` is the name a row carries and `who_from` the field it
+was read from: `detail.client`, `responded_by` or `context.issued_by`. A row
+that names nobody has both null. `who` counts the rows by name, act and way.
+`over_time` counts each act and way into `cells` equal spans between `from`
+and `to`. `instance` is what the harness's health answer states: `pid`,
+`port`, `database_fingerprint`, `started_at`, `session` and `version`, with
+`identified` false and a `problem` when it names no pid and port. `answers`
+says how many answers were read and how many were not, since each is one
+read of the harness. `unread_lists` names each list the harness would not
+serve. The route reads the harness and posts nothing to it.
+
 ### GET `/capabilities/gjgf?layout=&palette_id=`
 
 The capability registry (`governance/qm/ci/capability-registry.yaml`) as

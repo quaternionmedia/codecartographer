@@ -88,6 +88,11 @@ export class EstateService {
     return read(get, `${harnessUrl}/data`);
   }
 
+  /** Who did what at the harness, through which way in, read by the server. */
+  public static harnessInteractions(harnessUrl: string): Promise<SeamOutcome> {
+    return read(get, `${harnessUrl}/interactions`);
+  }
+
   public static capabilitiesData(capabilitiesUrl: string): Promise<SeamOutcome> {
     return read(get, `${capabilitiesUrl}/data`);
   }
