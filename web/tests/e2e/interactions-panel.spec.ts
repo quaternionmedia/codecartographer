@@ -507,7 +507,7 @@ test('unticked, a drawn graph stays as drawn while the panel reads again, and sa
 
 /** The fixture graph before the harness held its tool run: one node and its edges fewer. */
 function graphBefore() {
-  const answer = JSON.parse(readFileSync(GRAPH, 'utf-8'));
+  const answer = JSON.parse(readFileSync(GRAPH, 'utf8'));
   const graph = answer.results.graph;
   delete graph.nodes['tool:echo'];
   graph.edges = graph.edges.filter(
