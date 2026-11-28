@@ -38,6 +38,7 @@
     "src/features/estate/interactions.ts",
     "src/features/estate/instruct.ts",
     "src/features/estate/designer.ts",
+    "src/features/estate/compose.ts",
     "src/features/graph/services/graph_names.ts",
     "src/features/graph/services/layout_names.ts",
     "src/features/graph/services/label_color.ts",

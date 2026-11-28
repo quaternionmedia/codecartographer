@@ -69,6 +69,10 @@ export interface ICellState {
   /** Every shape the harness declares, or null before the Designer panel asked. */
   designerReading: DesignerDocument | null;
   designerProblem: SeamProblem | null;
+  /** Why the composition was not drawn, or null. */
+  composeProblem: SeamProblem | null;
+  /** A kind another panel asked the Compose panel to start from, or empty. */
+  composeKind: string;
   /** The registry's declarations as the panel lists them, or null before asked. */
   capabilitiesReading: CapabilitiesDocument | null;
   capabilitiesProblem: SeamProblem | null;
@@ -128,6 +132,8 @@ export class CellState implements ICellState {
   public interactionsProblem: SeamProblem | null = null;
   public designerReading: DesignerDocument | null = null;
   public designerProblem: SeamProblem | null = null;
+  public composeProblem: SeamProblem | null = null;
+  public composeKind: string = '';
   public capabilitiesReading: CapabilitiesDocument | null = null;
   public capabilitiesProblem: SeamProblem | null = null;
   public overviewReading: OverviewDocument | null = null;

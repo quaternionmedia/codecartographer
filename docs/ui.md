@@ -65,7 +65,7 @@ which names the step after it; the last step has no Next.
 
 | | Step | Brings forward | Owns |
 |---|---|---|---|
-| 1 | **Open** | Open, then the Graph panel | Open, Estate, Show, Topology, Capabilities, Overview, Harness, Interactions, Designer, Cargo, Graphbase |
+| 1 | **Open** | Open, then the Graph panel | Open, Estate, Show, Topology, Capabilities, Overview, Harness, Interactions, Designer, Compose, Cargo, Graphbase |
 | 2 | **Browse** | Files, then the Graph panel | Files |
 | 3 | **Tune** | Graph Settings, then the Graph panel | Graph Settings |
 | 4 | **Read** | The Graph panel, maximised, which hides every other window | Graph, Chrestomathy |
@@ -104,7 +104,7 @@ answers. `web/src/layout/panel_groups.ts` holds the headings and
 |---|---|---|
 | **Canvas** | this window | Graph, Graph Settings |
 | **Code** | a repository or this disk | Open, Cargo, Chrestomathy, Files, Graphbase |
-| **Harness** | the harness, live | Topology, Harness, Interactions, Designer |
+| **Harness** | the harness, live | Topology, Harness, Interactions, Designer, Compose |
 | **Organisation** | the corpus and dossier | Estate, Capabilities, Overview, Show |
 
 Four panels read the organisation and each reads a different thing. *Estate*
@@ -261,6 +261,45 @@ dashed where the harness reports that need unmet for that shape. A need
 several shapes share is one node, so the picture shows what supplying one
 need would unblock. A shape's status is its node's kind, which the canvas's
 key names; its marks and its why are on its hover. Options are not drawn.
+
+Each declared shape's row ends in two links: *draw this shape* draws it in
+the Graph panel as the Topology panel would, and *compose one* opens the
+Compose panel with that kind chosen. The address the declarations were read
+from is a link to the harness.
+
+### Compose
+
+Id `compose-panel`. Opens from the `+` menu, and from *compose one* on a
+shape's row in the Designer panel.
+
+A design of collaboration, composed here and saved to the harness. Choose a
+kind and the form below it is the harness's own for that kind: a checkbox
+for a yes or no, a number, a list of choices, text, or names separated by
+commas, each starting at the harness's default. A setting this window has
+no control for is listed as not offered, and the harness fills its default.
+*Uses these components* and *Is composed of these designs* list what the
+harness already holds in the project, to tick.
+
+Each reference ticked is drawn at once in the Graph panel: the draft joined
+to what it names so far, among every saved design and its own references. A
+line to something the harness does not hold is dashed. *draw the
+composition* draws the same picture when asked.
+
+*save design* sends the design once. The harness validates and saves it,
+and the panel prints its row: its status, whether the harness would refuse
+to run it and why, and its address. Nothing runs. A design the harness does
+not save is shown with each of its messages beside the field it is about,
+and what was typed stays. A value outside a setting's range is sent as
+typed, for the harness to refuse.
+
+*Saved designs* lists every design of the project with the harness's
+verdict and what it references. Each row links to the harness's own row for
+it and to the Designer panel for what its kind needs, and, once a kind is
+chosen, *compose the draft of this* ticks it into the draft.
+
+Saving is offered only to a person at the machine the window runs on;
+anywhere else the panel says so and lists the designs alone. The panel does
+not change, delete or run a design, and does not save a component.
 
 ### Interactions
 

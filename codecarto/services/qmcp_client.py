@@ -58,6 +58,10 @@ class Reach:
 
     status: int | None = None
 
+    detail: Any = None
+    """The far side's own `detail` for a refusal, as it gave it: a sentence, or
+    a document naming each field it is about."""
+
 
 def fetch(path: str, base: str | None = None,
           remedy_404: str | None = None) -> Reach:
@@ -100,7 +104,8 @@ def _answer(request: urllib.request.Request, where: str, path: str,
             body = answer.read()
             return Reach(True, where, json.loads(body), status=answer.status)
     except urllib.error.HTTPError as error:
-        detail = _detail(error)
+        told = _told(error)
+        detail = "" if told is None else str(told)
         if error.code == 404:
             return Reach(
                 False, where, status=404,
@@ -112,7 +117,7 @@ def _answer(request: urllib.request.Request, where: str, path: str,
                         "routes, or the archive it needs has not been indexed"))
         return Reach(False, where, status=error.code,
                      problem=f"the harness refused: {error.code} {detail}",
-                     remedy="")
+                     remedy="", detail=told)
     except urllib.error.URLError as error:
         return Reach(
             False, where,
@@ -130,12 +135,12 @@ def _answer(request: urllib.request.Request, where: str, path: str,
                      remedy="", status=None)
 
 
-def _detail(error: urllib.error.HTTPError) -> str:
+def _told(error: urllib.error.HTTPError) -> Any:
     """The harness's own explanation, which is better than any this can write."""
     try:
-        return str(json.loads(error.read()).get("detail", ""))
+        return json.loads(error.read()).get("detail")
     except Exception:                              # noqa: BLE001
-        return ""
+        return None
 
 
 def topologies(base: str | None = None) -> Reach:

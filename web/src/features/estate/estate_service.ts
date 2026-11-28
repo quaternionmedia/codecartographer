@@ -11,6 +11,7 @@
 
 import { RequestHandler } from '../../services/request_handler';
 import { instructOutcome, standingOf, type InstructOutcome, type InstructStanding } from './instruct';
+import { saveOutcome, type SaveOutcome } from './compose';
 import { query, read, type Getter, type SeamOutcome } from './seam_client';
 
 const get: Getter = (url) => RequestHandler.getRequest(url);
@@ -123,6 +124,27 @@ export class EstateService {
   /** The shapes against the needs they state, laid out by the server. */
   public static designerGraph(designerUrl: string, request: DrawRequest = {}): Promise<SeamOutcome> {
     return read(get, `${designerUrl}/gjgf${query({ layout: request.layout, palette_id: request.paletteId })}`);
+  }
+
+  /** The designs and components the harness holds for one project, read by the server. */
+  public static composeDesigns(designerUrl: string, project = ''): Promise<SeamOutcome> {
+    return read(get, `${designerUrl}/designs${query({ project: project.trim() })}`);
+  }
+
+  /** The harness's schema of one kind's configuration. */
+  public static designSchema(designerUrl: string, kind: string): Promise<SeamOutcome> {
+    return read(get, `${designerUrl}/schema/${encodeURIComponent(kind)}`);
+  }
+
+  /** One design a person composed, relayed to the harness by the server. Sent once. */
+  public static async saveDesign(designerUrl: string, design: Record<string, unknown>): Promise<SaveOutcome> {
+    const url = `${designerUrl}/designs`;
+    return saveOutcome(await RequestHandler.postRequest(url, design).catch(() => null), url);
+  }
+
+  /** Saved designs joined to what each references, with the draft when the query names one. */
+  public static compositionGraph(designerUrl: string, asked: string): Promise<SeamOutcome> {
+    return read(get, `${designerUrl}/composition/gjgf${asked}`);
   }
 
   public static capabilitiesData(capabilitiesUrl: string): Promise<SeamOutcome> {

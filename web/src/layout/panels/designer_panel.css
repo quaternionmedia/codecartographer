@@ -77,3 +77,15 @@
   flex-direction: column;
   gap: 0.25rem;
 }
+
+/* A link is underlined whether it is an address or a control that opens
+   another panel, so the two read as one kind of thing. */
+.designer__link {
+  font: inherit;
+  color: var(--c-accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}

@@ -30,6 +30,7 @@ import { createCapabilitiesPanel } from './panels/capabilities_panel';
 import { createHarnessPanel } from './panels/harness_panel';
 import { createInteractionsPanel } from './panels/interactions_panel';
 import { createDesignerPanel } from './panels/designer_panel';
+import { createComposePanel } from './panels/compose_panel';
 import { createOverviewPanel } from './panels/overview_panel';
 import { createShowPanel } from './panels/show_panel';
 import { createCargoPanel } from './panels/cargo_panel';
@@ -45,6 +46,8 @@ export type DockPanelId =
   | 'interactions-panel'
   // Every shape the harness declares, what each needs and which could run, read-only.
   | 'designer-panel'
+  // A design composed here and saved to the harness.
+  | 'compose-panel'
   // Every family and project the corpus names, drawn: the triplet's graph leg.
   | 'show-panel'
   // Code cartography past one parse: a Rust workspace, and one construct read
@@ -127,6 +130,15 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     config: { type: 'component', componentType: 'designer-panel', id: 'designer-panel', title: '⬡ Designer', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createDesignerPanel(ctx)),
+  },
+  {
+    id: 'compose-panel',
+    menuLabel: 'Compose',
+    group: 'harness',
+    answers: 'A design composed here and saved to the harness, beside the designs it already holds.',
+    config: { type: 'component', componentType: 'compose-panel', id: 'compose-panel', title: '✎ Compose', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createComposePanel(ctx)),
   },
   {
     id: 'capabilities-panel',

@@ -1,0 +1,159 @@
+{
+ "status": 200,
+ "message": "Success",
+ "results": {
+  "graph": {
+   "nodes": {
+    "design:intake": {
+     "label": "intake",
+     "metadata": {
+      "kind": "design",
+      "hover": "design intake -- delegation",
+      "label_at": "left",
+      "type": "Worker",
+      "base": "topology.worker",
+      "shape": "rectangle",
+      "color": "#8ab4f8",
+      "size": 30.0,
+      "click": "<p>design intake -- delegation</p>",
+      "x": 180.0,
+      "y": 0.0
+     }
+    },
+    "component:reader": {
+     "label": "reader",
+     "metadata": {
+      "kind": "component",
+      "hover": "component reads a page",
+      "label_at": "right",
+      "type": "Store",
+      "base": "topology.store",
+      "shape": "rectangle",
+      "color": "#5ac8b0",
+      "size": 35.0,
+      "click": "<p>component reads a page</p>",
+      "x": 360.0,
+      "y": 0.0
+     }
+    },
+    "design:review": {
+     "label": "review",
+     "metadata": {
+      "kind": "design",
+      "hover": "design review -- crosscheck",
+      "label_at": "left",
+      "type": "Worker",
+      "base": "topology.worker",
+      "shape": "rectangle",
+      "color": "#8ab4f8",
+      "size": 30.0,
+      "click": "<p>design review -- crosscheck</p>",
+      "x": 0.0,
+      "y": 0.0
+     }
+    },
+    "design:elsewhere/gone": {
+     "label": "elsewhere/gone",
+     "metadata": {
+      "kind": "not held",
+      "hover": "elsewhere/gone -- the harness holds no design of this name in this project",
+      "label_at": "right",
+      "type": "Output",
+      "base": "topology.output",
+      "shape": "circle",
+      "color": "#b39ddb",
+      "size": 40.0,
+      "click": "<p>elsewhere/gone -- the harness holds no design of this name in this project</p>",
+      "x": 180.0,
+      "y": 44.0
+     }
+    },
+    "draft": {
+     "label": "triage",
+     "metadata": {
+      "kind": "draft",
+      "label_at": "left",
+      "hover": "draft triage -- delegation -- not saved",
+      "type": "Input",
+      "base": "topology.input",
+      "shape": "circle",
+      "color": "#6db2ff",
+      "size": 45.0,
+      "click": "<p>draft triage -- delegation -- not saved</p>",
+      "x": 0.0,
+      "y": 44.0
+     }
+    }
+   },
+   "edges": [
+    {
+     "source": "design:intake",
+     "target": "component:reader",
+     "label": "uses",
+     "metadata": {
+      "kind": "uses",
+      "color": "#5ac8b0",
+      "style": "solid",
+      "hover": "uses",
+      "title": "uses"
+     }
+    },
+    {
+     "source": "design:review",
+     "target": "design:intake",
+     "label": "composes",
+     "metadata": {
+      "kind": "composes",
+      "color": "#6db2ff",
+      "style": "solid",
+      "hover": "composes",
+      "title": "composes"
+     }
+    },
+    {
+     "source": "design:review",
+     "target": "design:elsewhere/gone",
+     "label": "composes",
+     "metadata": {
+      "kind": "composes",
+      "color": "#6db2ff",
+      "style": "dashed",
+      "hover": "composes",
+      "title": "composes"
+     }
+    },
+    {
+     "source": "draft",
+     "target": "design:intake",
+     "label": "composes",
+     "metadata": {
+      "kind": "composes",
+      "color": "#6db2ff",
+      "style": "solid",
+      "hover": "composes",
+      "title": "composes"
+     }
+    }
+   ],
+   "directed": true,
+   "metadata": {
+    "kind": "composition",
+    "source": "http://harness/v1/topologies"
+   }
+  },
+  "metadata": {
+   "kind": "composition",
+   "source": "http://harness/v1/topologies",
+   "layout": "Reading Order",
+   "type": "d3",
+   "palette_id": "0",
+   "names": true,
+   "project": "alpha",
+   "designs": 2,
+   "components": 1,
+   "draft": true,
+   "not_held": 1,
+   "caveat": "Every line is a reference a design's configuration states: `uses` to a component, `composes` to another design. A dashed line is a reference to something the harness does not hold in this project. The draft is what is being composed in this window and is not saved until the harness says so. A design with no reference stands alone."
+  }
+ }
+}

@@ -29,8 +29,10 @@ it:
   the estate panels -- read-only, polling before any event stream. An address
   no box carries is reported in the panel, never dropped.
 - **The topology designer.** The Designer panel lists what the harness's
-  plane declares and which shapes could run ([its section](../ui.md#designer)).
-  What is left is authoring, saved through
+  plane declares and which shapes could run ([its section](../ui.md#designer)),
+  and the Compose panel fills a kind's own form and saves a design
+  ([its section](../ui.md#compose)). What is left is composing on the canvas,
+  and changing a saved design, through
   `/v1/topologies` and shown with the plane's verdict as given. The authored
   verbs for the ring begin with this repository's own record naming `rad` in
   its `Pends on` row, on `project/codecartographer`, before anything is built.
