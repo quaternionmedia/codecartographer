@@ -22,6 +22,7 @@ import { AddPanelMenu } from './components/add_panel_menu';
 import { StepRail } from './components/step_rail';
 import { DEFAULT_LAYOUT_CONFIG } from './default_layout';
 import { FIRST_STEP } from './steps';
+import { fitStackMinimum } from './stack_min_size';
 
 import { HelpModal, HelpModalComponent } from '../components/codecarto/help/help_modal';
 import { ToastContainer } from '../components/codecarto/help/toast';
@@ -52,6 +53,7 @@ export const GoldenLayoutShell = (getCell: () => ICell): m.Component => {
 
   /** Mount GL panels after the host element exists in the DOM. */
   function initGoldenLayout(hostElement: HTMLElement): void {
+    fitStackMinimum();
     glInstance = new GoldenLayout(hostElement);
     // **THE DOCK FOLLOWS THE WINDOW.** Golden Layout sizes every stack in
     // pixels, and resizes with its container by itself only when that is the

@@ -139,6 +139,29 @@ async function dragSplitterTo(page: Page, x: number): Promise<void> {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
 }
 
+test('the splitter beside a stack holding every window follows the pointer', async ({ page }) => {
+  // Mutations: leave `fitStackMinimum` out of the shell, or add the tabs'
+  // least widths up in `leastForTabs` -- the stack beside Files needs more
+  // than the dock has, and a drag toward it moves the splitter away from the
+  // pointer.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await expect(page.locator('.lm_tabs > .lm_tab').first()).toBeVisible();
+  await openEveryWindow(page, async () => {});
+  const upright = () => page.locator('.lm_splitter').evaluateAll((splitters) => {
+    const found = splitters.map((s) => s.getBoundingClientRect()).find((r) => r.height > r.width);
+    return found ? found.left + found.width / 2 : -1;
+  });
+  const before = await upright();
+  expect(before).toBeLessThan(400);
+
+  await dragSplitterTo(page, 558);
+  expect(Math.abs((await upright()) - 558)).toBeLessThan(6);
+  // And back, to a stack still wider than one tab's least width.
+  await dragSplitterTo(page, 160);
+  expect(Math.abs((await upright()) - 160)).toBeLessThan(6);
+});
+
 test("every tab's ✕ is clear of its header's controls, in a narrow stack too", async ({ page }) => {
   await page.goto('/');
   await dismissOnboardingModal(page);
