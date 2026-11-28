@@ -114,7 +114,6 @@ async def _stream_cached_c_graph(cached: dict):
     nodes: list[dict] = cached.get("nodes", [])
     edges: list[dict] = cached.get("edges", [])
     positions: dict = cached.get("positions", {})
-    layout: str = cached.get("layout", "Spring")
     meta: dict = cached.get("meta", {})
 
     yield _sse("meta", {

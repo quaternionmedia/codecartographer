@@ -9,12 +9,9 @@ from codecarto.services.cache_service import CacheService
 from codecarto.util.exceptions import (
     GithubError,
     Github403Error,
-    Github404Error,
     GithubNoDataError,
     GithubRateLimitError,
-    GithubSizeError,
     GithubAPIError,
-    ImportSourceUrlError,
 )
 
 # Size tiers (GitHub reports repo size in KB):

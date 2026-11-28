@@ -1,7 +1,6 @@
 import os
 import ast
 import networkx as nx
-from typing import Union
 from collections import defaultdict
 from codecarto.models.source_data import File, Folder
 
@@ -186,9 +185,6 @@ class PythonCustomAST(BaseASTVisitor):
 
                 if base_name in self.imports:
                     imported_class_full_name = self.imports[base_name]
-                    imported_method_full_name = (
-                        f"{imported_class_full_name}.{method_name}"
-                    )
 
                     if imported_class_full_name in self.class_map:
                         actual_method_id = self.function_map.get(

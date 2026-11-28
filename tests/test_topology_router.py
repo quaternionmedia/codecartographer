@@ -13,7 +13,6 @@ the opposite of what a seam test is for.
 
 from __future__ import annotations
 
-import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -192,7 +191,6 @@ def test_the_four_failures_are_kept_apart():
 
     Mutation: collapse them into one message and this fails.
     """
-    import urllib.error
 
     reach = qmcp_client.fetch("/v1/topology", base="http://127.0.0.1:9")
     assert reach.ok is False

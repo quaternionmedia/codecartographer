@@ -35,7 +35,6 @@ import networkx as nx
 from codecarto.models.source_data import File
 from codecarto.services.construct_service import ngon_sides
 from codecarto.services.parsers.language_parser import (
-    LanguageParser,
     ParserRegistry,
     make_node,
     make_edge,

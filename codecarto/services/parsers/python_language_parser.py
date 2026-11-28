@@ -28,7 +28,6 @@ import networkx as nx
 
 from codecarto.models.source_data import File, Folder
 from codecarto.services.parsers.language_parser import (
-    LanguageParser,
     ParserRegistry,
     make_node,
     make_edge,

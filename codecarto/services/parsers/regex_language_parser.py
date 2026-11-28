@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import ClassVar
 
 import networkx as nx
 
@@ -33,7 +32,6 @@ from codecarto.models.source_data import File
 from codecarto.services.parsers.language_parser import (
     ParserRegistry,
     make_node,
-    make_edge,
 )
 
 # ── Type alias ────────────────────────────────────────────────────────────────

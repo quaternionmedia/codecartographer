@@ -1,4 +1,3 @@
-from numpy import size
 from pydantic import BaseModel
 from typing import Callable, Dict
 
