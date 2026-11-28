@@ -1,0 +1,58 @@
+/**
+ * The Threads panel's own marks. Rows, headings and hints are the estate
+ * views' shared classes; this adds the panel's spacing, the form that
+ * narrows the archive, the row of the conversation chosen, and its links.
+ *
+ * A link is underlined whether it is an address or a control that draws, so
+ * the two read as one kind of thing.
+ */
+
+.gl-panel--threads {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 0.75rem);
+  padding: var(--spacing-md, 0.75rem);
+  overflow-y: auto;
+}
+
+.threads__narrow {
+  display: grid;
+  grid-template-columns: max-content 1fr max-content;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.74rem;
+}
+
+.threads__narrow select,
+.threads__narrow input[type="text"] {
+  min-width: 0;
+  font: inherit;
+  color: var(--c-font);
+  background: var(--c-primary-light);
+  border: 1px solid var(--c-border);
+  border-radius: 2px;
+  padding: 0.25rem 0.4rem;
+}
+
+.threads__list { width: auto; }
+
+.threads__option { font-size: 0.74rem; color: var(--c-font); }
+
+.gl-panel--threads [data-chosen="yes"] .estate__dot { background: var(--c-accent); }
+
+.threads__said { white-space: pre-wrap; overflow-wrap: anywhere; }
+.threads__cut { color: var(--c-font-muted); }
+
+.threads__link {
+  display: inline;
+  width: auto;
+  text-transform: none;
+  letter-spacing: normal;
+  font: inherit;
+  color: var(--c-accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}

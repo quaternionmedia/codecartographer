@@ -36,9 +36,11 @@ it:
   `/v1/topologies` and shown with the plane's verdict as given. The authored
   verbs for the ring begin with this repository's own record naming `rad` in
   its `Pends on` row, on `project/codecartographer`, before anything is built.
-- **Cartography and chrestomathy.** The panel the Estate table's prose row
-  lacks -- a thread's topics drawn with the same caveat discipline as every
-  other seam -- and the looksatwords bridge both ways.
+- **Cartography and chrestomathy.** The Threads panel draws a conversation's
+  turns from the harness's archive ([its section](../ui.md#threads)). What is
+  left is the panel the Estate table's prose row lacks -- a thread's topics
+  drawn with the same caveat discipline as every other seam -- and the
+  looksatwords bridge both ways.
 
 What does not move: the window calculates layout and palette vocabulary and
 nothing else, stores nothing, and shows a producer's caveat verbatim --

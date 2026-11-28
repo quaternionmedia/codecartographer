@@ -7,6 +7,7 @@ import { TopologyService } from '../services/topology_service';
 import type { TopologyChoices, TopologyProblem, TopologyRequest } from '../services/topology_service';
 import { EstateService } from '../features/estate/estate_service';
 import type { CapabilitiesDocument, DrawRequest, OverviewDocument, SeamsDocument } from '../features/estate/estate_service';
+import type { Chosen } from '../features/estate/threads';
 import { ShowService } from '../features/show/show_service';
 import type { ShowSubjectsDocument, ShowViewsDocument } from '../features/show/show_service';
 import type { ShowAddress } from '../features/show/show_address';
@@ -637,6 +638,17 @@ export class PlotActions {
     return this._draw(found, 'interactionsProblem');
   }
 
+  /**
+   * One conversation's turns as a graph, on the canvas, by `layout` or the
+   * one Graph Settings holds. Resolves whether it drew (`_draw`). With
+   * `keep`, the graph on the canvas stays until the new one arrives.
+   */
+  async drawThread(chosen: Chosen, layout?: string, keep = false): Promise<boolean> {
+    if (!keep) this.stateController.clear();
+    const found = await EstateService.threadGraph(this.stateController.api.harness, chosen, layout ?? this._layout());
+    return this._draw(found, 'threadProblem');
+  }
+
   /** Every shape the harness declares and whether it could run. Draws nothing. */
   async loadDesignerReading(): Promise<void> {
     const found = await EstateService.designerData(this.stateController.api.designer);
@@ -796,7 +808,7 @@ export class PlotActions {
   private _draw(
     found: SeamOutcome,
     problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem' | 'interactionsProblem'
-      | 'designerProblem' | 'composeProblem',
+      | 'designerProblem' | 'composeProblem' | 'threadProblem',
   ): boolean {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {

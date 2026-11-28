@@ -61,6 +61,7 @@ ESTATE_SERVICES = (
     "codecarto/services/interaction_service.py",
     "codecarto/services/interaction_graph.py",
     "codecarto/services/designer_service.py",
+    "codecarto/services/thread_service.py",
     # Relays one design to the harness and keeps none.
     "codecarto/services/compose_service.py",
     "codecarto/services/reading_order.py",
@@ -88,6 +89,8 @@ ESTATE_PANELS = (
     "web/src/layout/panels/interactions_panel.ts",
     "web/src/features/estate/interactions.ts",
     "web/src/features/estate/instruct.ts",
+    "web/src/layout/panels/threads_panel.ts",
+    "web/src/features/estate/threads.ts",
     "web/src/layout/panels/designer_panel.ts",
     "web/src/features/estate/designer.ts",
     "web/src/layout/panels/compose_panel.ts",

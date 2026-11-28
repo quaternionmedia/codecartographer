@@ -65,7 +65,7 @@ which names the step after it; the last step has no Next.
 
 | | Step | Brings forward | Owns |
 |---|---|---|---|
-| 1 | **Open** | Open, then the Graph panel | Open, Estate, Show, Topology, Capabilities, Overview, Harness, Interactions, Designer, Compose, Cargo, Graphbase |
+| 1 | **Open** | Open, then the Graph panel | Open, Estate, Show, Topology, Capabilities, Overview, Harness, Interactions, Threads, Designer, Compose, Cargo, Graphbase |
 | 2 | **Browse** | Files, then the Graph panel | Files |
 | 3 | **Tune** | Graph Settings, then the Graph panel | Graph Settings |
 | 4 | **Read** | The Graph panel, maximised, which hides every other window | Graph, Chrestomathy |
@@ -104,7 +104,7 @@ answers. `web/src/layout/panel_groups.ts` holds the headings and
 |---|---|---|
 | **Canvas** | this window | Graph, Graph Settings |
 | **Code** | a repository or this disk | Open, Cargo, Chrestomathy, Files, Graphbase |
-| **Harness** | the harness, live | Topology, Harness, Interactions, Designer, Compose |
+| **Harness** | the harness, live | Topology, Harness, Interactions, Threads, Designer, Compose |
 | **Organisation** | the corpus and dossier | Estate, Capabilities, Overview, Show |
 
 Four panels read the organisation and each reads a different thing. *Estate*
@@ -358,6 +358,41 @@ the panel reads again, and the panel says when the harness holds a different
 number of rows than the graph was drawn from. Choosing an algorithm in Graph
 Settings draws it by that algorithm; the button draws it in reading order
 again.
+
+### Threads
+
+Id `threads-panel`. Opens from the `+` menu.
+
+A conversation from the harness's archive, drawn. *The archive* lists the
+conversations the harness lists, in its order, each with its title, its
+source and the turns the archive counts; a source and a text in the title
+narrow the list, and a list cut short says how many it holds back. Under the
+list is what the archive says of itself, as given: it counts what was
+exported and indexed, as of the time it states. The panel is read-only: it
+imports, indexes and changes nothing.
+
+*draw its turns* on a row draws that conversation in the Graph panel, in
+reading order and with every name written. Left to right: who spoke, what
+they said, a reply, who replied. The role of the conversation's first turn
+opens a row each time it speaks, and every other turn until the next is
+drawn as a reply to it, because the archive states the order of turns and
+not which turn answers which. Rows run top to bottom in the order of the
+turns, and a long conversation is drawn as blocks of rows side by side. A
+turn is named by the start of its text; its hover holds its number, its
+role, its time as the archive gives it and more of the text. A role is the
+word the turn carries, and differs between sources. The newest turns are
+drawn, up to a limit the panel states, and the caveat counts the rest.
+
+*The conversation drawn* then shows its title, how many turns each role
+has, how many are drawn, and its newest turns. A conversation the archive
+lists and the harness does not serve is the harness's sentence there.
+
+While a conversation is chosen it is read again on an interval. With *follow
+the conversation* ticked, as it is when the panel opens, a reading whose
+turns differ from the graph's draws the graph again as it was asked for; the
+graph on the canvas stays until the new one arrives, and the Graph panel is
+not brought forward. The archive holds what was exported and indexed, so a
+conversation grows there when it is imported again, and not as it is typed.
 
 ### Capabilities
 
