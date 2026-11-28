@@ -3,7 +3,9 @@
  *
  * Small dropdown opened by the header "+" button, which adds any window (a
  * step opens only its own again). Lists every registered panel not in the
- * layout, closed ones included, plus layout save/reset actions. A window
+ * layout, closed ones included, under a heading for whose data it shows
+ * (`panel_groups.ts`) and with the sentence its definition gives for what it
+ * answers, plus layout save/reset actions. A window
  * chosen here moves the step to the one that owns it (`steps.ts`). Closes on
  * outside click, on Escape, or after an action is taken.
  */
@@ -11,6 +13,7 @@
 import m from 'mithril';
 import type { LayoutContext } from '../layout_context';
 import { closeOnOutsideClickOrEscape } from './menu_dismissal';
+import { grouped } from '../panel_groups';
 
 interface Attrs {
   ctx: LayoutContext;
@@ -60,11 +63,21 @@ export const AddPanelMenu: m.Component<Attrs, MenuState> = {
     }, [
       m('div.gl-add-panel-menu__section-title', 'Add window'),
       addable.length > 0
-        ? addable.map((def) =>
-            m('button.gl-add-panel-menu__item', {
-              onclick: () => { ctx.chooseWindow(def.id); onClose(); },
-            }, def.menuLabel),
-          )
+        ? grouped(addable).map((entry) => [
+            m('div.gl-add-panel-menu__group', { 'data-group': entry.heading.title }, [
+              m('span.gl-add-panel-menu__group-title', entry.heading.title),
+              m('span.gl-add-panel-menu__group-reads', `read from ${entry.heading.reads}`),
+            ]),
+            entry.panels.map((def) =>
+              m('div.gl-add-panel-menu__entry', { 'data-panel': def.id }, [
+                // The label alone is the button's name; the sentence is its description.
+                m('button.gl-add-panel-menu__item', {
+                  'aria-describedby': `gl-add-${def.id}`,
+                  onclick: () => { ctx.chooseWindow(def.id); onClose(); },
+                }, def.menuLabel),
+                m('p.gl-add-panel-menu__answers', { id: `gl-add-${def.id}` }, def.answers),
+              ])),
+          ])
         : m('div.gl-add-panel-menu__empty', 'All panels open'),
 
       m('div.gl-add-panel-menu__divider'),

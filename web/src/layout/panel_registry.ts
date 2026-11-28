@@ -18,6 +18,7 @@ import m from 'mithril';
 import type { ComponentItemConfig } from 'golden-layout';
 
 import type { LayoutContext } from './layout_context';
+import type { PanelGroup } from './panel_groups';
 import { createGraphPanel } from './panels/graph_panel';
 import { createFileTreePanel } from './panels/file_tree_panel';
 import { createOpenPanel } from './panels/open_panel';
@@ -51,6 +52,10 @@ export interface PanelDefinition {
   readonly id: DockPanelId;
   /** Short label: the "+" menu's list, and an Estate row's "open" button. */
   readonly menuLabel: string;
+  /** Whose data it shows, as the "+" menu's heading (`panel_groups.ts`). */
+  readonly group: PanelGroup;
+  /** What it answers and from which source, in one sentence under its label. */
+  readonly answers: string;
   readonly config: ComponentItemConfig;
   readonly overflow: 'hidden' | 'auto';
   readonly mount: (ctx: LayoutContext, element: HTMLElement) => void;
@@ -60,6 +65,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'graph',
     menuLabel: 'Graph',
+    group: 'canvas',
+    answers: 'The drawing: every other window sends its graph here.',
     config: { type: 'component', componentType: 'graph', id: 'graph', title: '◈ Graph', isClosable: true },
     overflow: 'hidden',
     mount: (ctx, el) => m.mount(el, createGraphPanel(ctx)),
@@ -67,6 +74,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'open',
     menuLabel: 'Open',
+    group: 'code',
+    answers: 'Where a graph starts: a repository address, a path, files or an example.',
     config: { type: 'component', componentType: 'open', id: 'open', title: '⬇ Open', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createOpenPanel(ctx)),
@@ -74,6 +83,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'estate-panel',
     menuLabel: 'Estate',
+    group: 'organisation',
+    answers: 'Which sources this window reads are answering, and what would bring up the rest.',
     config: { type: 'component', componentType: 'estate-panel', id: 'estate-panel', title: '⌂ Estate', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createEstatePanel(ctx)),
@@ -81,6 +92,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'topology-panel',
     menuLabel: 'Topology',
+    group: 'harness',
+    answers: 'The shapes of collaboration the harness knows, each drawn as a graph.',
     config: { type: 'component', componentType: 'topology-panel', id: 'topology-panel', title: '⌁ Topology', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createTopologyPanel(ctx)),
@@ -88,6 +101,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'harness-panel',
     menuLabel: 'Harness',
+    group: 'harness',
+    answers: 'What the harness is running, asking and holding as instructions now; an instruction is typed here.',
     config: { type: 'component', componentType: 'harness-panel', id: 'harness-panel', title: '⥁ Harness', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createHarnessPanel(ctx)),
@@ -95,6 +110,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'interactions-panel',
     menuLabel: 'Interactions',
+    group: 'harness',
+    answers: 'Who did what at the harness, through which way in, over time.',
     config: { type: 'component', componentType: 'interactions-panel', id: 'interactions-panel', title: '↹ Interactions', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createInteractionsPanel(ctx)),
@@ -102,6 +119,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'capabilities-panel',
     menuLabel: 'Capabilities',
+    group: 'organisation',
+    answers: 'What each named capability has reached, as the registry in the corpus declares it.',
     config: { type: 'component', componentType: 'capabilities-panel', id: 'capabilities-panel', title: '⊚ Capabilities', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createCapabilitiesPanel(ctx)),
@@ -109,6 +128,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'overview-panel',
     menuLabel: 'Overview',
+    group: 'organisation',
+    answers: 'Every repository on the host as dossier last synced it, section by section.',
     config: { type: 'component', componentType: 'overview-panel', id: 'overview-panel', title: '▤ Overview', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createOverviewPanel(ctx)),
@@ -116,6 +137,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'show-panel',
     menuLabel: 'Show',
+    group: 'organisation',
+    answers: 'Every family and project the corpus names, each opened as a graph.',
     config: { type: 'component', componentType: 'show-panel', id: 'show-panel', title: '❖ Show', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createShowPanel(ctx)),
@@ -123,6 +146,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'cargo-panel',
     menuLabel: 'Cargo',
+    group: 'code',
+    answers: 'A Rust workspace on this disk: its crates, targets and last recorded build.',
     config: { type: 'component', componentType: 'cargo-panel', id: 'cargo-panel', title: '⚙ Cargo', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createCargoPanel(ctx)),
@@ -130,6 +155,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'chrestomathy-panel',
     menuLabel: 'Chrestomathy',
+    group: 'code',
+    answers: 'One construct set beside itself across every language read here.',
     config: { type: 'component', componentType: 'chrestomathy-panel', id: 'chrestomathy-panel', title: '⇄ Chrestomathy', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createChrestomathyPanel(ctx)),
@@ -137,6 +164,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'file-tree',
     menuLabel: 'Files',
+    group: 'code',
+    answers: 'What was opened, by path: the repository tree and the files added.',
     config: { type: 'component', componentType: 'file-tree', id: 'file-tree', title: '◉ Files', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createFileTreePanel(ctx)),
@@ -144,6 +173,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'graphbase-panel',
     menuLabel: 'Graphbase',
+    group: 'code',
+    answers: 'Graphs kept earlier in the database: snapshots, bookmarks and history.',
     config: { type: 'component', componentType: 'graphbase-panel', id: 'graphbase-panel', title: '▦ Graphbase', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createGraphbasePanel(ctx)),
@@ -151,6 +182,8 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
   {
     id: 'graph-settings-panel',
     menuLabel: 'Graph Settings',
+    group: 'canvas',
+    answers: 'How the drawing is laid out, coloured and labelled.',
     config: { type: 'component', componentType: 'graph-settings-panel', id: 'graph-settings-panel', title: 'Graph Settings', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createGraphSettingsPanel(ctx)),

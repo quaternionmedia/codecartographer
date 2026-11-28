@@ -95,6 +95,25 @@ which names the step after it; the last step has no Next.
 
 ## Panels
 
+The `+` menu lists the panels under four headings, by whose data each shows,
+and prints under each label the sentence its definition gives for what it
+answers. `web/src/layout/panel_groups.ts` holds the headings and
+`panel_registry.ts` each panel's group and sentence.
+
+| Heading | Read from | Panels |
+|---|---|---|
+| **Canvas** | this window | Graph, Graph Settings |
+| **Code** | a repository or this disk | Open, Cargo, Chrestomathy, Files, Graphbase |
+| **Harness** | the harness, live | Topology, Harness, Interactions |
+| **Organisation** | the corpus and dossier | Estate, Capabilities, Overview, Show |
+
+Four panels read the organisation and each reads a different thing. *Estate*
+says which sources are answering and draws nothing. *Show* is what the corpus
+says the organisation is: its families and projects. *Overview* is what the
+host holds, as dossier last synced it. *Capabilities* is what each named
+capability is declared to have reached. A figure in one is not a figure in
+another: Show counts what is declared, Overview what was found.
+
 `web/src/layout/panel_registry.ts` is the list of panels; each section below is
 one of its entries, in the order the `+` menu lists them.
 
