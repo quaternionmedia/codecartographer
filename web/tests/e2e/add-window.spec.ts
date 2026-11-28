@@ -144,3 +144,32 @@ test('the + menu takes the focus when it opens, and gives it back to + when it c
   // and this fails.
   await expect(add).toBeFocused();
 });
+
+test('the + menu lists windows under whose data they show, each with what it answers', async ({ page }) => {
+  // Mutations: list `addable` flat in add_panel_menu.ts -- no heading is drawn;
+  // put the sentence inside the button -- its name is no longer the label alone;
+  // drop the sentence -- Overview and Show are again told apart by name only.
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.locator('.gl-app-header__add-btn').click();
+  const menu = page.locator('.gl-add-panel-menu');
+
+  // Graph and Graph Settings are open in the built-in layout, so no Canvas heading is drawn.
+  await expect(menu.locator('.gl-add-panel-menu__group-title')).toHaveText(['Code', 'Harness', 'Organisation']);
+  await expect(menu.locator('[data-group="Harness"] .gl-add-panel-menu__group-reads')).toHaveText('read from the harness, live');
+
+  const overview = menu.locator('[data-panel="overview-panel"]');
+  await expect(overview.locator('.gl-add-panel-menu__item')).toHaveText('Overview');
+  await expect(overview.locator('.gl-add-panel-menu__answers')).toContainText('dossier');
+  await expect(menu.locator('[data-panel="show-panel"] .gl-add-panel-menu__answers')).toContainText('corpus');
+  await expect(overview.getByRole('button', { name: 'Overview', exact: true }))
+    .toHaveAccessibleDescription(/as dossier last synced it/);
+
+  // Harness, Interactions and Topology sit between the Harness heading and the next one.
+  const order = await menu.locator('.gl-add-panel-menu__group-title, .gl-add-panel-menu__item').allTextContents();
+  const from = order.indexOf('Harness');
+  expect(order.slice(from, order.indexOf('Organisation'))).toEqual(['Harness', 'Topology', 'Harness', 'Interactions']);
+
+  await overview.locator('.gl-add-panel-menu__item').click();
+  await expect(page.locator('.gl-panel--overview')).toBeVisible();
+});
