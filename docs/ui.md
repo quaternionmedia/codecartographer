@@ -65,7 +65,7 @@ which names the step after it; the last step has no Next.
 
 | | Step | Brings forward | Owns |
 |---|---|---|---|
-| 1 | **Open** | Open, then the Graph panel | Open, Estate, Show, Topology, Capabilities, Overview, Harness, Interactions, Cargo, Graphbase |
+| 1 | **Open** | Open, then the Graph panel | Open, Estate, Show, Topology, Capabilities, Overview, Harness, Interactions, Designer, Cargo, Graphbase |
 | 2 | **Browse** | Files, then the Graph panel | Files |
 | 3 | **Tune** | Graph Settings, then the Graph panel | Graph Settings |
 | 4 | **Read** | The Graph panel, maximised, which hides every other window | Graph, Chrestomathy |
@@ -104,7 +104,7 @@ answers. `web/src/layout/panel_groups.ts` holds the headings and
 |---|---|---|
 | **Canvas** | this window | Graph, Graph Settings |
 | **Code** | a repository or this disk | Open, Cargo, Chrestomathy, Files, Graphbase |
-| **Harness** | the harness, live | Topology, Harness, Interactions |
+| **Harness** | the harness, live | Topology, Harness, Interactions, Designer |
 | **Organisation** | the corpus and dossier | Estate, Capabilities, Overview, Show |
 
 Four panels read the organisation and each reads a different thing. *Estate*
@@ -218,6 +218,49 @@ the harness's row, or its refusal in its own words, and reads the lists
 again. Acting on an instruction starts in a terminal. The form is offered
 only to a person at the machine the window runs on; anywhere else the panel
 says where an instruction is given and offers none.
+
+### Designer
+
+Id `designer-panel`. Opens from the `+` menu, and from the Estate panel's
+`plane` row.
+
+Every shape of collaboration the harness declares, and which of them could
+run with what the harness has. The panel is read-only: nothing in it
+composes, saves or runs a shape. It reads once when opened and again on
+*read again*.
+
+*Which harness* is the server that answered. *What the harness has* is the
+workers, budget, model and build it counts, as it gives them. *Shapes* has
+one row per shape, in the harness's order:
+
+- its name, and its status as the harness writes it;
+- a mark for each of *spends*, *writes* and *decides* the harness states, and
+  none for one it does not;
+- whether it is declared able to run, which is about whether it is built;
+- why, in the harness's sentence;
+- each need, with why it is needed and what supplies it;
+- whether it could run now, and the needs still unmet when it could not. A
+  filled dot is a shape that could run now and a hollow one a shape that
+  could not;
+- its options, each a variant under the setting and value that make it.
+
+A shape one of the harness's two documents names and the other does not says
+which. When the harness does not serve its account of what could run, every
+shape is still listed and the panel says once why none says whether it
+could.
+
+*Declared and registered* lists where the harness's declarations and its
+registry differ, under the harness's name for each list; an empty list is
+said to be empty. *A person's acts* are the acts the harness reserves for a
+person. *The harness's words* are the statuses and need keys it uses. The
+harness's own caveat sits above the rows.
+
+*draw shapes against needs* draws the Graph panel: shapes in one column and
+needs in the next, a line from each shape to each need it states. A line is
+dashed where the harness reports that need unmet for that shape. A need
+several shapes share is one node, so the picture shows what supplying one
+need would unblock. A shape's status is its node's kind, which the canvas's
+key names; its marks and its why are on its hover. Options are not drawn.
 
 ### Interactions
 

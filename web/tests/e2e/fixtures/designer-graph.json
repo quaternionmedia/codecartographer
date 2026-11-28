@@ -1,0 +1,173 @@
+{
+ "status": 200,
+ "message": "Success",
+ "results": {
+  "graph": {
+   "nodes": {
+    "shape:relay": {
+     "label": "relay",
+     "metadata": {
+      "kind": "runs",
+      "hover": "relay -- runs -- could run now -- why relay",
+      "label_at": "left",
+      "type": "Worker",
+      "base": "topology.worker",
+      "shape": "rectangle",
+      "color": "#8ab4f8",
+      "size": 30.0,
+      "click": "<p>relay -- runs -- could run now -- why relay</p>",
+      "x": 0.0,
+      "y": 0.0
+     }
+    },
+    "need:workers": {
+     "label": "workers",
+     "metadata": {
+      "kind": "need",
+      "hover": "need: workers",
+      "label_at": "right",
+      "type": "Gate",
+      "base": "topology.gate",
+      "shape": "hexagon",
+      "color": "#e0c069",
+      "size": 35.0,
+      "click": "<p>need: workers</p>",
+      "x": 180.0,
+      "y": 0.0
+     }
+    },
+    "shape:panel": {
+     "label": "panel",
+     "metadata": {
+      "kind": "sketch",
+      "hover": "panel -- sketch -- spends, decides -- could not run now -- why panel",
+      "label_at": "left",
+      "type": "Input",
+      "base": "topology.input",
+      "shape": "circle",
+      "color": "#6db2ff",
+      "size": 45.0,
+      "click": "<p>panel -- sketch -- spends, decides -- could not run now -- why panel</p>",
+      "x": 0.0,
+      "y": 44.0
+     }
+    },
+    "need:build": {
+     "label": "build",
+     "metadata": {
+      "kind": "need",
+      "hover": "need: build",
+      "label_at": "right",
+      "type": "Gate",
+      "base": "topology.gate",
+      "shape": "hexagon",
+      "color": "#e0c069",
+      "size": 35.0,
+      "click": "<p>need: build</p>",
+      "x": 180.0,
+      "y": 44.0
+     }
+    },
+    "need:budget": {
+     "label": "budget",
+     "metadata": {
+      "kind": "need",
+      "hover": "need: budget",
+      "label_at": "right",
+      "type": "Gate",
+      "base": "topology.gate",
+      "shape": "hexagon",
+      "color": "#e0c069",
+      "size": 35.0,
+      "click": "<p>need: budget</p>",
+      "x": 180.0,
+      "y": 88.0
+     }
+    },
+    "shape:solo": {
+     "label": "solo",
+     "metadata": {
+      "kind": "runs",
+      "hover": "solo -- runs -- could run now -- why solo",
+      "label_at": "left",
+      "type": "Worker",
+      "base": "topology.worker",
+      "shape": "rectangle",
+      "color": "#8ab4f8",
+      "size": 30.0,
+      "click": "<p>solo -- runs -- could run now -- why solo</p>",
+      "x": 0.0,
+      "y": 88.0
+     }
+    }
+   },
+   "edges": [
+    {
+     "source": "shape:relay",
+     "target": "need:workers",
+     "label": "needs",
+     "metadata": {
+      "kind": "needs",
+      "color": "#6b7480",
+      "style": "solid",
+      "hover": "because of workers -- supply workers",
+      "title": "because of workers -- supply workers"
+     }
+    },
+    {
+     "source": "shape:panel",
+     "target": "need:build",
+     "label": "needs",
+     "metadata": {
+      "kind": "needs",
+      "color": "#6b7480",
+      "style": "solid",
+      "hover": "because of build -- supply build",
+      "title": "because of build -- supply build"
+     }
+    },
+    {
+     "source": "shape:panel",
+     "target": "need:budget",
+     "label": "needs, unmet",
+     "metadata": {
+      "kind": "needs, unmet",
+      "color": "#e0c069",
+      "style": "dashed",
+      "hover": "because of budget -- supply budget",
+      "title": "because of budget -- supply budget"
+     }
+    }
+   ],
+   "directed": true,
+   "metadata": {
+    "kind": "designer",
+    "source": "http://harness/v1/orchestration/plane"
+   }
+  },
+  "metadata": {
+   "kind": "designer",
+   "source": "http://harness/v1/orchestration/plane",
+   "layout": "Reading Order",
+   "type": "d3",
+   "palette_id": "0",
+   "names": true,
+   "instance": {
+    "identified": true,
+    "where": "http://harness/health",
+    "pid": 7,
+    "port": 3999,
+    "database_fingerprint": "abc",
+    "started_at": null,
+    "session": null,
+    "version": "0",
+    "problem": "",
+    "remedy": ""
+   },
+   "shapes": 3,
+   "needs": 3,
+   "unmet": 1,
+   "caveat": "Each shape is joined to each need the harness's plane states for it. A dashed line is a need the harness reports unmet for that shape with what it has; a solid line is one it does not report unmet. A need several shapes share is one node. Every field is a declaration, read and not checked here. A shape's options are listed in the Designer panel and are not drawn. every field is a claim."
+  }
+ }
+}

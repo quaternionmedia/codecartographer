@@ -1,0 +1,79 @@
+/**
+ * The Designer panel's own marks. Rows, headings and hints are the estate
+ * views' shared classes; this adds the panel's spacing, a shape's dot, its
+ * needs and its options.
+ *
+ * A shape the harness says could run now has a filled dot and one it says
+ * could not has a hollow one, so the two differ in shape as well as colour.
+ * A shape nothing was said for keeps the plain dot.
+ */
+
+.gl-panel--designer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 0.75rem);
+  padding: var(--spacing-md, 0.75rem);
+  overflow-y: auto;
+}
+
+.gl-panel--designer [data-designer="graph"] {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.designer__shape[data-runnable="yes"] .estate__dot { background: var(--c-secondary); }
+.designer__shape[data-runnable="no"] .estate__dot {
+  background: transparent;
+  border: 1px solid var(--c-warning);
+}
+
+.designer__marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.designer__needs,
+.designer__attested {
+  grid-column: 2 / span 2;
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: var(--c-font-muted);
+}
+
+.designer__need-key { color: var(--c-font); }
+.designer__need[data-unmet="yes"] .designer__need-unmet { color: var(--c-warning); }
+
+.designer__options {
+  grid-column: 2 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-left: 0.6rem;
+  border-left: 1px dashed var(--c-border);
+}
+
+.designer__option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.designer__option-name {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--c-font);
+}
+
+.designer__drift {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}

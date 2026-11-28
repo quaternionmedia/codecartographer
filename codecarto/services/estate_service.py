@@ -115,6 +115,33 @@ def probe_harness() -> Identity:
                     detail=f"{len(encoding)} encoding channel(s) declared")
 
 
+def probe_plane() -> Identity:
+    """The harness's orchestration plane, identified by its own document.
+
+    A 200 counts as the plane when it states a `schema` and a list of
+    `capabilities`. A harness that answers and has no such route is a build
+    that predates the plane, and says so.
+    """
+    reach = qmcp_client.fetch(
+        "/v1/orchestration/plane",
+        remedy_404=("this build of the harness predates the orchestration "
+                    "plane; start a newer one"))
+    if not reach.ok:
+        return Identity(False, reach.where, problem=reach.problem, remedy=reach.remedy)
+    document = reach.document if isinstance(reach.document, dict) else {}
+    schema = document.get("schema")
+    declared = document.get("capabilities")
+    if not isinstance(schema, int) or not isinstance(declared, list):
+        return Identity(
+            False, reach.where,
+            problem=("something answered at the harness's address and it did "
+                     "not describe an orchestration plane"),
+            remedy=("check what is bound there -- `uv run qm dashboard` prints "
+                    "the allocation and what holds each port"))
+    return Identity(True, reach.where, schema=schema,
+                    detail=f"{len(declared)} shape(s) declared")
+
+
 def probe_corpus(corpus: Path | str | None = None) -> Identity:
     """The capability registry, at the pinned governance path."""
     reading = capability_service.read(corpus)
@@ -187,6 +214,10 @@ SEAMS: tuple[Seam, ...] = (
                  "/harness/data", "/harness/interactions",
                  "/harness/gjgf"),
          panel="topology-panel"),
+    Seam("plane", "what the harness declares each shape of work is and needs",
+         probe_plane,
+         routes=("/designer/data", "/designer/gjgf"),
+         panel="designer-panel"),
     Seam("corpus", "what each named thing this estate can do has reached",
          probe_corpus,
          routes=("/capabilities/gjgf", "/capabilities/data"),

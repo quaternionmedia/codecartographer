@@ -5,6 +5,7 @@ from codecarto.routers.c_parser_router import CParserRouter
 from codecarto.routers.topology_router import TopologyRouter
 from codecarto.routers.capability_router import CapabilityRouter
 from codecarto.routers.harness_router import HarnessRouter
+from codecarto.routers.designer_router import DesignerRouter
 from codecarto.routers.overview_router import OverviewRouter
 from codecarto.routers.estate_router import EstateRouter
 from codecarto.routers.show_router import ShowRouter
@@ -82,6 +83,9 @@ app.include_router(CargoRouter, prefix="/cargo", tags=["cargo"])
 app.include_router(TopologyRouter, prefix="/topology", tags=["topology"])
 # What the harness is running and asking, read for the Harness panel.
 app.include_router(HarnessRouter, prefix="/harness", tags=["harness"])
+# What the harness declares each shape of collaboration is and needs, read
+# for the Designer panel.
+app.include_router(DesignerRouter, prefix="/designer", tags=["designer"])
 # What each named thing this estate can do has reached. The vocabulary is the
 # corpus's and `dossier` is the other window onto the same registry.
 app.include_router(CapabilityRouter, prefix="/capabilities",

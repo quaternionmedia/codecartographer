@@ -28,6 +28,7 @@ the `/pam/api/*` aliases; each is named in its section below.
 | `/cargo` | cargo | A Cargo workspace and its last recorded build, as graph data -- read, never run |
 | `/topology` | topology | The harness's flows, as graph data |
 | `/harness` | harness | What the harness is running and asking, and the run state each project has |
+| `/designer` | designer | Every shape of collaboration the harness declares, what each needs, and which could run |
 | `/capabilities` | capabilities | The governance corpus's capability registry, as graph data |
 | `/overview` | overview | dossier's reading of the estate, as graph data |
 | `/estate` | estate | Every seam above and whether each is there |
@@ -1028,7 +1029,8 @@ or `results.unreadable`, plus `problem`, `remedy` and `where`. The front end's
 Every seam this window reads, probed once, as rows: `name`, `role`, `ok`,
 `where`, `schema`, `detail`, `problem`, `remedy`, `routes`, `panel`. `ok` means
 the far side answered with the shape this window expects — the harness's
-encoding document, the registry file's `capabilities` list — not that a port
+encoding document, its plane's list of shapes, the registry file's
+`capabilities` list — not that a port
 answered; *something answered and it was not the harness* is its own `problem`.
 `live` counts the identified rows and `caveat` is the sentence to read first.
 Always 200: an estate with nothing up is not a fault in the window looking at it.
@@ -1166,6 +1168,45 @@ canvas draws every name), `detail` (`all` or `rows`), `source`, `instance`, `row
 shape. A harness that is not answering is `unreachable` and no graph; a
 layout nobody registered is `unreadable`. The route reads the harness and
 posts nothing to it.
+
+### GET `/designer/data`
+
+What the harness declares about each shape of collaboration, from two of its
+documents set side by side by shape name. `shapes` has one row per shape in
+the order the harness's plane declares them: `name`; `declared`, the plane's
+entry as given (`status`, `can_run`, `spends`, `writes`, `decides`, `why`,
+`needs`, each need a `key`, a `because` and a `supplied_by`); `could_run`,
+the entry of the harness's account of what could run now as given
+(`runnable`, `unmet`); `options`, each a `setting`, a `value` and the
+`declared` entry that setting makes; and `missing`, which says when one
+document does not name the shape. A document that does not name a shape
+leaves its entry `null`.
+
+`could_run` says whether that second document was `read`, with its `problem`
+when it was not; every shape is listed either way. `have` and
+`never_supplied` are that document's, and `null` when it was not read.
+`statuses`, `needs`, `attested`, `drift` and `reading` are the plane's, as
+given. `instance` is which harness answered and `where` the address read.
+
+A harness that is not answering is `unreachable`. One that answers with no
+plane, or a plane whose schema this window does not read, is `unreadable`.
+The route reads the harness and sends nothing to it.
+
+### GET `/designer/gjgf?layout=&palette_id=`
+
+The same reading as `GraphData`: a node per shape and per need, and an edge
+from a shape to each need it states. An edge's `kind` is `needs`, or
+`needs, unmet` with `style` `dashed` where the harness reports that need
+unmet for that shape. A shape's `kind` is its status as the harness writes
+it; a need's is `need`. A need several shapes state is one node. Options are
+not drawn. `layout` defaults to `Reading Order`, which stands the shapes in
+one column and the needs in the next.
+
+The graph `metadata` carries `kind` (`designer`), `names` (`true`), `source`,
+`instance`, the counts `shapes`, `needs` and `unmet`, and the `caveat` to
+read before the shape, which ends with the harness's own. A harness that is
+not answering is `unreachable` and no graph; a layout nobody registered is
+`unreadable`.
 
 ### GET `/capabilities/gjgf?layout=&palette_id=`
 
