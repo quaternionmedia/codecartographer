@@ -241,16 +241,34 @@ test('the conversation drawn shows its roles, how much is drawn and its newest t
 });
 
 test('a conversation the harness does not serve is its sentence in the panel, and nothing is drawn', async ({ page }) => {
-  // Mutation: draw whatever came back in `drawThread` instead of calling
-  // `_draw` -- the problem is never shown.
+  // Mutation: answer false from `drawThread` for a problem without holding it
+  // -- the sentence is never shown.
   const gone = { unreadable: true, problem: "no ink thread 't-1'", remedy: '', where: `${WHERE}/ink/t-1` };
-  await stand(page, { thread: () => gone, graph: () => envelope(gone) });
+  await stand(page, { graph: () => envelope(gone) });
   await openThreads(page);
   await expect(page.locator('.threads__thread')).toHaveCount(3, { timeout: SETTLED });
   await page.locator('.threads__draw').first().click();
-  await expect(page.locator('[data-threads="chosen"]')).toContainText("no ink thread 't-1'", { timeout: SETTLED });
+  const problem = page.locator('[data-threads="chosen"] .threads__problem');
+  await expect(problem).toContainText("no ink thread 't-1'", { timeout: SETTLED });
+  await expect(problem).toContainText('Nothing was drawn.');
   await expect(page.locator('g.graph-node')).toHaveCount(0);
+});
+
+test('a conversation whose turns are not read says so beside its drawing', async ({ page }) => {
+  // Mutation: leave the reading's problem out of the panel -- the panel
+  // waits on the harness for good.
+  const unread = { unreachable: true, problem: 'nothing is answering at the harness', remedy: 'start it', where: `${WHERE}/ink/t-1` };
+  await stand(page, { thread: () => unread });
+  await openThreads(page);
+  await expect(page.locator('.threads__thread')).toHaveCount(3, { timeout: SETTLED });
+  await page.locator('.threads__draw').first().click();
+  await expect(node(page, 'turn:u-1')).toHaveCount(1, { timeout: SETTLED });
+  await page.locator('.lm_tab', { hasText: /Threads/ }).click();
+  const problem = page.locator('[data-threads="chosen"] .threads-read__problem');
+  await expect(problem).toContainText('nothing is answering at the harness', { timeout: SETTLED });
+  await expect(problem).toContainText('Its turns are not listed.');
   await expect(page.locator('.threads__turn')).toHaveCount(0);
+  await expect(page.locator('[data-threads="chosen"] .estate-view__pending')).toHaveCount(0);
 });
 
 test('an archive that is not answering is a sentence with a way back, and lists nothing', async ({ page }) => {
