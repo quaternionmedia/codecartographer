@@ -1083,8 +1083,8 @@ to the harness.
 ### POST `/harness/instructions`
 
 Body `{"text": "...", "project": "..."}`; `project` is optional. Relays one
-instruction a person typed to the harness's `POST /v1/instructions` with
-`source` `page`, once, and keeps nothing. The harness records it and runs
+instruction a person typed to the harness's own route for recording one,
+with `source` `page`, once, and keeps nothing. The harness records it and runs
 nothing.
 
 `results` is one of:
