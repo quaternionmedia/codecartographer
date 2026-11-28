@@ -1,0 +1,34 @@
+# Dependabot's updates, grouped: for each ecosystem, one pull request a week
+# for version updates, and one for security updates whenever an advisory
+# applies, each covering every package it moves. The ecosystems are the locked
+# Python dependencies at the root and the locked npm dependencies under web/.
+#
+# GitHub Actions are not listed. The governance workflows here are copied
+# verbatim from the governance seed, tests/test_seed_copies.py holds them to
+# it, and an action's version moves there and arrives with a pin bump. The
+# submodules are not listed either: the governance pin moves by the corpus's
+# propagation.
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        applies-to: version-updates
+        patterns: ["*"]
+      python-security:
+        applies-to: security-updates
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    groups:
+      javascript:
+        applies-to: version-updates
+        patterns: ["*"]
+      javascript-security:
+        applies-to: security-updates
+        patterns: ["*"]
