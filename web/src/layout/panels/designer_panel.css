@@ -81,6 +81,10 @@
 /* A link is underlined whether it is an address or a control that opens
    another panel, so the two read as one kind of thing. */
 .designer__link {
+  display: inline;
+  width: auto;
+  text-transform: none;
+  letter-spacing: normal;
   font: inherit;
   color: var(--c-accent);
   background: none;

@@ -68,6 +68,10 @@
 .compose__outcome:not([data-kind="saved"]) .compose__refused { color: var(--c-warning); }
 
 .compose__link {
+  display: inline;
+  width: auto;
+  text-transform: none;
+  letter-spacing: normal;
   font: inherit;
   color: var(--c-accent);
   background: none;
