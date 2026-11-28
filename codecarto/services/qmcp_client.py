@@ -73,6 +73,28 @@ def fetch(path: str, base: str | None = None,
     """
     where = f"{base or base_url()}{path}"
     request = urllib.request.Request(where, headers={"Accept": "application/json"})
+    return _answer(request, where, path, base, remedy_404)
+
+
+def send(path: str, payload: dict[str, Any], base: str | None = None,
+         remedy_404: str | None = None) -> Reach:
+    """Post one JSON document to the harness, and return its answer.
+
+    Never raises, as `fetch` never does, and tells the same failures apart. A
+    refusal carries the harness's own words in `problem`, with its status. Sent
+    once: nothing here retries, because a post the harness received and could
+    not answer in time may have been recorded.
+    """
+    where = f"{base or base_url()}{path}"
+    request = urllib.request.Request(
+        where, data=json.dumps(payload).encode("utf-8"), method="POST",
+        headers={"Accept": "application/json", "Content-Type": "application/json"})
+    return _answer(request, where, path, base, remedy_404)
+
+
+def _answer(request: urllib.request.Request, where: str, path: str,
+            base: str | None, remedy_404: str | None) -> Reach:
+    """One request's answer as a `Reach`, each failure kept apart."""
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT) as answer:
             body = answer.read()

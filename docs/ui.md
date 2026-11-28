@@ -189,8 +189,16 @@ state, with the row that gave it; a box whose address names that project
 carries a ring in the state's colour and line, and a project no drawn box
 names says so here. *Questions for a person*, *Instructions* and *Tool runs*
 list the harness's rows
-and say how many more it holds. The panel is read-only: a question is
-answered in a terminal, and closing the panel clears the marks.
+and say how many more it holds. A question is answered in a terminal, and
+closing the panel clears the marks.
+
+Under *Instructions* a person types what should be done, states a project or
+leaves the harness to read one from the text, and presses *record
+instruction* once. The harness records it and runs nothing; the panel prints
+the harness's row, or its refusal in its own words, and reads the lists
+again. Acting on an instruction starts in a terminal. The form is offered
+only to a person at the machine the window runs on; anywhere else the panel
+says where an instruction is given and offers none.
 
 ### Interactions
 

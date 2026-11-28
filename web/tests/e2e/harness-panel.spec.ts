@@ -173,22 +173,135 @@ test('a harness that is not answering is a sentence with a way back, and marks n
   await expect(node(page, 'subject')).not.toHaveAttribute('data-run-state', /.*/);
 });
 
-test('the panel only reads: it offers no control and sends nothing but GET', async ({ page }) => {
-  // Mutation: add a `button` to a queue row in `harness_panel.ts` -- this fails.
+const TAKEN = { available: true, way_in: 'page', problem: '', remedy: '', where: '/harness/instructions' };
+
+/**
+ * Stand in for `/harness/instructions`: the standing on GET, `answer` on POST.
+ * A POST is answered after `afterMs`, so a second press lands while the first
+ * is still out, and `answered` is told when each answer left.
+ */
+async function stubInstruct(
+  page: Page, standing: unknown, answer: unknown, posted: Request[],
+  afterMs = 0, answered: (at: number) => void = () => undefined,
+): Promise<void> {
+  await page.route('**/harness/instructions', async (route) => {
+    if (route.request().method() === 'POST') {
+      posted.push(route.request());
+      await new Promise((resolve) => setTimeout(resolve, afterMs));
+      answered(Date.now());
+      return route.fulfill(envelope(answer));
+    }
+    return route.fulfill(envelope(standing));
+  });
+}
+
+test('the panel answers nothing: its controls are the instruction form, and unpressed it sends only GET', async ({ page }) => {
+  // Mutations: add a `button` to a queue row in `harness_panel.ts` -- the count
+  // of controls outside the form fails; post on load -- the GET-only line fails.
   const sent: Request[] = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname.includes('/harness')) sent.push(request);
   });
   await page.route('**/harness/data*', (route) => route.fulfill(envelope(reading('active'))));
+  await stubInstruct(page, TAKEN, {}, []);
   await page.goto('/');
   await dismissOnboardingModal(page);
   await openPanel(page, /^Harness$/, '.gl-panel--harness');
 
   const panel = page.locator('.gl-panel--harness');
   await expect(panel.locator('[data-ask="ask-1"]')).toBeVisible({ timeout: SETTLED });
-  await expect(panel.locator('button, input, select, textarea, a[href]')).toHaveCount(0);
+  // The form is drawn before anything is counted: a count taken first passes on an empty panel.
+  await expect(panel.locator('form.harness__instruct')).toHaveCount(1, { timeout: SETTLED });
+  const controls = 'button, input, select, textarea, a[href]';
+  await expect(panel.locator(controls)).toHaveCount(3);
+  await expect(panel.locator('form.harness__instruct').locator(controls)).toHaveCount(3);
+  await expect(panel.locator('[data-harness-list="queue"]').locator(controls)).toHaveCount(0);
   await expect(panel.locator('.harness__answer-where')).toContainText('qmcp human respond');
 
   expect(sent.length).toBeGreaterThan(0);
   expect(sent.filter((request) => request.method() !== 'GET')).toEqual([]);
+});
+
+test('an instruction typed in the panel is posted once, and the harness\'s row is shown', async ({ page }) => {
+  // Mutations: drop `sending` from `sendable` -- a double press posts twice;
+  // send `{ text, project }` always -- a blank project is stated; skip `ask()` after a
+  // recorded outcome -- no list is read as the answer arrives; keep `typed` -- the text stays.
+  const posted: Request[] = [];
+  const readAt: number[] = [];
+  let answeredAt = 0;
+  await page.route('**/harness/data*', (route) => {
+    readAt.push(Date.now());
+    return route.fulfill(envelope(reading('active')));
+  });
+  await stubInstruct(page, TAKEN, {
+    recorded: true, where: 'http://harness/v1/instructions',
+    instruction: { id: 'ins-9', text: 'draw the gallery', project: 'codecartographer', status: 'recorded', source: 'page' },
+  }, posted, 400, (at) => { answeredAt = at; });
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await openPanel(page, /^Harness$/, '.gl-panel--harness');
+  const panel = page.locator('.gl-panel--harness');
+  const send = panel.locator('.harness__instruct-send');
+
+  await expect(send).toBeDisabled({ timeout: SETTLED });
+  await panel.locator('.harness__instruct-text').fill('draw the gallery');
+  await expect(send).toBeEnabled();
+  await send.dblclick();
+
+  const outcome = panel.locator('.harness__instruct-outcome');
+  await expect(outcome).toHaveAttribute('data-kind', 'recorded', { timeout: SETTLED });
+  await expect(outcome).toHaveText('the harness recorded ins-9 for codecartographer, status recorded. Nothing ran.');
+  expect(posted.length).toBe(1);
+  expect(posted[0].postDataJSON()).toEqual({ text: 'draw the gallery' });
+  await expect(panel.locator('.harness__instruct-text')).toHaveValue('');
+  // The lists are read as the answer arrives, not at the next interval: the
+  // panel reads every POLL_MS, so a read inside this window by chance is rare.
+  await expect.poll(() => readAt.some((at) => at >= answeredAt && at <= answeredAt + 600), { timeout: 2_000 }).toBe(true);
+  await expect(panel.locator('.harness__instruct-what')).toContainText('runs nothing');
+});
+
+test('a stated project is posted, and a refusal keeps the text and shows the harness\'s words', async ({ page }) => {
+  // Mutations: drop the project from the post -- the harness guesses from the text;
+  // clear `typed` on every outcome -- a refused instruction has to be typed again.
+  const posted: Request[] = [];
+  await page.route('**/harness/data*', (route) => route.fulfill(envelope(reading('active'))));
+  await stubInstruct(page, TAKEN, {
+    available: false, refused: true, problem: 'the harness refused: 422 no such project', remedy: '',
+    where: 'http://harness/v1/instructions',
+  }, posted);
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await openPanel(page, /^Harness$/, '.gl-panel--harness');
+  const panel = page.locator('.gl-panel--harness');
+
+  await panel.locator('.harness__instruct-text').fill('draw the gallery');
+  await panel.locator('.harness__instruct-project').fill('nowhere');
+  await panel.locator('.harness__instruct-send').click();
+
+  const outcome = panel.locator('.harness__instruct-outcome');
+  await expect(outcome).toHaveAttribute('data-kind', 'refused', { timeout: SETTLED });
+  await expect(outcome).toHaveText('the harness refused: 422 no such project');
+  expect(posted[0].postDataJSON()).toEqual({ text: 'draw the gallery', project: 'nowhere' });
+  await expect(panel.locator('.harness__instruct-text')).toHaveValue('draw the gallery');
+});
+
+test('where an instruction is not taken, the panel says where one is given and offers no form', async ({ page }) => {
+  // Mutation: render the form whatever the standing says -- a reader on another
+  // machine is offered a press the API refuses.
+  const posted: Request[] = [];
+  await page.route('**/harness/data*', (route) => route.fulfill(envelope(reading('active'))));
+  await stubInstruct(page, {
+    available: false, refused: true,
+    problem: 'an instruction is not taken here: the request came from another machine',
+    remedy: 'give it in a terminal: `qmcp instruct "<what should be done>"`', where: '/harness/instructions',
+  }, {}, posted);
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await openPanel(page, /^Harness$/, '.gl-panel--harness');
+  const panel = page.locator('.gl-panel--harness');
+
+  await expect(panel.locator('.harness__instruct-away')).toContainText('another machine', { timeout: SETTLED });
+  await expect(panel.locator('.harness__instruct-away')).toContainText('qmcp instruct');
+  await expect(panel.locator('.harness__instruct')).toHaveCount(0);
+  expect(posted.length).toBe(0);
 });

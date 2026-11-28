@@ -56,6 +56,8 @@ ESTATE_SERVICES = (
     "codecarto/services/overview_service.py",
     "codecarto/services/qmcp_client.py",
     "codecarto/services/harness_service.py",
+    # Relays one document to the harness and keeps none.
+    "codecarto/services/instruct_service.py",
     "codecarto/services/interaction_service.py",
     "codecarto/services/interaction_graph.py",
     "codecarto/services/reading_order.py",
@@ -81,6 +83,7 @@ ESTATE_PANELS = (
     "web/src/features/estate/run_state.ts",
     "web/src/layout/panels/interactions_panel.ts",
     "web/src/features/estate/interactions.ts",
+    "web/src/features/estate/instruct.ts",
     "web/src/layout/panels/overview_panel.ts",
     "web/src/features/estate/seam_client.ts",
     "web/src/features/estate/estate_service.ts",

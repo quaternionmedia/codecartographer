@@ -33,3 +33,24 @@
 /* An id is long and has no place to break; let it wrap inside its row. */
 .gl-panel--harness .estate__row code,
 .gl-panel--harness .estate__detail { overflow-wrap: anywhere; }
+
+.harness__instruct {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 0.5rem);
+  margin-top: var(--spacing-sm, 0.5rem);
+}
+.harness__instruct-text,
+.harness__instruct-project {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--c-border, currentColor);
+  border-radius: 2px;
+  padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+}
+.harness__instruct-text { resize: vertical; }
+.harness__instruct-row { display: flex; gap: var(--spacing-sm, 0.5rem); }
+.harness__instruct-project { flex: 1; min-width: 0; }
+.harness__instruct-outcome[data-kind="recorded"] { color: var(--c-accent); }
+.harness__instruct-outcome:not([data-kind="recorded"]) { color: var(--c-warning); }

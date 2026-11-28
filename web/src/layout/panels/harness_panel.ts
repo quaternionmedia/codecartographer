@@ -1,10 +1,16 @@
 /**
  * Harness Panel — what the harness is running and what it is asking.
  *
- * Controls, not a canvas, and read-only: it lists the harness's tool runs, the
- * questions it holds for a person and its instructions, as `/harness/data`
- * returned them, and says under each list how many rows were held back. No
- * element here answers a question or starts anything.
+ * Controls, not a canvas: it lists the harness's tool runs, the questions it
+ * holds for a person and its instructions, as `/harness/data` returned them,
+ * and says under each list how many rows were held back.
+ *
+ * One element writes. Under *Instructions* a person types what should be
+ * done and presses once; the window's API relays it to the harness, which
+ * records it and runs nothing, and the panel prints the harness's row or its
+ * refusal and reads the lists again. The form is offered only where the API
+ * says an instruction is taken, and otherwise the panel says where one is
+ * given. No element here answers a question or acts on an instruction.
  *
  * The run states it lists are drawn on the canvas by `RunStateExtension`. A
  * state whose project no drawn box names is listed here with that said, so a
@@ -18,6 +24,9 @@
 import m from 'mithril';
 
 import type { LayoutContext } from '../layout_context';
+import { EstateService } from '../../features/estate/estate_service';
+import { recordedShown, sendable } from '../../features/estate/instruct';
+import type { InstructOutcome, InstructStanding } from '../../features/estate/instruct';
 import { ProblemView } from '../../features/estate/problem_view';
 import { heldBack, joinStates, unplacedShown, whenShown } from '../../features/estate/run_state';
 import type { HarnessListing, RunState } from '../../features/estate/run_state';
@@ -56,6 +65,69 @@ export function createHarnessPanel(ctx: LayoutContext): m.Component {
   let root: Element | null = null;
   /** When the reading on screen arrived, by this window's clock. */
   let readAt: Date | null = null;
+  /** Whether an instruction is taken here; null until the API has said. */
+  let standing: InstructStanding | null = null;
+  let typed = '';
+  let project = '';
+  let sending = false;
+  /** What the last press came to. Kept until the next press. */
+  let outcome: InstructOutcome | null = null;
+
+  const send = (event: Event) => {
+    event.preventDefault();
+    if (!sendable(typed, sending)) return;
+    sending = true;
+    outcome = null;
+    void EstateService.instruct(ctx.appState.api.harness, typed, project).then((found) => {
+      sending = false;
+      outcome = found;
+      if (found.kind === 'recorded') {
+        typed = '';
+        project = '';
+        ask();
+      }
+      m.redraw();
+    });
+  };
+
+  const instructForm = (): m.Children => {
+    if (standing === null) return null;
+    if (!standing.available) {
+      return m('p.estate-view__hint.harness__instruct-away',
+        [standing.problem, standing.remedy ? ` — ${standing.remedy}` : '']);
+    }
+    return m('form.harness__instruct', { onsubmit: send }, [
+      m('textarea.harness__instruct-text', {
+        rows: 2,
+        placeholder: 'what should be done',
+        'aria-label': 'Instruction',
+        value: typed,
+        oninput: (event: Event) => { typed = (event.target as HTMLTextAreaElement).value; },
+      }),
+      m('div.harness__instruct-row', [
+        m('input.harness__instruct-project', {
+          type: 'text',
+          placeholder: 'project (read from the text when blank)',
+          'aria-label': 'Project',
+          value: project,
+          oninput: (event: Event) => { project = (event.target as HTMLInputElement).value; },
+        }),
+        m('button.harness__instruct-send', { type: 'submit', disabled: !sendable(typed, sending) },
+          sending ? 'recording…' : 'record instruction'),
+      ]),
+      outcome
+        ? m('p.estate-view__hint.harness__instruct-outcome', { 'data-kind': outcome.kind },
+            outcome.kind === 'recorded'
+              ? recordedShown(outcome.instruction)
+              : [outcome.problem, outcome.remedy ? ` — ${outcome.remedy}` : ''])
+        : null,
+      m('p.estate-view__hint.harness__instruct-what', [
+        'The harness records it and runs nothing. Acting on one starts in a terminal: ',
+        m('code', 'qmcp instructions act <id> --runtime <name>'),
+        '.',
+      ]),
+    ]);
+  };
 
   const leave = () => {
     if (timer !== null) clearInterval(timer);
@@ -82,7 +154,13 @@ export function createHarnessPanel(ctx: LayoutContext): m.Component {
   };
 
   return {
-    oninit: ask,
+    oninit: () => {
+      ask();
+      void EstateService.instructStanding(ctx.appState.api.harness).then((found) => {
+        standing = found;
+        m.redraw();
+      });
+    },
     oncreate: (vnode) => {
       root = vnode.dom;
       timer = setInterval(ask, POLL_MS);
@@ -172,7 +250,7 @@ export function createHarnessPanel(ctx: LayoutContext): m.Component {
                   ]),
                   found.outcome_text ? m('p.estate__detail', text(found.outcome_text)) : null,
                   m('p.estate__where', `updated ${whenShown(found.updated_at)}`),
-                ]), 'the harness holds no instructions'),
+                ]), 'the harness holds no instructions', instructForm()),
 
               listed('Tool runs', 'runs', reading.runs, (found) =>
                 m('div.estate__row', { 'data-run': text(found.id) }, [
