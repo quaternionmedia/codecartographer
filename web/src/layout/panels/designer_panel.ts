@@ -7,7 +7,9 @@
  * the harness says it could run now, and its options. Below the rows: where
  * the harness's declarations and registrations differ, the acts that are a
  * person's, and the vocabulary the harness uses. No element here composes,
- * saves or runs a shape.
+ * saves or runs a shape. Each declared shape's row links to its drawing in
+ * the Graph panel and to the Compose panel started from that kind, and the
+ * address the declarations were read from is a link to the harness.
  *
  * A status and a need key are the harness's words and are shown as written.
  * A mark is shown only when the plane states it.
@@ -80,7 +82,28 @@ function optionRow(option: OptionRow): m.Children {
   ]);
 }
 
-function shapeRow(row: ShapeRow, read: boolean): m.Children {
+/** Where a shape's row leads: its drawing, and a design of that kind. */
+function shapeLinks(ctx: LayoutContext, name: string): m.Children {
+  const drawIt = () => {
+    ctx.appState.update({ topologyKind: name, topologySubject: '' });
+    void ctx
+      .plotWith(() => ctx.actions.plot.loadTopology({ kind: name }))
+      // A shape the harness will not draw says why in the Topology panel.
+      .then((drew) => { if (drew) ctx.focusDockPanel('graph'); else ctx.openPanel('topology-panel'); })
+      .catch(() => undefined);
+  };
+  const composeIt = () => {
+    ctx.appState.update({ composeKind: name });
+    ctx.openPanel('compose-panel');
+  };
+  return m('p.estate__where.designer__links', [
+    m('button.designer__link.designer__to-drawing', { type: 'button', onclick: drawIt }, 'draw this shape'),
+    ' · ',
+    m('button.designer__link.designer__to-compose', { type: 'button', onclick: composeIt }, 'compose one'),
+  ]);
+}
+
+function shapeRow(ctx: LayoutContext, row: ShapeRow, read: boolean): m.Children {
   const status = statusShown(row);
   const could = couldRunShown(row, read);
   const unmet = new Set(read ? (row.could_run?.unmet ?? []).map((need) => text(need.key)) : []);
@@ -96,6 +119,7 @@ function shapeRow(row: ShapeRow, read: boolean): m.Children {
     could ? m('p.estate__role.designer__could-run', could) : null,
     row.missing ? m('p.estate__problem.designer__missing', row.missing) : null,
     row.declared ? declaredShown(row.declared, unmet) : null,
+    row.declared ? shapeLinks(ctx, row.name) : null,
     row.options.length
       ? m('div.designer__options', [
           m('p.estate__role.designer__options-heading', 'under a setting'),
@@ -210,7 +234,10 @@ export function createDesignerPanel(ctx: LayoutContext): m.Component {
                 reading.shapes.length === 0
                   ? m('p.estate-view__hint', 'the harness declares no shape')
                   : null,
-                m('div.estate__rows', reading.shapes.map((row) => shapeRow(row, reading.could_run.read))),
+                m('p.estate__where.designer__where', ['read from ', m('a.designer__link', {
+                  href: reading.where, target: '_blank', rel: 'noopener',
+                }, reading.where)]),
+                m('div.estate__rows', reading.shapes.map((row) => shapeRow(ctx, row, reading.could_run.read))),
               ]),
 
               m('div.estate-view__section', { 'data-designer': 'drift' }, [

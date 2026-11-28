@@ -225,7 +225,7 @@ const node = (page: Page, id: string) => page.locator(`g.graph-node[data-node-id
 const edge = (page: Page, from: string, to: string) =>
   page.locator(`line.stream-edge[data-from="${from}"][data-to="${to}"]`);
 
-test('the panel only reads: two buttons, one read until asked again, and nothing sent but GET', async ({ page }) => {
+test('the panel only reads: its controls draw, read again or lead elsewhere, and nothing is sent but GET', async ({ page }) => {
   // Mutation: ask on an interval in `designer_panel.ts` -- a second read
   // arrives unasked.
   const sent: Request[] = [];
@@ -238,10 +238,16 @@ test('the panel only reads: two buttons, one read until asked again, and nothing
   const reads = () => sent.filter((request) => new URL(request.url()).pathname.endsWith('/designer/data')).length;
 
   await expect(row(page, 'relay')).toBeVisible({ timeout: SETTLED });
-  const controls = panel.locator('button, input, select, textarea, a[href]');
+  const every = 'button, input, select, textarea, a[href]';
+  const controls = panel.locator('[data-designer="graph"]').locator(every);
   await expect(controls).toHaveCount(2);
   await expect(controls.nth(0)).toHaveText('draw shapes against needs');
   await expect(controls.nth(1)).toHaveText('read again');
+  // Besides those: the address read, and two links on each declared shape's row.
+  await expect(panel.locator(every)).toHaveCount(9);
+  await expect(panel.locator('a[href]')).toHaveCount(1);
+  await expect(panel.locator('.designer__shape').locator(every)).toHaveCount(6);
+  await expect(panel.locator('input, select, textarea')).toHaveCount(0);
 
   // Nothing asks again by itself.
   await page.waitForTimeout(2_500);

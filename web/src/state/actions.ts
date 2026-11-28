@@ -646,6 +646,13 @@ export class PlotActions {
     return this._draw(found, 'designerProblem');
   }
 
+  /** Saved designs and the draft against what each references, on the canvas (`_draw`). */
+  async drawComposition(asked: string): Promise<boolean> {
+    this.stateController.clear();
+    const found = await EstateService.compositionGraph(this.stateController.api.designer, asked);
+    return this._draw(found, 'composeProblem');
+  }
+
   /** The registry's declarations, for the panel's list. Draws nothing. */
   async loadCapabilitiesReading(): Promise<void> {
     const found = await EstateService.capabilitiesData(this.stateController.api.capabilities);
@@ -785,7 +792,7 @@ export class PlotActions {
   private _draw(
     found: SeamOutcome,
     problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem' | 'interactionsProblem'
-      | 'designerProblem',
+      | 'designerProblem' | 'composeProblem',
   ): boolean {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {

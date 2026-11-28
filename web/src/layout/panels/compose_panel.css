@@ -1,0 +1,84 @@
+/**
+ * The Compose panel's own marks. Rows, headings and hints are the estate
+ * views' shared classes; this adds the form, a refusal beside its field, and
+ * the links of a saved design.
+ *
+ * A link is underlined whether it is an address or a control that opens
+ * another panel, so the two read as one kind of thing.
+ */
+
+.gl-panel--compose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 0.75rem);
+  padding: var(--spacing-md, 0.75rem);
+  overflow-y: auto;
+}
+
+.compose__field {
+  display: grid;
+  grid-template-columns: 9rem 1fr auto;
+  gap: 0.25rem 0.6rem;
+  align-items: center;
+  font-size: 0.74rem;
+  color: var(--c-font);
+}
+
+.compose__field input[type="text"],
+.compose__field input[type="number"],
+.compose__field select {
+  min-width: 0;
+  font: inherit;
+  color: var(--c-font);
+  background: var(--c-primary-light);
+  border: 1px solid var(--c-border);
+  border-radius: 2px;
+  padding: 0.25rem 0.4rem;
+}
+
+.compose__field input[type="checkbox"] { justify-self: start; }
+
+.compose__references {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--c-border);
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.74rem;
+  color: var(--c-font);
+}
+
+.compose__references legend { color: var(--c-font-muted); padding: 0 0.3rem; }
+.compose__reference { display: flex; align-items: center; gap: 0.4rem; }
+
+.compose__error {
+  grid-column: 2 / span 2;
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--c-warning);
+}
+
+.compose__actions { display: flex; gap: var(--spacing-sm, 0.5rem); align-items: center; }
+.compose__save[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+.compose__outcome p { margin: 0; font-size: 0.72rem; line-height: 1.45; }
+.compose__outcome[data-kind="saved"] .compose__saved { color: var(--c-accent); }
+.compose__outcome:not([data-kind="saved"]) .compose__refused { color: var(--c-warning); }
+
+.compose__link {
+  display: inline;
+  width: auto;
+  text-transform: none;
+  letter-spacing: normal;
+  font: inherit;
+  color: var(--c-accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.compose__link[disabled] { color: var(--c-font-muted); cursor: default; text-decoration: none; }

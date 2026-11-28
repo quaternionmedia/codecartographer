@@ -64,7 +64,7 @@ export const STEPS: readonly Step[] = [
     // estate's seams, and the graphs kept in Graphbase.
     owns: [
       'open', 'estate-panel', 'show-panel', 'topology-panel', 'capabilities-panel',
-      'overview-panel', 'harness-panel', 'interactions-panel', 'designer-panel', 'cargo-panel', 'graphbase-panel',
+      'overview-panel', 'harness-panel', 'interactions-panel', 'designer-panel', 'compose-panel', 'cargo-panel', 'graphbase-panel',
     ],
     // The canvas comes forward on every step but its own stack's: whatever a
     // step does is drawn there, and the dock keeps it in view.

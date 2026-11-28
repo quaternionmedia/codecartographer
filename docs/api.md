@@ -28,7 +28,7 @@ the `/pam/api/*` aliases; each is named in its section below.
 | `/cargo` | cargo | A Cargo workspace and its last recorded build, as graph data -- read, never run |
 | `/topology` | topology | The harness's flows, as graph data |
 | `/harness` | harness | What the harness is running and asking, and the run state each project has |
-| `/designer` | designer | Every shape of collaboration the harness declares, what each needs, and which could run |
+| `/designer` | designer | Every shape of collaboration the harness declares, what each needs and which could run; the designs it holds, and one composed here saved to it |
 | `/capabilities` | capabilities | The governance corpus's capability registry, as graph data |
 | `/overview` | overview | dossier's reading of the estate, as graph data |
 | `/estate` | estate | Every seam above and whether each is there |
@@ -1207,6 +1207,55 @@ The graph `metadata` carries `kind` (`designer`), `names` (`true`), `source`,
 read before the shape, which ends with the harness's own. A harness that is
 not answering is `unreachable` and no graph; a layout nobody registered is
 `unreadable`.
+
+### GET `/designer/designs?project=`
+
+The designs and components the harness holds for one project, each row as
+the harness gives it: a design's `name`, `topology_type`, `description`,
+`config`, `address` and the `capability` block with the harness's verdict.
+`project` is passed on when given; without it the harness answers for its
+own. `saving` says whether this window relays a design for the request
+asking: `available`, and a `problem` and `remedy` when it does not.
+`components_read` says whether the components were read; the designs are
+listed either way. A harness that is not answering is `unreachable`; one
+that answers without the list is `unreadable`.
+
+### POST `/designer/designs`
+
+One design a person composed, relayed to the harness once. The body is
+`name`, `topology_type`, and optionally `description`, `project` and
+`config`. The harness validates the configuration through the kind's own
+class and saves the design; `results` is then `saved` with the harness's row
+as `design`. Nothing runs.
+
+A design that was not saved is `refused`, with `errors`: each a `field` and
+a `message`. `field` is the location the harness named, joined by dots, with
+`config.` before a configuration field, or empty when the message is about
+the design as a whole, such as a name already taken. The window sends
+nothing when the name or the kind is blank, and nothing when the request
+does not stand as `GET /harness/instructions` describes. A harness that
+stops answering is `unreachable`.
+
+### GET `/designer/schema/{kind}`
+
+The harness's schema of one kind's configuration, as given: `json_schema`,
+`config_class`, `topology` and `status`. The composing form is built from
+`json_schema`. A kind the harness has no configuration for is `unreadable`,
+with the harness's sentence.
+
+### GET `/designer/composition/gjgf?project=&draft=&name=&kind=&components=&compose=&layout=&palette_id=`
+
+Every saved design joined to what its configuration references, as
+`GraphData`: an edge of kind `uses` to each component and `composes` to each
+design. With `draft=true` the design being composed is drawn too, from
+`name`, `kind` and the comma-separated `components` and `compose` it names
+so far; it is sent to nobody. A node's `kind` is `design`, `component`,
+`draft`, or `not held` for a reference to something the harness does not
+hold in that project, whose edge has `style` `dashed`.
+
+The graph `metadata` carries `kind` (`composition`), `names` (`true`),
+`source`, `project`, the counts `designs`, `components` and `not_held`,
+whether a `draft` is drawn, and the `caveat`.
 
 ### GET `/capabilities/gjgf?layout=&palette_id=`
 

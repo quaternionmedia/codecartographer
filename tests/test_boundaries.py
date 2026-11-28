@@ -61,6 +61,8 @@ ESTATE_SERVICES = (
     "codecarto/services/interaction_service.py",
     "codecarto/services/interaction_graph.py",
     "codecarto/services/designer_service.py",
+    # Relays one design to the harness and keeps none.
+    "codecarto/services/compose_service.py",
     "codecarto/services/reading_order.py",
     # A Cargo workspace is read the same way a seam is: manifests and the
     # documents cargo wrote, never a write and never a run.
@@ -88,6 +90,8 @@ ESTATE_PANELS = (
     "web/src/features/estate/instruct.ts",
     "web/src/layout/panels/designer_panel.ts",
     "web/src/features/estate/designer.ts",
+    "web/src/layout/panels/compose_panel.ts",
+    "web/src/features/estate/compose.ts",
     "web/src/layout/panels/overview_panel.ts",
     "web/src/features/estate/seam_client.ts",
     "web/src/features/estate/estate_service.ts",
