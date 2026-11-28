@@ -36,6 +36,7 @@
     "src/features/estate/provenance_shown.ts",
     "src/features/estate/run_state.ts",
     "src/features/estate/interactions.ts",
+    "src/features/estate/threads.ts",
     "src/features/estate/instruct.ts",
     "src/features/estate/designer.ts",
     "src/features/estate/compose.ts",

@@ -9,6 +9,11 @@
 - `/harness/gjgf` -- those interactions as `GraphData`, the graph format
   every other plot here produces, so the page draws them on the one canvas
   with the same layouts, palettes and menu.
+- `/harness/threads` -- the conversations the harness's archive lists, in its
+  order, narrowed by a source and a text when given and cut to the rows a
+  panel shows, with what the archive says of itself.
+- `/harness/thread` -- one conversation's counts and its newest turns.
+- `/harness/thread/gjgf` -- that conversation's turns as `GraphData`.
 
 - `GET /harness/instructions` -- whether this window relays an instruction
   for the request asking, and where one is given when it does not.
@@ -34,7 +39,7 @@ from pydantic import BaseModel
 
 from codecarto.models.plot_data import PlotOptions
 from codecarto.services import (estate_service, harness_service, instruct_service,
-                                interaction_graph, interaction_service)
+                                interaction_graph, interaction_service, thread_service)
 from codecarto.util.utilities import generate_return
 
 HarnessRouter = APIRouter()
@@ -120,4 +125,50 @@ def harness_gjgf(
     return generate_return(results={
         "graph": graph,
         "metadata": interaction_graph.metadata(rows, made, options),
+    })
+
+
+@HarnessRouter.get("/threads")
+def harness_threads(source: str = Query(""), titled: str = Query("")) -> dict[str, Any]:
+    """The conversations the harness's archive lists, in the archive's order.
+
+    A plain `def`, so the read of the harness runs in the threadpool.
+    """
+    return generate_return(results=thread_service.read_list(source, titled))
+
+
+@HarnessRouter.get("/thread")
+def harness_thread(source: str = Query(""), id: str = Query("")) -> dict[str, Any]:
+    """One conversation's counts and its newest turns, or why it was not read."""
+    document = thread_service.read(source, id)
+    if "turns" not in document:
+        return generate_return(results=document)
+    return generate_return(results=thread_service.summary(document))
+
+
+@HarnessRouter.get("/thread/gjgf")
+def harness_thread_gjgf(
+    source: str = Query(""),
+    id: str = Query(""),
+    layout: str = Query(thread_service.LAYOUT),
+    palette_id: str = Query("0"),
+) -> dict[str, Any]:
+    """One conversation's newest turns as `GraphData`, in this project's envelope.
+
+    A layout nobody registered is `unreadable` with the registered ones
+    named, as on every estate route.
+    """
+    document = thread_service.read(source, id)
+    if "turns" not in document:
+        return generate_return(results=document)
+    options = PlotOptions(layout=layout, palette_id=palette_id, type="d3")
+    made = thread_service.picture(document)
+    try:
+        graph = thread_service.as_gjgf(document, made, options)
+    except ValueError as error:
+        return generate_return(results=estate_service.unknown_layout(
+            error, f"/harness/thread/gjgf?layout={layout}"))
+    return generate_return(results={
+        "graph": graph,
+        "metadata": thread_service.metadata(document, made, options),
     })

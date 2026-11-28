@@ -1122,6 +1122,44 @@ says how many answers were read and how many were not, since each is one
 read of the harness. `unread_lists` names each list the harness would not
 serve. The route reads the harness and posts nothing to it.
 
+### GET `/harness/threads?source=&titled=`
+
+The conversations the harness's archive lists, in the archive's order.
+`threads` carries each row's `source`, `id`, `title`, `turns`, `last_seen`,
+`diverged` and `address` as the archive gives them, cut to the rows a panel
+shows, with `shown` and `more`. `source` keeps one source's conversations
+and `titled` those whose title holds that text, whatever its case.
+`sources` counts every conversation by source, before either narrows the
+list. `totals`, `generated_at` and `reading` are the archive's own, and say
+that it counts what was exported and indexed. An archive that carries no
+list is `unreadable`.
+
+### GET `/harness/thread?source=&id=`
+
+One conversation: `source`, `id`, `title`, `url`, `started_at` and `partial`
+as the harness gives them, and `turns` with `count`, `roles` (how many turns
+carry each role, in the order the conversation first uses them) and `rows`,
+the newest turns first, each with its `index`, `id`, `role`, `at` and
+`text`. A text is one line, cut to a length with `cut` true when it was.
+`drawn` is how many turns the graph draws and `mark` a string two reads
+share only when the conversation holds as many turns and ends alike. Without
+both words the route asks the harness nothing and says so. A conversation
+the harness does not serve is `unreadable` with the harness's sentence.
+
+### GET `/harness/thread/gjgf?source=&id=&layout=&palette_id=`
+
+That conversation's newest turns as `GraphData`, laid out by
+`reading_order_layout` unless `layout` names another. A node is a turn,
+named by the start of its text, or a role. `metadata.kind` is `opening` for
+a turn of the role that spoke first, `reply` for any other turn and `role`
+for a role; a role that opens and a role that replies are separate nodes.
+An edge's `kind` is `said` from a role to a turn it opens with, `replied`
+from that turn to each turn until the next, and `by` from a reply to its
+role. Each node's `metadata.column` and `metadata.rank` say where it stands,
+as on `/harness/gjgf`. The graph's `metadata` carries `thread` (`source`,
+`id`, `title`), `turns`, `not_drawn`, `mark` and a `caveat` saying that the
+archive states the order of turns and not which turn answers which.
+
 ### GET `/harness/gjgf?layout=&palette_id=&detail=`
 
 The same rows as `GraphData`, laid out by `reading_order_layout` unless

@@ -71,6 +71,8 @@ export interface ICellState {
   designerProblem: SeamProblem | null;
   /** Why the composition was not drawn, or null. */
   composeProblem: SeamProblem | null;
+  /** Why a conversation's turns were not drawn. */
+  threadProblem: SeamProblem | null;
   /** A kind another panel asked the Compose panel to start from, or empty. */
   composeKind: string;
   /** The registry's declarations as the panel lists them, or null before asked. */
@@ -133,6 +135,7 @@ export class CellState implements ICellState {
   public designerReading: DesignerDocument | null = null;
   public designerProblem: SeamProblem | null = null;
   public composeProblem: SeamProblem | null = null;
+  public threadProblem: SeamProblem | null = null;
   public composeKind: string = '';
   public capabilitiesReading: CapabilitiesDocument | null = null;
   public capabilitiesProblem: SeamProblem | null = null;

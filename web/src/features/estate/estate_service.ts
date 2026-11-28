@@ -12,6 +12,7 @@
 import { RequestHandler } from '../../services/request_handler';
 import { instructOutcome, standingOf, type InstructOutcome, type InstructStanding } from './instruct';
 import { saveOutcome, type SaveOutcome } from './compose';
+import { listQuery, threadQuery, type Chosen } from './threads';
 import { query, read, type Getter, type SeamOutcome } from './seam_client';
 
 const get: Getter = (url) => RequestHandler.getRequest(url);
@@ -102,6 +103,21 @@ export class EstateService {
     const url = `${harnessUrl}/instructions`;
     const body: Record<string, unknown> = project.trim() ? { text, project } : { text };
     return instructOutcome(await RequestHandler.postRequest(url, body).catch(() => null), url);
+  }
+
+  /** The conversations the harness's archive lists, narrowed by a source and a text. */
+  public static threads(harnessUrl: string, source = '', titled = ''): Promise<SeamOutcome> {
+    return read(get, `${harnessUrl}/threads${listQuery(source, titled)}`);
+  }
+
+  /** One conversation's counts and newest turns. */
+  public static thread(harnessUrl: string, chosen: Chosen): Promise<SeamOutcome> {
+    return read(get, `${harnessUrl}/thread${threadQuery(chosen)}`);
+  }
+
+  /** One conversation's turns as a graph, laid out by the server. */
+  public static threadGraph(harnessUrl: string, chosen: Chosen, layout?: string): Promise<SeamOutcome> {
+    return read(get, `${harnessUrl}/thread/gjgf${threadQuery(chosen, layout)}`);
   }
 
   /** Who did what at the harness, through which way in, read by the server. */

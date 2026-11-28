@@ -1,0 +1,276 @@
+{
+  "status": 200,
+  "message": "Success",
+  "results": {
+    "graph": {
+      "nodes": {
+        "turn:u-1": {
+          "label": "How do I tidy the shed\u2026",
+          "metadata": {
+            "kind": "opening",
+            "role": "asker",
+            "hover": "turn 1 \u00b7 asker \u00b7 2026-01-01T00:00:01Z \u2014 How do I tidy the shed before winter?",
+            "rank": 0,
+            "label_at": "above",
+            "column": "instruction",
+            "type": "Worker",
+            "base": "topology.worker",
+            "shape": "rectangle",
+            "color": "#8ab4f8",
+            "size": 30.0,
+            "click": "<p>turn 1 \u00b7 asker \u00b7 2026-01-01T00:00:01Z \u2014 How do I tidy the shed before winter?</p>",
+            "x": 180.0,
+            "y": 18.0
+          }
+        },
+        "said:asker": {
+          "label": "asker",
+          "metadata": {
+            "kind": "role",
+            "role": "asker",
+            "hover": "asker",
+            "rank": 0,
+            "label_at": "left",
+            "column": "who",
+            "type": "Input",
+            "base": "topology.input",
+            "shape": "circle",
+            "color": "#6db2ff",
+            "size": 45.0,
+            "click": "<p>asker</p>",
+            "x": 0.0,
+            "y": 36.0
+          }
+        },
+        "turn:u-2": {
+          "label": "Start by emptying it on\u2026",
+          "metadata": {
+            "kind": "reply",
+            "role": "helper",
+            "hover": "turn 2 \u00b7 helper \u00b7 2026-01-01T00:00:02Z \u2014 Start by emptying it onto the lawn.",
+            "rank": 1,
+            "label_at": "above",
+            "column": "question",
+            "type": "Gate",
+            "base": "topology.gate",
+            "shape": "hexagon",
+            "color": "#e0c069",
+            "size": 35.0,
+            "click": "<p>turn 2 \u00b7 helper \u00b7 2026-01-01T00:00:02Z \u2014 Start by emptying it onto the lawn.</p>",
+            "x": 470.0,
+            "y": 0.0
+          }
+        },
+        "replied:helper": {
+          "label": "helper",
+          "metadata": {
+            "kind": "role",
+            "role": "helper",
+            "hover": "helper",
+            "rank": 0,
+            "label_at": "right",
+            "column": "answerer",
+            "type": "Input",
+            "base": "topology.input",
+            "shape": "circle",
+            "color": "#6db2ff",
+            "size": 45.0,
+            "click": "<p>helper</p>",
+            "x": 610.0,
+            "y": 36.0
+          }
+        },
+        "turn:u-3": {
+          "label": "Then sort what is there\u2026",
+          "metadata": {
+            "kind": "reply",
+            "role": "helper",
+            "hover": "turn 3 \u00b7 helper \u00b7 2026-01-01T00:00:03Z \u2014 Then sort what is there into keep, give and tip.",
+            "rank": 2,
+            "label_at": "above",
+            "column": "question",
+            "type": "Gate",
+            "base": "topology.gate",
+            "shape": "hexagon",
+            "color": "#e0c069",
+            "size": 35.0,
+            "click": "<p>turn 3 \u00b7 helper \u00b7 2026-01-01T00:00:03Z \u2014 Then sort what is there into keep, give and tip.</p>",
+            "x": 470.0,
+            "y": 36.0
+          }
+        },
+        "turn:u-4": {
+          "label": "What about the roof?",
+          "metadata": {
+            "kind": "opening",
+            "role": "asker",
+            "hover": "turn 4 \u00b7 asker \u00b7 2026-01-01T00:00:04Z \u2014 What about the roof?",
+            "rank": 3,
+            "label_at": "above",
+            "column": "instruction",
+            "type": "Worker",
+            "base": "topology.worker",
+            "shape": "rectangle",
+            "color": "#8ab4f8",
+            "size": 30.0,
+            "click": "<p>turn 4 \u00b7 asker \u00b7 2026-01-01T00:00:04Z \u2014 What about the roof?</p>",
+            "x": 180.0,
+            "y": 72.0
+          }
+        },
+        "turn:u-5": {
+          "label": "Check the felt for tear\u2026",
+          "metadata": {
+            "kind": "reply",
+            "role": "helper",
+            "hover": "turn 5 \u00b7 helper \u00b7 2026-01-01T00:00:05Z \u2014 Check the felt for tears and patch them.",
+            "rank": 4,
+            "label_at": "above",
+            "column": "question",
+            "type": "Gate",
+            "base": "topology.gate",
+            "shape": "hexagon",
+            "color": "#e0c069",
+            "size": 35.0,
+            "click": "<p>turn 5 \u00b7 helper \u00b7 2026-01-01T00:00:05Z \u2014 Check the felt for tears and patch them.</p>",
+            "x": 470.0,
+            "y": 72.0
+          }
+        }
+      },
+      "edges": [
+        {
+          "source": "turn:u-1",
+          "target": "turn:u-2",
+          "label": "replied",
+          "metadata": {
+            "kind": "replied",
+            "color": "#e0c069",
+            "style": "solid",
+            "hover": "turn 2 follows it",
+            "title": "turn 2 follows it"
+          }
+        },
+        {
+          "source": "turn:u-1",
+          "target": "turn:u-3",
+          "label": "replied",
+          "metadata": {
+            "kind": "replied",
+            "color": "#e0c069",
+            "style": "solid",
+            "hover": "turn 3 follows it",
+            "title": "turn 3 follows it"
+          }
+        },
+        {
+          "source": "said:asker",
+          "target": "turn:u-1",
+          "label": "said",
+          "metadata": {
+            "kind": "said",
+            "color": "#6db2ff",
+            "style": "solid",
+            "hover": "asker said turn 1",
+            "title": "asker said turn 1"
+          }
+        },
+        {
+          "source": "said:asker",
+          "target": "turn:u-4",
+          "label": "said",
+          "metadata": {
+            "kind": "said",
+            "color": "#6db2ff",
+            "style": "solid",
+            "hover": "asker said turn 4",
+            "title": "asker said turn 4"
+          }
+        },
+        {
+          "source": "turn:u-2",
+          "target": "replied:helper",
+          "label": "by",
+          "metadata": {
+            "kind": "by",
+            "color": "#5ac8b0",
+            "style": "solid",
+            "hover": "turn 2 is helper's",
+            "title": "turn 2 is helper's"
+          }
+        },
+        {
+          "source": "turn:u-3",
+          "target": "replied:helper",
+          "label": "by",
+          "metadata": {
+            "kind": "by",
+            "color": "#5ac8b0",
+            "style": "solid",
+            "hover": "turn 3 is helper's",
+            "title": "turn 3 is helper's"
+          }
+        },
+        {
+          "source": "turn:u-4",
+          "target": "turn:u-5",
+          "label": "replied",
+          "metadata": {
+            "kind": "replied",
+            "color": "#e0c069",
+            "style": "solid",
+            "hover": "turn 5 follows it",
+            "title": "turn 5 follows it"
+          }
+        },
+        {
+          "source": "turn:u-5",
+          "target": "replied:helper",
+          "label": "by",
+          "metadata": {
+            "kind": "by",
+            "color": "#5ac8b0",
+            "style": "solid",
+            "hover": "turn 5 is helper's",
+            "title": "turn 5 is helper's"
+          }
+        }
+      ],
+      "directed": true,
+      "metadata": {
+        "kind": "thread",
+        "source": "http://127.0.0.1:3999/v1/threads/ink/t-1",
+        "dense": true
+      }
+    },
+    "metadata": {
+      "kind": "thread",
+      "source": "http://127.0.0.1:3999/v1/threads/ink/t-1",
+      "layout": "Reading Order",
+      "type": "d3",
+      "palette_id": "0",
+      "names": true,
+      "instance": {
+        "identified": true,
+        "where": "http://127.0.0.1:3999/health",
+        "pid": 4242,
+        "port": 3999,
+        "database_fingerprint": "0123456789abcdef",
+        "started_at": "2026-01-01T00:00:00+00:00",
+        "session": null,
+        "version": "0.1.0",
+        "problem": "",
+        "remedy": ""
+      },
+      "thread": {
+        "source": "ink",
+        "id": "t-1",
+        "title": "Tidy the Shed"
+      },
+      "turns": 5,
+      "not_drawn": 0,
+      "mark": "5 u-5 40",
+      "caveat": "Read left to right: who spoke, what they said, a reply, who replied. Every node is a turn of the conversation or a role its turns carry. The role of the first turn opens a row each time it speaks, and every other turn until the next is drawn as a reply to it, because the archive states the order of turns and not which turn answers which. A role is the word the harness's turn carries, unchecked."
+    }
+  }
+}

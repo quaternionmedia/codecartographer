@@ -29,6 +29,7 @@ import { createEstatePanel } from './panels/estate_panel';
 import { createCapabilitiesPanel } from './panels/capabilities_panel';
 import { createHarnessPanel } from './panels/harness_panel';
 import { createInteractionsPanel } from './panels/interactions_panel';
+import { createThreadsPanel } from './panels/threads_panel';
 import { createDesignerPanel } from './panels/designer_panel';
 import { createComposePanel } from './panels/compose_panel';
 import { createOverviewPanel } from './panels/overview_panel';
@@ -44,6 +45,8 @@ export type DockPanelId =
   | 'harness-panel'
   // Who did what at the harness, through which way in, read-only.
   | 'interactions-panel'
+  // A conversation from the harness's archive, its turns drawn, read-only.
+  | 'threads-panel'
   // Every shape the harness declares, what each needs and which could run, read-only.
   | 'designer-panel'
   // A design composed here and saved to the harness.
@@ -121,6 +124,15 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     config: { type: 'component', componentType: 'interactions-panel', id: 'interactions-panel', title: '↹ Interactions', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createInteractionsPanel(ctx)),
+  },
+  {
+    id: 'threads-panel',
+    menuLabel: 'Threads',
+    group: 'harness',
+    answers: 'A conversation from the harness\'s archive, its turns drawn as a graph and read again as it grows.',
+    config: { type: 'component', componentType: 'threads-panel', id: 'threads-panel', title: '❝ Threads', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createThreadsPanel(ctx)),
   },
   {
     id: 'designer-panel',
