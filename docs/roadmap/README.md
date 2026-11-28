@@ -13,7 +13,6 @@ what has landed is described in the reference pages under `docs/`.
 | [`c_parser_phase3_compile_commands.md`](c_parser_phase3_compile_commands.md) | Parsing C from a real `compile_commands.json` instead of walking the directory |
 | [`large-repos.md`](large-repos.md) | A repository the size of linux, parsed whole and explored on the canvas |
 | [`the-corpus-at-every-depth.md`](the-corpus-at-every-depth.md) | The whole corpus drawn to every symbol, and to every member, with no names |
-| [`the-designer-gallery.md`](the-designer-gallery.md) | The Designer panel's first slice: every shape the harness declares, what each needs, and which could run now, read and drawn |
 | *the web window* (in the corpus: `plans/the-web-window.md`) | The estate frame, the topology designer on it, and the chrestomathy of code. Kept in the corpus because it decides things for three repositories; the pickup for this repository is the section below |
 
 ## Picking up the web window
@@ -29,8 +28,9 @@ it:
   `web/src/features/graph/extensions/` extension and a Harness panel beside
   the estate panels -- read-only, polling before any event stream. An address
   no box carries is reported in the panel, never dropped.
-- **The topology designer.** First a Designer panel that lists what
-  `/v1/orchestration/plane` declares; then authoring, saved through
+- **The topology designer.** The Designer panel lists what the harness's
+  plane declares and which shapes could run ([its section](../ui.md#designer)).
+  What is left is authoring, saved through
   `/v1/topologies` and shown with the plane's verdict as given. The authored
   verbs for the ring begin with this repository's own record naming `rad` in
   its `Pends on` row, on `project/codecartographer`, before anything is built.

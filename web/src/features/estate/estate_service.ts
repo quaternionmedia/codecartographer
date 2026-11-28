@@ -115,6 +115,16 @@ export class EstateService {
     })}`);
   }
 
+  /** Every shape the harness declares and whether it could run, read by the server. */
+  public static designerData(designerUrl: string): Promise<SeamOutcome> {
+    return read(get, `${designerUrl}/data`);
+  }
+
+  /** The shapes against the needs they state, laid out by the server. */
+  public static designerGraph(designerUrl: string, request: DrawRequest = {}): Promise<SeamOutcome> {
+    return read(get, `${designerUrl}/gjgf${query({ layout: request.layout, palette_id: request.paletteId })}`);
+  }
+
   public static capabilitiesData(capabilitiesUrl: string): Promise<SeamOutcome> {
     return read(get, `${capabilitiesUrl}/data`);
   }

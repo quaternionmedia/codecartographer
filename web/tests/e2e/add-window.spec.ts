@@ -168,7 +168,7 @@ test('the + menu lists windows under whose data they show, each with what it ans
   // Harness, Interactions and Topology sit between the Harness heading and the next one.
   const order = await menu.locator('.gl-add-panel-menu__group-title, .gl-add-panel-menu__item').allTextContents();
   const from = order.indexOf('Harness');
-  expect(order.slice(from, order.indexOf('Organisation'))).toEqual(['Harness', 'Topology', 'Harness', 'Interactions']);
+  expect(order.slice(from, order.indexOf('Organisation'))).toEqual(['Harness', 'Topology', 'Harness', 'Interactions', 'Designer']);
 
   await overview.locator('.gl-add-panel-menu__item').click();
   await expect(page.locator('.gl-panel--overview')).toBeVisible();

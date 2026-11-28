@@ -29,6 +29,7 @@ import { createEstatePanel } from './panels/estate_panel';
 import { createCapabilitiesPanel } from './panels/capabilities_panel';
 import { createHarnessPanel } from './panels/harness_panel';
 import { createInteractionsPanel } from './panels/interactions_panel';
+import { createDesignerPanel } from './panels/designer_panel';
 import { createOverviewPanel } from './panels/overview_panel';
 import { createShowPanel } from './panels/show_panel';
 import { createCargoPanel } from './panels/cargo_panel';
@@ -42,6 +43,8 @@ export type DockPanelId =
   | 'harness-panel'
   // Who did what at the harness, through which way in, read-only.
   | 'interactions-panel'
+  // Every shape the harness declares, what each needs and which could run, read-only.
+  | 'designer-panel'
   // Every family and project the corpus names, drawn: the triplet's graph leg.
   | 'show-panel'
   // Code cartography past one parse: a Rust workspace, and one construct read
@@ -115,6 +118,15 @@ const PANEL_DEFINITIONS: readonly PanelDefinition[] = [
     config: { type: 'component', componentType: 'interactions-panel', id: 'interactions-panel', title: '↹ Interactions', isClosable: true },
     overflow: 'auto',
     mount: (ctx, el) => m.mount(el, createInteractionsPanel(ctx)),
+  },
+  {
+    id: 'designer-panel',
+    menuLabel: 'Designer',
+    group: 'harness',
+    answers: 'Every shape of work the harness declares: what each needs, and which could run now.',
+    config: { type: 'component', componentType: 'designer-panel', id: 'designer-panel', title: '⬡ Designer', isClosable: true },
+    overflow: 'auto',
+    mount: (ctx, el) => m.mount(el, createDesignerPanel(ctx)),
   },
   {
     id: 'capabilities-panel',

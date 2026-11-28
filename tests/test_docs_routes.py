@@ -224,8 +224,6 @@ UNSERVED_ROUTES = {
     "/parse/repo": "planned in docs/roadmap/large-repos.md, A whole repository in one request",
     "/parse/job": "planned in docs/roadmap/large-repos.md, Parse jobs",
     "/parse/job/{id}/ws": "planned in docs/roadmap/large-repos.md, Parse jobs",
-    "/designer/data": "planned in docs/roadmap/the-designer-gallery.md, What this window serves",
-    "/designer/gjgf": "planned in docs/roadmap/the-designer-gallery.md, What this window serves",
 }
 
 

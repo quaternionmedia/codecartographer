@@ -633,6 +633,19 @@ export class PlotActions {
     return this._draw(found, 'interactionsProblem');
   }
 
+  /** Every shape the harness declares and whether it could run. Draws nothing. */
+  async loadDesignerReading(): Promise<void> {
+    const found = await EstateService.designerData(this.stateController.api.designer);
+    this._settle(found, 'designerReading', 'designerProblem');
+  }
+
+  /** The shapes against their needs, on the canvas. Resolves whether it drew (`_draw`). */
+  async drawDesigner(request: DrawRequest = {}): Promise<boolean> {
+    this.stateController.clear();
+    const found = await EstateService.designerGraph(this.stateController.api.designer, request);
+    return this._draw(found, 'designerProblem');
+  }
+
   /** The registry's declarations, for the panel's list. Draws nothing. */
   async loadCapabilitiesReading(): Promise<void> {
     const found = await EstateService.capabilitiesData(this.stateController.api.capabilities);
@@ -749,9 +762,9 @@ export class PlotActions {
   private _settle(
     found: SeamOutcome,
     readingField: 'capabilitiesReading' | 'overviewReading' | 'showSubjects' | 'showViews' | 'harnessReading'
-      | 'interactionsReading',
+      | 'interactionsReading' | 'designerReading',
     problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem' | 'harnessProblem'
-      | 'interactionsProblem',
+      | 'interactionsProblem' | 'designerProblem',
   ): void {
     if (isProblem(found)) logger.warn(`PlotActions.${readingField} - ${found.problem.problem}`);
     this.stateController.update(settlePatch(found, readingField, problemField) as Patch<ICellState>);
@@ -771,7 +784,8 @@ export class PlotActions {
    */
   private _draw(
     found: SeamOutcome,
-    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem' | 'interactionsProblem',
+    problemField: 'capabilitiesProblem' | 'overviewProblem' | 'showProblem' | 'interactionsProblem'
+      | 'designerProblem',
   ): boolean {
     const patch: Record<string, unknown> = {};
     if (isProblem(found)) {
