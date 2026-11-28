@@ -623,9 +623,13 @@ export class PlotActions {
     this._settle(found, 'interactionsReading', 'interactionsProblem');
   }
 
-  /** The harness's interactions as a graph, on the canvas. Resolves whether it drew (`_draw`). */
-  async drawInteractions(request: DrawRequest = {}): Promise<boolean> {
-    this.stateController.clear();
+  /**
+   * The harness's interactions as a graph, on the canvas. Resolves whether it
+   * drew (`_draw`). With `keep`, the graph on the canvas stays until the new
+   * one arrives, and stays if none does.
+   */
+  async drawInteractions(request: DrawRequest = {}, keep = false): Promise<boolean> {
+    if (!keep) this.stateController.clear();
     const found = await EstateService.harnessGraph(
       this.stateController.api.harness,
       { ...request, layout: request.layout ?? this._layout() },

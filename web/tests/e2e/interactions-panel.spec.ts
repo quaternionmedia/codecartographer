@@ -12,6 +12,8 @@
  * Each test names the mutation it was seen to fail under.
  */
 
+import { readFileSync } from 'node:fs';
+
 import type { Page, Request } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
@@ -259,7 +261,7 @@ async function placeOf(page: Page, id: string): Promise<{ x: number; y: number }
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
-test('the panel only reads: its button draws, its checkbox says how, and it sends nothing but GET', async ({ page }) => {
+test('the panel only reads: its button draws, its checkboxes say how, and it sends nothing but GET', async ({ page }) => {
   // Mutation: add a `button` to a row in `interactions_panel.ts` -- this fails.
   const sent: Request[] = [];
   page.on('request', (request) => {
@@ -271,9 +273,10 @@ test('the panel only reads: its button draws, its checkbox says how, and it send
   const panel = page.locator('.gl-panel--interactions');
   await expect(panel.locator('[data-ref="ins-1"]')).toBeVisible({ timeout: SETTLED });
   const controls = panel.locator('button, input, select, textarea, a[href]');
-  await expect(controls).toHaveCount(2);
+  await expect(controls).toHaveCount(3);
   await expect(controls.nth(0)).toHaveText('draw as a graph');
   await expect(controls.nth(1)).toHaveAttribute('type', 'checkbox');
+  await expect(controls.nth(2)).toHaveAttribute('type', 'checkbox');
 
   await controls.nth(0).click();
   await expect(node(page, 'harness')).toHaveCount(1, { timeout: SETTLED });
@@ -465,10 +468,11 @@ test('the graph is asked for as rows, and with every node once the checkbox is t
   expect(asked[2]).toBe('all');
 });
 
-test('a drawn graph stays as drawn while the panel reads again, and says when the harness has moved on', async ({ page }) => {
+test('unticked, a drawn graph stays as drawn while the panel reads again, and says when the harness has moved on', async ({ page }) => {
   // Mutations: leave the stale sentence out of the panel -- a graph of an
-  // older reading says nothing; draw again on every reading -- the graph is
-  // asked for more than once and a reader's place on the canvas is lost.
+  // older reading says nothing; follow whether or not the box is ticked --
+  // the graph is asked for more than once and a reader's place on the canvas
+  // is lost.
   test.setTimeout(90_000);
   let read = 0;
   let drawn = 0;
@@ -484,6 +488,8 @@ test('a drawn graph stays as drawn while the panel reads again, and says when th
   await dismissOnboardingModal(page);
   await page.locator('.gl-app-header__add-btn').click();
   await page.locator('.gl-add-panel-menu__item', { hasText: /^Interactions$/ }).click();
+  await page.locator('.interactions__follow').uncheck();
+  await expect(page.locator('.interactions__draw-hint')).toContainText('stays as drawn until it is drawn again');
   await page.locator('.interactions__draw').click();
   await expect(node(page, 'harness')).toHaveCount(1, { timeout: SETTLED });
   const stale = page.locator('.interactions__stale');
@@ -496,6 +502,101 @@ test('a drawn graph stays as drawn while the panel reads again, and says when th
   expect(read).toBeGreaterThan(1);
   expect(drawn).toBe(1);
   await expect(page.locator('g.graph-node')).toHaveCount(14);
+  await expect(page.locator('.interactions__followed')).toHaveCount(0);
+});
+
+/** The fixture graph before the harness held its tool run: one node and its edges fewer. */
+function graphBefore() {
+  const answer = JSON.parse(readFileSync(GRAPH, 'utf8'));
+  const graph = answer.results.graph;
+  delete graph.nodes['tool:echo'];
+  graph.edges = graph.edges.filter(
+    (found: { source: string; target: string }) => found.source !== 'tool:echo' && found.target !== 'tool:echo');
+  return { status: 200, contentType: 'application/json', body: JSON.stringify(answer) };
+}
+
+/** A reading whose newest row is one the first reading did not list. */
+const moved = () => {
+  const read = level(9);
+  const rows = [row({ at: '2026-01-01T00:00:50', act: 'ran', what: 'echo', ref: 'run-2' }), ...read.interactions.rows];
+  return { ...read, interactions: { ...read.interactions, rows, shown: rows.length, more: 9 - rows.length } };
+};
+
+test('followed, a reading that lists another row draws the graph again as it was asked for', async ({ page }) => {
+  // Mutations: never draw again from a reading -- the graph is asked for once
+  // and the tool's node never arrives; ask for no layout when following --
+  // the graph leaves reading order for the window's algorithm; drop the
+  // detail when following -- a graph drawn with every node comes back as
+  // rows; draw again on every reading -- the graph is asked for a third time
+  // for rows it already holds.
+  test.setTimeout(90_000);
+  let read = 0;
+  const asked: string[] = [];
+  await page.route('**/harness/gjgf*', (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    asked.push(`${params.get('layout')} ${params.get('detail')}`);
+    return route.fulfill(asked.length === 1 ? graphBefore() : graphAnswer);
+  });
+  await page.route('**/harness/interactions*', (route) => {
+    read += 1;
+    return route.fulfill(envelope(read === 1 ? level(8) : moved()));
+  });
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Interactions$/ }).click();
+  await expect(page.locator('.interactions__follow')).toBeChecked({ timeout: SETTLED });
+  await expect(page.locator('.interactions__draw-hint')).toContainText(
+    'the graph is drawn again when the rows the harness lists change');
+  await page.locator('.interactions__every-node').check();
+  await page.locator('.interactions__draw').click();
+  await expect(node(page, 'harness')).toHaveCount(1, { timeout: SETTLED });
+  await expect(page.locator('g.graph-node')).toHaveCount(13);
+  await expect(node(page, 'tool:echo')).toHaveCount(0);
+
+  // The panel reads again on its interval; the harness lists a tool run more.
+  await expect(node(page, 'tool:echo')).toHaveCount(1, { timeout: 40_000 });
+  await expect(page.locator('g.graph-node')).toHaveCount(14);
+  expect(asked).toEqual(['Reading_Order all', 'Reading_Order all']);
+  await page.locator('.lm_tab', { hasText: /Interactions/ }).click();
+  await expect(page.locator('.interactions__followed')).toContainText('for rows the harness had not listed');
+  await expect(page.locator('.interactions__stale')).toHaveCount(0);
+
+  // Two more readings list the same rows, and nothing is asked for again.
+  const then = read;
+  await expect.poll(() => read, { timeout: 40_000 }).toBeGreaterThan(then + 1);
+  expect(asked.length).toBe(2);
+});
+
+test('followed, a graph the harness does not answer for again stays on the canvas, with the problem in the panel', async ({ page }) => {
+  // Mutation: clear the canvas before following -- a harness that stops
+  // answering empties the graph a reader was looking at.
+  test.setTimeout(90_000);
+  let read = 0;
+  let drawn = 0;
+  await page.route('**/harness/gjgf*', (route) => {
+    drawn += 1;
+    return route.fulfill(drawn === 1 ? graphAnswer : envelope({
+      unreachable: true, problem: 'nothing is answering at the harness', remedy: 'start it',
+      where: 'http://127.0.0.1:3999/v1/instructions',
+    }));
+  });
+  await page.route('**/harness/interactions*', (route) => {
+    read += 1;
+    return route.fulfill(envelope(read === 1 ? level(8) : moved()));
+  });
+  await page.goto('/');
+  await dismissOnboardingModal(page);
+  await page.locator('.gl-app-header__add-btn').click();
+  await page.locator('.gl-add-panel-menu__item', { hasText: /^Interactions$/ }).click();
+  await page.locator('.interactions__draw').click();
+  await expect(node(page, 'harness')).toHaveCount(1, { timeout: SETTLED });
+
+  await expect.poll(() => drawn, { timeout: 40_000 }).toBeGreaterThan(1);
+  await page.waitForTimeout(600);
+  await expect(page.locator('g.graph-node')).toHaveCount(14);
+  await page.locator('.lm_tab', { hasText: /Interactions/ }).click();
+  await expect(page.locator('.gl-panel--interactions')).toContainText('nothing is answering at the harness');
 });
 
 test('the caveat and the harness it was read from sit in the panel only while its graph is drawn', async ({ page }) => {
