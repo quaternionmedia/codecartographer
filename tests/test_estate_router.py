@@ -24,9 +24,7 @@ import io
 import json
 import urllib.error
 import urllib.request
-from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from codecarto.services import corpus, estate_service, qmcp_client

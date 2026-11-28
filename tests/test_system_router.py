@@ -112,7 +112,6 @@ def test_the_roots_override_replaces_rather_than_adds(tmp_path, monkeypatch):
     """Two sources of truth for 'which repositories can this read' is how an
     allowlist stops being one, so CODECARTO_REPO_ROOTS replaces the
     convention entirely."""
-    import os
 
     (tmp_path / "only" / ".git").mkdir(parents=True)
     monkeypatch.setenv("CODECARTO_REPO_ROOTS", str(tmp_path))

@@ -90,13 +90,13 @@ def fetch(path: str, base: str | None = None,
         return Reach(False, where, status=error.code,
                      problem=f"the harness refused: {error.code} {detail}",
                      remedy="")
-    except urllib.error.URLError as error:
+    except urllib.error.URLError:
         return Reach(
             False, where,
             problem=f"nothing is answering at {base or base_url()}",
             remedy=f"start it with `{START_COMMAND}`",
             status=None)
-    except (TimeoutError, OSError) as error:
+    except (TimeoutError, OSError):
         return Reach(False, where,
                      problem=f"the harness did not answer within {TIMEOUT:g}s",
                      remedy="", status=None)

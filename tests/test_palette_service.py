@@ -13,7 +13,6 @@ author must enumerate every leaf or get grey.
 
 from __future__ import annotations
 
-import pytest
 
 from codecarto.models.plot_data import DefaultPalette, Palette
 from codecarto.services import palette_service

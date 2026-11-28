@@ -19,7 +19,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from codecarto.models.source_data import Directory, RepoInfo, Folder
+from codecarto.models.source_data import Directory
 from codecarto.services import construct_service
 from codecarto.util.exceptions import CodeCartoException, proc_exception
 from codecarto.util.utilities import generate_return

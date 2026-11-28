@@ -6,7 +6,6 @@ Run: pytest tests/test_position_service.py
 import math
 
 import networkx as nx
-import pytest
 
 from codecarto.models.custom_layouts.compound_layout import compound_layout
 from codecarto.services.parsers.language_parser import make_edge

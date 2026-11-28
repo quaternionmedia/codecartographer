@@ -1,7 +1,6 @@
 """
 Local repository service for parsing local git repositories.
 """
-import os
 from pathlib import Path
 from typing import Optional, List
 from codecarto.models.source_data import Directory, File, Folder, RepoInfo

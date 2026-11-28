@@ -7,7 +7,6 @@ Tests for the unified parser foundations:
 These tests do NOT require libclang or any optional system dependency.
 """
 
-import pytest
 import networkx as nx
 
 from codecarto.models.source_data import File

@@ -5,8 +5,6 @@ Covers: log line parsing (syslog + journald), event classification,
 field extraction, and utility functions.
 """
 
-import time
-import pytest
 from codecarto.services.parsers.pam_parser import (
     PamPhase,
     EventType,

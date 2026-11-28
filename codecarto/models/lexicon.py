@@ -17,7 +17,7 @@ Data lives in ``codecarto/data/lexicons/<language>.yaml`` and is loaded by
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel, Field
 

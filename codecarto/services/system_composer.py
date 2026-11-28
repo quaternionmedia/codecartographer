@@ -49,7 +49,6 @@ the gaps in the derived picture are facts about the repository's declarations.
 
 from __future__ import annotations
 
-import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path

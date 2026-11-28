@@ -48,7 +48,6 @@ def _default_port() -> int:
 
 # Ensure stdout/stderr can handle Unicode on Windows (cp1252 can't encode emojis)
 if sys.platform == "win32":
-    import io
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if hasattr(sys.stderr, "reconfigure"):

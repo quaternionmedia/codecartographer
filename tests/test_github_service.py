@@ -18,7 +18,6 @@ from codecarto.services import cache_service as cache_svc
 from codecarto.services import github_service as svc
 from codecarto.util.exceptions import (
     Github403Error,
-    Github404Error,
     GithubAPIError,
     GithubError,
     GithubNoDataError,
@@ -156,7 +155,6 @@ class TestFetchTreeFastCaching:
 
     @pytest.mark.asyncio
     async def test_expired_ttl_triggers_fresh_fetch(self, monkeypatch):
-        import time
 
         calls: list[str] = []
         await self._run(monkeypatch, calls)

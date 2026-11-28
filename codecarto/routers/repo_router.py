@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from fastapi import APIRouter
 from codecarto.models.source_data import Directory, Folder, RepoInfo
