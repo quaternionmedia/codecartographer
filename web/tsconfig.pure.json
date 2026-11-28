@@ -36,6 +36,7 @@
     "src/features/estate/provenance_shown.ts",
     "src/features/estate/run_state.ts",
     "src/features/estate/interactions.ts",
+    "src/features/estate/instruct.ts",
     "src/features/graph/services/graph_names.ts",
     "src/features/graph/services/layout_names.ts",
     "src/features/graph/services/label_color.ts",

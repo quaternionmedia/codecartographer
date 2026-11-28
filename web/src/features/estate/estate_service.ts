@@ -10,6 +10,7 @@
  */
 
 import { RequestHandler } from '../../services/request_handler';
+import { instructOutcome, standingOf, type InstructOutcome, type InstructStanding } from './instruct';
 import { query, read, type Getter, type SeamOutcome } from './seam_client';
 
 const get: Getter = (url) => RequestHandler.getRequest(url);
@@ -88,6 +89,18 @@ export class EstateService {
   /** What the harness is running and asking, read by the server. */
   public static harnessData(harnessUrl: string): Promise<SeamOutcome> {
     return read(get, `${harnessUrl}/data`);
+  }
+
+  /** Whether this window relays an instruction for this reader. */
+  public static async instructStanding(harnessUrl: string): Promise<InstructStanding> {
+    return standingOf(await RequestHandler.getRequest(`${harnessUrl}/instructions`).catch(() => null));
+  }
+
+  /** One instruction a person typed, relayed to the harness by the server. Sent once. */
+  public static async instruct(harnessUrl: string, text: string, project: string): Promise<InstructOutcome> {
+    const url = `${harnessUrl}/instructions`;
+    const body: Record<string, unknown> = project.trim() ? { text, project } : { text };
+    return instructOutcome(await RequestHandler.postRequest(url, body).catch(() => null), url);
   }
 
   /** Who did what at the harness, through which way in, read by the server. */

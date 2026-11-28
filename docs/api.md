@@ -1070,6 +1070,37 @@ project an instruction or a pending question names, with `state` (`idle`,
 says what a state is read from. The route reads the harness and posts
 nothing to it.
 
+### GET `/harness/instructions`
+
+Whether this window relays an instruction for the request asking.
+`available` is `true` with `way_in` (`page`), or `false` with a `problem`
+and a `remedy` naming the terminal command. It is `true` only when the
+request arrived on a loopback address from a loopback address, carries no
+`Forwarded`, `X-Forwarded-For`, `X-Forwarded-Host` or `X-Real-IP` header, and
+has no `Origin` or one whose host is a loopback name. Asking sends nothing
+to the harness.
+
+### POST `/harness/instructions`
+
+Body `{"text": "...", "project": "..."}`; `project` is optional. Relays one
+instruction a person typed to the harness's `POST /v1/instructions` with
+`source` `page`, once, and keeps nothing. The harness records it and runs
+nothing.
+
+`results` is one of:
+
+- `recorded: true` with `instruction`, the harness's row as it returned it,
+  and `where`;
+- `unreachable: true` with `problem`, `remedy` and `where`, when the harness
+  did not answer;
+- `refused: true` with `problem`, `remedy` and `where`: the harness's
+  refusal in its own words with its status, blank text, or a request that
+  does not stand as `GET /harness/instructions` describes, for which nothing
+  is sent.
+
+What the standing cannot see: a proxy on the same machine that adds no
+forwarding header, and who is at the keyboard.
+
 ### GET `/harness/interactions`
 
 Who did what at the harness, through which way in. `interactions` carries

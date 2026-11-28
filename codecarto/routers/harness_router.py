@@ -10,26 +10,66 @@
   every other plot here produces, so the page draws them on the one canvas
   with the same layouts, palettes and menu.
 
+- `GET /harness/instructions` -- whether this window relays an instruction
+  for the request asking, and where one is given when it does not.
+- `POST /harness/instructions` -- one instruction a person typed, relayed to
+  the harness, which records it and runs nothing.
+
 Each answers in `generate_return`'s envelope with status 200. A harness that
 is not answering is a `results` carrying `unreachable`, a `problem`, a
-`remedy` and a `where`, as every estate route reports an absent seam.
+`remedy` and a `where`, as every estate route reports an absent seam. An
+instruction that was not recorded is a `results` carrying `refused` with the
+same three.
 
-The routes read. Nothing here posts to the harness.
+Every route but the last reads. The last sends one document and keeps none.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel
 
 from codecarto.models.plot_data import PlotOptions
-from codecarto.services import (estate_service, harness_service, interaction_graph,
-                                interaction_service)
+from codecarto.services import (estate_service, harness_service, instruct_service,
+                                interaction_graph, interaction_service)
 from codecarto.util.utilities import generate_return
 
 HarnessRouter = APIRouter()
+
+
+class Instruction(BaseModel):
+    """What a person typed: the instruction, and the project when stated."""
+
+    text: str
+    project: str | None = None
+
+
+def _standing(request: Request) -> str:
+    """Why this request's instruction is not relayed, or "" when it is."""
+    server = request.scope.get("server") or (None, None)
+    client = request.client.host if request.client else None
+    return instruct_service.standing(server[0], client, request.headers)
+
+
+@HarnessRouter.get("/instructions")
+def instruct_standing(request: Request) -> dict[str, Any]:
+    """Whether an instruction typed here is relayed, for the panel's form."""
+    return generate_return(
+        results=instruct_service.availability(_standing(request)))
+
+
+@HarnessRouter.post("/instructions")
+def instruct(body: Instruction, request: Request) -> dict[str, Any]:
+    """Relay one instruction to the harness, which records it and runs nothing.
+
+    A plain `def`, so the post to the harness runs in the threadpool. The
+    harness's row is returned as it gave it, and its refusal in its own words.
+    """
+    return generate_return(results=instruct_service.record(
+        body.text, body.project, _standing(request)))
 
 
 @HarnessRouter.get("/data")
