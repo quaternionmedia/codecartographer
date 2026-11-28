@@ -140,9 +140,10 @@ async function dragSplitterTo(page: Page, x: number): Promise<void> {
 }
 
 test('the splitter beside a stack holding every window follows the pointer', async ({ page }) => {
-  // Mutation: leave `fitStackMinimum` out of the shell -- the stack beside
-  // Files needs the sum of its tabs' least widths, more than the dock has,
-  // and a drag toward it moves the splitter away from the pointer.
+  // Mutations: leave `fitStackMinimum` out of the shell, or add the tabs'
+  // least widths up in `leastForTabs` -- the stack beside Files needs more
+  // than the dock has, and a drag toward it moves the splitter away from the
+  // pointer.
   await page.goto('/');
   await dismissOnboardingModal(page);
   await expect(page.locator('.lm_tabs > .lm_tab').first()).toBeVisible();
