@@ -10,7 +10,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
-  NOBODY, actShown, answersShown, cellLevel, instanceShown, moreNamesShown, mostInACell, undatedShown, whoShown,
+  NOBODY, actShown, answersShown, cellLevel, followDue, followShown, instanceShown, moreNamesShown, mostInACell,
+  readingMark, undatedShown, whoShown,
 } from '../../dist-pure/features/estate/interactions.js';
 
 test('a row that names nobody is worded as naming nobody, never as a blank', () => {
@@ -86,4 +87,44 @@ test('interactions with no time and names not shown are each said only when ther
   assert.equal(undatedShown(2), 'interactions with no readable time, in no span: 2.');
   assert.equal(moreNamesShown(0), '');
   assert.equal(moreNamesShown(4), "4 more the harness's rows give and this panel does not show");
+});
+
+const listed = (rows, more = 0, read = 0) => ({
+  interactions: { rows, shown: rows.length, more, more_is_floor: false },
+  answers: { read, unread: 0, limit: 20 },
+});
+const ROW = { act: 'instructed', ref: 'ins-1', at: '2026-01-01T00:00:20' };
+
+test('two readings share a mark only when they list the same rows', () => {
+  // Mutations: mark a reading by its count alone -- an answer in place of a
+  // question, the count unchanged, is the same mark; leave the count out --
+  // a row arriving behind the listed ones is not seen.
+  const mark = readingMark(listed([ROW]));
+  assert.equal(readingMark(listed([{ ...ROW }])), mark);
+  assert.notEqual(readingMark(listed([{ ...ROW, ref: 'ins-2' }])), mark);
+  assert.notEqual(readingMark(listed([{ ...ROW, act: 'asked' }])), mark);
+  assert.notEqual(readingMark(listed([{ ...ROW, at: '2026-01-01T00:00:21' }])), mark);
+  assert.notEqual(readingMark(listed([ROW], 1)), mark);
+  assert.notEqual(readingMark(listed([ROW], 0, 1)), mark);
+  assert.equal(readingMark(listed([{ ...ROW, at: null }])), readingMark(listed([{ ...ROW, at: null }])));
+});
+
+test('the graph is drawn again only when followed, this seam\'s, drawn here, changed and idle', () => {
+  // Mutations: drop each condition in turn -- unticked, another seam's graph,
+  // a graph this panel never drew, the same rows, and a drawing still out
+  // each draw again.
+  assert.equal(followDue(true, 'interactions', 'a', 'b', false), true);
+  assert.equal(followDue(false, 'interactions', 'a', 'b', false), false);
+  assert.equal(followDue(true, 'topology', 'a', 'b', false), false);
+  assert.equal(followDue(true, undefined, 'a', 'b', false), false);
+  assert.equal(followDue(true, 'interactions', null, 'b', false), false);
+  assert.equal(followDue(true, 'interactions', 'a', 'a', false), false);
+  assert.equal(followDue(true, 'interactions', 'a', 'b', true), false);
+});
+
+test('the hint says whether the graph follows the harness or stays as drawn', () => {
+  // Mutation: answer the followed sentence either way -- an unticked panel
+  // says the graph is drawn again.
+  assert.match(followShown(true), /drawn again when the rows the harness lists change/);
+  assert.match(followShown(false), /stays as drawn until it is drawn again/);
 });

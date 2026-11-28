@@ -195,3 +195,34 @@ export function staleShown(drawn: unknown, now: unknown): string {
   if (typeof drawn !== 'number' || typeof now !== 'number' || drawn === now) return '';
   return `The harness held ${drawn} rows when this graph was drawn and holds ${now} now. Draw again to read them.`;
 }
+
+/**
+ * One string for what a reading lists: how many rows the harness holds, each
+ * listed row's act, reference and time, and how many answers were read. Two
+ * readings share it only when they list the same rows.
+ *
+ * A row the reading holds back is in the count alone, so one that changed
+ * there without the count changing is not seen.
+ */
+export function readingMark(reading: InteractionsDocument): string {
+  const listed = reading.interactions.rows.map((row) => `${row.act} ${String(row.ref)} ${row.at ?? ''}`);
+  return [reading.interactions.shown + reading.interactions.more, reading.answers.read, ...listed].join('\n');
+}
+
+/**
+ * Whether the graph on the canvas is drawn again for a reading: following is
+ * ticked, the canvas holds this seam's graph, this panel drew it, the reading
+ * lists other rows than the one it was drawn beside, and no drawing is out.
+ */
+export function followDue(
+  follow: boolean, kind: unknown, drawn: string | null, now: string, drawing: boolean,
+): boolean {
+  return follow && kind === 'interactions' && drawn !== null && drawn !== now && !drawing;
+}
+
+/** What the hint under the button says of a drawn graph and the harness. */
+export function followShown(follow: boolean): string {
+  return follow
+    ? 'While this panel is open, the graph is drawn again when the rows the harness lists change.'
+    : 'The graph is the harness as read for that drawing, and stays as drawn until it is drawn again.';
+}
