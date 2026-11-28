@@ -334,6 +334,19 @@ way, rows that name nobody come last, and instructions and
 questions that name nobody and belong to no turn are one node each with
 their count; the lists further down the panel hold every one of them.
 
+With *follow the harness* ticked, as it is when the panel opens, the graph
+this panel drew is drawn again when a reading lists other rows than the
+reading it was drawn beside: an instruction typed in the Harness panel, the question it raises
+and the answer to it each arrive as the panel reads them. It is drawn as it
+was asked for, in reading order or by the algorithm chosen since, and with
+the same nodes. The graph on the canvas stays until the new one arrives, and
+stays if the harness does not answer, with the problem in the panel; the
+Graph panel is not brought forward. A row the reading holds back is in its
+count alone, so one that changes there without the count changing is not
+seen. Unticked, the graph stays as drawn and the panel says when the harness
+holds a different number of rows. The graph follows only while this panel is
+open and the canvas holds its graph.
+
 The three edges of the reading have a colour each and every other edge is
 one grey; an edge is dashed where its row names nobody and wider where
 several rows are one edge. The key to those lines sits beside the button
